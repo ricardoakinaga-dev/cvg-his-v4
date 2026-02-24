@@ -1,0 +1,455 @@
+/**
+ * OdooFormView Component Styles
+ * 
+ * Odoo-style form view with header, notebook tabs, and side panel.
+ * Uses CSS tokens from globals.css.
+ */
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  background: var(--cvg-surface);
+  border-radius: var(--cvg-radius-lg);
+  border: 1px solid var(--cvg-border);
+  overflow: hidden;
+}
+
+.withSidePanel {
+  flex-direction: row;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--cvg-space-4) var(--cvg-space-6);
+  border-bottom: 1px solid var(--cvg-border);
+  background: var(--cvg-list-header-bg);
+  gap: var(--cvg-space-4);
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  flex: 1;
+  min-width: 200px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+  flex-wrap: wrap;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--cvg-text-xl);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-muted);
+  margin: var(--cvg-space-1) 0 0 0;
+}
+
+/* Secondary Actions */
+.secondaryActions {
+  position: relative;
+}
+
+.secondaryMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--cvg-space-2);
+  background: var(--cvg-surface);
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-md);
+  box-shadow: var(--cvg-shadow-lg);
+  min-width: 160px;
+  z-index: var(--cvg-z-dropdown);
+  overflow: hidden;
+}
+
+.secondaryMenuItem {
+  display: block;
+  width: 100%;
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--cvg-transition-fast);
+}
+
+.secondaryMenuItem:hover {
+  background: var(--cvg-bg-muted);
+}
+
+.secondaryMenuItem:disabled {
+  color: var(--cvg-text-muted);
+  cursor: not-allowed;
+}
+
+/* Notebook */
+.notebook {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tabsWrapper {
+  border-bottom: 1px solid var(--cvg-tab-border);
+  background: var(--cvg-surface);
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tab */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-tab-inactive);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--cvg-transition-fast), border-color var(--cvg-transition-fast);
+  min-height: var(--cvg-touch-target);
+}
+
+.tab:hover {
+  color: var(--cvg-primary);
+  background: var(--cvg-primary-bg);
+}
+
+.tabActive {
+  color: var(--cvg-tab-active);
+  border-bottom-color: var(--cvg-tab-active);
+}
+
+.tabDisabled {
+  color: var(--cvg-text-muted);
+  cursor: not-allowed;
+}
+
+.tabDisabled:hover {
+  color: var(--cvg-text-muted);
+  background: transparent;
+}
+
+.tabBadge {
+  padding: 1px 6px;
+  font-size: var(--cvg-text-xs);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text-inverse);
+  background: var(--cvg-primary);
+  border-radius: var(--cvg-radius-full);
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Tab Content */
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tabPanel {
+  padding: var(--cvg-space-6);
+}
+
+/* Section */
+.section {
+  margin-bottom: var(--cvg-form-section-gap);
+  border-bottom: 1px solid var(--cvg-border);
+  padding-bottom: var(--cvg-form-section-gap);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sectionCollapsed {
+  padding-bottom: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--cvg-space-4);
+}
+
+.sectionTitle {
+  font-size: var(--cvg-text-base);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  margin: 0;
+}
+
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cvg-touch-target-sm);
+  height: var(--cvg-touch-target-sm);
+  color: var(--cvg-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--cvg-radius-sm);
+  cursor: pointer;
+  transition: color var(--cvg-transition-fast);
+}
+
+.sectionToggle:hover {
+  color: var(--cvg-text);
+}
+
+.sectionContent {
+  overflow: hidden;
+}
+
+/* Field */
+.field {
+  display: flex;
+  gap: var(--cvg-form-gap);
+  margin-bottom: var(--cvg-form-gap);
+  align-items: flex-start;
+}
+
+.fieldError {
+  /* Error styling */
+}
+
+.fieldLabel {
+  flex-shrink: 0;
+  padding-top: var(--cvg-space-2);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-text-secondary);
+  text-align: right;
+}
+
+.required {
+  color: var(--cvg-danger);
+  margin-left: 2px;
+}
+
+.fieldContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.helpText {
+  display: block;
+  margin-top: var(--cvg-space-1);
+  font-size: var(--cvg-text-xs);
+  color: var(--cvg-text-muted);
+}
+
+.errorText {
+  display: block;
+  margin-top: var(--cvg-space-1);
+  font-size: var(--cvg-text-xs);
+  color: var(--cvg-danger);
+}
+
+/* Row */
+.row {
+  display: flex;
+  gap: var(--cvg-form-gap);
+  flex-wrap: wrap;
+}
+
+.row > .field {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Side Panel */
+.sidePanel {
+  width: 320px;
+  border-left: 1px solid var(--cvg-border);
+  background: var(--cvg-bg-muted);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* Chatter */
+.chatter {
+  padding: var(--cvg-space-4);
+}
+
+.chatterTitle {
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  margin: 0 0 var(--cvg-space-3) 0;
+}
+
+.chatterEmpty {
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-muted);
+  text-align: center;
+  padding: var(--cvg-space-4);
+}
+
+.chatterList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cvg-space-3);
+}
+
+.chatterItem {
+  padding: var(--cvg-space-3);
+  background: var(--cvg-surface);
+  border-radius: var(--cvg-radius-md);
+  border: 1px solid var(--cvg-border);
+}
+
+.chatterMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--cvg-space-2);
+}
+
+.chatterAuthor {
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-text);
+}
+
+.chatterTime {
+  font-size: var(--cvg-text-xs);
+  color: var(--cvg-text-muted);
+}
+
+.chatterContent {
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-secondary);
+  margin: 0;
+  line-height: var(--cvg-leading-relaxed);
+}
+
+.chatterInput {
+  margin-top: var(--cvg-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cvg-space-2);
+}
+
+.chatterTextarea {
+  width: 100%;
+  padding: var(--cvg-space-3);
+  font-size: var(--cvg-text-sm);
+  font-family: inherit;
+  color: var(--cvg-text);
+  background: var(--cvg-surface);
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-md);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.chatterTextarea:focus {
+  outline: none;
+  border-color: var(--cvg-primary);
+  box-shadow: var(--cvg-focus-ring);
+}
+
+.chatterTextarea::placeholder {
+  color: var(--cvg-text-muted);
+}
+
+/* Mobile responsive */
+@media (max-width: 900px) {
+  .container.withSidePanel {
+    flex-direction: column;
+  }
+
+  .sidePanel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--cvg-border);
+  }
+
+  .header {
+    padding: var(--cvg-space-3) var(--cvg-space-4);
+  }
+
+  .tabPanel {
+    padding: var(--cvg-space-4);
+  }
+
+  .field {
+    flex-direction: column;
+    gap: var(--cvg-space-1);
+  }
+
+  .fieldLabel {
+    text-align: left;
+    padding-top: 0;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .headerRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .tabs {
+    padding: 0 var(--cvg-space-2);
+  }
+
+  .tab {
+    padding: var(--cvg-space-2) var(--cvg-space-3);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .sectionToggle,
+  .secondaryMenuItem {
+    transition: none;
+  }
+}

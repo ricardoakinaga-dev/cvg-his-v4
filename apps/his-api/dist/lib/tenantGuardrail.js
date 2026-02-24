@@ -1,0 +1,85 @@
+/**
+ * Tenant Guardrail Utilities
+ *
+ * These utilities ensure that all operations are properly scoped to a tenant (account_id).
+ * Missing account_id in context results in 401/403 errors.
+ */
+/**
+ * Error thrown when account_id is missing from context
+ */
+export class MissingTenantContextError extends Error {
+    statusCode;
+    constructor(message = 'Missing tenant context (account_id)') {
+        super(message);
+        this.name = 'MissingTenantContextError';
+        this.statusCode = 401;
+    }
+}
+/**
+ * Error thrown when there's a tenant mismatch (cross-tenant access attempt)
+ */
+export class TenantMismatchError extends Error {
+    statusCode;
+    constructor(message = 'Cross-tenant access denied') {
+        super(message);
+        this.name = 'TenantMismatchError';
+        this.statusCode = 403;
+    }
+}
+/**
+ * Extract and validate account_id from request context
+ * Throws MissingTenantContextError if not present
+ */
+export function requireAccountId(request) {
+    const actor = request.requestContext.actor;
+    if (!actor?.accountId) {
+        throw new MissingTenantContextError('Missing or invalid actor context. Provide a valid Bearer token.');
+    }
+    return actor.accountId;
+}
+/**
+ * Validate that a resource belongs to the current tenant
+ * Throws TenantMismatchError if there's a mismatch
+ */
+export function requireTenantMatch(request, resourceAccountId) {
+    const actorAccountId = requireAccountId(request);
+    if (actorAccountId !== resourceAccountId) {
+        throw new TenantMismatchError('Cross-tenant access denied');
+    }
+}
+/**
+ * Fastify preHandler hook to ensure account_id is present
+ */
+export function tenantGuardrail() {
+    return async (request, reply) => {
+        try {
+            requireAccountId(request);
+        }
+        catch (error) {
+            if (error instanceof MissingTenantContextError) {
+                void reply.status(error.statusCode).send({
+                    error: 'Unauthorized',
+                    message: error.message,
+                    code: 'MISSING_TENANT_CONTEXT'
+                });
+                return;
+            }
+            throw error;
+        }
+    };
+}
+/**
+ * Helper to add account_id filter to any query
+ */
+export function withTenantFilter(query, accountId, existingWhereClause = false) {
+    // This is a helper for documentation purposes
+    // Actual query building should be done in the repo layer
+    return { query, accountId };
+}
+/**
+ * Type guard to check if an error is a tenant-related error
+ */
+export function isTenantError(error) {
+    return error instanceof MissingTenantContextError || error instanceof TenantMismatchError;
+}
+//# sourceMappingURL=tenantGuardrail.js.map

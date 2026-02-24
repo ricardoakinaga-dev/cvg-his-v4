@@ -1,0 +1,161 @@
+/**
+ * EmptyState Component Styles
+ * Uses CSS tokens from globals.css for consistent theming
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--cvg-space-8);
+}
+
+/* Sizes */
+.sm {
+  padding: var(--cvg-space-4);
+}
+
+.sm .icon {
+  margin-bottom: var(--cvg-space-2);
+}
+
+.sm .title {
+  font-size: var(--cvg-text-sm);
+}
+
+.sm .description {
+  font-size: var(--cvg-text-xs);
+}
+
+.md {
+  padding: var(--cvg-space-8);
+}
+
+.md .icon {
+  margin-bottom: var(--cvg-space-4);
+}
+
+.lg {
+  padding: var(--cvg-space-12);
+}
+
+.lg .icon {
+  margin-bottom: var(--cvg-space-6);
+}
+
+.lg .title {
+  font-size: var(--cvg-text-lg);
+}
+
+.lg .description {
+  font-size: var(--cvg-text-base);
+}
+
+/* Variants */
+.default {
+  border: 2px dashed var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  background-color: var(--cvg-bg);
+}
+
+.card {
+  background-color: var(--cvg-surface);
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  box-shadow: var(--cvg-shadow-sm);
+}
+
+.minimal {
+  background-color: transparent;
+  border: none;
+  padding: var(--cvg-space-4);
+}
+
+/* Icon */
+.icon {
+  color: var(--cvg-text-muted);
+  opacity: 0.6;
+}
+
+.defaultIcon {
+  width: 48px;
+  height: 48px;
+}
+
+.sm .defaultIcon {
+  width: 32px;
+  height: 32px;
+}
+
+.lg .defaultIcon {
+  width: 64px;
+  height: 64px;
+}
+
+/* Content */
+.content {
+  max-width: 320px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--cvg-text-base);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  line-height: var(--cvg-leading-tight);
+}
+
+.description {
+  margin: var(--cvg-space-2) 0 0;
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-secondary);
+  line-height: var(--cvg-leading-relaxed);
+}
+
+/* Action */
+.action {
+  margin-top: var(--cvg-space-4);
+}
+
+.sm .action {
+  margin-top: var(--cvg-space-2);
+}
+
+.lg .action {
+  margin-top: var(--cvg-space-6);
+}
+
+/* Clear Button */
+.clearButton {
+  padding: var(--cvg-space-2) var(--cvg-space-4);
+  font-family: var(--cvg-font-sans);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-primary);
+  background-color: transparent;
+  border: 1px solid var(--cvg-primary);
+  border-radius: var(--cvg-radius-md);
+  cursor: pointer;
+  transition: 
+    background-color var(--cvg-transition-fast),
+    color var(--cvg-transition-fast);
+}
+
+.clearButton:hover {
+  background-color: var(--cvg-primary);
+  color: var(--cvg-text-inverse);
+}
+
+.clearButton:focus-visible {
+  outline: none;
+  box-shadow: var(--cvg-focus-ring);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .container {
+    animation: none;
+  }
+}

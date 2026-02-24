@@ -1,0 +1,115 @@
+/**
+ * BottomNav Component Styles
+ * 
+ * Mobile bottom navigation with touch-friendly targets.
+ * Uses CSS tokens from globals.css.
+ */
+
+/* Bottom Navigation Container */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--cvg-bottom-nav-height);
+  background: var(--cvg-surface);
+  border-top: 1px solid var(--cvg-border);
+  box-shadow: var(--cvg-float-shadow);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: var(--cvg-z-bottom-nav);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Navigation Item */
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: var(--cvg-touch-target);
+  min-height: var(--cvg-touch-target);
+  padding: var(--cvg-space-2) var(--cvg-space-3);
+  color: var(--cvg-text-muted);
+  text-decoration: none;
+  font-size: var(--cvg-text-xs);
+  font-weight: var(--cvg-weight-medium);
+  background: transparent;
+  border: none;
+  border-radius: var(--cvg-radius-md);
+  cursor: pointer;
+  transition: color var(--cvg-transition-fast), background var(--cvg-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item:hover {
+  color: var(--cvg-primary);
+  background: var(--cvg-primary-bg);
+}
+
+.item:active {
+  transform: scale(0.95);
+}
+
+.item.active {
+  color: var(--cvg-primary);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--cvg-primary);
+  outline-offset: -2px;
+}
+
+/* Icon */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.5;
+}
+
+/* Label */
+.label {
+  font-size: var(--cvg-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Active Indicator */
+.activeIndicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  background: var(--cvg-primary);
+  border-radius: 0 0 var(--cvg-radius-sm) var(--cvg-radius-sm);
+}
+
+/* Hide on desktop (> 900px) */
+@media (min-width: 901px) {
+  .bottomNav {
+    display: none;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+  
+  .item:active {
+    transform: none;
+  }
+}

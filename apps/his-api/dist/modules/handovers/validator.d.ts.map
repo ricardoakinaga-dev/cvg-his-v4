@@ -1,0 +1,1 @@
+{"version":3,"file":"validator.d.ts","sourceRoot":"","sources":["../../../src/modules/handovers/validator.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,kBAAkB,EAAE,cAAc,EAAE,MAAM,WAAW,CAAC;AAsBpE,KAAK,sBAAsB,GAAG;IAC5B,QAAQ,EAAE,cAAc,CAAC;IACzB,KAAK,EAAE,kBAAkB,EAAE,CAAC;CAC7B,CAAC;AAEF,wBAAgB,8BAA8B,CAAC,KAAK,EAAE,sBAAsB,GAAG,IAAI,CASlF"}

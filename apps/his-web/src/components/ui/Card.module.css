@@ -1,0 +1,171 @@
+/**
+ * Card Component Styles
+ * Uses CSS tokens from globals.css for consistent theming
+ */
+
+.card {
+  background-color: var(--cvg-surface);
+  border-radius: var(--cvg-radius-lg);
+  overflow: hidden;
+  transition: 
+    box-shadow var(--cvg-transition-normal),
+    transform var(--cvg-transition-normal);
+}
+
+/* Variants */
+.default {
+  border: 1px solid var(--cvg-border);
+  box-shadow: var(--cvg-shadow-sm);
+}
+
+.elevated {
+  border: none;
+  box-shadow: var(--cvg-shadow-md);
+}
+
+.outlined {
+  border: 1px solid var(--cvg-border);
+  box-shadow: none;
+}
+
+.filled {
+  border: none;
+  background-color: var(--cvg-bg-muted);
+  box-shadow: none;
+}
+
+/* Padding */
+.padding-sm {
+  padding: var(--cvg-space-3);
+}
+
+.padding-md {
+  padding: var(--cvg-space-4);
+}
+
+.padding-lg {
+  padding: var(--cvg-space-6);
+}
+
+/* Interactive States */
+.hoverable:hover {
+  box-shadow: var(--cvg-shadow-lg);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  box-shadow: var(--cvg-shadow-lg);
+}
+
+.clickable:focus-visible {
+  outline: none;
+  box-shadow: var(--cvg-focus-ring);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cvg-space-4);
+  padding: var(--cvg-space-4) var(--cvg-space-5);
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.headerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.headerAction {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--cvg-text-lg);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  line-height: var(--cvg-leading-tight);
+}
+
+.description {
+  margin: var(--cvg-space-1) 0 0;
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-secondary);
+  line-height: var(--cvg-leading-normal);
+}
+
+/* Body */
+.body {
+  padding: var(--cvg-space-5);
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-3);
+  padding: var(--cvg-space-4) var(--cvg-space-5);
+  border-top: 1px solid var(--cvg-border);
+  background-color: var(--cvg-bg-muted);
+}
+
+.footer-left {
+  justify-content: flex-start;
+}
+
+.footer-center {
+  justify-content: center;
+}
+
+.footer-right {
+  justify-content: flex-end;
+}
+
+.footer-between {
+  justify-content: space-between;
+}
+
+/* Section */
+.section {
+  padding: var(--cvg-space-4) 0;
+}
+
+.section:not(:last-child) {
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--cvg-space-3);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Divider */
+.divider {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 1px solid var(--cvg-border);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  
+  .hoverable:hover {
+    transform: none;
+  }
+}

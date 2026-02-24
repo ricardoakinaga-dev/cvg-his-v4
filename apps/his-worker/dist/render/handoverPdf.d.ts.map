@@ -1,0 +1,1 @@
+{"version":3,"file":"handoverPdf.d.ts","sourceRoot":"","sources":["../../src/render/handoverPdf.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,cAAc,GAAG;IAC3B,IAAI,EAAE,MAAM,CAAC;CACd,CAAC;AAEF,MAAM,MAAM,eAAe,GAAG;IAC5B,QAAQ,EAAE,iBAAiB,CAAC;IAC5B,OAAO,EAAE,MAAM,CAAC;CACjB,CAAC;AAEF,wBAAsB,iBAAiB,CAAC,MAAM,EAAE,cAAc,GAAG,OAAO,CAAC,eAAe,GAAG,IAAI,CAAC,CAE/F"}

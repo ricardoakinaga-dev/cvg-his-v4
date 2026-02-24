@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# next build
+.next/
+**/.next/
+
+# logs / outputs
+*.log
+build.out
+build.err
+dev.log
+api.log
+web.log
+
+# env (nunca subir env real)
+.env
+.env.local
+.env.*.local
+
+# archives
+*.tar.gz
+*.zip
+
+# misc
+.DS_Store
+.vscode/
+.idea/

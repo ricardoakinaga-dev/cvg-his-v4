@@ -1,0 +1,38 @@
+{
+  "name": "cvg-his",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "corepack pnpm --filter @cvg-his/his-api dev",
+    "dev:up": "bash ./scripts/dev-up.sh",
+    "lint": "corepack pnpm -r run lint",
+    "test": "corepack pnpm -r run test",
+    "build": "corepack pnpm -r run build",
+    "db:generate": "corepack pnpm --filter @cvg-his/db db:generate",
+    "db:migrate": "corepack pnpm --filter @cvg-his/db db:migrate",
+    "db:seed": "corepack pnpm --filter @cvg-his/db db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "prettier": "^3.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.38.4",
+    "framer-motion": "^12.34.3",
+    "pg": "^8.13.1",
+    "zod": "^4.3.6"
+  }
+}

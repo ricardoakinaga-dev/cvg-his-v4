@@ -1,0 +1,245 @@
+/**
+ * PageShell Component Styles
+ * Premium page layout with CSS tokens
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--cvg-space-6);
+}
+
+.noPadding {
+  padding: 0;
+}
+
+/* Header */
+.header {
+  margin-bottom: var(--cvg-space-6);
+}
+
+.headerWithTabs {
+  margin-bottom: 0;
+}
+
+.headerContent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cvg-space-4);
+  flex-wrap: wrap;
+}
+
+.titleSection {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--cvg-text-2xl);
+  font-weight: var(--cvg-weight-bold);
+  color: var(--cvg-text);
+  line-height: var(--cvg-leading-tight);
+}
+
+.subtitle {
+  margin: var(--cvg-space-1) 0 0;
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-secondary);
+  line-height: var(--cvg-leading-relaxed);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-3);
+  flex-wrap: wrap;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  margin-bottom: var(--cvg-space-3);
+}
+
+.breadcrumbList {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cvg-space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-1);
+}
+
+.breadcrumbSeparator {
+  width: 14px;
+  height: 14px;
+  color: var(--cvg-text-muted);
+}
+
+.breadcrumbLink {
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-secondary);
+  text-decoration: none;
+  transition: color var(--cvg-transition-fast);
+}
+
+.breadcrumbLink:hover {
+  color: var(--cvg-primary);
+}
+
+.breadcrumbText {
+  font-size: var(--cvg-text-sm);
+  color: var(--cvg-text-muted);
+}
+
+/* Tabs */
+.tabsWrapper {
+  margin-top: var(--cvg-space-4);
+  margin-left: calc(var(--cvg-space-6) * -1);
+  margin-right: calc(var(--cvg-space-6) * -1);
+  padding: 0 var(--cvg-space-6);
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--cvg-space-1);
+  position: relative;
+}
+
+.tabItem {
+  position: relative;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--cvg-transition-fast);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--cvg-text);
+}
+
+.tabActive {
+  color: var(--cvg-primary);
+}
+
+.tabLabel {
+  white-space: nowrap;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--cvg-space-1);
+  font-size: 11px;
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text-inverse);
+  background-color: var(--cvg-primary);
+  border-radius: var(--cvg-radius-full);
+}
+
+.tabIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--cvg-primary);
+}
+
+/* Main Content */
+.main {
+  flex: 1;
+}
+
+.mainWithTabs {
+  padding-top: var(--cvg-space-6);
+}
+
+/* Page Content */
+.content {
+  flex: 1;
+  padding: var(--cvg-space-6);
+}
+
+.content.noPadding {
+  padding: 0;
+}
+
+/* Page Section */
+.section {
+  margin-bottom: var(--cvg-space-6);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 var(--cvg-space-4);
+  font-size: var(--cvg-text-lg);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .breadcrumbLink {
+    transition: none;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: var(--cvg-space-4);
+  }
+
+  .title {
+    font-size: var(--cvg-text-xl);
+  }
+
+  .headerContent {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  .tabsWrapper {
+    margin-left: calc(var(--cvg-space-4) * -1);
+    margin-right: calc(var(--cvg-space-4) * -1);
+    padding: 0 var(--cvg-space-4);
+  }
+
+  .tab {
+    padding: var(--cvg-space-2) var(--cvg-space-3);
+    font-size: var(--cvg-text-xs);
+  }
+}

@@ -1,0 +1,161 @@
+/**
+ * DataTable Component Styles
+ * Uses CSS tokens from globals.css for consistent theming
+ */
+
+.wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--cvg-radius-lg);
+  border: 1px solid var(--cvg-border);
+  background-color: var(--cvg-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cvg-text-sm);
+  font-family: var(--cvg-font-sans);
+}
+
+/* Header */
+.headerCell {
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  font-size: var(--cvg-text-xs);
+  font-weight: var(--cvg-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cvg-text-secondary);
+  background-color: var(--cvg-bg-muted);
+  border-bottom: 1px solid var(--cvg-border);
+  white-space: nowrap;
+}
+
+.headerContent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--cvg-transition-fast);
+}
+
+.sortable:hover {
+  color: var(--cvg-text);
+}
+
+.sortIcon {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+/* Sticky Header */
+.stickyHeader .headerCell {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Rows */
+.row {
+  transition: background-color var(--cvg-transition-fast);
+}
+
+.row:hover {
+  background-color: var(--cvg-surface-hover);
+}
+
+.hoverable .row:hover {
+  background-color: var(--cvg-bg-muted);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:active {
+  background-color: var(--cvg-surface-active);
+}
+
+/* Cells */
+.cell {
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  color: var(--cvg-text);
+  border-bottom: 1px solid var(--cvg-border);
+  vertical-align: middle;
+}
+
+.row:last-child .cell {
+  border-bottom: none;
+}
+
+/* Striped */
+.striped .row:nth-child(even) {
+  background-color: var(--cvg-bg);
+}
+
+.striped .row:nth-child(even):hover {
+  background-color: var(--cvg-bg-muted);
+}
+
+/* Bordered */
+.bordered .cell {
+  border-right: 1px solid var(--cvg-border);
+}
+
+.bordered .cell:last-child {
+  border-right: none;
+}
+
+/* Compact */
+.compact .headerCell,
+.compact .cell {
+  padding: var(--cvg-space-2) var(--cvg-space-3);
+}
+
+/* Empty State */
+.emptyWrapper {
+  padding: var(--cvg-space-10);
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  background-color: var(--cvg-surface);
+}
+
+/* Loading State */
+.loadingWrapper {
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  background-color: var(--cvg-surface);
+  overflow: hidden;
+}
+
+/* Skeleton */
+.skeletonWrapper {
+  padding: var(--cvg-space-4);
+}
+
+.skeletonRow {
+  display: flex;
+  gap: var(--cvg-space-4);
+  padding: var(--cvg-space-3) 0;
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.skeletonRow:last-child {
+  border-bottom: none;
+}
+
+.skeletonCell {
+  height: 16px;
+  border-radius: var(--cvg-radius-sm);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

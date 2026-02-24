@@ -1,0 +1,96 @@
+/**
+ * FloatingActionButton Component Styles
+ * 
+ * Floating action button for contextual create actions.
+ * Uses CSS tokens from globals.css.
+ */
+
+/* FAB Container */
+.fab {
+  position: fixed;
+  bottom: calc(var(--cvg-bottom-nav-height) + var(--cvg-space-4));
+  right: var(--cvg-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cvg-space-2);
+  height: 56px;
+  padding: 0 var(--cvg-space-4);
+  background: var(--cvg-primary);
+  color: var(--cvg-text-inverse);
+  border: none;
+  border-radius: var(--cvg-radius-full);
+  box-shadow: var(--cvg-fab-shadow);
+  cursor: pointer;
+  z-index: var(--cvg-z-fab);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  transition: box-shadow var(--cvg-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fab:hover {
+  box-shadow: 0 6px 20px rgba(29, 78, 216, 0.4);
+}
+
+.fab:focus-visible {
+  outline: 2px solid var(--cvg-primary-light);
+  outline-offset: 2px;
+}
+
+/* Icon only FAB (default on mobile) */
+.fab .label {
+  display: none;
+}
+
+/* Icon */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2;
+}
+
+/* Extended FAB (tablet) */
+.extended {
+  padding: 0 var(--cvg-space-6);
+}
+
+.extended .label {
+  display: inline;
+  white-space: nowrap;
+}
+
+/* Hide on desktop (> 900px) */
+@media (min-width: 901px) {
+  .fab {
+    display: none;
+  }
+}
+
+/* Show label on tablet (601px - 900px) */
+@media (min-width: 601px) and (max-width: 900px) {
+  .fab {
+    padding: 0 var(--cvg-space-6);
+  }
+
+  .fab .label {
+    display: inline;
+    white-space: nowrap;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .fab {
+    transition: none;
+  }
+}

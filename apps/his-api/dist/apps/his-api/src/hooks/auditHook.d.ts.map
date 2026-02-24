@@ -1,0 +1,1 @@
+{"version":3,"file":"auditHook.d.ts","sourceRoot":"","sources":["../../../../../src/hooks/auditHook.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,SAAS,CAAC;AAE9C,OAAO,EAAU,KAAK,gBAAgB,EAAE,KAAK,aAAa,EAAE,MAAM,gBAAgB,CAAC;AAEnF,wBAAgB,gBAAgB,CAAC,OAAO,EAAE,cAAc;oBAK3C,IAAI,CAAC,gBAAgB,EAAE,WAAW,GAAG,aAAa,GAAG,OAAO,GAAG,WAAW,CAAC,KACjF,OAAO,CAAC,aAAa,CAAC;EAc5B"}

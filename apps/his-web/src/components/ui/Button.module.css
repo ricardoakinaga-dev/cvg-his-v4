@@ -1,0 +1,228 @@
+/**
+ * Button Component Styles
+ * Uses CSS tokens from globals.css for consistent theming
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--cvg-radius-md);
+  font-family: var(--cvg-font-sans);
+  font-weight: var(--cvg-weight-semibold);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: 
+    background-color var(--cvg-transition-fast),
+    border-color var(--cvg-transition-fast),
+    color var(--cvg-transition-fast),
+    box-shadow var(--cvg-transition-fast);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.button:focus-visible {
+  box-shadow: var(--cvg-focus-ring);
+  outline: none;
+}
+
+/* Sizes */
+.sm {
+  height: 32px;
+  padding: 0 var(--cvg-space-3);
+  font-size: var(--cvg-text-xs);
+  gap: var(--cvg-space-1);
+}
+
+.md {
+  height: 40px;
+  padding: 0 var(--cvg-space-4);
+  font-size: var(--cvg-text-sm);
+  gap: var(--cvg-space-2);
+}
+
+.lg {
+  height: 48px;
+  padding: 0 var(--cvg-space-6);
+  font-size: var(--cvg-text-base);
+  gap: var(--cvg-space-2);
+}
+
+/* Variants */
+.primary {
+  background-color: var(--cvg-primary);
+  color: var(--cvg-text-inverse);
+  border-color: var(--cvg-primary);
+}
+
+.primary:hover:not(.disabled) {
+  background-color: var(--cvg-primary-dark);
+  border-color: var(--cvg-primary-dark);
+}
+
+.primary:active:not(.disabled) {
+  background-color: var(--cvg-primary-dark);
+}
+
+.secondary {
+  background-color: var(--cvg-surface);
+  color: var(--cvg-text);
+  border-color: var(--cvg-border);
+}
+
+.secondary:hover:not(.disabled) {
+  background-color: var(--cvg-bg-muted);
+  border-color: var(--cvg-border-hover);
+}
+
+.secondary:active:not(.disabled) {
+  background-color: var(--cvg-bg-muted);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--cvg-text-secondary);
+  border-color: transparent;
+}
+
+.ghost:hover:not(.disabled) {
+  background-color: var(--cvg-bg-muted);
+  color: var(--cvg-text);
+}
+
+.ghost:active:not(.disabled) {
+  background-color: var(--cvg-surface-active);
+}
+
+.danger {
+  background-color: var(--cvg-danger);
+  color: var(--cvg-text-inverse);
+  border-color: var(--cvg-danger);
+}
+
+.danger:hover:not(.disabled) {
+  background-color: #B91C1C;
+  border-color: #B91C1C;
+}
+
+.danger:active:not(.disabled) {
+  background-color: #991B1B;
+}
+
+.success {
+  background-color: var(--cvg-success);
+  color: var(--cvg-text-inverse);
+  border-color: var(--cvg-success);
+}
+
+.success:hover:not(.disabled) {
+  background-color: #15803D;
+  border-color: #15803D;
+}
+
+.success:active:not(.disabled) {
+  background-color: #166534;
+}
+
+/* States */
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Content */
+.content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+.label {
+  line-height: 1;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* Spinner */
+.spinner {
+  animation: cvg-spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Icon Button */
+.iconButton {
+  padding: 0;
+  aspect-ratio: 1;
+  background-color: transparent;
+  color: var(--cvg-text-secondary);
+  border-color: transparent;
+}
+
+.iconButton:hover:not(.disabled) {
+  background-color: var(--cvg-bg-muted);
+  color: var(--cvg-text);
+}
+
+.iconButton:focus-visible {
+  box-shadow: var(--cvg-focus-ring);
+}
+
+.iconButton.sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--cvg-text-sm);
+}
+
+.iconButton.md {
+  width: 40px;
+  height: 40px;
+  font-size: var(--cvg-text-base);
+}
+
+.iconButton.lg {
+  width: 48px;
+  height: 48px;
+  font-size: var(--cvg-text-lg);
+}
+
+/* Button Group */
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cvg-space-2);
+}
+
+.group .button:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.group .button:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

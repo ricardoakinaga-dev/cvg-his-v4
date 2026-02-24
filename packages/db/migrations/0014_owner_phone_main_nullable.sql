@@ -1,0 +1,2 @@
+ALTER TABLE "owners"
+ALTER COLUMN "phone_main" DROP NOT NULL;

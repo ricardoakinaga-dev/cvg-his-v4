@@ -1,0 +1,176 @@
+/**
+ * Drawer Component Styles
+ * 
+ * Accessible slide-out panel with smooth animations.
+ * Uses CSS tokens from globals.css.
+ */
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--cvg-z-drawer);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Drawer Container */
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  max-width: 85vw;
+  background: var(--cvg-surface);
+  box-shadow: var(--cvg-shadow-xl);
+  z-index: var(--cvg-z-drawer);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Position variants */
+.left {
+  left: 0;
+  border-right: 1px solid var(--cvg-border);
+}
+
+.right {
+  right: 0;
+  border-left: 1px solid var(--cvg-border);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--cvg-space-4);
+  border-bottom: 1px solid var(--cvg-border);
+  background: var(--cvg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.title {
+  font-size: var(--cvg-text-lg);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text);
+  margin: 0;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cvg-touch-target);
+  height: var(--cvg-touch-target);
+  background: transparent;
+  border: none;
+  color: var(--cvg-text-muted);
+  cursor: pointer;
+  border-radius: var(--cvg-radius-md);
+  transition: background var(--cvg-transition-fast), color var(--cvg-transition-fast);
+}
+
+.closeButton:hover {
+  background: var(--cvg-bg-muted);
+  color: var(--cvg-text);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--cvg-primary);
+  outline-offset: 2px;
+}
+
+/* Content */
+.content {
+  flex: 1;
+  padding: var(--cvg-space-4);
+  overflow-y: auto;
+}
+
+/* Section */
+.section {
+  margin-bottom: var(--cvg-space-6);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: var(--cvg-text-xs);
+  font-weight: var(--cvg-weight-semibold);
+  color: var(--cvg-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--cvg-space-2) 0;
+  padding: 0 var(--cvg-space-2);
+}
+
+/* Item */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-3);
+  width: 100%;
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  color: var(--cvg-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--cvg-radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--cvg-transition-fast), color var(--cvg-transition-fast);
+  min-height: var(--cvg-touch-target);
+  text-align: left;
+}
+
+.item:hover {
+  background: var(--cvg-bg-muted);
+  color: var(--cvg-text);
+}
+
+.item.active {
+  background: var(--cvg-primary-bg);
+  color: var(--cvg-primary);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--cvg-primary);
+  outline-offset: -2px;
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.itemIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.itemLabel {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .overlay {
+    transition: none;
+  }
+}

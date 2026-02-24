@@ -1,0 +1,143 @@
+/**
+ * Skeleton Component Styles
+ * Uses CSS tokens from globals.css for consistent theming
+ */
+
+.skeleton {
+  display: block;
+  background-color: var(--cvg-bg-muted);
+}
+
+/* Variants */
+.text {
+  height: 16px;
+  border-radius: var(--cvg-radius-sm);
+  margin-bottom: var(--cvg-space-1);
+}
+
+.circular {
+  border-radius: var(--cvg-radius-full);
+}
+
+.rectangular {
+  border-radius: 0;
+}
+
+.rounded {
+  border-radius: var(--cvg-radius-md);
+}
+
+/* Animations */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--cvg-bg-muted) 25%,
+    var(--cvg-surface) 50%,
+    var(--cvg-bg-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: cvg-shimmer 1.5s ease-in-out infinite;
+}
+
+.pulse {
+  animation: cvg-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Text Container */
+.textContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Card Skeleton */
+.card {
+  background-color: var(--cvg-surface);
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--cvg-space-4) var(--cvg-space-5);
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.cardBody {
+  padding: var(--cvg-space-5);
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--cvg-space-3);
+  padding: var(--cvg-space-4) var(--cvg-space-5);
+  border-top: 1px solid var(--cvg-border);
+  background-color: var(--cvg-bg-muted);
+}
+
+/* Table Skeleton */
+.table {
+  border: 1px solid var(--cvg-border);
+  border-radius: var(--cvg-radius-lg);
+  overflow: hidden;
+}
+
+.tableHeader {
+  display: flex;
+  gap: var(--cvg-space-4);
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  background-color: var(--cvg-bg-muted);
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.tableRow {
+  display: flex;
+  gap: var(--cvg-space-4);
+  padding: var(--cvg-space-3) var(--cvg-space-4);
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+/* List Skeleton */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-3);
+  padding: var(--cvg-space-3) 0;
+  border-bottom: 1px solid var(--cvg-border);
+}
+
+.listItem:last-child {
+  border-bottom: none;
+}
+
+.listContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cvg-space-1);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .pulse {
+    animation: none;
+  }
+  
+  .shimmer {
+    background: var(--cvg-bg-muted);
+  }
+}

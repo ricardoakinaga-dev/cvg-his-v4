@@ -1,0 +1,131 @@
+/**
+ * OdooBreadcrumbs Component Styles
+ * 
+ * Odoo-style breadcrumb navigation.
+ * Uses CSS tokens from globals.css.
+ */
+
+/* Breadcrumbs Container */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  padding: var(--cvg-space-2) 0;
+  min-height: var(--cvg-touch-target-sm);
+}
+
+/* List */
+.list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Item */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-1);
+}
+
+/* Separator */
+.separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cvg-text-muted);
+  margin: 0 var(--cvg-space-1);
+}
+
+.separator svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Link */
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-1);
+  color: var(--cvg-text-muted);
+  text-decoration: none;
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-medium);
+  padding: var(--cvg-space-1) var(--cvg-space-2);
+  border-radius: var(--cvg-radius-sm);
+  transition: color var(--cvg-transition-fast), background var(--cvg-transition-fast);
+}
+
+.link:hover {
+  color: var(--cvg-primary);
+  background: var(--cvg-primary-bg);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--cvg-primary);
+  outline-offset: 2px;
+}
+
+/* Label */
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* Current */
+.current {
+  display: flex;
+  align-items: center;
+  gap: var(--cvg-space-1);
+  color: var(--cvg-text);
+  font-size: var(--cvg-text-sm);
+  font-weight: var(--cvg-weight-semibold);
+  padding: var(--cvg-space-1) var(--cvg-space-2);
+}
+
+/* Home Icon */
+.homeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.homeIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Compact Mode (for mobile) */
+.compact .list {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.compact .list::-webkit-scrollbar {
+  display: none;
+}
+
+.compact .link,
+.compact .current {
+  padding: var(--cvg-space-1);
+}
+
+.compact .label {
+  max-width: 100px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+}
