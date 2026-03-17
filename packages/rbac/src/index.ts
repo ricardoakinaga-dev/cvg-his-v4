@@ -6,6 +6,7 @@ import {
 } from './permissions';
 
 export * from './permissions';
+export { CANONICAL_PERMISSIONS, ROLE_PERMISSIONS };
 
 export type RbacPrincipal = {
   permissions?: string[];

@@ -22,6 +22,8 @@ export * from './common.js';
 export * from './owners.js';
 export * from './patients.js';
 export * from './encounters.js';
+export * from './products.js';
+export * from './services.js';
 
 /**
  * ==========================================
@@ -32,6 +34,8 @@ export * from './encounters.js';
 import { ownersContract, OwnersContract } from './owners.js';
 import { patientsContract, PatientsContract } from './patients.js';
 import { encountersContract, EncountersContract } from './encounters.js';
+import { productsContract, ProductsContract } from './products.js';
+import { servicesContract, ServicesContract } from './services.js';
 
 /**
  * Complete API contract definition
@@ -39,7 +43,9 @@ import { encountersContract, EncountersContract } from './encounters.js';
 export const apiContract = {
   owners: ownersContract,
   patients: patientsContract,
-  encounters: encountersContract
+  encounters: encountersContract,
+  products: productsContract,
+  services: servicesContract
 } as const;
 
 export type ApiContract = typeof apiContract;
@@ -163,6 +169,66 @@ export const contractEndpoints = [
     method: 'GET',
     path: '/encounters/:id/timeline',
     description: 'Get encounter timeline with notes and documents'
+  },
+
+  // Products
+  {
+    domain: 'products',
+    operation: 'create',
+    method: 'POST',
+    path: '/products',
+    description: 'Create a new product'
+  },
+  {
+    domain: 'products',
+    operation: 'getById',
+    method: 'GET',
+    path: '/products/:id',
+    description: 'Get product by ID'
+  },
+  {
+    domain: 'products',
+    operation: 'list',
+    method: 'GET',
+    path: '/products',
+    description: 'List products with pagination'
+  },
+  {
+    domain: 'products',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/products/:id',
+    description: 'Update product by ID'
+  },
+
+  // Services
+  {
+    domain: 'services',
+    operation: 'create',
+    method: 'POST',
+    path: '/services',
+    description: 'Create a new service'
+  },
+  {
+    domain: 'services',
+    operation: 'getById',
+    method: 'GET',
+    path: '/services/:id',
+    description: 'Get service by ID'
+  },
+  {
+    domain: 'services',
+    operation: 'list',
+    method: 'GET',
+    path: '/services',
+    description: 'List services with pagination'
+  },
+  {
+    domain: 'services',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/services/:id',
+    description: 'Update service by ID'
   }
 ] as const;
 

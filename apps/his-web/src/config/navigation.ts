@@ -24,6 +24,8 @@ export const NAVIGATION_CONFIG: NavSection[] = [
         items: [
             { label: 'Tutores', href: '/owners', permission: PERMISSIONS.OWNER_READ },
             { label: 'Pacientes', href: '/patients', permission: PERMISSIONS.PATIENT_READ },
+            { label: 'Serviços', href: '/services', permission: PERMISSIONS.SERVICE_READ },
+            { label: 'Produtos', href: '/products', permission: PERMISSIONS.PRODUCT_READ },
         ]
     },
     {

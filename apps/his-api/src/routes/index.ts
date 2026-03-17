@@ -22,8 +22,10 @@ import { patientContextRoutes } from '../modules/patientContext/routes.js';
 import { rbacRoutes } from '../modules/rbac/routes.js';
 import { searchRoutes } from '../modules/search/routes.js';
 import { ownersRoutes } from '../modules/owners/routes.js';
+import { productsRoutes } from '../modules/products/routes.js';
 import { protocolsRoutes } from '../modules/protocols/routes.js';
 import { protocolDiffRoutes } from '../modules/protocolDiff/routes.js';
+import { servicesRoutes } from '../modules/services/routes.js';
 import { protocolPublishRoutes } from '../modules/protocolPublish/routes.js';
 import { protocolReferencesRoutes } from '../modules/protocolReferences/routes.js';
 import { protocolVersionsRoutes } from '../modules/protocolVersions/routes.js';
@@ -44,6 +46,7 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(bedMapRoutes, { prefix: '/beds' });
   await app.register(bedsRoutes, { prefix: '/beds' });
   await app.register(ownersRoutes, { prefix: '/owners' });
+  await app.register(productsRoutes, { prefix: '/products' });
   await app.register(protocolsRoutes, { prefix: '/protocols' });
   await app.register(protocolReferencesRoutes, { prefix: '/protocols' });
   await app.register(protocolDiffRoutes);
@@ -59,5 +62,6 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(medicationLogsRoutes, { prefix: '/medication-logs' });
   await app.register(handoversRoutes, { prefix: '/handovers' });
   await app.register(searchRoutes, { prefix: '/search' });
+  await app.register(servicesRoutes, { prefix: '/services' });
   await app.register(patientContextRoutes, { prefix: '/patient-context' });
 };

@@ -180,6 +180,35 @@ export type ProtocolRecord = {
   updatedAt: string;
 };
 
+export type CatalogRecord = {
+  id: string;
+  accountId: string;
+  name: string;
+  code: string | null;
+  description: string | null;
+  basePrice: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CatalogListResponse = {
+  data: CatalogRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type CatalogCreateInput = {
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  basePrice: number;
+  active?: boolean;
+};
+
+export type CatalogUpdateInput = Partial<CatalogCreateInput>;
+
 export type EncounterRecord = {
   id: string;
   accountId: string;
@@ -1345,6 +1374,82 @@ export function createProtocol(payload: ProtocolCreateInput): Promise<ProtocolRe
 
 export function updateProtocol(protocolId: string, payload: ProtocolUpdateInput): Promise<ProtocolRecord> {
   return apiFetch<ProtocolRecord>(`/protocols/${protocolId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listServices(input: {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  active?: boolean;
+} = {}): Promise<CatalogListResponse> {
+  const queryString = toQueryString({
+    q: input.q,
+    page: input.page,
+    pageSize: input.pageSize,
+    active: input.active
+  });
+
+  return apiFetch<CatalogListResponse>(`/services${queryString}`, {
+    method: 'GET'
+  });
+}
+
+export function getService(serviceId: string): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>(`/services/${serviceId}`, {
+    method: 'GET'
+  });
+}
+
+export function createService(payload: CatalogCreateInput): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>('/services', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateService(serviceId: string, payload: CatalogUpdateInput): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>(`/services/${serviceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listProducts(input: {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  active?: boolean;
+} = {}): Promise<CatalogListResponse> {
+  const queryString = toQueryString({
+    q: input.q,
+    page: input.page,
+    pageSize: input.pageSize,
+    active: input.active
+  });
+
+  return apiFetch<CatalogListResponse>(`/products${queryString}`, {
+    method: 'GET'
+  });
+}
+
+export function getProduct(productId: string): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>(`/products/${productId}`, {
+    method: 'GET'
+  });
+}
+
+export function createProduct(payload: CatalogCreateInput): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>('/products', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateProduct(productId: string, payload: CatalogUpdateInput): Promise<CatalogRecord> {
+  return apiFetch<CatalogRecord>(`/products/${productId}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
   });

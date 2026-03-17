@@ -61,7 +61,11 @@ const permissionDescriptions: Record<string, string> = {
   'protocol.audit.read': 'Permite leitura de trilha de auditoria de protocolos.',
   'protocol.ref.read': 'Permite leitura de referências/evidências de protocolos.',
   'protocol.ref.write': 'Permite criar e editar referências/evidências de protocolos.',
-  'alerts.read': 'Permite leitura de alertas clínicos e operacionais.'
+  'alerts.read': 'Permite leitura de alertas clínicos e operacionais.',
+  'product.read': 'Permite leitura do catálogo de produtos.',
+  'product.write': 'Permite criar e alterar itens do catálogo de produtos.',
+  'service.read': 'Permite leitura do catálogo de serviços.',
+  'service.write': 'Permite criar e alterar itens do catálogo de serviços.'
 };
 
 const permissionSeeds = CANONICAL_PERMISSIONS.map((key) => ({
