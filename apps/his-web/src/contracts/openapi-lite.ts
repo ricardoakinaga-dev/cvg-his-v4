@@ -196,25 +196,30 @@ export {
  * ==========================================
  */
 
-/** Owner type alias for his-web */
-export type Owner = z.infer<typeof ownerResponseSchema>;
-
-/** Patient type alias for his-web */
-export type Patient = z.infer<typeof patientResponseSchema>;
-
-/** Encounter type alias for his-web */
-export type Encounter = z.infer<typeof encounterResponseSchema>;
-
-/** Alert type alias for his-web */
-export type Alert = z.infer<typeof alertSchema>;
-
-// Backward-compatible aliases used across existing his-web modules.
+/**
+ * Compatibility aliases expected by his-web.
+ *
+ * Keep these names stable even if the shared contracts package uses
+ * more explicit *Body / *Response naming internally.
+ */
 export const OwnerCreateSchema = createOwnerBodySchema;
 export const OwnerReadSchema = ownerResponseSchema;
 export const PatientCreateSchema = createPatientBodySchema;
 export const PatientReadSchema = patientResponseSchema;
 export const EncounterCreateSchema = createEncounterBodySchema;
 export const EncounterReadSchema = encounterResponseSchema;
+
+/** Owner type alias for his-web */
+export type Owner = z.infer<typeof OwnerReadSchema>;
+
+/** Patient type alias for his-web */
+export type Patient = z.infer<typeof PatientReadSchema>;
+
+/** Encounter type alias for his-web */
+export type Encounter = z.infer<typeof EncounterReadSchema>;
+
+/** Alert type alias for his-web */
+export type Alert = z.infer<typeof alertSchema>;
 
 /**
  * ==========================================
@@ -254,6 +259,7 @@ export const SoapSchema = z.object({
 });
 
 export const NoteCreateSchema = z.object({
+  encounterId: uuidSchema,
   soap: SoapSchema,
   reason: z.string().min(1).optional()
 });
@@ -278,14 +284,14 @@ export const BedMapItemSchema = z.object({
     id: uuidSchema,
     name: z.string(),
     code: z.string().nullable().optional(),
-    wardId: uuidSchema.optional()
+    wardId: uuidSchema
   }),
-  status: z.enum(['free', 'occupied']),
+  status: z.enum(['available', 'occupied', 'blocked', 'cleaning']),
   stay: z.object({
     id: uuidSchema,
     patientId: uuidSchema,
-    patientName: z.string().nullable().optional(),
-    species: z.string().nullable().optional(),
+    patientName: z.string(),
+    species: z.string(),
     admittedAt: z.string(),
     reason: z.string().nullable().optional()
   }).nullable().optional()
@@ -320,15 +326,12 @@ export type InpatientTransfer = z.infer<typeof InpatientTransferSchema>;
 export const MedicationOrderCreateSchema = z.object({
   patientId: uuidSchema,
   stayId: uuidSchema.optional(),
-  encounterId: uuidSchema.optional(),
   medicationName: z.string().min(1),
   doseValue: z.coerce.number().positive(),
   doseUnit: z.string().min(1),
-  route: z.enum(['IV', 'IM', 'VO', 'SC', 'TOP', 'INH', 'SL', 'RECTAL', 'OTIC', 'OPHTHALMIC', 'OTHER']),
+  route: z.enum(['IV', 'IM', 'VO', 'SC', 'TOP', 'OTHER']),
   frequencyType: z.enum(['q8h', 'q12h', 'sid', 'bid', 'tid', 'custom']),
-  prescriptionText: z.string().min(1).optional(),
   startAt: z.string().datetime(),
-  endAt: z.string().datetime().optional(),
   durationValue: z.number().optional(),
   durationUnit: z.enum(['days', 'hours']).optional()
 });
@@ -378,13 +381,7 @@ export const ApiContract = {
       method: 'GET' as const,
       path: '/inpatient/map',
       responses: {
-        200: z.object({
-          ward: z.object({
-            id: uuidSchema,
-            name: z.string()
-          }),
-          beds: z.array(BedMapItemSchema)
-        })
+        200: z.object({ wards: z.array(z.object({ name: z.string(), beds: z.array(BedMapItemSchema) })) })
       }
     },
     admit: {

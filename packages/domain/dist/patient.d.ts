@@ -28,8 +28,8 @@ export declare const PatientCreateSchema: z.ZodObject<{
         notes?: unknown;
     }>>;
 }, "strip", z.ZodTypeAny, {
-    name: string;
     ownerId: string;
+    name: string;
     species: string;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -44,8 +44,8 @@ export declare const PatientCreateSchema: z.ZodObject<{
         notes?: string | null | undefined;
     } | undefined;
 }, {
-    name: string;
     ownerId: string;
+    name: string;
     species: string;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -89,8 +89,8 @@ export declare const PatientUpdateSchema: z.ZodEffects<z.ZodObject<{
         notes?: unknown;
     }>>>;
 }, "strip", z.ZodTypeAny, {
-    name?: string | undefined;
     ownerId?: string | undefined;
+    name?: string | undefined;
     species?: string | undefined;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -105,8 +105,8 @@ export declare const PatientUpdateSchema: z.ZodEffects<z.ZodObject<{
         notes?: string | null | undefined;
     } | undefined;
 }, {
-    name?: string | undefined;
     ownerId?: string | undefined;
+    name?: string | undefined;
     species?: string | undefined;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -121,8 +121,8 @@ export declare const PatientUpdateSchema: z.ZodEffects<z.ZodObject<{
         notes?: unknown;
     } | undefined;
 }>, {
-    name?: string | undefined;
     ownerId?: string | undefined;
+    name?: string | undefined;
     species?: string | undefined;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -137,8 +137,8 @@ export declare const PatientUpdateSchema: z.ZodEffects<z.ZodObject<{
         notes?: string | null | undefined;
     } | undefined;
 }, {
-    name?: string | undefined;
     ownerId?: string | undefined;
+    name?: string | undefined;
     species?: string | undefined;
     breed?: string | undefined;
     sex?: string | undefined;
@@ -187,12 +187,12 @@ export declare const PatientReadSchema: z.ZodObject<{
     createdAt: z.ZodDate;
     updatedAt: z.ZodDate;
 }, "strip", z.ZodTypeAny, {
-    name: string;
     id: string;
     accountId: string;
     createdAt: Date;
     updatedAt: Date;
     ownerId: string;
+    name: string;
     species: string;
     alerts: {
         aggressive?: boolean | undefined;
@@ -208,12 +208,12 @@ export declare const PatientReadSchema: z.ZodObject<{
     weightKg?: string | number | null | undefined;
     microchip?: string | null | undefined;
 }, {
-    name: string;
     id: string;
     accountId: string;
     createdAt: Date;
     updatedAt: Date;
     ownerId: string;
+    name: string;
     species: string;
     alerts: {
         aggressive?: boolean | undefined;

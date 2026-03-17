@@ -40,13 +40,11 @@ export async function getPatientSummary(db, requestContext, patientId) {
     const auditTrail = canReadAudit
         ? (await db.$client.query(`
             select id, created_at, action, actor_role, reason, request_id
-            from audit_events ae
-            where ae.entity_type = 'patient'
-              and ae.entity_id = $1
-              and ae.account_id = $2
+            from audit_events
+            where entity_type = 'patient' and entity_id = $1
             order by created_at desc
             limit 10
-          `, [patientId, actor.accountId])).rows.map((row) => mapAuditRow(row))
+          `, [patientId])).rows.map((row) => mapAuditRow(row))
         : [];
     return {
         patient: {
@@ -57,7 +55,7 @@ export async function getPatientSummary(db, requestContext, patientId) {
             microchip: patient.microchip,
             alerts: patient.alerts,
             highlightedAlerts: toHighlightedAlerts(patient.alerts),
-            updatedAt: patient.updatedAt.toISOString()
+            updatedAt: patient.updatedAt
         },
         auditTrail,
         encounters: [],

@@ -26,7 +26,6 @@ export type MedicationOrderRecord = {
   doseUnit: string;
   route: string;
   frequencyType: string;
-  prescriptionText: string | null;
   durationValue: number | null;
   durationUnit: string | null;
   startAt: Date;
@@ -38,3 +37,4 @@ export type MedicationOrderRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+

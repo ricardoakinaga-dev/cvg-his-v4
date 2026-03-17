@@ -57,7 +57,7 @@ const phoneSchema = z
 /**
  * Address schema - JSON object, optional, nullable
  */
-const addressSchema = z.record(z.string(), z.unknown()).optional().nullable();
+const addressSchema = z.record(z.unknown()).optional().nullable();
 
 /**
  * ==========================================
@@ -115,7 +115,7 @@ export const ownerResponseSchema = z.object({
   email: z.string().nullable().optional(),
   phoneMain: z.string().nullable().optional(),
   phoneAlt: z.string().nullable().optional(),
-  addressJson: z.record(z.string(), z.unknown()).nullable().optional(),
+  addressJson: z.record(z.unknown()).nullable().optional(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date()
 });
@@ -128,30 +128,20 @@ export const listOwnersResponseSchema = createPaginatedResponseSchema(ownerRespo
 /**
  * Owner summary response (for /owners/:id/summary)
  */
-const ownerSummaryOwnerSchema = z.object({
-  id: uuidSchema,
-  fullName: z.string(),
-  document: z.string().nullable(),
-  email: z.string().nullable(),
-  phoneMain: z.string().nullable(),
-  phoneAlt: z.string().nullable(),
-  updatedAt: z.string().datetime()
-});
-
-const ownerSummaryAuditEventSchema = z.object({
-  id: uuidSchema,
-  createdAt: z.string().datetime(),
-  action: z.string(),
-  actorRole: z.string().nullable(),
-  reason: z.string().nullable(),
-  requestId: z.string().nullable()
-});
-
 export const ownerSummaryResponseSchema = z.object({
-  owner: ownerSummaryOwnerSchema,
-  auditTrail: z.array(ownerSummaryAuditEventSchema),
-  encounters: z.array(z.unknown()),
-  documents: z.array(z.unknown())
+  owner: ownerResponseSchema,
+  patients: z.array(
+    z.object({
+      id: uuidSchema,
+      name: z.string(),
+      species: z.string(),
+      breed: z.string().nullable().optional()
+    })
+  ),
+  stats: z.object({
+    totalPatients: z.number().int().nonnegative(),
+    totalEncounters: z.number().int().nonnegative()
+  })
 });
 
 /**

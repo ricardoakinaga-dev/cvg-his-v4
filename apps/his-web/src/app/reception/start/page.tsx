@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     getPatient,
@@ -12,14 +12,12 @@ import {
 } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Spinner } from '@/components/ui/Primitives';
+import { Input } from '@/components/ui/Input';
+import { Spinner, Badge } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
 import { px, theme } from '@/lib/theme';
 
-// Force dynamic rendering to avoid useSearchParams issues
-export const dynamic = 'force-dynamic';
-
-function ReceptionStartContent() {
+export default function ReceptionStartPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -36,7 +34,8 @@ function ReceptionStartContent() {
 
     useEffect(() => {
         if (!patientId) {
-            router.replace('/reception');
+            setError('ID do paciente não informado.');
+            setLoadingData(false);
             return;
         }
 
@@ -58,7 +57,7 @@ function ReceptionStartContent() {
         };
 
         fetchData();
-    }, [patientId, router]);
+    }, [patientId]);
 
     const handleStart = async () => {
         if (!patientId) return;
@@ -199,13 +198,5 @@ function ReceptionStartContent() {
                 </div>
             </Card>
         </div>
-    );
-}
-
-export default function ReceptionStartPage() {
-    return (
-        <Suspense fallback={<div className="p-8 text-center text-gray-500">Carregando...</div>}>
-            <ReceptionStartContent />
-        </Suspense>
     );
 }

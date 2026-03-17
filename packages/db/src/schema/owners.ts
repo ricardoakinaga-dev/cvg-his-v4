@@ -1,5 +1,4 @@
 import {
-  boolean,
   index,
   jsonb,
   pgTable,
@@ -10,8 +9,6 @@ import {
 
 import { accounts } from './accounts.js';
 import { units } from './units.js';
-
-export type PreferredContactMethod = 'phone' | 'email' | 'whatsapp';
 
 export const owners = pgTable(
   'owners',
@@ -27,9 +24,6 @@ export const owners = pgTable(
     phoneMain: text('phone_main'),
     phoneAlt: text('phone_alt'),
     addressJson: jsonb('address_json').$type<Record<string, unknown> | null>(),
-    notes: text('notes'),
-    preferredContactMethod: text('preferred_contact_method').$type<PreferredContactMethod>(),
-    marketingOptIn: boolean('marketing_opt_in').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },

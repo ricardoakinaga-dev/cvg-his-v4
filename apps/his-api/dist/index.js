@@ -1,14 +1,5 @@
 import { buildServer } from './server.js';
-import { runMigrations } from '../../../packages/db/src/migrate.js';
 async function bootstrap() {
-    // 1) Migrations antes de subir API
-    try {
-        await runMigrations();
-    }
-    catch (error) {
-        console.error('Fatal bootstrap error (migrations)', error);
-        process.exit(1);
-    }
     const app = await buildServer();
     const startupContext = {
         nodeEnv: app.env.NODE_ENV,

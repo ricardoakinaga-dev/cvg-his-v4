@@ -51,16 +51,13 @@ export declare const listEncountersQuerySchema: z.ZodObject<{
     pageSize: z.ZodDefault<z.ZodNumber>;
 } & {
     patientId: z.ZodOptional<z.ZodString>;
-    q: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     page: number;
     pageSize: number;
-    q?: string | undefined;
     patientId?: string | undefined;
 }, {
     page?: number | undefined;
     pageSize?: number | undefined;
-    q?: string | undefined;
     patientId?: string | undefined;
 }>;
 /**
@@ -750,16 +747,13 @@ export declare const encountersContract: {
             pageSize: z.ZodDefault<z.ZodNumber>;
         } & {
             patientId: z.ZodOptional<z.ZodString>;
-            q: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             page: number;
             pageSize: number;
-            q?: string | undefined;
             patientId?: string | undefined;
         }, {
             page?: number | undefined;
             pageSize?: number | undefined;
-            q?: string | undefined;
             patientId?: string | undefined;
         }>;
         readonly responses: {

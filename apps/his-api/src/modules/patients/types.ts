@@ -10,16 +10,12 @@ import {
   patientIdParamSchema,
   listPatientsQuerySchema,
   patientResponseSchema,
-  listPatientsResponseSchema,
-  patientSummaryResponseSchema,
   alertSchema,
   type CreatePatientBody,
   type UpdatePatientBody,
   type PatientIdParam,
   type ListPatientsQuery,
   type PatientResponse,
-  type ListPatientsResponse,
-  type PatientSummaryResponse,
   type AlertDto
 } from '@cvg-his/contracts';
 
@@ -30,8 +26,6 @@ export {
   patientIdParamSchema,
   listPatientsQuerySchema,
   patientResponseSchema,
-  listPatientsResponseSchema,
-  patientSummaryResponseSchema,
   alertSchema
 };
 
@@ -42,8 +36,6 @@ export type {
   PatientIdParam,
   ListPatientsQuery,
   PatientResponse,
-  ListPatientsResponse,
-  PatientSummaryResponse,
   AlertDto
 };
 

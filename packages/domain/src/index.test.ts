@@ -9,7 +9,6 @@ import {
   InpatientDischargeSchema,
   MedicationAdministrationCreateSchema,
   MedicationOrderCreateSchema,
-  MedicationOrderUpdateSchema,
   MedicationScheduleCreateSchema,
   ProtocolContentPublishSchema,
   ProtocolContentSchema,
@@ -256,30 +255,6 @@ describe('domain contracts', () => {
     });
 
     expect(parsed.success).toBe(false);
-  });
-
-  it('aceita MedicationOrderCreate com prescriptionText', () => {
-    const parsed = MedicationOrderCreateSchema.safeParse({
-      patientId: 'fdd8c156-b52d-4117-a5e1-73dd61474ef9',
-      stayId: 'fdd8c156-b52d-4117-a5e1-73dd61474efa',
-      medicationName: 'dipirona',
-      doseValue: 500,
-      doseUnit: 'mg',
-      route: 'VO',
-      frequencyType: 'q12h',
-      prescriptionText: 'Dê 1 comprimido a cada 12 horas durante 3 dias.',
-      startAt: '2026-02-18T08:00:00Z'
-    });
-
-    expect(parsed.success).toBe(true);
-  });
-
-  it('aceita MedicationOrderUpdate com prescriptionText nulo para limpar instrução', () => {
-    const parsed = MedicationOrderUpdateSchema.safeParse({
-      prescriptionText: null
-    });
-
-    expect(parsed.success).toBe(true);
   });
 
   it('rejeita MedicationScheduleCreate interval sem intervalMinutes', () => {

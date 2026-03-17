@@ -1,15 +1,14 @@
+import { can } from '@cvg-his/rbac';
 function replyAuthError(reply, statusCode, message) {
     void reply.status(statusCode).send({ message });
 }
 export function requirePermission(permission) {
     return async (request, reply) => {
-        const actor = request.requestContext.actor;
-        if (!actor?.accountId) {
-            replyAuthError(reply, 401, 'Missing or invalid actor context. Provide a valid Bearer token.');
+        if (!request.requestContext.actor?.accountId) {
+            replyAuthError(reply, 401, 'Missing actor context. Provide x-account-id header.');
             return;
         }
-        const permissions = actor.permissions ?? [];
-        if (!permissions.includes('*') && !permissions.includes(permission)) {
+        if (!can(request.requestContext.actor, permission)) {
             replyAuthError(reply, 403, `Missing required permission: ${permission}`);
             return;
         }

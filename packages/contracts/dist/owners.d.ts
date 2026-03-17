@@ -219,96 +219,121 @@ export declare const listOwnersResponseSchema: z.ZodObject<{
     }[];
     total: number;
 }>;
+/**
+ * Owner summary response (for /owners/:id/summary)
+ */
 export declare const ownerSummaryResponseSchema: z.ZodObject<{
     owner: z.ZodObject<{
         id: z.ZodString;
+        accountId: z.ZodString;
+        unitId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         fullName: z.ZodString;
-        document: z.ZodNullable<z.ZodString>;
-        email: z.ZodNullable<z.ZodString>;
-        phoneMain: z.ZodNullable<z.ZodString>;
-        phoneAlt: z.ZodNullable<z.ZodString>;
-        updatedAt: z.ZodString;
+        document: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        phoneMain: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        phoneAlt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        addressJson: z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
+        createdAt: z.ZodDate;
+        updatedAt: z.ZodDate;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        updatedAt: string;
+        accountId: string;
+        createdAt: Date;
+        updatedAt: Date;
         fullName: string;
-        document: string | null;
-        email: string | null;
-        phoneMain: string | null;
-        phoneAlt: string | null;
+        document?: string | null | undefined;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+        phoneAlt?: string | null | undefined;
+        addressJson?: Record<string, unknown> | null | undefined;
+        unitId?: string | null | undefined;
     }, {
         id: string;
-        updatedAt: string;
+        accountId: string;
+        createdAt: Date;
+        updatedAt: Date;
         fullName: string;
-        document: string | null;
-        email: string | null;
-        phoneMain: string | null;
-        phoneAlt: string | null;
+        document?: string | null | undefined;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+        phoneAlt?: string | null | undefined;
+        addressJson?: Record<string, unknown> | null | undefined;
+        unitId?: string | null | undefined;
     }>;
-    auditTrail: z.ZodArray<z.ZodObject<{
+    patients: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
-        createdAt: z.ZodString;
-        action: z.ZodString;
-        actorRole: z.ZodNullable<z.ZodString>;
-        reason: z.ZodNullable<z.ZodString>;
-        requestId: z.ZodNullable<z.ZodString>;
+        name: z.ZodString;
+        species: z.ZodString;
+        breed: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        name: string;
+        species: string;
+        breed?: string | null | undefined;
     }, {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        name: string;
+        species: string;
+        breed?: string | null | undefined;
     }>, "many">;
-    encounters: z.ZodArray<z.ZodUnknown, "many">;
-    documents: z.ZodArray<z.ZodUnknown, "many">;
+    stats: z.ZodObject<{
+        totalPatients: z.ZodNumber;
+        totalEncounters: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        totalPatients: number;
+        totalEncounters: number;
+    }, {
+        totalPatients: number;
+        totalEncounters: number;
+    }>;
 }, "strip", z.ZodTypeAny, {
-    documents: unknown[];
     owner: {
         id: string;
-        updatedAt: string;
+        accountId: string;
+        createdAt: Date;
+        updatedAt: Date;
         fullName: string;
-        document: string | null;
-        email: string | null;
-        phoneMain: string | null;
-        phoneAlt: string | null;
+        document?: string | null | undefined;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+        phoneAlt?: string | null | undefined;
+        addressJson?: Record<string, unknown> | null | undefined;
+        unitId?: string | null | undefined;
     };
-    auditTrail: {
+    patients: {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        name: string;
+        species: string;
+        breed?: string | null | undefined;
     }[];
-    encounters: unknown[];
+    stats: {
+        totalPatients: number;
+        totalEncounters: number;
+    };
 }, {
-    documents: unknown[];
     owner: {
         id: string;
-        updatedAt: string;
+        accountId: string;
+        createdAt: Date;
+        updatedAt: Date;
         fullName: string;
-        document: string | null;
-        email: string | null;
-        phoneMain: string | null;
-        phoneAlt: string | null;
+        document?: string | null | undefined;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+        phoneAlt?: string | null | undefined;
+        addressJson?: Record<string, unknown> | null | undefined;
+        unitId?: string | null | undefined;
     };
-    auditTrail: {
+    patients: {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        name: string;
+        species: string;
+        breed?: string | null | undefined;
     }[];
-    encounters: unknown[];
+    stats: {
+        totalPatients: number;
+        totalEncounters: number;
+    };
 }>;
 /**
  * ==========================================
@@ -639,93 +664,115 @@ export declare const ownersContract: {
             readonly 200: z.ZodObject<{
                 owner: z.ZodObject<{
                     id: z.ZodString;
+                    accountId: z.ZodString;
+                    unitId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     fullName: z.ZodString;
-                    document: z.ZodNullable<z.ZodString>;
-                    email: z.ZodNullable<z.ZodString>;
-                    phoneMain: z.ZodNullable<z.ZodString>;
-                    phoneAlt: z.ZodNullable<z.ZodString>;
-                    updatedAt: z.ZodString;
+                    document: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    phoneMain: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    phoneAlt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    addressJson: z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
+                    createdAt: z.ZodDate;
+                    updatedAt: z.ZodDate;
                 }, "strip", z.ZodTypeAny, {
                     id: string;
-                    updatedAt: string;
+                    accountId: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     fullName: string;
-                    document: string | null;
-                    email: string | null;
-                    phoneMain: string | null;
-                    phoneAlt: string | null;
+                    document?: string | null | undefined;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                    phoneAlt?: string | null | undefined;
+                    addressJson?: Record<string, unknown> | null | undefined;
+                    unitId?: string | null | undefined;
                 }, {
                     id: string;
-                    updatedAt: string;
+                    accountId: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     fullName: string;
-                    document: string | null;
-                    email: string | null;
-                    phoneMain: string | null;
-                    phoneAlt: string | null;
+                    document?: string | null | undefined;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                    phoneAlt?: string | null | undefined;
+                    addressJson?: Record<string, unknown> | null | undefined;
+                    unitId?: string | null | undefined;
                 }>;
-                auditTrail: z.ZodArray<z.ZodObject<{
+                patients: z.ZodArray<z.ZodObject<{
                     id: z.ZodString;
-                    createdAt: z.ZodString;
-                    action: z.ZodString;
-                    actorRole: z.ZodNullable<z.ZodString>;
-                    reason: z.ZodNullable<z.ZodString>;
-                    requestId: z.ZodNullable<z.ZodString>;
+                    name: z.ZodString;
+                    species: z.ZodString;
+                    breed: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                 }, "strip", z.ZodTypeAny, {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    name: string;
+                    species: string;
+                    breed?: string | null | undefined;
                 }, {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    name: string;
+                    species: string;
+                    breed?: string | null | undefined;
                 }>, "many">;
-                encounters: z.ZodArray<z.ZodUnknown, "many">;
-                documents: z.ZodArray<z.ZodUnknown, "many">;
+                stats: z.ZodObject<{
+                    totalPatients: z.ZodNumber;
+                    totalEncounters: z.ZodNumber;
+                }, "strip", z.ZodTypeAny, {
+                    totalPatients: number;
+                    totalEncounters: number;
+                }, {
+                    totalPatients: number;
+                    totalEncounters: number;
+                }>;
             }, "strip", z.ZodTypeAny, {
-                documents: unknown[];
                 owner: {
                     id: string;
-                    updatedAt: string;
+                    accountId: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     fullName: string;
-                    document: string | null;
-                    email: string | null;
-                    phoneMain: string | null;
-                    phoneAlt: string | null;
+                    document?: string | null | undefined;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                    phoneAlt?: string | null | undefined;
+                    addressJson?: Record<string, unknown> | null | undefined;
+                    unitId?: string | null | undefined;
                 };
-                auditTrail: {
+                patients: {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    name: string;
+                    species: string;
+                    breed?: string | null | undefined;
                 }[];
-                encounters: unknown[];
+                stats: {
+                    totalPatients: number;
+                    totalEncounters: number;
+                };
             }, {
-                documents: unknown[];
                 owner: {
                     id: string;
-                    updatedAt: string;
+                    accountId: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     fullName: string;
-                    document: string | null;
-                    email: string | null;
-                    phoneMain: string | null;
-                    phoneAlt: string | null;
+                    document?: string | null | undefined;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                    phoneAlt?: string | null | undefined;
+                    addressJson?: Record<string, unknown> | null | undefined;
+                    unitId?: string | null | undefined;
                 };
-                auditTrail: {
+                patients: {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    name: string;
+                    species: string;
+                    breed?: string | null | undefined;
                 }[];
-                encounters: unknown[];
+                stats: {
+                    totalPatients: number;
+                    totalEncounters: number;
+                };
             }>;
         };
     };

@@ -1,9 +1,7 @@
 import { append, type AppendAuditInput } from '@cvg-his/audit';
 import type { EncounterCloseDto, EncounterCreateDto } from '@cvg-his/domain';
-import { createEncounterClosedEvent } from '@cvg-his/events';
 
 import type { RequestContext } from '../../plugins/requestContext.js';
-import { createBillingItemsRepo } from '../billingItems/repo.js';
 import {
   createEncountersRepo,
   type EncounterRecord,
@@ -50,8 +48,6 @@ export type CloseEncounterResult =
   | {
       kind: 'closed';
       encounter: EncounterRecord;
-      billingItemCount: number;
-      billingTotal: string;
     };
 
 function unauthorizedError(message: string): Error & { statusCode: 401; code: 'UNAUTHORIZED' } {
@@ -69,7 +65,7 @@ function ensureAccountActor(requestContext: RequestContext): AccountActor {
   const actor = requestContext.actor;
 
   if (!actor?.accountId) {
-    throw unauthorizedError('Missing actor context. Provide a valid Bearer token.');
+    throw unauthorizedError('Missing actor context. Provide x-account-id header.');
   }
 
   return actor as AccountActor;
@@ -79,7 +75,7 @@ function ensureWriteActor(requestContext: RequestContext): WriteActor {
   const actor = ensureAccountActor(requestContext);
 
   if (!actor.userId) {
-    throw unauthorizedError('Missing actor user context in token.');
+    throw unauthorizedError('Missing actor user context. Provide x-user-id header.');
   }
 
   return actor as WriteActor;
@@ -129,12 +125,11 @@ export function createEncountersService(context: ServiceContext, dependencies: S
       return repo.findById(actor.accountId, encounterId);
     },
 
-    async list(input: { patientId?: string; q?: string; page: number; pageSize: number }) {
+    async list(input: { patientId?: string; page: number; pageSize: number }) {
       const actor = ensureAccountActor(context.requestContext);
       return repo.list({
         accountId: actor.accountId,
         patientId: input.patientId,
-        q: input.q,
         page: input.page,
         pageSize: input.pageSize
       });
@@ -174,19 +169,6 @@ export function createEncountersService(context: ServiceContext, dependencies: S
         };
       }
 
-      // Confirm all draft billing items for this encounter
-      const billingRepo = createBillingItemsRepo(context.db);
-      const billingItemCount = await billingRepo.confirmAllByEncounter({
-        accountId: actor.accountId,
-        encounterId
-      });
-
-      // Get billing total
-      const billingTotal = await billingRepo.getTotalByEncounter({
-        accountId: actor.accountId,
-        encounterId
-      });
-
       await appendAudit({
         accountId: actor.accountId,
         actorUserId: actor.userId,
@@ -200,27 +182,9 @@ export function createEncountersService(context: ServiceContext, dependencies: S
         requestId: context.requestContext.requestId
       });
 
-      // Emit EncounterClosed event
-      const event = createEncounterClosedEvent({
-        encounterId,
-        accountId: actor.accountId,
-        patientId: before.patientId,
-        ownerId: before.ownerId,
-        closedByUserId: actor.userId,
-        closedAt: after.closedAt?.toISOString() ?? new Date().toISOString(),
-        billingItemCount,
-        billingTotal,
-        requestId: context.requestContext.requestId ?? ''
-      });
-
-      // Event is emitted (would publish to event bus in production)
-      void event; // Placeholder for event bus publishing
-
       return {
         kind: 'closed',
-        encounter: after,
-        billingItemCount,
-        billingTotal
+        encounter: after
       };
     }
   };

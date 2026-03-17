@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   date,
   index,
   jsonb,
@@ -42,19 +41,12 @@ export const patients = pgTable(
     weightKg: numeric('weight_kg', { precision: 10, scale: 3 }),
     microchip: text('microchip'),
     alertsJson: jsonb('alerts_json').$type<PatientAlerts>().notNull().default(sql`'{}'::jsonb`),
-    coatColor: text('coat_color'),
-    neutered: boolean('neutered').default(false),
-    neuteredDate: date('neutered_date', { mode: 'date' }),
-    deathDate: date('death_date', { mode: 'date' }),
-    deathCause: text('death_cause'),
-    registrationNumber: text('registration_number'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
     accountNameIdx: index('idx_patients_account_name').on(table.accountId, table.name),
     accountMicrochipIdx: index('idx_patients_account_microchip').on(table.accountId, table.microchip),
-    ownerIdIdx: index('idx_patients_owner_id').on(table.ownerId),
-    registrationIdx: index('idx_patients_registration').on(table.accountId, table.registrationNumber)
+    ownerIdIdx: index('idx_patients_owner_id').on(table.ownerId)
   })
 );

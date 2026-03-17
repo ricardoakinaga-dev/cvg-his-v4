@@ -68,7 +68,7 @@ function ensureAccountActor(requestContext: RequestContext): AccountActor {
   const actor = requestContext.actor;
 
   if (!actor?.accountId) {
-    throw unauthorizedError('Missing actor context. Provide a valid Bearer token.');
+    throw unauthorizedError('Missing actor context. Provide x-account-id header.');
   }
 
   return actor as AccountActor;
@@ -78,7 +78,7 @@ function ensureWriteActor(requestContext: RequestContext): WriteActor {
   const actor = ensureAccountActor(requestContext);
 
   if (!actor.userId) {
-    throw unauthorizedError('Missing actor user context in token.');
+    throw unauthorizedError('Missing actor user context. Provide x-user-id header.');
   }
 
   return actor as WriteActor;
@@ -175,18 +175,10 @@ export function createMedicationAdministrationsService(
 
       if (administration.status === 'refused' && administration.stayId) {
         const alertsRepo = createAlertsRepo(context.db);
-        const orderInfoResult = await context.db.$client.query(
-          `
-            select mo.medication_name, p.name as patient_name
-            from medication_orders mo
-            join patients p on p.id = mo.patient_id and p.account_id = mo.account_id
-            where mo.id = $1 and mo.account_id = $2
-          `,
-          [input.orderId, actor.accountId]
-        );
-        const orderRow = orderInfoResult.rows[0] as Record<string, unknown> | undefined;
-        const msg = orderRow
-          ? `Dose refused: ${orderRow.medication_name} for ${orderRow.patient_name}`
+        // Query movida para o repo — sem SQL inline no service
+        const orderInfo = await repo.findOrderInfo(actor.accountId, input.orderId);
+        const msg = orderInfo
+          ? `Dose refused: ${orderInfo.medicationName} for ${orderInfo.patientName}`
           : `Dose refused for order ${input.orderId}`;
 
         await alertsRepo.create({

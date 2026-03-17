@@ -46,7 +46,8 @@ export function MarConsole(): JSX.Element {
                 setLoadingBedMap(true);
                 const data = await getBedMap(wardId);
                 if (mounted) {
-                    setBedMap(data.beds);
+                    const allBeds = data.wards.flatMap(w => w.beds);
+                    setBedMap(allBeds);
                 }
             } catch (err) {
                 console.error('Failed to load bed map in MarConsole', err);
@@ -265,7 +266,7 @@ export function MarConsole(): JSX.Element {
                             stayId={stayId}
                             hideStaySelector={true}
                             defaultWindowMin={120}
-                            patientName={currentBed?.stay?.patientName ?? undefined}
+                            patientName={currentBed?.stay?.patientName}
                             bedName={currentBed?.bed.name}
                             onRegisterRefresh={(fn) => {
                                 refreshMedListRef.current = fn;

@@ -441,13 +441,22 @@ export declare const listPatientsResponseSchema: z.ZodObject<{
     }[];
     total: number;
 }>;
+/**
+ * Patient summary response (for /patients/:id/summary)
+ */
 export declare const patientSummaryResponseSchema: z.ZodObject<{
     patient: z.ZodObject<{
         id: z.ZodString;
+        accountId: z.ZodString;
+        unitId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         ownerId: z.ZodString;
         name: z.ZodString;
         species: z.ZodString;
-        microchip: z.ZodNullable<z.ZodString>;
+        breed: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        sex: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        birthDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        weightKg: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodNumber]>>>;
+        microchip: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         alerts: z.ZodObject<{
             aggressive: z.ZodOptional<z.ZodBoolean>;
             allergies: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -467,33 +476,16 @@ export declare const patientSummaryResponseSchema: z.ZodObject<{
             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
             chronic_conditions?: string[] | undefined;
         }>;
-        highlightedAlerts: z.ZodObject<{
-            aggressive: z.ZodBoolean;
-            allergiesCount: z.ZodNumber;
-            anesthesiaRisk: z.ZodNullable<z.ZodEnum<["low", "medium", "high"]>>;
-            chronicConditionsCount: z.ZodNumber;
-            hasNotes: z.ZodBoolean;
-        }, "strip", z.ZodTypeAny, {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        }, {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        }>;
-        updatedAt: z.ZodString;
+        createdAt: z.ZodDate;
+        updatedAt: z.ZodDate;
     }, "strip", z.ZodTypeAny, {
         id: string;
+        accountId: string;
         ownerId: string;
-        updatedAt: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         species: string;
-        microchip: string | null;
         alerts: {
             notes?: string | null | undefined;
             aggressive?: boolean | undefined;
@@ -501,20 +493,20 @@ export declare const patientSummaryResponseSchema: z.ZodObject<{
             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
             chronic_conditions?: string[] | undefined;
         };
-        highlightedAlerts: {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        };
+        unitId?: string | null | undefined;
+        breed?: string | null | undefined;
+        sex?: string | null | undefined;
+        birthDate?: string | null | undefined;
+        weightKg?: string | number | null | undefined;
+        microchip?: string | null | undefined;
     }, {
         id: string;
+        accountId: string;
         ownerId: string;
-        updatedAt: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         species: string;
-        microchip: string | null;
         alerts: {
             notes?: string | null | undefined;
             aggressive?: boolean | undefined;
@@ -522,56 +514,71 @@ export declare const patientSummaryResponseSchema: z.ZodObject<{
             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
             chronic_conditions?: string[] | undefined;
         };
-        highlightedAlerts: {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        };
+        unitId?: string | null | undefined;
+        breed?: string | null | undefined;
+        sex?: string | null | undefined;
+        birthDate?: string | null | undefined;
+        weightKg?: string | number | null | undefined;
+        microchip?: string | null | undefined;
     }>;
-    auditTrail: z.ZodArray<z.ZodObject<{
+    owner: z.ZodObject<{
         id: z.ZodString;
-        createdAt: z.ZodString;
-        action: z.ZodString;
-        actorRole: z.ZodNullable<z.ZodString>;
-        reason: z.ZodNullable<z.ZodString>;
-        requestId: z.ZodNullable<z.ZodString>;
+        fullName: z.ZodString;
+        phoneMain: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        fullName: string;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
     }, {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
+        fullName: string;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+    }>;
+    stats: z.ZodObject<{
+        totalEncounters: z.ZodNumber;
+        openEncounters: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        totalEncounters: number;
+        openEncounters: number;
+    }, {
+        totalEncounters: number;
+        openEncounters: number;
+    }>;
+    recentEncounters: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        openedAt: z.ZodDate;
+        status: z.ZodEnum<["open", "closed"]>;
+    }, "strip", z.ZodTypeAny, {
+        status: "open" | "closed";
+        id: string;
+        openedAt: Date;
+    }, {
+        status: "open" | "closed";
+        id: string;
+        openedAt: Date;
     }>, "many">;
-    encounters: z.ZodArray<z.ZodUnknown, "many">;
-    documents: z.ZodArray<z.ZodUnknown, "many">;
 }, "strip", z.ZodTypeAny, {
-    documents: unknown[];
-    auditTrail: {
+    owner: {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
-    }[];
-    encounters: unknown[];
+        fullName: string;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+    };
+    stats: {
+        totalEncounters: number;
+        openEncounters: number;
+    };
     patient: {
         id: string;
+        accountId: string;
         ownerId: string;
-        updatedAt: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         species: string;
-        microchip: string | null;
         alerts: {
             notes?: string | null | undefined;
             aggressive?: boolean | undefined;
@@ -579,32 +586,37 @@ export declare const patientSummaryResponseSchema: z.ZodObject<{
             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
             chronic_conditions?: string[] | undefined;
         };
-        highlightedAlerts: {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        };
+        unitId?: string | null | undefined;
+        breed?: string | null | undefined;
+        sex?: string | null | undefined;
+        birthDate?: string | null | undefined;
+        weightKg?: string | number | null | undefined;
+        microchip?: string | null | undefined;
     };
+    recentEncounters: {
+        status: "open" | "closed";
+        id: string;
+        openedAt: Date;
+    }[];
 }, {
-    documents: unknown[];
-    auditTrail: {
+    owner: {
         id: string;
-        reason: string | null;
-        createdAt: string;
-        action: string;
-        actorRole: string | null;
-        requestId: string | null;
-    }[];
-    encounters: unknown[];
+        fullName: string;
+        email?: string | null | undefined;
+        phoneMain?: string | null | undefined;
+    };
+    stats: {
+        totalEncounters: number;
+        openEncounters: number;
+    };
     patient: {
         id: string;
+        accountId: string;
         ownerId: string;
-        updatedAt: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         species: string;
-        microchip: string | null;
         alerts: {
             notes?: string | null | undefined;
             aggressive?: boolean | undefined;
@@ -612,14 +624,18 @@ export declare const patientSummaryResponseSchema: z.ZodObject<{
             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
             chronic_conditions?: string[] | undefined;
         };
-        highlightedAlerts: {
-            aggressive: boolean;
-            allergiesCount: number;
-            anesthesiaRisk: "low" | "medium" | "high" | null;
-            chronicConditionsCount: number;
-            hasNotes: boolean;
-        };
+        unitId?: string | null | undefined;
+        breed?: string | null | undefined;
+        sex?: string | null | undefined;
+        birthDate?: string | null | undefined;
+        weightKg?: string | number | null | undefined;
+        microchip?: string | null | undefined;
     };
+    recentEncounters: {
+        status: "open" | "closed";
+        id: string;
+        openedAt: Date;
+    }[];
 }>;
 /**
  * ==========================================
@@ -1227,10 +1243,16 @@ export declare const patientsContract: {
             readonly 200: z.ZodObject<{
                 patient: z.ZodObject<{
                     id: z.ZodString;
+                    accountId: z.ZodString;
+                    unitId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     ownerId: z.ZodString;
                     name: z.ZodString;
                     species: z.ZodString;
-                    microchip: z.ZodNullable<z.ZodString>;
+                    breed: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    sex: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    birthDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    weightKg: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodNumber]>>>;
+                    microchip: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     alerts: z.ZodObject<{
                         aggressive: z.ZodOptional<z.ZodBoolean>;
                         allergies: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -1250,33 +1272,16 @@ export declare const patientsContract: {
                         anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                         chronic_conditions?: string[] | undefined;
                     }>;
-                    highlightedAlerts: z.ZodObject<{
-                        aggressive: z.ZodBoolean;
-                        allergiesCount: z.ZodNumber;
-                        anesthesiaRisk: z.ZodNullable<z.ZodEnum<["low", "medium", "high"]>>;
-                        chronicConditionsCount: z.ZodNumber;
-                        hasNotes: z.ZodBoolean;
-                    }, "strip", z.ZodTypeAny, {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    }, {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    }>;
-                    updatedAt: z.ZodString;
+                    createdAt: z.ZodDate;
+                    updatedAt: z.ZodDate;
                 }, "strip", z.ZodTypeAny, {
                     id: string;
+                    accountId: string;
                     ownerId: string;
-                    updatedAt: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     name: string;
                     species: string;
-                    microchip: string | null;
                     alerts: {
                         notes?: string | null | undefined;
                         aggressive?: boolean | undefined;
@@ -1284,20 +1289,20 @@ export declare const patientsContract: {
                         anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                         chronic_conditions?: string[] | undefined;
                     };
-                    highlightedAlerts: {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    };
+                    unitId?: string | null | undefined;
+                    breed?: string | null | undefined;
+                    sex?: string | null | undefined;
+                    birthDate?: string | null | undefined;
+                    weightKg?: string | number | null | undefined;
+                    microchip?: string | null | undefined;
                 }, {
                     id: string;
+                    accountId: string;
                     ownerId: string;
-                    updatedAt: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     name: string;
                     species: string;
-                    microchip: string | null;
                     alerts: {
                         notes?: string | null | undefined;
                         aggressive?: boolean | undefined;
@@ -1305,56 +1310,71 @@ export declare const patientsContract: {
                         anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                         chronic_conditions?: string[] | undefined;
                     };
-                    highlightedAlerts: {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    };
+                    unitId?: string | null | undefined;
+                    breed?: string | null | undefined;
+                    sex?: string | null | undefined;
+                    birthDate?: string | null | undefined;
+                    weightKg?: string | number | null | undefined;
+                    microchip?: string | null | undefined;
                 }>;
-                auditTrail: z.ZodArray<z.ZodObject<{
+                owner: z.ZodObject<{
                     id: z.ZodString;
-                    createdAt: z.ZodString;
-                    action: z.ZodString;
-                    actorRole: z.ZodNullable<z.ZodString>;
-                    reason: z.ZodNullable<z.ZodString>;
-                    requestId: z.ZodNullable<z.ZodString>;
+                    fullName: z.ZodString;
+                    phoneMain: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                 }, "strip", z.ZodTypeAny, {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    fullName: string;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
                 }, {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
+                    fullName: string;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                }>;
+                stats: z.ZodObject<{
+                    totalEncounters: z.ZodNumber;
+                    openEncounters: z.ZodNumber;
+                }, "strip", z.ZodTypeAny, {
+                    totalEncounters: number;
+                    openEncounters: number;
+                }, {
+                    totalEncounters: number;
+                    openEncounters: number;
+                }>;
+                recentEncounters: z.ZodArray<z.ZodObject<{
+                    id: z.ZodString;
+                    openedAt: z.ZodDate;
+                    status: z.ZodEnum<["open", "closed"]>;
+                }, "strip", z.ZodTypeAny, {
+                    status: "open" | "closed";
+                    id: string;
+                    openedAt: Date;
+                }, {
+                    status: "open" | "closed";
+                    id: string;
+                    openedAt: Date;
                 }>, "many">;
-                encounters: z.ZodArray<z.ZodUnknown, "many">;
-                documents: z.ZodArray<z.ZodUnknown, "many">;
             }, "strip", z.ZodTypeAny, {
-                documents: unknown[];
-                auditTrail: {
+                owner: {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
-                }[];
-                encounters: unknown[];
+                    fullName: string;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                };
+                stats: {
+                    totalEncounters: number;
+                    openEncounters: number;
+                };
                 patient: {
                     id: string;
+                    accountId: string;
                     ownerId: string;
-                    updatedAt: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     name: string;
                     species: string;
-                    microchip: string | null;
                     alerts: {
                         notes?: string | null | undefined;
                         aggressive?: boolean | undefined;
@@ -1362,32 +1382,37 @@ export declare const patientsContract: {
                         anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                         chronic_conditions?: string[] | undefined;
                     };
-                    highlightedAlerts: {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    };
+                    unitId?: string | null | undefined;
+                    breed?: string | null | undefined;
+                    sex?: string | null | undefined;
+                    birthDate?: string | null | undefined;
+                    weightKg?: string | number | null | undefined;
+                    microchip?: string | null | undefined;
                 };
+                recentEncounters: {
+                    status: "open" | "closed";
+                    id: string;
+                    openedAt: Date;
+                }[];
             }, {
-                documents: unknown[];
-                auditTrail: {
+                owner: {
                     id: string;
-                    reason: string | null;
-                    createdAt: string;
-                    action: string;
-                    actorRole: string | null;
-                    requestId: string | null;
-                }[];
-                encounters: unknown[];
+                    fullName: string;
+                    email?: string | null | undefined;
+                    phoneMain?: string | null | undefined;
+                };
+                stats: {
+                    totalEncounters: number;
+                    openEncounters: number;
+                };
                 patient: {
                     id: string;
+                    accountId: string;
                     ownerId: string;
-                    updatedAt: string;
+                    createdAt: Date;
+                    updatedAt: Date;
                     name: string;
                     species: string;
-                    microchip: string | null;
                     alerts: {
                         notes?: string | null | undefined;
                         aggressive?: boolean | undefined;
@@ -1395,14 +1420,18 @@ export declare const patientsContract: {
                         anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                         chronic_conditions?: string[] | undefined;
                     };
-                    highlightedAlerts: {
-                        aggressive: boolean;
-                        allergiesCount: number;
-                        anesthesiaRisk: "low" | "medium" | "high" | null;
-                        chronicConditionsCount: number;
-                        hasNotes: boolean;
-                    };
+                    unitId?: string | null | undefined;
+                    breed?: string | null | undefined;
+                    sex?: string | null | undefined;
+                    birthDate?: string | null | undefined;
+                    weightKg?: string | number | null | undefined;
+                    microchip?: string | null | undefined;
                 };
+                recentEncounters: {
+                    status: "open" | "closed";
+                    id: string;
+                    openedAt: Date;
+                }[];
             }>;
         };
     };

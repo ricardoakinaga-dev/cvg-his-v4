@@ -17,7 +17,7 @@ import {
   type MedicationOrderRecord,
   type MedicationOrderUpdateInput
 } from '../lib/api';
-import { getAuthSession } from '../lib/auth';
+import { getAuthSession, type AuthSession } from '../lib/auth';
 import { can, resolvePermissions, ROLE_PERMISSIONS } from '../lib/permissions';
 import { MedOrderForm } from './MedOrderForm';
 import { MedOrderHistory } from './MedOrderHistory';
@@ -75,19 +75,6 @@ function formatDateTime(value: string | null): string {
   }
 
   return parsed.toLocaleString('pt-BR');
-}
-
-function formatFrequencyLabel(value: string): string {
-  const labels: Record<string, string> = {
-    q8h: 'a cada 8 horas',
-    q12h: 'a cada 12 horas',
-    sid: '1x ao dia',
-    bid: '2x ao dia',
-    tid: '3x ao dia',
-    custom: 'personalizada'
-  };
-
-  return labels[value] ?? value;
 }
 
 export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPanelProps): JSX.Element {
@@ -244,7 +231,6 @@ export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPane
       await loadOrders();
     } catch (error) {
       setFormError(extractApiErrorMessage(error));
-      throw error;
     } finally {
       setFormSubmitting(false);
     }
@@ -267,7 +253,6 @@ export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPane
       await loadHistory();
     } catch (error) {
       setFormError(extractApiErrorMessage(error));
-      throw error;
     } finally {
       setFormSubmitting(false);
     }
@@ -356,7 +341,7 @@ export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPane
 
         <p style={{ margin: 0, color: '#475569' }}>
           Contexto:{' '}
-          {encounterId ? `atendimento ${encounterId}` : stayId ? `internação ${stayId}` : 'não definido'}
+          {encounterId ? `encounter ${encounterId}` : stayId ? `stay ${stayId}` : 'não definido'}
         </p>
 
         {feedbackMessage ? <p style={{ margin: 0, color: '#047857' }}>{feedbackMessage}</p> : null}
@@ -373,7 +358,7 @@ export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPane
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>Ativas</h3>
               <span style={{ color: '#64748b', fontSize: 13 }}>
-                {loadingOrders ? 'carregando...' : `${orders.length} prescrição(ões)`}
+                {loadingOrders ? 'carregando...' : `${orders.length} ordem(ns)`}
               </span>
             </div>
 
@@ -426,10 +411,10 @@ export function MedOrdersPanel({ patientId, encounterId, stayId }: MedOrdersPane
                       >
                         <strong>{order.medicationName}</strong>
                         <span style={{ color: '#475569', fontSize: 13 }}>
-                          {order.doseValue} {order.doseUnit} • {order.route} • {formatFrequencyLabel(order.frequencyType)}
+                          {order.doseValue} {order.doseUnit} • {order.route} • {order.frequencyType}
                         </span>
                         <span style={{ color: '#475569', fontSize: 13 }}>
-                          Próxima dose: {formatDateTime(nextDue)}
+                          next due: {formatDateTime(nextDue)}
                         </span>
                       </button>
 

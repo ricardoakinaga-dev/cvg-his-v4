@@ -7,9 +7,8 @@ export function formatMedicationOrder(order: MedicationOrderRecord): string {
     const startAt = order.startAt ? new Date(order.startAt).toLocaleString('pt-BR') : 'n/a';
     const endAt = order.endAt ? new Date(order.endAt).toLocaleString('pt-BR') : 'n/a';
     const statusLabel = order.status === 'active' ? 'ativo' : 'suspenso';
-    const posologia = order.prescriptionText ? ` — Posologia: ${order.prescriptionText}` : '';
 
-    return `${order.medicationName} ${order.doseValue} ${order.doseUnit} ${order.route} ${order.frequencyType} — Início: ${startAt} — Fim: ${endAt} — Status: ${statusLabel}${posologia}`;
+    return `${order.medicationName} ${order.doseValue} ${order.doseUnit} ${order.route} ${order.frequencyType} — Início: ${startAt} — Fim: ${endAt} — Status: ${statusLabel}`;
 }
 
 /**

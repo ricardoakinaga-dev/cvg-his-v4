@@ -1,3 +1,9 @@
+DO $$ BEGIN
+ ALTER TYPE "public"."medication_administration_status" ADD VALUE IF NOT EXISTS 'held';
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 ALTER TABLE "medication_administrations" ADD COLUMN IF NOT EXISTS "effective_at" timestamp with time zone;
 --> statement-breakpoint
 ALTER TABLE "medication_administrations" ADD COLUMN IF NOT EXISTS "delayed_until" timestamp with time zone;
@@ -32,7 +38,7 @@ ADD CONSTRAINT "medication_administrations_reason_required_chk" CHECK (
     AND "delayed_until" IS NOT NULL
   )
   OR (
-    "status" IN ('refused', 'held')
+    "status" = 'refused'
     AND "reason" IS NOT NULL
     AND length(btrim("reason")) > 0
     AND "effective_at" IS NULL

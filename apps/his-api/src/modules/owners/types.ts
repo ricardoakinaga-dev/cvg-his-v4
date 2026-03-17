@@ -10,15 +10,11 @@ import {
   ownerIdParamSchema,
   listOwnersQuerySchema,
   ownerResponseSchema,
-  listOwnersResponseSchema,
-  ownerSummaryResponseSchema,
   type CreateOwnerBody,
   type UpdateOwnerBody,
   type OwnerIdParam,
   type ListOwnersQuery,
-  type OwnerResponse,
-  type ListOwnersResponse,
-  type OwnerSummaryResponse
+  type OwnerResponse
 } from '@cvg-his/contracts';
 
 // Re-export schemas for use in routes
@@ -27,9 +23,7 @@ export {
   updateOwnerBodySchema,
   ownerIdParamSchema,
   listOwnersQuerySchema,
-  ownerResponseSchema,
-  listOwnersResponseSchema,
-  ownerSummaryResponseSchema
+  ownerResponseSchema
 };
 
 // Re-export types
@@ -38,9 +32,7 @@ export type {
   UpdateOwnerBody,
   OwnerIdParam,
   ListOwnersQuery,
-  OwnerResponse,
-  ListOwnersResponse,
-  OwnerSummaryResponse
+  OwnerResponse
 };
 
 /**

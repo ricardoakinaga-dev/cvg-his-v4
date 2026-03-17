@@ -22,7 +22,6 @@ export function createPatientsService(context) {
                 ...input
             });
             await append({
-                accountId: actor.accountId,
                 actorUserId: actor.userId,
                 roles: actor.roles,
                 entityType: 'patient',
@@ -55,7 +54,6 @@ export function createPatientsService(context) {
                 return { kind: 'patient_not_found' };
             }
             await append({
-                accountId: actor.accountId,
                 actorUserId: actor.userId,
                 roles: actor.roles,
                 entityType: 'patient',

@@ -5,11 +5,8 @@ import { createOwnersService } from './service.js';
 import { getOwnerSummary } from './summary.js';
 import {
   createOwnerBodySchema,
-  listOwnersResponseSchema,
   listOwnersQuerySchema,
   ownerIdParamSchema,
-  ownerResponseSchema,
-  ownerSummaryResponseSchema,
   updateOwnerBodySchema
 } from './types.js';
 
@@ -23,8 +20,7 @@ export const ownersRoutes: FastifyPluginAsync = async (app) => {
       const body = createOwnerBodySchema.parse(request.body);
       const service = createOwnersService({ db: app.db, requestContext: request.requestContext });
       const created = await service.create(body);
-      const response = ownerResponseSchema.parse(created);
-      return reply.status(201).send(response);
+      return reply.status(201).send(created);
     }
   );
 
@@ -42,8 +38,7 @@ export const ownersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Owner not found' });
       }
 
-      const response = ownerResponseSchema.parse(owner);
-      return reply.send(response);
+      return reply.send(owner);
     }
   );
 
@@ -60,8 +55,7 @@ export const ownersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Owner not found' });
       }
 
-      const response = ownerSummaryResponseSchema.parse(summary);
-      return reply.send(response);
+      return reply.send(summary);
     }
   );
 
@@ -80,8 +74,7 @@ export const ownersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Owner not found' });
       }
 
-      const response = ownerResponseSchema.parse(updated);
-      return reply.send(response);
+      return reply.send(updated);
     }
   );
 
@@ -93,8 +86,7 @@ export const ownersRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const query = listOwnersQuerySchema.parse(request.query);
       const service = createOwnersService({ db: app.db, requestContext: request.requestContext });
-      const data = await service.list(query);
-      return listOwnersResponseSchema.parse(data);
+      return service.list(query);
     }
   );
 };

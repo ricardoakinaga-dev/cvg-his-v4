@@ -61,10 +61,6 @@ function mapMedicationOrderRow(row: Record<string, unknown>): MedicationOrderRec
     doseUnit: String(row.dose_unit),
     route: String(row.route),
     frequencyType: String(row.frequency_type),
-    prescriptionText:
-      row.prescription_text === null || row.prescription_text === undefined
-        ? null
-        : String(row.prescription_text),
     durationValue:
       row.duration_value === null || row.duration_value === undefined
         ? null
@@ -177,7 +173,6 @@ export function createMedicationOrdersRepo(db: DbClient): MedicationOrdersRepo {
             dose_unit,
             route,
             frequency_type,
-            prescription_text,
             duration_value,
             duration_unit,
             start_at,
@@ -185,7 +180,7 @@ export function createMedicationOrdersRepo(db: DbClient): MedicationOrdersRepo {
             status,
             created_by_user_id
           ) values (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active', $15
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', $14
           )
           returning *
         `,
@@ -199,7 +194,6 @@ export function createMedicationOrdersRepo(db: DbClient): MedicationOrdersRepo {
           input.doseUnit,
           input.route,
           input.frequencyType,
-          input.prescriptionText ?? null,
           input.durationValue ?? null,
           input.durationUnit ?? null,
           input.startAt,
@@ -252,11 +246,6 @@ export function createMedicationOrdersRepo(db: DbClient): MedicationOrdersRepo {
       if (input.patch.frequencyType !== undefined) {
         fields.push(`frequency_type = $${index++}`);
         values.push(input.patch.frequencyType);
-      }
-
-      if (input.patch.prescriptionText !== undefined) {
-        fields.push(`prescription_text = $${index++}`);
-        values.push(input.patch.prescriptionText ?? null);
       }
 
       if (input.patch.durationValue !== undefined) {
@@ -380,3 +369,4 @@ export function createMedicationOrdersRepo(db: DbClient): MedicationOrdersRepo {
     }
   };
 }
+

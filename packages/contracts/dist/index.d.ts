@@ -334,93 +334,115 @@ export declare const apiContract: {
                 readonly 200: import("zod").ZodObject<{
                     owner: import("zod").ZodObject<{
                         id: import("zod").ZodString;
+                        accountId: import("zod").ZodString;
+                        unitId: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
                         fullName: import("zod").ZodString;
-                        document: import("zod").ZodNullable<import("zod").ZodString>;
-                        email: import("zod").ZodNullable<import("zod").ZodString>;
-                        phoneMain: import("zod").ZodNullable<import("zod").ZodString>;
-                        phoneAlt: import("zod").ZodNullable<import("zod").ZodString>;
-                        updatedAt: import("zod").ZodString;
+                        document: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        email: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        phoneMain: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        phoneAlt: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        addressJson: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodRecord<import("zod").ZodString, import("zod").ZodUnknown>>>;
+                        createdAt: import("zod").ZodDate;
+                        updatedAt: import("zod").ZodDate;
                     }, "strip", import("zod").ZodTypeAny, {
                         id: string;
-                        updatedAt: string;
+                        accountId: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         fullName: string;
-                        document: string | null;
-                        email: string | null;
-                        phoneMain: string | null;
-                        phoneAlt: string | null;
+                        document?: string | null | undefined;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                        phoneAlt?: string | null | undefined;
+                        addressJson?: Record<string, unknown> | null | undefined;
+                        unitId?: string | null | undefined;
                     }, {
                         id: string;
-                        updatedAt: string;
+                        accountId: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         fullName: string;
-                        document: string | null;
-                        email: string | null;
-                        phoneMain: string | null;
-                        phoneAlt: string | null;
+                        document?: string | null | undefined;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                        phoneAlt?: string | null | undefined;
+                        addressJson?: Record<string, unknown> | null | undefined;
+                        unitId?: string | null | undefined;
                     }>;
-                    auditTrail: import("zod").ZodArray<import("zod").ZodObject<{
+                    patients: import("zod").ZodArray<import("zod").ZodObject<{
                         id: import("zod").ZodString;
-                        createdAt: import("zod").ZodString;
-                        action: import("zod").ZodString;
-                        actorRole: import("zod").ZodNullable<import("zod").ZodString>;
-                        reason: import("zod").ZodNullable<import("zod").ZodString>;
-                        requestId: import("zod").ZodNullable<import("zod").ZodString>;
+                        name: import("zod").ZodString;
+                        species: import("zod").ZodString;
+                        breed: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
                     }, "strip", import("zod").ZodTypeAny, {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        name: string;
+                        species: string;
+                        breed?: string | null | undefined;
                     }, {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        name: string;
+                        species: string;
+                        breed?: string | null | undefined;
                     }>, "many">;
-                    encounters: import("zod").ZodArray<import("zod").ZodUnknown, "many">;
-                    documents: import("zod").ZodArray<import("zod").ZodUnknown, "many">;
+                    stats: import("zod").ZodObject<{
+                        totalPatients: import("zod").ZodNumber;
+                        totalEncounters: import("zod").ZodNumber;
+                    }, "strip", import("zod").ZodTypeAny, {
+                        totalPatients: number;
+                        totalEncounters: number;
+                    }, {
+                        totalPatients: number;
+                        totalEncounters: number;
+                    }>;
                 }, "strip", import("zod").ZodTypeAny, {
-                    documents: unknown[];
                     owner: {
                         id: string;
-                        updatedAt: string;
+                        accountId: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         fullName: string;
-                        document: string | null;
-                        email: string | null;
-                        phoneMain: string | null;
-                        phoneAlt: string | null;
+                        document?: string | null | undefined;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                        phoneAlt?: string | null | undefined;
+                        addressJson?: Record<string, unknown> | null | undefined;
+                        unitId?: string | null | undefined;
                     };
-                    auditTrail: {
+                    patients: {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        name: string;
+                        species: string;
+                        breed?: string | null | undefined;
                     }[];
-                    encounters: unknown[];
+                    stats: {
+                        totalPatients: number;
+                        totalEncounters: number;
+                    };
                 }, {
-                    documents: unknown[];
                     owner: {
                         id: string;
-                        updatedAt: string;
+                        accountId: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         fullName: string;
-                        document: string | null;
-                        email: string | null;
-                        phoneMain: string | null;
-                        phoneAlt: string | null;
+                        document?: string | null | undefined;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                        phoneAlt?: string | null | undefined;
+                        addressJson?: Record<string, unknown> | null | undefined;
+                        unitId?: string | null | undefined;
                     };
-                    auditTrail: {
+                    patients: {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        name: string;
+                        species: string;
+                        breed?: string | null | undefined;
                     }[];
-                    encounters: unknown[];
+                    stats: {
+                        totalPatients: number;
+                        totalEncounters: number;
+                    };
                 }>;
             };
         };
@@ -1013,10 +1035,16 @@ export declare const apiContract: {
                 readonly 200: import("zod").ZodObject<{
                     patient: import("zod").ZodObject<{
                         id: import("zod").ZodString;
+                        accountId: import("zod").ZodString;
+                        unitId: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
                         ownerId: import("zod").ZodString;
                         name: import("zod").ZodString;
                         species: import("zod").ZodString;
-                        microchip: import("zod").ZodNullable<import("zod").ZodString>;
+                        breed: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        sex: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        birthDate: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        weightKg: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodUnion<[import("zod").ZodString, import("zod").ZodNumber]>>>;
+                        microchip: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
                         alerts: import("zod").ZodObject<{
                             aggressive: import("zod").ZodOptional<import("zod").ZodBoolean>;
                             allergies: import("zod").ZodOptional<import("zod").ZodArray<import("zod").ZodString, "many">>;
@@ -1036,33 +1064,16 @@ export declare const apiContract: {
                             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                             chronic_conditions?: string[] | undefined;
                         }>;
-                        highlightedAlerts: import("zod").ZodObject<{
-                            aggressive: import("zod").ZodBoolean;
-                            allergiesCount: import("zod").ZodNumber;
-                            anesthesiaRisk: import("zod").ZodNullable<import("zod").ZodEnum<["low", "medium", "high"]>>;
-                            chronicConditionsCount: import("zod").ZodNumber;
-                            hasNotes: import("zod").ZodBoolean;
-                        }, "strip", import("zod").ZodTypeAny, {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        }, {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        }>;
-                        updatedAt: import("zod").ZodString;
+                        createdAt: import("zod").ZodDate;
+                        updatedAt: import("zod").ZodDate;
                     }, "strip", import("zod").ZodTypeAny, {
                         id: string;
+                        accountId: string;
                         ownerId: string;
-                        updatedAt: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         name: string;
                         species: string;
-                        microchip: string | null;
                         alerts: {
                             notes?: string | null | undefined;
                             aggressive?: boolean | undefined;
@@ -1070,20 +1081,20 @@ export declare const apiContract: {
                             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                             chronic_conditions?: string[] | undefined;
                         };
-                        highlightedAlerts: {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        };
+                        unitId?: string | null | undefined;
+                        breed?: string | null | undefined;
+                        sex?: string | null | undefined;
+                        birthDate?: string | null | undefined;
+                        weightKg?: string | number | null | undefined;
+                        microchip?: string | null | undefined;
                     }, {
                         id: string;
+                        accountId: string;
                         ownerId: string;
-                        updatedAt: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         name: string;
                         species: string;
-                        microchip: string | null;
                         alerts: {
                             notes?: string | null | undefined;
                             aggressive?: boolean | undefined;
@@ -1091,56 +1102,71 @@ export declare const apiContract: {
                             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                             chronic_conditions?: string[] | undefined;
                         };
-                        highlightedAlerts: {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        };
+                        unitId?: string | null | undefined;
+                        breed?: string | null | undefined;
+                        sex?: string | null | undefined;
+                        birthDate?: string | null | undefined;
+                        weightKg?: string | number | null | undefined;
+                        microchip?: string | null | undefined;
                     }>;
-                    auditTrail: import("zod").ZodArray<import("zod").ZodObject<{
+                    owner: import("zod").ZodObject<{
                         id: import("zod").ZodString;
-                        createdAt: import("zod").ZodString;
-                        action: import("zod").ZodString;
-                        actorRole: import("zod").ZodNullable<import("zod").ZodString>;
-                        reason: import("zod").ZodNullable<import("zod").ZodString>;
-                        requestId: import("zod").ZodNullable<import("zod").ZodString>;
+                        fullName: import("zod").ZodString;
+                        phoneMain: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
+                        email: import("zod").ZodOptional<import("zod").ZodNullable<import("zod").ZodString>>;
                     }, "strip", import("zod").ZodTypeAny, {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        fullName: string;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
                     }, {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
+                        fullName: string;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                    }>;
+                    stats: import("zod").ZodObject<{
+                        totalEncounters: import("zod").ZodNumber;
+                        openEncounters: import("zod").ZodNumber;
+                    }, "strip", import("zod").ZodTypeAny, {
+                        totalEncounters: number;
+                        openEncounters: number;
+                    }, {
+                        totalEncounters: number;
+                        openEncounters: number;
+                    }>;
+                    recentEncounters: import("zod").ZodArray<import("zod").ZodObject<{
+                        id: import("zod").ZodString;
+                        openedAt: import("zod").ZodDate;
+                        status: import("zod").ZodEnum<["open", "closed"]>;
+                    }, "strip", import("zod").ZodTypeAny, {
+                        status: "open" | "closed";
+                        id: string;
+                        openedAt: Date;
+                    }, {
+                        status: "open" | "closed";
+                        id: string;
+                        openedAt: Date;
                     }>, "many">;
-                    encounters: import("zod").ZodArray<import("zod").ZodUnknown, "many">;
-                    documents: import("zod").ZodArray<import("zod").ZodUnknown, "many">;
                 }, "strip", import("zod").ZodTypeAny, {
-                    documents: unknown[];
-                    auditTrail: {
+                    owner: {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
-                    }[];
-                    encounters: unknown[];
+                        fullName: string;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                    };
+                    stats: {
+                        totalEncounters: number;
+                        openEncounters: number;
+                    };
                     patient: {
                         id: string;
+                        accountId: string;
                         ownerId: string;
-                        updatedAt: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         name: string;
                         species: string;
-                        microchip: string | null;
                         alerts: {
                             notes?: string | null | undefined;
                             aggressive?: boolean | undefined;
@@ -1148,32 +1174,37 @@ export declare const apiContract: {
                             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                             chronic_conditions?: string[] | undefined;
                         };
-                        highlightedAlerts: {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        };
+                        unitId?: string | null | undefined;
+                        breed?: string | null | undefined;
+                        sex?: string | null | undefined;
+                        birthDate?: string | null | undefined;
+                        weightKg?: string | number | null | undefined;
+                        microchip?: string | null | undefined;
                     };
+                    recentEncounters: {
+                        status: "open" | "closed";
+                        id: string;
+                        openedAt: Date;
+                    }[];
                 }, {
-                    documents: unknown[];
-                    auditTrail: {
+                    owner: {
                         id: string;
-                        reason: string | null;
-                        createdAt: string;
-                        action: string;
-                        actorRole: string | null;
-                        requestId: string | null;
-                    }[];
-                    encounters: unknown[];
+                        fullName: string;
+                        email?: string | null | undefined;
+                        phoneMain?: string | null | undefined;
+                    };
+                    stats: {
+                        totalEncounters: number;
+                        openEncounters: number;
+                    };
                     patient: {
                         id: string;
+                        accountId: string;
                         ownerId: string;
-                        updatedAt: string;
+                        createdAt: Date;
+                        updatedAt: Date;
                         name: string;
                         species: string;
-                        microchip: string | null;
                         alerts: {
                             notes?: string | null | undefined;
                             aggressive?: boolean | undefined;
@@ -1181,14 +1212,18 @@ export declare const apiContract: {
                             anesthesia_risk?: "low" | "medium" | "high" | null | undefined;
                             chronic_conditions?: string[] | undefined;
                         };
-                        highlightedAlerts: {
-                            aggressive: boolean;
-                            allergiesCount: number;
-                            anesthesiaRisk: "low" | "medium" | "high" | null;
-                            chronicConditionsCount: number;
-                            hasNotes: boolean;
-                        };
+                        unitId?: string | null | undefined;
+                        breed?: string | null | undefined;
+                        sex?: string | null | undefined;
+                        birthDate?: string | null | undefined;
+                        weightKg?: string | number | null | undefined;
+                        microchip?: string | null | undefined;
                     };
+                    recentEncounters: {
+                        status: "open" | "closed";
+                        id: string;
+                        openedAt: Date;
+                    }[];
                 }>;
             };
         };
@@ -1311,16 +1346,13 @@ export declare const apiContract: {
                 pageSize: import("zod").ZodDefault<import("zod").ZodNumber>;
             } & {
                 patientId: import("zod").ZodOptional<import("zod").ZodString>;
-                q: import("zod").ZodOptional<import("zod").ZodString>;
             }, "strip", import("zod").ZodTypeAny, {
                 page: number;
                 pageSize: number;
-                q?: string | undefined;
                 patientId?: string | undefined;
             }, {
                 page?: number | undefined;
                 pageSize?: number | undefined;
-                q?: string | undefined;
                 patientId?: string | undefined;
             }>;
             readonly responses: {
@@ -1799,7 +1831,7 @@ export declare const contractEndpoints: readonly [{
     readonly operation: "getSummary";
     readonly method: "GET";
     readonly path: "/owners/:id/summary";
-    readonly description: "Get owner summary with audit trail and related artifacts";
+    readonly description: "Get owner summary with patients and stats";
 }, {
     readonly domain: "patients";
     readonly operation: "create";
@@ -1829,7 +1861,7 @@ export declare const contractEndpoints: readonly [{
     readonly operation: "getSummary";
     readonly method: "GET";
     readonly path: "/patients/:id/summary";
-    readonly description: "Get patient summary with highlighted alerts and audit trail";
+    readonly description: "Get patient summary with owner and stats";
 }, {
     readonly domain: "encounters";
     readonly operation: "create";

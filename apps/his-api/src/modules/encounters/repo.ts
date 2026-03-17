@@ -40,7 +40,6 @@ type CloseEncounterInput = {
 type ListEncountersInput = {
   accountId: string;
   patientId?: string;
-  q?: string;
   page: number;
   pageSize: number;
 };
@@ -386,12 +385,6 @@ export function createEncountersRepo(db: DbClient): EncountersRepo {
       if (input.patientId) {
         whereParts.push(`patient_id = $${index}`);
         values.push(input.patientId);
-        index += 1;
-      }
-
-      if (input.q) {
-        whereParts.push(`(reason ilike $${index} or cast(id as text) ilike $${index})`);
-        values.push(`%${input.q}%`);
         index += 1;
       }
 

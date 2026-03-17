@@ -8,14 +8,8 @@ import { z } from 'zod';
 
 import { startCron } from './lib/cron.js';
 import { closeDbConnection } from './lib/db.js';
-import { startHealthServer } from './lib/healthServer.js';
 import { acquireOrRenewLeaderLock, releaseLeaderLock } from './lib/leaderLock.js';
 import { closeBullMqRedis, createBullMqRedis } from './lib/redis.js';
-import {
-  recordCronRunFailure,
-  recordCronRunStart,
-  recordCronRunSuccess
-} from './lib/workerHealth.js';
 import {
   HANDOVER_BUILD_QUEUE_NAME,
   type HandoverBuildJobData,
@@ -53,6 +47,7 @@ import { createSystemWorker } from './workers/system.worker.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 config({ path: resolve(__dirname, '../../../.env') });
+config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -64,7 +59,6 @@ const envSchema = z.object({
   MEDICATION_SCHEDULE_DEFAULT_TIMEZONE: z.string().trim().min(1).default('America/Sao_Paulo'),
   MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT: z.string().default('{}'),
   MEDICATION_SCHEDULE_TIMEZONE_BY_WARD: z.string().default('{}'),
-  HEALTH_PORT: z.coerce.number().int().positive().default(3100),
   MEDICATION_OVERDUE_AUTO_SCAN: z
     .enum(['true', 'false'])
     .default('true')
@@ -314,69 +308,46 @@ async function bootstrap(): Promise<void> {
           warn: (message, extra) => logWarn(message, extra)
         },
         onTick: async () => {
-          const cronName = 'medication-overdue-scan';
-          
-          try {
-            await recordCronRunStart(redis, cronName);
-            
-            const isLeader = await acquireOrRenewLeaderLock({
-              redis,
-              key: medicationOverdueCronLeaderLockKey,
-              owner: medicationOverdueCronLeaderOwner,
-              ttlMs: medicationOverdueCronLeaderLockTtlMs
+          const isLeader = await acquireOrRenewLeaderLock({
+            redis,
+            key: medicationOverdueCronLeaderLockKey,
+            owner: medicationOverdueCronLeaderOwner,
+            ttlMs: medicationOverdueCronLeaderLockTtlMs
+          });
+
+          if (!isLeader) {
+            logInfo('medication overdue cron tick skipped: not leader', {
+              lockKey: medicationOverdueCronLeaderLockKey
             });
-
-            if (!isLeader) {
-              logInfo('medication overdue cron tick skipped: not leader', {
-                lockKey: medicationOverdueCronLeaderLockKey
-              });
-              return;
-            }
-
-            const slotBaseMs =
-              Math.floor(Date.now() / env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS) *
-              env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS;
-            const payload: MedicationOverdueScanJobData = {
-              trigger: 'scheduled',
-              graceMinutes: env.MEDICATION_OVERDUE_GRACE_MINUTES,
-              enqueuedAt: new Date(slotBaseMs).toISOString()
-            };
-
-            await medicationOverdueQueue.add(
-              MEDICATION_OVERDUE_SCAN_JOB_NAME,
-              payload,
-              {
-                ...medicationOverdueScanJobOptions(),
-                jobId: medicationOverdueScanJobId(payload, {
-                  intervalMs: env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS
-                })
-              }
-            );
-            
-            await recordCronRunSuccess(redis, cronName);
-          } catch (error) {
-            await recordCronRunFailure(redis, cronName, error instanceof Error ? error : String(error));
-            throw error;
+            return;
           }
+
+          const slotBaseMs =
+            Math.floor(Date.now() / env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS) *
+            env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS;
+          const payload: MedicationOverdueScanJobData = {
+            trigger: 'scheduled',
+            graceMinutes: env.MEDICATION_OVERDUE_GRACE_MINUTES,
+            enqueuedAt: new Date(slotBaseMs).toISOString()
+          };
+
+          await medicationOverdueQueue.add(
+            MEDICATION_OVERDUE_SCAN_JOB_NAME,
+            payload,
+            {
+              ...medicationOverdueScanJobOptions(),
+              jobId: medicationOverdueScanJobId(payload, {
+                intervalMs: env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS
+              })
+            }
+          );
         }
       })
     : null;
 
-  // Start health server
-  const cronConfigs = env.MEDICATION_OVERDUE_AUTO_SCAN
-    ? [{ name: 'medication-overdue-scan', intervalMs: env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS }]
-    : [];
-
-  const healthServer = startHealthServer({
-    port: env.HEALTH_PORT,
-    redis,
-    cronConfigs
-  });
-
   logInfo('his-worker started', {
     nodeEnv: env.NODE_ENV,
     queuePrefix: env.QUEUE_PREFIX,
-    healthPort: env.HEALTH_PORT,
     queues: [
       SYSTEM_QUEUE_NAME,
       HANDOVER_BUILD_QUEUE_NAME,
@@ -402,12 +373,6 @@ async function bootstrap(): Promise<void> {
     logInfo('his-worker shutting down', { signal });
 
     medicationOverdueCron?.stop();
-
-    try {
-      await healthServer.stop();
-    } catch {
-      // best-effort health server stop
-    }
 
     try {
       await releaseLeaderLock({

@@ -16,7 +16,7 @@ type OwnerSummary = {
         email: string | null;
         phoneMain: string | null;
         phoneAlt: string | null;
-        updatedAt: string;
+        updatedAt: Date;
     };
     auditTrail: OwnerSummaryAuditEvent[];
     encounters: [];

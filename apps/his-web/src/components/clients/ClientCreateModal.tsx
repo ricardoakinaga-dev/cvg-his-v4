@@ -24,12 +24,13 @@ export function ClientCreateModal({ isOpen, onClose, onSuccess }: ClientCreateMo
         fullName: '',
         document: '',
         email: '',
-        phoneMain: ''
+        phoneMain: '',
+        phoneAlt: ''
     });
 
     useEffect(() => {
         if (isOpen) {
-            setFormData({ fullName: '', document: '', email: '', phoneMain: '' });
+            setFormData({ fullName: '', document: '', email: '', phoneMain: '', phoneAlt: '' });
             setErrors({});
         }
     }, [isOpen]);
@@ -46,7 +47,22 @@ export function ClientCreateModal({ isOpen, onClose, onSuccess }: ClientCreateMo
         setLoading(true);
         setErrors({});
 
-        const result = OwnerCreateSchema.safeParse(formData);
+        const payload = {
+            fullName: formData.fullName,
+            document: formData.document.trim() === '' ? null : formData.document,
+            email: formData.email.trim() === '' ? null : formData.email,
+            phoneMain: formData.phoneMain.trim() === '' ? null : formData.phoneMain,
+            phoneAlt: formData.phoneAlt.trim() === '' ? null : formData.phoneAlt
+        };
+
+        if (payload.phoneMain === null) {
+            setErrors({ phoneMain: 'Telefone é obrigatório' });
+            setLoading(false);
+            toast('Verifique os campos obrigatórios', 'error');
+            return;
+        }
+
+        const result = OwnerCreateSchema.safeParse(payload);
 
         if (!result.success) {
             const newErrors: Record<string, string> = {};

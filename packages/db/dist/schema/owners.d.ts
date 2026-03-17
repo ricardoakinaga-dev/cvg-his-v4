@@ -1,4 +1,3 @@
-export type PreferredContactMethod = 'phone' | 'email' | 'whatsapp';
 export declare const owners: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "owners";
     schema: undefined;
@@ -158,59 +157,6 @@ export declare const owners: import("drizzle-orm/pg-core").PgTableWithColumns<{
         }, {}, {
             $type: Record<string, unknown> | null;
         }>;
-        notes: import("drizzle-orm/pg-core").PgColumn<{
-            name: "notes";
-            tableName: "owners";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        preferredContactMethod: import("drizzle-orm/pg-core").PgColumn<{
-            name: "preferred_contact_method";
-            tableName: "owners";
-            dataType: "string";
-            columnType: "PgText";
-            data: PreferredContactMethod;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {
-            $type: PreferredContactMethod;
-        }>;
-        marketingOptIn: import("drizzle-orm/pg-core").PgColumn<{
-            name: "marketing_opt_in";
-            tableName: "owners";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: false;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "owners";

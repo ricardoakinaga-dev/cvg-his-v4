@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { listMedicationOrders, type MedicationOrderRecord } from '@/lib/api';
+import { theme } from '@/lib/theme';
 
 type PrescriptionPrintViewProps = {
     patientId: string;
@@ -72,9 +73,6 @@ export function PrescriptionPrintView({ patientId, encounterId, onClose }: Presc
                                 <div style={{ marginLeft: 20, marginTop: 4 }}>
                                     <div><strong>Via:</strong> {order.route}</div>
                                     <div><strong>Frequência:</strong> {order.frequencyType}</div>
-                                    {order.prescriptionText ? (
-                                        <div><strong>Posologia:</strong> {order.prescriptionText}</div>
-                                    ) : null}
                                     {order.durationValue && (
                                         <div><strong>Duração:</strong> {order.durationValue} {order.durationUnit}</div>
                                     )}

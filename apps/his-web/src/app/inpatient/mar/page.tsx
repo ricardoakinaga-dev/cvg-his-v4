@@ -2,9 +2,6 @@ import { MedDueList } from '../../../components/MedDueList';
 
 import { MarConsole } from '../../../features/mar/MarConsole';
 
-// Force dynamic rendering to avoid useSearchParams issues
-export const dynamic = 'force-dynamic';
-
 export default function MarPage(): JSX.Element {
   return (
     <div style={{ padding: 20 }}>

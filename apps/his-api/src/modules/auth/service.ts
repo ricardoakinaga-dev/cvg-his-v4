@@ -189,25 +189,6 @@ export function resolveActorFromHeaders(
   const audience = dedupe(options.jwtAudience.map((item) => item.trim()).filter(Boolean));
 
   if (!token || !secret || !issuer || audience.length === 0) {
-    // DEV MODE FALLBACK
-    if (process.env.NODE_ENV === 'development') {
-      const devAccountId = asString(headers['x-account-id']);
-      const devUserId = asString(headers['x-user-id']);
-      // Support legacy role headers or default to admin
-      const devRole = asString(headers['x-role']) || 'admin';
-
-      if (devAccountId) {
-        return {
-          accountId: devAccountId,
-          userId: devUserId,
-          unitId: undefined,
-          role: devRole,
-          roles: [devRole],
-          permissions: permissionsForRole(devRole)
-        };
-      }
-    }
-
     return undefined;
   }
 
@@ -256,10 +237,10 @@ export function resolveActorFromHeaders(
  */
 export function signJwt(payload: JwtPayload, options: JwtSignOptions): string {
   const { jwtSecret, jwtIssuer, jwtAudience, expiresIn = 8 * 60 * 60 } = options;
-
+  
   const nowInSeconds = Math.floor(Date.now() / 1000);
   const exp = nowInSeconds + expiresIn;
-
+  
   const fullPayload: InternalJwtPayload = {
     ...payload,
     iss: jwtIssuer,
@@ -267,16 +248,16 @@ export function signJwt(payload: JwtPayload, options: JwtSignOptions): string {
     iat: nowInSeconds,
     exp
   };
-
+  
   const header = { alg: 'HS256', typ: 'JWT' };
-
+  
   const rawHeader = bufferToBase64Url(Buffer.from(JSON.stringify(header), 'utf8'));
   const rawPayload = bufferToBase64Url(Buffer.from(JSON.stringify(fullPayload), 'utf8'));
-
+  
   const content = `${rawHeader}.${rawPayload}`;
   const signature = createHmac('sha256', jwtSecret).update(content).digest();
   const rawSignature = bufferToBase64Url(signature);
-
+  
   return `${content}.${rawSignature}`;
 }
 
@@ -294,21 +275,21 @@ export function verifyJwt(token: string, options: ResolveActorOptions): JwtPaylo
   const secret = options.jwtSecret.trim();
   const issuer = options.jwtIssuer.trim();
   const audience = dedupe(options.jwtAudience.map((item) => item.trim()).filter(Boolean));
-
+  
   if (!secret || !issuer || audience.length === 0) {
     return undefined;
   }
-
+  
   const claims = parseAndVerifyBearerToken(token, secret, { issuer, audience });
   if (!claims) {
     return undefined;
   }
-
+  
   const accountId = asStringRecordValue(claims.accountId) ?? asStringRecordValue(claims.account_id);
   if (!accountId) {
     return undefined;
   }
-
+  
   return {
     accountId,
     userId: asStringRecordValue(claims.userId) ?? asStringRecordValue(claims.user_id) ?? asStringRecordValue(claims.sub),

@@ -22,7 +22,6 @@ export const medicationOrders = pgTable('medication_orders', {
     frequencyType: text('frequency_type').notNull(),
     durationValue: integer('duration_value'),
     durationUnit: text('duration_unit'),
-    prescriptionText: text('prescription_text'),
     startAt: timestamp('start_at', { withTimezone: true }).notNull(),
     endAt: timestamp('end_at', { withTimezone: true }),
     status: medicationOrderStatusEnum('status').notNull().default('active'),

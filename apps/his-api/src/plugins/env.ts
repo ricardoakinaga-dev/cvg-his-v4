@@ -9,6 +9,7 @@ import { z } from 'zod';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 config({ path: resolve(__dirname, '../../../../.env') });
+config();
 
 const optionalTrimmedString = z.preprocess((value) => {
   if (typeof value !== 'string') {

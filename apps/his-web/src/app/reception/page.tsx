@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { searchGlobal, type SearchResponse, type SearchOwnerResult, type SearchPatientResult } from '@/lib/api';
 import { SearchResults } from '@/components/SearchResults';
 import { Card } from '@/components/ui/Card';
@@ -10,6 +11,7 @@ import { px, theme } from '@/lib/theme';
 import { Spinner } from '@/components/ui/Primitives';
 
 export default function ReceptionPage() {
+    const router = useRouter();
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

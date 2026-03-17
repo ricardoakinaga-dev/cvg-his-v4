@@ -36,7 +36,6 @@ export const medicationOrders = pgTable(
     frequencyType: text('frequency_type').notNull(),
     durationValue: integer('duration_value'),
     durationUnit: text('duration_unit'),
-    prescriptionText: text('prescription_text'),
     startAt: timestamp('start_at', { withTimezone: true }).notNull(),
     endAt: timestamp('end_at', { withTimezone: true }),
     status: medicationOrderStatusEnum('status').notNull().default('active'),
@@ -64,3 +63,4 @@ export const medicationOrders = pgTable(
     patientStatusIdx: index('idx_medication_orders_patient_status').on(table.patientId, table.status)
   })
 );
+

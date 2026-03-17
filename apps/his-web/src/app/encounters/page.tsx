@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { listEncounters, type EncounterRecord, ApiError } from '@/lib/api';
@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
-import { SearchInput } from '@/components/ui/SearchInput';
 import { Badge } from '@/components/ui/Primitives';
 import { 
     PageHeader, 
@@ -19,54 +18,44 @@ import {
 } from '@/components/ui/PageHeader';
 import { theme, px, row, col } from '@/lib/theme';
 
-// Force dynamic rendering to avoid useSearchParams issues
-export const dynamic = 'force-dynamic';
-
-function EncountersListContent() {
+/**
+ * Encounters List Page (/encounters)
+ * 
+ * Standardized list page with:
+ * - Loading state
+ * - Empty state
+ * - Error banner
+ * - Pagination
+ * - Accessibility features
+ * 
+ * Note: Encounters are filtered by patientId via URL param.
+ * For general encounter listing, use the Reception page.
+ */
+export default function EncountersListPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const patientId = searchParams.get('patientId') || undefined;
+    const patientId = searchParams.get('patientId');
 
     // Data state
     const [data, setData] = useState<EncounterRecord[]>([]);
-    const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
 
-    // Search state
-    const [query, setQuery] = useState(searchParams.get('q') ?? '');
-    const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') ?? '');
-
     // Pagination state
-    const [page, setPage] = useState(Number(searchParams.get('page') ?? 1) || 1);
+    const [page, setPage] = useState(1);
     const pageSize = 10;
 
-    const minQueryLength = 2;
-    const isQueryTooShort = query.length > 0 && query.length < minQueryLength;
-
-    useEffect(() => {
-        if (isQueryTooShort) return;
-        const timer = setTimeout(() => {
-            setDebouncedQuery(query);
-            setPage(1);
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [query, isQueryTooShort]);
-
     // Fetch data
-    const fetchData = useCallback(async (pageNum: number, searchQuery: string, patId?: string) => {
+    const fetchData = useCallback(async (pageNum: number, patId?: string) => {
         setLoading(true);
         setError(null);
         try {
             const res = await listEncounters({ 
                 patientId: patId,
-                q: searchQuery || undefined,
                 page: pageNum, 
                 pageSize 
             });
             setData(res.data);
-            setTotal(res.total);
         } catch (err) {
             if (err instanceof ApiError) {
                 setError(err);
@@ -80,15 +69,8 @@ function EncountersListContent() {
 
     // Trigger fetch on page change
     useEffect(() => {
-        fetchData(page, debouncedQuery, patientId);
-
-        const params = new URLSearchParams();
-        if (patientId) params.set('patientId', patientId);
-        if (debouncedQuery) params.set('q', debouncedQuery);
-        if (page > 1) params.set('page', String(page));
-        const queryString = params.toString();
-        router.replace(queryString ? `/encounters?${queryString}` : '/encounters', { scroll: false });
-    }, [page, debouncedQuery, patientId, fetchData, router]);
+        fetchData(page, patientId || undefined);
+    }, [page, patientId, fetchData]);
 
     // Keyboard shortcut for new encounter (Cmd/Ctrl + N)
     useEffect(() => {
@@ -130,43 +112,44 @@ function EncountersListContent() {
         }
     };
 
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    // If no patientId, show guidance to use Reception
+    if (!patientId) {
+        return (
+            <ListPageLayout>
+                <PageHeader
+                    title="Atendimentos"
+                    description="Histórico de atendimentos realizados"
+                />
+
+                <Card>
+                    <EmptyState
+                        title="Listagem de Atendimentos"
+                        description="A listagem direta de atendimentos será habilitada em breve. Por enquanto, utilize o fluxo de Recepção ou acesse via Paciente."
+                        action={
+                            <Link href="/reception">
+                                <Button variant="primary">Abrir Recepção</Button>
+                            </Link>
+                        }
+                    />
+                </Card>
+            </ListPageLayout>
+        );
+    }
 
     return (
         <ListPageLayout>
             {/* Page Header */}
             <PageHeader
                 title="Atendimentos"
-                description={patientId ? 'Atendimentos do paciente selecionado' : 'Histórico geral de atendimentos'}
+                description="Atendimentos do paciente"
                 actions={
                     <Link href="/reception">
-                        <Button variant="primary" aria-label="Novo atendimento (Ctrl+N)">
+                        <Button variant="primary" aria-label="Abrir recepção para novo atendimento (Ctrl+N)">
                             Novo Atendimento
                         </Button>
                     </Link>
                 }
             />
-
-            <Card style={{ padding: px(16) }}>
-                <SearchInput
-                    value={query}
-                    onChange={setQuery}
-                    placeholder="Buscar por motivo ou ID do atendimento..."
-                    minQueryLength={minQueryLength}
-                    showMinLengthHint
-                    aria-label="Buscar atendimentos"
-                />
-            </Card>
-
-            {isQueryTooShort && !loading && (
-                <div style={{
-                    padding: px(24),
-                    textAlign: 'center',
-                    color: theme.colors.textSecondary
-                }}>
-                    <p>Digite pelo menos {minQueryLength} caracteres para buscar.</p>
-                </div>
-            )}
 
             {/* Error State */}
             {error && (
@@ -174,7 +157,7 @@ function EncountersListContent() {
                     title="Erro ao carregar dados"
                     message={error.message}
                     requestId={error.requestId}
-                    onRetry={() => fetchData(page, debouncedQuery, patientId)}
+                    onRetry={() => fetchData(page, patientId)}
                 />
             )}
 
@@ -184,14 +167,10 @@ function EncountersListContent() {
             )}
 
             {/* Empty State */}
-            {!loading && !error && !isQueryTooShort && data.length === 0 && (
+            {!loading && !error && data.length === 0 && (
                 <EmptyState
                     title="Nenhum atendimento encontrado"
-                    description={
-                        debouncedQuery
-                            ? `Sem resultados para "${debouncedQuery}".`
-                            : 'Nenhum atendimento foi registrado ainda.'
-                    }
+                    description="Este paciente ainda não possui atendimentos registrados."
                     action={
                         <Link href="/reception">
                             <Button variant="primary">Iniciar Atendimento</Button>
@@ -201,7 +180,7 @@ function EncountersListContent() {
             )}
 
             {/* Content List */}
-            {!loading && !error && !isQueryTooShort && data.length > 0 && (
+            {!loading && !error && data.length > 0 && (
                 <ContentSection>
                     {data.map((encounter) => (
                         <Link
@@ -274,19 +253,11 @@ function EncountersListContent() {
                     {/* Pagination */}
                     <Pagination
                         currentPage={page}
-                        totalPages={totalPages}
+                        totalPages={Math.ceil(data.length / pageSize)}
                         onPageChange={setPage}
                     />
                 </ContentSection>
             )}
         </ListPageLayout>
-    );
-}
-
-export default function EncountersListPage() {
-    return (
-        <Suspense fallback={<div className="p-8 text-center text-gray-500">Carregando...</div>}>
-            <EncountersListContent />
-        </Suspense>
     );
 }

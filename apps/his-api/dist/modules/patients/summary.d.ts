@@ -25,7 +25,7 @@ type PatientSummary = {
         microchip: string | null;
         alerts: AlertDto;
         highlightedAlerts: HighlightedAlerts;
-        updatedAt: string;
+        updatedAt: Date;
     };
     auditTrail: PatientSummaryAuditEvent[];
     encounters: [];

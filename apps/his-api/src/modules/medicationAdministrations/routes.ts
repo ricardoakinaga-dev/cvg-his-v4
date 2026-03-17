@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { MedicationAdministrationCreateSchema, parseOrThrow422 } from '@cvg-his/domain';
+import { MedicationAdministrationCreateSchemaBase, MedicationAdministrationCreateSchema, parseOrThrow422 } from '@cvg-his/domain';
 import { z } from 'zod';
 
 import { requirePermission } from '../../middlewares/requirePermission.js';
@@ -22,12 +22,16 @@ const patientConfirmationSchema = z.object({
   confirmedBySpecies: z.string().min(1, 'Patient species confirmation is required')
 });
 
-const medicationAdministrationWithConfirmationSchema = z.intersection(
-  MedicationAdministrationCreateSchema,
-  z.object({
-    patientConfirmation: patientConfirmationSchema.optional()
-  })
-);
+const medicationAdministrationWithConfirmationSchema = MedicationAdministrationCreateSchemaBase.extend({
+  patientConfirmation: patientConfirmationSchema.optional()
+}).superRefine((payload, ctx) => {
+  const result = MedicationAdministrationCreateSchema.safeParse(payload);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      ctx.addIssue(issue);
+    }
+  }
+});
 
 type MedicationAdministrationWithConfirmation = z.infer<typeof medicationAdministrationWithConfirmationSchema>;
 

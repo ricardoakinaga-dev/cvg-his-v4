@@ -1,6 +1,5 @@
 import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 
 import { registerErrorHandler } from './lib/errors.js';
 import { buildLoggerOptions } from './lib/logger.js';
@@ -25,9 +24,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     requestIdLogLabel: 'requestId',
     genReqId: (request) => resolveRequestId(request.headers as Record<string, unknown>)
   });
-
-  app.setValidatorCompiler(validatorCompiler);
-  app.setSerializerCompiler(serializerCompiler);
 
   await app.register(envPlugin);
 

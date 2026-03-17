@@ -8,11 +8,11 @@ import { queryClient } from '../lib/query/queryClient';
 
 export function Providers({ children }: { children: ReactNode }) {
     return (
-        <ToastProvider>
-            <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+            <ToastProvider>
                 {children}
                 <ReactQueryDevtools initialIsOpen={false} />
-            </QueryClientProvider>
-        </ToastProvider>
+            </ToastProvider>
+        </QueryClientProvider>
     );
 }

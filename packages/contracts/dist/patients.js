@@ -97,35 +97,23 @@ export const listPatientsResponseSchema = createPaginatedResponseSchema(patientR
 /**
  * Patient summary response (for /patients/:id/summary)
  */
-const highlightedAlertsSchema = z.object({
-    aggressive: z.boolean(),
-    allergiesCount: z.number().int().nonnegative(),
-    anesthesiaRisk: z.enum(['low', 'medium', 'high']).nullable(),
-    chronicConditionsCount: z.number().int().nonnegative(),
-    hasNotes: z.boolean()
-});
-const patientSummaryAuditEventSchema = z.object({
-    id: uuidSchema,
-    createdAt: z.string().datetime(),
-    action: z.string(),
-    actorRole: z.string().nullable(),
-    reason: z.string().nullable(),
-    requestId: z.string().nullable()
-});
 export const patientSummaryResponseSchema = z.object({
-    patient: z.object({
+    patient: patientResponseSchema,
+    owner: z.object({
         id: uuidSchema,
-        ownerId: uuidSchema,
-        name: z.string(),
-        species: z.string(),
-        microchip: z.string().nullable(),
-        alerts: alertSchema,
-        highlightedAlerts: highlightedAlertsSchema,
-        updatedAt: z.string().datetime()
+        fullName: z.string(),
+        phoneMain: z.string().nullable().optional(),
+        email: z.string().nullable().optional()
     }),
-    auditTrail: z.array(patientSummaryAuditEventSchema),
-    encounters: z.array(z.unknown()),
-    documents: z.array(z.unknown())
+    stats: z.object({
+        totalEncounters: z.number().int().nonnegative(),
+        openEncounters: z.number().int().nonnegative()
+    }),
+    recentEncounters: z.array(z.object({
+        id: uuidSchema,
+        openedAt: z.coerce.date(),
+        status: z.enum(['open', 'closed'])
+    }))
 });
 /**
  * ==========================================

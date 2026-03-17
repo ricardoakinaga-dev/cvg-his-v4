@@ -101,9 +101,8 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = stayContextParamsSchema.parse(request.params);
-      const accountId = getAccountIdFromRequest(request);
       
-      const stay = await service.getStayInfo(accountId, params.stayId);
+      const stay = await service.getStayInfo(params.stayId);
       
       if (!stay) {
         return reply.status(404).send({ 

@@ -1,11 +1,8 @@
 import { z } from 'zod';
 
-import { apiClient } from './api/client';
-
 export const AUTH_COOKIE_NAME = 'his_token';
 export const AUTH_STORAGE_KEY = 'his_auth_session';
-export const AUTH_SESSION_CHANGED_EVENT = 'his-auth-session-changed';
-const AUTH_SESSION_ROUTE = '/auth/session';
+const AUTH_SESSION_ROUTE = '/api/auth/session';
 
 // Zod Schemas
 export const UserRoleSchema = z.enum(['admin', 'vet', 'enfermagem', 'recepcao']);
@@ -46,36 +43,32 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
-function notifyAuthSessionChanged(): void {
-  if (!isBrowser()) {
-    return;
-  }
-  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
-}
-
 async function persistTokenCookie(token: string): Promise<void> {
   if (!isBrowser()) {
     return;
   }
 
-  try {
-    // Note: The Next.js API route /api/auth/session remains as a standard
-    // Next.js route since it sets a cookie on the Next.js domain itself.
-    // It is NOT proxied to the backend. We use standard fetch here.
-    const response = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({ token })
-    });
+  const response = await fetch(AUTH_SESSION_ROUTE, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({ token })
+  });
 
-    if (!response.ok) {
-      throw new Error(`Failed to persist auth session cookie: ${response.status}`);
+  if (!response.ok) {
+    let message = 'Failed to persist auth session cookie.';
+    try {
+      const payload = await response.json();
+      if (payload && typeof payload === 'object' && 'message' in payload) {
+        message = String((payload as { message: unknown }).message);
+      }
+    } catch {
+      // ignore parse error
     }
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to persist auth session cookie.');
+
+    throw new Error(message);
   }
 }
 
@@ -84,7 +77,7 @@ async function clearTokenCookie(): Promise<void> {
     return;
   }
 
-  await fetch('/api/auth/session', {
+  await fetch(AUTH_SESSION_ROUTE, {
     method: 'DELETE',
     credentials: 'same-origin'
   });
@@ -125,44 +118,72 @@ export function getAuthToken(): string | null {
  * Login with email and password
  */
 export async function loginWithEmail(email: string, password: string): Promise<LoginResponse> {
-  try {
-    const data = await apiClient('/auth/login', {
-      method: 'POST',
-      body: { type: 'email', email, password }
-    });
+  const response = await fetch('/api/proxy/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({ type: 'email', email, password })
+  });
 
-    const result = LoginResponseSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error('Invalid login response');
+  if (!response.ok) {
+    let message = 'Login failed';
+    try {
+      const payload = await response.json();
+      if (payload && typeof payload === 'object' && 'message' in payload) {
+        message = String((payload as { message: unknown }).message);
+      }
+    } catch {
+      // ignore parse error
     }
-
-    return result.data;
-  } catch (error: any) {
-    throw new Error(error.message || 'Login failed');
+    throw new Error(message);
   }
+
+  const data = await response.json();
+  const result = LoginResponseSchema.safeParse(data);
+  
+  if (!result.success) {
+    throw new Error('Invalid login response');
+  }
+  
+  return result.data;
 }
 
 /**
  * Login with API key
  */
 export async function loginWithKey(key: string): Promise<LoginResponse> {
-  try {
-    const data = await apiClient('/auth/login', {
-      method: 'POST',
-      body: { type: 'key', key }
-    });
+  const response = await fetch('/api/proxy/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({ type: 'key', key })
+  });
 
-    const result = LoginResponseSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error('Invalid login response');
+  if (!response.ok) {
+    let message = 'Login failed';
+    try {
+      const payload = await response.json();
+      if (payload && typeof payload === 'object' && 'message' in payload) {
+        message = String((payload as { message: unknown }).message);
+      }
+    } catch {
+      // ignore parse error
     }
-
-    return result.data;
-  } catch (error: any) {
-    throw new Error(error.message || 'Login failed');
+    throw new Error(message);
   }
+
+  const data = await response.json();
+  const result = LoginResponseSchema.safeParse(data);
+  
+  if (!result.success) {
+    throw new Error('Invalid login response');
+  }
+  
+  return result.data;
 }
 
 /**
@@ -174,22 +195,36 @@ export async function devLogin(options: {
   userId?: string;
   unitId?: string;
 }): Promise<LoginResponse> {
-  try {
-    const data = await apiClient('/auth/dev-login', {
-      method: 'POST',
-      body: options
-    });
+  const response = await fetch('/api/proxy/auth/dev-login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify(options)
+  });
 
-    const result = LoginResponseSchema.safeParse(data);
-
-    if (!result.success) {
-      throw new Error('Invalid login response');
+  if (!response.ok) {
+    let message = 'Dev login failed';
+    try {
+      const payload = await response.json();
+      if (payload && typeof payload === 'object' && 'message' in payload) {
+        message = String((payload as { message: unknown }).message);
+      }
+    } catch {
+      // ignore parse error
     }
-
-    return result.data;
-  } catch (error: any) {
-    throw new Error(error.message || 'Dev login failed');
+    throw new Error(message);
   }
+
+  const data = await response.json();
+  const result = LoginResponseSchema.safeParse(data);
+  
+  if (!result.success) {
+    throw new Error('Invalid login response');
+  }
+  
+  return result.data;
 }
 
 /**
@@ -220,19 +255,18 @@ export async function setAuthSession(session: AuthLoginInput): Promise<void> {
       roles: validSession.roles
     })
   );
-  notifyAuthSessionChanged();
 }
 
 /**
  * Complete login flow - call API, persist token, store session
  */
-export async function performLogin(options:
+export async function performLogin(options: 
   | { type: 'email'; email: string; password: string }
   | { type: 'key'; key: string }
   | { type: 'dev'; accountId: string; role: UserRole; userId?: string; unitId?: string }
 ): Promise<AuthSession> {
   let loginResponse: LoginResponse;
-
+  
   if (options.type === 'email') {
     loginResponse = await loginWithEmail(options.email, options.password);
   } else if (options.type === 'key') {
@@ -240,10 +274,10 @@ export async function performLogin(options:
   } else {
     loginResponse = await devLogin(options);
   }
-
+  
   // Persist token in HttpOnly cookie
   await persistTokenCookie(loginResponse.token);
-
+  
   // Store session metadata in localStorage
   const session: AuthSession = {
     accountId: loginResponse.actor.accountId,
@@ -253,10 +287,9 @@ export async function performLogin(options:
     permissions: loginResponse.actor.permissions,
     roles: loginResponse.actor.roles
   };
-
+  
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  notifyAuthSessionChanged();
-
+  
   return session;
 }
 
@@ -266,7 +299,6 @@ export async function clearAuthSession(): Promise<void> {
   }
 
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
-  notifyAuthSessionChanged();
 
   try {
     await clearTokenCookie();

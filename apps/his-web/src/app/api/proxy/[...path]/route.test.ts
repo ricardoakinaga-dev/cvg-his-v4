@@ -99,6 +99,28 @@ describe('Proxy Route Handler', () => {
       );
     });
 
+    it('should allow auth paths for login flows', async () => {
+      mockFetch.mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        body: '{}'
+      });
+
+      const request = createMockRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'email', email: 'admin@cvg.local', password: 'Admin123!' }),
+        headers: { 'content-type': 'application/json' }
+      });
+      const response = await POST(request, { params: { path: ['auth', 'login'] } });
+
+      expect(response.status).toBe(200);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('http://upstream.test/auth/login'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
     it('should block disallowed paths with 403', async () => {
       const request = createMockRequest('/admin/secrets');
       const response = await GET(request, { params: { path: ['admin', 'secrets'] } });
@@ -143,47 +165,6 @@ describe('Proxy Route Handler', () => {
   });
 
   describe('POST handler', () => {
-    it('should allow agenda endpoints through proxy allowlist', async () => {
-      mockFetch.mockResolvedValueOnce({
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } })
-      });
-
-      const request = createMockRequest('/agenda/appointments', { search: '?page=1' });
-      const response = await GET(request, { params: { path: ['agenda', 'appointments'] } });
-
-      expect(response.status).toBe(200);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/agenda/appointments?page=1'),
-        expect.objectContaining({ method: 'GET' })
-      );
-    });
-
-    it('should allow auth login path through proxy allowlist', async () => {
-      mockFetch.mockResolvedValueOnce({
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        body: JSON.stringify({ token: 'jwt' })
-      });
-
-      const request = createMockRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'email', email: 'admin@cvg.local', password: 'secret123' }),
-        headers: { 'content-type': 'application/json' }
-      });
-
-      const response = await POST(request, { params: { path: ['auth', 'login'] } });
-
-      expect(response.status).toBe(200);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/login'),
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
-
     it('should forward POST body to upstream', async () => {
       mockFetch.mockResolvedValueOnce({
         status: 201,
@@ -325,25 +306,6 @@ describe('Proxy Route Handler', () => {
 
       const request = createMockRequest('/health', {
         cookies: { his_token: 'test-jwt-token' }
-      });
-
-      await GET(request, { params: { path: ['health'] } });
-
-      const fetchCall = mockFetch.mock.calls[0];
-      const headers = fetchCall[1].headers;
-
-      expect(headers.get('authorization')).toBe('Bearer test-jwt-token');
-    });
-
-    it('should normalize Bearer-prefixed token from cookie', async () => {
-      mockFetch.mockResolvedValueOnce({
-        status: 200,
-        headers: new Headers(),
-        body: '{}'
-      });
-
-      const request = createMockRequest('/health', {
-        cookies: { his_token: 'Bearer test-jwt-token' }
       });
 
       await GET(request, { params: { path: ['health'] } });

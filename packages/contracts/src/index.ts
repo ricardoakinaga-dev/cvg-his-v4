@@ -88,7 +88,7 @@ export const contractEndpoints = [
     operation: 'getSummary',
     method: 'GET',
     path: '/owners/:id/summary',
-    description: 'Get owner summary with audit trail and related artifacts'
+    description: 'Get owner summary with patients and stats'
   },
 
   // Patients
@@ -125,7 +125,7 @@ export const contractEndpoints = [
     operation: 'getSummary',
     method: 'GET',
     path: '/patients/:id/summary',
-    description: 'Get patient summary with highlighted alerts and audit trail'
+    description: 'Get patient summary with owner and stats'
   },
 
   // Encounters

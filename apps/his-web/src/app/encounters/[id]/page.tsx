@@ -12,7 +12,6 @@ import { EncounterDocumentsTab } from '@/features/encounter/components/Encounter
 import { EncounterSidebar } from '@/features/encounter/components/EncounterSidebar';
 import { EncounterSummaryTab } from '@/features/encounter/components/EncounterSummaryTab';
 import { EncounterMedsTab } from '@/features/encounter/components/EncounterMedsTab';
-import { EncounterBillingTab } from '@/features/billing/EncounterBillingTab';
 
 // TanStack Query hooks
 import {
@@ -225,9 +224,6 @@ export default function EncounterDetailsPage(): JSX.Element {
           case '5':
             targetTab = 'timeline';
             break;
-          case '6':
-            targetTab = 'billing';
-            break;
         }
 
         if (targetTab) {
@@ -403,16 +399,6 @@ export default function EncounterDetailsPage(): JSX.Element {
                     timelineResponse={timeline}
                     encounterId={timeline.encounter.id}
                     onRefresh={() => void refetchTimeline()}
-                  />
-                ),
-              },
-              billing: {
-                label: 'Cobrança',
-                content: (
-                  <EncounterBillingTab
-                    encounterId={timeline.encounter.id}
-                    encounterStatus={timeline.encounter.status}
-                    onEncounterClosed={() => void refetchAll()}
                   />
                 ),
               },

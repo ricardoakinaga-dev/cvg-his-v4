@@ -1,200 +1,90 @@
-/**
- * Input - Premium Input Component
- * 
- * A flexible input component with label, helper text, and error states.
- * Uses CSS tokens for consistent styling.
- * 
- * @see STYLE_GUIDE.md for usage examples
- */
-
 'use client';
 
-import { InputHTMLAttributes, forwardRef, useId } from 'react';
-import styles from './Input.module.css';
+import { CSSProperties, InputHTMLAttributes, forwardRef, useState, useId } from 'react';
+import { theme, px, col } from '../../lib/theme';
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
-  label?: string;
-  error?: string;
-  helperText?: string;
-  size?: 'sm' | 'md' | 'lg';
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  fullWidth?: boolean;
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+    label?: string;
+    error?: string;
+    helperText?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      label,
-      error,
-      helperText,
-      size = 'md',
-      leftIcon,
-      rightIcon,
-      fullWidth = true,
-      className = '',
-      id,
-      disabled,
-      required,
-      ...props
-    },
-    ref
-  ) => {
-    const generatedId = useId();
-    const inputId = id ?? generatedId;
-    const helperId = `${inputId}-helper`;
-    const hasError = Boolean(error);
+    ({ label, error, helperText, style, id, disabled, ...props }, ref) => {
+        const generatedId = useId();
+        const inputId = id ?? generatedId;
+        const [isFocused, setIsFocused] = useState(false);
 
-    const containerClassName = [
-      styles.container,
-      fullWidth ? styles.fullWidth : '',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
+        const containerStyle: CSSProperties = {
+            ...col(4),
+            width: '100%'
+        };
 
-    const inputWrapperClassName = [
-      styles.inputWrapper,
-      styles[size],
-      hasError ? styles.error : '',
-      disabled ? styles.disabled : '',
-      leftIcon ? styles.hasLeftIcon : '',
-      rightIcon ? styles.hasRightIcon : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
+        const labelStyle: CSSProperties = {
+            fontSize: px(14),
+            fontWeight: 500,
+            color: theme.colors.textPrimary,
+            marginBottom: px(2)
+        };
 
-    return (
-      <div className={containerClassName}>
-        {label && (
-          <label htmlFor={inputId} className={styles.label}>
-            {label}
-            {required && <span className={styles.required} aria-hidden="true"> *</span>}
-          </label>
-        )}
-        
-        <div className={inputWrapperClassName}>
-          {leftIcon && <span className={styles.leftIcon}>{leftIcon}</span>}
-          
-          <input
-            ref={ref}
-            id={inputId}
-            disabled={disabled}
-            aria-invalid={hasError}
-            aria-required={required}
-            aria-describedby={error || helperText ? helperId : undefined}
-            className={styles.input}
-            {...props}
-          />
-          
-          {rightIcon && <span className={styles.rightIcon}>{rightIcon}</span>}
-        </div>
-        
-        {(error || helperText) && (
-          <span
-            id={helperId}
-            className={hasError ? styles.errorText : styles.helperText}
-            role={hasError ? 'alert' : undefined}
-          >
-            {error || helperText}
-          </span>
-        )}
-      </div>
-    );
-  }
+        const inputStyle: CSSProperties = {
+            width: '100%',
+            height: px(40),
+            padding: '0 12px',
+            borderRadius: px(theme.radius.sm),
+            border: `1px solid ${error ? theme.colors.danger : theme.colors.border}`,
+            fontSize: px(14),
+            color: disabled ? theme.colors.textSecondary : theme.colors.textPrimary,
+            backgroundColor: disabled ? '#f1f5f9' : theme.colors.surface,
+            outline: 'none',
+            transition: 'border-color 0.2s box-shadow 0.2s',
+            boxShadow: isFocused
+                ? `0 0 0 1px ${error ? theme.colors.danger : theme.colors.primary}`
+                : 'none',
+            borderColor: isFocused
+                ? (error ? theme.colors.danger : theme.colors.primary)
+                : (error ? theme.colors.danger : theme.colors.border),
+            ...style
+        };
+
+        const helperStyle: CSSProperties = {
+            fontSize: px(12),
+            color: error ? theme.colors.danger : theme.colors.textSecondary,
+            minHeight: px(18) // prevent layout shift
+        };
+
+        return (
+            <div style={containerStyle}>
+                {label && (
+                    <label htmlFor={inputId} style={labelStyle}>
+                        {label}
+                    </label>
+                )}
+                <input
+                    ref={ref}
+                    id={inputId}
+                    disabled={disabled}
+                    aria-invalid={!!error}
+                    aria-describedby={error || helperText ? `${inputId}-help` : undefined}
+                    onFocus={(e) => {
+                        setIsFocused(true);
+                        props.onFocus?.(e);
+                    }}
+                    onBlur={(e) => {
+                        setIsFocused(false);
+                        props.onBlur?.(e);
+                    }}
+                    style={inputStyle}
+                    {...props}
+                />
+                {(error || helperText) && (
+                    <span id={`${inputId}-help`} style={helperStyle}>
+                        {error || helperText}
+                    </span>
+                )}
+            </div>
+        );
+    }
 );
 
 Input.displayName = 'Input';
-
-/**
- * Textarea - Multi-line text input
- */
-export interface TextareaProps extends Omit<InputHTMLAttributes<HTMLTextAreaElement>, 'size'> {
-  label?: string;
-  error?: string;
-  helperText?: string;
-  size?: 'sm' | 'md' | 'lg';
-  fullWidth?: boolean;
-  resize?: 'none' | 'vertical' | 'horizontal' | 'both';
-}
-
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  (
-    {
-      label,
-      error,
-      helperText,
-      size = 'md',
-      fullWidth = true,
-      resize = 'vertical',
-      className = '',
-      id,
-      disabled,
-      required,
-      rows = 4,
-      ...props
-    },
-    ref
-  ) => {
-    const generatedId = useId();
-    const inputId = id ?? generatedId;
-    const helperId = `${inputId}-helper`;
-    const hasError = Boolean(error);
-
-    const containerClassName = [
-      styles.container,
-      fullWidth ? styles.fullWidth : '',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    const textareaClassName = [
-      styles.textarea,
-      styles[size],
-      hasError ? styles.error : '',
-      disabled ? styles.disabled : '',
-      resize === 'none' ? styles.resizeNone : '',
-      resize === 'vertical' ? styles.resizeVertical : '',
-      resize === 'horizontal' ? styles.resizeHorizontal : '',
-      resize === 'both' ? styles.resizeBoth : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    return (
-      <div className={containerClassName}>
-        {label && (
-          <label htmlFor={inputId} className={styles.label}>
-            {label}
-            {required && <span className={styles.required} aria-hidden="true"> *</span>}
-          </label>
-        )}
-        
-        <textarea
-          ref={ref}
-          id={inputId}
-          disabled={disabled}
-          aria-invalid={hasError}
-          aria-required={required}
-          aria-describedby={error || helperText ? helperId : undefined}
-          className={textareaClassName}
-          rows={rows}
-          {...props}
-        />
-        
-        {(error || helperText) && (
-          <span
-            id={helperId}
-            className={hasError ? styles.errorText : styles.helperText}
-            role={hasError ? 'alert' : undefined}
-          >
-            {error || helperText}
-          </span>
-        )}
-      </div>
-    );
-  }
-);
-
-Textarea.displayName = 'Textarea';

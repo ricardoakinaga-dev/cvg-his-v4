@@ -34,14 +34,6 @@ pnpm -w install
 pnpm dev
 ```
 
-### Desenvolvimento (Tudo com um comando)
-
-```bash
-pnpm dev:up
-```
-
-Esse comando sobe `postgres`, `redis`, `his-api`, `his-worker` e `his-web`.
-
 ### Desenvolvimento (Worker)
 
 ```bash
@@ -90,7 +82,6 @@ pnpm -w db:seed
 
 - `tsconfig.base.json` define `strict: true` para todos os workspaces TypeScript.
 - Ainda não há aliases de path configurados nesta fase.
-- Use apenas o `.env` da raiz do repositório como fonte de verdade para API/worker/db.
 - Defina `DATABASE_URL` para um Postgres local antes de rodar scripts `db:*`.
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD` são opcionais para seed do usuário admin.
 - `QUEUE_PREFIX` define o namespace das filas BullMQ (default: `cvg-his`).

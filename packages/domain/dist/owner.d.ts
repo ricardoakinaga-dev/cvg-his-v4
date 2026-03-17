@@ -54,11 +54,11 @@ export declare const OwnerReadSchema: z.ZodObject<{
     createdAt: z.ZodDate;
     updatedAt: z.ZodDate;
 }, "strip", z.ZodTypeAny, {
+    fullName: string;
     id: string;
     accountId: string;
     createdAt: Date;
     updatedAt: Date;
-    fullName: string;
     document?: string | null | undefined;
     email?: string | null | undefined;
     unitId?: string | null | undefined;
@@ -66,11 +66,11 @@ export declare const OwnerReadSchema: z.ZodObject<{
     phoneAlt?: string | null | undefined;
     addressJson?: Record<string, unknown> | null | undefined;
 }, {
+    fullName: string;
     id: string;
     accountId: string;
     createdAt: Date;
     updatedAt: Date;
-    fullName: string;
     document?: string | null | undefined;
     email?: string | null | undefined;
     unitId?: string | null | undefined;

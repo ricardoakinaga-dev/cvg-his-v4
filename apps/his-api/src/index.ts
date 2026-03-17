@@ -3,11 +3,16 @@ import { runMigrations } from '../../../packages/db/src/migrate.js';
 
 async function bootstrap(): Promise<void> {
   // 1) Migrations antes de subir API
-  try {
-    await runMigrations();
-  } catch (error) {
-    console.error('Fatal bootstrap error (migrations)', error);
-    process.exit(1);
+  const runMigrationsOnBoot = process.env.RUN_MIGRATIONS_ON_BOOT === '1';
+  if (runMigrationsOnBoot) {
+    try {
+      await runMigrations();
+    } catch (error) {
+      console.error('Fatal bootstrap error (migrations)', error);
+      process.exit(1);
+    }
+  } else {
+    console.info('Skipping migrations on API bootstrap. Use the migrate job/container instead.');
   }
 
   const app = await buildServer();

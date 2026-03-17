@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { accounts } from './accounts.js';
 import { units } from './units.js';
 export const owners = pgTable('owners', {
@@ -13,9 +13,6 @@ export const owners = pgTable('owners', {
     phoneMain: text('phone_main'),
     phoneAlt: text('phone_alt'),
     addressJson: jsonb('address_json').$type(),
-    notes: text('notes'),
-    preferredContactMethod: text('preferred_contact_method').$type(),
-    marketingOptIn: boolean('marketing_opt_in').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 }, (table) => ({

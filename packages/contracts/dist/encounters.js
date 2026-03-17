@@ -47,8 +47,7 @@ export const encounterIdParamSchema = idParamSchema;
  * GET /encounters - List encounters query
  */
 export const listEncountersQuerySchema = paginationQuerySchema.extend({
-    patientId: uuidSchema.optional(),
-    q: z.string().trim().min(1).max(120).optional()
+    patientId: uuidSchema.optional()
 });
 /**
  * ==========================================
@@ -91,7 +90,7 @@ export const encounterTimelineNoteSchema = z.object({
     updatedByUserId: uuidSchema,
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
-    currentSoapJson: z.record(z.string(), z.unknown()).nullable().optional()
+    currentSoapJson: z.record(z.unknown()).nullable().optional()
 });
 /**
  * Timeline version schema
@@ -101,7 +100,7 @@ export const encounterTimelineVersionSchema = z.object({
     noteId: uuidSchema,
     encounterId: uuidSchema,
     versionNumber: z.number().int().nonnegative(),
-    soapJson: z.record(z.string(), z.unknown()),
+    soapJson: z.record(z.unknown()),
     reason: z.string().nullable().optional(),
     createdByUserId: uuidSchema,
     createdAt: z.coerce.date()
@@ -136,7 +135,7 @@ export const encounterTimelineEventSchema = z.object({
     ]),
     entityId: uuidSchema,
     happenedAt: z.coerce.date(),
-    data: z.record(z.string(), z.unknown())
+    data: z.record(z.unknown())
 });
 /**
  * Encounter timeline response

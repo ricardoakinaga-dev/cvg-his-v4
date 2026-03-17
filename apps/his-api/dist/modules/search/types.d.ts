@@ -4,9 +4,9 @@ export declare const searchQuerySchema: z.ZodObject<{
     page: z.ZodDefault<z.ZodNumber>;
     pageSize: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    q: string;
     page: number;
     pageSize: number;
+    q: string;
 }, {
     q: string;
     page?: number | undefined;

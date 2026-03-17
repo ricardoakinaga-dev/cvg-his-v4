@@ -19,7 +19,6 @@ function makeOrder(overrides: Partial<MedicationOrderRecord> = {}): MedicationOr
     doseUnit: 'mg/kg',
     route: 'IV',
     frequencyType: 'q12h',
-    prescriptionText: null,
     durationValue: 3,
     durationUnit: 'days',
     startAt: new Date('2026-02-18T08:00:00.000Z'),
@@ -236,3 +235,4 @@ describe('medication orders service', () => {
     );
   });
 });
+

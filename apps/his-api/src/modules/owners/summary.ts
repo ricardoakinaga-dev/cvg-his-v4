@@ -22,7 +22,7 @@ type OwnerSummary = {
     email: string | null;
     phoneMain: string | null;
     phoneAlt: string | null;
-    updatedAt: string;
+    updatedAt: Date;
   };
   auditTrail: OwnerSummaryAuditEvent[];
   encounters: [];
@@ -94,7 +94,7 @@ export async function getOwnerSummary(
       email: owner.email,
       phoneMain: owner.phoneMain,
       phoneAlt: owner.phoneAlt,
-      updatedAt: owner.updatedAt.toISOString()
+      updatedAt: owner.updatedAt
     },
     auditTrail,
     encounters: [],

@@ -1,10 +1,15 @@
-/**
- * Patient types - re-exported from @cvg-his/contracts
- *
- * This file serves as a bridge between the shared contracts and the API module.
- * All schemas are defined in packages/contracts to prevent drift between his-api and his-web.
- */
-import { createPatientBodySchema, updatePatientBodySchema, patientIdParamSchema, listPatientsQuerySchema, patientResponseSchema, listPatientsResponseSchema, patientSummaryResponseSchema, alertSchema } from '@cvg-his/contracts';
-// Re-export schemas for use in routes
-export { createPatientBodySchema, updatePatientBodySchema, patientIdParamSchema, listPatientsQuerySchema, patientResponseSchema, listPatientsResponseSchema, patientSummaryResponseSchema, alertSchema };
+import { z } from 'zod';
+import { PatientCreateSchema, PatientUpdateSchema } from '@cvg-his/domain';
+export const createPatientBodySchema = PatientCreateSchema;
+export const updatePatientBodySchema = PatientUpdateSchema;
+export const patientIdParamSchema = z.object({
+    id: z.string().uuid()
+});
+export const listPatientsQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(20),
+    ownerId: z.string().uuid().optional(),
+    species: z.string().trim().min(1).max(60).optional(),
+    q: z.string().trim().max(120).optional()
+});
 //# sourceMappingURL=types.js.map

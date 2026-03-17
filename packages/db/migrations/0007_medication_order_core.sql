@@ -11,7 +11,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
-CREATE TYPE "public"."medication_administration_status" AS ENUM('administered', 'refused', 'delayed', 'held');
+ CREATE TYPE "public"."medication_administration_status" AS ENUM('administered', 'refused', 'delayed', 'held');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

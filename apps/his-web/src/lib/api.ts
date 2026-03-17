@@ -2,20 +2,14 @@ import { clearAuthSession, getAuthSession } from './auth';
 import { resolvePublicApiBaseConfig } from './publicEnv';
 import { z } from 'zod';
 import {
-  createOwnerBodySchema as OwnerCreateSchema,
-  ownerResponseSchema as OwnerReadSchema,
-  createPatientBodySchema as PatientCreateSchema,
-  patientResponseSchema as PatientReadSchema,
-  createEncounterBodySchema as EncounterCreateSchema,
-  encounterResponseSchema as EncounterReadSchema,
-  ownerSummaryResponseSchema,
-  patientSummaryResponseSchema,
-  listEncountersResponseSchema,
-  type OwnerResponse as Owner,
-  type PatientResponse as Patient,
-  type AlertDto,
-  type OwnerSummaryResponse,
-  type PatientSummaryResponse,
+  OwnerCreateSchema,
+  OwnerReadSchema,
+  PatientCreateSchema,
+  PatientReadSchema,
+  type Owner,
+  type Patient,
+  EncounterCreateSchema,
+  EncounterReadSchema,
   ClinicalAlertSchema,
   type ClinicalAlert,
   type BedMapItem
@@ -62,8 +56,6 @@ export type Paginated<T> = {
   total: number;
 };
 
-export type { OwnerSummaryResponse, PatientSummaryResponse };
-
 export type OwnerCreate = z.infer<typeof OwnerCreateSchema>;
 export type PatientCreate = z.infer<typeof PatientCreateSchema>;
 export type EncounterCreate = z.infer<typeof EncounterCreateSchema>;
@@ -100,6 +92,53 @@ export type AuditTrailEvent = {
   requestId: string | null;
 };
 
+export type OwnerSummaryResponse = {
+  owner: {
+    id: string;
+    fullName: string;
+    document: string | null;
+    email: string | null;
+    phoneMain: string | null;
+    phoneAlt: string | null;
+    updatedAt: string;
+  };
+  auditTrail: AuditTrailEvent[];
+  encounters: unknown[];
+  documents: unknown[];
+};
+
+export type PatientAlerts = {
+  aggressive?: boolean;
+  allergies?: string[];
+  anesthesia_risk?: 'low' | 'medium' | 'high' | null;
+  chronic_conditions?: string[];
+  notes?: string | null;
+};
+
+export type PatientSummaryResponse = {
+  patient: {
+    id: string;
+    ownerId: string;
+    name: string;
+    species: string;
+    breed?: string | null;
+    sex?: string | null;
+    microchip: string | null;
+    alerts: PatientAlerts;
+    highlightedAlerts: {
+      aggressive: boolean;
+      allergiesCount: number;
+      anesthesiaRisk: 'low' | 'medium' | 'high' | null;
+      chronicConditionsCount: number;
+      hasNotes: boolean;
+    };
+    updatedAt: string;
+  };
+  auditTrail: AuditTrailEvent[];
+  encounters: unknown[];
+  documents: unknown[];
+};
+
 export type OwnerPatchInput = {
   fullName?: string;
   document?: string | null;
@@ -114,7 +153,7 @@ export type PatientPatchInput = {
   breed?: string;
   sex?: string;
   microchip?: string;
-  alerts?: AlertDto;
+  alerts?: PatientAlerts;
 };
 
 export type EncounterStatus = 'open' | 'closed';
@@ -154,13 +193,6 @@ export type EncounterRecord = {
   reason: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-export type ListEncountersApiResponse = {
-  data: EncounterRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
 };
 
 export type EncounterTimelineNote = {
@@ -339,67 +371,6 @@ export type BedMapResponse = {
   beds: BedMapBed[];
 };
 
-// Bed Management Types
-export type BedRecord = {
-  id: string;
-  accountId: string;
-  wardId: string;
-  name: string;
-  code: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type BedListResponse = {
-  data: BedRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
-
-export type BedCreateInput = {
-  wardId: string;
-  name: string;
-  code?: string;
-};
-
-export type BedUpdateInput = {
-  name?: string;
-  code?: string | null;
-  isActive?: boolean;
-};
-
-export function listBeds(input: {
-  page?: number;
-  pageSize?: number;
-  wardId?: string;
-  q?: string;
-}): Promise<BedListResponse> {
-  const queryString = toQueryString({
-    page: input.page,
-    pageSize: input.pageSize,
-    wardId: input.wardId,
-    q: input.q
-  });
-
-  return apiFetch<BedListResponse>(`/beds${queryString}`, { method: 'GET' });
-}
-
-export function createBed(payload: BedCreateInput): Promise<BedRecord> {
-  return apiFetch<BedRecord>('/beds', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
-}
-
-export function updateBed(bedId: string, payload: BedUpdateInput): Promise<BedRecord> {
-  return apiFetch<BedRecord>(`/beds/${bedId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload)
-  });
-}
-
 export type InpatientStayRecord = {
   id: string;
   accountId: string;
@@ -453,7 +424,6 @@ export type MedicationOrderRecord = {
   doseUnit: string;
   route: string;
   frequencyType: 'q8h' | 'q12h' | 'sid' | 'bid' | 'tid' | 'custom';
-  prescriptionText: string | null;
   durationValue: number | null;
   durationUnit: 'days' | 'hours' | null;
   startAt: string;
@@ -482,7 +452,6 @@ export type MedicationOrderCreateInput = {
   doseUnit: string;
   route: 'IV' | 'IM' | 'VO' | 'SC' | 'TOP' | 'INH' | 'SL' | 'RECTAL' | 'OTIC' | 'OPHTHALMIC' | 'OTHER';
   frequencyType: MedicationOrderRecord['frequencyType'];
-  prescriptionText?: string;
   startAt: string;
   endAt?: string;
   durationValue?: number;
@@ -494,7 +463,6 @@ export type MedicationOrderUpdateInput = {
   doseUnit?: string;
   route?: MedicationOrderCreateInput['route'];
   frequencyType?: MedicationOrderRecord['frequencyType'];
-  prescriptionText?: string | null;
   endAt?: string;
   durationValue?: number;
   durationUnit?: 'days' | 'hours';
@@ -590,21 +558,123 @@ export type MedicationLogsResponse = {
   }>;
 };
 
+let cachedApiBaseUrl: string | null = null;
+let cachedApiBaseUrlSource: string | null = null;
+let apiBaseUrlDebugLogged = false;
+
 export function resolveApiBaseUrl(): string {
-  // Legacy function for components that construct their own URLs.
-  // Generally, use the apiClient instead.
-  return resolvePublicApiBaseConfig().baseUrl;
+  if (cachedApiBaseUrl) {
+    return cachedApiBaseUrl;
+  }
+
+  const resolved = resolvePublicApiBaseConfig();
+  const normalized = resolved.baseUrl;
+  const source = resolved.source;
+
+  cachedApiBaseUrl = normalized;
+  cachedApiBaseUrlSource = source;
+
+  if (process.env.NODE_ENV !== 'production' && !apiBaseUrlDebugLogged) {
+    apiBaseUrlDebugLogged = true;
+    console.info('[his-web][api] base URL resolved', {
+      source: cachedApiBaseUrlSource,
+      baseUrl: cachedApiBaseUrl
+    });
+  }
+
+  return cachedApiBaseUrl;
 }
 
-import { apiClient } from './api/client';
+function toUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${resolveApiBaseUrl()}${normalizedPath}`;
+}
+
+function toBody(body: BodyInit | Record<string, unknown> | null | undefined): BodyInit | undefined {
+  if (body === null || body === undefined) {
+    return undefined;
+  }
+
+  if (typeof body === 'string' || body instanceof FormData || body instanceof URLSearchParams) {
+    return body;
+  }
+
+  return JSON.stringify(body);
+}
 
 export async function apiFetch<T = unknown>(path: string, init: ApiFetchInit = {}): Promise<T> {
-  // Wrapper redirecting legacy apiFetch to the new apiClient
-  return apiClient<T>(path, {
-    method: init.method,
-    headers: init.headers,
-    body: init.body ? (typeof init.body === 'string' ? JSON.parse(init.body) : init.body) : undefined,
-  });
+  const headers = new Headers(init.headers);
+  const requestBody = toBody(init.body as BodyInit | Record<string, unknown> | null | undefined);
+
+  // Generate Request ID (UUID v4)
+  const requestId = crypto.randomUUID();
+  headers.set('x-request-id', requestId);
+
+  // NOTE: Actor context (accountId, role, unitId, userId) is derived from the JWT token
+  // by the backend. We do NOT send client-controlled headers for security.
+  // The proxy route extracts the token from the cookie and forwards it as
+  // Authorization: Bearer header to the upstream API.
+
+  if (requestBody && !(requestBody instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const url = toUrl(path);
+  const method = init.method ?? 'GET';
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers,
+      body: requestBody,
+      credentials: init.credentials ?? 'same-origin'
+    });
+  } catch (networkError) {
+    throw new ApiError(
+      networkError instanceof Error ? networkError.message : 'Network Error',
+      0,
+      null,
+      { requestId, url, method }
+    );
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  let payload: unknown;
+
+  try {
+    if (contentType.includes('application/json')) {
+      payload = await response.json();
+    } else {
+      payload = await response.text();
+    }
+  } catch (parseError) {
+    payload = null; // Failed to parse body
+  }
+
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      await clearAuthSession();
+      window.location.href = '/login';
+    }
+
+    throw new ApiError('Unauthorized', 401, payload, { requestId, url, method });
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === 'object' && payload !== null && 'message' in payload
+        ? (payload as { message: string }).message
+        : `Request failed with status ${response.status}`;
+
+    throw new ApiError(message, response.status, payload, { requestId, url, method });
+  }
+
+  return payload as T;
 }
 
 function toQueryString(params: Record<string, string | number | undefined>): string {
@@ -629,51 +699,10 @@ export function searchGlobal(input: {
 }): Promise<SearchResponse> {
   const queryString = toQueryString({
     q: input.q,
-    limit: input.pageSize
+    page: input.page,
+    pageSize: input.pageSize
   });
-  return apiFetch<SearchResponse>(`/general/search${queryString}`, { method: 'GET' });
-}
-
-export type PatientContextResponse = {
-  patient: {
-    id: string;
-    ownerId: string;
-    ownerName?: string;
-    name: string;
-    species: string;
-    breed: string | null;
-    sex: string | null;
-    birthDate: string | null;
-    ageMonths?: number | null;
-    weightKg: string | null;
-    microchip: string | null;
-    alerts: {
-      aggressive?: boolean;
-      allergies?: string[];
-      anesthesia_risk?: 'low' | 'medium' | 'high' | null;
-      chronic_conditions?: string[];
-      notes?: string | null;
-    };
-    highlightedAlerts: {
-      aggressive: boolean;
-      allergiesCount: number;
-      anesthesiaRisk: 'low' | 'medium' | 'high' | null;
-      chronicConditionsCount: number;
-      hasNotes: boolean;
-    };
-    bedName?: string | null;
-    wardName?: string | null;
-    stayStatus?: 'active' | 'discharged' | 'transferred' | null;
-    createdAt: string;
-    updatedAt: string;
-  };
-  stay: any | null;
-  encounter: any | null;
-  navigation: any;
-};
-
-export function getPatientContext(patientId: string): Promise<PatientContextResponse> {
-  return apiFetch<PatientContextResponse>(`/patient-context/by-patient/${patientId}`, { method: 'GET' });
+  return apiFetch<SearchResponse>(`/search${queryString}`, { method: 'GET' });
 }
 
 /**
@@ -794,14 +823,8 @@ export async function getPatient(patientId: string): Promise<Patient> {
   return parsed.data;
 }
 
-export async function getOwnerSummary(ownerId: string): Promise<OwnerSummaryResponse> {
-  const response = await apiFetch<unknown>(`/owners/${ownerId}/summary`, { method: 'GET' });
-  const parsed = ownerSummaryResponseSchema.safeParse(response);
-  if (!parsed.success) {
-    throw new ApiError('Invalid API Response', 500, parsed.error);
-  }
-
-  return parsed.data;
+export function getOwnerSummary(ownerId: string): Promise<OwnerSummaryResponse> {
+  return apiFetch<OwnerSummaryResponse>(`/owners/${ownerId}/summary`, { method: 'GET' });
 }
 
 export function updateOwner(ownerId: string, payload: OwnerPatchInput): Promise<unknown> {
@@ -811,14 +834,8 @@ export function updateOwner(ownerId: string, payload: OwnerPatchInput): Promise<
   });
 }
 
-export async function getPatientSummary(patientId: string): Promise<PatientSummaryResponse> {
-  const response = await apiFetch<unknown>(`/patients/${patientId}/summary`, { method: 'GET' });
-  const parsed = patientSummaryResponseSchema.safeParse(response);
-  if (!parsed.success) {
-    throw new ApiError('Invalid API Response', 500, parsed.error);
-  }
-
-  return parsed.data;
+export function getPatientSummary(patientId: string): Promise<PatientSummaryResponse> {
+  return apiFetch<PatientSummaryResponse>(`/patients/${patientId}/summary`, { method: 'GET' });
 }
 
 export function updatePatient(patientId: string, payload: PatientPatchInput): Promise<unknown> {
@@ -830,37 +847,11 @@ export function updatePatient(patientId: string, payload: PatientPatchInput): Pr
 
 export function listEncounters(params: {
   patientId?: string;
-  q?: string;
   page?: number;
   pageSize?: number;
-}): Promise<ListEncountersApiResponse> {
+}): Promise<{ data: EncounterRecord[] }> {
   const query = toQueryString(params);
-  return apiFetch<unknown>(`/encounters${query}`, { method: 'GET' }).then((response) => {
-    const parsed = listEncountersResponseSchema.safeParse(response);
-    if (!parsed.success) {
-      throw new ApiError('Invalid API Response', 500, parsed.error);
-    }
-
-    return {
-      data: parsed.data.data.map((encounter) => ({
-        id: encounter.id,
-        accountId: encounter.accountId,
-        patientId: encounter.patientId,
-        ownerId: encounter.ownerId,
-        status: encounter.status,
-        openedByUserId: encounter.openedByUserId,
-        closedByUserId: encounter.closedByUserId ?? null,
-        openedAt: encounter.openedAt.toISOString(),
-        closedAt: encounter.closedAt ? encounter.closedAt.toISOString() : null,
-        reason: encounter.reason ?? null,
-        createdAt: encounter.createdAt.toISOString(),
-        updatedAt: encounter.updatedAt.toISOString()
-      })),
-      page: parsed.data.page,
-      pageSize: parsed.data.pageSize,
-      total: parsed.data.total
-    };
-  });
+  return apiFetch<{ data: EncounterRecord[] }>(`/encounters${query}`, { method: 'GET' });
 }
 
 export function createEncounter(payload: EncounterCreateInput): Promise<EncounterRecord> {
@@ -1015,57 +1006,6 @@ export function listInpatientStays(input: {
 
 export function getInpatientStay(stayId: string): Promise<InpatientStayRecord> {
   return apiFetch<InpatientStayRecord>(`/inpatient/stays/${stayId}`, {
-    method: 'GET'
-  });
-}
-
-// Inpatient Dashboard Types
-export type InpatientDashboardStats = {
-  totalWards: number;
-  totalBeds: number;
-  occupiedBeds: number;
-  freeBeds: number;
-  activeStays: number;
-};
-
-export type InpatientDashboardWard = {
-  id: string;
-  name: string;
-  code: string | null;
-  totalBeds: number;
-  occupiedBeds: number;
-};
-
-export type InpatientDashboardPatient = {
-  stayId: string;
-  patientId: string;
-  patientName: string | null;
-  species: string | null;
-  breed: string | null;
-  ownerId: string;
-  ownerName: string | null;
-};
-
-export type InpatientDashboardBed = {
-  bedId: string;
-  bedName: string;
-  bedCode: string | null;
-  wardId: string;
-  status: 'free' | 'occupied';
-  patient: InpatientDashboardPatient | null;
-  admittedAt: string | null;
-  chiefComplaint: string | null;
-};
-
-export type InpatientDashboardResponse = {
-  stats: InpatientDashboardStats;
-  wards: InpatientDashboardWard[];
-  beds: InpatientDashboardBed[];
-};
-
-export function getInpatientDashboard(wardId?: string): Promise<InpatientDashboardResponse> {
-  const queryString = toQueryString({ wardId });
-  return apiFetch<InpatientDashboardResponse>(`/inpatient/dashboard${queryString}`, {
     method: 'GET'
   });
 }
@@ -1406,129 +1346,6 @@ export function createProtocol(payload: ProtocolCreateInput): Promise<ProtocolRe
 export function updateProtocol(protocolId: string, payload: ProtocolUpdateInput): Promise<ProtocolRecord> {
   return apiFetch<ProtocolRecord>(`/protocols/${protocolId}`, {
     method: 'PATCH',
-    body: JSON.stringify(payload)
-  });
-}
-
-// ==========================================
-// LABORATORY API
-// ==========================================
-
-export type LabTestRecord = {
-  id: string;
-  name: string;
-  code: string | null;
-  category: string | null;
-  isActive: boolean;
-};
-
-export type LabOrderRecord = {
-  id: string;
-  patientId: string;
-  status: 'draft' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'routine' | 'urgent' | 'stat';
-  requestingProviderId: string | null;
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type LabTestsListResponse = {
-  data: LabTestRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
-
-export type LabOrdersListResponse = {
-  data: LabOrderRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
-
-export type LabOrderCreateInput = {
-  patientId: string;
-  priority?: 'routine' | 'urgent' | 'stat';
-  notes?: string;
-  items: Array<{
-    testId: string;
-    notes?: string;
-  }>;
-};
-
-export function listLabTests(input?: { q?: string; page?: number; pageSize?: number }): Promise<LabTestsListResponse> {
-  const query = toQueryString(input || {});
-  return apiFetch<LabTestsListResponse>(`/laboratory/tests${query}`, { method: 'GET' });
-}
-
-export function listLabOrders(input?: { patientId?: string; status?: string; page?: number; pageSize?: number }): Promise<LabOrdersListResponse> {
-  const query = toQueryString(input || {});
-  return apiFetch<LabOrdersListResponse>(`/laboratory/orders${query}`, { method: 'GET' });
-}
-
-export function createLabOrder(payload: LabOrderCreateInput): Promise<{ order: LabOrderRecord; items: any[] }> {
-  return apiFetch<{ order: LabOrderRecord; items: any[] }>('/laboratory/orders', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
-}
-
-// ==========================================
-// IMAGING API
-// ==========================================
-
-export type ImagingModalityRecord = {
-  id: string;
-  name: string;
-  code: string | null;
-  isActive: boolean;
-};
-
-export type ImagingOrderRecord = {
-  id: string;
-  patientId: string;
-  modalityId: string;
-  status: 'draft' | 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'routine' | 'urgent' | 'stat';
-  clinicalIndication: string | null;
-  createdAt: string;
-};
-
-export type ImagingModalitiesListResponse = {
-  data: ImagingModalityRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
-
-export type ImagingOrdersListResponse = {
-  data: ImagingOrderRecord[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
-
-export type ImagingOrderCreateInput = {
-  patientId: string;
-  modalityId: string;
-  priority?: 'routine' | 'urgent' | 'stat';
-  clinicalIndication?: string;
-};
-
-export function listImagingModalities(input?: { q?: string; page?: number; pageSize?: number }): Promise<ImagingModalitiesListResponse> {
-  const query = toQueryString(input || {});
-  return apiFetch<ImagingModalitiesListResponse>(`/imaging/modalities${query}`, { method: 'GET' });
-}
-
-export function listImagingOrders(input?: { patientId?: string; status?: string; page?: number; pageSize?: number }): Promise<ImagingOrdersListResponse> {
-  const query = toQueryString(input || {});
-  return apiFetch<ImagingOrdersListResponse>(`/imaging/orders${query}`, { method: 'GET' });
-}
-
-export function createImagingOrder(payload: ImagingOrderCreateInput): Promise<ImagingOrderRecord> {
-  return apiFetch<ImagingOrderRecord>('/imaging/orders', {
-    method: 'POST',
     body: JSON.stringify(payload)
   });
 }

@@ -4,14 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 /**
- * /owners/new route - Redirects to /owners with create modal
+ * /owners/new route - Redirects to /clients with create modal
  * This route is documented in PHASE1_DONE.md as "Formulário completo para novo tutor"
  */
 export default function NewOwnerPage() {
     const router = useRouter();
     
     useEffect(() => {
-        router.replace('/owners?create=true');
+        router.replace('/clients?create=true');
     }, [router]);
     
     return (

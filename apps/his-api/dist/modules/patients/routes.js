@@ -1,7 +1,7 @@
 import { requirePermission } from '../../middlewares/requirePermission.js';
 import { createPatientsService } from './service.js';
 import { getPatientSummary } from './summary.js';
-import { createPatientBodySchema, listPatientsResponseSchema, listPatientsQuerySchema, patientIdParamSchema, patientResponseSchema, patientSummaryResponseSchema, updatePatientBodySchema } from './types.js';
+import { createPatientBodySchema, listPatientsQuerySchema, patientIdParamSchema, updatePatientBodySchema } from './types.js';
 export const patientsRoutes = async (app) => {
     app.post('/', {
         preHandler: requirePermission('patient.write')
@@ -12,8 +12,7 @@ export const patientsRoutes = async (app) => {
         if (result.kind === 'owner_not_found') {
             return reply.status(404).send({ message: 'Owner not found' });
         }
-        const response = patientResponseSchema.parse(result.patient);
-        return reply.status(201).send(response);
+        return reply.status(201).send(result.patient);
     });
     app.get('/:id', {
         preHandler: requirePermission('patient.read')
@@ -24,8 +23,7 @@ export const patientsRoutes = async (app) => {
         if (!patient) {
             return reply.status(404).send({ message: 'Patient not found' });
         }
-        const response = patientResponseSchema.parse(patient);
-        return reply.send(response);
+        return reply.send(patient);
     });
     app.get('/:id/summary', {
         preHandler: requirePermission('patient.read')
@@ -35,8 +33,7 @@ export const patientsRoutes = async (app) => {
         if (!summary) {
             return reply.status(404).send({ message: 'Patient not found' });
         }
-        const response = patientSummaryResponseSchema.parse(summary);
-        return reply.send(response);
+        return reply.send(summary);
     });
     app.patch('/:id', {
         preHandler: requirePermission('patient.write')
@@ -51,16 +48,14 @@ export const patientsRoutes = async (app) => {
         if (result.kind === 'owner_not_found') {
             return reply.status(404).send({ message: 'Owner not found' });
         }
-        const response = patientResponseSchema.parse(result.patient);
-        return reply.send(response);
+        return reply.send(result.patient);
     });
     app.get('/', {
         preHandler: requirePermission('patient.read')
     }, async (request) => {
         const query = listPatientsQuerySchema.parse(request.query);
         const service = createPatientsService({ db: app.db, requestContext: request.requestContext });
-        const data = await service.list(query);
-        return listPatientsResponseSchema.parse(data);
+        return service.list(query);
     });
 };
 //# sourceMappingURL=routes.js.map

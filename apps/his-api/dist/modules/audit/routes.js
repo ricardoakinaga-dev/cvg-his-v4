@@ -12,27 +12,18 @@ export const auditRoutes = async (app) => {
         preHandler: requirePermission('audit.read')
     }, async (request) => {
         const query = listAuditQuerySchema.parse(request.query);
-        const actor = request.requestContext.actor;
-        if (!actor?.accountId) {
-            return {
-                page: query.page,
-                pageSize: query.pageSize,
-                total: 0,
-                data: []
-            };
-        }
-        const whereParts = ['ae.account_id = $1'];
-        const values = [actor.accountId];
-        let index = 2;
+        const whereParts = [];
+        const values = [];
+        let index = 1;
         if (query.entity_type) {
-            whereParts.push(`ae.entity_type = $${index++}`);
+            whereParts.push(`entity_type = $${index++}`);
             values.push(query.entity_type);
         }
         if (query.entity_id) {
-            whereParts.push(`ae.entity_id = $${index++}`);
+            whereParts.push(`entity_id = $${index++}`);
             values.push(query.entity_id);
         }
-        const whereClause = `where ${whereParts.join(' and ')}`;
+        const whereClause = whereParts.length > 0 ? `where ${whereParts.join(' and ')}` : '';
         const offset = (query.page - 1) * query.pageSize;
         const [eventsResult, totalResult] = await Promise.all([
             request.db.$client.query(`
@@ -48,12 +39,12 @@ export const auditRoutes = async (app) => {
               after_json,
               reason,
               request_id
-            from audit_events ae
+            from audit_events
             ${whereClause}
             order by created_at desc
             limit $${index} offset $${index + 1}
           `, [...values, query.pageSize, offset]),
-            request.db.$client.query(`select count(*)::int as total from audit_events ae ${whereClause}`, values)
+            request.db.$client.query(`select count(*)::int as total from audit_events ${whereClause}`, values)
         ]);
         return {
             page: query.page,

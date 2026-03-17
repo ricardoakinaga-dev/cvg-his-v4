@@ -18,7 +18,6 @@ export function createOwnersService(context) {
                 ...input
             });
             await append({
-                accountId: actor.accountId,
                 actorUserId: actor.userId,
                 roles: actor.roles,
                 entityType: 'owner',
@@ -45,7 +44,6 @@ export function createOwnersService(context) {
                 return null;
             }
             await append({
-                accountId: actor.accountId,
                 actorUserId: actor.userId,
                 roles: actor.roles,
                 entityType: 'owner',

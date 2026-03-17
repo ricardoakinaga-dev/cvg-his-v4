@@ -27,12 +27,12 @@ export function getBuildStamp(): BuildStamp {
 
 /**
  * Formata o build stamp para exibição
- * Formato: "build: <build-id> | sha: <short-sha> | env: <environment>"
+ * Formato: "build: <short-sha> | env: <environment>"
  */
 export function formatBuildStamp(): string {
   const stamp = getBuildStamp();
   const shortSha = stamp.gitSha.substring(0, 7);
-  return `build: ${stamp.buildId} | sha: ${shortSha} | env: ${stamp.env}`;
+  return `build: ${shortSha} | env: ${stamp.env}`;
 }
 
 /**

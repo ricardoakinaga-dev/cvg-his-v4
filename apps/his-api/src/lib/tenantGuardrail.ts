@@ -85,19 +85,6 @@ export function tenantGuardrail(): (request: FastifyRequest, reply: FastifyReply
 }
 
 /**
- * Helper to add account_id filter to any query
- */
-export function withTenantFilter(
-  query: string,
-  accountId: string,
-  existingWhereClause: boolean = false
-): { query: string; accountId: string } {
-  // This is a helper for documentation purposes
-  // Actual query building should be done in the repo layer
-  return { query, accountId };
-}
-
-/**
  * Type guard to check if an error is a tenant-related error
  */
 export function isTenantError(error: unknown): error is MissingTenantContextError | TenantMismatchError {

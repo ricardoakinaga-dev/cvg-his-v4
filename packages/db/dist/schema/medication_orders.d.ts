@@ -207,23 +207,6 @@ export declare const medicationOrders: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        prescriptionText: import("drizzle-orm/pg-core").PgColumn<{
-            name: "prescription_text";
-            tableName: "medication_orders";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         startAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "start_at";
             tableName: "medication_orders";

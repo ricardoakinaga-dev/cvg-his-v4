@@ -12,12 +12,10 @@
     "test:contracts": "vitest run --testNamePattern='Contract'"
   },
   "dependencies": {
-    "@cvg-his/contracts": "file:../../packages/contracts",
-    "@cvg-his/rbac": "file:../../packages/rbac",
+    "@cvg-his/contracts": "workspace:*",
+    "@cvg-his/rbac": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.34.3",
     "next": "^14.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

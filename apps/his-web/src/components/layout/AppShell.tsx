@@ -14,7 +14,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
     const router = useRouter();
-    const pathname = usePathname();
+    const pathname = usePathname() ?? '';
     const isLoginPage = pathname === '/login' || pathname.startsWith('/login/');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 

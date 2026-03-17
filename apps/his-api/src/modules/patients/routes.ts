@@ -5,11 +5,8 @@ import { createPatientsService } from './service.js';
 import { getPatientSummary } from './summary.js';
 import {
   createPatientBodySchema,
-  listPatientsResponseSchema,
   listPatientsQuerySchema,
   patientIdParamSchema,
-  patientResponseSchema,
-  patientSummaryResponseSchema,
   updatePatientBodySchema
 } from './types.js';
 
@@ -28,8 +25,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Owner not found' });
       }
 
-      const response = patientResponseSchema.parse(result.patient);
-      return reply.status(201).send(response);
+      return reply.status(201).send(result.patient);
     }
   );
 
@@ -47,8 +43,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Patient not found' });
       }
 
-      const response = patientResponseSchema.parse(patient);
-      return reply.send(response);
+      return reply.send(patient);
     }
   );
 
@@ -65,8 +60,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Patient not found' });
       }
 
-      const response = patientSummaryResponseSchema.parse(summary);
-      return reply.send(response);
+      return reply.send(summary);
     }
   );
 
@@ -89,8 +83,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Owner not found' });
       }
 
-      const response = patientResponseSchema.parse(result.patient);
-      return reply.send(response);
+      return reply.send(result.patient);
     }
   );
 
@@ -102,8 +95,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const query = listPatientsQuerySchema.parse(request.query);
       const service = createPatientsService({ db: app.db, requestContext: request.requestContext });
-      const data = await service.list(query);
-      return listPatientsResponseSchema.parse(data);
+      return service.list(query);
     }
   );
 };

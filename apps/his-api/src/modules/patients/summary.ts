@@ -33,7 +33,7 @@ type PatientSummary = {
     microchip: string | null;
     alerts: AlertDto;
     highlightedAlerts: HighlightedAlerts;
-    updatedAt: string;
+    updatedAt: Date;
   };
   auditTrail: PatientSummaryAuditEvent[];
   encounters: [];
@@ -116,7 +116,7 @@ export async function getPatientSummary(
       microchip: patient.microchip,
       alerts: patient.alerts,
       highlightedAlerts: toHighlightedAlerts(patient.alerts),
-      updatedAt: patient.updatedAt.toISOString()
+      updatedAt: patient.updatedAt
     },
     auditTrail,
     encounters: [],

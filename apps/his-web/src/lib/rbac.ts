@@ -1,18 +1,15 @@
-import { useMemo, useSyncExternalStore } from 'react';
-import { AUTH_SESSION_CHANGED_EVENT, AUTH_STORAGE_KEY, getAuthSession } from './auth';
-import { can, RbacPrincipal, PERMISSIONS } from '@cvg-his/rbac';
+import { getAuthSession } from './auth';
+import { can, RbacPrincipal, permissionsForRole, PERMISSIONS } from '@cvg-his/rbac';
 
 export { PERMISSIONS };
-
-const EMPTY_PRINCIPAL: RbacPrincipal = {
-    permissions: [],
-    roles: []
-};
 
 export function getCurrentPrincipal(): RbacPrincipal {
     const session = getAuthSession();
     if (!session) {
-        return EMPTY_PRINCIPAL;
+        return {
+            permissions: [],
+            roles: []
+        };
     }
 
     return {
@@ -22,63 +19,18 @@ export function getCurrentPrincipal(): RbacPrincipal {
     };
 }
 
-function subscribeAuthSession(onStoreChange: () => void): () => void {
-    if (typeof window === 'undefined') {
-        return () => {};
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-        if (event.key === AUTH_STORAGE_KEY) {
-            onStoreChange();
-        }
-    };
-
-    const handleSessionChanged = () => {
-        onStoreChange();
-    };
-
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleSessionChanged);
-
-    return () => {
-        window.removeEventListener('storage', handleStorage);
-        window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleSessionChanged);
-    };
-}
-
-function getAuthSessionSnapshot(): string {
-    if (typeof window === 'undefined') {
-        return '';
-    }
-    return window.localStorage.getItem(AUTH_STORAGE_KEY) ?? '';
-}
-
-function getServerAuthSessionSnapshot(): string {
-    return '';
-}
-
-function useCurrentPrincipal(): RbacPrincipal {
-    const snapshot = useSyncExternalStore(
-        subscribeAuthSession,
-        getAuthSessionSnapshot,
-        getServerAuthSessionSnapshot
-    );
-
-    return useMemo(() => {
-        if (!snapshot) {
-            return EMPTY_PRINCIPAL;
-        }
-        return getCurrentPrincipal();
-    }, [snapshot]);
-}
-
 export function usePermission(permission: string): boolean {
-    const principal = useCurrentPrincipal();
+    // In a real app with React Context, this would react to session changes.
+    // Since we use a simple singleton/localStorage approach for now,
+    // we can read directly. For reactivity, we'd need a Context Provider or
+    // useSyncExternalStore. Given the current "Phase 1" architecture,
+    // direct access during render is acceptable as session changes cause full reload/redirect.
+    const principal = getCurrentPrincipal();
     return can(principal, permission);
 }
 
 export function useRole(role: string): boolean {
-    const principal = useCurrentPrincipal();
+    const principal = getCurrentPrincipal();
     if (principal.role === role) return true;
     if (principal.roles && principal.roles.includes(role)) return true;
     return false;

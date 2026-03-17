@@ -59,7 +59,7 @@ function ensureAccountActor(requestContext: RequestContext): AccountActor {
   const actor = requestContext.actor;
 
   if (!actor?.accountId) {
-    throw unauthorizedError('Missing actor context. Provide a valid Bearer token.');
+    throw unauthorizedError('Missing actor context. Provide x-account-id header.');
   }
 
   return actor as AccountActor;

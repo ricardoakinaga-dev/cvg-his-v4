@@ -31,13 +31,11 @@ export async function getOwnerSummary(db, requestContext, ownerId) {
     const auditTrail = canReadAudit
         ? (await db.$client.query(`
             select id, created_at, action, actor_role, reason, request_id
-            from audit_events ae
-            where ae.entity_type = 'owner'
-              and ae.entity_id = $1
-              and ae.account_id = $2
+            from audit_events
+            where entity_type = 'owner' and entity_id = $1
             order by created_at desc
             limit 10
-          `, [ownerId, actor.accountId])).rows.map((row) => mapAuditRow(row))
+          `, [ownerId])).rows.map((row) => mapAuditRow(row))
         : [];
     return {
         owner: {
@@ -47,7 +45,7 @@ export async function getOwnerSummary(db, requestContext, ownerId) {
             email: owner.email,
             phoneMain: owner.phoneMain,
             phoneAlt: owner.phoneAlt,
-            updatedAt: owner.updatedAt.toISOString()
+            updatedAt: owner.updatedAt
         },
         auditTrail,
         encounters: [],

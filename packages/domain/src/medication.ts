@@ -16,19 +16,6 @@ const optionalTextSchema = z.preprocess((value) => {
   return normalized.length === 0 ? undefined : normalized;
 }, z.string().min(1, 'Field cannot be empty').optional());
 
-const optionalNullableTextSchema = z.preprocess((value) => {
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const normalized = trim(value);
-  return normalized.length === 0 ? null : normalized;
-}, z.string().min(1, 'Field cannot be empty').nullable().optional());
-
 const requiredTextSchema = z
   .string()
   .transform(trim)
@@ -85,7 +72,6 @@ export const MedicationOrderCreateSchemaBase = z.object({
   doseUnit: requiredTextSchema,
   route: MedicationRouteSchema,
   frequencyType: MedicationFrequencyTypeSchema,
-  prescriptionText: optionalTextSchema,
   startAt: isoDateTimeSchema,
   endAt: isoDateTimeSchema.optional(),
   durationValue: optionalIntSchema,
@@ -138,7 +124,6 @@ export const MedicationOrderUpdateSchemaBase = z.object({
   doseUnit: requiredTextSchema.optional(),
   route: MedicationRouteSchema.optional(),
   frequencyType: MedicationFrequencyTypeSchema.optional(),
-  prescriptionText: optionalNullableTextSchema,
   endAt: isoDateTimeSchema.optional(),
   durationValue: optionalIntSchema,
   durationUnit: z.enum(['days', 'hours']).optional()
@@ -181,7 +166,6 @@ export const MedicationOrderReadSchema = z.object({
   doseUnit: z.string(),
   route: MedicationRouteSchema,
   frequencyType: MedicationFrequencyTypeSchema,
-  prescriptionText: z.string().nullable().optional(),
   durationValue: z.number().int().positive().nullable().optional(),
   durationUnit: z.enum(['days', 'hours']).nullable().optional(),
   startAt: z.coerce.date(),

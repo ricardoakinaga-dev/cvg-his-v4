@@ -33,7 +33,6 @@ function makeOrder() {
     doseUnit: 'mg/kg',
     route: 'IV',
     frequencyType: 'q12h',
-    prescriptionText: null,
     durationValue: 3,
     durationUnit: 'days',
     startAt: '2026-02-18T08:00:00.000Z',

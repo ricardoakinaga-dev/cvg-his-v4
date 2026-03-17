@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,7 +13,7 @@ services:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d cvg_his']
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   redis:
     image: redis:7-alpine
@@ -28,7 +26,26 @@ services:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+
+  cvg-his-migrate:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/cvg_his
+      ADMIN_EMAIL: admin@cvg.local
+      ADMIN_PASSWORD: Admin123!
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    command: >-
+      sh -lc "corepack enable &&
+      corepack pnpm install --frozen-lockfile --prod=false &&
+      corepack pnpm --filter @cvg-his/db db:migrate &&
+      corepack pnpm -w db:seed"
+    restart: 'no'
 
   cvg-his-api:
     build:
@@ -36,7 +53,7 @@ services:
       dockerfile: apps/his-api/Dockerfile
     environment:
       NODE_ENV: production
-      PORT: 80
+      PORT: 3000
       LOG_LEVEL: info
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/cvg_his
       REDIS_URL: redis://redis:6379
@@ -44,18 +61,21 @@ services:
       JWT_SECRET: change-me
       JWT_ISSUER: cvg-his
       JWT_AUDIENCE: cvg-his-api
+      RUN_MIGRATIONS_ON_BOOT: '0'
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cvg-his-migrate:
+        condition: service_completed_successfully
     ports:
-      - '3000:80'
+      - '3000:3000'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:80/health >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3000/health >/dev/null || exit 1']
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   cvg-his-worker:
     build:
@@ -71,8 +91,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cvg-his-migrate:
+        condition: service_completed_successfully
       cvg-his-api:
         condition: service_healthy
+
+  cvg-his-web:
+    build:
+      context: .
+      dockerfile: apps/his-web/Dockerfile
+      args:
+        NEXT_PUBLIC_HIS_API_BASE_URL: /api/proxy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_HIS_API_BASE_URL: /api/proxy
+      HIS_API_INTERNAL_URL: http://cvg-his-api:3000
+      HIS_AUTH_COOKIE_MAX_AGE_SECONDS: 28800
+    depends_on:
+      cvg-his-api:
+        condition: service_healthy
+    ports:
+      - '3001:3000'
 
 volumes:
   cvg_his_postgres_data:

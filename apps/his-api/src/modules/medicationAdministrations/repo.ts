@@ -104,9 +104,15 @@ function mapOrderRefRow(row: Record<string, unknown>): MedicationOrderRef {
   };
 }
 
+export type MedicationOrderInfo = {
+  medicationName: string;
+  patientName: string;
+};
+
 export type MedicationAdministrationsRepo = {
   findOrderInAccount: (accountId: string, orderId: string) => Promise<MedicationOrderRef | null>;
   findPatientInfo: (accountId: string, patientId: string) => Promise<PatientInfo | null>;
+  findOrderInfo: (accountId: string, orderId: string) => Promise<MedicationOrderInfo | null>;
   create: (input: CreateMedicationAdministrationInput) => Promise<MedicationAdministrationRecord>;
   list: (input: ListMedicationAdministrationsInput) => Promise<{
     data: MedicationAdministrationRecord[];
@@ -165,6 +171,26 @@ export function createMedicationAdministrationsRepo(db: DbClient): MedicationAdm
         id: String(row.id),
         name: String(row.name),
         species: String(row.species)
+      };
+    },
+
+    async findOrderInfo(accountId: string, orderId: string): Promise<MedicationOrderInfo | null> {
+      const queryResult = await db.$client.query(
+        `
+          select mo.medication_name, p.name as patient_name
+          from medication_orders mo
+          join patients p on p.id = mo.patient_id and p.account_id = mo.account_id
+          where mo.id = $1 and mo.account_id = $2
+          limit 1
+        `,
+        [orderId, accountId]
+      );
+
+      if (queryResult.rows.length === 0) return null;
+      const row = queryResult.rows[0] as Record<string, unknown>;
+      return {
+        medicationName: String(row.medication_name),
+        patientName: String(row.patient_name)
       };
     },
 

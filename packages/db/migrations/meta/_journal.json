@@ -96,57 +96,8 @@
     {
       "idx": 13,
       "version": "7",
-      "when": 1771650300000,
-      "tag": "0014_owner_phone_main_nullable",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1771654804000,
-      "tag": "0015_medication_order_prescription_text",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1771660800000,
-      "tag": "0016_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1771664400000,
-      "tag": "0017_products",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1771668000000,
-      "tag": "0018_services",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1771671600000,
-      "tag": "0019_general_premium",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1771675200000,
-      "tag": "0023_stock_enterprise",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1771898909515,
-      "tag": "0025_agenda_premium",
+      "when": 1773707000000,
+      "tag": "0014_medication_admin_held_constraint",
       "breakpoints": true
     }
   ]

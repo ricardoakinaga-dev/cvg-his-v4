@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import * as schema from './schema/index.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(__dirname, '../../../.env') });
+config();
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
     throw new Error('DATABASE_URL is required to initialize @cvg-his/db');

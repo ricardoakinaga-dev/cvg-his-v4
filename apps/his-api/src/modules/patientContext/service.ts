@@ -170,9 +170,9 @@ export function createPatientContextService(db: DbClient) {
  * Helper to extract account ID from request
  */
 export function getAccountIdFromRequest(request: FastifyRequest): string {
-  const accountId = request.requestContext.actor?.accountId;
+  const accountId = request.headers['x-account-id'] as string | undefined;
   if (!accountId) {
-    throw new Error('Missing actor context. Provide a valid Bearer token.');
+    throw new Error('Missing x-account-id header');
   }
   return accountId;
 }

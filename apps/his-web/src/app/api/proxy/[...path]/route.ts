@@ -29,7 +29,6 @@ const ALLOWED_PATH_PREFIXES = [
   '/protocol-versions',
   '/audit',
   '/alerts',
-  '/agenda',
   '/rbac',
   '/system',
   '/soap-templates',
@@ -77,17 +76,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Reset the cached upstream URL (for testing purposes)
+ * Reset the cached upstream URL.
+ * Exported as named module export for use in test files via static import.
+ * Do NOT call this in production code.
  * @internal
  */
-function resetCache(): void {
+export function resetProxyCache(): void {
   cachedUpstreamBaseUrl = null;
   upstreamBaseLogged = false;
-}
-
-// Expose reset function for tests
-if (typeof globalThis !== 'undefined') {
-  (globalThis as Record<string, unknown>).__resetProxyCache = resetCache;
 }
 
 function resolveUpstreamBaseUrl(): string {
@@ -189,18 +185,6 @@ function resolveProxyTimeout(): number {
   return DEFAULT_PROXY_TIMEOUT_MS;
 }
 
-function normalizeTokenFromCookie(rawToken: string): string {
-  return rawToken.trim().replace(/^Bearer\s+/i, '').trim();
-}
-
-function decodeCookieValue(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
 function buildUpstreamHeaders(request: NextRequest, requestId: string): Headers {
   const headers = new Headers();
 
@@ -219,10 +203,7 @@ function buildUpstreamHeaders(request: NextRequest, requestId: string): Headers 
 
   const tokenFromCookie = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (!headers.has('authorization') && tokenFromCookie) {
-    const normalizedToken = normalizeTokenFromCookie(decodeCookieValue(tokenFromCookie));
-    if (normalizedToken.length > 0) {
-      headers.set('authorization', `Bearer ${normalizedToken}`);
-    }
+    headers.set('authorization', `Bearer ${decodeURIComponent(tokenFromCookie)}`);
   }
 
   // NOTE: Context headers (x-account-id, x-role, x-unit-id, x-user-id) are

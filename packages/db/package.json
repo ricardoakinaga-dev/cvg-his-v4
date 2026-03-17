@@ -17,7 +17,7 @@
   "dependencies": {
     "@cvg-his/rbac": "workspace:*",
     "drizzle-orm": "^0.38.4",
-    "pg": "^8.18.0"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@types/pg": "^8.15.0",

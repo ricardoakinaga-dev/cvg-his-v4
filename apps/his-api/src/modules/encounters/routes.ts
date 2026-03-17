@@ -3,10 +3,7 @@ import {
   createEncounterBodySchema,
   closeEncounterBodySchema,
   encounterIdParamSchema,
-  listEncountersQuerySchema,
-  encounterResponseSchema,
-  listEncountersResponseSchema,
-  encounterTimelineResponseSchema
+  listEncountersQuerySchema
 } from '@cvg-his/contracts';
 
 import { requirePermission } from '../../middlewares/requirePermission.js';
@@ -27,8 +24,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Patient not found' });
       }
 
-      const response = encounterResponseSchema.parse(result.encounter);
-      return reply.status(201).send(response);
+      return reply.status(201).send(result.encounter);
     }
   );
 
@@ -46,8 +42,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Encounter not found' });
       }
 
-      const response = encounterResponseSchema.parse(encounter);
-      return reply.send(response);
+      return reply.send(encounter);
     }
   );
 
@@ -65,8 +60,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(404).send({ message: 'Encounter not found' });
       }
 
-      const response = encounterTimelineResponseSchema.parse(timeline);
-      return reply.send(response);
+      return reply.send(timeline);
     }
   );
 
@@ -78,8 +72,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const query = listEncountersQuerySchema.parse(request.query);
       const service = createEncountersService({ db: app.db, requestContext: request.requestContext });
-      const data = await service.list(query);
-      return listEncountersResponseSchema.parse(data);
+      return service.list(query);
     }
   );
 
@@ -99,19 +92,13 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (result.kind === 'already_closed') {
-        const encounter = encounterResponseSchema.parse(result.encounter);
         return reply.status(409).send({
           message: 'Encounter is already closed',
-          encounter
+          encounter: result.encounter
         });
       }
 
-      const response = encounterResponseSchema.parse(result.encounter);
-      return reply.send({
-        encounter: response,
-        billingItemCount: result.billingItemCount,
-        billingTotal: result.billingTotal
-      });
+      return reply.send(result.encounter);
     }
   );
 };

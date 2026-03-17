@@ -1,4 +1,3 @@
-import { DomainValidationError } from '@cvg-his/domain';
 import { ZodError } from 'zod';
 function isMaybeFastifyError(error) {
     return typeof error === 'object' && error !== null && 'message' in error;
@@ -14,14 +13,6 @@ export function registerErrorHandler(app) {
                 code: 'VALIDATION_ERROR',
                 requestId,
                 issues: error.issues
-            });
-            return;
-        }
-        if (error instanceof DomainValidationError) {
-            request.log.warn({ err: error }, 'domain validation error');
-            void reply.status(422).send({
-                ...error.toJSON(),
-                requestId
             });
             return;
         }
