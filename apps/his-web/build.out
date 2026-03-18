@@ -1,0 +1,1308 @@
+
+> @cvg-his/his-web@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'OwnerCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'PatientCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'EncounterCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'EncounterCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/components/clients/ClientCreateModal.tsx
+Attempted import error: 'OwnerCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/components/clients/ClientCreateModal.tsx
+./src/app/clients/page.tsx
+
+./src/components/patients/PatientCreateModal.tsx
+Attempted import error: 'PatientCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/components/patients/PatientCreateModal.tsx
+./src/app/patients/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/protocols/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/patients/[id]/record/page.tsx
+
+ ⚠ Compiled with warnings
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'OwnerCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'PatientCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/app/reception/quick/page.tsx
+Attempted import error: 'EncounterCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'EncounterCreateSchema').
+
+Import trace for requested module:
+./src/app/reception/quick/page.tsx
+
+./src/components/clients/ClientCreateModal.tsx
+Attempted import error: 'OwnerCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/components/clients/ClientCreateModal.tsx
+./src/app/clients/page.tsx
+
+./src/components/patients/PatientCreateModal.tsx
+Attempted import error: 'PatientCreateSchema' is not exported from '@/contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/components/patients/PatientCreateModal.tsx
+./src/app/patients/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'OwnerReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'OwnerReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientCreateSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientCreateSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+./src/lib/api.ts
+Attempted import error: 'PatientReadSchema' is not exported from '../contracts/openapi-lite' (imported as 'PatientReadSchema').
+
+Import trace for requested module:
+./src/lib/api.ts
+./src/app/encounters/[id]/page.tsx
+
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/19) ...
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/encounters". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/clients". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+   Generating static pages (4/19) 
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/inpatient/handovers". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/inpatient/bedmap". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/inpatient/mar". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/owners". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+   Generating static pages (9/19) 
+
+Error occurred prerendering page "/inpatient/stays". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+
+Error occurred prerendering page "/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/patients/new". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+
+Error occurred prerendering page "/owners/new". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+   Generating static pages (14/19) 
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/reception". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/protocols". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/patients". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/reception/quick". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721) {
+  digest: '2299229448'
+}
+
+Error occurred prerendering page "/reception/start". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: [his-web][env] FATAL: Missing required environment variable NEXT_PUBLIC_HIS_API_BASE_URL.
+  Expected value: "/api/proxy"
+  This variable must be set at build time.
+    at s (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:14117)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:9:410)
+    at d (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/.next/server/chunks/638.js:4:13544)
+    at em (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:134808)
+    at e (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:137693)
+    at e_ (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142242)
+    at eT (/home/ricardo/modulos_validados/modulo_cvg_his/apps/his-web/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142721)
+ ✓ Generating static pages (19/19)
+
+> Export encountered errors on following paths:
+	/_not-found/page: /_not-found
+	/clients/page: /clients
+	/encounters/page: /encounters
+	/inpatient/bedmap/page: /inpatient/bedmap
+	/inpatient/handovers/page: /inpatient/handovers
+	/inpatient/mar/page: /inpatient/mar
+	/inpatient/stays/page: /inpatient/stays
+	/login/page: /login
+	/owners/new/page: /owners/new
+	/owners/page: /owners
+	/page: /
+	/patients/new/page: /patients/new
+	/patients/page: /patients
+	/protocols/page: /protocols
+	/reception/page: /reception
+	/reception/quick/page: /reception/quick
+	/reception/start/page: /reception/start

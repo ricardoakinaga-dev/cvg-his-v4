@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { appointmentsRoutes } from '../modules/appointments/routes.js';
+import { agendaConfigRoutes } from '../modules/agendaConfig/routes.js';
 import { auditRoutes } from '../modules/audit/routes.js';
 import { alertsRoutes } from '../modules/alerts/routes.js';
 import { authRoutes } from '../modules/auth/routes.js';
@@ -22,6 +24,10 @@ import { patientContextRoutes } from '../modules/patientContext/routes.js';
 import { rbacRoutes } from '../modules/rbac/routes.js';
 import { searchRoutes } from '../modules/search/routes.js';
 import { ownersRoutes } from '../modules/owners/routes.js';
+import { encounterBillingRoutes } from '../modules/encounterBilling/routes.js';
+import { encounterFinancialRoutes } from '../modules/encounterFinancial/routes.js';
+import { examsRoutes } from '../modules/exams/routes.js';
+import { integrationRoutes } from '../modules/integration/routes.js';
 import { productsRoutes } from '../modules/products/routes.js';
 import { protocolsRoutes } from '../modules/protocols/routes.js';
 import { protocolDiffRoutes } from '../modules/protocolDiff/routes.js';
@@ -54,6 +60,10 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(protocolVersionsRoutes);
   await app.register(patientsRoutes, { prefix: '/patients' });
   await app.register(encountersRoutes, { prefix: '/encounters' });
+  await app.register(encounterBillingRoutes);
+  await app.register(encounterFinancialRoutes);
+  await app.register(examsRoutes);
+  await app.register(integrationRoutes);
   await app.register(inpatientRoutes, { prefix: '/inpatient' });
   await app.register(medicationOrdersRoutes, { prefix: '/medication-orders' });
   await app.register(medicationSchedulesRoutes, { prefix: '/medication-orders' });
@@ -63,5 +73,7 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(handoversRoutes, { prefix: '/handovers' });
   await app.register(searchRoutes, { prefix: '/search' });
   await app.register(servicesRoutes, { prefix: '/services' });
+  await app.register(appointmentsRoutes, { prefix: '/appointments' });
+  await app.register(agendaConfigRoutes);
   await app.register(patientContextRoutes, { prefix: '/patient-context' });
 };

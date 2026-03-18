@@ -28,7 +28,7 @@ const actorContext: RequestContext = {
     userId: 'fdd8c156-b52d-4117-a5e1-73dd61474ef7',
     role: 'admin',
     roles: ['admin'],
-    permissions: []
+    permissions: ['inpatient.write', 'inpatient.read', 'inpatient.discharge']
   }
 };
 
@@ -65,6 +65,13 @@ async function buildTestApp(service: MockedService): Promise<FastifyInstance> {
     REDIS_URL: 'redis://test',
     QUEUE_PREFIX: 'cvg-his',
     LOG_LEVEL: 'silent',
+    JWT_SECRET: 'test-secret-minimum-32-chars-ok!',
+    JWT_ISSUER: 'cvg-his-test',
+    JWT_AUDIENCE: 'cvg-his-api-test',
+    DEFAULT_TIMEZONE: 'UTC',
+    MEDICATION_SCHEDULE_DEFAULT_TIMEZONE: 'UTC',
+    MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT: '{}',
+    MEDICATION_SCHEDULE_TIMEZONE_BY_WARD: '{}',
     QDRANT_URL: undefined,
     QDRANT_COLLECTION: 'professor',
     QDRANT_API_KEY: undefined

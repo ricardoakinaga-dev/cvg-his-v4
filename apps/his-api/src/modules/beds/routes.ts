@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { BedCreateSchema, BedUpdateSchema, parseOrThrow422 } from '@cvg-his/domain';
+import { BedCreateSchema, BedUpdateSchema, type BedCreateDto, type BedUpdateDto, parseOrThrow422 } from '@cvg-his/domain';
 import { z } from 'zod';
 
 import { requirePermission } from '../../middlewares/requirePermission.js';
@@ -35,7 +35,7 @@ export const bedsRoutes: FastifyPluginAsync = async (app) => {
       preHandler: requirePermission('bed.write')
     },
     async (request, reply) => {
-      const body = parseOrThrow422(BedCreateSchema, request.body);
+      const body = parseOrThrow422(BedCreateSchema, request.body) as BedCreateDto;
       const service = createBedsService({ db: app.db, requestContext: request.requestContext });
       const result = await service.create(body);
 
@@ -54,7 +54,7 @@ export const bedsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = bedIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(BedUpdateSchema, request.body);
+      const body = parseOrThrow422(BedUpdateSchema, request.body) as BedUpdateDto;
       const service = createBedsService({ db: app.db, requestContext: request.requestContext });
       const result = await service.update(params.id, body);
 

@@ -9,21 +9,29 @@ import {
   signClinicalNote,
   createDocument,
   attachDocumentToEncounter,
+  listEncounterBillingItems,
+  createEncounterBillingItem,
+  updateEncounterBillingItem,
+  deleteEncounterBillingItem,
+  getEncounterFinancialSummary,
+  closeEncounterFinancial,
+  listEncounterReceivables,
+  settleEncounterReceivable,
   type EncounterTimelineResponse,
   type PatientSummaryResponse,
   type SoapTemplatesResponse,
-  type EncounterTimelineNote,
   type NoteCreateInput,
   type NoteMutationInput,
-  type DocumentCreateInput,
-  type DocumentRecord,
-  type EncounterDocumentRelation,
+  type EncounterBillingListResponse,
+  type EncounterBillingCreateInput,
+  type EncounterBillingUpdateInput,
+  type EncounterFinancialSummaryResponse,
+  type EncounterFinancialCloseInput,
+  type EncounterReceivableListResponse,
+  type ListEncounterReceivablesInput,
+  type SettleEncounterReceivableInput
 } from '@/lib/api';
 
-/**
- * Query keys for encounter feature
- * Standardized structure: feature -> sub-feature -> identifiers
- */
 export const encounterKeys = {
   all: ['encounter'] as const,
   timeline: (encounterId: string) => [...encounterKeys.all, 'timeline', encounterId] as const,
@@ -31,52 +39,40 @@ export const encounterKeys = {
   soapTemplates: () => [...encounterKeys.all, 'soap-templates'] as const,
   notes: (encounterId: string) => [...encounterKeys.all, 'notes', encounterId] as const,
   documents: (encounterId: string) => [...encounterKeys.all, 'documents', encounterId] as const,
+  billing: (encounterId: string) => [...encounterKeys.all, 'billing', encounterId] as const,
+  financial: (encounterId: string) => [...encounterKeys.all, 'financial', encounterId] as const,
+  receivables: (filters: string) => [...encounterKeys.all, 'receivables', filters] as const
 };
 
-/**
- * Hook to get encounter timeline data
- * Includes encounter, notes, versions, documents, and timeline events
- */
 export function useEncounterTimeline(encounterId: string | null | undefined) {
   return useQuery<EncounterTimelineResponse | null>({
     queryKey: encounterKeys.timeline(encounterId ?? ''),
     queryFn: () => getEncounterTimeline(encounterId!),
     enabled: !!encounterId,
-    staleTime: 30 * 1000, // 30 seconds
-    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    placeholderData: keepPreviousData
   });
 }
 
-/**
- * Hook to get patient summary for sidebar
- */
 export function usePatientSummary(patientId: string | null | undefined) {
   return useQuery<PatientSummaryResponse | null>({
     queryKey: encounterKeys.patientSummary(patientId ?? ''),
     queryFn: () => getPatientSummary(patientId!),
     enabled: !!patientId,
-    staleTime: 60 * 1000, // 1 minute
-    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData
   });
 }
 
-/**
- * Hook to get SOAP templates
- * Templates are cached for the session
- */
 export function useSoapTemplates() {
   return useQuery<SoapTemplatesResponse>({
     queryKey: encounterKeys.soapTemplates(),
     queryFn: getSoapTemplates,
-    staleTime: Infinity, // Templates rarely change
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+    staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000
   });
 }
 
-/**
- * Hook to create a new clinical note
- * Invalidates timeline and notes on success
- */
 export function useCreateClinicalNote() {
   const queryClient = useQueryClient();
 
@@ -86,126 +82,178 @@ export function useCreateClinicalNote() {
     onSuccess: (_, { encounterId }) => {
       queryClient.invalidateQueries({ queryKey: encounterKeys.timeline(encounterId) });
       queryClient.invalidateQueries({ queryKey: encounterKeys.notes(encounterId) });
-    },
+    }
   });
 }
 
-/**
- * Hook to update a clinical note (autosave)
- * Uses optimistic updates for better UX
- */
 export function useUpdateClinicalNote() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: ({ noteId, input }: { noteId: string; input: NoteMutationInput }) =>
       updateClinicalNote(noteId, input),
-    onSuccess: (_, { input }) => {
-      // Don't invalidate immediately for autosave to prevent flicker
-      // The data will be refreshed on next user action or page refresh
+    onSuccess: () => {
       console.log('Autosave successful at', new Date().toLocaleTimeString());
     },
     onError: (error) => {
       console.error('Autosave failed:', error);
-    },
+    }
   });
 }
 
-/**
- * Hook to create a new version of a clinical note
- */
 export function useVersionClinicalNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ noteId, input }: { noteId: string; input: NoteMutationInput }) =>
       versionClinicalNote(noteId, input),
-    onSuccess: (_, { noteId }) => {
-      // Invalidate all encounter queries to refresh timeline
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: encounterKeys.all });
-    },
+    }
   });
 }
 
-/**
- * Hook to sign a clinical note
- */
 export function useSignClinicalNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (noteId: string) => signClinicalNote(noteId),
     onSuccess: () => {
-      // Invalidate all encounter queries to refresh timeline
       queryClient.invalidateQueries({ queryKey: encounterKeys.all });
-    },
+    }
   });
 }
 
-/**
- * Hook to upload and attach a document
- */
 export function useUploadDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      encounterId,
-      file,
-    }: {
-      encounterId: string;
-      file: File;
-    }) => {
-      // 1. Create document metadata
+    mutationFn: async ({ encounterId, file }: { encounterId: string; file: File }) => {
       const doc = await createDocument({
         filename: file.name,
         mimeType: file.type || 'application/octet-stream',
-        size: file.size,
+        size: file.size
       });
 
-      // 2. Attach to encounter
       const relation = await attachDocumentToEncounter(encounterId, doc.id);
-
       return { document: doc, relation };
     },
     onSuccess: (_, { encounterId }) => {
       queryClient.invalidateQueries({ queryKey: encounterKeys.timeline(encounterId) });
       queryClient.invalidateQueries({ queryKey: encounterKeys.documents(encounterId) });
-    },
+    }
   });
 }
 
-/**
- * Hook for combined encounter data loading
- * Returns all data needed for the encounter page
- */
+export function useEncounterBilling(encounterId: string | null | undefined) {
+  return useQuery<EncounterBillingListResponse>({
+    queryKey: encounterKeys.billing(encounterId ?? ''),
+    queryFn: () => listEncounterBillingItems({ encounterId: encounterId!, page: 1, pageSize: 100 }),
+    enabled: !!encounterId,
+    staleTime: 15 * 1000,
+    placeholderData: keepPreviousData
+  });
+}
+
+export function useCreateEncounterBillingItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ encounterId, input }: { encounterId: string; input: EncounterBillingCreateInput }) =>
+      createEncounterBillingItem(encounterId, input),
+    onSuccess: (_, { encounterId }) => {
+      queryClient.invalidateQueries({ queryKey: encounterKeys.billing(encounterId) });
+    }
+  });
+}
+
+export function useUpdateEncounterBillingItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ encounterId, billingItemId, input }: { encounterId: string; billingItemId: string; input: EncounterBillingUpdateInput }) =>
+      updateEncounterBillingItem(billingItemId, input),
+    onSuccess: (_, { encounterId }) => {
+      queryClient.invalidateQueries({ queryKey: encounterKeys.billing(encounterId) });
+    }
+  });
+}
+
+export function useDeleteEncounterBillingItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ billingItemId }: { encounterId: string; billingItemId: string }) =>
+      deleteEncounterBillingItem(billingItemId),
+    onSuccess: (_, { encounterId }) => {
+      queryClient.invalidateQueries({ queryKey: encounterKeys.billing(encounterId) });
+    }
+  });
+}
+
+export function useEncounterFinancial(encounterId: string | null | undefined) {
+  return useQuery<EncounterFinancialSummaryResponse>({
+    queryKey: encounterKeys.financial(encounterId ?? ''),
+    queryFn: () => getEncounterFinancialSummary(encounterId!),
+    enabled: !!encounterId,
+    staleTime: 15 * 1000,
+    placeholderData: keepPreviousData
+  });
+}
+
+export function useCloseEncounterFinancial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ encounterId, input }: { encounterId: string; input: EncounterFinancialCloseInput }) =>
+      closeEncounterFinancial(encounterId, input),
+    onSuccess: (_, { encounterId }) => {
+      queryClient.invalidateQueries({ queryKey: encounterKeys.financial(encounterId) });
+      queryClient.invalidateQueries({ queryKey: encounterKeys.billing(encounterId) });
+      queryClient.invalidateQueries({ queryKey: encounterKeys.timeline(encounterId) });
+      queryClient.invalidateQueries({ queryKey: encounterKeys.receivables('all') });
+    }
+  });
+}
+
+export function useEncounterReceivables(input: ListEncounterReceivablesInput = {}) {
+  const filters = JSON.stringify(input);
+  return useQuery<EncounterReceivableListResponse>({
+    queryKey: encounterKeys.receivables(filters),
+    queryFn: () => listEncounterReceivables(input),
+    staleTime: 15 * 1000,
+    placeholderData: keepPreviousData
+  });
+}
+
+export function useSettleEncounterReceivable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ receivableId, input }: { receivableId: string; input: SettleEncounterReceivableInput }) =>
+      settleEncounterReceivable(receivableId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: encounterKeys.receivables('all') });
+      queryClient.invalidateQueries({ queryKey: encounterKeys.all });
+    }
+  });
+}
+
 export function useEncounterData(encounterId: string | null | undefined) {
   const timelineQuery = useEncounterTimeline(encounterId);
   const templatesQuery = useSoapTemplates();
-
-  // Derive patient ID from timeline data
   const patientId = timelineQuery.data?.encounter.patientId;
   const patientSummaryQuery = usePatientSummary(patientId);
 
   return {
-    // Data
     timeline: timelineQuery.data,
     templates: templatesQuery.data?.data ?? [],
-    patientSummary: patientSummaryQuery.data,
-
-    // Loading states
+    patientSummary: patientSummaryQuery.data ?? null,
     isLoading: timelineQuery.isLoading || templatesQuery.isLoading,
     isLoadingSidebar: patientSummaryQuery.isLoading,
-
-    // Error states
     error: timelineQuery.error || templatesQuery.error,
     sidebarError: patientSummaryQuery.error,
-
-    // Refetch functions
     refetchTimeline: timelineQuery.refetch,
     refetchAll: () => {
       timelineQuery.refetch();
       patientSummaryQuery.refetch();
-    },
+    }
   };
 }

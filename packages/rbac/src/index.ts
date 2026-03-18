@@ -3,9 +3,9 @@ import {
   type CanonicalRole,
   CANONICAL_PERMISSIONS,
   ROLE_PERMISSIONS
-} from './permissions';
+} from './permissions.js';
 
-export * from './permissions';
+export * from './permissions.js';
 export { CANONICAL_PERMISSIONS, ROLE_PERMISSIONS };
 
 export type RbacPrincipal = {

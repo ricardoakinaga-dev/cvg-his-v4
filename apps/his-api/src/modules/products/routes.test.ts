@@ -43,6 +43,13 @@ async function buildTestApp(actor: RequestContext['actor']): Promise<FastifyInst
     REDIS_URL: 'redis://test',
     QUEUE_PREFIX: 'cvg-his',
     LOG_LEVEL: 'silent',
+    JWT_SECRET: 'test-secret-minimum-32-chars-ok!',
+    JWT_ISSUER: 'cvg-his-test',
+    JWT_AUDIENCE: 'cvg-his-api-test',
+    DEFAULT_TIMEZONE: 'UTC',
+    MEDICATION_SCHEDULE_DEFAULT_TIMEZONE: 'UTC',
+    MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT: '{}',
+    MEDICATION_SCHEDULE_TIMEZONE_BY_WARD: '{}',
     QDRANT_URL: undefined,
     QDRANT_COLLECTION: 'professor',
     QDRANT_API_KEY: undefined

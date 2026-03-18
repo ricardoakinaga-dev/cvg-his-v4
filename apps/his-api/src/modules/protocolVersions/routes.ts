@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { ProtocolContentSchema, parseOrThrow422 } from '@cvg-his/domain';
+import { ProtocolContentSchema, type ProtocolContentDto, parseOrThrow422 } from '@cvg-his/domain';
 import { z } from 'zod';
 
 import { requirePermission } from '../../middlewares/requirePermission.js';
@@ -91,7 +91,7 @@ export const protocolVersionsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = versionIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(editVersionBodySchema, request.body);
+      const body = parseOrThrow422(editVersionBodySchema, request.body) as { content_json: ProtocolContentDto; change_reason?: string };
       const service = createProtocolVersionsService({ db: app.db, requestContext: request.requestContext });
       const result = await service.editDraft(params.versionId, {
         contentJson: body.content_json,

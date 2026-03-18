@@ -65,10 +65,16 @@ const permissionDescriptions: Record<string, string> = {
   'product.read': 'Permite leitura do catálogo de produtos.',
   'product.write': 'Permite criar e alterar itens do catálogo de produtos.',
   'service.read': 'Permite leitura do catálogo de serviços.',
-  'service.write': 'Permite criar e alterar itens do catálogo de serviços.'
+  'service.write': 'Permite criar e alterar itens do catálogo de serviços.',
+  'billing_item.read': 'Permite leitura dos itens de cobrança vinculados ao atendimento.',
+  'billing_item.write': 'Permite criar, alterar e remover itens de cobrança do atendimento.',
+  'financial_account.read': 'Permite leitura do status financeiro e contas a receber do atendimento.',
+  'financial_account.close': 'Permite fechamento financeiro formal da conta do atendimento.',
+  'appointment.read': 'Permite leitura da agenda e agendamentos.',
+  'appointment.write': 'Permite criar, alterar e cancelar agendamentos.'
 };
 
-const permissionSeeds = CANONICAL_PERMISSIONS.map((key) => ({
+const permissionSeeds = CANONICAL_PERMISSIONS.map((key: string) => ({
   key,
   description: permissionDescriptions[key] ?? `Permissão canônica ${key}`
 }));
@@ -83,7 +89,7 @@ const roleSeeds = [
 const rolePermissionMap: Record<string, string[]> = Object.fromEntries(
   Object.entries(ROLE_PERMISSIONS).map(([roleName, rolePermissions]) => [
     roleName,
-    [...rolePermissions]
+    [...(rolePermissions as readonly string[])]
   ])
 );
 
@@ -146,8 +152,8 @@ async function seedPermissionsAndRoles(): Promise<void> {
     .from(roles)
     .where(inArray(roles.name, roleSeeds.map((role) => role.name)));
 
-  const permissionIdByKey = new Map(dbPermissions.map((permission) => [permission.key, permission.id]));
-  const roleIdByName = new Map(dbRoles.map((role) => [role.name, role.id]));
+  const permissionIdByKey = new Map(dbPermissions.map((permission: { key: string; id: string }) => [permission.key, permission.id]));
+  const roleIdByName = new Map(dbRoles.map((role: { name: string; id: string }) => [role.name, role.id]));
 
   for (const [roleName, permissionKeys] of Object.entries(rolePermissionMap)) {
     const roleId = roleIdByName.get(roleName);

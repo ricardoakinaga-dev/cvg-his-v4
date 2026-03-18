@@ -178,6 +178,9 @@ describe('handovers service', () => {
     const result = await service.publish(before.handover.id);
 
     expect(result.kind).toBe('published');
+    if (result.kind !== 'published') {
+      throw new Error('Expected published result');
+    }
     expect(result.job.jobId).toBe('job-1');
     expect(repo.publish).not.toHaveBeenCalled();
     expect(repo.markBuildPendingForRetry).toHaveBeenCalledWith({

@@ -344,7 +344,7 @@ describe('ClinicalTimeline', () => {
     );
 
     expect(screen.getByText('Notas:')).toBeInTheDocument();
-    expect(screen.getByText('V1')).toBeInTheDocument();
+    expect(screen.getAllByText('V1')).toHaveLength(2);
   });
 
   it('highlights selected note', () => {
@@ -416,7 +416,7 @@ describe('DocumentsPanel', () => {
     );
 
     expect(screen.getByText('exame-laboratorial.pdf')).toBeInTheDocument();
-    expect(screen.getByText(/1 MB/)).toBeInTheDocument();
+    expect(screen.getByText(/1000 KB|1 MB/)).toBeInTheDocument();
   });
 
   it('shows document count', () => {

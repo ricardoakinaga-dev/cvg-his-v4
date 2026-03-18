@@ -34,7 +34,7 @@ const JWT_ISSUER = 'cvg-his-test';
 const JWT_AUDIENCE = 'cvg-his-api-test';
 
 // Mock de DB: permite controlar findUserByEmail por teste
-let mockDbQuery: (sql: string, params: unknown[]) => { rows: Record<string, unknown>[] };
+let mockDbQuery: (sql: string, params?: unknown[]) => { rows: Record<string, unknown>[] };
 
 async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify();
@@ -61,9 +61,9 @@ async function buildApp(): Promise<FastifyInstance> {
   // Mock mínimo do db compatível com findUserByEmail
   app.decorate('db', {
     $client: {
-      query: (sql: string, params: unknown[]) => Promise.resolve(mockDbQuery(sql, params))
+      query: ((sql: string, params?: unknown[]) => Promise.resolve(mockDbQuery(sql, params))) as typeof import('@cvg-his/db').db.$client.query
     }
-  });
+  } as unknown as typeof import('@cvg-his/db').db);
 
   await app.register(authRoutes, { prefix: '/auth' });
   await app.ready();

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { WardCreateSchema, WardUpdateSchema, parseOrThrow422 } from '@cvg-his/domain';
+import { WardCreateSchema, WardUpdateSchema, type WardCreateDto, type WardUpdateDto, parseOrThrow422 } from '@cvg-his/domain';
 import { z } from 'zod';
 
 import { requirePermission } from '../../middlewares/requirePermission.js';
@@ -34,7 +34,7 @@ export const wardsRoutes: FastifyPluginAsync = async (app) => {
       preHandler: requirePermission('ward.write')
     },
     async (request, reply) => {
-      const body = parseOrThrow422(WardCreateSchema, request.body);
+      const body = parseOrThrow422(WardCreateSchema, request.body) as WardCreateDto;
       const service = createWardsService({ db: app.db, requestContext: request.requestContext });
       const created = await service.create(body);
       return reply.status(201).send(created);
@@ -48,7 +48,7 @@ export const wardsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = wardIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(WardUpdateSchema, request.body);
+      const body = parseOrThrow422(WardUpdateSchema, request.body) as WardUpdateDto;
       const service = createWardsService({ db: app.db, requestContext: request.requestContext });
       const updated = await service.update(params.id, body);
 

@@ -7,10 +7,5 @@ pnpm-lock.yaml
 .DS_Store
 # Patch files should not be tracked in version control
 *.patch
+
 .vscode/
-apps/his-web/.next/
-apps/his-web/build.out
-apps/his-web/build.err
-apps/his-web/package-lock.json
-packages/contracts/package-lock.json
-docs/docs.tar.gz

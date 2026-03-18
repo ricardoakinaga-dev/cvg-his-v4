@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   ProtocolCreateSchema,
   ProtocolUpdateSchema,
+  type ProtocolCreateDto,
+  type ProtocolUpdateDto,
   parseOrThrow422
 } from '@cvg-his/domain';
 import { z } from 'zod';
@@ -25,7 +27,7 @@ export const protocolsRoutes: FastifyPluginAsync = async (app) => {
       preHandler: requirePermission('protocol.write')
     },
     async (request, reply) => {
-      const body = parseOrThrow422(ProtocolCreateSchema, request.body);
+      const body = parseOrThrow422(ProtocolCreateSchema, request.body) as ProtocolCreateDto;
       const service = createProtocolsService({ db: app.db, requestContext: request.requestContext });
       const result = await service.create(body);
 
@@ -62,7 +64,7 @@ export const protocolsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = protocolIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(ProtocolUpdateSchema, request.body);
+      const body = parseOrThrow422(ProtocolUpdateSchema, request.body) as ProtocolUpdateDto;
       const service = createProtocolsService({ db: app.db, requestContext: request.requestContext });
       const result = await service.update(params.id, body);
 

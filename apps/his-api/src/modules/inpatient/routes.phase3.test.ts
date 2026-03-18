@@ -1,33 +1,60 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
+import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { registerErrorHandler } from '../../lib/errors.js';
 import { inpatientRoutes } from './routes.js';
 
-// Mock database client
-const mockDb = {
-  $client: {
-    query: vi.fn()
-  }
-};
+const mockedService = vi.hoisted(() => ({
+  admit: vi.fn(),
+  transfer: vi.fn(),
+  discharge: vi.fn(),
+  getById: vi.fn(),
+  list: vi.fn()
+}));
 
-// Mock request context
-const mockRequestContext = {
-  actor: {
-    accountId: 'test-account-id',
-    userId: 'test-user-id',
-    roles: ['vet']
-  },
-  requestId: 'test-request-id'
-};
+const createInpatientServiceMock = vi.hoisted(() => vi.fn(() => mockedService));
+
+vi.mock('./service.js', () => ({
+  createInpatientService: createInpatientServiceMock
+}));
 
 describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
   let app: ReturnType<typeof Fastify>;
 
   beforeAll(async () => {
     app = Fastify();
-    app.decorate('db', mockDb);
-    app.decorate('requestContext', mockRequestContext);
-    
-    // Register inpatient routes
+    app.decorate('db', { $client: { query: vi.fn() } } as unknown as typeof import('@cvg-his/db').db);
+    app.decorate('env', {
+      NODE_ENV: 'test',
+      PORT: 3000,
+      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his',
+      REDIS_URL: 'redis://localhost:6379',
+      QUEUE_PREFIX: 'cvg-his',
+      LOG_LEVEL: 'silent',
+      JWT_SECRET: 'test-secret-minimum-32-chars-ok!',
+      JWT_ISSUER: 'cvg-his-test',
+      JWT_AUDIENCE: 'cvg-his-api-test',
+      DEFAULT_TIMEZONE: 'UTC',
+      MEDICATION_SCHEDULE_DEFAULT_TIMEZONE: 'UTC',
+      MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT: '{}',
+      MEDICATION_SCHEDULE_TIMEZONE_BY_WARD: '{}',
+      QDRANT_URL: undefined,
+      QDRANT_COLLECTION: 'professor',
+      QDRANT_API_KEY: undefined
+    });
+    app.addHook('onRequest', async (request: FastifyRequest) => {
+      request.requestContext = {
+        requestId: request.id,
+        actor: {
+          accountId: 'test-account-id',
+          userId: 'test-user-id',
+          role: 'admin',
+          roles: ['admin'],
+          permissions: ['inpatient.read', 'inpatient.write', 'inpatient.discharge']
+        }
+      };
+    });
+    registerErrorHandler(app);
     await app.register(inpatientRoutes, { prefix: '/inpatient' });
     await app.ready();
   });
@@ -36,44 +63,23 @@ describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
     await app.close();
   });
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedService.getById.mockResolvedValue(null);
+    mockedService.list.mockResolvedValue({ data: [], page: 1, pageSize: 20, total: 0 });
+    mockedService.admit.mockResolvedValue({ kind: 'admitted', stay: { id: 'stay-1' } });
+    mockedService.transfer.mockResolvedValue({ kind: 'transferred', stay: { id: 'stay-1' } });
+    mockedService.discharge.mockResolvedValue({ kind: 'discharged', stay: { id: 'stay-1' } });
+  });
+
   describe('GET /inpatient/stays', () => {
-    it('should return 401 without authentication headers', async () => {
+    it('should return 200 with auth context', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/inpatient/stays'
+        url: '/inpatient/stays?status=active&page=1&pageSize=10'
       });
 
-      // Should fail due to missing auth headers (x-account-id, x-user-id)
-      expect([401, 403, 500]).toContain(response.statusCode);
-    });
-
-    it('should accept query parameters for filtering', async () => {
-      // Mock successful response
-      mockDb.$client.query.mockResolvedValueOnce({
-        rows: [{ count: 0 }]
-      });
-      mockDb.$client.query.mockResolvedValueOnce({
-        rows: []
-      });
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/inpatient/stays',
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        },
-        query: {
-          status: 'active',
-          wardId: 'test-ward-id',
-          page: 1,
-          pageSize: 10
-        }
-      });
-
-      // Should process the request (may fail on permissions, but route exists)
-      expect(response.statusCode).toBeDefined();
+      expect(response.statusCode).toBe(200);
     });
   });
 
@@ -81,37 +87,20 @@ describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
     it('should validate UUID parameter', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/inpatient/stays/invalid-uuid',
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        }
+        url: '/inpatient/stays/invalid-uuid'
       });
 
-      // Should reject invalid UUID
       expect(response.statusCode).toBe(400);
     });
 
     it('should accept valid UUID parameter', async () => {
-      // Mock stay not found
-      mockDb.$client.query.mockResolvedValueOnce({
-        rows: []
-      });
-
       const validUUID = '550e8400-e29b-41d4-a716-446655440000';
       const response = await app.inject({
         method: 'GET',
-        url: `/inpatient/stays/${validUUID}`,
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        }
+        url: `/inpatient/stays/${validUUID}`
       });
 
-      // Should process the request (404 if not found, which is expected)
-      expect([200, 404, 401, 403]).toContain(response.statusCode);
+      expect([200, 404]).toContain(response.statusCode);
     });
   });
 
@@ -119,15 +108,9 @@ describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
     it('should require request body', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/inpatient/admit',
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        }
+        url: '/inpatient/admit'
       });
 
-      // Should reject empty body
       expect([400, 422]).toContain(response.statusCode);
     });
   });
@@ -137,18 +120,12 @@ describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/inpatient/stays/invalid-uuid/transfer',
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        },
         payload: {
           toWardId: '550e8400-e29b-41d4-a716-446655440001',
           toBedId: '550e8400-e29b-41d4-a716-446655440002'
         }
       });
 
-      // Should reject invalid UUID
       expect(response.statusCode).toBe(400);
     });
   });
@@ -158,17 +135,11 @@ describe('Inpatient Routes - Phase 3 Smoke Tests', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/inpatient/stays/invalid-uuid/discharge',
-        headers: {
-          'x-account-id': 'test-account-id',
-          'x-user-id': 'test-user-id',
-          'x-user-roles': 'vet'
-        },
         payload: {
           reason: 'Test discharge'
         }
       });
 
-      // Should reject invalid UUID
       expect(response.statusCode).toBe(400);
     });
   });

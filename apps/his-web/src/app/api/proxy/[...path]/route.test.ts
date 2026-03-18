@@ -1,17 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST } from './route';
+import { GET, POST, resetProxyCache } from './route';
 
 // Mock fetch globally
 const originalFetch = global.fetch;
 const mockFetch = vi.fn();
-
-// Helper to reset module-level cache between tests
-// This is needed because the route module caches the upstream URL
-declare global {
-  // eslint-disable-next-line no-var
-  var __resetProxyCache: (() => void) | undefined;
-}
 
 describe('Proxy Route Handler', () => {
   beforeEach(() => {
@@ -19,10 +12,7 @@ describe('Proxy Route Handler', () => {
     mockFetch.mockReset();
     vi.stubEnv('HIS_API_INTERNAL_URL', 'http://upstream.test');
     vi.stubEnv('NODE_ENV', 'test');
-    // Reset the cached upstream URL between tests
-    if (globalThis.__resetProxyCache) {
-      globalThis.__resetProxyCache();
-    }
+    resetProxyCache();
   });
 
   afterEach(() => {

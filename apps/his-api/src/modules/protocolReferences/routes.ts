@@ -103,7 +103,7 @@ export const protocolReferencesRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = protocolIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(createReferenceBodySchema, request.body);
+      const body = parseOrThrow422(createReferenceBodySchema, request.body) as z.infer<typeof createReferenceBodySchema>;
       const service = createProtocolReferencesService(
         { db: app.db, requestContext: request.requestContext },
         { suggestAdapter }

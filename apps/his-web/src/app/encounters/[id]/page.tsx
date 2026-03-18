@@ -12,6 +12,7 @@ import { EncounterDocumentsTab } from '@/features/encounter/components/Encounter
 import { EncounterSidebar } from '@/features/encounter/components/EncounterSidebar';
 import { EncounterSummaryTab } from '@/features/encounter/components/EncounterSummaryTab';
 import { EncounterMedsTab } from '@/features/encounter/components/EncounterMedsTab';
+import { EncounterBillingPanel } from '@/features/encounter/components/EncounterBillingPanel';
 
 // TanStack Query hooks
 import {
@@ -219,9 +220,12 @@ export default function EncounterDetailsPage(): JSX.Element {
             targetTab = 'meds';
             break;
           case '4':
-            targetTab = 'documents';
+            targetTab = 'billing';
             break;
           case '5':
+            targetTab = 'documents';
+            break;
+          case '6':
             targetTab = 'timeline';
             break;
         }
@@ -375,6 +379,10 @@ export default function EncounterDetailsPage(): JSX.Element {
                     encounterId={timeline.encounter.id}
                   />
                 ),
+              },
+              billing: {
+                label: 'Billing',
+                content: <EncounterBillingPanel encounterId={timeline.encounter.id} />,
               },
               documents: {
                 label: 'Documentos',

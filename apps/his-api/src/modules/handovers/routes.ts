@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { HandoverDraftSchema, HandoverPublishSchema, parseOrThrow422 } from '@cvg-his/domain';
+import { HandoverDraftSchema, HandoverPublishSchema, type HandoverDraftDto, parseOrThrow422 } from '@cvg-his/domain';
 import { z } from 'zod';
 
 import { createApiQueues, HANDOVER_BUILD_QUEUE_NAME } from '../../lib/queues.js';
@@ -31,7 +31,7 @@ export const handoversRoutes: FastifyPluginAsync = async (app) => {
       preHandler: requirePermission('handover.write')
     },
     async (request, reply) => {
-      const body = parseOrThrow422(HandoverDraftSchema, request.body);
+      const body = parseOrThrow422(HandoverDraftSchema, request.body) as HandoverDraftDto;
       const service = createHandoversService({ db: app.db, requestContext: request.requestContext });
       const result = await service.createDraft(body);
 

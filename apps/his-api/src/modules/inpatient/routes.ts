@@ -4,6 +4,9 @@ import {
   InpatientDischargeSchema,
   InpatientStayStatusSchema,
   InpatientTransferSchema,
+  type InpatientAdmitDto,
+  type InpatientDischargeDto,
+  type InpatientTransferDto,
   parseOrThrow422
 } from '@cvg-his/domain';
 import { z } from 'zod';
@@ -29,7 +32,7 @@ export const inpatientRoutes: FastifyPluginAsync = async (app) => {
       preHandler: requirePermission('inpatient.write')
     },
     async (request, reply) => {
-      const body = parseOrThrow422(InpatientAdmitSchema, request.body);
+      const body = parseOrThrow422(InpatientAdmitSchema, request.body) as InpatientAdmitDto;
       const service = createInpatientService({ db: app.db, requestContext: request.requestContext });
       const result = await service.admit(body);
 
@@ -68,7 +71,7 @@ export const inpatientRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = stayIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(InpatientTransferSchema, request.body);
+      const body = parseOrThrow422(InpatientTransferSchema, request.body) as InpatientTransferDto;
       const service = createInpatientService({ db: app.db, requestContext: request.requestContext });
       const result = await service.transfer(params.id, body);
 
@@ -114,7 +117,7 @@ export const inpatientRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = stayIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(InpatientDischargeSchema, request.body);
+      const body = parseOrThrow422(InpatientDischargeSchema, request.body) as InpatientDischargeDto;
       const service = createInpatientService({ db: app.db, requestContext: request.requestContext });
       const result = await service.discharge(params.id, body);
 

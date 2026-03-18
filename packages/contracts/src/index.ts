@@ -19,9 +19,15 @@
 export * from './common.js';
 
 // Domain contracts
+export * from './agendaConfig.js';
+export * from './appointments.js';
 export * from './owners.js';
 export * from './patients.js';
+export * from './encounterBilling.js';
+export * from './encounterFinancial.js';
 export * from './encounters.js';
+export * from './exams.js';
+export * from './integration.js';
 export * from './products.js';
 export * from './services.js';
 
@@ -31,9 +37,20 @@ export * from './services.js';
  * ==========================================
  */
 
+import { appointmentsContract, AppointmentsContract } from './appointments.js';
+import {
+  availabilityContract,
+  typeConfigContract,
+  AvailabilityContract,
+  TypeConfigContract
+} from './agendaConfig.js';
 import { ownersContract, OwnersContract } from './owners.js';
 import { patientsContract, PatientsContract } from './patients.js';
+import { encounterBillingContract } from './encounterBilling.js';
+import { encounterFinancialContract } from './encounterFinancial.js';
 import { encountersContract, EncountersContract } from './encounters.js';
+import { examOrdersContract, examResultsContract, ExamOrdersContract, ExamResultsContract } from './exams.js';
+import { integrationContract, IntegrationContract } from './integration.js';
 import { productsContract, ProductsContract } from './products.js';
 import { servicesContract, ServicesContract } from './services.js';
 
@@ -41,9 +58,17 @@ import { servicesContract, ServicesContract } from './services.js';
  * Complete API contract definition
  */
 export const apiContract = {
+  availability: availabilityContract,
+  typeConfig: typeConfigContract,
+  appointments: appointmentsContract,
   owners: ownersContract,
   patients: patientsContract,
+  encounterBilling: encounterBillingContract,
+  encounterFinancial: encounterFinancialContract,
   encounters: encountersContract,
+  examOrders: examOrdersContract,
+  examResults: examResultsContract,
+  integration: integrationContract,
   products: productsContract,
   services: servicesContract
 } as const;
@@ -60,6 +85,117 @@ export type ApiContract = typeof apiContract;
  * Endpoint metadata for documentation and testing
  */
 export const contractEndpoints = [
+  // Professional Availability
+  {
+    domain: 'availability',
+    operation: 'create',
+    method: 'POST',
+    path: '/availability',
+    description: 'Create professional availability slot'
+  },
+  {
+    domain: 'availability',
+    operation: 'getById',
+    method: 'GET',
+    path: '/availability/:id',
+    description: 'Get availability by ID'
+  },
+  {
+    domain: 'availability',
+    operation: 'list',
+    method: 'GET',
+    path: '/availability',
+    description: 'List availability slots'
+  },
+  {
+    domain: 'availability',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/availability/:id',
+    description: 'Update availability slot'
+  },
+  {
+    domain: 'availability',
+    operation: 'delete',
+    method: 'DELETE',
+    path: '/availability/:id',
+    description: 'Delete availability slot'
+  },
+
+  // Appointment Type Configs
+  {
+    domain: 'typeConfig',
+    operation: 'create',
+    method: 'POST',
+    path: '/appointment-types',
+    description: 'Create appointment type config'
+  },
+  {
+    domain: 'typeConfig',
+    operation: 'getById',
+    method: 'GET',
+    path: '/appointment-types/:id',
+    description: 'Get appointment type config by ID'
+  },
+  {
+    domain: 'typeConfig',
+    operation: 'list',
+    method: 'GET',
+    path: '/appointment-types',
+    description: 'List appointment type configs'
+  },
+  {
+    domain: 'typeConfig',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/appointment-types/:id',
+    description: 'Update appointment type config'
+  },
+  {
+    domain: 'typeConfig',
+    operation: 'delete',
+    method: 'DELETE',
+    path: '/appointment-types/:id',
+    description: 'Delete appointment type config'
+  },
+
+  // Appointments
+  {
+    domain: 'appointments',
+    operation: 'create',
+    method: 'POST',
+    path: '/appointments',
+    description: 'Create a new appointment'
+  },
+  {
+    domain: 'appointments',
+    operation: 'getById',
+    method: 'GET',
+    path: '/appointments/:id',
+    description: 'Get appointment by ID'
+  },
+  {
+    domain: 'appointments',
+    operation: 'list',
+    method: 'GET',
+    path: '/appointments',
+    description: 'List appointments with filters'
+  },
+  {
+    domain: 'appointments',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/appointments/:id',
+    description: 'Update appointment by ID'
+  },
+  {
+    domain: 'appointments',
+    operation: 'cancel',
+    method: 'POST',
+    path: '/appointments/:id/cancel',
+    description: 'Cancel an appointment'
+  },
+
   // Owners
   {
     domain: 'owners',
@@ -173,6 +309,55 @@ export const contractEndpoints = [
 
   // Products
   {
+    domain: 'encounterBilling',
+    operation: 'create',
+    method: 'POST',
+    path: '/encounters/:encounterId/billing-items',
+    description: 'Create billing item for encounter'
+  },
+  {
+    domain: 'encounterBilling',
+    operation: 'list',
+    method: 'GET',
+    path: '/encounter-billing-items',
+    description: 'List encounter billing items'
+  },
+  {
+    domain: 'encounterBilling',
+    operation: 'getSummary',
+    method: 'GET',
+    path: '/encounters/:encounterId/billing-summary',
+    description: 'Get consolidated billing summary for encounter'
+  },
+  {
+    domain: 'encounterBilling',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/encounter-billing-items/:id',
+    description: 'Update encounter billing item'
+  },
+  {
+    domain: 'encounterBilling',
+    operation: 'remove',
+    method: 'DELETE',
+    path: '/encounter-billing-items/:id',
+    description: 'Delete encounter billing item'
+  },
+  {
+    domain: 'encounterFinancial',
+    operation: 'getSummary',
+    method: 'GET',
+    path: '/encounters/:encounterId/financial-summary',
+    description: 'Get financial summary and receivable status for encounter'
+  },
+  {
+    domain: 'encounterFinancial',
+    operation: 'close',
+    method: 'POST',
+    path: '/encounters/:encounterId/financial-close',
+    description: 'Perform formal financial close of encounter account'
+  },
+  {
     domain: 'products',
     operation: 'create',
     method: 'POST',
@@ -200,6 +385,23 @@ export const contractEndpoints = [
     path: '/products/:id',
     description: 'Update product by ID'
   },
+
+  // Exam Orders
+  { domain: 'examOrders', operation: 'create', method: 'POST', path: '/exam-orders', description: 'Create exam order' },
+  { domain: 'examOrders', operation: 'getById', method: 'GET', path: '/exam-orders/:id', description: 'Get exam order by ID' },
+  { domain: 'examOrders', operation: 'list', method: 'GET', path: '/exam-orders', description: 'List exam orders' },
+  { domain: 'examOrders', operation: 'update', method: 'PATCH', path: '/exam-orders/:id', description: 'Update exam order' },
+
+  // Exam Results
+  { domain: 'examResults', operation: 'create', method: 'POST', path: '/exam-results', description: 'Create exam result' },
+  { domain: 'examResults', operation: 'getById', method: 'GET', path: '/exam-results/:id', description: 'Get exam result by ID' },
+  { domain: 'examResults', operation: 'list', method: 'GET', path: '/exam-results', description: 'List exam results' },
+  { domain: 'examResults', operation: 'update', method: 'PATCH', path: '/exam-results/:id', description: 'Update exam result' },
+
+  // Integration (R3.7)
+  { domain: 'integration', operation: 'startEncounterFromAppointment', method: 'POST', path: '/appointments/:id/start-encounter', description: 'Start encounter from appointment' },
+  { domain: 'integration', operation: 'createExamOrderFromEncounter', method: 'POST', path: '/encounters/:id/exam-orders', description: 'Create exam order from encounter' },
+  { domain: 'integration', operation: 'getEncounterIntegratedSummary', method: 'GET', path: '/encounters/:id/summary', description: 'Get integrated encounter summary' },
 
   // Services
   {

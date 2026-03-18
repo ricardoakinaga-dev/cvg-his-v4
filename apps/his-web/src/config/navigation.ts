@@ -36,6 +36,12 @@ export const NAVIGATION_CONFIG: NavSection[] = [
         ]
     },
     {
+        title: 'Financeiro',
+        items: [
+            { label: 'Contas a receber', href: '/financial', permission: PERMISSIONS.FINANCIAL_ACCOUNT_READ },
+        ]
+    },
+    {
         title: 'Internação',
         items: [
             { label: 'Painel Geral', href: '/inpatient/stays', permission: PERMISSIONS.BEDMAP_READ },

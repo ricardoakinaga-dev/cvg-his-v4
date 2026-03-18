@@ -75,11 +75,11 @@ describe('InpatientStaysDashboard', () => {
     (api.listInpatientStays as any).mockResolvedValue({ data: mockStays, total: 1, page: 1, pageSize: 20 });
   });
 
-  it('should render loading state initially', async () => {
+  it('should render dashboard shell initially', async () => {
     render(<InpatientStaysDashboard />, { wrapper: createWrapper() });
-    
-    // Should show loading skeleton or loading text
-    expect(screen.getByText(/Carregando/i) || document.querySelector('table')).toBeTruthy();
+
+    expect(screen.getByText(/Internações/i)).toBeTruthy();
+    expect(screen.getByText(/Atualizar/i)).toBeTruthy();
   });
 
   it('should render stays list after loading', async () => {
@@ -92,9 +92,10 @@ describe('InpatientStaysDashboard', () => {
 
   it('should render filter controls', async () => {
     render(<InpatientStaysDashboard />, { wrapper: createWrapper() });
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/Status/i)).toBeTruthy();
+      expect(screen.getAllByText(/^Status$/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Ala \/ Ward/i)).toBeTruthy();
     });
   });
 
@@ -203,11 +204,12 @@ describe('StayTabs', () => {
 describe('Error States', () => {
   it('should show error state when API fails', async () => {
     (api.listInpatientStays as any).mockRejectedValue(new Error('API Error'));
-    
+
     render(<InpatientStaysDashboard />, { wrapper: createWrapper() });
-    
+
     await waitFor(() => {
-      expect(screen.getByText(/Erro/i) || screen.getByText(/Falha/i)).toBeTruthy();
+      expect(screen.getByText(/Erro ao carregar internações/i)).toBeTruthy();
+      expect(screen.getByText('API Error')).toBeTruthy();
     });
   });
 });

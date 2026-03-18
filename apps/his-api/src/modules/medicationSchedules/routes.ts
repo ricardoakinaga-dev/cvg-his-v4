@@ -1,7 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 import {
-  MedicationScheduleCreateSchemaBase, // <--- Importando a Base
+  MedicationScheduleCreateSchemaBase,
   MedicationScheduleUpdateSchema,
+  type MedicationScheduleCreateDto,
+  type MedicationScheduleUpdateDto,
   parseOrThrow422
 } from '@cvg-his/domain';
 import { z } from 'zod';
@@ -13,7 +15,6 @@ const medicationOrderIdParamSchema = z.object({
   id: z.string().uuid()
 });
 
-// <--- Usando a Base aqui para permitir o .omit()
 const scheduleCreateBodySchema = MedicationScheduleCreateSchemaBase.omit({
   orderId: true
 });
@@ -26,7 +27,7 @@ export const medicationSchedulesRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = medicationOrderIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(scheduleCreateBodySchema, request.body);
+      const body = parseOrThrow422(scheduleCreateBodySchema, request.body) as Omit<MedicationScheduleCreateDto, 'orderId'>;
       const service = createMedicationSchedulesService({ db: app.db, requestContext: request.requestContext });
       const result = await service.create(params.id, body);
 
@@ -61,7 +62,7 @@ export const medicationSchedulesRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const params = medicationOrderIdParamSchema.parse(request.params);
-      const body = parseOrThrow422(MedicationScheduleUpdateSchema, request.body);
+      const body = parseOrThrow422(MedicationScheduleUpdateSchema, request.body) as MedicationScheduleUpdateDto;
       const service = createMedicationSchedulesService({ db: app.db, requestContext: request.requestContext });
       const result = await service.update(params.id, body);
 

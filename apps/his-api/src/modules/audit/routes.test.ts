@@ -83,11 +83,17 @@ async function buildApp(accountId: string): Promise<{
   };
 
   const app = Fastify();
-  app.decorate('db', {
+  const db = {
     $client: {
       query: queryMock
     }
-  } as unknown as typeof import('@cvg-his/db').db);
+  } as unknown as typeof import('@cvg-his/db').db;
+  app.decorate('db', db);
+  app.decorateRequest('db', {
+    getter() {
+      return db;
+    }
+  });
   app.decorate('env', {
     NODE_ENV: 'test',
     PORT: 3000,

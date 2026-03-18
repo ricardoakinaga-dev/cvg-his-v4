@@ -1,90 +1,90 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import { createMedicationAdministrationsService } from './service.js';
 
 describe('medication administrations service', () => {
-    it('creates follow-up requirement (alert) when dose is refused', async () => {
-        const fakeRepo = {
-            create: vi.fn(),
-            list: vi.fn(),
-            findByOrderAndSlot: vi.fn(),
-            findOrderInAccount: vi.fn()
-        };
-        const dbClientParams: any[][] = [];
-        const mockDb = {
-            $client: {
-                query: vi.fn((queryString, params) => {
-                    dbClientParams.push(params);
-                    if (queryString.includes('insert into alerts')) {
-                        return { rows: [{ id: 'fake-alert-id' }] };
-                    }
-                    if (queryString.includes('select mo.medication_name')) {
-                        return {
-                            rows: [{ medication_name: 'Aspirin', patient_name: 'John Doe' }]
-                        };
-                    }
-                    return { rows: [] };
-                })
-            }
-        };
+  it('creates follow-up requirement (alert) when dose is refused', async () => {
+    const fakeRepo = {
+      create: vi.fn(),
+      list: vi.fn(),
+      findOrderInAccount: vi.fn(),
+      findOrderInfo: vi.fn(),
+      findPatientInfo: vi.fn()
+    };
 
-        fakeRepo.create.mockResolvedValue({
-            id: 'admin_1',
-            accountId: 'acc1',
-            stayId: 'stay_1',
-            encounterId: null,
-            orderId: 'order_1',
-            scheduledFor: new Date('2026-02-20T10:00:00Z'),
-            status: 'refused',
-            delayedUntil: null,
-            effectiveAt: null,
-            reason: 'Paciente recusou',
-            administeredByUserId: 'user_1',
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
+    const fakeAlertsRepo = {
+      create: vi.fn()
+    };
 
-        fakeRepo.findOrderInAccount.mockResolvedValue({
-            id: 'order_1',
-            stayId: 'stay_1',
-            status: 'active'
-        });
+    const mockDb = {
+      $client: {
+        query: vi.fn()
+      }
+    };
 
-        // allow order to be active
-        const requestContext = {
-            actor: { accountId: 'acc1', userId: 'user1' },
-            requestId: 'req_1'
-        };
-
-        // mock rules
-        vi.mock('./rules.js', () => ({
-            isMedicationOrderActive: () => true,
-            isDuplicateMedicationAdministrationError: () => false,
-            isMedicationAdministrationReasonCheckError: () => false
-        }));
-
-        const service = createMedicationAdministrationsService(
-            { db: mockDb as any, requestContext: requestContext as any },
-            { repo: fakeRepo as any, appendAudit: vi.fn() as any }
-        );
-
-        await service.record({
-            stayId: 'stay_1',
-            orderId: 'order_1',
-            scheduledFor: '2026-02-20T10:00:00.000Z',
-            status: 'refused',
-            reason: 'Paciente recusou'
-        });
-
-        const alertInsertCall = mockDb.$client.query.mock.calls.find(call => call[0].includes('insert into alerts'));
-        expect(alertInsertCall).toBeDefined();
-
-        // Verify params sent to DB
-        const params = alertInsertCall![1];
-        // params order:  accountId, type, stayId, orderId, scheduledFor, severity, message
-        expect(params[0]).toBe('acc1');
-        expect(params[1]).toBe('dose_refused_needs_review');
-        expect(params[2]).toBe('stay_1');
-        expect(params[3]).toBe('order_1');
-        expect(params[6]).toBe('Dose refused: Aspirin for John Doe');
+    fakeRepo.create.mockResolvedValue({
+      id: 'admin_1',
+      accountId: 'acc1',
+      stayId: 'stay_1',
+      encounterId: null,
+      orderId: 'order_1',
+      scheduledFor: new Date('2026-02-20T10:00:00Z'),
+      status: 'refused',
+      delayedUntil: null,
+      effectiveAt: null,
+      administeredAt: null,
+      reason: 'Paciente recusou',
+      administeredByUserId: 'user_1',
+      createdAt: new Date()
     });
+
+    fakeRepo.findOrderInAccount.mockResolvedValue({
+      id: 'order_1',
+      patientId: 'patient_1',
+      stayId: 'stay_1',
+      encounterId: null,
+      status: 'active'
+    });
+
+    fakeRepo.findOrderInfo.mockResolvedValue({
+      medicationName: 'Aspirin',
+      patientName: 'John Doe'
+    });
+
+    const requestContext = {
+      actor: { accountId: 'acc1', userId: 'user1', roles: ['admin'] },
+      requestId: 'req_1'
+    };
+
+    vi.doMock('../alerts/repo.js', () => ({
+      createAlertsRepo: () => fakeAlertsRepo
+    }));
+
+    const { createMedicationAdministrationsService: createService } = await import('./service.js');
+
+    const service = createService(
+      { db: mockDb as any, requestContext: requestContext as any },
+      { repo: fakeRepo as any, appendAudit: vi.fn() as any }
+    );
+
+    const result = await service.record({
+      stayId: 'stay_1',
+      orderId: 'order_1',
+      scheduledFor: '2026-02-20T10:00:00.000Z',
+      status: 'refused',
+      reason: 'Paciente recusou'
+    });
+
+    expect(result.kind).toBe('recorded');
+    expect(fakeAlertsRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: 'acc1',
+        type: 'dose_refused_needs_review',
+        stayId: 'stay_1',
+        orderId: 'order_1',
+        severity: 'medium',
+        message: 'Dose refused: Aspirin for John Doe'
+      })
+    );
+  });
 });

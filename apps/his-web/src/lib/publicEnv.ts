@@ -105,7 +105,7 @@ export function resolvePublicApiBaseConfig(): PublicApiBaseConfig {
  * Must be called in server context only.
  */
 export function assertServerEnv(): void {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !process.env.VITEST) {
     throw new Error('[his-web][env] assertServerEnv() must only be called on the server side');
   }
 

@@ -209,6 +209,155 @@ export type CatalogCreateInput = {
 
 export type CatalogUpdateInput = Partial<CatalogCreateInput>;
 
+export type BillingItemType = 'service' | 'product';
+
+export type EncounterBillingItemRecord = {
+  id: string;
+  accountId: string;
+  encounterId: string;
+  itemType: BillingItemType;
+  catalogItemId: string | null;
+  nameSnapshot: string;
+  codeSnapshot: string | null;
+  unitPrice: number;
+  quantity: number;
+  discountAmount: number;
+  lineTotal: number;
+  notes: string | null;
+  createdByUserId: string;
+  updatedByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EncounterBillingListResponse = {
+  data: EncounterBillingItemRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type EncounterBillingCreateInput = {
+  itemType: BillingItemType;
+  catalogItemId?: string | null;
+  nameSnapshot: string;
+  codeSnapshot?: string | null;
+  unitPrice: number;
+  quantity?: number;
+  discountAmount?: number;
+  notes?: string | null;
+};
+
+export type EncounterBillingUpdateInput = {
+  catalogItemId?: string | null;
+  nameSnapshot?: string;
+  codeSnapshot?: string | null;
+  unitPrice?: number;
+  quantity?: number;
+  discountAmount?: number;
+  notes?: string | null;
+};
+
+export type EncounterFinancialStatus = 'pending' | 'partial' | 'paid';
+export type EncounterReceivableStatus = 'open' | 'settled';
+
+export type EncounterReceivablePaymentRecord = {
+  id: string;
+  receivableId: string;
+  financialAccountId: string;
+  encounterId: string;
+  amountPaid: number;
+  paidAt: string;
+  paidByUserId: string | null;
+  notes: string | null;
+};
+
+export type EncounterReceivableRecord = {
+  id: string;
+  encounterId: string;
+  financialAccountId: string;
+  installmentNumber: number;
+  installmentLabel: string;
+  dueAt: string | null;
+  status: EncounterReceivableStatus;
+  amountOriginal: number;
+  amountPaid: number;
+  amountOutstanding: number;
+  issuedAt: string;
+  settledAt: string | null;
+  notes: string | null;
+  payments: EncounterReceivablePaymentRecord[];
+};
+
+export type EncounterFinancialSummaryResponse = {
+  encounterId: string;
+  accountId: string;
+  encounterStatus: EncounterStatus;
+  financialStatus: EncounterFinancialStatus;
+  financialClosed: boolean;
+  subtotal: number;
+  discountTotal: number;
+  total: number;
+  paidAmount: number;
+  balanceDue: number;
+  closedAt: string | null;
+  closedByUserId: string | null;
+  notes: string | null;
+  receivable: EncounterReceivableRecord | null;
+  receivables: EncounterReceivableRecord[];
+  payments: EncounterReceivablePaymentRecord[];
+};
+
+export type EncounterFinancialInstallmentInput = {
+  label?: string;
+  amount: number;
+  dueAt?: string | null;
+  notes?: string | null;
+};
+
+export type EncounterFinancialCloseInput = {
+  paidAmount: number;
+  notes?: string | null;
+  installments?: EncounterFinancialInstallmentInput[];
+};
+
+export type EncounterReceivableListItem = EncounterReceivableRecord & {
+  encounterStatus: EncounterStatus;
+  patientId: string;
+  patientName: string;
+  patientSpecies: string | null;
+  ownerId: string;
+  ownerName: string;
+  ownerPhoneMain: string | null;
+  financialStatus: EncounterFinancialStatus;
+  totalAmount: number;
+  lastClosedAt: string | null;
+};
+
+export type EncounterReceivableListResponse = {
+  data: EncounterReceivableListItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  openCount: number;
+  settledCount: number;
+  totalOutstanding: number;
+  totalSettled: number;
+};
+
+export type ListEncounterReceivablesInput = {
+  status?: EncounterReceivableStatus;
+  search?: string;
+  encounterId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type SettleEncounterReceivableInput = {
+  amountPaid: number;
+  notes?: string | null;
+};
+
 export type EncounterRecord = {
   id: string;
   accountId: string;
@@ -706,7 +855,7 @@ export async function apiFetch<T = unknown>(path: string, init: ApiFetchInit = {
   return payload as T;
 }
 
-function toQueryString(params: Record<string, string | number | undefined>): string {
+function toQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const query = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
@@ -1453,4 +1602,437 @@ export function updateProduct(productId: string, payload: CatalogUpdateInput): P
     method: 'PATCH',
     body: JSON.stringify(payload)
   });
+}
+
+export function listEncounterBillingItems(input: {
+  encounterId: string;
+  itemType?: BillingItemType;
+  page?: number;
+  pageSize?: number;
+}): Promise<EncounterBillingListResponse> {
+  const queryString = toQueryString({
+    encounterId: input.encounterId,
+    itemType: input.itemType,
+    page: input.page,
+    pageSize: input.pageSize
+  });
+
+  return apiFetch<EncounterBillingListResponse>(`/encounter-billing-items${queryString}`, {
+    method: 'GET'
+  });
+}
+
+export function createEncounterBillingItem(
+  encounterId: string,
+  payload: EncounterBillingCreateInput
+): Promise<EncounterBillingItemRecord> {
+  return apiFetch<EncounterBillingItemRecord>(`/encounters/${encounterId}/billing-items`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateEncounterBillingItem(
+  billingItemId: string,
+  payload: EncounterBillingUpdateInput
+): Promise<EncounterBillingItemRecord> {
+  return apiFetch<EncounterBillingItemRecord>(`/encounter-billing-items/${billingItemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteEncounterBillingItem(billingItemId: string): Promise<void> {
+  return apiFetch<void>(`/encounter-billing-items/${billingItemId}`, {
+    method: 'DELETE'
+  });
+}
+
+export function getEncounterFinancialSummary(encounterId: string): Promise<EncounterFinancialSummaryResponse> {
+  return apiFetch<EncounterFinancialSummaryResponse>(`/encounters/${encounterId}/financial-summary`, {
+    method: 'GET'
+  });
+}
+
+export function closeEncounterFinancial(
+  encounterId: string,
+  payload: EncounterFinancialCloseInput
+): Promise<EncounterFinancialSummaryResponse> {
+  return apiFetch<EncounterFinancialSummaryResponse>(`/encounters/${encounterId}/financial-close`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listEncounterReceivables(
+  input: ListEncounterReceivablesInput = {}
+): Promise<EncounterReceivableListResponse> {
+  const queryString = toQueryString({
+    status: input.status,
+    search: input.search,
+    encounterId: input.encounterId,
+    page: input.page,
+    pageSize: input.pageSize
+  });
+
+  return apiFetch<EncounterReceivableListResponse>(`/financial/receivables${queryString}`, {
+    method: 'GET'
+  });
+}
+
+export function settleEncounterReceivable(
+  receivableId: string,
+  payload: SettleEncounterReceivableInput
+): Promise<EncounterReceivableRecord> {
+  return apiFetch<EncounterReceivableRecord>(`/financial/receivables/${receivableId}/settle`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * ==========================================
+ * R3.4 — APPOINTMENTS
+ * ==========================================
+ */
+
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+export type AppointmentType = 'consultation' | 'vaccination' | 'surgery' | 'exam' | 'return' | 'other';
+
+export type AppointmentRecord = {
+  id: string;
+  accountId: string;
+  patientId: string;
+  ownerId: string;
+  professionalUserId: string;
+  startAt: string;
+  endAt: string;
+  status: AppointmentStatus;
+  type: AppointmentType;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AppointmentListResponse = {
+  data: AppointmentRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type AppointmentCreateInput = {
+  patientId: string;
+  ownerId: string;
+  professionalUserId: string;
+  startAt: string;
+  endAt: string;
+  type?: AppointmentType;
+  notes?: string;
+};
+
+export type AppointmentUpdateInput = {
+  professionalUserId?: string;
+  startAt?: string;
+  endAt?: string;
+  status?: AppointmentStatus;
+  type?: AppointmentType;
+  notes?: string;
+};
+
+export function listAppointments(input: {
+  page?: number;
+  pageSize?: number;
+  status?: AppointmentStatus;
+  type?: AppointmentType;
+  professionalUserId?: string;
+  patientId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+} = {}): Promise<AppointmentListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<AppointmentListResponse>(`/appointments${queryString}`, { method: 'GET' });
+}
+
+export function getAppointment(id: string): Promise<AppointmentRecord> {
+  return apiFetch<AppointmentRecord>(`/appointments/${id}`, { method: 'GET' });
+}
+
+export function createAppointment(payload: AppointmentCreateInput): Promise<AppointmentRecord> {
+  return apiFetch<AppointmentRecord>('/appointments', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAppointment(id: string, payload: AppointmentUpdateInput): Promise<AppointmentRecord> {
+  return apiFetch<AppointmentRecord>(`/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function cancelAppointment(id: string): Promise<AppointmentRecord> {
+  return apiFetch<AppointmentRecord>(`/appointments/${id}/cancel`, { method: 'POST' });
+}
+
+export function startEncounterFromAppointment(appointmentId: string, reason?: string): Promise<{ encounterId: string; appointmentId: string }> {
+  return apiFetch(`/appointments/${appointmentId}/start-encounter`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+/**
+ * ==========================================
+ * R3.5 — AVAILABILITY & TYPE CONFIGS
+ * ==========================================
+ */
+
+export type AvailabilityRecord = {
+  id: string;
+  accountId: string;
+  professionalUserId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDurationMinutes: number;
+  notes: string | null;
+};
+
+export type AvailabilityListResponse = {
+  data: AvailabilityRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type AvailabilityCreateInput = {
+  professionalUserId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDurationMinutes?: number;
+  notes?: string;
+};
+
+export function listAvailability(input: { page?: number; pageSize?: number; professionalUserId?: string } = {}): Promise<AvailabilityListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<AvailabilityListResponse>(`/availability${queryString}`, { method: 'GET' });
+}
+
+export function createAvailability(payload: AvailabilityCreateInput): Promise<AvailabilityRecord> {
+  return apiFetch<AvailabilityRecord>('/availability', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAvailability(id: string, payload: Partial<AvailabilityCreateInput>): Promise<AvailabilityRecord> {
+  return apiFetch<AvailabilityRecord>(`/availability/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deleteAvailability(id: string): Promise<void> {
+  return apiFetch<void>(`/availability/${id}`, { method: 'DELETE' });
+}
+
+export type TypeConfigRecord = {
+  id: string;
+  accountId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  defaultDurationMinutes: number;
+  color: string | null;
+  active: boolean;
+};
+
+export type TypeConfigListResponse = {
+  data: TypeConfigRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type TypeConfigCreateInput = {
+  code: string;
+  name: string;
+  description?: string;
+  defaultDurationMinutes?: number;
+  color?: string;
+  active?: boolean;
+};
+
+export function listTypeConfigs(input: { page?: number; pageSize?: number; q?: string; active?: boolean } = {}): Promise<TypeConfigListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<TypeConfigListResponse>(`/appointment-types${queryString}`, { method: 'GET' });
+}
+
+export function createTypeConfig(payload: TypeConfigCreateInput): Promise<TypeConfigRecord> {
+  return apiFetch<TypeConfigRecord>('/appointment-types', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateTypeConfig(id: string, payload: Partial<TypeConfigCreateInput>): Promise<TypeConfigRecord> {
+  return apiFetch<TypeConfigRecord>(`/appointment-types/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+/**
+ * ==========================================
+ * R3.6 — EXAM ORDERS & RESULTS
+ * ==========================================
+ */
+
+export type ExamOrderStatus = 'requested' | 'collected' | 'in_progress' | 'completed' | 'cancelled';
+export type ExamCategory = 'laboratory' | 'imaging' | 'other';
+export type ExamPriority = 'routine' | 'urgent' | 'stat';
+
+export type ExamOrderRecord = {
+  id: string;
+  accountId: string;
+  patientId: string;
+  encounterId: string | null;
+  requestedByUserId: string;
+  category: ExamCategory;
+  examName: string;
+  examCode: string | null;
+  priority: ExamPriority;
+  status: ExamOrderStatus;
+  notes: string | null;
+  requestedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExamOrderListResponse = {
+  data: ExamOrderRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type ExamOrderCreateInput = {
+  patientId: string;
+  encounterId?: string;
+  category?: ExamCategory;
+  examName: string;
+  examCode?: string;
+  priority?: ExamPriority;
+  notes?: string;
+};
+
+export function listExamOrders(input: {
+  page?: number;
+  pageSize?: number;
+  patientId?: string;
+  encounterId?: string;
+  status?: ExamOrderStatus;
+  category?: ExamCategory;
+} = {}): Promise<ExamOrderListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<ExamOrderListResponse>(`/exam-orders${queryString}`, { method: 'GET' });
+}
+
+export function createExamOrder(payload: ExamOrderCreateInput): Promise<ExamOrderRecord> {
+  return apiFetch<ExamOrderRecord>('/exam-orders', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateExamOrder(id: string, payload: { status?: ExamOrderStatus; priority?: ExamPriority; notes?: string }): Promise<ExamOrderRecord> {
+  return apiFetch<ExamOrderRecord>(`/exam-orders/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export type ExamResultStatus = 'draft' | 'review_required' | 'approved' | 'released' | 'cancelled';
+
+export type ExamResultRecord = {
+  id: string;
+  accountId: string;
+  patientId: string;
+  examOrderId: string;
+  category: string;
+  examName: string;
+  examCode: string | null;
+  requestedAt: string;
+  status: ExamResultStatus;
+  findings: string | null;
+  interpretation: string | null;
+  resultValues: string | null;
+  normalRange: string | null;
+  performedByUserId: string | null;
+  performedAt: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  releasedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExamResultListResponse = {
+  data: ExamResultRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type ExamResultCreateInput = {
+  examOrderId: string;
+  findings?: string;
+  interpretation?: string;
+  resultValues?: string;
+  normalRange?: string;
+  notes?: string;
+};
+
+export function listExamResults(input: {
+  page?: number;
+  pageSize?: number;
+  patientId?: string;
+  examOrderId?: string;
+  status?: ExamResultStatus;
+  category?: ExamCategory;
+} = {}): Promise<ExamResultListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<ExamResultListResponse>(`/exam-results${queryString}`, { method: 'GET' });
+}
+
+export function createExamResult(payload: ExamResultCreateInput): Promise<ExamResultRecord> {
+  return apiFetch<ExamResultRecord>('/exam-results', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateExamResult(id: string, payload: { status?: ExamResultStatus; findings?: string; interpretation?: string; notes?: string }): Promise<ExamResultRecord> {
+  return apiFetch<ExamResultRecord>(`/exam-results/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+/**
+ * ==========================================
+ * R3.7 — INTEGRATION
+ * ==========================================
+ */
+
+export type EncounterIntegratedSummary = {
+  encounter: {
+    id: string;
+    patientId: string;
+    patientName: string;
+    ownerId: string;
+    ownerName: string;
+    status: string;
+    reason: string;
+    openedAt: string;
+  };
+  appointment: {
+    id: string;
+    type: string;
+    status: string;
+    startAt: string;
+  } | null;
+  billing: {
+    itemCount: number;
+    subtotal: number;
+    total: number;
+  } | null;
+  financial: {
+    status: string;
+    paidAmount: string;
+    balanceDue: string;
+    closed: boolean;
+  } | null;
+  examOrders: Array<{
+    id: string;
+    examName: string;
+    status: string;
+    category: string;
+  }>;
+};
+
+export function getEncounterIntegratedSummary(encounterId: string): Promise<EncounterIntegratedSummary> {
+  return apiFetch<EncounterIntegratedSummary>(`/encounters/${encounterId}/summary`, { method: 'GET' });
 }

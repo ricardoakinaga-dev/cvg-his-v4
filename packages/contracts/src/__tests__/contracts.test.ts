@@ -28,6 +28,9 @@ import {
   listEncountersResponseSchema,
   encountersContract,
 
+  // Billing
+  encounterBillingContract,
+
   // Common
   apiContract,
   contractEndpoints
@@ -471,6 +474,7 @@ describe('Encounters Contract', () => {
       expect(encountersContract.list).toBeDefined();
       expect(encountersContract.close).toBeDefined();
       expect(encountersContract.getTimeline).toBeDefined();
+      expect(encounterBillingContract.getSummary).toBeDefined();
     });
 
     it('should have correct HTTP methods', () => {
@@ -495,15 +499,35 @@ describe('API Contract Integration', () => {
   });
 
   it('should have complete endpoint metadata', () => {
-    expect(contractEndpoints.length).toBe(15); // 5 owners + 5 patients + 5 encounters
+    expect(contractEndpoints.length).toBe(56);
 
+    const availabilityEndpoints = contractEndpoints.filter(e => e.domain === 'availability');
+    const typeConfigEndpoints = contractEndpoints.filter(e => e.domain === 'typeConfig');
+    const appointmentEndpoints = contractEndpoints.filter(e => e.domain === 'appointments');
+    const examOrderEndpoints = contractEndpoints.filter(e => e.domain === 'examOrders');
+    const examResultEndpoints = contractEndpoints.filter(e => e.domain === 'examResults');
+    const integrationEndpoints = contractEndpoints.filter(e => e.domain === 'integration');
     const ownersEndpoints = contractEndpoints.filter(e => e.domain === 'owners');
     const patientsEndpoints = contractEndpoints.filter(e => e.domain === 'patients');
     const encountersEndpoints = contractEndpoints.filter(e => e.domain === 'encounters');
+    const encounterBillingEndpoints = contractEndpoints.filter(e => e.domain === 'encounterBilling');
+    const encounterFinancialEndpoints = contractEndpoints.filter(e => e.domain === 'encounterFinancial');
+    const productEndpoints = contractEndpoints.filter(e => e.domain === 'products');
+    const serviceEndpoints = contractEndpoints.filter(e => e.domain === 'services');
 
+    expect(availabilityEndpoints.length).toBe(5);
+    expect(typeConfigEndpoints.length).toBe(5);
+    expect(appointmentEndpoints.length).toBe(5);
+    expect(examOrderEndpoints.length).toBe(4);
+    expect(examResultEndpoints.length).toBe(4);
+    expect(integrationEndpoints.length).toBe(3);
     expect(ownersEndpoints.length).toBe(5);
     expect(patientsEndpoints.length).toBe(5);
     expect(encountersEndpoints.length).toBe(5);
+    expect(encounterBillingEndpoints.length).toBe(5);
+    expect(encounterFinancialEndpoints.length).toBe(2);
+    expect(productEndpoints.length).toBe(4);
+    expect(serviceEndpoints.length).toBe(4);
   });
 
   it('should have consistent paths between contract and metadata', () => {
