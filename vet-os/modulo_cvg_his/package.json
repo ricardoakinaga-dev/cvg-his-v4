@@ -1,0 +1,34 @@
+{
+  "name": "cvg-his",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "corepack pnpm --filter @cvg-his/his-api dev",
+    "lint": "corepack pnpm -r run lint",
+    "test": "corepack pnpm -r run test",
+    "build": "corepack pnpm -r run build",
+    "db:generate": "corepack pnpm --filter @cvg-his/db db:generate",
+    "db:migrate": "corepack pnpm --filter @cvg-his/db db:migrate",
+    "db:seed": "corepack pnpm --filter @cvg-his/db db:seed",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report e2e/report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^22.13.5",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "prettier": "^3.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

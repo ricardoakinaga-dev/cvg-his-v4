@@ -1,0 +1,174 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1739786400000,
+      "tag": "0000_phase0_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771335296713,
+      "tag": "0001_past_christian_walker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771339544265,
+      "tag": "0002_brainy_wither",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771347721726,
+      "tag": "0003_bored_edwin_jarvis",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771350292000,
+      "tag": "0004_clinical_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771356500000,
+      "tag": "0005_transactional_record_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771364400000,
+      "tag": "0006_inpatient_lite_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771378845000,
+      "tag": "0007_medication_order_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771383600000,
+      "tag": "0008_medication_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771387200000,
+      "tag": "0009_protocol_engine_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771532694000,
+      "tag": "0010_audit_events_account_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771537800000,
+      "tag": "0011_medication_admin_followup",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771541749000,
+      "tag": "0012_normal_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1771540000000,
+      "tag": "0013_tenant_scoping_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1773707000000,
+      "tag": "0014_medication_admin_held_constraint",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1773721820000,
+      "tag": "0015_r3_catalog_minimum",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1773723300000,
+      "tag": "0016_r3_billing_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1773725000000,
+      "tag": "0017_r3_billing_discount",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1773750600000,
+      "tag": "0018_alerts_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1773754500000,
+      "tag": "0019_r3_financial_close",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1773758280000,
+      "tag": "0020_r3_financial_installments",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1773808200000,
+      "tag": "0021_r3_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1773810000000,
+      "tag": "0022_r3_agenda_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1773811800000,
+      "tag": "0023_r3_exams",
+      "breakpoints": true
+    }
+  ]
+}

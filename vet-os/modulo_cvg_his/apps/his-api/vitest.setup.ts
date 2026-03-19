@@ -1,0 +1,12 @@
+process.env.NODE_ENV ??= 'test';
+process.env.DATABASE_URL ??= 'postgres://postgres:postgres@localhost:5432/cvg_his';
+process.env.REDIS_URL ??= 'redis://localhost:6379';
+process.env.QUEUE_PREFIX ??= 'cvg-his';
+process.env.JWT_SECRET ??= 'test-secret-minimum-32-chars-ok!';
+process.env.JWT_ISSUER ??= 'cvg-his-test';
+process.env.JWT_AUDIENCE ??= 'cvg-his-api-test';
+process.env.DEFAULT_TIMEZONE ??= 'UTC';
+process.env.MEDICATION_SCHEDULE_DEFAULT_TIMEZONE ??= 'UTC';
+process.env.MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT ??= '{}';
+process.env.MEDICATION_SCHEDULE_TIMEZONE_BY_WARD ??= '{}';
+process.env.LOG_LEVEL ??= 'silent';
