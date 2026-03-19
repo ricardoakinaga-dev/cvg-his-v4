@@ -18,6 +18,9 @@ COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile --prod=false
 
+# Build contracts package (needed for TypeScript imports)
+RUN cd packages/contracts && pnpm build
+
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --retries=20 \
   CMD curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null || exit 1

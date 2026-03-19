@@ -98,7 +98,7 @@ export const integrationRoutes: FastifyPluginAsync = async (app) => {
         accountId: a.accountId,
         patientId: body.patientId,
         encounterId: params.id,
-        requestedByUserId: a.userId,
+        requestedByUserId: a.userId ?? 'unknown',
         category: body.category ?? 'laboratory',
         examName: body.examName,
         examCode: body.examCode,

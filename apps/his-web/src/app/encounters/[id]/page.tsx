@@ -13,6 +13,7 @@ import { EncounterSidebar } from '@/features/encounter/components/EncounterSideb
 import { EncounterSummaryTab } from '@/features/encounter/components/EncounterSummaryTab';
 import { EncounterMedsTab } from '@/features/encounter/components/EncounterMedsTab';
 import { EncounterBillingPanel } from '@/features/encounter/components/EncounterBillingPanel';
+import { EncounterExamsTab } from '@/features/encounter/components/EncounterExamsTab';
 
 // TanStack Query hooks
 import {
@@ -377,6 +378,15 @@ export default function EncounterDetailsPage(): JSX.Element {
                   <EncounterMedsTab
                     patientId={timeline.encounter.patientId}
                     encounterId={timeline.encounter.id}
+                  />
+                ),
+              },
+              exams: {
+                label: 'Exames',
+                content: (
+                  <EncounterExamsTab
+                    encounterId={timeline.encounter.id}
+                    patientId={timeline.encounter.patientId}
                   />
                 ),
               },

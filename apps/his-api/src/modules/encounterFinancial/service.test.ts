@@ -5,7 +5,7 @@ import { createEncounterFinancialService } from './service.js';
 
 vi.mock('@cvg-his/audit', () => ({ append: vi.fn() }));
 
-const fakeDb = {} as { $client?: { query: (...args: unknown[]) => Promise<{ rows: unknown[] }> } };
+const fakeDb = {} as unknown as typeof import('@cvg-his/db').db;
 
 function createRequestContext(overrides: Partial<RequestContext> = {}): RequestContext {
   return {

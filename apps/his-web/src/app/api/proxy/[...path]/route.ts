@@ -32,7 +32,25 @@ const ALLOWED_PATH_PREFIXES = [
   '/rbac',
   '/system',
   '/soap-templates',
-  '/health'
+  '/health',
+  '/metrics',
+  // R3 modules
+  '/appointments',
+  '/appointment-types',
+  '/availability',
+  '/exam-orders',
+  '/exam-results',
+  '/reports',
+  '/services',
+  '/products',
+  '/financial',
+  '/encounter-billing-items',
+  '/encounter-financial',
+  '/billing',
+  '/stock',
+  '/payments',
+  '/cash',
+  '/dashboard'
 ] as const;
 
 // Hop-by-hop headers per RFC 2616 Section 13.5.1

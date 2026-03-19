@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 import * as schema from './schema/index.js';
 
+export type { Pool } from 'pg';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 config({ path: resolve(__dirname, '../../../.env') });

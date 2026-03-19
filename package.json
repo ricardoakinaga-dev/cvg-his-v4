@@ -13,9 +13,14 @@
     "build": "corepack pnpm -r run build",
     "db:generate": "corepack pnpm --filter @cvg-his/db db:generate",
     "db:migrate": "corepack pnpm --filter @cvg-his/db db:migrate",
-    "db:seed": "corepack pnpm --filter @cvg-his/db db:seed"
+    "db:seed": "corepack pnpm --filter @cvg-his/db db:seed",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report e2e/report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^22.13.5",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",

@@ -22,8 +22,8 @@ export function createExamOrdersService(ctx: Ctx, deps: { repo?: ReturnType<type
       const a = actor(ctx.requestContext);
       const created = await repo.create({
         accountId: a.accountId, patientId: input.patientId, encounterId: input.encounterId,
-        requestedByUserId: a.userId, category: input.category ?? 'laboratory',
-        examName: input.examName, examCode: input.examCode, priority: input.priority, notes: input.notes
+        requestedByUserId: a.userId ?? 'unknown', category: (input.category ?? 'laboratory') as string,
+        examName: input.examName!, examCode: input.examCode!, priority: input.priority ?? undefined, notes: input.notes ?? null
       });
       await audit({ accountId: a.accountId, actorUserId: a.userId, roles: a.roles, entityType: 'examOrder', entityId: created.id, action: 'examOrder.create', beforeJson: null, afterJson: created, requestId: ctx.requestContext.requestId });
       return created;

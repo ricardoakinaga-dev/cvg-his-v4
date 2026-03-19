@@ -1,4 +1,6 @@
 import cors from '@fastify/cors';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { registerErrorHandler } from './lib/errors.js';
@@ -29,6 +31,53 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(cors, {
     origin: app.env.NODE_ENV === 'development'
+  });
+
+  // Swagger/OpenAPI Documentation
+  await app.register(swagger, {
+    openapi: {
+      openapi: '3.0.3',
+      info: {
+        title: 'CVG-HIS API',
+        description: 'Hospital Information System API - Veterinary Module',
+        version: '0.1.0',
+        contact: {
+          name: 'CVG-HIS Support'
+        }
+      },
+      servers: [
+        { url: 'http://localhost:3000', description: 'Local Development' }
+      ],
+      tags: [
+        { name: 'Health', description: 'Health check endpoints' },
+        { name: 'Auth', description: 'Authentication endpoints' },
+        { name: 'Owners', description: 'Pet owners (tutors)' },
+        { name: 'Patients', description: 'Patient management' },
+        { name: 'Appointments', description: 'Appointment scheduling' },
+        { name: 'Exams', description: 'Exam orders and results' },
+        { name: 'Reports', description: 'Reports and analytics' },
+        { name: 'Inpatient', description: 'Inpatient care management' },
+        { name: 'Notifications', description: 'SMS, WhatsApp, and Email notifications' }
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT'
+          }
+        }
+      },
+      security: [{ bearerAuth: [] }]
+    }
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true
+    }
   });
 
   await app.register(requestIdPlugin);

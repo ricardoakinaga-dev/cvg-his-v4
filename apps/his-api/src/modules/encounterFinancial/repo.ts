@@ -1,4 +1,4 @@
-type DbClient = { $client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> } };
+type DbClient = typeof import('@cvg-his/db').db;
 
 type EncounterStatus = 'open' | 'closed';
 type FinancialStatus = 'pending' | 'partial' | 'paid';

@@ -2036,3 +2036,243 @@ export type EncounterIntegratedSummary = {
 export function getEncounterIntegratedSummary(encounterId: string): Promise<EncounterIntegratedSummary> {
   return apiFetch<EncounterIntegratedSummary>(`/encounters/${encounterId}/summary`, { method: 'GET' });
 }
+
+/**
+ * ==========================================
+ * R3.8 — REPORTS
+ * ==========================================
+ */
+
+export type AppointmentsSummaryItem = {
+  status: string;
+  type: string;
+  count: number;
+};
+
+export type AppointmentsSummaryResponse = {
+  dateFrom: string;
+  dateTo: string;
+  data: AppointmentsSummaryItem[];
+};
+
+export type ExamPendingItem = {
+  id: string;
+  exam_name: string;
+  category: string;
+  priority: string;
+  status: string;
+  requested_at: string;
+  patient_name: string | null;
+  requested_by_name: string | null;
+};
+
+export type ExamsPendingResponse = {
+  total: number;
+  data: ExamPendingItem[];
+};
+
+export type ExamsSummaryItem = {
+  status: string;
+  category: string;
+  priority: string;
+  count: number;
+};
+
+export type ExamsSummaryResponse = {
+  dateFrom: string;
+  dateTo: string;
+  data: ExamsSummaryItem[];
+};
+
+export type FinancialSummaryItem = {
+  status: string;
+  count: number;
+  totalAmount: number;
+};
+
+export type FinancialSummaryResponse = {
+  dateFrom: string;
+  dateTo: string;
+  data: FinancialSummaryItem[];
+};
+
+export function getAppointmentsSummary(dateFrom: string, dateTo: string): Promise<AppointmentsSummaryResponse> {
+  const queryString = toQueryString({ dateFrom, dateTo });
+  return apiFetch<AppointmentsSummaryResponse>(`/reports/appointments-summary${queryString}`, { method: 'GET' });
+}
+
+export function getExamsPending(): Promise<ExamsPendingResponse> {
+  return apiFetch<ExamsPendingResponse>('/reports/exams-pending', { method: 'GET' });
+}
+
+export function getExamsSummary(dateFrom: string, dateTo: string): Promise<ExamsSummaryResponse> {
+  const queryString = toQueryString({ dateFrom, dateTo });
+  return apiFetch<ExamsSummaryResponse>(`/reports/exams-summary${queryString}`, { method: 'GET' });
+}
+
+export function getFinancialSummary(dateFrom: string, dateTo: string): Promise<FinancialSummaryResponse> {
+  const queryString = toQueryString({ dateFrom, dateTo });
+  return apiFetch<FinancialSummaryResponse>(`/reports/financial-summary${queryString}`, { method: 'GET' });
+}
+
+/**
+ * ==========================================
+ * R4.1 — STOCK
+ * ==========================================
+ */
+
+export type StockMovementType = 'purchase' | 'sale' | 'adjustment_in' | 'adjustment_out' | 'transfer' | 'return' | 'loss' | 'initial';
+export type StockLotStatus = 'active' | 'expired' | 'recalled' | 'depleted';
+
+export type StockItemRecord = {
+  id: string;
+  accountId: string;
+  productId: string;
+  productName?: string;
+  productCode?: string | null;
+  quantity: number;
+  minQuantity: number;
+  maxQuantity?: number | null;
+  location?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StockItemListResponse = {
+  data: StockItemRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type StockLotRecord = {
+  id: string;
+  accountId: string;
+  productId: string;
+  productName?: string;
+  lotNumber: string;
+  quantity: number;
+  manufactureDate?: string | null;
+  expiryDate?: string | null;
+  supplier?: string | null;
+  status: StockLotStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StockLotListResponse = {
+  data: StockLotRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type StockLotCreateInput = {
+  productId: string;
+  lotNumber: string;
+  quantity: number;
+  manufactureDate?: string;
+  expiryDate?: string;
+  supplier?: string;
+  unitCost?: number;
+};
+
+export type StockMovementRecord = {
+  id: string;
+  accountId: string;
+  productId: string;
+  productName?: string;
+  lotId?: string | null;
+  movementType: StockMovementType;
+  quantity: number;
+  previousQuantity: number;
+  newQuantity: number;
+  unitCost?: number | null;
+  reference?: string | null;
+  notes?: string | null;
+  createdByUserId?: string | null;
+  createdAt: string;
+};
+
+export type StockMovementListResponse = {
+  data: StockMovementRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type StockMovementCreateInput = {
+  productId: string;
+  lotId?: string;
+  movementType: StockMovementType;
+  quantity: number;
+  unitCost?: number;
+  reference?: string;
+  notes?: string;
+};
+
+export type StockSummary = {
+  totalProducts: number;
+  totalItemsInStock: number;
+  lowStockItems: number;
+  expiringLots: number;
+  totalValue: number;
+};
+
+export function listStockItems(input: {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  active?: boolean;
+  lowStock?: boolean;
+  productId?: string;
+} = {}): Promise<StockItemListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<StockItemListResponse>(`/stock/items${queryString}`, { method: 'GET' });
+}
+
+export function getStockItem(id: string): Promise<StockItemRecord> {
+  return apiFetch<StockItemRecord>(`/stock/items/${id}`, { method: 'GET' });
+}
+
+export function updateStockItem(id: string, payload: { minQuantity?: number; maxQuantity?: number | null; location?: string | null; active?: boolean }): Promise<StockItemRecord> {
+  return apiFetch<StockItemRecord>(`/stock/items/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function getStockSummary(): Promise<StockSummary> {
+  return apiFetch<StockSummary>('/stock/summary', { method: 'GET' });
+}
+
+export function listStockLots(input: {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  productId?: string;
+  status?: StockLotStatus;
+  supplier?: string;
+} = {}): Promise<StockLotListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<StockLotListResponse>(`/stock/lots${queryString}`, { method: 'GET' });
+}
+
+export function createStockLot(payload: StockLotCreateInput): Promise<StockLotRecord> {
+  return apiFetch<StockLotRecord>('/stock/lots', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function listStockMovements(input: {
+  page?: number;
+  pageSize?: number;
+  productId?: string;
+  lotId?: string;
+  movementType?: StockMovementType;
+  dateFrom?: string;
+  dateTo?: string;
+} = {}): Promise<StockMovementListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<StockMovementListResponse>(`/stock/movements${queryString}`, { method: 'GET' });
+}
+
+export function createStockMovement(payload: StockMovementCreateInput): Promise<StockMovementRecord> {
+  return apiFetch<StockMovementRecord>('/stock/movements', { method: 'POST', body: JSON.stringify(payload) });
+}

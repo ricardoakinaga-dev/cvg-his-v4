@@ -36,6 +36,13 @@ import { protocolPublishRoutes } from '../modules/protocolPublish/routes.js';
 import { protocolReferencesRoutes } from '../modules/protocolReferences/routes.js';
 import { protocolVersionsRoutes } from '../modules/protocolVersions/routes.js';
 import { systemRoutes } from '../modules/system/routes.js';
+import { reportsRoutes } from '../modules/reports/routes.js';
+import { metricsRoutes } from '../modules/metrics/routes.js';
+import { stockRoutes } from '../modules/stock/routes.js';
+import { paymentsRoutes } from '../modules/payments/routes.js';
+import { cashRoutes } from '../modules/cash/routes.js';
+import { dashboardRoutes } from '../modules/dashboard/routes.js';
+import { notificationRoutes } from '../modules/notifications/routes.js';
 import { healthRoutes } from './health.js';
 
 export const apiRoutes: FastifyPluginAsync = async (app) => {
@@ -75,5 +82,12 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(servicesRoutes, { prefix: '/services' });
   await app.register(appointmentsRoutes, { prefix: '/appointments' });
   await app.register(agendaConfigRoutes);
+  await app.register(reportsRoutes);
+  await app.register(metricsRoutes);
+  await app.register(stockRoutes);
+  await app.register(paymentsRoutes);
+  await app.register(cashRoutes);
+  await app.register(dashboardRoutes);
+  await app.register(notificationRoutes, { prefix: '/notifications' });
   await app.register(patientContextRoutes, { prefix: '/patient-context' });
 };

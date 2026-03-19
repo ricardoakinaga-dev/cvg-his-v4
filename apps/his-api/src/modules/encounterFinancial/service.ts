@@ -8,7 +8,7 @@ import type {
 import type { RequestContext } from '../../plugins/requestContext.js';
 import { createEncounterFinancialRepo } from './repo.js';
 
-type DbClient = { $client?: { query: (...args: unknown[]) => Promise<{ rows: unknown[] }> } };
+type DbClient = typeof import('@cvg-his/db').db;
 
 type WriteActor = NonNullable<RequestContext['actor']> & { accountId: string; userId: string };
 

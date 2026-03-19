@@ -13,7 +13,12 @@ export const appointmentsRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     '/',
     {
-      preHandler: requirePermission('appointment.write')
+      preHandler: requirePermission('appointment.write'),
+      schema: {
+        tags: ['Appointments'],
+        summary: 'Create appointment',
+        description: 'Create a new appointment for a patient'
+      }
     },
     async (request, reply) => {
       const body = createAppointmentBodySchema.parse(request.body);
@@ -26,7 +31,12 @@ export const appointmentsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/:id',
     {
-      preHandler: requirePermission('appointment.read')
+      preHandler: requirePermission('appointment.read'),
+      schema: {
+        tags: ['Appointments'],
+        summary: 'Get appointment by ID',
+        description: 'Retrieve a single appointment by its ID'
+      }
     },
     async (request, reply) => {
       const params = appointmentIdParamSchema.parse(request.params);
@@ -44,7 +54,12 @@ export const appointmentsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/',
     {
-      preHandler: requirePermission('appointment.read')
+      preHandler: requirePermission('appointment.read'),
+      schema: {
+        tags: ['Appointments'],
+        summary: 'List appointments',
+        description: 'List appointments with optional filters (status, date range, professional)'
+      }
     },
     async (request) => {
       const query = listAppointmentsQuerySchema.parse(request.query);

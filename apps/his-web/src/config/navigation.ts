@@ -26,13 +26,29 @@ export const NAVIGATION_CONFIG: NavSection[] = [
             { label: 'Pacientes', href: '/patients', permission: PERMISSIONS.PATIENT_READ },
             { label: 'Serviços', href: '/services', permission: PERMISSIONS.SERVICE_READ },
             { label: 'Produtos', href: '/products', permission: PERMISSIONS.PRODUCT_READ },
+            { label: 'Estoque', href: '/stock', permission: PERMISSIONS.PRODUCT_READ },
         ]
     },
     {
         title: 'Assistencial',
         items: [
+            { label: 'Agenda', href: '/appointments', permission: PERMISSIONS.APPOINTMENT_READ },
+            { label: 'Disponibilidade', href: '/availability', permission: PERMISSIONS.APPOINTMENT_WRITE },
             { label: 'Prontuário', href: '/encounters', permission: PERMISSIONS.ENCOUNTER_READ },
+            { label: 'Exames', href: '/exams', permission: PERMISSIONS.ENCOUNTER_READ },
             { label: 'Protocolos', href: '/protocols' },
+        ]
+    },
+    {
+        title: 'Relatórios',
+        items: [
+            { label: 'Dashboard', href: '/reports', permission: PERMISSIONS.APPOINTMENT_READ },
+        ]
+    },
+    {
+        title: 'Configurações',
+        items: [
+            { label: 'Agenda Config', href: '/agenda-config', permission: PERMISSIONS.APPOINTMENT_WRITE },
         ]
     },
     {

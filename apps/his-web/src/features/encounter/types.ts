@@ -15,7 +15,7 @@ export const EMPTY_SOAP: SoapFormState = {
 };
 
 
-export const EncounterTabKeys = ['summary', 'soap', 'meds', 'billing', 'documents', 'timeline'] as const;
+export const EncounterTabKeys = ['summary', 'soap', 'meds', 'exams', 'billing', 'documents', 'timeline'] as const;
 export type EncounterTabKey = typeof EncounterTabKeys[number];
 
 export type EncounterData = EncounterTimelineResponse;
