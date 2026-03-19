@@ -185,15 +185,15 @@ export const reportsRoutes: FastifyPluginAsync = async (app) => {
 
       const result = await app.db.$client.query(
         `SELECT
-          status,
+          financial_status as status,
           COUNT(*) as count,
-          COALESCE(SUM(total_amount), 0) as total_amount
-        FROM financial_accounts
+          COALESCE(SUM(total_snapshot), 0) as total_amount
+        FROM encounter_financial_accounts
         WHERE account_id = $1
-          AND opened_at >= $2
-          AND opened_at <= $3
-        GROUP BY status
-        ORDER BY status`,
+          AND created_at >= $2
+          AND created_at <= $3
+        GROUP BY financial_status
+        ORDER BY financial_status`,
         [actor.accountId, query.dateFrom, query.dateTo]
       );
 
