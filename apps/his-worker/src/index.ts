@@ -27,6 +27,19 @@ import {
   type MedicationOverdueScanJobResult
 } from './queues/medicationOverdue.queue.js';
 import {
+  NOTIFICATION_QUEUE_NAME,
+  NOTIFICATION_SEND_JOB_NAME,
+  NOTIFICATION_PROCESS_QUEUE_JOB_NAME,
+  createNotificationQueue,
+  createNotificationProcessQueue,
+  type NotificationSendJobData,
+  type NotificationSendJobResult,
+  type NotificationSendJobName,
+  type NotificationProcessQueueJobData,
+  type NotificationProcessQueueJobResult,
+  type NotificationProcessQueueJobName
+} from './queues/notification.queue.js';
+import {
   PROTOCOL_PUBLISH_QUEUE_NAME,
   type ProtocolPublishJobData,
   type ProtocolPublishJobName,
@@ -41,6 +54,7 @@ import {
 } from './queues/system.queue.js';
 import { createHandoverWorker } from './workers/handover.worker.js';
 import { createMedicationOverdueWorker } from './workers/medicationOverdue.worker.js';
+import { createNotificationWorker } from './workers/notification.worker.js';
 import { createProtocolPublishWorker } from './workers/protocolPublish.worker.js';
 import { createSystemWorker } from './workers/system.worker.js';
 
@@ -236,6 +250,39 @@ function registerProtocolPublishWorkerLogs(
   });
 }
 
+function registerNotificationWorkerLogs(
+  worker: Worker<
+    NotificationSendJobData | NotificationProcessQueueJobData,
+    NotificationSendJobResult | NotificationProcessQueueJobResult,
+    NotificationSendJobName | NotificationProcessQueueJobName
+  >
+): void {
+  worker.on('completed', (job, result) => {
+    logInfo('notification job completed', {
+      queue: NOTIFICATION_QUEUE_NAME,
+      jobName: job.name,
+      jobId: job.id?.toString() ?? null,
+      accountId: 'accountId' in job.data ? job.data.accountId : null,
+      notificationId: 'notificationId' in job.data ? job.data.notificationId : null,
+      result
+    });
+  });
+
+  worker.on('failed', (job, error) => {
+    logError('notification job failed', {
+      queue: NOTIFICATION_QUEUE_NAME,
+      jobName: job?.name ?? null,
+      jobId: job?.id?.toString() ?? null,
+      accountId: job?.data && 'accountId' in job.data ? job.data.accountId : null,
+      notificationId: job?.data && 'notificationId' in job.data ? job.data.notificationId : null,
+      error: {
+        message: error.message,
+        stack: error.stack
+      }
+    });
+  });
+}
+
 async function bootstrap(): Promise<void> {
   failFastIfMissingDatabaseUrl();
 
@@ -262,7 +309,9 @@ async function bootstrap(): Promise<void> {
   });
   const medicationOverdueWorker = createMedicationOverdueWorker(redis, env.QUEUE_PREFIX);
   const protocolPublishWorker = createProtocolPublishWorker(redis, env.QUEUE_PREFIX);
+  const notificationWorker = createNotificationWorker(redis, env.QUEUE_PREFIX);
   const medicationOverdueQueue = createMedicationOverdueQueue(redis, env.QUEUE_PREFIX);
+  const notificationProcessQueue = createNotificationProcessQueue(redis, env.QUEUE_PREFIX);
 
   systemWorker.on('ready', () => {
     logInfo('system worker ready', {
@@ -283,6 +332,7 @@ async function bootstrap(): Promise<void> {
   registerHandoverWorkerLogs(handoverWorker);
   registerMedicationOverdueWorkerLogs(medicationOverdueWorker);
   registerProtocolPublishWorkerLogs(protocolPublishWorker);
+  registerNotificationWorkerLogs(notificationWorker);
 
   medicationOverdueWorker.on('ready', () => {
     logInfo('medication overdue worker ready', {
@@ -294,6 +344,13 @@ async function bootstrap(): Promise<void> {
   protocolPublishWorker.on('ready', () => {
     logInfo('protocol publish worker ready', {
       queue: PROTOCOL_PUBLISH_QUEUE_NAME,
+      queuePrefix: env.QUEUE_PREFIX
+    });
+  });
+
+  notificationWorker.on('ready', () => {
+    logInfo('notification worker ready', {
+      queue: NOTIFICATION_QUEUE_NAME,
       queuePrefix: env.QUEUE_PREFIX
     });
   });
@@ -345,6 +402,28 @@ async function bootstrap(): Promise<void> {
       })
     : null;
 
+  // Notification processing cron (every 60 seconds)
+  const notificationProcessCron = startCron({
+    name: 'notification-process-queue',
+    intervalMs: 60_000,
+    runOnStart: true,
+    logger: {
+      info: (message, extra) => logInfo(message, extra),
+      warn: (message, extra) => logWarn(message, extra)
+    },
+    onTick: async () => {
+      const payload: NotificationProcessQueueJobData = {
+        trigger: 'scheduled',
+        enqueuedAt: new Date().toISOString()
+      };
+
+      await notificationProcessQueue.add(
+        NOTIFICATION_PROCESS_QUEUE_JOB_NAME,
+        payload
+      );
+    }
+  });
+
   logInfo('his-worker started', {
     nodeEnv: env.NODE_ENV,
     queuePrefix: env.QUEUE_PREFIX,
@@ -352,7 +431,8 @@ async function bootstrap(): Promise<void> {
       SYSTEM_QUEUE_NAME,
       HANDOVER_BUILD_QUEUE_NAME,
       MEDICATION_OVERDUE_QUEUE_NAME,
-      PROTOCOL_PUBLISH_QUEUE_NAME
+      PROTOCOL_PUBLISH_QUEUE_NAME,
+      NOTIFICATION_QUEUE_NAME
     ],
     medicationOverdueAutoScan: env.MEDICATION_OVERDUE_AUTO_SCAN,
     medicationOverdueScanIntervalMs: env.MEDICATION_OVERDUE_SCAN_INTERVAL_MS,
@@ -373,6 +453,7 @@ async function bootstrap(): Promise<void> {
     logInfo('his-worker shutting down', { signal });
 
     medicationOverdueCron?.stop();
+    notificationProcessCron?.stop();
 
     try {
       await releaseLeaderLock({
@@ -389,7 +470,9 @@ async function bootstrap(): Promise<void> {
       handoverWorker.close(),
       medicationOverdueWorker.close(),
       protocolPublishWorker.close(),
-      medicationOverdueQueue.close()
+      notificationWorker.close(),
+      medicationOverdueQueue.close(),
+      notificationProcessQueue.close()
     ]);
     await closeBullMqRedis(redis);
     await closeDbConnection();
