@@ -17,8 +17,8 @@ describe('Patient Context Routes', () => {
   let app: FastifyInstance;
 
   const env = {
-    DATABASE_URL: 'postgres://test',
-    REDIS_URL: 'redis://test',
+    DATABASE_URL: 'postgres://localhost:5432/cvg_his_test',
+    REDIS_URL: 'redis://localhost:6379',
     JWT_SECRET: 'test-secret-minimum-32-chars-ok!',
     JWT_ISSUER: 'cvg-his-test',
     JWT_AUDIENCE: 'cvg-his-api-test'
@@ -31,6 +31,27 @@ describe('Patient Context Routes', () => {
         userId: '00000000-0000-0000-0000-000000000001',
         role: 'vet',
         roles: ['vet'],
+        permissions: ['medical_record.read', 'patient.read', 'inpatient.read']
+      },
+      {
+        jwtSecret: env.JWT_SECRET,
+        jwtIssuer: env.JWT_ISSUER,
+        jwtAudience: env.JWT_AUDIENCE
+      }
+    );
+
+    return {
+      authorization: `Bearer ${token}`
+    };
+  }
+
+  function makeAdministrativeOnlyHeaders() {
+    const token = signJwt(
+      {
+        accountId: '00000000-0000-0000-0000-000000000001',
+        userId: '00000000-0000-0000-0000-000000000001',
+        role: 'recepcao',
+        roles: ['recepcao'],
         permissions: ['patient.read']
       },
       {
@@ -41,8 +62,7 @@ describe('Patient Context Routes', () => {
     );
 
     return {
-      authorization: `Bearer ${token}`,
-      'x-account-id': '00000000-0000-0000-0000-000000000001'
+      authorization: `Bearer ${token}`
     };
   }
 
@@ -80,6 +100,16 @@ describe('Patient Context Routes', () => {
       });
 
       expect(response.statusCode).toBe(404);
+    });
+
+    it('should return 403 when actor lacks medical_record.read', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/patient-context/by-patient/00000000-0000-0000-0000-000000000001',
+        headers: makeAdministrativeOnlyHeaders()
+      });
+
+      expect(response.statusCode).toBe(403);
     });
   });
 

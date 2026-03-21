@@ -14,8 +14,14 @@ const mockedService = vi.hoisted(() => ({
 
 const createEncounterFinancialServiceMock = vi.hoisted(() => vi.fn(() => mockedService));
 
+const mockAppendSensitiveReadAudit = vi.hoisted(() => vi.fn(async () => {}));
+
 vi.mock('./service.js', () => ({
   createEncounterFinancialService: createEncounterFinancialServiceMock
+}));
+
+vi.mock('../iam/auditSensitiveAccess.js', () => ({
+  appendSensitiveReadAudit: mockAppendSensitiveReadAudit
 }));
 
 function makePayment() {
@@ -108,9 +114,10 @@ async function buildTestApp(actor: RequestContext['actor']): Promise<FastifyInst
     request.requestContext = { requestId: request.id, actor };
   });
   registerErrorHandler(app);
+  // Apply mock BEFORE registering routes
+  createEncounterFinancialServiceMock.mockReturnValue(mockedService);
   await app.register(encounterFinancialRoutes);
   await app.ready();
-  createEncounterFinancialServiceMock.mockReturnValue(mockedService);
   return app;
 }
 

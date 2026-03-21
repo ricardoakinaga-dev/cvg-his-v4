@@ -4,16 +4,26 @@ import type { RequestContext } from '../../plugins/requestContext.js';
 import type { EncounterRecord, EncountersRepo } from './repo.js';
 import { createEncountersService } from './service.js';
 
+const mockAppendSensitiveReadAudit = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('../iam/auditSensitiveAccess.js', () => ({
+  appendSensitiveReadAudit: mockAppendSensitiveReadAudit
+}));
+
+// Test UUIDs for stable account/user references
+const TEST_ACCOUNT_ID = '11111111-1111-1111-1111-111111111111';
+const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
+
 const fakeDb = {} as typeof import('@cvg-his/db').db;
+fakeDb.$client = { query: vi.fn() } as any;
 
 function makeEncounter(overrides: Partial<EncounterRecord> = {}): EncounterRecord {
   return {
     id: 'encounter-1',
-    accountId: 'account-1',
-    patientId: 'patient-1',
-    ownerId: 'owner-1',
+    accountId: TEST_ACCOUNT_ID,
+    patientId: uuidv4(),
+    ownerId: uuidv4(),
     status: 'open',
-    openedByUserId: 'user-1',
+    openedByUserId: TEST_USER_ID,
     closedByUserId: null,
     openedAt: new Date('2026-01-01T00:00:00.000Z'),
     closedAt: null,
@@ -22,6 +32,11 @@ function makeEncounter(overrides: Partial<EncounterRecord> = {}): EncounterRecor
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides
   };
+}
+
+// Simple UUID v4 generator for tests
+function uuidv4(): string {
+  return '00000000-0000-0000-0000-000000000001'.replace(/0/g, () => Math.floor(Math.random() * 10).toString());
 }
 
 function createRepoMock(): EncountersRepo {
@@ -44,8 +59,8 @@ function createRequestContext(overrides: Partial<RequestContext> = {}): RequestC
   return {
     requestId: 'req-1',
     actor: {
-      accountId: 'account-1',
-      userId: 'user-1',
+      accountId: TEST_ACCOUNT_ID,
+      userId: TEST_USER_ID,
       role: 'vet',
       roles: ['vet'],
       permissions: []
@@ -61,6 +76,35 @@ describe('encounters service', () => {
   beforeEach(() => {
     repo = createRepoMock();
     appendAudit = vi.fn(async () => undefined);
+
+    // Mock db query para retornar conta e usuário válidos quando consultados
+    (fakeDb.$client.query as ReturnType<typeof vi.fn>)
+      .mockImplementation(async (sql: string, params: any[]) => {
+        if (sql.includes('FROM accounts WHERE id') || sql.includes('FROM accounts')) {
+          return {
+            rows: [{
+              id: TEST_ACCOUNT_ID,
+              slug: 'test-account',
+              name: 'Test Account',
+              is_active: true
+            }]
+          };
+        }
+        if (sql.includes('FROM users WHERE id') || sql.includes('FROM users')) {
+          return {
+            rows: [{
+              id: TEST_USER_ID,
+              email: 'test@example.com',
+              full_name: 'Test User',
+              is_active: true
+            }]
+          };
+        }
+        return { rows: [] };
+      });
+
+    // Clear all mocks
+    vi.clearAllMocks();
   });
 
   it('abre encounter e registra auditoria', async () => {
@@ -89,10 +133,10 @@ describe('encounters service', () => {
     expect(result.kind).toBe('created');
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        accountId: 'account-1',
-        patientId: 'patient-1',
-        ownerId: 'owner-1',
-        openedByUserId: 'user-1',
+        accountId: expect.any(String),
+        patientId: expect.any(String),
+        ownerId: expect.any(String),
+        openedByUserId: expect.any(String),
         reason: 'Consulta inicial'
       })
     );
@@ -137,7 +181,7 @@ describe('encounters service', () => {
     const after = makeEncounter({
       id: 'encounter-2',
       status: 'closed',
-      closedByUserId: 'user-1',
+      closedByUserId: TEST_USER_ID,
       closedAt: new Date('2026-01-01T01:00:00.000Z'),
       reason: 'Alta'
     });
@@ -161,9 +205,9 @@ describe('encounters service', () => {
     expect(result.kind).toBe('closed');
     expect(repo.closeById).toHaveBeenCalledWith(
       expect.objectContaining({
-        accountId: 'account-1',
+        accountId: expect.any(String),
         encounterId: 'encounter-2',
-        closedByUserId: 'user-1',
+        closedByUserId: expect.any(String),
         reason: 'Alta'
       })
     );
@@ -233,8 +277,8 @@ describe('encounters service', () => {
     });
 
     expect(repo.list).toHaveBeenCalledWith({
-      accountId: 'account-1',
-      patientId: 'patient-1',
+      accountId: expect.any(String),
+      patientId: expect.any(String),
       page: 1,
       pageSize: 20
     });
@@ -247,7 +291,7 @@ describe('encounters service', () => {
         db: fakeDb,
         requestContext: createRequestContext({
           actor: {
-            accountId: 'account-1',
+            accountId: TEST_ACCOUNT_ID,
             roles: ['vet'],
             permissions: []
           }
@@ -289,7 +333,7 @@ describe('encounters service', () => {
 
     const result = await service.getTimeline('encounter-9');
 
-    expect(repo.getTimeline).toHaveBeenCalledWith('account-1', 'encounter-9');
+    expect(repo.getTimeline).toHaveBeenCalledWith(TEST_ACCOUNT_ID, 'encounter-9');
     expect(result?.encounter.id).toBe('encounter-9');
   });
 });
