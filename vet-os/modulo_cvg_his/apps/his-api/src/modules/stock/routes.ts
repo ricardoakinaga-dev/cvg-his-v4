@@ -18,7 +18,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   // =====================
 
   app.get('/stock/items', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: {
       tags: ['Stock'],
       summary: 'List stock items',
@@ -31,7 +31,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/stock/summary', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: {
       tags: ['Stock'],
       summary: 'Stock summary',
@@ -43,7 +43,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/stock/items/:id', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: {
       tags: ['Stock'],
       summary: 'Get stock item by ID'
@@ -57,7 +57,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.patch('/stock/items/:id', {
-    preHandler: requirePermission('product.write'),
+    preHandler: requirePermission('inventory.adjust'),
     schema: {
       tags: ['Stock'],
       summary: 'Update stock item',
@@ -77,7 +77,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   // =====================
 
   app.get('/stock/lots', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: {
       tags: ['Stock'],
       summary: 'List stock lots',
@@ -90,7 +90,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/stock/lots', {
-    preHandler: requirePermission('product.write'),
+    preHandler: requirePermission('inventory.adjust'),
     schema: {
       tags: ['Stock'],
       summary: 'Create stock lot',
@@ -108,7 +108,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   // =====================
 
   app.get('/stock/movements', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: {
       tags: ['Stock'],
       summary: 'List stock movements',
@@ -121,7 +121,7 @@ export const stockRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/stock/movements', {
-    preHandler: requirePermission('product.write'),
+    preHandler: requirePermission('inventory.adjust'),
     schema: {
       tags: ['Stock'],
       summary: 'Create stock movement',

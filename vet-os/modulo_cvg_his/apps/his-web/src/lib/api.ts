@@ -2276,3 +2276,303 @@ export function listStockMovements(input: {
 export function createStockMovement(payload: StockMovementCreateInput): Promise<StockMovementRecord> {
   return apiFetch<StockMovementRecord>('/stock/movements', { method: 'POST', body: JSON.stringify(payload) });
 }
+
+/**
+ * ==========================================
+ * IAM ADMIN
+ * ==========================================
+ */
+
+export type AdminRoleSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  users_count: number;
+  permissions_count: number;
+};
+
+export type AdminPermission = {
+  id: string;
+  key: string;
+  description: string | null;
+  created_at: string;
+};
+
+export type AdminUserRole = {
+  id: string;
+  name: string;
+};
+
+export type AdminAccessScope = {
+  id: string;
+  account_id?: string;
+  scopeType: string;
+  scopeKey: string;
+  name: string;
+  description?: string | null;
+  is_active?: boolean;
+  users_count?: number;
+  expiresAt: string | null;
+};
+
+export type AdminUserSummary = {
+  id: string;
+  account_id: string;
+  unit_id: string | null;
+  email: string;
+  username: string | null;
+  full_name: string;
+  is_active: boolean;
+  must_change_password: boolean;
+  failed_login_attempts: number;
+  locked_until: string | null;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+  roles: AdminUserRole[];
+};
+
+export type AdminUserDetail = AdminUserSummary & {
+  scopes: AdminAccessScope[];
+};
+
+export type AdminSessionRecord = {
+  id: string;
+  account_id: string;
+  user_id: string;
+  unit_id: string | null;
+  auth_method: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  issued_at: string;
+  expires_at: string;
+  last_seen_at: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+};
+
+export type AdminRoleDetail = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  permissions: AdminPermission[];
+};
+
+export type AdminUsersListResponse = {
+  data: AdminUserSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type AdminSessionsListResponse = {
+  data: AdminSessionRecord[];
+};
+
+export type AdminRolesListResponse = {
+  data: AdminRoleSummary[];
+};
+
+export type AdminPermissionsListResponse = {
+  data: AdminPermission[];
+};
+
+export type AdminScopesListResponse = {
+  data: AdminAccessScope[];
+};
+
+export type AdminCreateUserInput = {
+  email: string;
+  username?: string;
+  fullName: string;
+  unitId?: string;
+  password: string;
+  mustChangePassword?: boolean;
+  roleIds: string[];
+};
+
+export type AdminUpdateUserInput = {
+  email?: string;
+  username?: string | null;
+  fullName?: string;
+  unitId?: string | null;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+};
+
+export type AdminResetPasswordInput = {
+  password: string;
+  mustChangePassword?: boolean;
+};
+
+export type AdminCreateRoleInput = {
+  name: string;
+  description?: string | null;
+};
+
+export type AdminCreateScopeInput = {
+  scopeType: string;
+  scopeKey: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+};
+
+export type AdminUpdateRoleInput = {
+  name?: string;
+  description?: string | null;
+};
+
+export type MyProfileRole = {
+  id: string;
+  name: string;
+};
+
+export type MyProfilePermission = {
+  id: string;
+  key: string;
+  description: string | null;
+};
+
+export type MyProfileScope = {
+  id: string;
+  scopeType: string;
+  scopeKey: string;
+  name: string;
+  expiresAt: string | null;
+};
+
+export type MyProfile = {
+  id: string;
+  account_id: string;
+  unit_id: string | null;
+  email: string;
+  username: string | null;
+  full_name: string;
+  must_change_password: boolean;
+  last_login_at: string | null;
+  password_changed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  roles: MyProfileRole[];
+  permissions: MyProfilePermission[];
+  scopes: MyProfileScope[];
+};
+
+export type MyProfileResponse = {
+  profile: MyProfile;
+};
+
+export type UpdateMyProfileInput = {
+  email?: string;
+  username?: string | null;
+  fullName?: string;
+};
+
+export type ChangeMyPasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export function getMyProfile(): Promise<MyProfileResponse> {
+  return apiFetch<MyProfileResponse>('/auth/profile', { method: 'GET' });
+}
+
+export function updateMyProfile(payload: UpdateMyProfileInput): Promise<{ ok: true; profile: MyProfile }> {
+  return apiFetch<{ ok: true; profile: MyProfile }>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function changeMyPassword(payload: ChangeMyPasswordInput): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function listAdminUsers(input: {
+  search?: string;
+  active?: boolean;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<AdminUsersListResponse> {
+  const queryString = toQueryString(input);
+  return apiFetch<AdminUsersListResponse>(`/admin/iam/users${queryString}`, { method: 'GET' });
+}
+
+export function getAdminUser(id: string): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/iam/users/${id}`, { method: 'GET' });
+}
+
+export function createAdminUser(payload: AdminCreateUserInput): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>('/admin/iam/users', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAdminUser(id: string, payload: AdminUpdateUserInput): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function resetAdminUserPassword(id: string, payload: AdminResetPasswordInput): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function replaceAdminUserRoles(id: string, roleIds: string[]): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/users/${id}/roles`, { method: 'PUT', body: JSON.stringify({ roleIds }) });
+}
+
+export function listAdminUserSessions(id: string): Promise<AdminSessionsListResponse> {
+  return apiFetch<AdminSessionsListResponse>(`/admin/iam/users/${id}/sessions`, { method: 'GET' });
+}
+
+export function revokeAdminSession(id: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/sessions/${id}/revoke`, { method: 'POST' });
+}
+
+export function replaceAdminUserScopes(id: string, scopeIds: string[], expiresAt?: string | null): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/users/${id}/scopes`, {
+    method: 'PUT',
+    body: JSON.stringify({ scopeIds, expiresAt: expiresAt ?? null })
+  });
+}
+
+export function listAdminRoles(): Promise<AdminRolesListResponse> {
+  return apiFetch<AdminRolesListResponse>('/admin/iam/roles', { method: 'GET' });
+}
+
+export function getAdminRole(id: string): Promise<AdminRoleDetail> {
+  return apiFetch<AdminRoleDetail>(`/admin/iam/roles/${id}`, { method: 'GET' });
+}
+
+export function createAdminRole(payload: AdminCreateRoleInput): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>('/admin/iam/roles', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAdminRole(id: string, payload: AdminUpdateRoleInput): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/roles/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function listAdminPermissions(): Promise<AdminPermissionsListResponse> {
+  return apiFetch<AdminPermissionsListResponse>('/admin/iam/permissions', { method: 'GET' });
+}
+
+export function replaceRolePermissions(roleId: string, permissionIds: string[]): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/admin/iam/roles/${roleId}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissionIds })
+  });
+}
+
+export function listAdminScopes(): Promise<AdminScopesListResponse> {
+  return apiFetch<AdminScopesListResponse>('/admin/iam/scopes', { method: 'GET' });
+}
+
+export function createAdminScope(payload: AdminCreateScopeInput): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>('/admin/iam/scopes', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}

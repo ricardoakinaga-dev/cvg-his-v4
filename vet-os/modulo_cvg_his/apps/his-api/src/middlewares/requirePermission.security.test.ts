@@ -44,6 +44,32 @@ async function buildApp(): Promise<FastifyInstance> {
     QDRANT_COLLECTION: 'professor',
     QDRANT_API_KEY: undefined
   });
+  app.decorate('db', {
+    $client: {
+      query: async (sql: string) => {
+        if (sql.includes('from auth_sessions')) {
+          return {
+            rows: [
+              {
+                id: '11111111-1111-4111-8111-111111111111',
+                account_id: 'acc-1',
+                user_id: 'user-1',
+                revoked_at: null,
+                expires_at: new Date(Date.now() + 60_000).toISOString()
+              }
+            ]
+          };
+        }
+
+        return { rows: [] };
+      }
+    }
+  } as unknown as typeof import('@cvg-his/db').db);
+  app.decorateRequest('db', {
+    getter() {
+      return app.db;
+    }
+  });
   await app.register(requestContextPlugin);
 
   app.get(
@@ -135,6 +161,7 @@ describe('requirePermission security hardening', () => {
       {
         accountId: 'acc-1',
         userId: 'user-1',
+        sessionId: '11111111-1111-4111-8111-111111111111',
         role: 'recepcao',
         permissions: ['audit.read'],
         iss: 'cvg-his-test',
@@ -168,6 +195,7 @@ describe('requirePermission security hardening', () => {
       {
         accountId: 'acc-1',
         userId: 'user-1',
+        sessionId: '11111111-1111-4111-8111-111111111111',
         role: 'recepcao',
         permissions: ['owner.read'],
         iss: 'cvg-his-test',
@@ -203,6 +231,7 @@ describe('requirePermission security hardening', () => {
       {
         accountId: 'acc-1',
         userId: 'user-1',
+        sessionId: '11111111-1111-4111-8111-111111111111',
         permissions: ['audit.read'],
         iss: 'cvg-his-test',
         aud: 'cvg-his-api-test',
@@ -236,6 +265,7 @@ describe('requirePermission security hardening', () => {
       {
         accountId: 'acc-1',
         userId: 'user-1',
+        sessionId: '11111111-1111-4111-8111-111111111111',
         permissions: ['audit.read'],
         iss: 'other-issuer',
         aud: 'other-audience',
@@ -256,6 +286,88 @@ describe('requirePermission security hardening', () => {
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({
       message: 'Missing or invalid actor context. Provide a valid Bearer token.'
+    });
+
+    await app.close();
+  });
+
+  it('rejects revoked session even when token permission is valid', async () => {
+    process.env.JWT_SECRET = 'test-secret';
+    process.env.JWT_ISSUER = 'cvg-his-test';
+    process.env.JWT_AUDIENCE = 'cvg-his-api-test';
+    const app = Fastify();
+    app.decorate('env', {
+      NODE_ENV: 'test',
+      PORT: 3000,
+      DATABASE_URL: 'postgres://test',
+      REDIS_URL: 'redis://test',
+      QUEUE_PREFIX: 'cvg-his',
+      LOG_LEVEL: 'silent',
+      JWT_SECRET: process.env.JWT_SECRET,
+      JWT_ISSUER: process.env.JWT_ISSUER,
+      JWT_AUDIENCE: process.env.JWT_AUDIENCE,
+      DEFAULT_TIMEZONE: 'UTC',
+      MEDICATION_SCHEDULE_DEFAULT_TIMEZONE: 'UTC',
+      MEDICATION_SCHEDULE_TIMEZONE_BY_ACCOUNT: '{}',
+      MEDICATION_SCHEDULE_TIMEZONE_BY_WARD: '{}',
+      QDRANT_URL: undefined,
+      QDRANT_COLLECTION: 'professor',
+      QDRANT_API_KEY: undefined
+    });
+    app.decorate('db', {
+      $client: {
+        query: async (sql: string) => {
+          if (sql.includes('from auth_sessions')) {
+            return {
+              rows: [
+                {
+                  id: '11111111-1111-4111-8111-111111111111',
+                  account_id: 'acc-1',
+                  user_id: 'user-1',
+                  revoked_at: new Date().toISOString(),
+                  expires_at: new Date(Date.now() + 60_000).toISOString()
+                }
+              ]
+            };
+          }
+
+          return { rows: [] };
+        }
+      }
+    } as unknown as typeof import('@cvg-his/db').db);
+    app.decorateRequest('db', {
+      getter() {
+        return app.db;
+      }
+    });
+    await app.register(requestContextPlugin);
+    app.get('/secure', { preHandler: requirePermission('audit.read') }, async () => ({ ok: true }));
+    await app.ready();
+
+    const token = signHs256Jwt(
+      {
+        accountId: 'acc-1',
+        userId: 'user-1',
+        sessionId: '11111111-1111-4111-8111-111111111111',
+        permissions: ['audit.read'],
+        iss: 'cvg-his-test',
+        aud: 'cvg-his-api-test',
+        exp: Math.floor(Date.now() / 1000) + 60
+      },
+      process.env.JWT_SECRET
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/secure',
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      message: 'Session is no longer active.'
     });
 
     await app.close();

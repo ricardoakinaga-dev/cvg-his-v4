@@ -8,6 +8,7 @@ import {
 } from '@cvg-his/events';
 
 import type { RequestContext } from '../../plugins/requestContext.js';
+import { appendSensitiveReadAudit } from '../iam/auditSensitiveAccess.js';
 import {
   createClinicalNotesRepo,
   type ClinicalNoteRecord,
@@ -272,7 +273,23 @@ export function createClinicalNotesService(
 
     async getById(noteId: string): Promise<ClinicalNoteRecord | null> {
       const actor = ensureAccountActor(context.requestContext);
-      return repo.findById(actor.accountId, noteId);
+      const note = await repo.findById(actor.accountId, noteId);
+
+      if (note) {
+        await appendSensitiveReadAudit({
+          requestContext: context.requestContext,
+          entityType: 'clinical_note',
+          entityId: noteId,
+          action: 'note.read',
+          reason: 'medical_record_note_access',
+          afterJson: {
+            encounterId: note.encounterId,
+            status: note.status
+          }
+        });
+      }
+
+      return note;
     },
 
     async update(

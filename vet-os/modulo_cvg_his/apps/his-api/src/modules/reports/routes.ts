@@ -25,7 +25,7 @@ export const reportsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/reports/appointments-summary',
     {
-      preHandler: requirePermission('appointment.read'),
+      preHandler: requirePermission('reports.read'),
       schema: {
         tags: ['Reports'],
         summary: 'Appointments summary',
@@ -80,7 +80,7 @@ export const reportsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/reports/exams-pending',
     {
-      preHandler: requirePermission('appointment.read'),
+      preHandler: requirePermission('reports.read'),
       schema: {
         tags: ['Reports'],
         summary: 'Pending exams',
@@ -131,7 +131,7 @@ export const reportsRoutes: FastifyPluginAsync = async (app) => {
    */
   app.get(
     '/reports/exams-summary',
-    { preHandler: requirePermission('appointment.read') },
+    { preHandler: requirePermission('reports.read') },
     async (request, reply) => {
       const actor = request.requestContext.actor;
       if (!actor?.accountId) {
@@ -174,7 +174,7 @@ export const reportsRoutes: FastifyPluginAsync = async (app) => {
    */
   app.get(
     '/reports/financial-summary',
-    { preHandler: requirePermission('financial_account.read') },
+    { preHandler: requirePermission('financial_reports.read') },
     async (request, reply) => {
       const actor = request.requestContext.actor;
       if (!actor?.accountId) {

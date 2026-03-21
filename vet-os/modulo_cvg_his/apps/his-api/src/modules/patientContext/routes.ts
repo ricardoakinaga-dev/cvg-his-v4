@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { requirePermission } from '../../middlewares/requirePermission.js';
+import { appendSensitiveReadAudit } from '../iam/auditSensitiveAccess.js';
 import { createPatientContextService, getAccountIdFromRequest } from './service.js';
 import { patientContextParamsSchema, stayContextParamsSchema } from './types.js';
 
@@ -19,7 +20,7 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/by-patient/:patientId',
     {
-      preHandler: requirePermission('patient.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = patientContextParamsSchema.parse(request.params);
@@ -34,6 +35,18 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      await appendSensitiveReadAudit({
+        requestContext: request.requestContext,
+        entityType: 'patient',
+        entityId: params.patientId,
+        action: 'patient_context.read',
+        reason: 'patient_context_full_access',
+        afterJson: {
+          hasStay: Boolean(context.stay),
+          hasEncounter: Boolean(context.encounter)
+        }
+      });
+
       return reply.send(context);
     }
   );
@@ -45,7 +58,7 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/by-stay/:stayId',
     {
-      preHandler: requirePermission('patient.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = stayContextParamsSchema.parse(request.params);
@@ -59,6 +72,18 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
           code: 'STAY_NOT_FOUND'
         });
       }
+
+      await appendSensitiveReadAudit({
+        requestContext: request.requestContext,
+        entityType: 'inpatient_stay',
+        entityId: params.stayId,
+        action: 'patient_context.read',
+        reason: 'patient_context_by_stay_access',
+        afterJson: {
+          patientId: context.patient.id,
+          hasEncounter: Boolean(context.encounter)
+        }
+      });
 
       return reply.send(context);
     }
@@ -97,7 +122,7 @@ export const patientContextRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/stay/:stayId',
     {
-      preHandler: requirePermission('patient.read')
+      preHandler: requirePermission('inpatient.read')
     },
     async (request, reply) => {
       const params = stayContextParamsSchema.parse(request.params);

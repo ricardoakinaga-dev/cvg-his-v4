@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { appointmentsRoutes } from '../modules/appointments/routes.js';
 import { agendaConfigRoutes } from '../modules/agendaConfig/routes.js';
+import { adminIamRoutes } from '../modules/adminIam/routes.js';
 import { auditRoutes } from '../modules/audit/routes.js';
 import { alertsRoutes } from '../modules/alerts/routes.js';
 import { authRoutes } from '../modules/auth/routes.js';
@@ -50,6 +51,7 @@ export const apiRoutes: FastifyPluginAsync = async (app) => {
   await app.register(healthRoutes);
   await app.register(systemRoutes);
   await app.register(buildRoutes);
+  await app.register(adminIamRoutes);
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(auditRoutes);
   await app.register(alertsRoutes, { prefix: '/alerts' });

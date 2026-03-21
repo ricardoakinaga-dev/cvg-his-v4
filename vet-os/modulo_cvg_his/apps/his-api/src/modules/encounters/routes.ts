@@ -31,7 +31,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/:id',
     {
-      preHandler: requirePermission('encounter.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = encounterIdParamSchema.parse(request.params);
@@ -49,7 +49,7 @@ export const encountersRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/:id/timeline',
     {
-      preHandler: requirePermission('timeline.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = encounterIdParamSchema.parse(request.params);

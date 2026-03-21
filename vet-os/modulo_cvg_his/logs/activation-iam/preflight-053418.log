@@ -1,0 +1,12 @@
+
+> cvg-his@0.1.0 iam:preflight /home/cvgserver3/.openclaw/workspace/vet-os/modulo_cvg_his
+> node --import tsx apps/his-api/scripts/iam-preflight.ts
+
+IAM preflight
+[OK] DATABASE_URL: URL do Postgres presente.
+[OK] JWT_SECRET: Segredo presente (chan***26).
+[OK] JWT_ISSUER: Valor presente: cvg-his
+[OK] JWT_AUDIENCE: Valor presente: cvg-his-api
+[OK] NEXT_PUBLIC_HIS_API_BASE_URL: Proxy público configurado em /api/proxy.
+[OK] HIS_API_INTERNAL_URL: Upstream interno configurado em http://localhost:3000.
+STATUS: READY

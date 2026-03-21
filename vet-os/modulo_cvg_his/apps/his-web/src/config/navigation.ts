@@ -15,7 +15,7 @@ export const NAVIGATION_CONFIG: NavSection[] = [
     {
         title: 'Principal',
         items: [
-            { label: 'Dashboard', href: '/', permission: PERMISSIONS.SYSTEM_HEALTH_READ },
+            { label: 'Dashboard', href: '/', permission: PERMISSIONS.REPORTS_READ },
             { label: 'Atendimento', href: '/reception', permission: PERMISSIONS.PATIENT_READ },
         ]
     },
@@ -26,7 +26,7 @@ export const NAVIGATION_CONFIG: NavSection[] = [
             { label: 'Pacientes', href: '/patients', permission: PERMISSIONS.PATIENT_READ },
             { label: 'Serviços', href: '/services', permission: PERMISSIONS.SERVICE_READ },
             { label: 'Produtos', href: '/products', permission: PERMISSIONS.PRODUCT_READ },
-            { label: 'Estoque', href: '/stock', permission: PERMISSIONS.PRODUCT_READ },
+            { label: 'Estoque', href: '/stock', permission: PERMISSIONS.INVENTORY_READ },
         ]
     },
     {
@@ -35,20 +35,25 @@ export const NAVIGATION_CONFIG: NavSection[] = [
             { label: 'Agenda', href: '/appointments', permission: PERMISSIONS.APPOINTMENT_READ },
             { label: 'Disponibilidade', href: '/availability', permission: PERMISSIONS.APPOINTMENT_WRITE },
             { label: 'Prontuário', href: '/encounters', permission: PERMISSIONS.ENCOUNTER_READ },
-            { label: 'Exames', href: '/exams', permission: PERMISSIONS.ENCOUNTER_READ },
-            { label: 'Protocolos', href: '/protocols' },
+            { label: 'Exames', href: '/exams', permission: PERMISSIONS.EXAM_ORDER_READ },
+            { label: 'Protocolos', href: '/protocols', permission: PERMISSIONS.PROTOCOL_READ },
         ]
     },
     {
         title: 'Relatórios',
         items: [
-            { label: 'Dashboard', href: '/reports', permission: PERMISSIONS.APPOINTMENT_READ },
+            { label: 'Dashboard', href: '/reports', permission: PERMISSIONS.REPORTS_READ },
         ]
     },
     {
         title: 'Configurações',
         items: [
+            { label: 'Conta e Acessos', href: '/settings' },
+            { label: 'Meu Perfil', href: '/settings/profile' },
             { label: 'Agenda Config', href: '/agenda-config', permission: PERMISSIONS.APPOINTMENT_WRITE },
+            { label: 'Usuários', href: '/settings/users', permission: PERMISSIONS.USERS_READ },
+            { label: 'Papéis e Permissões', href: '/settings/roles', permission: PERMISSIONS.ROLES_READ },
+            { label: 'Auditoria', href: '/settings/audit', permission: PERMISSIONS.AUDIT_READ },
         ]
     },
     {

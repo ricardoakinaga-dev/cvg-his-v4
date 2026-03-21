@@ -3,6 +3,7 @@ import { can } from '@cvg-his/rbac';
 import type { AlertDto } from '@cvg-his/domain';
 
 import type { RequestContext } from '../../plugins/requestContext.js';
+import { appendSensitiveReadAudit } from '../iam/auditSensitiveAccess.js';
 import { createPatientsRepo } from './repo.js';
 
 type DbClient = typeof import('@cvg-his/db').db;
@@ -106,6 +107,18 @@ export async function getPatientSummary(
         )
       ).rows.map((row) => mapAuditRow(row as Record<string, unknown>))
     : [];
+
+  await appendSensitiveReadAudit({
+    requestContext,
+    entityType: 'patient',
+    entityId: patientId,
+    action: 'patient.summary.read',
+    reason: 'sensitive_patient_summary_access',
+    afterJson: {
+      highlightedAlerts: toHighlightedAlerts(patient.alerts),
+      includesAuditTrail: canReadAudit
+    }
+  });
 
   return {
     patient: {

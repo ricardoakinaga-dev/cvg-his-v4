@@ -5,13 +5,13 @@ import { createExamOrderBodySchema, updateExamOrderBodySchema, examOrderIdParamS
 
 export const examsRoutes: FastifyPluginAsync = async (app) => {
   // Exam Orders
-  app.post('/exam-orders', { preHandler: requirePermission('appointment.write') }, async (req, reply) => {
+  app.post('/exam-orders', { preHandler: requirePermission('exam_order.create') }, async (req, reply) => {
     const body = createExamOrderBodySchema.parse(req.body);
     const svc = createExamOrdersService({ db: app.db, requestContext: req.requestContext });
     return reply.status(201).send(await svc.create(body));
   });
 
-  app.get('/exam-orders/:id', { preHandler: requirePermission('appointment.read') }, async (req, reply) => {
+  app.get('/exam-orders/:id', { preHandler: requirePermission('exam_order.read') }, async (req, reply) => {
     const p = examOrderIdParamSchema.parse(req.params);
     const svc = createExamOrdersService({ db: app.db, requestContext: req.requestContext });
     const r = await svc.getById(p.id);
@@ -19,12 +19,12 @@ export const examsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(r);
   });
 
-  app.get('/exam-orders', { preHandler: requirePermission('appointment.read') }, async (req) => {
+  app.get('/exam-orders', { preHandler: requirePermission('exam_order.read') }, async (req) => {
     const q = listExamOrdersQuerySchema.parse(req.query);
     return createExamOrdersService({ db: app.db, requestContext: req.requestContext }).list(q);
   });
 
-  app.patch('/exam-orders/:id', { preHandler: requirePermission('appointment.write') }, async (req, reply) => {
+  app.patch('/exam-orders/:id', { preHandler: requirePermission('exam_order.update') }, async (req, reply) => {
     const p = examOrderIdParamSchema.parse(req.params);
     const body = updateExamOrderBodySchema.parse(req.body);
     const r = await createExamOrdersService({ db: app.db, requestContext: req.requestContext }).update(p.id, body);
@@ -33,13 +33,13 @@ export const examsRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // Exam Results
-  app.post('/exam-results', { preHandler: requirePermission('appointment.write') }, async (req, reply) => {
+  app.post('/exam-results', { preHandler: requirePermission('exam_result.create') }, async (req, reply) => {
     const body = createExamResultBodySchema.parse(req.body);
     const svc = createExamResultsService({ db: app.db, requestContext: req.requestContext });
     return reply.status(201).send(await svc.create(body));
   });
 
-  app.get('/exam-results/:id', { preHandler: requirePermission('appointment.read') }, async (req, reply) => {
+  app.get('/exam-results/:id', { preHandler: requirePermission('exam_result.read') }, async (req, reply) => {
     const p = examResultIdParamSchema.parse(req.params);
     const svc = createExamResultsService({ db: app.db, requestContext: req.requestContext });
     const r = await svc.getById(p.id);
@@ -47,12 +47,12 @@ export const examsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(r);
   });
 
-  app.get('/exam-results', { preHandler: requirePermission('appointment.read') }, async (req) => {
+  app.get('/exam-results', { preHandler: requirePermission('exam_result.read') }, async (req) => {
     const q = listExamResultsQuerySchema.parse(req.query);
     return createExamResultsService({ db: app.db, requestContext: req.requestContext }).list(q);
   });
 
-  app.patch('/exam-results/:id', { preHandler: requirePermission('appointment.write') }, async (req, reply) => {
+  app.patch('/exam-results/:id', { preHandler: requirePermission('exam_result.update') }, async (req, reply) => {
     const p = examResultIdParamSchema.parse(req.params);
     const body = updateExamResultBodySchema.parse(req.body);
     const r = await createExamResultsService({ db: app.db, requestContext: req.requestContext }).update(p.id, body);

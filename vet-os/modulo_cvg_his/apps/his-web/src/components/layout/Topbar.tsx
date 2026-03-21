@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
 import { clearAuthSession } from '../../lib/auth';
+import { Can } from '../auth/Can';
+import { PERMISSIONS } from '../../lib/rbac';
 import { theme, px } from '../../lib/theme';
 import { SearchBar } from '../SearchBar';
 import { Button } from '../ui/Button';
@@ -68,28 +70,32 @@ export function Topbar({ onToggleMenu }: { onToggleMenu?: () => void }): JSX.Ele
                     Cadastros
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: px(8) }}>
-                    <Link
-                        href="/owners"
-                        style={{
-                            textDecoration: 'none',
-                            fontSize: px(13),
-                            fontWeight: 600,
-                            color: pathname.startsWith('/owners') ? theme.colors.primary : theme.colors.textSecondary
-                        }}
-                    >
-                        Tutores
-                    </Link>
-                    <Link
-                        href="/patients"
-                        style={{
-                            textDecoration: 'none',
-                            fontSize: px(13),
-                            fontWeight: 600,
-                            color: pathname.startsWith('/patients') ? theme.colors.primary : theme.colors.textSecondary
-                        }}
-                    >
-                        Pacientes
-                    </Link>
+                    <Can permission={PERMISSIONS.OWNER_READ}>
+                        <Link
+                            href="/owners"
+                            style={{
+                                textDecoration: 'none',
+                                fontSize: px(13),
+                                fontWeight: 600,
+                                color: pathname.startsWith('/owners') ? theme.colors.primary : theme.colors.textSecondary
+                            }}
+                        >
+                            Tutores
+                        </Link>
+                    </Can>
+                    <Can permission={PERMISSIONS.PATIENT_READ}>
+                        <Link
+                            href="/patients"
+                            style={{
+                                textDecoration: 'none',
+                                fontSize: px(13),
+                                fontWeight: 600,
+                                color: pathname.startsWith('/patients') ? theme.colors.primary : theme.colors.textSecondary
+                            }}
+                        >
+                            Pacientes
+                        </Link>
+                    </Can>
                 </div>
             </div>
 

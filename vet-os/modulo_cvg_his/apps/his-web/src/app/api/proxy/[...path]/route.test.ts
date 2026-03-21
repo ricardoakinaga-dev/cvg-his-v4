@@ -123,6 +123,23 @@ describe('Proxy Route Handler', () => {
       expect(body.error.requestId).toBeTruthy();
     });
 
+    it('should allow admin IAM paths used by the settings area', async () => {
+      mockFetch.mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ data: [] })
+      });
+
+      const request = createMockRequest('/admin/iam/users');
+      const response = await GET(request, { params: { path: ['admin', 'iam', 'users'] } });
+
+      expect(response.status).toBe(200);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('http://upstream.test/admin/iam/users'),
+        expect.objectContaining({ method: 'GET' })
+      );
+    });
+
     it('should include x-request-id in upstream headers', async () => {
       mockFetch.mockResolvedValueOnce({
         status: 200,

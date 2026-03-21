@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { randomBytes, scryptSync } from 'node:crypto';
 
 import { and, eq, inArray } from 'drizzle-orm';
 import { CANONICAL_PERMISSIONS, ROLE_PERMISSIONS } from '@cvg-his/rbac';
@@ -22,8 +22,32 @@ const permissionDescriptions: Record<string, string> = {
   'audit.read': 'Permite leitura de trilhas de auditoria.',
   'system.health.read': 'Permite consultar endpoints de saúde do sistema.',
   'system.admin.test': 'Permite acesso aos endpoints administrativos de validação RBAC.',
+  'system.settings.manage': 'Permite administrar configurações críticas do sistema.',
+  'reports.read': 'Permite leitura de relatórios operacionais consolidados.',
+  'build.read': 'Permite leitura de metadados de build e rastreabilidade da aplicação.',
+  'users.read': 'Permite listar e visualizar usuários do sistema.',
+  'users.create': 'Permite criar novos usuários do sistema.',
+  'users.update': 'Permite editar dados cadastrais de usuários.',
+  'users.disable': 'Permite desativar usuários.',
+  'roles.read': 'Permite listar papéis e seus detalhes.',
+  'roles.create': 'Permite criar papéis.',
+  'roles.update': 'Permite editar papéis.',
+  'permissions.read': 'Permite listar permissões disponíveis.',
+  'permissions.manage': 'Permite administrar vínculos de permissões.',
+  'sessions.read': 'Permite listar sessões autenticadas.',
+  'sessions.revoke': 'Permite revogar sessões ativas.',
+  'access_scope.read': 'Permite listar escopos de acesso.',
+  'access_scope.manage': 'Permite criar e vincular escopos de acesso.',
+  'notification_template.read': 'Permite listar e visualizar templates de notificação.',
+  'notification_template.write': 'Permite criar e editar templates de notificação.',
+  'notification.read': 'Permite listar e visualizar notificações.',
+  'notification.write': 'Permite criar e disparar notificações.',
+  'notification_settings.read': 'Permite ler configurações de notificações.',
+  'notification_settings.write': 'Permite atualizar configurações de notificações.',
   'owner.read': 'Permite leitura de cadastros de proprietários.',
   'owner.write': 'Permite criar e alterar cadastros de proprietários.',
+  'partner.read': 'Permite leitura de parceiros e convênios.',
+  'partner.write': 'Permite criar e alterar parceiros e convênios.',
   'patient.read': 'Permite leitura de cadastros clínicos de pacientes.',
   'patient.write': 'Permite criar e alterar cadastros clínicos de pacientes.',
   'search.read': 'Permite uso de consultas e busca textual no domínio clínico.',
@@ -62,16 +86,34 @@ const permissionDescriptions: Record<string, string> = {
   'protocol.ref.read': 'Permite leitura de referências/evidências de protocolos.',
   'protocol.ref.write': 'Permite criar e editar referências/evidências de protocolos.',
   'alerts.read': 'Permite leitura de alertas clínicos e operacionais.',
+  'alerts.write': 'Permite criar e atualizar alertas clínicos e operacionais.',
   'product.read': 'Permite leitura do catálogo de produtos.',
   'product.write': 'Permite criar e alterar itens do catálogo de produtos.',
   'service.read': 'Permite leitura do catálogo de serviços.',
   'service.write': 'Permite criar e alterar itens do catálogo de serviços.',
+  'inventory.read': 'Permite leitura de saldos e movimentações de estoque.',
+  'inventory.adjust': 'Permite ajustes de estoque e movimentações sensíveis.',
   'billing_item.read': 'Permite leitura dos itens de cobrança vinculados ao atendimento.',
   'billing_item.write': 'Permite criar, alterar e remover itens de cobrança do atendimento.',
+  'billing.read': 'Permite leitura consolidada de faturamento operacional.',
+  'billing.create': 'Permite criação operacional de itens de faturamento.',
   'financial_account.read': 'Permite leitura do status financeiro e contas a receber do atendimento.',
   'financial_account.close': 'Permite fechamento financeiro formal da conta do atendimento.',
+  'financial_reports.read': 'Permite leitura de relatórios financeiros estratégicos.',
   'appointment.read': 'Permite leitura da agenda e agendamentos.',
-  'appointment.write': 'Permite criar, alterar e cancelar agendamentos.'
+  'appointment.write': 'Permite criar, alterar e cancelar agendamentos.',
+  'exam_order.read': 'Permite leitura de pedidos de exame.',
+  'exam_order.create': 'Permite criar pedidos de exame.',
+  'exam_order.update': 'Permite atualizar pedidos de exame.',
+  'exam_result.read': 'Permite leitura de resultados de exame.',
+  'exam_result.create': 'Permite criar resultados de exame.',
+  'exam_result.update': 'Permite atualizar resultados de exame.',
+  'lab_order.create': 'Permite criar pedidos laboratoriais.',
+  'lab_result.read': 'Permite ler resultados laboratoriais.',
+  'imaging_order.create': 'Permite criar pedidos de imagem.',
+  'medical_record.read': 'Permite ler prontuário clínico detalhado.',
+  'medical_record.write': 'Permite escrever em prontuário clínico.',
+  'medical_record.sign': 'Permite assinatura final de prontuário clínico.'
 };
 
 const permissionSeeds = CANONICAL_PERMISSIONS.map((key: string) => ({
@@ -81,9 +123,25 @@ const permissionSeeds = CANONICAL_PERMISSIONS.map((key: string) => ({
 
 const roleSeeds = [
   { name: 'admin', description: 'Acesso administrativo completo.' },
+  { name: 'superadmin', description: 'Acesso total sistêmico e operacional.' },
+  { name: 'diretoria', description: 'Perfil executivo com visão estratégica e financeira.' },
+  { name: 'gestao', description: 'Perfil executivo/gestão com visão estratégica e financeira.' },
+  { name: 'coordenacao_medica', description: 'Coordenação clínica com supervisão assistencial.' },
   { name: 'vet', description: 'Perfil de médico veterinário.' },
+  { name: 'veterinario', description: 'Perfil de médico veterinário.' },
+  { name: 'residente', description: 'Perfil clínico supervisionado.' },
   { name: 'enfermagem', description: 'Perfil de enfermagem.' },
-  { name: 'recepcao', description: 'Perfil de recepção.' }
+  { name: 'recepcao', description: 'Perfil de recepção.' },
+  { name: 'laboratorio', description: 'Perfil de laboratório.' },
+  { name: 'imagem', description: 'Perfil de imagem diagnóstica.' },
+  { name: 'radiologia', description: 'Perfil de radiologia.' },
+  { name: 'ultrassonografia', description: 'Perfil de ultrassonografia.' },
+  { name: 'farmacia_estoque', description: 'Perfil de farmácia e estoque.' },
+  { name: 'farmacia', description: 'Perfil de farmácia.' },
+  { name: 'estoque', description: 'Perfil de estoque.' },
+  { name: 'financeiro', description: 'Perfil financeiro.' },
+  { name: 'administrativo', description: 'Perfil administrativo.' },
+  { name: 'banho_tosa', description: 'Perfil operacional de banho e tosa.' }
 ];
 
 const rolePermissionMap: Record<string, string[]> = Object.fromEntries(
@@ -94,7 +152,9 @@ const rolePermissionMap: Record<string, string[]> = Object.fromEntries(
 );
 
 function hashPassword(rawPassword: string): string {
-  return createHash('sha256').update(rawPassword).digest('hex');
+  const salt = randomBytes(16);
+  const hash = scryptSync(rawPassword, salt, 64);
+  return `scrypt:${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
 async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitId: string }> {
@@ -201,8 +261,10 @@ async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
       accountId,
       unitId,
       email: adminEmail,
+      username: 'admin',
       passwordHash: hashPassword(adminPassword),
-      fullName: 'Administrador Seed'
+      fullName: 'Administrador Seed',
+      passwordChangedAt: new Date()
     })
     .onConflictDoNothing({ target: [users.accountId, users.email] });
 
@@ -230,6 +292,22 @@ async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
       roleId: adminRole.id
     })
     .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
+
+  const [superadminRole] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(eq(roles.name, 'superadmin'))
+    .limit(1);
+
+  if (superadminRole) {
+    await db
+      .insert(userRoles)
+      .values({
+        userId: adminUser.id,
+        roleId: superadminRole.id
+      })
+      .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
+  }
 }
 
 async function runSeed(): Promise<void> {

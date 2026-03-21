@@ -60,7 +60,7 @@ export const documentsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/documents/:id',
     {
-      preHandler: requirePermission('document.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = documentIdParamSchema.parse(request.params);

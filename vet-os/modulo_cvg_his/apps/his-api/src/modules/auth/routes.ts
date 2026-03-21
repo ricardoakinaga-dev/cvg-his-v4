@@ -5,6 +5,21 @@ import { promisify } from 'node:util';
 
 import { signJwt, verifyJwt, type JwtPayload, type AuthActor } from './service.js';
 import { permissionsForRole } from '@cvg-his/rbac';
+import { append } from '@cvg-his/audit';
+import { requireAuthenticated } from '../../middlewares/requireAuthenticated.js';
+
+import {
+  createAuthSession,
+  findUserAuthProfileByLogin,
+  getActiveSessionById,
+  getUserPasswordHashById,
+  getUserProfileById,
+  markUserSuccessfulLogin,
+  registerFailedLoginAttempt,
+  revokeAuthSession,
+  updateOwnUserPassword,
+  updateOwnUserProfile
+} from '../iam/service.js';
 
 const scryptAsync = promisify(scrypt);
 
@@ -31,8 +46,32 @@ const DevLoginSchema = z.object({
   unitId: z.string().uuid().optional()
 });
 
+const UpdateMyProfileSchema = z.object({
+  email: z.string().email().optional(),
+  username: z.string().trim().min(3).max(64).nullable().optional(),
+  fullName: z.string().trim().min(3).max(255).optional()
+}).refine((value) => Object.keys(value).length > 0, {
+  message: 'At least one field must be provided'
+});
+
+const ChangeMyPasswordSchema = z.object({
+  currentPassword: z.string().min(6, 'Current password is required'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters')
+}).refine((value) => value.currentPassword !== value.newPassword, {
+  message: 'New password must be different from current password',
+  path: ['newPassword']
+});
+
 function dedupe(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function isFutureIsoDate(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return new Date(value).getTime() > Date.now();
 }
 
 function buildActorFromPayload(payload: JwtPayload): AuthActor {
@@ -43,6 +82,7 @@ function buildActorFromPayload(payload: JwtPayload): AuthActor {
   return {
     accountId: payload.accountId,
     userId: payload.userId,
+    sessionId: payload.sessionId,
     unitId: payload.unitId,
     role: payload.role ?? roles[0],
     roles,
@@ -100,51 +140,6 @@ export async function hashPassword(plain: string): Promise<string> {
   return `scrypt:${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
-type UserRow = {
-  id: string;
-  accountId: string;
-  unitId: string | null;
-  email: string;
-  passwordHash: string;
-  isActive: boolean;
-};
-
-type DbLike = {
-  $client: {
-    query(sql: string, params: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
-  };
-};
-
-/**
- * Busca usuário ativo no banco pelo email.
- * Retorna null se não encontrado, inativo ou account inativo.
- */
-async function findUserByEmail(db: DbLike, email: string): Promise<UserRow | null> {
-  const result = await db.$client.query(
-    `
-      select u.id, u.account_id, u.unit_id, u.email, u.password_hash, u.is_active
-      from users u
-      join accounts a on a.id = u.account_id
-      where lower(u.email) = lower($1)
-        and u.is_active = true
-        and a.is_active = true
-      limit 1
-    `,
-    [email]
-  );
-
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-  return {
-    id: String(row.id),
-    accountId: String(row.account_id),
-    unitId: row.unit_id ? String(row.unit_id) : null,
-    email: String(row.email),
-    passwordHash: String(row.password_hash),
-    isActive: Boolean(row.is_active)
-  };
-}
-
 export const authRoutes: FastifyPluginAsync = async (app) => {
   // POST /auth/login - Authenticate with email+password or API key
   app.post('/login', async (request, reply) => {
@@ -163,10 +158,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } = app.env;
 
     let payload: JwtPayload;
+    let actor: AuthActor;
+    const expiresIn = 8 * 60 * 60;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
     if (loginData.type === 'email') {
-      // Busca o usuário no banco — sem credenciais hardcoded no código
-      const user = await findUserByEmail(app.db, loginData.email);
+      const user = await findUserAuthProfileByLogin(app.db, loginData.email);
 
       // Retorna mensagem genérica para não vazar existência do email
       if (!user) {
@@ -176,22 +173,81 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      if (isFutureIsoDate(user.lockedUntil)) {
+        await append({
+          accountId: user.accountId,
+          actorUserId: user.id,
+          roles: user.roles,
+          requestId: request.requestContext.requestId,
+          action: 'auth.login.failed',
+          entityType: 'user',
+          entityId: user.id,
+          reason: 'account_locked'
+        });
+
+        return reply.status(423).send({
+          error: 'ACCOUNT_LOCKED',
+          message: 'Account temporarily locked due to repeated failed attempts'
+        });
+      }
+
       // Verifica senha com scrypt + timingSafeEqual
       const passwordValid = await verifyPasswordHash(loginData.password, user.passwordHash);
       if (!passwordValid) {
+        const failedAttempt = await registerFailedLoginAttempt(app.db, {
+          userId: user.id
+        });
+
+        await append({
+          accountId: user.accountId,
+          actorUserId: user.id,
+          roles: user.roles,
+          requestId: request.requestContext.requestId,
+          action: 'auth.login.failed',
+          entityType: 'user',
+          entityId: user.id,
+          reason: failedAttempt.lockedUntil ? 'account_locked' : 'invalid_credentials'
+        });
         return reply.status(401).send({
           error: 'INVALID_CREDENTIALS',
           message: 'Invalid email or password'
         });
       }
 
-      payload = {
+      const { sessionId } = await createAuthSession(app.db, {
         accountId: user.accountId,
         userId: user.id,
         unitId: user.unitId ?? undefined,
-        role: 'admin',
-        roles: ['admin']
+        authMethod: 'password',
+        expiresAt,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent']
+      });
+
+      await markUserSuccessfulLogin(app.db, user.id);
+
+      payload = {
+        accountId: user.accountId,
+        userId: user.id,
+        sessionId,
+        unitId: user.unitId ?? undefined,
+        role: user.roles[0],
+        roles: user.roles,
+        permissions: user.permissions
       };
+
+      actor = buildActorFromPayload(payload);
+
+      await append({
+        accountId: user.accountId,
+        actorUserId: user.id,
+        roles: actor.roles,
+        requestId: request.requestContext.requestId,
+        action: 'auth.login.success',
+        entityType: 'session',
+        entityId: sessionId,
+        reason: 'password_login'
+      });
     } else {
       // API Key: validado contra env var API_KEY — sem hardcode no código
       const validApiKey = process.env.API_KEY?.trim();
@@ -226,20 +282,21 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         role: 'admin',
         roles: ['admin']
       };
+
+      actor = buildActorFromPayload(payload);
     }
 
     const token = signJwt(payload, {
       jwtSecret: JWT_SECRET,
       jwtIssuer: JWT_ISSUER,
-      jwtAudience: JWT_AUDIENCE
+      jwtAudience: JWT_AUDIENCE,
+      expiresIn
     });
-
-    const actor = buildActorFromPayload(payload);
 
     return reply.status(200).send({
       token,
       actor,
-      expiresIn: 8 * 60 * 60
+      expiresIn
     });
   });
 
@@ -324,8 +381,45 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     });
   });
 
+  app.post('/logout', { preHandler: requireAuthenticated }, async (request, reply) => {
+    const actor = request.requestContext.actor;
+
+    if (!actor?.accountId || !actor.sessionId) {
+      return reply.status(401).send({
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+
+    const revoked = await revokeAuthSession(app.db, {
+      sessionId: actor.sessionId,
+      accountId: actor.accountId,
+      reason: 'user_logout'
+    });
+
+    if (!revoked) {
+      return reply.status(401).send({
+        error: 'SESSION_NOT_ACTIVE',
+        message: 'Session is no longer active'
+      });
+    }
+
+    await append({
+      accountId: actor.accountId,
+      actorUserId: actor.userId,
+      roles: actor.roles,
+      requestId: request.requestContext.requestId,
+      action: 'auth.logout',
+      entityType: 'session',
+      entityId: actor.sessionId,
+      reason: 'user_logout'
+    });
+
+    return reply.status(200).send({ ok: true });
+  });
+
   // GET /auth/me - Get current actor from token
-  app.get('/me', async (request, reply) => {
+  app.get('/me', { preHandler: requireAuthenticated }, async (request, reply) => {
     const actor = request.requestContext.actor;
 
     if (!actor) {
@@ -335,6 +429,148 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    return reply.status(200).send({ actor });
+    let session: Awaited<ReturnType<typeof getActiveSessionById>> | null = null;
+
+    if (actor.sessionId) {
+      session = await getActiveSessionById(app.db, {
+        sessionId: actor.sessionId,
+        accountId: actor.accountId
+      });
+
+      if (!session || session.revokedAt) {
+        return reply.status(401).send({
+          error: 'SESSION_NOT_ACTIVE',
+          message: 'Session is no longer active'
+        });
+      }
+
+      if (new Date(session.expiresAt).getTime() <= Date.now()) {
+        return reply.status(401).send({
+          error: 'SESSION_EXPIRED',
+          message: 'Session has expired'
+        });
+      }
+    }
+
+    return reply.status(200).send({ actor, session });
+  });
+
+  app.get('/profile', { preHandler: requireAuthenticated }, async (request, reply) => {
+    const actor = request.requestContext.actor;
+    if (!actor?.accountId || !actor.userId) {
+      return reply.status(401).send({
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+
+    const profile = await getUserProfileById(app.db, {
+      accountId: actor.accountId,
+      userId: actor.userId
+    });
+
+    if (!profile) {
+      return reply.status(404).send({
+        error: 'PROFILE_NOT_FOUND',
+        message: 'Profile not found'
+      });
+    }
+
+    return reply.status(200).send({ profile });
+  });
+
+  app.patch('/profile', { preHandler: requireAuthenticated }, async (request, reply) => {
+    const actor = request.requestContext.actor;
+    if (!actor?.accountId || !actor.userId) {
+      return reply.status(401).send({
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+
+    const parseResult = UpdateMyProfileSchema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: 'INVALID_REQUEST',
+        message: 'Invalid profile update request',
+        details: parseResult.error.issues
+      });
+    }
+
+    const updated = await updateOwnUserProfile(app.db, {
+      accountId: actor.accountId,
+      userId: actor.userId,
+      email: parseResult.data.email,
+      username: parseResult.data.username,
+      fullName: parseResult.data.fullName
+    }, {
+      requestId: request.requestContext.requestId,
+      actorRoles: actor.roles
+    });
+
+    if (!updated) {
+      return reply.status(404).send({
+        error: 'PROFILE_NOT_FOUND',
+        message: 'Profile not found'
+      });
+    }
+
+    const profile = await getUserProfileById(app.db, {
+      accountId: actor.accountId,
+      userId: actor.userId
+    });
+
+    return reply.status(200).send({ ok: true, profile });
+  });
+
+  app.post('/change-password', { preHandler: requireAuthenticated }, async (request, reply) => {
+    const actor = request.requestContext.actor;
+    if (!actor?.accountId || !actor.userId) {
+      return reply.status(401).send({
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+
+    const parseResult = ChangeMyPasswordSchema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: 'INVALID_REQUEST',
+        message: 'Invalid password change request',
+        details: parseResult.error.issues
+      });
+    }
+
+    const currentHash = await getUserPasswordHashById(app.db, {
+      accountId: actor.accountId,
+      userId: actor.userId
+    });
+
+    if (!currentHash) {
+      return reply.status(404).send({
+        error: 'PROFILE_NOT_FOUND',
+        message: 'Profile not found'
+      });
+    }
+
+    const currentPasswordValid = await verifyPasswordHash(parseResult.data.currentPassword, currentHash);
+    if (!currentPasswordValid) {
+      return reply.status(401).send({
+        error: 'INVALID_CREDENTIALS',
+        message: 'Current password is invalid'
+      });
+    }
+
+    const passwordHash = await hashPassword(parseResult.data.newPassword);
+    await updateOwnUserPassword(app.db, {
+      accountId: actor.accountId,
+      userId: actor.userId,
+      passwordHash
+    }, {
+      requestId: request.requestContext.requestId,
+      actorRoles: actor.roles
+    });
+
+    return reply.status(200).send({ ok: true });
   });
 };

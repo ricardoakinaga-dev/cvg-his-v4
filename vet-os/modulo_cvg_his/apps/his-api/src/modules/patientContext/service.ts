@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify';
+import type { RequestContext } from '../../plugins/requestContext.js';
 import { createPatientContextRepo } from './repo.js';
 import type { 
   PatientContextResponse,
@@ -169,10 +170,10 @@ export function createPatientContextService(db: DbClient) {
 /**
  * Helper to extract account ID from request
  */
-export function getAccountIdFromRequest(request: FastifyRequest): string {
-  const accountId = request.headers['x-account-id'] as string | undefined;
+export function getAccountIdFromRequest(request: FastifyRequest & { requestContext: RequestContext }): string {
+  const accountId = request.requestContext.actor?.accountId;
   if (!accountId) {
-    throw new Error('Missing x-account-id header');
+    throw new Error('Missing actor account context');
   }
   return accountId;
 }

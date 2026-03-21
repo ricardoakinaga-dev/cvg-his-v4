@@ -6,6 +6,7 @@ import { permissionsForRole } from '@cvg-his/rbac';
 export type AuthActor = {
   accountId: string;
   userId?: string;
+  sessionId?: string;
   unitId?: string;
   role?: string;
   roles: string[];
@@ -22,6 +23,7 @@ export type JwtSignOptions = {
 export type JwtPayload = {
   accountId: string;
   userId?: string;
+  sessionId?: string;
   unitId?: string;
   role?: string;
   roles?: string[];
@@ -209,6 +211,7 @@ export function resolveActorFromHeaders(
     asStringRecordValue(claims.userId) ??
     asStringRecordValue(claims.user_id) ??
     asStringRecordValue(claims.sub);
+  const sessionId = asStringRecordValue(claims.sessionId) ?? asStringRecordValue(claims.session_id);
   const unitId = asStringRecordValue(claims.unitId) ?? asStringRecordValue(claims.unit_id);
   const roleFromClaim = asStringRecordValue(claims.role);
   const explicitRoles = asStringArrayRecordValue(claims.roles);
@@ -225,6 +228,7 @@ export function resolveActorFromHeaders(
   return {
     accountId,
     userId,
+    sessionId,
     unitId,
     role: roleFromClaim ?? roles[0],
     roles,
@@ -293,6 +297,7 @@ export function verifyJwt(token: string, options: ResolveActorOptions): JwtPaylo
   return {
     accountId,
     userId: asStringRecordValue(claims.userId) ?? asStringRecordValue(claims.user_id) ?? asStringRecordValue(claims.sub),
+    sessionId: asStringRecordValue(claims.sessionId) ?? asStringRecordValue(claims.session_id),
     unitId: asStringRecordValue(claims.unitId) ?? asStringRecordValue(claims.unit_id),
     role: asStringRecordValue(claims.role),
     roles: asStringArrayRecordValue(claims.roles),

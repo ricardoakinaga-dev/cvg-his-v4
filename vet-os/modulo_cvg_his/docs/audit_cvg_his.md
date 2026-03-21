@@ -249,8 +249,8 @@ Senhas placeholder `change-me` sem nenhum enforcement de que devem ser trocadas 
 ### ⚠️ BAIXO — Múltiplos Patches Grandes na Raiz do Projeto
 
 ```
-mar-hardening.patch (2.7MB), pr-saf-03.patch (2.9MB), 
-phase3-inpatient-stays.patch (1.6MB), contract-gate.patch (1.4MB)
+artifacts/patches/mar-hardening.patch (2.7MB), artifacts/patches/pr-saf-03.patch (2.9MB), 
+artifacts/patches/phase3-inpatient-stays.patch (1.6MB), artifacts/patches/contract-gate.patch (1.4MB)
 ```
 
 Arquivos `.patch` grandes commitados na raiz do projeto. Estes são artefatos temporários de desenvolvimento que não devem estar no repositório final — poluem o workspace e aumentam o tamanho do clone.

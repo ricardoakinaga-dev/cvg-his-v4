@@ -2,6 +2,7 @@ import { append, type AppendAuditInput } from '@cvg-his/audit';
 import type { EncounterCloseDto, EncounterCreateDto } from '@cvg-his/domain';
 
 import type { RequestContext } from '../../plugins/requestContext.js';
+import { appendSensitiveReadAudit } from '../iam/auditSensitiveAccess.js';
 import {
   createEncountersRepo,
   type EncounterRecord,
@@ -122,7 +123,23 @@ export function createEncountersService(context: ServiceContext, dependencies: S
 
     async getById(encounterId: string): Promise<EncounterRecord | null> {
       const actor = ensureAccountActor(context.requestContext);
-      return repo.findById(actor.accountId, encounterId);
+      const encounter = await repo.findById(actor.accountId, encounterId);
+
+      if (encounter) {
+        await appendSensitiveReadAudit({
+          requestContext: context.requestContext,
+          entityType: 'encounter',
+          entityId: encounterId,
+          action: 'encounter.read',
+          reason: 'medical_record_detail_access',
+          afterJson: {
+            status: encounter.status,
+            patientId: encounter.patientId
+          }
+        });
+      }
+
+      return encounter;
     },
 
     async list(input: { patientId?: string; page: number; pageSize: number }) {
@@ -137,7 +154,22 @@ export function createEncountersService(context: ServiceContext, dependencies: S
 
     async getTimeline(encounterId: string) {
       const actor = ensureAccountActor(context.requestContext);
-      return repo.getTimeline(actor.accountId, encounterId);
+      const timeline = await repo.getTimeline(actor.accountId, encounterId);
+
+      if (timeline) {
+        await appendSensitiveReadAudit({
+          requestContext: context.requestContext,
+          entityType: 'encounter',
+          entityId: encounterId,
+          action: 'encounter.timeline.read',
+          reason: 'medical_record_timeline_access',
+          afterJson: {
+            itemCount: Array.isArray(timeline.timeline) ? timeline.timeline.length : undefined
+          }
+        });
+      }
+
+      return timeline;
     },
 
     async close(encounterId: string, input: EncounterCloseDto): Promise<CloseEncounterResult> {

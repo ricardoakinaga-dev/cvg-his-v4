@@ -165,7 +165,7 @@ export const clinicalNotesRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/notes/:id',
     {
-      preHandler: requirePermission('note.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = noteIdParamSchema.parse(request.params);

@@ -16,7 +16,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // POST /notification-templates - Criar template
   app.post('/notification-templates', {
-    preHandler: requirePermission('system.health.read'), // Temporário: usar permissão existente
+    preHandler: requirePermission('notification_template.write'),
     schema: {
       tags: ['Notifications'],
       summary: 'Create notification template'
@@ -34,7 +34,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /notification-templates - Listar templates
   app.get('/notification-templates', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification_template.read'),
     schema: {
       tags: ['Notifications'],
       summary: 'List notification templates'
@@ -59,7 +59,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /notification-templates/:id - Detalhe do template
   app.get('/notification-templates/:id', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification_template.read'),
     schema: {
       tags: ['Notifications'],
       summary: 'Get notification template'
@@ -81,7 +81,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // PATCH /notification-templates/:id - Atualizar template
   app.patch('/notification-templates/:id', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification_template.write'),
     schema: {
       tags: ['Notifications'],
       summary: 'Update notification template'
@@ -108,7 +108,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // POST /notifications - Criar/enviar notificação
   app.post('/notifications', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification.write'),
     schema: {
       tags: ['Notifications'],
       summary: 'Create notification'
@@ -148,7 +148,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /notifications - Listar notificações
   app.get('/notifications', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification.read'),
     schema: {
       tags: ['Notifications'],
       summary: 'List notifications'
@@ -177,7 +177,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /notifications/:id - Detalhe da notificação
   app.get('/notifications/:id', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification.read'),
     schema: {
       tags: ['Notifications'],
       summary: 'Get notification'
@@ -203,7 +203,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /notification-settings - Obter configurações
   app.get('/notification-settings', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification_settings.read'),
     schema: {
       tags: ['Notifications'],
       summary: 'Get notification settings'
@@ -227,7 +227,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
   // PUT /notification-settings - Atualizar configurações
   app.put('/notification-settings', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('notification_settings.write'),
     schema: {
       tags: ['Notifications'],
       summary: 'Update notification settings'

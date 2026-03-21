@@ -51,6 +51,8 @@ const ALLOWED_PATH_PREFIXES = [
   '/payments',
   '/cash',
   '/dashboard'
+  ,
+  '/admin/iam'
 ] as const;
 
 // Hop-by-hop headers per RFC 2616 Section 13.5.1

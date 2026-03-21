@@ -50,7 +50,7 @@ export const patientsRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/:id/summary',
     {
-      preHandler: requirePermission('patient.read')
+      preHandler: requirePermission('medical_record.read')
     },
     async (request, reply) => {
       const params = patientIdParamSchema.parse(request.params);

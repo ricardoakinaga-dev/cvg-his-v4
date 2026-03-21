@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { isApiError } from '../../lib/api';
-import { getAuthSession, isValidSession, performLogin, type UserRole } from '../../lib/auth';
+import { getAuthProfilePolicy, getAuthSession, isValidSession, performLogin, syncAuthSessionFromServer, type UserRole } from '../../lib/auth';
 import { theme } from '../../lib/theme';
 import { z } from 'zod';
 
@@ -69,6 +69,8 @@ function LoginForm() {
   }, [searchParams]);
 
   useEffect(() => {
+    let cancelled = false;
+
     // Carrega sessão existente se houver
     const existingSession = getAuthSession();
     if (existingSession) {
@@ -81,10 +83,29 @@ function LoginForm() {
       }));
     }
 
-    // Se já tiver sessão válida, redireciona
-    if (isValidSession()) {
-      router.replace('/');
+    async function resolveExistingSession() {
+      if (isValidSession()) {
+        router.replace('/');
+        return;
+      }
+
+      try {
+        const synced = await syncAuthSessionFromServer();
+        if (!cancelled && synced) {
+          router.replace('/');
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[his-web][login] failed to sync existing session', error);
+        }
+      }
     }
+
+    void resolveExistingSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleEmailChange = (field: 'email' | 'password', value: string) => {
@@ -129,6 +150,11 @@ function LoginForm() {
       });
 
       toast('Autenticado com sucesso!', 'success');
+      const profilePolicy = await getAuthProfilePolicy();
+      if (profilePolicy?.mustChangePassword) {
+        router.replace(`/settings/profile?forcePasswordChange=1&next=${encodeURIComponent(redirectTo)}`);
+        return;
+      }
       router.replace(redirectTo);
     } catch (error) {
       console.error(error);
@@ -176,6 +202,11 @@ function LoginForm() {
       });
 
       toast('Autenticado com sucesso!', 'success');
+      const profilePolicy = await getAuthProfilePolicy();
+      if (profilePolicy?.mustChangePassword) {
+        router.replace(`/settings/profile?forcePasswordChange=1&next=${encodeURIComponent(redirectTo)}`);
+        return;
+      }
       router.replace(redirectTo);
     } catch (error) {
       console.error(error);

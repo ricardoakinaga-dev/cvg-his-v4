@@ -4,6 +4,7 @@ import { append, type AppendAuditInput } from '@cvg-his/audit';
 import type { DocumentCreateDto } from '@cvg-his/domain';
 
 import type { RequestContext } from '../../plugins/requestContext.js';
+import { appendSensitiveReadAudit } from '../iam/auditSensitiveAccess.js';
 import {
   createDocumentsRepo,
   type DocumentRecord,
@@ -112,7 +113,23 @@ export function createDocumentsService(context: ServiceContext, dependencies: Se
 
     async getById(documentId: string): Promise<DocumentRecord | null> {
       const actor = ensureAccountActor(context.requestContext);
-      return repo.findById(actor.accountId, documentId);
+      const document = await repo.findById(actor.accountId, documentId);
+
+      if (document) {
+        await appendSensitiveReadAudit({
+          requestContext: context.requestContext,
+          entityType: 'document',
+          entityId: documentId,
+          action: 'document.read',
+          reason: 'medical_record_document_access',
+          afterJson: {
+            filename: document.filename,
+            mimeType: document.mimeType
+          }
+        });
+      }
+
+      return document;
     },
 
     async attachToEncounter(encounterId: string, documentId: string): Promise<AttachDocumentResult> {

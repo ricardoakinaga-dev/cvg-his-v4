@@ -20,7 +20,7 @@ function getDefaultDateRange() {
 export const dashboardRoutes: FastifyPluginAsync = async (app) => {
   // GET /dashboard - Full dashboard data
   app.get('/dashboard', {
-    preHandler: requirePermission('system.health.read'),
+    preHandler: requirePermission('reports.read'),
     schema: {
       tags: ['Dashboard'],
       summary: 'Executive dashboard',
@@ -72,7 +72,7 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /dashboard/appointments - Appointments only
   app.get('/dashboard/appointments', {
-    preHandler: requirePermission('appointment.read'),
+    preHandler: requirePermission('reports.read'),
     schema: { tags: ['Dashboard'], summary: 'Appointments KPIs' }
   }, async (request) => {
     const actor = request.requestContext.actor;
@@ -94,7 +94,7 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /dashboard/financial - Financial only
   app.get('/dashboard/financial', {
-    preHandler: requirePermission('financial_account.read'),
+    preHandler: requirePermission('financial_reports.read'),
     schema: { tags: ['Dashboard'], summary: 'Financial KPIs' }
   }, async (request) => {
     const actor = request.requestContext.actor;
@@ -116,7 +116,7 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /dashboard/stock - Stock only
   app.get('/dashboard/stock', {
-    preHandler: requirePermission('product.read'),
+    preHandler: requirePermission('inventory.read'),
     schema: { tags: ['Dashboard'], summary: 'Stock KPIs' }
   }, async (request) => {
     const actor = request.requestContext.actor;
