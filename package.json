@@ -15,8 +15,12 @@
     "typecheck": "./pnpm -r --filter @cvg-his-v2/* run typecheck",
     "lint": "./pnpm -r --filter @cvg-his-v2/* run lint",
     "test": "./pnpm -r --filter @cvg-his-v2/* run test",
-    "test:all": "./pnpm -r --filter @cvg-his-v2/* run test && ./pnpm --filter @cvg-his-v2/api run test:db",
+    "test:all": "./pnpm -r --filter @cvg-his-v2/* run test && ./pnpm --filter @cvg-his-v2/api run test:db && ./pnpm test:smoke",
+    "test:smoke": "npx playwright test --config e2e/playwright-smoke.config.ts",
+    "release:check": "./pnpm typecheck && ./pnpm build && ./pnpm test:all",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",
+    "staging:bootstrap": "node infra/scripts/bootstrap-local.mjs",
+    "staging:check": "node infra/scripts/check-staging.mjs",
     "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
     "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*"
   },

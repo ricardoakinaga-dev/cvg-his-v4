@@ -1,12 +1,18 @@
 import { eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { medicalRecords, clinicalEntries, clinicalTimeline } from '@cvg-his-v2/shared-database';
+import {
+  medicalRecords,
+  clinicalEntries,
+  clinicalTimeline,
+  entryRevisions
+} from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
   ClinicalEntryId,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
   EncounterId,
+  EntryRevisionSummary,
   MedicalRecordId,
   MedicalRecordSummary,
   PatientId,
@@ -15,7 +21,8 @@ import type {
 import type {
   MedicalRecordRepository,
   ClinicalEntryRepository,
-  ClinicalTimelineRepository
+  ClinicalTimelineRepository,
+  EntryRevisionRepository
 } from '../index.js';
 
 export class DatabaseMedicalRecordRepository implements MedicalRecordRepository {
@@ -108,9 +115,39 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
       entryType: entry.entryType,
       title: entry.title,
       content: entry.content,
+      version: entry.version,
+      deletedAt: entry.deletedAt ? new Date(entry.deletedAt) : null,
+      deletedByUserId: entry.deletedByUserId ?? null,
+      deleteReason: entry.deleteReason ?? null,
       createdAt: new Date(entry.createdAt),
       updatedAt: new Date(entry.updatedAt)
     });
+  }
+
+  public async update(entry: ClinicalEntrySummary): Promise<void> {
+    await this.#db
+      .update(clinicalEntries)
+      .set({
+        title: entry.title,
+        content: entry.content,
+        version: entry.version,
+        deletedAt: entry.deletedAt ? new Date(entry.deletedAt) : null,
+        deletedByUserId: entry.deletedByUserId ?? null,
+        deleteReason: entry.deleteReason ?? null,
+        updatedAt: new Date(entry.updatedAt)
+      })
+      .where(eq(clinicalEntries.id, entry.id));
+  }
+
+  public async findById(entryId: ClinicalEntryId): Promise<ClinicalEntrySummary | null> {
+    const result = await this.#db
+      .select()
+      .from(clinicalEntries)
+      .where(eq(clinicalEntries.id, entryId))
+      .limit(1);
+
+    if (result.length === 0) return null;
+    return this.mapRow(result[0]);
   }
 
   public async findByMedicalRecordId(
@@ -121,19 +158,27 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
       .from(clinicalEntries)
       .where(eq(clinicalEntries.medicalRecordId, medicalRecordId));
 
-    return result.map((row) => ({
+    return result.map((row) => this.mapRow(row));
+  }
+
+  private mapRow(row: typeof clinicalEntries.$inferSelect): ClinicalEntrySummary {
+    return {
       id: row.id as ClinicalEntryId,
       accountId: row.accountId as AccountId,
       medicalRecordId: row.medicalRecordId as MedicalRecordId,
       encounterId: row.encounterId as EncounterId,
-      patientId: row.patientId as never,
+      patientId: row.patientId as PatientId,
       entryType: row.entryType as ClinicalEntrySummary['entryType'],
       title: row.title,
       content: row.content,
       authoredByUserId: row.authorUserId as UserId,
+      version: row.version,
+      deletedAt: row.deletedAt?.toISOString(),
+      deletedByUserId: (row.deletedByUserId ?? undefined) as UserId | undefined,
+      deleteReason: row.deleteReason ?? undefined,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
-    }));
+    };
   }
 }
 
@@ -178,6 +223,45 @@ export class DatabaseClinicalTimelineRepository implements ClinicalTimelineRepos
       clinicalEntryId: (row.clinicalEntryId ?? undefined) as never,
       attachmentId: (row.attachmentId ?? undefined) as never,
       occurredAt: row.occurredAt.toISOString()
+    }));
+  }
+}
+
+export class DatabaseEntryRevisionRepository implements EntryRevisionRepository {
+  readonly #db: DatabaseClient;
+
+  public constructor(db: DatabaseClient) {
+    this.#db = db;
+  }
+
+  public async create(revision: EntryRevisionSummary): Promise<void> {
+    await this.#db.insert(entryRevisions).values({
+      id: revision.id as string,
+      entryId: revision.entryId as string,
+      version: revision.version,
+      title: revision.title,
+      content: revision.content,
+      authorUserId: revision.authorUserId as string,
+      reason: revision.reason ?? null,
+      createdAt: new Date(revision.createdAt)
+    });
+  }
+
+  public async findByEntryId(entryId: ClinicalEntryId): Promise<readonly EntryRevisionSummary[]> {
+    const result = await this.#db
+      .select()
+      .from(entryRevisions)
+      .where(eq(entryRevisions.entryId, entryId));
+
+    return result.map((row: typeof entryRevisions.$inferSelect) => ({
+      id: row.id as never,
+      entryId: row.entryId as ClinicalEntryId,
+      version: row.version,
+      title: row.title,
+      content: row.content,
+      authorUserId: row.authorUserId as UserId,
+      reason: row.reason ?? undefined,
+      createdAt: row.createdAt.toISOString()
     }));
   }
 }

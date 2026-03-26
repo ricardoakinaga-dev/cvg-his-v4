@@ -9,6 +9,8 @@ import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
 import { AuthService } from './index.js';
 
+const SEED_PASSWORD = 'seed_admin';
+
 function createAuthService() {
   const users = new UsersService();
   const staff = new StaffService();
@@ -29,7 +31,7 @@ function createAuthService() {
 test('AuthService: login with valid credentials returns session', () => {
   const auth = createAuthService();
 
-  const result = auth.login({ username: 'admin', password: 'admin123' }, 'corr-test-1');
+  const result = auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-test-1');
 
   assert.ok(result.accessToken);
   assert.ok(result.refreshToken);
@@ -64,7 +66,7 @@ test('AuthService: login with non-existent user throws', () => {
 test('AuthService: refresh rotates tokens but keeps same session', () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'admin123' }, 'corr-test-4');
+  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-4');
   const originalSessionId = login.principal.session.sessionId;
   const originalRefresh = login.refreshToken;
 
@@ -78,7 +80,7 @@ test('AuthService: refresh rotates tokens but keeps same session', () => {
 test('AuthService: revoked session cannot be refreshed', () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'admin123' }, 'corr-test-5');
+  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-5');
 
   auth.logout({ refreshToken: login.refreshToken }, 'corr-test-5-logout');
 
@@ -94,7 +96,7 @@ test('AuthService: revoked session cannot be refreshed', () => {
 test('AuthService: authenticateAccessToken returns principal for valid token', () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'admin123' }, 'corr-test-6');
+  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-6');
 
   const principal = auth.authenticateAccessToken(login.accessToken);
 

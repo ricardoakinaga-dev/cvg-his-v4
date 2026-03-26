@@ -360,6 +360,9 @@ importers:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../shared/errors
@@ -372,6 +375,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
 
   packages/modules/audit:
     dependencies:
@@ -453,6 +459,9 @@ importers:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../shared/errors
@@ -465,6 +474,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
 
   packages/modules/encounters:
     dependencies:
@@ -504,6 +516,9 @@ importers:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../shared/errors
@@ -516,6 +531,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
 
   packages/modules/inventory:
     dependencies:
@@ -687,6 +705,9 @@ importers:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../shared/errors
@@ -699,6 +720,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
 
   packages/modules/triage:
     dependencies:

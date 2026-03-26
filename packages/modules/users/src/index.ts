@@ -9,12 +9,15 @@ export interface UserRecord extends UserSummary {
   readonly roleCodes: readonly string[];
 }
 
+const SEED_SALT = 'cvg-his-v2-seed-salt-v1';
+const SEED_PASSWORD_PREFIX = 'seed_';
+
 function hashPassword(password: string): string {
-  return scryptSync(password, 'cvg-his-v2-phase-3', 64).toString('hex');
+  return scryptSync(password, SEED_SALT, 64).toString('hex');
 }
 
 function comparePassword(password: string, passwordHash: string): boolean {
-  const candidate = scryptSync(password, 'cvg-his-v2-phase-3', 64);
+  const candidate = scryptSync(password, SEED_SALT, 64);
   const reference = Buffer.from(passwordHash, 'hex');
   return timingSafeEqual(candidate, reference);
 }
@@ -33,7 +36,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_admin' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('admin123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'admin'),
       roleCodes: ['admin']
     },
     {
@@ -46,7 +49,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_reception' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('reception123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'reception'),
       roleCodes: ['reception']
     },
     {
@@ -59,7 +62,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_auditor' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('auditor123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'auditor'),
       roleCodes: ['auditor']
     },
     {
@@ -72,7 +75,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_nurse' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('nurse123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'nurse'),
       roleCodes: ['nurse']
     },
     {
@@ -85,7 +88,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_vet' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('vet123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'vet'),
       roleCodes: ['veterinarian']
     },
     {
@@ -98,7 +101,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_finance' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('finance123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'finance'),
       roleCodes: ['finance']
     },
     {
@@ -111,7 +114,7 @@ function createSeedUsers(): UserRecord[] {
       staffId: 'staff_inventory' as never,
       createdAt,
       updatedAt: createdAt,
-      passwordHash: hashPassword('inventory123'),
+      passwordHash: hashPassword(SEED_PASSWORD_PREFIX + 'inventory'),
       roleCodes: ['inventory']
     }
   ];

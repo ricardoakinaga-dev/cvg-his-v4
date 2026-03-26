@@ -1,49 +1,156 @@
-import { EncountersService } from "@cvg-his-v2/module-encounters";
+import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   CreateDiagnosticOrderRequest,
-  RecordDiagnosticResultRequest,
-} from "@cvg-his-v2/shared-contracts";
-import { NotFoundError } from "@cvg-his-v2/shared-errors";
-import type { DiagnosticOrderId, DiagnosticOrderSummary } from "@cvg-his-v2/shared-types";
-import { createCorrelationId, nowIso } from "@cvg-his-v2/shared-utils";
-import { requireNonEmptyString } from "@cvg-his-v2/shared-validation";
+  RecordDiagnosticResultRequest
+} from '@cvg-his-v2/shared-contracts';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import type {
+  DiagnosticOrderId,
+  DiagnosticOrderSummary,
+  ExamCatalogEntry
+} from '@cvg-his-v2/shared-types';
+import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import { DatabaseDiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
+import type { DiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
+
+export type { DiagnosticOrderRepository };
+export { DatabaseDiagnosticOrderRepository };
+
+const VALID_DIAGNOSTIC_TRANSITIONS: Record<string, readonly string[]> = {
+  requested: ['collected', 'cancelled'],
+  collected: ['resulted', 'cancelled'],
+  resulted: [],
+  cancelled: []
+};
+
+const DEFAULT_EXAM_CATALOG: readonly ExamCatalogEntry[] = [
+  {
+    id: 'cat_001',
+    code: 'HEM',
+    name: 'Hemograma',
+    category: 'Laboratorial',
+    description: 'Exame de sangue completo'
+  },
+  {
+    id: 'cat_002',
+    code: 'BIO',
+    name: 'Bioquimico',
+    category: 'Laboratorial',
+    description: 'Perfil bioquimico sanguineo'
+  },
+  {
+    id: 'cat_003',
+    code: 'URIN',
+    name: 'Urina',
+    category: 'Laboratorial',
+    description: 'Exame de urina tipo 1'
+  },
+  {
+    id: 'cat_004',
+    code: 'RX',
+    name: 'Radiografia',
+    category: 'Imagen',
+    description: 'Radiografia simples'
+  },
+  {
+    id: 'cat_005',
+    code: 'US',
+    name: 'Ultrassonografia',
+    category: 'Imagen',
+    description: 'Exame ultrassonografico'
+  },
+  {
+    id: 'cat_006',
+    code: 'ECO',
+    name: 'Ecocardiograma',
+    category: 'Imagen',
+    description: 'Ecocardiograma estrutural'
+  }
+];
+
+export interface DiagnosticsServiceOptions {
+  readonly diagnosticOrderRepository?: DiagnosticOrderRepository;
+  readonly catalog?: readonly ExamCatalogEntry[];
+}
 
 export class DiagnosticsService {
   readonly #encounters: EncountersService;
   readonly #orders = new Map<DiagnosticOrderId, DiagnosticOrderSummary>();
+  readonly #catalog: readonly ExamCatalogEntry[];
+  readonly #repository?: DiagnosticOrderRepository;
+  #pendingPersist: Promise<void> = Promise.resolve();
 
-  public constructor(encounters: EncountersService) {
+  public constructor(encounters: EncountersService, options?: DiagnosticsServiceOptions) {
     this.#encounters = encounters;
+    this.#catalog = options?.catalog ?? DEFAULT_EXAM_CATALOG;
+    this.#repository = options?.diagnosticOrderRepository;
+  }
+
+  private isValidTransition(currentStatus: string, newStatus: string): boolean {
+    const allowed = VALID_DIAGNOSTIC_TRANSITIONS[currentStatus];
+    return allowed?.includes(newStatus) ?? false;
+  }
+
+  private async persistOrder(order: DiagnosticOrderSummary): Promise<void> {
+    const repo = this.#repository;
+    if (repo) {
+      this.#pendingPersist = this.#pendingPersist.then(async () => {
+        const existing = await repo.findById(order.id);
+        if (existing) {
+          await repo.update(order);
+        } else {
+          await repo.create(order);
+        }
+      });
+      await this.#pendingPersist;
+    }
+  }
+
+  private async updateOrder(order: DiagnosticOrderSummary): Promise<void> {
+    await this.persistOrder(order);
+  }
+
+  public listCatalog(): readonly ExamCatalogEntry[] {
+    return this.#catalog;
+  }
+
+  public getCatalogEntry(catalogId: string): ExamCatalogEntry | undefined {
+    return this.#catalog.find((entry) => entry.id === catalogId);
   }
 
   public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
     const now = nowIso();
     const order: DiagnosticOrderSummary = {
-      id: createCorrelationId("diag") as DiagnosticOrderId,
+      id: createCorrelationId('diag') as DiagnosticOrderId,
       accountId: encounter.accountId,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      examType: requireNonEmptyString(payload.examType, "examType"),
-      reason: requireNonEmptyString(payload.reason, "reason"),
-      status: "requested",
+      examType: requireNonEmptyString(payload.examType, 'examType'),
+      examCatalogId: payload.examCatalogId,
+      reason: requireNonEmptyString(payload.reason, 'reason'),
+      status: 'requested',
       createdAt: now,
-      updatedAt: now,
+      updatedAt: now
     };
     this.#orders.set(order.id, order);
+    this.persistOrder(order).catch((err) =>
+      console.error('Failed to persist diagnostic order:', err)
+    );
     return order;
   }
 
   public list(encounterId?: string): readonly DiagnosticOrderSummary[] {
     return Array.from(this.#orders.values()).filter(
-      (order) => !encounterId || order.encounterId === encounterId,
+      (order) => !encounterId || order.encounterId === encounterId
     );
   }
 
   public getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary {
     const order = this.#orders.get(orderId);
     if (!order) {
-      throw new NotFoundError("Diagnostic order not found", { orderId });
+      throw new NotFoundError('Diagnostic order not found', { orderId });
     }
 
     return order;
@@ -51,16 +158,32 @@ export class DiagnosticsService {
 
   public recordResult(
     orderId: DiagnosticOrderId,
-    payload: RecordDiagnosticResultRequest,
+    payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
     const current = this.getOrThrow(orderId);
+
+    if (!this.isValidTransition(current.status, payload.status)) {
+      throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
+    }
+
+    const now = nowIso();
     const updated: DiagnosticOrderSummary = {
       ...current,
       status: payload.status,
-      resultSummary: requireNonEmptyString(payload.resultSummary, "resultSummary"),
-      updatedAt: nowIso(),
+      ...(payload.status === 'collected' && {
+        collectedAt: now,
+        collectedByUserId: payload.collectedByUserId
+      }),
+      ...(payload.status === 'resulted' && {
+        resultSummary: payload.resultSummary,
+        resultAttachmentId: payload.resultAttachmentId
+      }),
+      updatedAt: now
     };
     this.#orders.set(orderId, updated);
+    this.updateOrder(updated).catch((err) =>
+      console.error('Failed to update diagnostic order:', err)
+    );
     return updated;
   }
 }

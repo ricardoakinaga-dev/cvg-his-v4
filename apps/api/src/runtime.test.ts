@@ -21,7 +21,7 @@ test('login, session refresh and audit trail work end-to-end', () => {
   const login = runtime.auth.login(
     {
       username: 'admin',
-      password: 'admin123'
+      password: 'seed_admin'
     },
     'corr_login_test'
   );
@@ -56,7 +56,7 @@ test('backend enforcement denies audit access to a role without permission', () 
   const login = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_permission_test'
   );
@@ -83,7 +83,7 @@ test('master registry supports owner, patient, relationship and search flows', (
   const login = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_master_registry_test'
   );
@@ -163,7 +163,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   const receptionLogin = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_operational_reception'
   );
@@ -261,12 +261,12 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   );
 });
 
-test('clinical record supports entries, prescriptions, conduct and attachments linked to encounter', () => {
+test('clinical record supports entries, prescriptions, conduct and attachments linked to encounter', async () => {
   const runtime = createTestRuntime();
   const receptionLogin = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_clinical_reception'
   );
@@ -282,7 +282,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
   const vetLogin = runtime.auth.login(
     {
       username: 'vet',
-      password: 'vet123'
+      password: 'seed_vet'
     },
     'corr_clinical_vet'
   );
@@ -311,7 +311,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
   });
 
   const record = runtime.medicalRecords.getRecordByEncounterOrThrow(encounter.id);
-  const attachment = runtime.attachments.upload(veterinarian.user.id, {
+  const attachment = await runtime.attachments.upload(veterinarian.user.id, {
     linkedEntityType: 'medical_record',
     linkedEntityId: record.id,
     category: 'document',
@@ -328,7 +328,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
 
   const entries = runtime.medicalRecords.listEntriesByEncounter(encounter.id);
   const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
-  const attachments = runtime.attachments.listByLinkedEntity('medical_record', record.id);
+  const attachments = await runtime.attachments.listByLinkedEntity('medical_record', record.id);
 
   assert.equal(record.encounterId, encounter.id);
   assert.equal(
@@ -357,12 +357,12 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
   );
 });
 
-test('advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case', () => {
+test('advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case', async () => {
   const runtime = createTestRuntime();
   const receptionLogin = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_advanced_reception'
   );
@@ -378,7 +378,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
   const vetLogin = runtime.auth.login(
     {
       username: 'vet',
-      password: 'vet123'
+      password: 'seed_vet'
     },
     'corr_advanced_vet'
   );
@@ -426,6 +426,26 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery requested: ${surgeryCase.procedureName}`
   );
 
+  const preOpSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
+    status: 'pre_op'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'surgery_pre_op',
+    `Surgery case moved to ${preOpSurgery.status}`
+  );
+
+  const inProgressSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
+    status: 'in_progress'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'surgery_in_progress',
+    `Surgery case moved to ${inProgressSurgery.status}`
+  );
+
   const updatedSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
     status: 'recovery',
     operativeNotes: 'Procedimento concluido sem intercorrencias imediatas.'
@@ -450,7 +470,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Diagnostic order requested: ${order.examType}`
   );
 
-  const attachment = runtime.attachments.upload(veterinarian.user.id, {
+  const attachment = await runtime.attachments.upload(veterinarian.user.id, {
     linkedEntityType: 'diagnostic_order',
     linkedEntityId: order.id,
     category: 'lab',
@@ -465,6 +485,17 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Attachment added to diagnostic order ${order.id}`
   );
 
+  const collectedOrder = runtime.diagnostics.recordResult(order.id, {
+    status: 'collected',
+    collectedByUserId: veterinarian.user.id
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'diagnostic_collected',
+    `Diagnostic order collected by ${collectedOrder.collectedByUserId}`
+  );
+
   const resultedOrder = runtime.diagnostics.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.'
@@ -477,7 +508,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
   );
 
   const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
-  const diagnosticAttachments = runtime.attachments.listByLinkedEntity(
+  const diagnosticAttachments = await runtime.attachments.listByLinkedEntity(
     'diagnostic_order',
     order.id
   );
@@ -521,7 +552,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
   const receptionLogin = runtime.auth.login(
     {
       username: 'reception',
-      password: 'reception123'
+      password: 'seed_reception'
     },
     'corr_admin_bridge_reception'
   );
@@ -626,7 +657,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
 
   // Login and create session
   const loginA = runtimeA.auth.login(
-    { username: 'reception', password: 'reception123' },
+    { username: 'reception', password: 'seed_reception' },
     'corr_restart_test'
   );
   const sessionA = loginA.principal.session;
@@ -772,7 +803,7 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
 
   // Login
   const loginA = runtimeA.auth.login(
-    { username: 'reception', password: 'reception123' },
+    { username: 'reception', password: 'seed_reception' },
     'corr_medical_restart_test'
   );
 
@@ -822,6 +853,8 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
     title: 'Prescricao inicial',
     content: 'Antiemetico a cada 12h por 3 dias.'
   });
+
+  await runtimeA.medicalRecords.waitForPersistence();
 
   // Verify data in repositories
   const recordInRepo = await repositories.medicalRecord?.findByEncounterId(encounter.id);
@@ -1025,7 +1058,7 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
 
   // Login as reception
   const receptionLogin = runtime.auth.login(
-    { username: 'reception', password: 'reception123' },
+    { username: 'reception', password: 'seed_reception' },
     'corr_cross_aggregate'
   );
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);

@@ -31,6 +31,8 @@ async function main() {
     repos.medicalRecord,
     repos.clinicalEntry,
     repos.clinicalTimeline,
+    repos.entryRevision,
+    repos.attachment,
     repos.notification
   ].filter(Boolean).length;
 
@@ -52,7 +54,7 @@ async function main() {
       : 'Worker dependency not configured because DATABASE_URL is absent';
 
   // Production ready only when using real database and full repository wiring is available.
-  const productionReady = persistenceMode === 'database' && repoCount >= 11 && workerReady;
+  const productionReady = persistenceMode === 'database' && repoCount >= 13 && workerReady;
 
   setAppState({
     persistenceMode,
@@ -83,7 +85,8 @@ async function main() {
     authSecret: config.authSecret,
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
-    repositories: bootstrapResult.repositories
+    repositories: bootstrapResult.repositories,
+    fileStorage: bootstrapResult.fileStorage
   });
 
   server.listen(config.port, config.host, () => {

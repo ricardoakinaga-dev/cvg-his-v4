@@ -1,5 +1,9 @@
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
-import { AttachmentsService } from '@cvg-his-v2/module-attachments';
+import {
+  AttachmentsService,
+  type AttachmentRepository,
+  type FileStorage
+} from '@cvg-his-v2/module-attachments';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
 import { AuthService } from '@cvg-his-v2/module-auth';
@@ -12,12 +16,17 @@ import type {
   EncounterTimelineRepository
 } from '@cvg-his-v2/module-encounters';
 import { InpatientService } from '@cvg-his-v2/module-inpatient';
+import type {
+  InpatientStayRepository,
+  InpatientProgressRepository
+} from '@cvg-his-v2/module-inpatient';
 import { InventoryService } from '@cvg-his-v2/module-inventory';
 import {
   MedicalRecordsService,
   type MedicalRecordRepository,
   type ClinicalEntryRepository,
-  type ClinicalTimelineRepository
+  type ClinicalTimelineRepository,
+  type EntryRevisionRepository
 } from '@cvg-his-v2/module-medical-records';
 import {
   NotificationsService,
@@ -30,8 +39,10 @@ import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/
 import { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { SurgeryService } from '@cvg-his-v2/module-surgery';
+import type { SurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { TriageService } from '@cvg-his-v2/module-triage';
 import { UsersService } from '@cvg-his-v2/module-users';
+import type { DiagnosticOrderRepository } from '@cvg-his-v2/module-diagnostics';
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -44,7 +55,13 @@ export interface RuntimeRepositories {
   readonly medicalRecord?: MedicalRecordRepository;
   readonly clinicalEntry?: ClinicalEntryRepository;
   readonly clinicalTimeline?: ClinicalTimelineRepository;
+  readonly entryRevision?: EntryRevisionRepository;
+  readonly attachment?: AttachmentRepository;
   readonly notification?: NotificationRepository;
+  readonly inpatientStay?: InpatientStayRepository;
+  readonly inpatientProgress?: InpatientProgressRepository;
+  readonly surgeryCase?: SurgeryCaseRepository;
+  readonly diagnosticOrder?: DiagnosticOrderRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -52,6 +69,7 @@ export interface ApiRuntimeOptions {
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly repositories?: RuntimeRepositories;
+  readonly fileStorage?: FileStorage;
 }
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
@@ -79,11 +97,19 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     patients,
     medicalRecordRepository: repos.medicalRecord,
     clinicalEntryRepository: repos.clinicalEntry,
-    clinicalTimelineRepository: repos.clinicalTimeline
+    clinicalTimelineRepository: repos.clinicalTimeline,
+    entryRevisionRepository: repos.entryRevision
   });
-  const inpatient = new InpatientService(encounters);
-  const surgery = new SurgeryService(encounters);
-  const diagnostics = new DiagnosticsService(encounters);
+  const inpatient = new InpatientService(encounters, {
+    stayRepository: repos.inpatientStay,
+    progressRepository: repos.inpatientProgress
+  });
+  const surgery = new SurgeryService(encounters, {
+    surgeryCaseRepository: repos.surgeryCase
+  });
+  const diagnostics = new DiagnosticsService(encounters, {
+    diagnosticOrderRepository: repos.diagnosticOrder
+  });
   const billing = new BillingService(encounters);
   const inventory = new InventoryService(encounters);
   const notifications = new NotificationsService({
@@ -91,7 +117,13 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     patients,
     notificationRepository: repos.notification
   });
-  const attachments = new AttachmentsService(encounters, medicalRecords, diagnostics);
+  const attachments = new AttachmentsService({
+    encounters,
+    medicalRecords,
+    diagnostics,
+    repository: repos.attachment,
+    fileStorage: options.fileStorage
+  });
   const audit = new AuditService({ auditRepository: repos.audit });
   audit.seedSystemEvent('Phase 8 administrative care bridge initialized');
   const auth = new AuthService({

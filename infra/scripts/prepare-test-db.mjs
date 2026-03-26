@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,11 +13,20 @@ const schemaFile = resolve(
   rootDir,
   'packages/shared/database/src/migrations/001_initial_schema.sql'
 );
-const databaseUrl = process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/cvg_his_test';
+const migrationsDir = resolve(rootDir, 'packages/shared/database/src/migrations');
+const databaseUrl =
+  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/cvg_his_test';
+const skipSetup = process.env.SKIP_DB_SETUP === 'true';
 const requireFromSharedDatabase = createRequire(
   resolve(rootDir, 'packages/shared/database/package.json')
 );
 const { Client } = requireFromSharedDatabase('pg');
+
+if (skipSetup) {
+  console.log('SKIP_DB_SETUP=true - skipping database preparation.');
+  console.log('Ensure DATABASE_URL points to an existing database with schema applied.');
+  process.exit(0);
+}
 
 function getAdminDatabaseUrl(connectionString) {
   const url = new URL(connectionString);
@@ -140,7 +149,9 @@ async function ensurePostgresRunning() {
       }
     }
 
-    throw error;
+    throw new Error(
+      `Docker bootstrap failed: ${message}\n\nTip: Set SKIP_DB_SETUP=true and configure DATABASE_URL to use an existing PostgreSQL instance.`
+    );
   }
 
   for (let attempt = 1; attempt <= 30; attempt += 1) {
@@ -173,6 +184,11 @@ async function ensurePostgresRunning() {
 
 async function applySchema() {
   const schemaSql = readFileSync(schemaFile, 'utf8');
+  const migrationSql = readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.sql') && file !== '001_initial_schema.sql')
+    .sort()
+    .map((file) => readFileSync(resolve(migrationsDir, file), 'utf8'))
+    .join('\n');
   const reconcileSql = `
 ALTER TABLE clinical_entries ADD COLUMN IF NOT EXISTS account_id VARCHAR(255);
 ALTER TABLE clinical_timeline ADD COLUMN IF NOT EXISTS account_id VARCHAR(255);
@@ -185,6 +201,7 @@ DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 ${schemaSql}
 ${reconcileSql}
+${migrationSql}
 `;
 
   const client = new Client({ connectionString: databaseUrl });
@@ -204,6 +221,17 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  console.error('');
+  console.error('=== Troubleshooting ===');
+  console.error(
+    '• To use an existing PostgreSQL instance, set: SKIP_DB_SETUP=true and DATABASE_URL'
+  );
+  console.error(
+    '  Example: SKIP_DB_SETUP=true DATABASE_URL=postgres://user:pass@host:5432/mydb pnpm test:db'
+  );
+  console.error('• To use Docker, ensure Docker is running and docker-compose is available.');
+  console.error('• For CI environments, ensure PostgreSQL is pre-configured via DATABASE_URL.');
   process.exit(1);
 });

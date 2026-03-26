@@ -1,4 +1,4 @@
-import type { DatabaseStatus } from "@cvg-his-v2/shared-database";
+import type { DatabaseStatus } from '@cvg-his-v2/shared-database';
 import type {
   AccessProfile,
   AttachmentSummary,
@@ -9,6 +9,7 @@ import type {
   DiagnosticOrderSummary,
   EncounterSummary,
   EncounterTimelineEventSummary,
+  EntryRevisionSummary,
   InpatientProgressSummary,
   InpatientStaySummary,
   InventoryConsumptionSummary,
@@ -30,8 +31,8 @@ import type {
   SessionSummary,
   StaffSummary,
   TriageSummary,
-  UserSummary,
-} from "@cvg-his-v2/shared-types";
+  UserSummary
+} from '@cvg-his-v2/shared-types';
 
 export interface HealthResponse extends HealthStatus {
   readonly liveness: {
@@ -64,7 +65,7 @@ export interface LoginRequest {
 export interface AuthTokens {
   readonly accessToken: string;
   readonly refreshToken: string;
-  readonly tokenType: "Bearer";
+  readonly tokenType: 'Bearer';
 }
 
 export interface AuthSessionResponse extends AuthTokens {
@@ -86,7 +87,7 @@ export interface UserListResponse {
 export interface UpdateUserRequest {
   readonly displayName?: string;
   readonly email?: string;
-  readonly status?: "active" | "inactive";
+  readonly status?: 'active' | 'inactive';
 }
 
 export interface StaffListResponse {
@@ -113,7 +114,7 @@ export interface CreateOwnerRequest {
   readonly contacts: readonly {
     readonly label: string;
     readonly value: string;
-    readonly type: "phone" | "email" | "whatsapp";
+    readonly type: 'phone' | 'email' | 'whatsapp';
     readonly primary?: boolean;
   }[];
   readonly financialResponsible: boolean;
@@ -126,12 +127,12 @@ export interface UpdateOwnerRequest {
   readonly contacts?: readonly {
     readonly label: string;
     readonly value: string;
-    readonly type: "phone" | "email" | "whatsapp";
+    readonly type: 'phone' | 'email' | 'whatsapp';
     readonly primary?: boolean;
   }[];
   readonly financialResponsible?: boolean;
   readonly administrativeNotes?: string;
-  readonly status?: "active" | "inactive";
+  readonly status?: 'active' | 'inactive';
 }
 
 export interface OwnerListResponse {
@@ -142,24 +143,24 @@ export interface CreatePatientRequest {
   readonly name: string;
   readonly species: string;
   readonly breed?: string;
-  readonly sex: "male" | "female" | "unknown";
-  readonly size?: "small" | "medium" | "large";
+  readonly sex: 'male' | 'female' | 'unknown';
+  readonly size?: 'small' | 'medium' | 'large';
   readonly baseWeightKg?: number;
   readonly birthDateApproximate?: string;
   readonly primaryOwnerId: string;
-  readonly status?: "active" | "inactive" | "deceased";
+  readonly status?: 'active' | 'inactive' | 'deceased';
 }
 
 export interface UpdatePatientRequest {
   readonly name?: string;
   readonly species?: string;
   readonly breed?: string;
-  readonly sex?: "male" | "female" | "unknown";
-  readonly size?: "small" | "medium" | "large";
+  readonly sex?: 'male' | 'female' | 'unknown';
+  readonly size?: 'small' | 'medium' | 'large';
   readonly baseWeightKg?: number;
   readonly birthDateApproximate?: string;
   readonly primaryOwnerId?: string;
-  readonly status?: "active" | "inactive" | "deceased";
+  readonly status?: 'active' | 'inactive' | 'deceased';
 }
 
 export interface PatientListResponse {
@@ -169,7 +170,7 @@ export interface PatientListResponse {
 export interface CreateOwnerPatientLinkRequest {
   readonly ownerId: string;
   readonly patientId: string;
-  readonly relationshipType: "primary" | "secondary" | "financial";
+  readonly relationshipType: 'primary' | 'secondary' | 'financial';
   readonly financialResponsible: boolean;
 }
 
@@ -187,7 +188,7 @@ export interface CreateAppointmentRequest {
   readonly patientId: string;
   readonly ownerId: string;
   readonly scheduledAt: string;
-  readonly visitType: "walk_in" | "scheduled" | "return";
+  readonly visitType: 'walk_in' | 'scheduled' | 'return';
   readonly reason: string;
 }
 
@@ -200,7 +201,7 @@ export interface CheckInQueueRequest {
   readonly ownerId: string;
   readonly appointmentId?: string;
   readonly reason: string;
-  readonly priority?: "low" | "medium" | "high" | "critical";
+  readonly priority?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export interface QueueListResponse {
@@ -212,13 +213,13 @@ export interface CreateEncounterRequest {
   readonly ownerId: string;
   readonly appointmentId?: string;
   readonly queueEntryId?: string;
-  readonly visitType: "walk_in" | "scheduled" | "return";
-  readonly origin: "reception" | "schedule" | "return";
+  readonly visitType: 'walk_in' | 'scheduled' | 'return';
+  readonly origin: 'reception' | 'schedule' | 'return';
   readonly reason: string;
 }
 
 export interface TransitionEncounterRequest {
-  readonly nextStatus: "reception" | "in_triage" | "in_care" | "observation" | "closed";
+  readonly nextStatus: 'reception' | 'in_triage' | 'in_care' | 'observation' | 'closed';
 }
 
 export interface CloseEncounterRequest {
@@ -232,11 +233,11 @@ export interface EncounterListResponse {
 export interface CreateTriageRequest {
   readonly encounterId: string;
   readonly patientId: string;
-  readonly priority: "low" | "medium" | "high" | "critical";
+  readonly priority: 'low' | 'medium' | 'high' | 'critical';
   readonly chiefComplaint: string;
   readonly initialNotes?: string;
   readonly alerts: readonly string[];
-  readonly destination: "in_care" | "observation";
+  readonly destination: 'in_care' | 'observation';
 }
 
 export interface TriageListResponse {
@@ -251,15 +252,27 @@ export interface CreateClinicalEntryRequest {
   readonly encounterId: string;
   readonly patientId: string;
   readonly entryType:
-    | "anamnesis"
-    | "physical_exam"
-    | "progress_note"
-    | "assessment"
-    | "plan"
-    | "prescription"
-    | "conduct";
+    | 'anamnesis'
+    | 'physical_exam'
+    | 'progress_note'
+    | 'assessment'
+    | 'plan'
+    | 'prescription'
+    | 'conduct';
   readonly title: string;
   readonly content: string;
+}
+
+export interface UpdateClinicalEntryRequest {
+  readonly title?: string;
+  readonly content?: string;
+  readonly reason?: string;
+  readonly expectedVersion?: number;
+}
+
+export interface ArchiveClinicalEntryRequest {
+  readonly reason: string;
+  readonly expectedVersion?: number;
 }
 
 export interface MedicalRecordResponse {
@@ -275,10 +288,14 @@ export interface ClinicalTimelineResponse {
   readonly items: readonly ClinicalTimelineEventSummary[];
 }
 
+export interface EntryRevisionListResponse {
+  readonly items: readonly EntryRevisionSummary[];
+}
+
 export interface CreateAttachmentRequest {
-  readonly linkedEntityType: "encounter" | "medical_record" | "diagnostic_order";
+  readonly linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order';
   readonly linkedEntityId: string;
-  readonly category: "image" | "lab" | "document" | "prescription" | "other";
+  readonly category: 'image' | 'lab' | 'document' | 'prescription' | 'other';
   readonly fileName: string;
   readonly mimeType: string;
   readonly checksum: string;
@@ -310,13 +327,19 @@ export interface InpatientProgressListResponse {
 }
 
 export interface UpdateInpatientStatusRequest {
-  readonly status: "admitted" | "stable" | "discharged";
+  readonly status: 'admitted' | 'stable' | 'transferred' | 'discharged';
+  readonly dischargeReason?: string;
+  readonly transferToUnit?: string;
+  readonly transferToWard?: string;
 }
 
 export interface CreateSurgeryCaseRequest {
   readonly encounterId: string;
   readonly patientId: string;
   readonly procedureName: string;
+  readonly surgeonUserId?: string;
+  readonly surgicalTeam?: readonly string[];
+  readonly scheduledAt?: string;
   readonly preparationNotes?: string;
 }
 
@@ -325,7 +348,7 @@ export interface SurgeryListResponse {
 }
 
 export interface UpdateSurgeryStatusRequest {
-  readonly status: "requested" | "pre_op" | "in_progress" | "recovery" | "completed" | "cancelled";
+  readonly status: 'requested' | 'pre_op' | 'in_progress' | 'recovery' | 'completed' | 'cancelled';
   readonly operativeNotes?: string;
 }
 
@@ -333,6 +356,7 @@ export interface CreateDiagnosticOrderRequest {
   readonly encounterId: string;
   readonly patientId: string;
   readonly examType: string;
+  readonly examCatalogId?: string;
   readonly reason: string;
 }
 
@@ -341,8 +365,10 @@ export interface DiagnosticOrderListResponse {
 }
 
 export interface RecordDiagnosticResultRequest {
-  readonly resultSummary: string;
-  readonly status: "resulted";
+  readonly status: 'collected' | 'resulted' | 'cancelled';
+  readonly resultSummary?: string;
+  readonly resultAttachmentId?: string;
+  readonly collectedByUserId?: string;
 }
 
 export interface CreateBillingEstimateRequest {
@@ -352,27 +378,21 @@ export interface CreateBillingEstimateRequest {
 
 export interface CreateBillingItemRequest {
   readonly encounterId: string;
-  readonly itemType:
-    | "service"
-    | "supply"
-    | "procedure"
-    | "exam"
-    | "daily_rate"
-    | "other";
+  readonly itemType: 'service' | 'supply' | 'procedure' | 'exam' | 'daily_rate' | 'other';
   readonly description: string;
   readonly quantity: number;
   readonly unitPriceAmount: number;
   readonly sourceEntityType?:
-    | "encounter"
-    | "diagnostic_order"
-    | "surgery_case"
-    | "inpatient_stay"
-    | "prescription";
+    | 'encounter'
+    | 'diagnostic_order'
+    | 'surgery_case'
+    | 'inpatient_stay'
+    | 'prescription';
   readonly sourceEntityId?: string;
 }
 
 export interface UpdateBillingStatusRequest {
-  readonly status: "draft" | "estimated" | "open" | "settled";
+  readonly status: 'draft' | 'estimated' | 'open' | 'settled';
   readonly administrativeNotes?: string;
 }
 
@@ -389,12 +409,12 @@ export interface CreateInventoryConsumptionRequest {
   readonly inventoryItemId: string;
   readonly quantity: number;
   readonly sourceEntityType:
-    | "encounter"
-    | "diagnostic_order"
-    | "surgery_case"
-    | "inpatient_stay"
-    | "prescription"
-    | "other";
+    | 'encounter'
+    | 'diagnostic_order'
+    | 'surgery_case'
+    | 'inpatient_stay'
+    | 'prescription'
+    | 'other';
   readonly sourceEntityId?: string;
 }
 
@@ -407,13 +427,13 @@ export interface InventoryConsumptionListResponse {
 }
 
 export interface CreateNotificationRequest {
-  readonly category: "billing" | "inventory" | "operations" | "system";
+  readonly category: 'billing' | 'inventory' | 'operations' | 'system';
   readonly encounterId?: string;
   readonly patientId?: string;
   readonly recipientRoleCode?: string;
   readonly title: string;
   readonly message: string;
-  readonly severity: "low" | "medium" | "high";
+  readonly severity: 'low' | 'medium' | 'high';
 }
 
 export interface ProcessNotificationsRequest {

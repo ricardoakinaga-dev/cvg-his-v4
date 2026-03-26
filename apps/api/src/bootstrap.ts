@@ -28,15 +28,38 @@ import type {
 import {
   DatabaseMedicalRecordRepository,
   DatabaseClinicalEntryRepository,
-  DatabaseClinicalTimelineRepository
+  DatabaseClinicalTimelineRepository,
+  DatabaseEntryRevisionRepository
 } from '@cvg-his-v2/module-medical-records';
 import type {
   MedicalRecordRepository,
   ClinicalEntryRepository,
-  ClinicalTimelineRepository
+  ClinicalTimelineRepository,
+  EntryRevisionRepository
 } from '@cvg-his-v2/module-medical-records';
+import {
+  DatabaseAttachmentRepository,
+  LocalFileStorage,
+  createMemoryFileStorage,
+  type AttachmentRepository,
+  type FileStorage
+} from '@cvg-his-v2/module-attachments';
 import { DatabaseNotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
+import {
+  DatabaseInpatientStayRepository,
+  DatabaseInpatientProgressRepository,
+  type InpatientStayRepository,
+  type InpatientProgressRepository
+} from '@cvg-his-v2/module-inpatient';
+import {
+  DatabaseSurgeryCaseRepository,
+  type SurgeryCaseRepository
+} from '@cvg-his-v2/module-surgery';
+import {
+  DatabaseDiagnosticOrderRepository,
+  type DiagnosticOrderRepository
+} from '@cvg-his-v2/module-diagnostics';
 import type {
   AccountId,
   AuditEventId,
@@ -61,6 +84,8 @@ import type {
   ClinicalEntryId,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
+  EntryRevisionSummary,
+  AttachmentSummary,
   NotificationId,
   NotificationJobId,
   NotificationJobSummary,
@@ -80,6 +105,7 @@ export interface BootstrapResult {
   databaseHealthy: boolean;
   databaseDetail: string;
   repositories: RuntimeRepositories;
+  fileStorage: FileStorage;
 }
 
 const logger = createLogger('bootstrap');
@@ -341,6 +367,22 @@ class InMemoryClinicalEntryRepository {
     this.#entries.set(entry.medicalRecordId, existing);
   }
 
+  async update(entry: ClinicalEntrySummary): Promise<void> {
+    const existing = this.#entries.get(entry.medicalRecordId) ?? [];
+    const idx = existing.findIndex((e) => e.id === entry.id);
+    if (idx !== -1) {
+      existing[idx] = entry;
+    }
+  }
+
+  async findById(entryId: ClinicalEntryId): Promise<ClinicalEntrySummary | null> {
+    for (const entries of this.#entries.values()) {
+      const found = entries.find((e) => e.id === entryId);
+      if (found) return found;
+    }
+    return null;
+  }
+
   async findByMedicalRecordId(
     medicalRecordId: MedicalRecordId
   ): Promise<readonly ClinicalEntrySummary[]> {
@@ -369,6 +411,47 @@ class InMemoryClinicalTimelineRepository {
 
   clear(): void {
     this.#timeline.clear();
+  }
+}
+
+class InMemoryEntryRevisionRepository {
+  readonly #revisions = new Map<ClinicalEntryId, EntryRevisionSummary[]>();
+
+  async create(revision: EntryRevisionSummary): Promise<void> {
+    const existing = this.#revisions.get(revision.entryId) ?? [];
+    existing.push(revision);
+    this.#revisions.set(revision.entryId, existing);
+  }
+
+  async findByEntryId(entryId: ClinicalEntryId): Promise<readonly EntryRevisionSummary[]> {
+    return this.#revisions.get(entryId) ?? [];
+  }
+}
+
+class InMemoryAttachmentRepository {
+  readonly #attachments = new Map<string, AttachmentSummary>();
+
+  async create(attachment: AttachmentSummary): Promise<void> {
+    this.#attachments.set(attachment.id, attachment);
+  }
+
+  async findById(id: string): Promise<AttachmentSummary | null> {
+    return this.#attachments.get(id) ?? null;
+  }
+
+  async findByLinkedEntity(
+    linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
+    linkedEntityId: string
+  ): Promise<readonly AttachmentSummary[]> {
+    return Array.from(this.#attachments.values()).filter(
+      (attachment) =>
+        attachment.linkedEntityType === linkedEntityType &&
+        attachment.linkedEntityId === linkedEntityId
+    );
+  }
+
+  async deleteById(id: string): Promise<boolean> {
+    return this.#attachments.delete(id);
   }
 }
 
@@ -430,7 +513,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   const results: BootstrapResult = {
     databaseHealthy: false,
     databaseDetail: 'Not initialized',
-    repositories: {}
+    repositories: {},
+    fileStorage: createMemoryFileStorage()
   };
 
   // Default to in-memory repositories
@@ -445,6 +529,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     medicalRecord: new InMemoryMedicalRecordRepository(),
     clinicalEntry: new InMemoryClinicalEntryRepository(),
     clinicalTimeline: new InMemoryClinicalTimelineRepository(),
+    entryRevision: new InMemoryEntryRevisionRepository(),
+    attachment: new InMemoryAttachmentRepository(),
     notification: new InMemoryNotificationRepository()
   };
 
@@ -491,8 +577,17 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         medicalRecord: new DatabaseMedicalRecordRepository(db),
         clinicalEntry: new DatabaseClinicalEntryRepository(db),
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),
-        notification: new DatabaseNotificationRepository(db)
+        entryRevision: new DatabaseEntryRevisionRepository(db),
+        attachment: new DatabaseAttachmentRepository(db),
+        notification: new DatabaseNotificationRepository(db),
+        inpatientStay: new DatabaseInpatientStayRepository(db),
+        inpatientProgress: new DatabaseInpatientProgressRepository(db),
+        surgeryCase: new DatabaseSurgeryCaseRepository(db),
+        diagnosticOrder: new DatabaseDiagnosticOrderRepository(db)
       };
+      results.fileStorage = new LocalFileStorage({
+        basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'
+      });
     } else {
       logger.error('Database connection failed after retries, using in-memory repositories', {
         detail: health.detail

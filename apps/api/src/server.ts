@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
   AddInpatientProgressRequest,
+  ArchiveClinicalEntryRequest,
   CheckInQueueRequest,
   CloseEncounterRequest,
   CreateAppointmentRequest,
@@ -28,6 +29,7 @@ import type {
   RecordDiagnosticResultRequest,
   TransitionEncounterRequest,
   UpdateBillingStatusRequest,
+  UpdateClinicalEntryRequest,
   UpdateInpatientStatusRequest,
   UpdateOwnerRequest,
   UpdateSurgeryStatusRequest,
@@ -41,6 +43,7 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
+import type { FileStorage } from '@cvg-his-v2/module-attachments';
 import { getAppState } from './app-state.js';
 
 export interface ApiServerOptions {
@@ -51,6 +54,7 @@ export interface ApiServerOptions {
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly repositories?: RuntimeRepositories;
+  readonly fileStorage?: FileStorage;
 }
 
 export function createApiServer(options: ApiServerOptions) {
@@ -78,7 +82,8 @@ export function createApiServer(options: ApiServerOptions) {
     authSecret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
-    repositories: options.repositories
+    repositories: options.repositories,
+    fileStorage: options.fileStorage
   });
 
   return createServer((request: IncomingMessage, response: ServerResponse) => {
@@ -240,7 +245,7 @@ export function createApiServer(options: ApiServerOptions) {
           url.searchParams.get('encounterId'),
           'encounterId'
         );
-        const record = medicalRecords.getRecordByEncounterOrThrow(encounterId as never);
+        const record = await medicalRecords.getRecordByEncounterOrThrowAsync(encounterId as never);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -256,7 +261,7 @@ export function createApiServer(options: ApiServerOptions) {
         response.end(
           JSON.stringify({
             record,
-            entries: medicalRecords.listEntriesByEncounter(encounterId as never)
+            entries: await medicalRecords.listEntriesByEncounterAsync(encounterId as never)
           })
         );
         return;
@@ -282,7 +287,7 @@ export function createApiServer(options: ApiServerOptions) {
         response.statusCode = 200;
         response.end(
           JSON.stringify({
-            items: medicalRecords.listEntriesByEncounter(encounterId as never)
+            items: await medicalRecords.listEntriesByEncounterAsync(encounterId as never)
           })
         );
         return;
@@ -308,6 +313,51 @@ export function createApiServer(options: ApiServerOptions) {
         return;
       }
 
+      if (pathname.startsWith('/medical-records/entries/')) {
+        const entryId = requireNonEmptyString(pathname.split('/')[3], 'entryId');
+        const principal = requirePrincipal(request, 'medical-records.manage');
+
+        if (request.method === 'PATCH') {
+          const payload = (await readJsonBody(request)) as UpdateClinicalEntryRequest;
+          const entry = medicalRecords.updateEntry(principal.user.id, entryId as never, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'medical-records',
+            'update_entry',
+            'clinical-entry',
+            entry.id,
+            `Clinical entry ${entry.id} updated to version ${entry.version}`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(entry));
+          return;
+        }
+
+        if (request.method === 'DELETE') {
+          const payload = (await readJsonBody(request).catch(
+            () => ({}) as ArchiveClinicalEntryRequest
+          )) as ArchiveClinicalEntryRequest;
+          const entry = medicalRecords.archiveEntry(principal.user.id, entryId as never, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'medical-records',
+            'archive_entry',
+            'clinical-entry',
+            entry.id,
+            `Clinical entry ${entry.id} archived`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(entry));
+          return;
+        }
+      }
+
       if (pathname === '/medical-records/timeline' && request.method === 'GET') {
         const principal = requirePrincipal(request, 'medical-records.read');
         const encounterId = requireNonEmptyString(
@@ -328,7 +378,7 @@ export function createApiServer(options: ApiServerOptions) {
         response.statusCode = 200;
         response.end(
           JSON.stringify({
-            items: medicalRecords.listTimelineByEncounter(encounterId as never)
+            items: await medicalRecords.listTimelineByEncounterAsync(encounterId as never)
           })
         );
         return;
@@ -358,7 +408,7 @@ export function createApiServer(options: ApiServerOptions) {
         response.statusCode = 200;
         response.end(
           JSON.stringify({
-            items: attachments.listByLinkedEntity(linkedEntityType, linkedEntityId)
+            items: await attachments.listByLinkedEntity(linkedEntityType, linkedEntityId)
           })
         );
         return;
@@ -367,7 +417,7 @@ export function createApiServer(options: ApiServerOptions) {
       if (pathname === '/attachments' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'attachments.manage');
         const payload = (await readJsonBody(request)) as CreateAttachmentRequest;
-        const attachment = attachments.upload(principal.user.id, payload);
+        const attachment = await attachments.upload(principal.user.id, payload);
 
         if (payload.linkedEntityType === 'encounter') {
           medicalRecords.ensureRecord(payload.linkedEntityId as never);
@@ -378,7 +428,7 @@ export function createApiServer(options: ApiServerOptions) {
             `Attachment added to encounter ${payload.linkedEntityId}`
           );
         } else if (payload.linkedEntityType === 'medical_record') {
-          const record = medicalRecords.getRecordOrThrow(payload.linkedEntityId as never);
+          const record = await medicalRecords.getRecordOrThrowAsync(payload.linkedEntityId as never);
           medicalRecords.appendAttachmentEvent(
             record.encounterId,
             principal.user.id,

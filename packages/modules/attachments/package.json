@@ -16,10 +16,12 @@
     "@cvg-his-v2/module-encounters": "workspace:*",
     "@cvg-his-v2/module-medical-records": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-database": "workspace:*",
     "@cvg-his-v2/shared-errors": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",
-    "@cvg-his-v2/shared-validation": "workspace:*"
+    "@cvg-his-v2/shared-validation": "workspace:*",
+    "drizzle-orm": "^0.36.4"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

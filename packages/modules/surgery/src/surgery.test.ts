@@ -46,13 +46,23 @@ test('SurgeryService updateStatus stores operative notes', () => {
     preparationNotes: 'Consentimento assinado'
   });
 
-  const updated = service.updateStatus(surgeryCase.id, {
+  const toPreOp = service.updateStatus(surgeryCase.id, { status: 'pre_op' });
+  assert.equal(toPreOp.status, 'pre_op');
+
+  const toInProgress = service.updateStatus(surgeryCase.id, { status: 'in_progress' });
+  assert.equal(toInProgress.status, 'in_progress');
+  assert.ok(toInProgress.startedAt);
+
+  const toRecovery = service.updateStatus(surgeryCase.id, { status: 'recovery' });
+  assert.equal(toRecovery.status, 'recovery');
+
+  const completed = service.updateStatus(surgeryCase.id, {
     status: 'completed',
     operativeNotes: 'Procedimento sem intercorrencias'
   });
-
-  assert.equal(updated.status, 'completed');
-  assert.equal(updated.operativeNotes, 'Procedimento sem intercorrencias');
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.operativeNotes, 'Procedimento sem intercorrencias');
+  assert.ok(completed.endedAt);
 });
 
 test('SurgeryService getOrThrow rejects unknown case', () => {
@@ -72,4 +82,60 @@ test('SurgeryService list filters by encounter', () => {
 
   assert.equal(service.list(encounter.id).length, 1);
   assert.equal(service.list('encounter_2').length, 0);
+});
+
+test('SurgeryService requestCase records surgical team', () => {
+  const { service, encounter } = createService();
+
+  const surgeryCase = service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Ortotomia',
+    surgeonUserId: 'dr_fernandes',
+    surgicalTeam: ['enf_maria', 'enf_joao', 'dr_ana']
+  });
+
+  assert.equal(surgeryCase.surgeonUserId, 'dr_fernandes');
+  assert.deepEqual(surgeryCase.surgicalTeam, ['enf_maria', 'enf_joao', 'dr_ana']);
+});
+
+test('SurgeryService updateStatus blocks invalid transitions', () => {
+  const { service, encounter } = createService();
+
+  const surgeryCase = service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Ressecção'
+  });
+
+  service.updateStatus(surgeryCase.id, { status: 'pre_op' });
+  service.updateStatus(surgeryCase.id, { status: 'in_progress' });
+  service.updateStatus(surgeryCase.id, { status: 'recovery' });
+
+  assert.throws(
+    () => service.updateStatus(surgeryCase.id, { status: 'requested' }),
+    /Invalid status transition/
+  );
+});
+
+test('SurgeryService updateStatus allows cancellation from early states', () => {
+  const { service, encounter } = createService();
+
+  const surgeryCase = service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Ressecção'
+  });
+
+  const cancelled = service.updateStatus(surgeryCase.id, { status: 'cancelled' });
+  assert.equal(cancelled.status, 'cancelled');
+
+  const preOpCase = service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Ressecção2'
+  });
+  const cancelledFromPreOp = service.updateStatus(preOpCase.id, { status: 'pre_op' });
+  const cancelledAfterPreOp = service.updateStatus(preOpCase.id, { status: 'cancelled' });
+  assert.equal(cancelledAfterPreOp.status, 'cancelled');
 });

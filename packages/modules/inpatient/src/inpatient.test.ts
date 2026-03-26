@@ -81,3 +81,67 @@ test('InpatientService getOrThrow rejects unknown stay', () => {
 
   assert.throws(() => service.getOrThrow('stay_missing' as never), NotFoundError);
 });
+
+test('InpatientService updateStatus allows valid transitions', () => {
+  const { service, encounter } = createService();
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  const toStable = service.updateStatus(stay.id, { status: 'stable' });
+  assert.equal(toStable.status, 'stable');
+
+  const toDischarged = service.updateStatus(stay.id, {
+    status: 'discharged',
+    dischargeReason: 'Alta a pedido'
+  });
+  assert.equal(toDischarged.status, 'discharged');
+  assert.equal(toDischarged.dischargeReason, 'Alta a pedido');
+  assert.ok(toDischarged.dischargedAt);
+});
+
+test('InpatientService updateStatus blocks invalid transitions', () => {
+  const { service, encounter } = createService();
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  service.updateStatus(stay.id, { status: 'discharged' });
+
+  assert.throws(
+    () => service.updateStatus(stay.id, { status: 'admitted' }),
+    /Invalid status transition/
+  );
+});
+
+test('InpatientService updateStatus records transfer metadata', () => {
+  const { service, encounter } = createService();
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  const transferred = service.updateStatus(stay.id, {
+    status: 'transferred',
+    transferToUnit: 'Enfermaria',
+    transferToWard: 'Ala B'
+  });
+
+  assert.equal(transferred.status, 'transferred');
+  assert.equal(transferred.transferToUnit, 'Enfermaria');
+  assert.equal(transferred.transferToWard, 'Ala B');
+});

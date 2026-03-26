@@ -122,8 +122,23 @@ export const clinicalEntries = pgTable('clinical_entries', {
   entryType: varchar('entry_type', { length: 50 }).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   content: varchar('content', { length: 10000 }).notNull(),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at'),
+  deletedByUserId: varchar('deleted_by_user_id', { length: 255 }),
+  deleteReason: varchar('delete_reason', { length: 1000 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
+});
+
+export const entryRevisions = pgTable('entry_revisions', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  entryId: varchar('entry_id', { length: 255 }).notNull(),
+  version: integer('version').notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: varchar('content', { length: 10000 }).notNull(),
+  authorUserId: varchar('author_user_id', { length: 255 }).notNull(),
+  reason: varchar('reason', { length: 1000 }),
+  createdAt: timestamp('created_at').notNull()
 });
 
 export const clinicalTimeline = pgTable('clinical_timeline', {
@@ -263,11 +278,17 @@ export const inpatientStays = pgTable('inpatient_stays', {
   bed: varchar('bed', { length: 50 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
   admittedAt: timestamp('admitted_at').notNull(),
+  dischargedAt: timestamp('discharged_at'),
+  dischargeReason: varchar('discharge_reason', { length: 500 }),
+  transferToUnit: varchar('transfer_to_unit', { length: 100 }),
+  transferToWard: varchar('transfer_to_ward', { length: 100 }),
+  createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
 
 export const inpatientProgress = pgTable('inpatient_progress', {
   id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
   stayId: varchar('stay_id', { length: 255 }).notNull(),
   encounterId: varchar('encounter_id', { length: 255 }).notNull(),
   note: varchar('note', { length: 5000 }).notNull(),
@@ -282,8 +303,13 @@ export const surgeryCases = pgTable('surgery_cases', {
   patientId: varchar('patient_id', { length: 255 }).notNull(),
   procedureName: varchar('procedure_name', { length: 255 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
+  surgeonUserId: varchar('surgeon_user_id', { length: 255 }),
+  surgicalTeam: jsonb('surgical_team'),
   preparationNotes: varchar('preparation_notes', { length: 2000 }),
   operativeNotes: varchar('operative_notes', { length: 5000 }),
+  scheduledAt: timestamp('scheduled_at'),
+  startedAt: timestamp('started_at'),
+  endedAt: timestamp('ended_at'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
@@ -294,9 +320,13 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   encounterId: varchar('encounter_id', { length: 255 }).notNull(),
   patientId: varchar('patient_id', { length: 255 }).notNull(),
   examType: varchar('exam_type', { length: 255 }).notNull(),
+  examCatalogId: varchar('exam_catalog_id', { length: 255 }),
   reason: varchar('reason', { length: 500 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
+  collectedAt: timestamp('collected_at'),
+  collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
+  resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

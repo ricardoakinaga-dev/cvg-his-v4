@@ -108,6 +108,14 @@ Este diretorio concentra a documentacao de reconstrucao do `cvg-his-v2`.
 - `902-enterprise-acceleration-plan.md`
 - `aud-008-02-closure.md`
 
+## ADRs
+
+- `adr/ADR-003-arquitetura-canonica-v2.md`
+- `adr/ADR-004-stack-persistencia-v2.md`
+- `adr/ADR-005-persistencia-implementada-wave1.md`
+- `adr/ADR-006-repository-pattern.md`
+- `adr/ADR-007-frontend-canonico-v2.md`
+
 ## Material de apoio complementar
 
 Os subdiretorios `00_governance` a `08_reports`, alem de `docs2`, concentram artefatos historicos, checklists auxiliares, relatorios e aprofundamentos que nao substituem a sequencia principal numerada deste diretorio.

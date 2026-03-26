@@ -9,7 +9,7 @@ O V2 define uma arquitetura clara com as seguintes trilhas:
 | App       | Caminho       | Descricao                |
 | --------- | ------------- | ------------------------ |
 | API V2    | `apps/api`    | API HTTP com Fastify     |
-| Web V2    | `apps/web`    | Frontend com Next.js     |
+| Web V2    | `apps/web`    | Node.js HTTP server com HTML inline |
 | Worker V2 | `apps/worker` | Processamento assincrono |
 
 ### Legado Arquivado
@@ -20,7 +20,7 @@ Os apps `apps/his-api`, `apps/his-web` e `apps/his-worker` foram **arquivados**.
 
 **Destino**: Todo desenvolvimento ativo deve usar `apps/api`, `apps/web` e `apps/worker`.
 
-Ver `docs/adr/ADR-003-arquitetura-canonica-v2.md`.
+Ver `docs/adr/ADR-003-arquitetura-canonica-v2.md` e `docs/adr/ADR-007-frontend-canonico-v2.md`.
 
 ## Modulos
 
@@ -97,7 +97,32 @@ pnpm typecheck
 
 ```bash
 pnpm test
+pnpm test:all
+pnpm release:check
 ```
+
+### Release / Staging
+
+```bash
+# Gate oficial de release
+pnpm release:check
+
+# Validacao minima de staging
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his \
+FILE_STORAGE_PATH=/tmp/cvg-his-v2-staging \
+AUTH_SECRET=change-me \
+NODE_ENV=staging \
+pnpm staging:check
+
+# Bootstrap local de dependencias reais
+pnpm staging:bootstrap
+```
+
+Observacao:
+
+- `pnpm release:check` depende de PostgreSQL acessivel para `apps/api test:db`
+- se o banco nao estiver previamente disponivel, `infra/scripts/prepare-test-db.mjs` tenta subir `postgres` via Docker
+- em ambientes restritos sem acesso ao Docker socket, o gate pode bloquear mesmo sem regressao de codigo
 
 ## Fases Implementadas
 
@@ -124,7 +149,7 @@ Ver `docs/README.md` para indice completo de documentacao.
 | ------------ | ----------------------- |
 | DATABASE_URL | URL do banco PostgreSQL |
 | REDIS_URL    | URL do Redis            |
-| JWT_SECRET   | Segredo para tokens JWT |
+| AUTH_SECRET  | Segredo de autenticacao |
 
 ### Healthcheck
 
