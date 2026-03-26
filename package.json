@@ -1,5 +1,5 @@
 {
-  "name": "cvg-his",
+  "name": "cvg-his-v2",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.0.0",
@@ -7,17 +7,18 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "corepack pnpm --filter @cvg-his/his-api dev",
-    "lint": "corepack pnpm -r run lint",
-    "test": "corepack pnpm -r run test",
-    "build": "corepack pnpm -r run build",
-    "db:generate": "corepack pnpm --filter @cvg-his/db db:generate",
-    "db:migrate": "corepack pnpm --filter @cvg-his/db db:migrate",
-    "db:seed": "corepack pnpm --filter @cvg-his/db db:seed",
-    "e2e": "playwright test",
-    "e2e:headed": "playwright test --headed",
-    "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report e2e/report"
+    "dev": "./pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/web --filter @cvg-his-v2/worker run dev",
+    "dev:api": "./pnpm --filter @cvg-his-v2/api run dev",
+    "dev:web": "./pnpm --filter @cvg-his-v2/web run dev",
+    "dev:worker": "./pnpm --filter @cvg-his-v2/worker run dev",
+    "build": "./pnpm -r --filter @cvg-his-v2/* run build",
+    "typecheck": "./pnpm -r --filter @cvg-his-v2/* run typecheck",
+    "lint": "./pnpm -r --filter @cvg-his-v2/* run lint",
+    "test": "./pnpm -r --filter @cvg-his-v2/* run test",
+    "test:all": "./pnpm -r --filter @cvg-his-v2/* run test && ./pnpm --filter @cvg-his-v2/api run test:db",
+    "bootstrap": "node infra/scripts/bootstrap-local.mjs",
+    "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
+    "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -27,6 +28,7 @@
     "dotenv": "^16.4.7",
     "eslint": "^8.57.1",
     "prettier": "^3.5.1",
+    "turbo": "^2.5.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"

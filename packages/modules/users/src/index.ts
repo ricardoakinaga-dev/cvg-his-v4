@@ -1,0 +1,180 @@
+import { scryptSync, timingSafeEqual } from 'node:crypto';
+
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import type { UserId, UserSummary } from '@cvg-his-v2/shared-types';
+import { nowIso } from '@cvg-his-v2/shared-utils';
+
+export interface UserRecord extends UserSummary {
+  readonly passwordHash: string;
+  readonly roleCodes: readonly string[];
+}
+
+function hashPassword(password: string): string {
+  return scryptSync(password, 'cvg-his-v2-phase-3', 64).toString('hex');
+}
+
+function comparePassword(password: string, passwordHash: string): boolean {
+  const candidate = scryptSync(password, 'cvg-his-v2-phase-3', 64);
+  const reference = Buffer.from(passwordHash, 'hex');
+  return timingSafeEqual(candidate, reference);
+}
+
+function createSeedUsers(): UserRecord[] {
+  const createdAt = '2026-03-25T00:00:00.000Z';
+
+  return [
+    {
+      id: 'user_admin' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'admin',
+      email: 'admin@cvg-his.local',
+      displayName: 'Admin CVG',
+      status: 'active',
+      staffId: 'staff_admin' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('admin123'),
+      roleCodes: ['admin']
+    },
+    {
+      id: 'user_reception' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'reception',
+      email: 'reception@cvg-his.local',
+      displayName: 'Recepcao Central',
+      status: 'active',
+      staffId: 'staff_reception' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('reception123'),
+      roleCodes: ['reception']
+    },
+    {
+      id: 'user_auditor' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'auditor',
+      email: 'auditor@cvg-his.local',
+      displayName: 'Auditoria Interna',
+      status: 'active',
+      staffId: 'staff_auditor' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('auditor123'),
+      roleCodes: ['auditor']
+    },
+    {
+      id: 'user_nurse' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'nurse',
+      email: 'nurse@cvg-his.local',
+      displayName: 'Enfermagem Inicial',
+      status: 'active',
+      staffId: 'staff_nurse' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('nurse123'),
+      roleCodes: ['nurse']
+    },
+    {
+      id: 'user_vet' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'vet',
+      email: 'vet@cvg-his.local',
+      displayName: 'Veterinario Responsavel',
+      status: 'active',
+      staffId: 'staff_vet' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('vet123'),
+      roleCodes: ['veterinarian']
+    },
+    {
+      id: 'user_finance' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'finance',
+      email: 'finance@cvg-his.local',
+      displayName: 'Financeiro Operacional',
+      status: 'active',
+      staffId: 'staff_finance' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('finance123'),
+      roleCodes: ['finance']
+    },
+    {
+      id: 'user_inventory' as UserId,
+      accountId: 'acc_cvg_demo' as never,
+      username: 'inventory',
+      email: 'inventory@cvg-his.local',
+      displayName: 'Estoque Assistencial',
+      status: 'active',
+      staffId: 'staff_inventory' as never,
+      createdAt,
+      updatedAt: createdAt,
+      passwordHash: hashPassword('inventory123'),
+      roleCodes: ['inventory']
+    }
+  ];
+}
+
+export class UsersService {
+  readonly #users = new Map<UserId, UserRecord>();
+  readonly #usersByUsername = new Map<string, UserRecord>();
+
+  public constructor(seedUsers: readonly UserRecord[] = createSeedUsers()) {
+    for (const user of seedUsers) {
+      this.#users.set(user.id, user);
+      this.#usersByUsername.set(user.username, user);
+    }
+  }
+
+  public list(): readonly UserSummary[] {
+    return Array.from(this.#users.values()).map(stripSecrets);
+  }
+
+  public getOrThrow(userId: UserId): UserRecord {
+    const user = this.#users.get(userId);
+    if (!user) {
+      throw new NotFoundError('User not found', { userId });
+    }
+
+    return user;
+  }
+
+  public findByUsername(username: string): UserRecord | undefined {
+    return this.#usersByUsername.get(username);
+  }
+
+  public verifyPassword(user: UserRecord, password: string): boolean {
+    return comparePassword(password, user.passwordHash);
+  }
+
+  public update(
+    userId: UserId,
+    changes: {
+      readonly displayName?: string;
+      readonly email?: string;
+      readonly status?: 'active' | 'inactive';
+    }
+  ): UserSummary {
+    const user = this.getOrThrow(userId);
+    const updated: UserRecord = {
+      ...user,
+      displayName: changes.displayName ?? user.displayName,
+      email: changes.email ?? user.email,
+      status: changes.status ?? user.status,
+      updatedAt: nowIso()
+    };
+
+    this.#users.set(userId, updated);
+    this.#usersByUsername.set(updated.username, updated);
+    return stripSecrets(updated);
+  }
+}
+
+function stripSecrets(user: UserRecord): UserSummary {
+  const { passwordHash: _passwordHash, roleCodes: _roleCodes, ...summary } = user;
+  return summary;
+}
+
+export { createSeedUsers, hashPassword };

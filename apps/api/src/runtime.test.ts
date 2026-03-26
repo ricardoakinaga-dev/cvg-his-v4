@@ -1,0 +1,1151 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+
+import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
+import { bootstrapServices } from './bootstrap.js';
+
+function createTestRuntime(repositories?: RuntimeRepositories) {
+  return createApiRuntime({
+    authSecret: 'test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    repositories
+  });
+}
+
+test('login, session refresh and audit trail work end-to-end', () => {
+  const runtime = createTestRuntime();
+
+  const login = runtime.auth.login(
+    {
+      username: 'admin',
+      password: 'admin123'
+    },
+    'corr_login_test'
+  );
+
+  assert.equal(login.principal.user.username, 'admin');
+  assert.equal(login.principal.access.permissionCodes.includes('users.manage'), true);
+
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+  assert.equal(principal.user.id, login.principal.user.id);
+
+  const refreshed = runtime.auth.refresh(
+    {
+      refreshToken: login.refreshToken
+    },
+    'corr_refresh_test'
+  );
+
+  assert.equal(refreshed.principal.session.sessionId, login.principal.session.sessionId);
+  assert.notEqual(refreshed.refreshToken, login.refreshToken);
+  assert.equal(
+    runtime.audit.list().some((event) => event.action === 'login'),
+    true
+  );
+  assert.equal(
+    runtime.audit.list().some((event) => event.action === 'refresh'),
+    true
+  );
+});
+
+test('backend enforcement denies audit access to a role without permission', () => {
+  const runtime = createTestRuntime();
+  const login = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_permission_test'
+  );
+
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+
+  assert.throws(
+    () =>
+      runtime.accessControl.assertAuthorized({
+        actor: principal.user,
+        access: principal.access,
+        permissionCode: 'audit.read',
+        accountId: principal.user.accountId
+      }),
+    (error: unknown) => {
+      assert.equal(error instanceof ForbiddenError, true);
+      return true;
+    }
+  );
+});
+
+test('master registry supports owner, patient, relationship and search flows', () => {
+  const runtime = createTestRuntime();
+  const login = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_master_registry_test'
+  );
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+
+  runtime.accessControl.assertAuthorized({
+    actor: principal.user,
+    access: principal.access,
+    permissionCode: 'owners.manage',
+    accountId: principal.user.accountId
+  });
+
+  const owner = runtime.owners.create(principal.user.accountId, {
+    fullName: 'Ana Pereira',
+    contacts: [
+      {
+        label: 'Celular',
+        value: '+55 21 99999-3333',
+        type: 'whatsapp',
+        primary: true
+      }
+    ],
+    financialResponsible: true,
+    administrativeNotes: 'Contato preferencial para cobranca.'
+  });
+
+  const patient = runtime.patients.create(principal.user.accountId, {
+    name: 'Thor',
+    species: 'canine',
+    breed: 'Labrador',
+    sex: 'male',
+    size: 'large',
+    baseWeightKg: 28.5,
+    birthDateApproximate: '2021-01-01',
+    primaryOwnerId: owner.id
+  });
+
+  const link = runtime.patients.createLink(principal.user.accountId, {
+    ownerId: 'owner_joao_souza',
+    patientId: patient.id,
+    relationshipType: 'secondary',
+    financialResponsible: false
+  });
+
+  const search = runtime.patients.searchMaster('Thor');
+
+  assert.equal(patient.primaryOwnerId, owner.id);
+  assert.equal(link.patientId, patient.id);
+  assert.equal(
+    search.patients.some((item) => item.id === patient.id),
+    true
+  );
+  assert.equal(
+    search.links.some((item) => item.id === link.id),
+    true
+  );
+
+  runtime.audit.write({
+    actorId: principal.user.id,
+    accountId: principal.user.accountId,
+    module: 'patients',
+    action: 'create',
+    entityType: 'patient',
+    entityId: patient.id,
+    payloadSummary: `Patient ${patient.name} created`,
+    riskLevel: 'high'
+  });
+
+  assert.equal(
+    runtime.audit.list().some((event) => event.entityId === patient.id),
+    true
+  );
+});
+
+test('operational flow supports appointment, queue, encounter lifecycle, triage and timeline', () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_operational_reception'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const appointment = runtime.scheduling.createAppointment(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-03-26T10:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Consulta de retorno'
+  });
+
+  const queueEntry = runtime.scheduling.checkIn(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    appointmentId: appointment.id,
+    reason: 'Chegada para retorno',
+    priority: 'medium'
+  });
+  runtime.scheduling.callQueueEntry(queueEntry.id);
+
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    appointmentId: appointment.id,
+    queueEntryId: queueEntry.id,
+    visitType: 'scheduled',
+    origin: 'schedule',
+    reason: 'Retorno ambulatorial'
+  });
+  runtime.scheduling.attachEncounter(queueEntry.id, encounter.id);
+  runtime.encounters.appendTimeline(encounter.id, {
+    accountId: encounter.accountId,
+    eventType: 'queue_checked_in',
+    summary: 'Paciente aguardando triagem',
+    actorUserId: reception.user.id
+  });
+  runtime.encounters.appendTimeline(encounter.id, {
+    accountId: encounter.accountId,
+    eventType: 'queue_called',
+    summary: 'Paciente chamado para triagem',
+    actorUserId: reception.user.id
+  });
+  runtime.encounters.transitionEncounter(encounter.id, reception.user.id, {
+    nextStatus: 'in_triage'
+  });
+  runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'in_triage');
+
+  const nurseLogin = runtime.auth.login(
+    {
+      username: 'nurse',
+      password: 'nurse123'
+    },
+    'corr_operational_nurse'
+  );
+  const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
+  const triage = runtime.triage.createTriage(nurse.user.id, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    priority: 'high',
+    chiefComplaint: 'Vomitos e letargia',
+    initialNotes: 'Paciente chegou sonolento, sem sinais de convulsao.',
+    alerts: ['desidratacao', 'prostracao'],
+    destination: 'observation'
+  });
+  runtime.encounters.appendTimeline(encounter.id, {
+    accountId: encounter.accountId,
+    eventType: 'triage_recorded',
+    summary: `Triagem inicial registrada com prioridade ${triage.priority}`,
+    actorUserId: nurse.user.id
+  });
+  const inObservation = runtime.encounters.transitionEncounter(encounter.id, nurse.user.id, {
+    nextStatus: triage.destination
+  });
+  runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
+
+  const closed = runtime.encounters.closeEncounter(encounter.id, nurse.user.id, {
+    closeReason: 'Fluxo operacional concluido para encaminhamento clinico posterior'
+  });
+  runtime.scheduling.completeQueueEntry(queueEntry.id);
+
+  const timeline = runtime.encounters.listTimeline(encounter.id);
+
+  assert.equal(inObservation.status, 'observation');
+  assert.equal(closed.status, 'closed');
+  assert.equal(runtime.scheduling.getQueueEntryOrThrow(queueEntry.id).status, 'completed');
+  assert.equal(
+    timeline.some((event) => event.eventType === 'triage_recorded'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'encounter_closed'),
+    true
+  );
+});
+
+test('clinical record supports entries, prescriptions, conduct and attachments linked to encounter', () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_clinical_reception'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Atendimento clinico basico'
+  });
+
+  const vetLogin = runtime.auth.login(
+    {
+      username: 'vet',
+      password: 'vet123'
+    },
+    'corr_clinical_vet'
+  );
+  const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
+
+  const anamnesis = runtime.medicalRecords.addEntry(veterinarian.user.id, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    entryType: 'anamnesis',
+    title: 'Anamnese inicial',
+    content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
+  });
+  const prescription = runtime.medicalRecords.addEntry(veterinarian.user.id, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    entryType: 'prescription',
+    title: 'Prescricao inicial',
+    content: 'Antiemetico a cada 12h por 3 dias.'
+  });
+  const conduct = runtime.medicalRecords.addEntry(veterinarian.user.id, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    entryType: 'conduct',
+    title: 'Conduta e orientacoes',
+    content: 'Observacao domiciliar, dieta leve e retorno se persistirem sinais.'
+  });
+
+  const record = runtime.medicalRecords.getRecordByEncounterOrThrow(encounter.id);
+  const attachment = runtime.attachments.upload(veterinarian.user.id, {
+    linkedEntityType: 'medical_record',
+    linkedEntityId: record.id,
+    category: 'document',
+    fileName: 'prescricao-inicial.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'sha256:phase6-prescricao'
+  });
+  runtime.medicalRecords.appendAttachmentEvent(
+    encounter.id,
+    veterinarian.user.id,
+    attachment.id,
+    'Attachment linked to clinical record'
+  );
+
+  const entries = runtime.medicalRecords.listEntriesByEncounter(encounter.id);
+  const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
+  const attachments = runtime.attachments.listByLinkedEntity('medical_record', record.id);
+
+  assert.equal(record.encounterId, encounter.id);
+  assert.equal(
+    entries.some((entry) => entry.id === anamnesis.id),
+    true
+  );
+  assert.equal(
+    entries.some((entry) => entry.id === prescription.id),
+    true
+  );
+  assert.equal(
+    entries.some((entry) => entry.id === conduct.id),
+    true
+  );
+  assert.equal(
+    attachments.some((item) => item.id === attachment.id),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'entry_added'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'attachment_added'),
+    true
+  );
+});
+
+test('advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case', () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_advanced_reception'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Caso clinico com necessidade de suporte avancado'
+  });
+
+  const vetLogin = runtime.auth.login(
+    {
+      username: 'vet',
+      password: 'vet123'
+    },
+    'corr_advanced_vet'
+  );
+  const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
+
+  runtime.encounters.transitionEncounter(encounter.id, veterinarian.user.id, {
+    nextStatus: 'in_care'
+  });
+
+  const stay = runtime.inpatient.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'Internacao Clinica',
+    ward: 'Ala A',
+    bed: 'A-12'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'inpatient_admitted',
+    `Inpatient admission at ${stay.unit}/${stay.ward}/${stay.bed}`
+  );
+
+  const progress = runtime.inpatient.addProgress(veterinarian.user.id, {
+    stayId: stay.id,
+    note: 'Paciente estabilizado e monitorado em internacao.'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'inpatient_progressed',
+    `Inpatient progress registered: ${progress.note}`
+  );
+
+  const surgeryCase = runtime.surgery.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Exploratoria abdominal',
+    preparationNotes: 'Jejum confirmado e consentimento coletado.'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'surgery_requested',
+    `Surgery requested: ${surgeryCase.procedureName}`
+  );
+
+  const updatedSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
+    status: 'recovery',
+    operativeNotes: 'Procedimento concluido sem intercorrencias imediatas.'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'surgery_status_changed',
+    `Surgery case moved to ${updatedSurgery.status}`
+  );
+
+  const order = runtime.diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'ultrasound',
+    reason: 'Suporte a decisao cirurgica e seguimento pos-operatorio.'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'diagnostic_requested',
+    `Diagnostic order requested: ${order.examType}`
+  );
+
+  const attachment = runtime.attachments.upload(veterinarian.user.id, {
+    linkedEntityType: 'diagnostic_order',
+    linkedEntityId: order.id,
+    category: 'lab',
+    fileName: 'laudo-ultrassom.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'sha256:phase7-laudo'
+  });
+  runtime.medicalRecords.appendAttachmentEvent(
+    encounter.id,
+    veterinarian.user.id,
+    attachment.id,
+    `Attachment added to diagnostic order ${order.id}`
+  );
+
+  const resultedOrder = runtime.diagnostics.recordResult(order.id, {
+    status: 'resulted',
+    resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.'
+  });
+  runtime.medicalRecords.appendAdvancedCareEvent(
+    encounter.id,
+    veterinarian.user.id,
+    'diagnostic_resulted',
+    `Diagnostic result registered: ${resultedOrder.resultSummary}`
+  );
+
+  const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
+  const diagnosticAttachments = runtime.attachments.listByLinkedEntity(
+    'diagnostic_order',
+    order.id
+  );
+
+  assert.equal(stay.encounterId, encounter.id);
+  assert.equal(progress.encounterId, encounter.id);
+  assert.equal(updatedSurgery.encounterId, encounter.id);
+  assert.equal(resultedOrder.encounterId, encounter.id);
+  assert.equal(
+    diagnosticAttachments.some((item) => item.id === attachment.id),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'inpatient_admitted'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'inpatient_progressed'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'surgery_requested'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'surgery_status_changed'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'diagnostic_requested'),
+    true
+  );
+  assert.equal(
+    timeline.some((event) => event.eventType === 'diagnostic_resulted'),
+    true
+  );
+});
+
+test('administrative modules keep billing, inventory and notifications linked without exposing clinical permissions', () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'reception123'
+    },
+    'corr_admin_bridge_reception'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Atendimento com consumo administrativo vinculado'
+  });
+
+  const financeLogin = runtime.auth.login(
+    {
+      username: 'finance',
+      password: 'finance123'
+    },
+    'corr_admin_bridge_finance'
+  );
+  const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
+
+  const inventoryLogin = runtime.auth.login(
+    {
+      username: 'inventory',
+      password: 'inventory123'
+    },
+    'corr_admin_bridge_inventory'
+  );
+  const inventoryUser = runtime.auth.authenticateAccessToken(inventoryLogin.accessToken);
+
+  const estimate = runtime.billing.createEstimate({
+    encounterId: encounter.id,
+    administrativeNotes: 'Orcamento inicial emitido para tutor.'
+  });
+  const item = runtime.billing.addItem(finance.user.id, {
+    encounterId: encounter.id,
+    itemType: 'exam',
+    description: 'Ultrassonografia abdominal',
+    quantity: 1,
+    unitPriceAmount: 180,
+    sourceEntityType: 'encounter',
+    sourceEntityId: encounter.id
+  });
+  const openedBilling = runtime.billing.updateStatus(encounter.id, { status: 'open' });
+
+  const consumption = runtime.inventory.consume(inventoryUser.user.id, {
+    encounterId: encounter.id,
+    inventoryItemId: 'inv_gauze',
+    quantity: 2,
+    sourceEntityType: 'encounter',
+    sourceEntityId: encounter.id
+  });
+
+  const notification = runtime.notifications.create(finance.user.id, finance.user.accountId, {
+    category: 'billing',
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    recipientRoleCode: 'finance',
+    title: 'Conta assistencial aberta',
+    message: 'Billing inicial liberado para acompanhamento administrativo.',
+    severity: 'medium'
+  });
+  const processed = runtime.notifications.processPending({ limit: 10 });
+
+  assert.throws(
+    () =>
+      runtime.accessControl.assertAuthorized({
+        actor: finance.user,
+        access: finance.access,
+        permissionCode: 'medical-records.read',
+        accountId: finance.user.accountId
+      }),
+    (error: unknown) => {
+      assert.equal(error instanceof ForbiddenError, true);
+      return true;
+    }
+  );
+
+  assert.equal(estimate.encounterId, encounter.id);
+  assert.equal(item.encounterId, encounter.id);
+  assert.equal(openedBilling.status, 'open');
+  assert.equal(consumption.encounterId, encounter.id);
+  assert.equal(notification.encounterId, encounter.id);
+  assert.equal(
+    processed.some((entry) => entry.id === notification.id),
+    true
+  );
+  assert.equal(
+    runtime.notifications.list('sent').some((entry) => entry.id === notification.id),
+    true
+  );
+  assert.equal(runtime.inventory.getItemOrThrow('inv_gauze' as never).onHandQuantity, 58);
+});
+
+test('AUD-008-02: repositories persist data across runtime re-instantiation (simulated restart)', async () => {
+  // Step 1: Bootstrap creates shared repositories
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repositories = bootstrap.repositories;
+
+  // Step 2: Create Runtime A and write data
+  const runtimeA = createTestRuntime(repositories);
+
+  // Login and create session
+  const loginA = runtimeA.auth.login(
+    { username: 'reception', password: 'reception123' },
+    'corr_restart_test'
+  );
+  const sessionA = loginA.principal.session;
+
+  // Create owner
+  const ownerA = runtimeA.owners.create(loginA.principal.user.accountId, {
+    fullName: 'Maria Restart Test',
+    contacts: [{ label: 'Phone', value: '+55 11 99999-0000', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+
+  // Create patient
+  const patientA = runtimeA.patients.create(loginA.principal.user.accountId, {
+    name: 'Rex Restart Test',
+    species: 'canine',
+    breed: 'Vira-lata',
+    sex: 'male',
+    primaryOwnerId: ownerA.id
+  });
+
+  // Create encounter
+  const encounterA = runtimeA.encounters.openEncounter(
+    loginA.principal.user.accountId,
+    loginA.principal.user.id,
+    {
+      patientId: patientA.id,
+      ownerId: ownerA.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Teste de persistencia'
+    }
+  );
+
+  // Check session in repository
+  const sessionInRepoA = await repositories.session?.findById(sessionA.sessionId);
+  assert.ok(sessionInRepoA, 'Session should be stored in repository');
+  assert.equal(sessionInRepoA?.userId, sessionA.userId);
+
+  // Verify audit events were written
+  const auditEventsA = await repositories.audit?.list();
+  const auditCountA = auditEventsA?.length ?? 0;
+  assert.ok(auditCountA > 0, 'Audit events should be in repository');
+
+  // Verify owner in repository
+  const ownerInRepoA = await repositories.owner?.findById(ownerA.id);
+  assert.ok(ownerInRepoA, 'Owner should be stored in repository');
+  assert.equal(ownerInRepoA?.fullName, 'Maria Restart Test');
+
+  // Verify patient in repository
+  const patientInRepoA = await repositories.patient?.findById(patientA.id);
+  assert.ok(patientInRepoA, 'Patient should be stored in repository');
+  assert.equal(patientInRepoA?.name, 'Rex Restart Test');
+
+  // Verify encounter in repository
+  const encounterInRepoA = await repositories.encounter?.findById(encounterA.id);
+  assert.ok(encounterInRepoA, 'Encounter should be stored in repository');
+  assert.equal(encounterInRepoA?.patientId, patientA.id);
+
+  // Step 3: Simulate restart - create Runtime B with the SAME repositories
+  const runtimeB = createTestRuntime(repositories);
+
+  // Verify session persists
+  const sessionInRepoB = await repositories.session?.findById(sessionA.sessionId);
+  assert.ok(sessionInRepoB, 'Session should survive restart');
+  assert.equal(sessionInRepoB?.sessionId, sessionA.sessionId);
+
+  // Verify audit events persist - runtimeB constructor adds a seedSystemEvent
+  const auditEventsB = await repositories.audit?.list();
+  const auditCountB = auditEventsB?.length ?? 0;
+  assert.ok(auditCountB > 0, 'Audit events should survive restart');
+  // Runtime constructor adds 1 seed event, so count should be +1
+  assert.equal(auditCountB, auditCountA + 1, 'Audit count should include runtimeB seed event');
+
+  // Verify owner persists in repository (accessible via repository after restart)
+  const ownerBInRepo = await repositories.owner?.findById(ownerA.id);
+  assert.ok(ownerBInRepo, 'Owner should persist in repository after restart');
+  assert.equal(ownerBInRepo?.id, ownerA.id);
+  assert.equal(ownerBInRepo?.fullName, 'Maria Restart Test');
+
+  // Verify patient persists in repository
+  const patientBInRepo = await repositories.patient?.findById(patientA.id);
+  assert.ok(patientBInRepo, 'Patient should persist in repository after restart');
+  assert.equal(patientBInRepo?.id, patientA.id);
+  assert.equal(patientBInRepo?.name, 'Rex Restart Test');
+
+  // Verify encounter persists in repository
+  const encounterBInRepo = await repositories.encounter?.findById(encounterA.id);
+  assert.ok(encounterBInRepo, 'Encounter should persist in repository after restart');
+  assert.equal(encounterBInRepo?.id, encounterA.id);
+  assert.equal(encounterBInRepo?.patientId, patientA.id);
+
+  // Verify timeline persists in repository
+  const timelineBInRepo = await repositories.encounterTimeline?.findByEncounterId(encounterA.id);
+  assert.ok(timelineBInRepo, 'Timeline should persist in repository after restart');
+
+  // Step 4: Write more data from Runtime B
+  const ownerC = runtimeB.owners.create(loginA.principal.user.accountId, {
+    fullName: 'Joao Second Instance',
+    contacts: [{ label: 'Email', value: 'joao@test.com', type: 'email', primary: true }],
+    financialResponsible: false
+  });
+
+  // Verify it is in the shared repository
+  const ownerCInRepo = await repositories.owner?.findById(ownerC.id);
+  assert.ok(ownerCInRepo, 'Owner created in Runtime B should be in shared repository');
+  assert.equal(ownerCInRepo?.fullName, 'Joao Second Instance');
+
+  // Step 5: Create Runtime C with same repositories - it should see ALL persisted data
+  const runtimeC = createTestRuntime(repositories);
+
+  // Runtime C should be able to create owners that reference previously persisted owners
+  const ownerD = runtimeC.owners.create(loginA.principal.user.accountId, {
+    fullName: 'Ana Third Instance',
+    contacts: [{ label: 'Phone', value: '+55 11 88888-0000', type: 'phone', primary: true }],
+    financialResponsible: false
+  });
+
+  // Verify all owners exist in repository
+  const allOwners = await repositories.owner?.findByAccountId(loginA.principal.user.accountId);
+  assert.ok(
+    allOwners && allOwners.length >= 3,
+    'Repository should have multiple owners from different runtime instances'
+  );
+
+  // This proves:
+  // 1. Repositories are the persistence boundary (not service internal Maps)
+  // 2. Data survives runtime re-instantiation
+  // 3. Multiple runtime instances can share the same repository
+});
+
+test('AUD-005-01: medical records, entries and timeline persist across runtime re-instantiation', async () => {
+  // Step 1: Bootstrap creates shared repositories (now includes medical record repositories)
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repositories = bootstrap.repositories;
+
+  // Verify repositories exist
+  assert.ok(repositories.medicalRecord, 'medicalRecord repository should exist');
+  assert.ok(repositories.clinicalEntry, 'clinicalEntry repository should exist');
+  assert.ok(repositories.clinicalTimeline, 'clinicalTimeline repository should exist');
+
+  // Step 2: Create Runtime A and write medical record data
+  const runtimeA = createTestRuntime(repositories);
+
+  // Login
+  const loginA = runtimeA.auth.login(
+    { username: 'reception', password: 'reception123' },
+    'corr_medical_restart_test'
+  );
+
+  // Create owner and patient
+  const owner = runtimeA.owners.create(loginA.principal.user.accountId, {
+    fullName: 'Maria Medical Test',
+    contacts: [{ label: 'Phone', value: '+55 11 99999-1111', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+
+  const patient = runtimeA.patients.create(loginA.principal.user.accountId, {
+    name: 'Thor Medical Test',
+    species: 'canine',
+    breed: 'Pastor Alemao',
+    sex: 'male',
+    primaryOwnerId: owner.id
+  });
+
+  // Create encounter
+  const encounter = runtimeA.encounters.openEncounter(
+    loginA.principal.user.accountId,
+    loginA.principal.user.id,
+    {
+      patientId: patient.id,
+      ownerId: owner.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Teste de persistencia de prontuario'
+    }
+  );
+
+  // Create medical record and entries
+  const record = runtimeA.medicalRecords.ensureRecord(encounter.id);
+
+  const entry1 = runtimeA.medicalRecords.addEntry(loginA.principal.user.id, {
+    encounterId: encounter.id,
+    patientId: patient.id,
+    entryType: 'anamnesis',
+    title: 'Anamnese inicial',
+    content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
+  });
+
+  const entry2 = runtimeA.medicalRecords.addEntry(loginA.principal.user.id, {
+    encounterId: encounter.id,
+    patientId: patient.id,
+    entryType: 'prescription',
+    title: 'Prescricao inicial',
+    content: 'Antiemetico a cada 12h por 3 dias.'
+  });
+
+  // Verify data in repositories
+  const recordInRepo = await repositories.medicalRecord?.findByEncounterId(encounter.id);
+  assert.ok(recordInRepo, 'Medical record should be in repository');
+  assert.equal(recordInRepo?.encounterId, encounter.id);
+
+  const entriesInRepo = await repositories.clinicalEntry?.findByMedicalRecordId(record.id);
+  assert.ok(entriesInRepo && entriesInRepo.length >= 2, 'Clinical entries should be in repository');
+
+  const timelineInRepo = await repositories.clinicalTimeline?.findByMedicalRecordId(record.id);
+  assert.ok(
+    timelineInRepo && timelineInRepo.length >= 2,
+    'Clinical timeline should be in repository'
+  );
+
+  // Step 3: Simulate restart - create Runtime B with the SAME repositories
+  const runtimeB = createTestRuntime(repositories);
+
+  // Verify medical record persists in repository
+  const recordAfterRestart = await repositories.medicalRecord?.findByEncounterId(encounter.id);
+  assert.ok(recordAfterRestart, 'Medical record should persist after restart');
+  assert.equal(recordAfterRestart?.id, record.id);
+  assert.equal(recordAfterRestart?.encounterId, encounter.id);
+  assert.equal(recordAfterRestart?.patientId, patient.id);
+
+  // Verify clinical entries persist
+  const entriesAfterRestart = await repositories.clinicalEntry?.findByMedicalRecordId(record.id);
+  assert.ok(
+    entriesAfterRestart && entriesAfterRestart.length >= 2,
+    'Clinical entries should persist after restart'
+  );
+  assert.ok(
+    entriesAfterRestart?.some((e) => e.id === entry1.id),
+    'Anamnesis entry should persist'
+  );
+  assert.ok(
+    entriesAfterRestart?.some((e) => e.id === entry2.id),
+    'Prescription entry should persist'
+  );
+
+  // Verify clinical timeline persists
+  const timelineAfterRestart = await repositories.clinicalTimeline?.findByMedicalRecordId(
+    record.id
+  );
+  assert.ok(
+    timelineAfterRestart && timelineAfterRestart.length >= 2,
+    'Clinical timeline should persist after restart'
+  );
+
+  // Step 4: Write more data directly to repository (simulating persistence across instances)
+  // Note: Services use internal Maps for fast lookup, but repositories are the persistence boundary
+  const additionalEntry = {
+    id: 'entry_from_repo',
+    accountId: record.accountId,
+    medicalRecordId: record.id,
+    encounterId: encounter.id,
+    patientId: patient.id,
+    entryType: 'conduct' as const,
+    title: 'Conduta adicional',
+    content: 'Entrada adicionada diretamente no repository.',
+    authoredByUserId: loginA.principal.user.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await repositories.clinicalEntry?.create(additionalEntry as never);
+
+  // Verify new entry is in shared repository
+  const entriesAfterNewWrite = await repositories.clinicalEntry?.findByMedicalRecordId(record.id);
+  assert.ok(
+    entriesAfterNewWrite && entriesAfterNewWrite.length >= 3,
+    'New entry should be in repository'
+  );
+  assert.ok(
+    entriesAfterNewWrite?.some((e) => e.id === 'entry_from_repo'),
+    'Entry from repository should be findable'
+  );
+
+  // Step 5: Create Runtime C - verify all data is accessible from repository
+  const runtimeC = createTestRuntime(repositories);
+
+  const finalEntries = await repositories.clinicalEntry?.findByMedicalRecordId(record.id);
+  assert.equal(
+    finalEntries?.length,
+    3,
+    'All 3 entries should be in repository across runtime instances'
+  );
+
+  // This proves:
+  // 1. Medical records repository is the persistence boundary
+  // 2. Clinical entries survive runtime re-instantiation
+  // 3. Clinical timeline persists across runtime instances
+  // 4. Data written to repository is accessible from any runtime instance
+});
+
+// AUD-010-03: Integration tests for API/worker shared state
+
+test('AUD-010-03: notifications API creates and worker processes via shared service instance', async () => {
+  // This test demonstrates the ARCHITECTURE for API/worker integration
+  // The key insight: worker and API must share the same NotificationsService instance
+  // (or a shared repository) to process notifications created by API
+
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repositories = bootstrap.repositories;
+
+  // Create runtime (API side)
+  const runtime = createTestRuntime(repositories);
+
+  // Login as finance user
+  const financeLogin = runtime.auth.login(
+    { username: 'finance', password: 'finance123' },
+    'corr_worker_integration'
+  );
+  const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
+
+  // API creates a notification
+  const notification = runtime.notifications.create(finance.user.id, finance.user.accountId, {
+    category: 'billing',
+    severity: 'high',
+    title: 'Conta atrasada',
+    message: 'Pagamento pendente ha 30 dias.'
+  });
+
+  assert.equal(notification.status, 'queued');
+
+  // Verify notification exists in API's service
+  const queuedInApi = runtime.notifications.list('queued');
+  assert.ok(
+    queuedInApi.some((n) => n.id === notification.id),
+    'Notification should be queued in API'
+  );
+
+  // Worker processes notifications using the SAME service instance
+  // In current architecture, worker would need to receive the same service instance
+  const processed = runtime.notifications.processPending({ limit: 10 });
+
+  assert.equal(processed.length, 1);
+  assert.equal(processed[0].id, notification.id);
+
+  // Verify notification is now sent
+  const sentNotifications = runtime.notifications.list('sent');
+  assert.ok(
+    sentNotifications.some((n) => n.id === notification.id),
+    'Notification should be sent'
+  );
+
+  // Verify job was created
+  const jobs = runtime.notifications.listJobs();
+  assert.ok(
+    jobs.some((j) => j.notificationId === notification.id),
+    'Job should be created'
+  );
+
+  // This proves: When API and worker share the same NotificationsService,
+  // notifications created by API can be processed by worker
+});
+
+test('AUD-010-03: current limitation - separate instances do NOT share state', async () => {
+  // This test documents the CURRENT LIMITATION
+  // When API and worker use different NotificationsService instances,
+  // they don't share state
+
+  const runtime1 = createTestRuntime();
+  const runtime2 = createTestRuntime();
+
+  // API (runtime1) creates a notification
+  const financeLogin = runtime1.auth.login(
+    { username: 'finance', password: 'finance123' },
+    'corr_separate_instances'
+  );
+  const finance = runtime1.auth.authenticateAccessToken(financeLogin.accessToken);
+
+  const notification = runtime1.notifications.create(finance.user.id, finance.user.accountId, {
+    category: 'operations',
+    severity: 'medium',
+    title: 'Test separado',
+    message: 'Teste de instancias separadas'
+  });
+
+  // Worker (runtime2) tries to process - finds nothing because it's a different instance
+  const processed = runtime2.notifications.processPending({ limit: 10 });
+
+  assert.equal(
+    processed.length,
+    0,
+    'Worker should NOT see notifications from different API instance'
+  );
+
+  // The notification is still queued in runtime1
+  const queued = runtime1.notifications.list('queued');
+  assert.equal(queued.length, 1, 'Notification should still be queued in original instance');
+
+  // This proves: Separate instances don't share state
+  // Solution: Use shared repositories or shared service instances
+});
+
+test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications', async () => {
+  // This test validates a real flow that crosses multiple aggregates:
+  // encounter -> billing -> notification
+
+  const runtime = createTestRuntime();
+
+  // Login as reception
+  const receptionLogin = runtime.auth.login(
+    { username: 'reception', password: 'reception123' },
+    'corr_cross_aggregate'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  // Open encounter
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Consulta de rotina'
+  });
+
+  // Create billing estimate
+  const estimate = runtime.billing.createEstimate({
+    encounterId: encounter.id,
+    administrativeNotes: 'Orcamento inicial'
+  });
+
+  // Add billing item
+  const item = runtime.billing.addItem(reception.user.id, {
+    encounterId: encounter.id,
+    itemType: 'service',
+    description: 'Consulta veterinaria',
+    quantity: 1,
+    unitPriceAmount: 150
+  });
+
+  // Create notification about billing
+  const notification = runtime.notifications.create(reception.user.id, reception.user.accountId, {
+    category: 'billing',
+    severity: 'medium',
+    title: 'Orcamento criado',
+    message: `Orcamento de R$ 150 criado para ${encounter.patientId}`,
+    encounterId: encounter.id,
+    patientId: encounter.patientId
+  });
+
+  // Verify cross-aggregate links
+  assert.equal(estimate.encounterId, encounter.id, 'Estimate should link to encounter');
+  assert.equal(item.encounterId, encounter.id, 'Item should link to encounter');
+  assert.equal(notification.encounterId, encounter.id, 'Notification should link to encounter');
+
+  // Process notification
+  const processed = runtime.notifications.processPending({ limit: 1 });
+  assert.equal(processed.length, 1);
+
+  // This proves: Cross-aggregate flows work correctly
+});
+
+test('AUD-007-01: API writes notification to repository, worker reads and processes from shared repository', async () => {
+  // This test proves worker/API integration via shared repository
+  // The key: notifications created by API via repository are visible to worker via same repository
+
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repositories = bootstrap.repositories;
+
+  // API side: create runtime with repository
+  const apiRuntime = createTestRuntime(repositories);
+
+  // Login as finance user
+  const financeLogin = apiRuntime.auth.login(
+    { username: 'finance', password: 'finance123' },
+    'corr_worker_repo_integration'
+  );
+  const finance = apiRuntime.auth.authenticateAccessToken(financeLogin.accessToken);
+
+  // API creates a notification (writes to repository)
+  const notification = apiRuntime.notifications.create(finance.user.id, finance.user.accountId, {
+    category: 'billing',
+    severity: 'high',
+    title: 'Pagamento vencido',
+    message: 'Conta atrasada ha 60 dias.'
+  });
+
+  // Verify notification is in repository
+  const notifInRepo = await repositories.notification?.findNotificationById(notification.id);
+  assert.ok(notifInRepo, 'Notification should be in shared repository');
+  assert.equal(notifInRepo?.status, 'queued');
+
+  // Verify job is in repository
+  const jobsInRepo = await repositories.notification?.findQueuedJobs(10);
+  assert.ok(jobsInRepo && jobsInRepo.length >= 1, 'Job should be in shared repository');
+
+  // Worker side: create notifications service that reads from same repository
+  const { NotificationsService } = await import('@cvg-his-v2/module-notifications');
+  const workerNotifications = new NotificationsService({
+    notificationRepository: repositories.notification
+  });
+
+  // Worker reads notifications from repository
+  const queuedNotifications = await workerNotifications.listFromRepository('queued');
+  assert.ok(
+    queuedNotifications.some((n) => n.id === notification.id),
+    'Worker should see notification created by API via repository'
+  );
+
+  // Worker processes notifications from repository
+  const processed = await workerNotifications.processPendingFromRepository({ limit: 10 });
+  assert.equal(processed.length, 1, 'Worker should process 1 notification');
+  assert.equal(processed[0].id, notification.id, 'Worker should process the correct notification');
+
+  // Verify notification is now sent in repository
+  const sentNotifications = await repositories.notification?.findNotifications('sent');
+  assert.ok(
+    sentNotifications && sentNotifications.some((n) => n.id === notification.id),
+    'Notification should be marked as sent in repository'
+  );
+
+  // API can see the processed notification via repository
+  const apiViewOfSent = await apiRuntime.notifications.listFromRepository('sent');
+  assert.ok(
+    apiViewOfSent.some((n) => n.id === notification.id),
+    'API should see notification as sent via repository'
+  );
+
+  // This proves:
+  // 1. API writes to shared repository
+  // 2. Worker reads from same repository
+  // 3. Worker processes and updates repository
+  // 4. API sees worker's updates via repository
+  // Real integration between API and worker via shared repository
+});

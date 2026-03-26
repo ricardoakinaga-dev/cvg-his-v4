@@ -12,6 +12,10 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "composite": true,
+    "incremental": true,
+    "rootDir": "./src",
+    "outDir": "./dist"
   }
 }

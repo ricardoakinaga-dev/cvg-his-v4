@@ -1,0 +1,20 @@
+{
+  "name": "@cvg-his-v2/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@cvg-his-v2/shared-auth-sdk": "workspace:*",
+    "@cvg-his-v2/shared-config": "workspace:*",
+    "@cvg-his-v2/shared-logging": "workspace:*"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"console.log('no tests for web skeleton')\""
+  }
+}

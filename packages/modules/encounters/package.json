@@ -1,0 +1,31 @@
+{
+  "name": "@cvg-his-v2/module-encounters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@cvg-his-v2/module-owners": "workspace:*",
+    "@cvg-his-v2/module-patients": "workspace:*",
+    "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-errors": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*",
+    "@cvg-his-v2/shared-validation": "workspace:*",
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "drizzle-orm": "^0.36.4"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/encounters.test.js"
+  }
+}

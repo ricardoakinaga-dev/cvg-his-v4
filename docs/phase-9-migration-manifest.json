@@ -1,0 +1,106 @@
+{
+  "version": "1",
+  "generatedAt": "2026-03-25",
+  "waves": [
+    {
+      "wave": "W1",
+      "name": "Identidade e governanca",
+      "legacySources": ["auth", "rbac", "packages/rbac", "packages/audit"],
+      "v2Targets": ["auth", "access-control", "users", "staff", "audit"],
+      "dataEntities": ["users", "staff", "roles", "audit_events"],
+      "cutoverCriteria": [
+        "usuarios ativos reconciliados",
+        "roles homologadas no catalogo V2",
+        "auditoria minima validada"
+      ],
+      "rollbackCriteria": [
+        "falha de autenticacao material",
+        "quebra de enforcement backend"
+      ]
+    },
+    {
+      "wave": "W2",
+      "name": "Cadastro mestre",
+      "legacySources": ["owners", "patients"],
+      "v2Targets": ["owners", "patients"],
+      "dataEntities": ["owners", "patients", "owner_patient_links"],
+      "cutoverCriteria": [
+        "duplicidade abaixo do limite",
+        "owner principal reconciliado",
+        "busca cadastral validada"
+      ],
+      "rollbackCriteria": [
+        "colisao massiva de cadastros",
+        "vinculos tutor-paciente invalidos"
+      ]
+    },
+    {
+      "wave": "W3",
+      "name": "Atendimento e prontuario",
+      "legacySources": ["appointments", "encounters", "clinicalNotes", "documents"],
+      "v2Targets": ["scheduling", "triage", "encounters", "medical-records", "attachments"],
+      "dataEntities": ["appointments", "encounters", "triage", "clinical_entries", "attachments"],
+      "cutoverCriteria": [
+        "episodio clinico rastreavel",
+        "autoria e timestamp preservados",
+        "timeline consistente"
+      ],
+      "rollbackCriteria": [
+        "perda de encounter linkage",
+        "quebra de rastreabilidade clinica"
+      ]
+    },
+    {
+      "wave": "W4",
+      "name": "Assistencial avancado",
+      "legacySources": ["inpatient", "exams", "wards", "beds"],
+      "v2Targets": ["inpatient", "surgery", "diagnostics"],
+      "dataEntities": ["inpatient_stays", "diagnostic_orders", "surgery_cases"],
+      "cutoverCriteria": [
+        "casos ativos reconciliados",
+        "status assistenciais aderentes",
+        "continuidade clinica preservada"
+      ],
+      "rollbackCriteria": [
+        "quebra de continuidade do caso",
+        "estado avancado irrecuperavel"
+      ]
+    },
+    {
+      "wave": "W5",
+      "name": "Administrativo vinculado",
+      "legacySources": ["encounterBilling", "encounterFinancial", "stock", "notifications"],
+      "v2Targets": ["billing", "inventory", "notifications"],
+      "dataEntities": ["billing_records", "billing_items", "inventory_items", "notifications"],
+      "cutoverCriteria": [
+        "billing basico reconciliado",
+        "consumo assistencial rastreavel",
+        "segregacao clinico-administrativa validada"
+      ],
+      "rollbackCriteria": [
+        "exposicao indevida de dado clinico",
+        "divergencia financeira material"
+      ]
+    }
+  ],
+  "sanitationRules": [
+    "todo registro precisa de accountId ou tenant equivalente",
+    "registros sem chave funcional minima nao migram automaticamente",
+    "dados duplicados exigem deduplicacao antes de importacao",
+    "orphans entram em fila de resolucao manual",
+    "campos sensiveis sem confiabilidade ficam fora da onda automatica"
+  ],
+  "nonMigratedByDefault": [
+    "patientContext",
+    "cash",
+    "payments",
+    "integracoes oportunistas",
+    "naming e organizacao tecnica do legado"
+  ],
+  "legacyDeactivationCriteria": [
+    "cutover aprovado por dominio",
+    "rollback testado e sem necessidade residual",
+    "reconciliacao concluida",
+    "usuarios-chave homologaram operacao"
+  ]
+}

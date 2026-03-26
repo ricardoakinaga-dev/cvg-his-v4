@@ -32,12 +32,99 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
+      turbo:
+        specifier: ^2.5.0
+        version: 2.8.20
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
       vitest:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.11)(jsdom@28.1.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  apps/api:
+    dependencies:
+      '@cvg-his-v2/module-access-control':
+        specifier: workspace:*
+        version: link:../../packages/modules/access-control
+      '@cvg-his-v2/module-attachments':
+        specifier: workspace:*
+        version: link:../../packages/modules/attachments
+      '@cvg-his-v2/module-audit':
+        specifier: workspace:*
+        version: link:../../packages/modules/audit
+      '@cvg-his-v2/module-auth':
+        specifier: workspace:*
+        version: link:../../packages/modules/auth
+      '@cvg-his-v2/module-billing':
+        specifier: workspace:*
+        version: link:../../packages/modules/billing
+      '@cvg-his-v2/module-diagnostics':
+        specifier: workspace:*
+        version: link:../../packages/modules/diagnostics
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../../packages/modules/encounters
+      '@cvg-his-v2/module-inpatient':
+        specifier: workspace:*
+        version: link:../../packages/modules/inpatient
+      '@cvg-his-v2/module-inventory':
+        specifier: workspace:*
+        version: link:../../packages/modules/inventory
+      '@cvg-his-v2/module-medical-records':
+        specifier: workspace:*
+        version: link:../../packages/modules/medical-records
+      '@cvg-his-v2/module-notifications':
+        specifier: workspace:*
+        version: link:../../packages/modules/notifications
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../../packages/modules/owners
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../../packages/modules/patients
+      '@cvg-his-v2/module-scheduling':
+        specifier: workspace:*
+        version: link:../../packages/modules/scheduling
+      '@cvg-his-v2/module-staff':
+        specifier: workspace:*
+        version: link:../../packages/modules/staff
+      '@cvg-his-v2/module-surgery':
+        specifier: workspace:*
+        version: link:../../packages/modules/surgery
+      '@cvg-his-v2/module-triage':
+        specifier: workspace:*
+        version: link:../../packages/modules/triage
+      '@cvg-his-v2/module-users':
+        specifier: workspace:*
+        version: link:../../packages/modules/users
+      '@cvg-his-v2/shared-auth-sdk':
+        specifier: workspace:*
+        version: link:../../packages/shared/auth-sdk
+      '@cvg-his-v2/shared-config':
+        specifier: workspace:*
+        version: link:../../packages/shared/config
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../packages/shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../packages/shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../packages/shared/errors
+      '@cvg-his-v2/shared-logging':
+        specifier: workspace:*
+        version: link:../../packages/shared/logging
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../packages/shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../packages/shared/validation
 
   apps/his-api:
     dependencies:
@@ -169,6 +256,36 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
 
+  apps/web:
+    dependencies:
+      '@cvg-his-v2/shared-auth-sdk':
+        specifier: workspace:*
+        version: link:../../packages/shared/auth-sdk
+      '@cvg-his-v2/shared-config':
+        specifier: workspace:*
+        version: link:../../packages/shared/config
+      '@cvg-his-v2/shared-logging':
+        specifier: workspace:*
+        version: link:../../packages/shared/logging
+
+  apps/worker:
+    dependencies:
+      '@cvg-his-v2/module-notifications':
+        specifier: workspace:*
+        version: link:../../packages/modules/notifications
+      '@cvg-his-v2/shared-config':
+        specifier: workspace:*
+        version: link:../../packages/shared/config
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../packages/shared/database
+      '@cvg-his-v2/shared-logging':
+        specifier: workspace:*
+        version: link:../../packages/shared/logging
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../packages/shared/utils
+
   packages/audit:
     dependencies:
       '@cvg-his/db':
@@ -220,7 +337,454 @@ importers:
 
   packages/events: {}
 
+  packages/modules/access-control:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+
+  packages/modules/attachments:
+    dependencies:
+      '@cvg-his-v2/module-diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/module-medical-records':
+        specifier: workspace:*
+        version: link:../medical-records
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/audit:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/auth:
+    dependencies:
+      '@cvg-his-v2/module-access-control':
+        specifier: workspace:*
+        version: link:../access-control
+      '@cvg-his-v2/module-audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@cvg-his-v2/module-staff':
+        specifier: workspace:*
+        version: link:../staff
+      '@cvg-his-v2/module-users':
+        specifier: workspace:*
+        version: link:../users
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/billing:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/diagnostics:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/encounters:
+    dependencies:
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../owners
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../patients
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/inpatient:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/inventory:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/medical-records:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../patients
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/notifications:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../patients
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/owners:
+    dependencies:
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/patients:
+    dependencies:
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../owners
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/scheduling:
+    dependencies:
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../owners
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../patients
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/staff:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+
+  packages/modules/surgery:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/triage:
+    dependencies:
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/users:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+
   packages/rbac: {}
+
+  packages/shared/auth-sdk: {}
+
+  packages/shared/config:
+    dependencies:
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../validation
+
+  packages/shared/contracts:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/shared/database:
+    dependencies:
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+      pg:
+        specifier: ^8.13.1
+        version: 8.18.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.16.0
+      drizzle-kit:
+        specifier: ^0.28.1
+        version: 0.28.1
+
+  packages/shared/errors: {}
+
+  packages/shared/logging:
+    dependencies:
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../utils
+
+  packages/shared/types: {}
+
+  packages/shared/utils: {}
+
+  packages/shared/validation:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../errors
 
 packages:
 
@@ -1328,6 +1892,36 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
+  '@turbo/darwin-64@2.8.20':
+    resolution: {integrity: sha512-FQ9EX1xMU5nbwjxXxM3yU88AQQ6Sqc6S44exPRroMcx9XZHqqppl5ymJF0Ig/z3nvQNwDmz1Gsnvxubo+nXWjQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@turbo/darwin-arm64@2.8.20':
+    resolution: {integrity: sha512-Gpyh9ATFGThD6/s9L95YWY54cizg/VRWl2B67h0yofG8BpHf67DFAh9nuJVKG7bY0+SBJDAo5cMur+wOl9YOYw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@turbo/linux-64@2.8.20':
+    resolution: {integrity: sha512-p2QxWUYyYUgUFG0b0kR+pPi8t7c9uaVlRtjTTI1AbCvVqkpjUfCcReBn6DgG/Hu8xrWdKLuyQFaLYFzQskZbcA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@turbo/linux-arm64@2.8.20':
+    resolution: {integrity: sha512-Gn5yjlZGLRZWarLWqdQzv0wMqyBNIdq1QLi48F1oY5Lo9kiohuf7BPQWtWxeNVS2NgJ1+nb/DzK1JduYC4AWOA==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@turbo/windows-64@2.8.20':
+    resolution: {integrity: sha512-vyaDpYk/8T6Qz5V/X+ihKvKFEZFUoC0oxYpC1sZanK6gaESJlmV3cMRT3Qhcg4D2VxvtC2Jjs9IRkrZGL+exLw==}
+    cpu: [x64]
+    os: [win32]
+
+  '@turbo/windows-arm64@2.8.20':
+    resolution: {integrity: sha512-voicVULvUV5yaGXo0Iue13BcHGYW3u0VgqSbfQwBaHbpj1zLjYV4KIe+7fYIo6DO8FVUJzxFps3ODCQG/Wy2Qw==}
+    cpu: [arm64]
+    os: [win32]
+
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
 
@@ -1761,9 +2355,105 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
+  drizzle-kit@0.28.1:
+    resolution: {integrity: sha512-JimOV+ystXTWMgZkLHYHf2w3oS28hxiH1FR0dkmJLc7GHzdGJoJAQtQS5DRppnabsRZwE2U1F6CuezVBgmsBBQ==}
+    hasBin: true
+
   drizzle-kit@0.30.6:
     resolution: {integrity: sha512-U4wWit0fyZuGuP7iNmRleQyK2V8wCuv57vf5l3MnG4z4fzNTjY/U13M8owyQ5RavqvqxBifWORaR3wIUzlN64g==}
     hasBin: true
+
+  drizzle-orm@0.36.4:
+    resolution: {integrity: sha512-1OZY3PXD7BR00Gl61UUOFihslDldfH4NFRH2MbP54Yxi0G/PKn4HfO65JYZ7c16DeP3SpM3Aw+VXVG9j6CRSXA==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=3'
+      '@electric-sql/pglite': '>=0.2.0'
+      '@libsql/client': '>=0.10.0'
+      '@libsql/client-wasm': '>=0.10.0'
+      '@neondatabase/serverless': '>=0.10.0'
+      '@op-engineering/op-sqlite': '>=2'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@prisma/client': '*'
+      '@tidbcloud/serverless': '*'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/react': '>=18'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '>=0.8.0'
+      '@xata.io/client': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=14.0.0'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      prisma: '*'
+      react: '>=18'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@electric-sql/pglite':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@libsql/client-wasm':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@op-engineering/op-sqlite':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@prisma/client':
+        optional: true
+      '@tidbcloud/serverless':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/react':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      '@xata.io/client':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      prisma:
+        optional: true
+      react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
 
   drizzle-orm@0.38.4:
     resolution: {integrity: sha512-s7/5BpLKO+WJRHspvpqTydxFob8i1vo2rEx4pY6TGY7QSMuUfWUuzaY0DIpXCkgHOo37BaFC+SJQb99dDUXT3Q==}
@@ -2739,6 +3429,10 @@ packages:
   tsx@4.21.0:
     resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
     engines: {node: '>=18.0.0'}
+    hasBin: true
+
+  turbo@2.8.20:
+    resolution: {integrity: sha512-Rb4qk5YT8RUwwdXtkLpkVhNEe/lor6+WV7S5tTlLpxSz6MjV5Qi8jGNn4gS6NAvrYGA/rNrE6YUQM85sCZUDbQ==}
     hasBin: true
 
   type-check@0.4.0:
@@ -3791,6 +4485,24 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
+  '@turbo/darwin-64@2.8.20':
+    optional: true
+
+  '@turbo/darwin-arm64@2.8.20':
+    optional: true
+
+  '@turbo/linux-64@2.8.20':
+    optional: true
+
+  '@turbo/linux-arm64@2.8.20':
+    optional: true
+
+  '@turbo/windows-64@2.8.20':
+    optional: true
+
+  '@turbo/windows-arm64@2.8.20':
+    optional: true
+
   '@types/aria-query@5.0.4': {}
 
   '@types/babel__core@7.20.5':
@@ -4279,6 +4991,15 @@ snapshots:
 
   dotenv@16.6.1: {}
 
+  drizzle-kit@0.28.1:
+    dependencies:
+      '@drizzle-team/brocli': 0.10.2
+      '@esbuild-kit/esm-loader': 2.6.5
+      esbuild: 0.19.12
+      esbuild-register: 3.6.0(esbuild@0.19.12)
+    transitivePeerDependencies:
+      - supports-color
+
   drizzle-kit@0.30.6:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
@@ -4288,6 +5009,13 @@ snapshots:
       gel: 2.2.0
     transitivePeerDependencies:
       - supports-color
+
+  drizzle-orm@0.36.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1):
+    optionalDependencies:
+      '@types/pg': 8.16.0
+      '@types/react': 18.3.28
+      pg: 8.18.0
+      react: 18.3.1
 
   drizzle-orm@0.38.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1):
     optionalDependencies:
@@ -5270,6 +5998,15 @@ snapshots:
       get-tsconfig: 4.13.6
     optionalDependencies:
       fsevents: 2.3.3
+
+  turbo@2.8.20:
+    optionalDependencies:
+      '@turbo/darwin-64': 2.8.20
+      '@turbo/darwin-arm64': 2.8.20
+      '@turbo/linux-64': 2.8.20
+      '@turbo/linux-arm64': 2.8.20
+      '@turbo/windows-64': 2.8.20
+      '@turbo/windows-arm64': 2.8.20
 
   type-check@0.4.0:
     dependencies:

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+COREPACK_HOME="${COREPACK_HOME:-/tmp/corepack}" corepack pnpm "$@"
