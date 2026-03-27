@@ -43,6 +43,45 @@ nav .brand {
   margin-right: 24px;
   white-space: nowrap;
 }
+nav .nav-branding {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 16px;
+}
+nav .nav-branding-subtitle {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+nav .nav-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+nav .nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+nav .nav-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+nav .nav-links {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+nav .nav-user-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 nav a {
   padding: 8px 14px;
   border-radius: 8px;
@@ -371,8 +410,12 @@ pre {
   background: var(--accent-light);
 }
 @media (max-width: 768px) {
-  nav { padding: 0 12px; gap: 4px; overflow-x: auto; }
+  nav { padding: 10px 12px; gap: 10px; overflow-x: auto; height: auto; align-items: flex-start; }
+  nav .nav-branding { min-width: fit-content; }
+  nav .nav-groups { flex-direction: column; align-items: flex-start; gap: 10px; }
+  nav .nav-links { flex-wrap: wrap; }
   nav a { padding: 6px 10px; font-size: 0.8rem; }
+  nav .spacer { display: none; }
   main { padding: 16px; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }

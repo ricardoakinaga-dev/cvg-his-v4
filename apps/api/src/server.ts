@@ -5,6 +5,7 @@ import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
   AddInpatientProgressRequest,
   ArchiveClinicalEntryRequest,
+  AssignBedRequest,
   CheckInQueueRequest,
   CloseEncounterRequest,
   CreateAppointmentRequest,
@@ -20,6 +21,8 @@ import type {
   CreateOwnerPatientLinkRequest,
   CreateOwnerRequest,
   CreatePatientRequest,
+  CreateSectorRequest,
+  CreateBedRequest,
   CreateSurgeryCaseRequest,
   CreateTriageRequest,
   LoginRequest,
@@ -71,6 +74,7 @@ export function createApiServer(options: ApiServerOptions) {
     medicalRecords,
     attachments,
     inpatient,
+    sectorBedService,
     surgery,
     diagnostics,
     billing,
@@ -94,6 +98,9 @@ export function createApiServer(options: ApiServerOptions) {
     const correlationIdHeader = request.headers['x-correlation-id'];
     const correlationId =
       typeof correlationIdHeader === 'string' ? correlationIdHeader : createCorrelationId('api');
+
+    // DEBUG: log incoming request
+    logger.info('incoming request', { correlationId, method: request.method, url: request.url });
 
     response.setHeader('content-type', 'application/json; charset=utf-8');
     response.setHeader('x-correlation-id', correlationId);
@@ -428,7 +435,9 @@ export function createApiServer(options: ApiServerOptions) {
             `Attachment added to encounter ${payload.linkedEntityId}`
           );
         } else if (payload.linkedEntityType === 'medical_record') {
-          const record = await medicalRecords.getRecordOrThrowAsync(payload.linkedEntityId as never);
+          const record = await medicalRecords.getRecordOrThrowAsync(
+            payload.linkedEntityId as never
+          );
           medicalRecords.appendAttachmentEvent(
             record.encounterId,
             principal.user.id,
@@ -1700,6 +1709,178 @@ export function createApiServer(options: ApiServerOptions) {
         );
         response.statusCode = 200;
         response.end(JSON.stringify({ items: audit.list() }));
+        return;
+      }
+
+      if (pathname === '/sectors' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'inpatient.read');
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'sectors',
+          'list',
+          'sector',
+          'all',
+          'Sectors listed',
+          'low',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(
+          JSON.stringify({
+            items: await sectorBedService.listSectors(principal.user.accountId as never)
+          })
+        );
+        return;
+      }
+
+      if (pathname === '/sectors' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'inpatient.manage');
+        const payload = (await readJsonBody(request)) as CreateSectorRequest;
+        const sector = await sectorBedService.createSector(
+          principal.user.accountId as never,
+          payload
+        );
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'sectors',
+          'create',
+          'sector',
+          sector.id,
+          `Sector ${sector.name} created`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(sector));
+        return;
+      }
+
+      if (pathname === '/beds' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'inpatient.read');
+        const sectorId = url.searchParams.get('sectorId') ?? undefined;
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'beds',
+          'list',
+          'bed',
+          sectorId ?? 'all',
+          'Beds listed',
+          'low',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(
+          JSON.stringify({
+            items: await sectorBedService.listBeds(
+              principal.user.accountId as never,
+              sectorId as never
+            )
+          })
+        );
+        return;
+      }
+
+      if (pathname === '/beds' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'inpatient.manage');
+        const payload = (await readJsonBody(request)) as CreateBedRequest;
+        const bed = await sectorBedService.createBed(principal.user.accountId as never, payload);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'beds',
+          'create',
+          'bed',
+          bed.id,
+          `Bed ${bed.name} created in sector`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(bed));
+        return;
+      }
+
+      if (pathname === '/bed-map' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'inpatient.read');
+        const bedMap = await sectorBedService.buildBedMap(principal.user.accountId as never);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'bed-map',
+          'read',
+          'bed-map',
+          'current',
+          'Bed map consulted',
+          'low',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(bedMap));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/inpatient/') &&
+        pathname.endsWith('/assign-bed') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'inpatient.manage');
+        const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
+        const payload = (await readJsonBody(request)) as AssignBedRequest;
+        const stay = await inpatient.assignBed(stayId as never, payload);
+        medicalRecords.appendAdvancedCareEvent(
+          stay.encounterId,
+          principal.user.id,
+          'inpatient_transferred',
+          `Inpatient stay assigned to bed ${payload.bedId}`
+        );
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'inpatient',
+          'assign_bed',
+          'inpatient-stay',
+          stay.id,
+          `Inpatient stay assigned to sector/bed`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(stay));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/inpatient/') &&
+        pathname.endsWith('/transfer-bed') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'inpatient.manage');
+        const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
+        const payload = (await readJsonBody(request)) as AssignBedRequest;
+        const stay = await inpatient.transferBed(stayId as never, payload);
+        medicalRecords.appendAdvancedCareEvent(
+          stay.encounterId,
+          principal.user.id,
+          'inpatient_transferred',
+          `Inpatient stay transferred to bed ${payload.bedId}`
+        );
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'inpatient',
+          'transfer_bed',
+          'inpatient-stay',
+          stay.id,
+          `Inpatient stay transferred to new sector/bed`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(stay));
         return;
       }
 

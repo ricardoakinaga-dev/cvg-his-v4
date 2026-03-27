@@ -48,7 +48,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error("worker crashed", { service: config.appName, error });
+  logger.error("worker crashed", { service: config.appName, error: error.message, stack: error.stack });
   process.exitCode = 1;
 }).finally(async () => {
   await shutdownWorkerServices();

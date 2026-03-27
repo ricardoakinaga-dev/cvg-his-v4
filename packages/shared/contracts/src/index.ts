@@ -2,6 +2,7 @@ import type { DatabaseStatus } from '@cvg-his-v2/shared-database';
 import type {
   AccessProfile,
   AttachmentSummary,
+  BedSummary,
   BillingItemSummary,
   BillingRecordSummary,
   ClinicalEntrySummary,
@@ -17,6 +18,7 @@ import type {
   AuditEventSummary,
   NotificationJobSummary,
   NotificationSummary,
+  SectorSummary,
   AuthenticatedPrincipal,
   HealthStatus,
   MedicalRecordSummary,
@@ -311,6 +313,8 @@ export interface CreateInpatientAdmissionRequest {
   readonly unit: string;
   readonly ward: string;
   readonly bed: string;
+  readonly sectorId?: string;
+  readonly bedId?: string;
 }
 
 export interface InpatientListResponse {
@@ -331,6 +335,8 @@ export interface UpdateInpatientStatusRequest {
   readonly dischargeReason?: string;
   readonly transferToUnit?: string;
   readonly transferToWard?: string;
+  readonly transferToSectorId?: string;
+  readonly transferToBedId?: string;
 }
 
 export interface CreateSurgeryCaseRequest {
@@ -446,4 +452,60 @@ export interface NotificationListResponse {
 
 export interface NotificationJobListResponse {
   readonly items: readonly NotificationJobSummary[];
+}
+
+export interface CreateSectorRequest {
+  readonly code: string;
+  readonly name: string;
+  readonly kind: 'clinic' | 'surgery' | 'icu' | 'isolation' | 'observation' | 'other';
+}
+
+export interface CreateBedRequest {
+  readonly sectorId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly supportsSpecies?: string;
+}
+
+export interface SectorListResponse {
+  readonly items: readonly SectorSummary[];
+}
+
+export interface BedListResponse {
+  readonly items: readonly BedSummary[];
+}
+
+export interface BedMapBed {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly status: 'available' | 'occupied' | 'maintenance';
+  readonly supportsSpecies?: string;
+  readonly stayId?: string;
+  readonly patientId?: string;
+  readonly encounterId?: string;
+  readonly occupiedSince?: string;
+}
+
+export interface BedMapSector {
+  readonly sectorId: string;
+  readonly sectorCode: string;
+  readonly sectorName: string;
+  readonly kind: string;
+  readonly beds: readonly BedMapBed[];
+  readonly totalBeds: number;
+  readonly occupiedBeds: number;
+  readonly availableBeds: number;
+}
+
+export interface BedMapResponse {
+  readonly items: readonly BedMapSector[];
+  readonly totalBeds: number;
+  readonly occupiedBeds: number;
+  readonly availableBeds: number;
+}
+
+export interface AssignBedRequest {
+  readonly sectorId: string;
+  readonly bedId: string;
 }

@@ -2,15 +2,18 @@ import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   AddInpatientProgressRequest,
   CreateInpatientAdmissionRequest,
-  UpdateInpatientStatusRequest
+  UpdateInpatientStatusRequest,
+  AssignBedRequest
 } from '@cvg-his-v2/shared-contracts';
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientProgressId,
   InpatientProgressSummary,
   InpatientStayId,
   InpatientStaySummary,
-  UserId
+  UserId,
+  SectorId,
+  BedId
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -22,9 +25,19 @@ import type {
   InpatientStayRepository,
   InpatientProgressRepository
 } from './repositories/database-inpatient.repository.js';
+import { SectorBedService } from './sector-bed.service.js';
+import type { SectorBedServiceOptions } from './sector-bed.service.js';
 
 export type { InpatientStayRepository, InpatientProgressRepository };
 export { DatabaseInpatientStayRepository, DatabaseInpatientProgressRepository };
+export {
+  SectorBedService,
+  DatabaseSectorRepository,
+  DatabaseBedRepository,
+  type SectorBedServiceOptions,
+  type SectorRepository,
+  type BedRepository
+} from './sector-bed.service.js';
 
 const VALID_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
   admitted: ['stable', 'transferred', 'discharged'],
@@ -36,6 +49,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
 export interface InpatientServiceOptions {
   readonly stayRepository?: InpatientStayRepository;
   readonly progressRepository?: InpatientProgressRepository;
+  readonly sectorBedService?: SectorBedService;
 }
 
 export class InpatientService {
@@ -44,12 +58,14 @@ export class InpatientService {
   readonly #progress = new Map<InpatientStayId, InpatientProgressSummary[]>();
   readonly #stayRepository?: InpatientStayRepository;
   readonly #progressRepository?: InpatientProgressRepository;
+  readonly #sectorBedService?: SectorBedService;
   #pendingPersist: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options?: InpatientServiceOptions) {
     this.#encounters = encounters;
     this.#stayRepository = options?.stayRepository;
     this.#progressRepository = options?.progressRepository;
+    this.#sectorBedService = options?.sectorBedService;
   }
 
   #enqueuePersist(operation: () => Promise<void>): void {
@@ -90,6 +106,8 @@ export class InpatientService {
       unit: requireNonEmptyString(payload.unit, 'unit'),
       ward: requireNonEmptyString(payload.ward, 'ward'),
       bed: requireNonEmptyString(payload.bed, 'bed'),
+      sectorId: payload.sectorId as SectorId | undefined,
+      bedId: payload.bedId as BedId | undefined,
       status: 'admitted',
       admittedAt: now,
       updatedAt: now
@@ -98,8 +116,98 @@ export class InpatientService {
     this.#progress.set(stay.id, []);
     this.#enqueuePersist(async () => {
       await this.persistStay(stay);
+      if (this.#sectorBedService && stay.bedId) {
+        await this.#sectorBedService.setBedOccupied(stay.bedId);
+      }
     });
     return stay;
+  }
+
+  public async assignBed(
+    stayId: InpatientStayId,
+    payload: AssignBedRequest
+  ): Promise<InpatientStaySummary> {
+    const stay = this.getOrThrow(stayId);
+
+    if (stay.status === 'discharged') {
+      throw new ValidationError('Cannot assign bed to discharged stay');
+    }
+
+    if (this.#sectorBedService) {
+      const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
+      if (bed.sectorId !== payload.sectorId) {
+        throw new ValidationError('Bed does not belong to the specified sector');
+      }
+      if (bed.status === 'occupied') {
+        throw new ValidationError('Bed is already occupied');
+      }
+      await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+
+      if (stay.bedId) {
+        await this.#sectorBedService.setBedAvailable(stay.bedId);
+      }
+    }
+
+    const now = nowIso();
+    const updated: InpatientStaySummary = {
+      ...stay,
+      sectorId: payload.sectorId as SectorId,
+      bedId: payload.bedId as BedId,
+      updatedAt: now
+    };
+
+    this.#stays.set(stayId, updated);
+    this.#enqueuePersist(async () => {
+      await this.updateStay(updated);
+    });
+
+    return updated;
+  }
+
+  public async transferBed(
+    stayId: InpatientStayId,
+    payload: AssignBedRequest
+  ): Promise<InpatientStaySummary> {
+    const stay = this.getOrThrow(stayId);
+
+    if (stay.status === 'discharged') {
+      throw new ValidationError('Cannot transfer bed for discharged stay');
+    }
+
+    if (!this.isValidTransition(stay.status, 'transferred')) {
+      throw new Error(`Invalid status transition from '${stay.status}' to 'transferred'`);
+    }
+
+    if (this.#sectorBedService) {
+      const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
+      if (bed.sectorId !== payload.sectorId) {
+        throw new ValidationError('Bed does not belong to the specified sector');
+      }
+      if (bed.status === 'occupied') {
+        throw new ValidationError('Bed is already occupied');
+      }
+      await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+
+      if (stay.bedId) {
+        await this.#sectorBedService.setBedAvailable(stay.bedId);
+      }
+    }
+
+    const now = nowIso();
+    const updated: InpatientStaySummary = {
+      ...stay,
+      status: 'transferred',
+      transferToSectorId: payload.sectorId as SectorId,
+      transferToBedId: payload.bedId as BedId,
+      updatedAt: now
+    };
+
+    this.#stays.set(stayId, updated);
+    this.#enqueuePersist(async () => {
+      await this.updateStay(updated);
+    });
+
+    return updated;
   }
 
   public list(encounterId?: string): readonly InpatientStaySummary[] {

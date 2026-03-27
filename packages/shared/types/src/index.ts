@@ -30,6 +30,8 @@ export type InventoryItemId = Brand<string, 'InventoryItemId'>;
 export type InventoryConsumptionId = Brand<string, 'InventoryConsumptionId'>;
 export type NotificationId = Brand<string, 'NotificationId'>;
 export type NotificationJobId = Brand<string, 'NotificationJobId'>;
+export type SectorId = Brand<string, 'SectorId'>;
+export type BedId = Brand<string, 'BedId'>;
 
 export interface AppInfo {
   readonly name: string;
@@ -356,12 +358,16 @@ export interface InpatientStaySummary {
   readonly unit: string;
   readonly ward: string;
   readonly bed: string;
+  readonly sectorId?: SectorId;
+  readonly bedId?: BedId;
   readonly status: 'admitted' | 'stable' | 'transferred' | 'discharged';
   readonly admittedAt: string;
   readonly dischargedAt?: string;
   readonly dischargeReason?: string;
   readonly transferToUnit?: string;
   readonly transferToWard?: string;
+  readonly transferToSectorId?: SectorId;
+  readonly transferToBedId?: BedId;
   readonly updatedAt: string;
 }
 
@@ -514,4 +520,28 @@ export interface NotificationJobSummary {
   readonly attempts: number;
   readonly scheduledAt: string;
   readonly processedAt?: string;
+}
+
+export interface SectorSummary {
+  readonly id: SectorId;
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly kind: 'clinic' | 'surgery' | 'icu' | 'isolation' | 'observation' | 'other';
+  readonly active: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface BedSummary {
+  readonly id: BedId;
+  readonly accountId: AccountId;
+  readonly sectorId: SectorId;
+  readonly code: string;
+  readonly name: string;
+  readonly status: 'available' | 'occupied' | 'maintenance';
+  readonly supportsSpecies?: string;
+  readonly active: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }

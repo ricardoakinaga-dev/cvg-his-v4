@@ -15,7 +15,11 @@ import type {
   EncounterRepository,
   EncounterTimelineRepository
 } from '@cvg-his-v2/module-encounters';
-import { InpatientService } from '@cvg-his-v2/module-inpatient';
+import {
+  InpatientService,
+  SectorBedService,
+  type SectorBedServiceOptions
+} from '@cvg-his-v2/module-inpatient';
 import type {
   InpatientStayRepository,
   InpatientProgressRepository
@@ -70,6 +74,7 @@ export interface ApiRuntimeOptions {
   readonly refreshTokenTtlSeconds: number;
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
+  readonly sectorBedOptions?: SectorBedServiceOptions;
 }
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
@@ -100,9 +105,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     clinicalTimelineRepository: repos.clinicalTimeline,
     entryRevisionRepository: repos.entryRevision
   });
+  const sectorBedService = new SectorBedService(options.sectorBedOptions ?? {});
   const inpatient = new InpatientService(encounters, {
     stayRepository: repos.inpatientStay,
-    progressRepository: repos.inpatientProgress
+    progressRepository: repos.inpatientProgress,
+    sectorBedService
   });
   const surgery = new SurgeryService(encounters, {
     surgeryCaseRepository: repos.surgeryCase
@@ -149,6 +156,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     medicalRecords,
     attachments,
     inpatient,
+    sectorBedService,
     surgery,
     diagnostics,
     billing,

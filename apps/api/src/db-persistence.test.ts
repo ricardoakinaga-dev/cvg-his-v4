@@ -856,4 +856,150 @@ describe('Database Persistence Integration Tests', () => {
       true
     );
   });
+
+  it('should persist sector, bed and bedmap with inpatient integration', async () => {
+    const bootstrap = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
+    const runtime = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrap.repositories,
+      fileStorage: bootstrap.fileStorage,
+      sectorBedOptions: { databaseClient: db }
+    });
+
+    const receptionLogin = runtime.auth.login(
+      { username: 'reception', password: 'seed_reception' },
+      'corr_db_sector_bed'
+    );
+    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+    // 1. Create sector
+    const sector = await runtime.sectorBedService.createSector(reception.user.accountId as never, {
+      code: 'UTI-VET',
+      name: 'UTI Veterinaria',
+      kind: 'icu'
+    });
+    assert.ok(sector.id, 'Sector should have an ID');
+    assert.equal(sector.code, 'UTI-VET');
+    assert.equal(sector.kind, 'icu');
+
+    // 2. Create bed
+    const bed = await runtime.sectorBedService.createBed(reception.user.accountId as never, {
+      sectorId: sector.id,
+      code: 'UTI-01',
+      name: 'Leito UTI 01',
+      supportsSpecies: 'caninos'
+    });
+    assert.ok(bed.id, 'Bed should have an ID');
+    assert.equal(bed.sectorId, sector.id);
+    assert.equal(bed.status, 'available');
+
+    // 3. Create encounter and admit with sector/bed
+    const encounter = runtime.encounters.openEncounter(
+      reception.user.accountId,
+      reception.user.id,
+      {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Teste de internacao com setor/leito'
+      }
+    );
+
+    const stay = runtime.inpatient.admit({
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala Central',
+      bed: 'UTI-01',
+      sectorId: sector.id,
+      bedId: bed.id
+    });
+    assert.ok(stay.id, 'Stay should have an ID');
+    assert.equal(stay.sectorId, sector.id);
+    assert.equal(stay.bedId, bed.id);
+
+    // 4. Wait for bed status to be persisted
+    await sleep(100);
+
+    // 5. Check bedmap
+    const bedMap = await runtime.sectorBedService.buildBedMap(reception.user.accountId as never);
+    assert.ok(bedMap.items.length > 0, 'BedMap should have sectors');
+    const sectorMap = bedMap.items.find((s) => s.sectorId === sector.id);
+    assert.ok(sectorMap, 'Sector should be in bedmap');
+    assert.equal(sectorMap.totalBeds, 1);
+    assert.equal(sectorMap.occupiedBeds, 1);
+    const bedInMap = sectorMap.beds.find((b) => b.id === bed.id);
+    assert.ok(bedInMap, 'Bed should be in bedmap');
+    assert.equal(bedInMap.status, 'occupied');
+    assert.equal(bedInMap.patientId, encounter.patientId);
+
+    // 6. Transfer bed
+    const bed2 = await runtime.sectorBedService.createBed(reception.user.accountId as never, {
+      sectorId: sector.id,
+      code: 'UTI-02',
+      name: 'Leito UTI 02',
+      supportsSpecies: 'caninos'
+    });
+
+    const transferred = await runtime.inpatient.transferBed(stay.id, {
+      sectorId: sector.id,
+      bedId: bed2.id
+    });
+    assert.equal(transferred.status, 'transferred');
+    assert.equal(transferred.transferToBedId, bed2.id);
+
+    // 7. Discharge - should free the bed (need to go back to admitted first)
+    const readmitted = runtime.inpatient.updateStatus(stay.id, {
+      status: 'admitted'
+    });
+    runtime.inpatient.updateStatus(stay.id, {
+      status: 'discharged',
+      dischargeReason: 'Alta medica'
+    });
+
+    // 8. Persist and verify after restart
+    await sleep(100);
+
+    const bootstrapAfterRestart = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
+    const runtimeAfterRestart = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrapAfterRestart.repositories,
+      fileStorage: bootstrapAfterRestart.fileStorage,
+      sectorBedOptions: { databaseClient: db }
+    });
+
+    const sectorsAfterRestart = await runtimeAfterRestart.sectorBedService.listSectors(
+      reception.user.accountId as never
+    );
+    assert.ok(
+      sectorsAfterRestart.find((s) => s.id === sector.id),
+      'Sector should persist after restart'
+    );
+
+    const bedsAfterRestart = await runtimeAfterRestart.sectorBedService.listBeds(
+      reception.user.accountId as never,
+      sector.id as never
+    );
+    assert.ok(
+      bedsAfterRestart.find((b) => b.id === bed.id),
+      'Bed should persist after restart'
+    );
+    assert.ok(
+      bedsAfterRestart.find((b) => b.id === bed2.id),
+      'Second bed should persist after restart'
+    );
+
+    const stayAfterRestart = await bootstrapAfterRestart.repositories.inpatientStay?.findById(
+      stay.id
+    );
+    assert.ok(stayAfterRestart, 'Stay should persist after restart');
+    assert.equal(stayAfterRestart?.sectorId, sector.id);
+    assert.equal(stayAfterRestart?.bedId, bed.id);
+    assert.equal(stayAfterRestart?.status, 'discharged');
+  });
 });

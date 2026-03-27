@@ -9,7 +9,9 @@ import type {
   InpatientProgressId,
   InpatientProgressSummary,
   EncounterId,
-  UserId
+  UserId,
+  SectorId,
+  BedId
 } from '@cvg-his-v2/shared-types';
 
 export interface InpatientStayRepository {
@@ -40,12 +42,16 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       unit: stay.unit,
       ward: stay.ward,
       bed: stay.bed,
+      sectorId: stay.sectorId ?? null,
+      bedId: stay.bedId ?? null,
       status: stay.status,
       admittedAt: new Date(stay.admittedAt),
       dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
       dischargeReason: stay.dischargeReason ?? null,
       transferToUnit: stay.transferToUnit ?? null,
       transferToWard: stay.transferToWard ?? null,
+      transferToSectorId: stay.transferToSectorId ?? null,
+      transferToBedId: stay.transferToBedId ?? null,
       createdAt: new Date(stay.admittedAt),
       updatedAt: new Date(stay.updatedAt)
     });
@@ -56,10 +62,14 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       .update(inpatientStays)
       .set({
         status: stay.status,
+        sectorId: stay.sectorId ?? null,
+        bedId: stay.bedId ?? null,
         dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
         dischargeReason: stay.dischargeReason ?? null,
         transferToUnit: stay.transferToUnit ?? null,
         transferToWard: stay.transferToWard ?? null,
+        transferToSectorId: stay.transferToSectorId ?? null,
+        transferToBedId: stay.transferToBedId ?? null,
         updatedAt: new Date(stay.updatedAt)
       })
       .where(eq(inpatientStays.id, stay.id));
@@ -99,12 +109,16 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       unit: row.unit,
       ward: row.ward,
       bed: row.bed,
+      sectorId: row.sectorId ? (row.sectorId as SectorId) : undefined,
+      bedId: row.bedId ? (row.bedId as BedId) : undefined,
       status: row.status as InpatientStaySummary['status'],
       admittedAt: row.admittedAt.toISOString(),
       dischargedAt: row.dischargedAt?.toISOString(),
       dischargeReason: row.dischargeReason ?? undefined,
       transferToUnit: row.transferToUnit ?? undefined,
       transferToWard: row.transferToWard ?? undefined,
+      transferToSectorId: row.transferToSectorId ? (row.transferToSectorId as SectorId) : undefined,
+      transferToBedId: row.transferToBedId ? (row.transferToBedId as BedId) : undefined,
       updatedAt: row.updatedAt.toISOString()
     };
   }

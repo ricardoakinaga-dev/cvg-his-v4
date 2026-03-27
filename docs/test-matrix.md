@@ -182,6 +182,8 @@ O projeto possui dois niveis de validacao executavel e um gate explicito de rele
 | inpatient   | 7                | 1                 | 1        | Obrigatorio |
 | surgery     | 7                | 1                 | 1        | Obrigatorio |
 | diagnostics | 9                | 1                 | 1        | Obrigatorio |
+| sectors     | 0                | 1                 | 1        | Obrigatorio |
+| beds        | 0                | 1                 | 1        | Obrigatorio |
 
 **Cenarios minimos obrigatorios:**
 
@@ -198,6 +200,12 @@ O projeto possui dois niveis de validacao executavel e um gate explicito de rele
 - Resultado de exame com resumo
 - Transicoes validas/invalidas de diagnostico
 - Catalogo de exames disponivel
+- Criacao de setor (sector)
+- Criacao de leito (bed) em setor
+- Atribuicao de leito a internacao (assign-bed)
+- Transferencia de leito (transfer-bed)
+- Bedmap com ocupacao atualizada
+- Alta libera leito automaticamente
 
 ### Dominio: Administrativo
 
@@ -246,6 +254,8 @@ O projeto possui dois niveis de validacao executavel e um gate explicito de rele
 - inpatient: 8 testes (7U + 1I)
 - surgery: 8 testes (7U + 1I)
 - diagnostics: 10 testes (9U + 1I)
+- sectors: 1 teste integracao (1I)
+- beds: 1 teste integracao (1I)
 
 ### Gate 6: Administrativo
 
@@ -263,7 +273,9 @@ O projeto possui dois niveis de validacao executavel e um gate explicito de rele
 - `surgery`: suite de modulo executavel entregue em `surgery.test.ts`
 - `diagnostics`: suite de modulo executavel entregue em `diagnostics.test.ts`
 - `notifications`: suite de modulo executavel ja integrada ao gate oficial
-- `db-persistence.test.ts`: prova integrada ao gate oficial para `medical-records`, `attachments`, `notifications`, worker/API, `inpatient`, `surgery` e `diagnostics` com DB real e re-instanciacao; para prontuario, cobre anexos reais, revisoes/versionamento, soft-delete logico e reidratacao apos restart
+- `sectors`: CRUD integrado ao teste de persistencia de internacao
+- `beds`: CRUD integrado ao teste de persistencia de internacao; bedmap testado
+- `db-persistence.test.ts`: prova integrada ao gate oficial para `medical-records`, `attachments`, `notifications`, worker/API, `inpatient`, `surgery`, `diagnostics`, `sectors` e `beds` com DB real e re-instanciacao; para prontuario, cobre anexos reais, revisoes/versionamento, soft-delete logico e reidratacao apos restart; para estrutura hospitalar, cobre criacao de setores/leitos, atribuicao de leito a internacao, transferencia, bedmap com ocupacao e persistencia apos restart
 
 ---
 

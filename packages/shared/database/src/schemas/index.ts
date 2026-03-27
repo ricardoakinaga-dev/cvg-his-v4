@@ -276,12 +276,16 @@ export const inpatientStays = pgTable('inpatient_stays', {
   unit: varchar('unit', { length: 100 }).notNull(),
   ward: varchar('ward', { length: 100 }).notNull(),
   bed: varchar('bed', { length: 50 }).notNull(),
+  sectorId: varchar('sector_id', { length: 255 }),
+  bedId: varchar('bed_id', { length: 255 }),
   status: varchar('status', { length: 50 }).notNull(),
   admittedAt: timestamp('admitted_at').notNull(),
   dischargedAt: timestamp('discharged_at'),
   dischargeReason: varchar('discharge_reason', { length: 500 }),
   transferToUnit: varchar('transfer_to_unit', { length: 100 }),
   transferToWard: varchar('transfer_to_ward', { length: 100 }),
+  transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
+  transferToBedId: varchar('transfer_to_bed_id', { length: 255 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
@@ -327,6 +331,30 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
   resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const sectors = pgTable('sectors', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  kind: varchar('kind', { length: 50 }).notNull().default('other'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const beds = pgTable('beds', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  sectorId: varchar('sector_id', { length: 255 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull().default('available'),
+  supportsSpecies: varchar('supports_species', { length: 100 }),
+  active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
