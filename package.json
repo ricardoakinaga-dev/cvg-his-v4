@@ -7,17 +7,17 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "./pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/web --filter @cvg-his-v2/worker run dev",
-    "dev:api": "./pnpm --filter @cvg-his-v2/api run dev",
-    "dev:web": "./pnpm --filter @cvg-his-v2/web run dev",
-    "dev:worker": "./pnpm --filter @cvg-his-v2/worker run dev",
-    "build": "./pnpm -r --filter @cvg-his-v2/* run build",
-    "typecheck": "./pnpm -r --filter @cvg-his-v2/* run typecheck",
-    "lint": "./pnpm -r --filter @cvg-his-v2/* run lint",
-    "test": "./pnpm -r --filter @cvg-his-v2/* run test",
-    "test:all": "./pnpm -r --filter @cvg-his-v2/* run test && ./pnpm --filter @cvg-his-v2/api run test:db && ./pnpm test:smoke",
+    "dev": "pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/web --filter @cvg-his-v2/worker run dev",
+    "dev:api": "pnpm --filter @cvg-his-v2/api run dev",
+    "dev:web": "pnpm --filter @cvg-his-v2/web run dev",
+    "dev:worker": "pnpm --filter @cvg-his-v2/worker run dev",
+    "build": "pnpm -r --filter @cvg-his-v2/* run build",
+    "typecheck": "pnpm -r --filter @cvg-his-v2/* run typecheck",
+    "lint": "pnpm -r --filter @cvg-his-v2/* run lint",
+    "test": "pnpm -r --filter @cvg-his-v2/* run test",
+    "test:all": "pnpm -r --filter @cvg-his-v2/* run test && pnpm --filter @cvg-his-v2/api run test:db && pnpm test:smoke",
     "test:smoke": "npx playwright test --config e2e/playwright-smoke.config.ts",
-    "release:check": "./pnpm typecheck && ./pnpm build && ./pnpm test:all",
+    "release:check": "pnpm typecheck && pnpm build && pnpm test:all",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:check": "node infra/scripts/check-staging.mjs",
@@ -32,9 +32,28 @@
     "dotenv": "^16.4.7",
     "eslint": "^8.57.1",
     "prettier": "^3.5.1",
-    "turbo": "^2.5.0",
     "tsx": "^4.19.2",
+    "turbo": "^2.5.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
+  },
+  "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ricardoakinaga-dev/cvg-his-v2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ricardoakinaga-dev/cvg-his-v2/issues"
+  },
+  "homepage": "https://github.com/ricardoakinaga-dev/cvg-his-v2#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
   }
 }

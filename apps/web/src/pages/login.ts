@@ -40,7 +40,8 @@ export function renderLogin(): string {
 
         if (result.ok && result.body && result.body.accessToken) {
           setTokens(result.body.accessToken, result.body.refreshToken);
-          window.location.hash = '#/';
+          var next = new URLSearchParams(window.location.search).get('next');
+          window.location.assign(next || '/');
         } else {
           var msg = (result.body && (result.body.message || result.body.error)) || 'Credenciais invalidas.';
           errorEl.textContent = msg;

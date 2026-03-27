@@ -24,7 +24,26 @@ function getSession() {
     return payload;
   } catch { return null; }
 }
-async function apiRequest(path, options = {}) {
+function normalizeApiRequestArgs(pathOrMethod, optionsOrPath, maybeBody) {
+  if (typeof optionsOrPath === 'string') {
+    return {
+      path: optionsOrPath,
+      options: {
+        method: pathOrMethod,
+        body: maybeBody == null ? undefined : JSON.stringify(maybeBody)
+      }
+    };
+  }
+
+  return {
+    path: pathOrMethod,
+    options: optionsOrPath || {}
+  };
+}
+async function apiRequest(pathOrMethod, optionsOrPath, maybeBody) {
+  const normalized = normalizeApiRequestArgs(pathOrMethod, optionsOrPath, maybeBody);
+  const path = normalized.path;
+  const options = normalized.options;
   const headers = new Headers(options.headers || {});
   const at = getAccessToken();
   if (at) headers.set('authorization', 'Bearer ' + at);
@@ -34,12 +53,25 @@ async function apiRequest(path, options = {}) {
   const body = await resp.json().catch(() => null);
   if (resp.status === 401 && path !== '/auth/login') {
     clearTokens();
-    window.location.hash = '#/login';
+    window.location.assign('/login');
     return { ok: false, status: 401, body };
   }
   return { ok: resp.ok, status: resp.status, body };
 }
-function isLoggedIn() { return !!getAccessToken(); }
+function isLoggedIn() {
+  const session = getSession();
+  if (!session) {
+    clearTokens();
+    return false;
+  }
+
+  if (typeof session.exp === 'number' && session.exp * 1000 <= Date.now()) {
+    clearTokens();
+    return false;
+  }
+
+  return true;
+}
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

@@ -27,10 +27,10 @@ export function renderDashboard(): string {
     </div>
 
     <div class="btn-row" style="margin-bottom:24px;">
-      <button onclick="window.location.hash='#/owners'">Tutores</button>
-      <button onclick="window.location.hash='#/patients'" class="secondary">Pacientes</button>
-      <button onclick="window.location.hash='#/encounters'" class="secondary">Atendimentos</button>
-      <button onclick="window.location.hash='#/medical-records'" class="secondary">Prontuario</button>
+      <button onclick="window.location.assign('/owners')">Tutores</button>
+      <button onclick="window.location.assign('/patients')" class="secondary">Pacientes</button>
+      <button onclick="window.location.assign('/encounters')" class="secondary">Atendimentos</button>
+      <button onclick="window.location.assign('/medical-records')" class="secondary">Prontuario</button>
     </div>
 
     <div class="card">

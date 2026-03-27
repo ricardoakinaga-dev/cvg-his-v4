@@ -1,0 +1,17 @@
+[Unit]
+Description=CVG HIS V2 Worker
+After=network.target cvg-his-v2-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cvg-his-v2
+Environment=NODE_ENV=production
+Environment=APP_NAME=cvg-his-v2-worker
+Environment=DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/cvg_his_v2
+Environment=WORKER_INTERVAL_MS=5000
+ExecStart=/usr/bin/node /opt/cvg-his-v2/apps/worker/dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

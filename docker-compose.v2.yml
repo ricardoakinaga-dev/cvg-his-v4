@@ -1,0 +1,97 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cvg_his_v2}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - cvg_his_v2_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cvg_his_v2}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - cvg_his_v2_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cvg-his-v2-api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+      APP_NAME: cvg-his-v2-api
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
+      AUTH_ACCESS_TOKEN_TTL_SECONDS: ${AUTH_ACCESS_TOKEN_TTL_SECONDS:-900}
+      AUTH_REFRESH_TOKEN_TTL_SECONDS: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:-604800}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - cvg_his_v2_storage:/srv/cvg-his-v2/storage
+    ports:
+      - '3011:3001'
+
+  cvg-his-v2-web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_NAME: cvg-his-v2-web
+      API_BASE_URL: /api
+    depends_on:
+      cvg-his-v2-api:
+        condition: service_healthy
+    ports:
+      - '3002:3000'
+
+  cvg-his-v2-worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_NAME: cvg-his-v2-worker
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cvg-his-v2-api:
+        condition: service_healthy
+    volumes:
+      - cvg_his_v2_storage:/srv/cvg-his-v2/storage
+
+volumes:
+  cvg_his_v2_postgres_data:
+  cvg_his_v2_redis_data:
+  cvg_his_v2_storage:
+
+networks:
+  default:
+    name: cvg-his-v2-real_net

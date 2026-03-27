@@ -12,15 +12,41 @@ O V2 define uma arquitetura clara com as seguintes trilhas:
 | Web V2    | `apps/web`    | Node.js HTTP server com HTML inline |
 | Worker V2 | `apps/worker` | Processamento assincrono |
 
-### Legado Arquivado
+### Legado Removido
 
-Os apps `apps/his-api`, `apps/his-web` e `apps/his-worker` foram **arquivados**.
+Os apps `apps/his-api`, `apps/his-web` e `apps/his-worker` foram removidos do repositório para evitar confusão operacional.
 
-**Motivo**: O V2 foi redesenhado com fronteiras de dominio mais claras.
+Todo desenvolvimento e deploy ativo devem usar apenas:
 
-**Destino**: Todo desenvolvimento ativo deve usar `apps/api`, `apps/web` e `apps/worker`.
+- `apps/api`
+- `apps/web`
+- `apps/worker`
 
 Ver `docs/adr/ADR-003-arquitetura-canonica-v2.md` e `docs/adr/ADR-007-frontend-canonico-v2.md`.
+
+## Deploy do V2 Real
+
+Se o objetivo e publicar o sistema que realmente foi construido no roadmap enterprise, use a trilha canonica:
+
+- `apps/api`
+- `apps/web`
+- `apps/worker`
+
+Nao existe mais trilha `apps/his-*` no repositório.
+
+Documentos operacionais diretos:
+
+- [OPENCLAW_DEPLOY_DIRETRIZES.md](/root/.openclaw/workspace/cvg-his-v2/OPENCLAW_DEPLOY_DIRETRIZES.md) - diretrizes obrigatorias para o OpenClaw executar deploy, migrations e validacoes sem ambiguidade
+- [INSTALACAO_V2_OPENCLAW.md](/root/.openclaw/workspace/cvg-his-v2/INSTALACAO_V2_OPENCLAW.md) - guia rapido na raiz para OpenClaw localizar stack, compose e migrations canonicas
+- [docs/130-instalacao-publicacao-cvg-his-v2-real.md](/root/.openclaw/workspace/cvg-his-v2/docs/130-instalacao-publicacao-cvg-his-v2-real.md) - guia completo de instalacao e publicacao do V2 real
+- [docs/131-checklist-cutover-servidor.md](/root/.openclaw/workspace/cvg-his-v2/docs/131-checklist-cutover-servidor.md) - checklist comando por comando para executar o cutover no servidor
+
+Arquivos prontos para deploy:
+
+- [docker-compose.v2.yml](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml)
+- [.env.v2.example](/root/.openclaw/workspace/cvg-his-v2/.env.v2.example)
+- [infra/scripts/cutover-v2.sh](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/cutover-v2.sh)
+- [infra/docker/Caddyfile.v2](/root/.openclaw/workspace/cvg-his-v2/infra/docker/Caddyfile.v2)
 
 ## Modulos
 
@@ -108,7 +134,7 @@ pnpm release:check
 pnpm release:check
 
 # Validacao minima de staging
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his \
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_v2 \
 FILE_STORAGE_PATH=/tmp/cvg-his-v2-staging \
 AUTH_SECRET=change-me \
 NODE_ENV=staging \
@@ -121,8 +147,9 @@ pnpm staging:bootstrap
 Observacao:
 
 - `pnpm release:check` depende de PostgreSQL acessivel para `apps/api test:db`
-- se o banco nao estiver previamente disponivel, `infra/scripts/prepare-test-db.mjs` tenta subir `postgres` via Docker
+- se o banco nao estiver previamente disponivel, `infra/scripts/prepare-test-db.mjs` tenta subir `postgres` via Docker usando `docker-compose.dev.yml`
 - em ambientes restritos sem acesso ao Docker socket, o gate pode bloquear mesmo sem regressao de codigo
+- `docker-compose.dev.yml` agora contem apenas `postgres` e `redis` para o V2
 
 ## Fases Implementadas
 
@@ -163,6 +190,8 @@ curl http://localhost:3000/health
 - `docs/900-executive-audit-backlog.md` - Backlog de auditoria executiva
 - `docs/112-target-architecture.md` - Arquitetura alvo
 - `docs/phased-execution-plan.md` - Plano de execucao por fase
+- `docs/130-instalacao-publicacao-cvg-his-v2-real.md` - Instalacao e publicacao do V2 real
+- `docs/131-checklist-cutover-servidor.md` - Checklist de cutover no servidor
 
 ## Convencoes
 

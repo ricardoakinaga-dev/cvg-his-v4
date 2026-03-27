@@ -1,0 +1,9 @@
+his.centroveterinarioguarapiranga.com {
+  encode gzip
+  reverse_proxy 127.0.0.1:3000
+}
+
+his-api.centroveterinarioguarapiranga.com {
+  encode gzip
+  reverse_proxy 127.0.0.1:3001
+}

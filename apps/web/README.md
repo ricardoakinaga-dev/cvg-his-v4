@@ -28,14 +28,14 @@ src/
 
 ## Navegacao
 
-SPA com hash routing:
+Server-side routing simples por pathname:
 
-- `#/` - Dashboard
-- `#/login` - Login
-- `#/owners` - Tutores
-- `#/patients` - Pacientes
-- `#/encounters` - Atendimentos
-- `#/medical-records` - Prontuario
+- `/` - Dashboard
+- `/login` - Login
+- `/owners` - Tutores
+- `/patients` - Pacientes
+- `/encounters` - Atendimentos
+- `/medical-records` - Prontuario
 
 ## Como Rodar
 
@@ -58,7 +58,7 @@ pnpm --filter @cvg-his-v2/web typecheck
 
 ## Decisao Tecnica
 
-Base atual: Node.js HTTP server + HTML inline com SPA hash routing.
+Base atual: Node.js HTTP server + HTML inline com roteamento simples por pathname.
 Decisao documentada em `docs/adr/ADR-007-frontend-canonico-v2.md`.
 Framework UI pode ser introduzido em iteracao futura sem prejuizo.
 

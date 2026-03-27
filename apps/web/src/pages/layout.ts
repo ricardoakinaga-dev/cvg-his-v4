@@ -11,22 +11,22 @@ export function renderLayout(
   const { title, activeNav, config, userName, userRole } = options;
 
   const navLinks = [
-    { hash: '#/', label: 'Dashboard' },
-    { hash: '#/owners', label: 'Tutores' },
-    { hash: '#/patients', label: 'Pacientes' },
-    { hash: '#/encounters', label: 'Atendimentos' },
-    { hash: '#/medical-records', label: 'Prontuario' }
+    { path: '/', label: 'Dashboard' },
+    { path: '/owners', label: 'Tutores' },
+    { path: '/patients', label: 'Pacientes' },
+    { path: '/encounters', label: 'Atendimentos' },
+    { path: '/medical-records', label: 'Prontuario' }
   ];
 
   const navHtml = navLinks
     .map(
-      (l) => `<a href="${l.hash}" class="${activeNav === l.hash ? 'active' : ''}">${l.label}</a>`
+      (l) => `<a href="${l.path}" class="${activeNav === l.path ? 'active' : ''}">${l.label}</a>`
     )
     .join('\n');
 
   const userInfo = userName
     ? `<div class="user-info"><span>${userName}</span>${userRole ? `<span class="role">${userRole}</span>` : ''}<button class="small secondary" id="nav-logout">Sair</button></div>`
-    : `<a href="#/login" class="${activeNav === '#/login' ? 'active' : ''}">Entrar</a>`;
+    : `<a href="/login" class="${activeNav === '/login' ? 'active' : ''}">Entrar</a>`;
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -75,7 +75,7 @@ function getClientScript(_activeNav: string): string {
         const rt = getRefreshToken();
         await apiRequest('/auth/logout', { method: 'POST', body: JSON.stringify(rt ? { refreshToken: rt } : {}) });
         clearTokens();
-        window.location.hash = '#/login';
+        window.location.assign('/login');
       });
     }
   `;

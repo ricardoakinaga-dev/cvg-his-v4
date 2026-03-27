@@ -1,1 +1,8 @@
-node_modules\n.git\n.next
+node_modules
+.git
+.next
+dist
+test-results
+playwright-report
+coverage
+.pnpm-store
