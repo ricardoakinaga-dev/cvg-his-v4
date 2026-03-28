@@ -77,12 +77,6 @@ function buildPage(path: string): string {
     .replace('__API_BASE_URL__', JSON.stringify(config.apiBaseUrl))
     .replace('__STORAGE_KEYS__', JSON.stringify(AUTH_STORAGE_KEYS));
 
-  const navScript = `
-    function navigateTo(path) {
-      window.location.assign(path);
-    }
-  `;
-
   const authBootstrapScript = `
     (function enforceAuth() {
       var protectedPath = ${JSON.stringify(requiresAuth)};
@@ -106,55 +100,61 @@ function buildPage(path: string): string {
   const navGroups = showChrome
     ? [
         {
+          id: 'essencial',
           label: 'Essencial',
           links: [
-            { path: '/', label: 'Dashboard' },
-            { path: '/owners', label: 'Tutores' },
-            { path: '/patients', label: 'Pacientes' },
-            { path: '/encounters', label: 'Atendimentos' },
-            { path: '/medical-records', label: 'Prontuario' }
+            { path: '/', label: 'Dashboard', icon: '▣' },
+            { path: '/owners', label: 'Tutores', icon: '◫' },
+            { path: '/patients', label: 'Pacientes', icon: '◪' },
+            { path: '/encounters', label: 'Atendimentos', icon: '◧' },
+            { path: '/medical-records', label: 'Prontuario', icon: '◩' }
           ]
         },
         {
+          id: 'administrativo',
           label: 'Administrativo',
           links: [
-            { path: '/users', label: 'Usuarios' },
-            { path: '/staff', label: 'Equipe' },
-            { path: '/access-control', label: 'Permissoes' }
+            { path: '/users', label: 'Usuarios', icon: '◉' },
+            { path: '/staff', label: 'Equipe', icon: '◎' },
+            { path: '/access-control', label: 'Permissoes', icon: '◌' }
           ]
         },
         {
+          id: 'operacao',
           label: 'Operacao',
           links: [
-            { path: '/appointments', label: 'Agenda' },
-            { path: '/queue', label: 'Recepcao' },
-            { path: '/triage', label: 'Triagem' }
+            { path: '/appointments', label: 'Agenda', icon: '◐' },
+            { path: '/queue', label: 'Recepcao', icon: '◑' },
+            { path: '/triage', label: 'Triagem', icon: '◒' }
           ]
         },
         {
+          id: 'assistencial',
           label: 'Assistencial',
           links: [
-            { path: '/inpatient', label: 'Internacao' },
-            { path: '/sectors', label: 'Setores' },
-            { path: '/beds', label: 'Leitos' },
-            { path: '/bed-map', label: 'Mapa de Leitos' },
-            { path: '/diagnostics', label: 'Diagnosticos' },
-            { path: '/surgeries', label: 'Cirurgia' }
+            { path: '/inpatient', label: 'Internacao', icon: '◓' },
+            { path: '/sectors', label: 'Setores', icon: '□' },
+            { path: '/beds', label: 'Leitos', icon: '▤' },
+            { path: '/bed-map', label: 'Mapa de Leitos', icon: '▥' },
+            { path: '/diagnostics', label: 'Diagnosticos', icon: '△' },
+            { path: '/surgeries', label: 'Cirurgia', icon: '▲' }
           ]
         },
         {
-          label: 'Administrativo+',
+          id: 'backoffice',
+          label: 'Backoffice',
           links: [
-            { path: '/inventory', label: 'Estoque' },
-            { path: '/billing', label: 'Billing' },
-            { path: '/notifications', label: 'Notificacoes' }
+            { path: '/inventory', label: 'Estoque', icon: '◈' },
+            { path: '/billing', label: 'Billing', icon: '◇' },
+            { path: '/notifications', label: 'Notificacoes', icon: '✦' }
           ]
         },
         {
+          id: 'governanca',
           label: 'Governanca',
           links: [
-            { path: '/audit', label: 'Auditoria' },
-            { path: '/master-search', label: 'Busca Mestre' }
+            { path: '/audit', label: 'Auditoria', icon: '◬' },
+            { path: '/master-search', label: 'Busca Mestre', icon: '⌕' }
           ]
         }
       ]
@@ -163,14 +163,76 @@ function buildPage(path: string): string {
   const navHtml = navGroups
     .map((group) => {
       const links = group.links
-        .map(
-          (link) =>
-            `<a href="${link.path}" class="${route.nav === link.path ? 'active' : ''}">${link.label}</a>`
-        )
+        .map((link) => {
+          const active = route.nav === link.path ? 'active' : '';
+          return `<a href="${link.path}" class="sidebar-link ${active}" title="${link.label}" data-sidebar-link><span class="sidebar-link-icon">${link.icon}</span><span class="sidebar-link-label">${link.label}</span></a>`;
+        })
         .join('');
-      return `<div class="nav-group"><span class="nav-group-label">${group.label}</span><div class="nav-links">${links}</div></div>`;
+
+      return `
+        <details class="sidebar-group" data-sidebar-group data-group-id="${group.id}">
+          <summary class="sidebar-group-toggle">
+            <span class="sidebar-group-text">
+              <span class="sidebar-group-kicker">Modulo</span>
+              <span class="sidebar-group-label">${group.label}</span>
+            </span>
+            <span class="sidebar-group-chevron">▾</span>
+          </summary>
+          <div class="sidebar-group-links">
+            ${links}
+          </div>
+        </details>`;
     })
     .join('');
+
+  // Links planos para a topbar mobile (sem grupos)
+  const flatLinksHtml = navGroups
+    .flatMap((group) => group.links)
+    .map(
+      (link) =>
+        `<a href="${link.path}" class="mobile-nav-link ${
+          route.nav === link.path ? 'active' : ''
+        }" title="${link.label}"><span class="mobile-nav-icon">${link.icon}</span><span class="mobile-nav-label">${link.label}</span></a>`
+    )
+    .join('');
+
+  const chromeHtml = showChrome
+    ? `
+      <div class="app-shell" data-sidebar-state="expanded">
+        <button class="sidebar-overlay" type="button" id="sidebar-overlay" aria-label="Fechar menu"></button>
+        <aside class="sidebar" id="app-sidebar">
+          <div class="sidebar-top">
+            <button class="icon-button sidebar-collapse-button" type="button" id="sidebar-pin-button" aria-label="Recolher ou expandir menu" aria-controls="app-sidebar" aria-expanded="true">⇤</button>
+          </div>
+          <div class="sidebar-nav" id="sidebar-nav">${navHtml}</div>
+          <div class="sidebar-footer card-surface">
+            <div id="nav-user-info" class="sidebar-user-slot"></div>
+          </div>
+        </aside>
+        <div class="workspace-shell">
+          <header class="topbar">
+            <div class="topbar-left">
+              <button class="icon-button topbar-toggle" type="button" id="sidebar-toggle" aria-label="Mostrar ou esconder menu" aria-controls="app-sidebar" aria-expanded="true">☰</button>
+              <div class="topbar-title-wrap">
+                <span class="topbar-overline">Painel operacional</span>
+                <strong class="topbar-title">${route.title}</strong>
+              </div>
+            </div>
+            <div class="topbar-right">
+              <span class="topbar-chip">Ambiente oficial</span>
+              <nav class="mobile-top-nav" role="navigation" aria-label="Menu móvel">${flatLinksHtml}</nav>
+            </div>
+          </header>
+          <main id="page-content">
+            ${body}
+          </main>
+          <div class="status-bar">
+            <span>${config.appName} — ${config.apiBaseUrl}</span>
+            <span id="status-time"></span>
+          </div>
+        </div>
+      </div>`
+    : `<main id="page-content">${body}</main>`;
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -180,7 +242,7 @@ function buildPage(path: string): string {
   <title>${route.title} — CVG-HIS V2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
   <style>${baseStyles}
-  body.auth-pending nav,
+  body.auth-pending .app-shell,
   body.auth-pending main,
   body.auth-pending .status-bar {
     visibility: hidden;
@@ -190,33 +252,9 @@ function buildPage(path: string): string {
 <body class="${requiresAuth ? 'auth-pending' : ''}">
   <script>
     ${clientApiScript}
-    ${navScript}
     ${authBootstrapScript}
   </script>
-  ${
-    showChrome
-      ? `<nav>
-    <div class="nav-branding">
-      <span class="brand">CVG-HIS V2</span>
-      <span class="nav-branding-subtitle">Centro Veterinario Guarapiranga</span>
-    </div>
-    <div class="nav-groups">${navHtml}</div>
-    <span class="spacer"></span>
-    <span id="nav-user-info" class="nav-user-slot"></span>
-  </nav>`
-      : ''
-  }
-  <main id="page-content">
-    ${body}
-  </main>
-  ${
-    showChrome
-      ? `<div class="status-bar">
-    <span>${config.appName} — ${config.apiBaseUrl}</span>
-    <span id="status-time"></span>
-  </div>`
-      : ''
-  }
+  ${chromeHtml}
   <script>
     const statusTimeEl = document.getElementById('status-time');
     if (statusTimeEl) {
@@ -232,13 +270,138 @@ function buildPage(path: string): string {
       if (!el) return;
       const at = getAccessToken();
       if (!at) {
-        el.innerHTML = '<a href="/login" style="font-size:0.85rem">Entrar</a>';
+        el.innerHTML = '<a class="sidebar-login-link" href="/login">Entrar</a>';
         return;
       }
       const session = getSession();
       const name = session?.sub || session?.username || 'usuario';
-      el.innerHTML = '<span style="font-size:0.8rem;color:#475569">' + escapeHtml(name) +
-        '</span> <button class="small secondary" onclick="(async()=>{const rt=getRefreshToken();await apiRequest(\'/auth/logout\',{method:\'POST\',body:JSON.stringify(rt?{refreshToken:rt}:{})});clearTokens();window.location.assign(\'/login\')})()">Sair</button>';
+      el.innerHTML = '<div class="sidebar-user-card">' +
+        '<div><span class="sidebar-user-label">Usuario conectado</span><strong>' + escapeHtml(name) + '</strong></div>' +
+        '<button class="small secondary" onclick="(async()=>{const rt=getRefreshToken();await apiRequest(\'/auth/logout\',{method:\'POST\',body:JSON.stringify(rt?{refreshToken:rt}:{})});clearTokens();window.location.assign(\'/login\')})()">Sair</button>' +
+        '</div>';
+    })();
+
+    (function setupSidebar() {
+      const shell = document.querySelector('.app-shell');
+      if (!shell) return;
+      const sidebar = document.getElementById('app-sidebar');
+      const sidebarNav = document.getElementById('sidebar-nav');
+      const overlay = document.getElementById('sidebar-overlay');
+      const toggleButtons = [
+        document.getElementById('sidebar-toggle'),
+        document.getElementById('sidebar-pin-button')
+      ].filter(Boolean);
+      const stateStorageKey = 'cvg-his-v2.sidebar.state';
+      const groupStorageKey = 'cvg-his-v2.sidebar.groups';
+      const scrollStorageKey = 'cvg-his-v2.sidebar.scroll';
+      const savedSidebarState = localStorage.getItem(stateStorageKey);
+      const savedGroupState = localStorage.getItem(groupStorageKey);
+      const savedSidebarScroll = localStorage.getItem(scrollStorageKey);
+
+      function setSidebarState(nextState) {
+        shell.setAttribute('data-sidebar-state', nextState);
+        localStorage.setItem(stateStorageKey, nextState);
+        const expanded = nextState !== 'collapsed';
+        document.body.classList.toggle('sidebar-open', expanded && window.innerWidth <= 640);
+        toggleButtons.forEach(function(button) {
+          button.setAttribute('aria-expanded', String(expanded));
+        });
+      }
+
+      function persistGroupState() {
+        const groupState = {};
+        document.querySelectorAll('[data-sidebar-group]').forEach(function(group) {
+          const groupId = group.getAttribute('data-group-id');
+          if (groupId) {
+            groupState[groupId] = group.hasAttribute('open');
+          }
+        });
+        localStorage.setItem(groupStorageKey, JSON.stringify(groupState));
+      }
+
+      if (savedGroupState) {
+        try {
+          const parsed = JSON.parse(savedGroupState);
+          document.querySelectorAll('[data-sidebar-group]').forEach(function(group) {
+            const groupId = group.getAttribute('data-group-id');
+            if (!groupId || typeof parsed[groupId] !== 'boolean') return;
+            if (parsed[groupId]) {
+              group.setAttribute('open', '');
+            } else {
+              group.removeAttribute('open');
+            }
+          });
+        } catch (_error) {
+          localStorage.removeItem(groupStorageKey);
+        }
+      } else {
+        // Se não há estado salvo, abrir automaticamente apenas no desktop (>=1024px) o grupo que contém a rota atual
+        if (window.innerWidth >= 1024) {
+          const currentPath = window.location.pathname;
+          document.querySelectorAll('[data-sidebar-group]').forEach(function(group) {
+            const links = group.querySelectorAll('[data-sidebar-link]');
+            const hasActive = Array.from(links).some(link => link.getAttribute('href') === currentPath);
+            if (hasActive) {
+              group.setAttribute('open', '');
+            }
+          });
+        }
+        // No mobile (<=640), todos os grupos permanecem fechados
+      }
+
+      function toggleSidebar() {
+        const nextState = shell.getAttribute('data-sidebar-state') === 'collapsed' ? 'expanded' : 'collapsed';
+        setSidebarState(nextState);
+      }
+
+      function closeSidebar() {
+        setSidebarState('collapsed');
+      }
+
+      if (savedSidebarState === 'collapsed') {
+        setSidebarState('collapsed');
+      } else {
+        setSidebarState('expanded');
+      }
+
+      if (sidebarNav && savedSidebarScroll) {
+        const parsedScroll = Number(savedSidebarScroll);
+        if (!Number.isNaN(parsedScroll)) {
+          sidebarNav.scrollTop = parsedScroll;
+        }
+      }
+
+      sidebarNav?.addEventListener('scroll', function() {
+        localStorage.setItem(scrollStorageKey, String(sidebarNav.scrollTop));
+      });
+
+      document.querySelectorAll('[data-sidebar-group]').forEach(function(group) {
+        group.addEventListener('toggle', persistGroupState);
+      });
+
+      document.querySelectorAll('[data-sidebar-link]').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (sidebarNav) {
+            localStorage.setItem(scrollStorageKey, String(sidebarNav.scrollTop));
+          }
+          persistGroupState();
+          if (window.innerWidth <= 640) {
+            closeSidebar();
+          }
+        });
+      });
+
+      toggleButtons.forEach(function(button) {
+        button.addEventListener('click', toggleSidebar);
+      });
+
+      overlay?.addEventListener('click', closeSidebar);
+
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          closeSidebar();
+        }
+      });
     })();
   </script>
 </body>
