@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
+import { scryptSync } from 'node:crypto';
 
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
@@ -14,6 +15,7 @@ import type {
   CreateBillingItemRequest,
   CreateClinicalEntryRequest,
   CreateDiagnosticOrderRequest,
+  CreateDischargeRequest,
   CreateEncounterRequest,
   CreateInpatientAdmissionRequest,
   CreateInventoryConsumptionRequest,
@@ -21,18 +23,23 @@ import type {
   CreateOwnerPatientLinkRequest,
   CreateOwnerRequest,
   CreatePatientRequest,
+  CreatePrescriptionExecutionRequest,
   CreateSectorRequest,
   CreateBedRequest,
   CreateSurgeryCaseRequest,
   CreateTriageRequest,
+  ExecutePrescriptionRequest,
   LoginRequest,
   LogoutRequest,
+  LogAdministrationEventRequest,
   ProcessNotificationsRequest,
   RefreshSessionRequest,
   RecordDiagnosticResultRequest,
+  SuspendPrescriptionRequest,
   TransitionEncounterRequest,
   UpdateBillingStatusRequest,
   UpdateClinicalEntryRequest,
+  UpdateDischargeRequest,
   UpdateInpatientStatusRequest,
   UpdateOwnerRequest,
   UpdateSurgeryStatusRequest,
@@ -81,6 +88,8 @@ export function createApiServer(options: ApiServerOptions) {
     inventory,
     notifications,
     audit,
+    discharges,
+    prescriptionExecutions,
     auth
   } = createApiRuntime({
     authSecret: options.authSecret,
@@ -110,6 +119,14 @@ export function createApiServer(options: ApiServerOptions) {
       'content-type, authorization, x-correlation-id'
     );
     response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
+
+    // Security headers (Helmet-like)
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.setHeader('x-frame-options', 'DENY');
+    response.setHeader('x-xss-protection', '1; mode=block');
+    response.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
+    response.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains');
+    response.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
 
     try {
       if (request.method === 'OPTIONS') {
@@ -1572,6 +1589,71 @@ export function createApiServer(options: ApiServerOptions) {
         return;
       }
 
+      if (pathname === '/users' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'users.manage');
+        const payload = await readJsonBody(request) as Record<string, unknown>;
+        try {
+        validateRequestBody(payload, {
+          username: { type: 'string', required: true, minLength: 3 },
+          email: { type: 'string', required: true },
+          password: { type: 'string', required: true, minLength: 8 },
+          displayName: { type: 'string', required: false }
+        }, correlationId);
+        
+        const now = new Date().toISOString();
+        const userId = 'user_' + Math.random().toString(36).slice(2, 10);
+        const salt = 'cvg-his-v2-seed-salt-v1';
+        const passwordHash = scryptSync(payload.password as string, salt, 64).toString('hex');
+        
+        const newUser = {
+          id: userId,
+          accountId: principal.user.accountId,
+          username: payload.username as string,
+          email: payload.email as string,
+          passwordHash,
+          displayName: (payload.displayName as string) || (payload.username as string),
+          roleCodes: payload.roleCode ? [payload.roleCode as string] : [],
+          department: payload.department as string || undefined,
+          status: (payload.status as string) || 'active',
+          createdAt: now,
+          updatedAt: now
+        };
+        
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'users',
+          'create',
+          'user',
+          userId,
+          `User ${newUser.username} created`,
+          'high',
+          correlationId
+        );
+        
+        // Return without passwordHash
+        const { passwordHash: _, ...safeUser } = newUser;
+        response.statusCode = 201;
+        response.end(JSON.stringify(safeUser));
+        } catch(err) { response.statusCode = 500; response.end(JSON.stringify({code:'ERROR',message:String((err as Error)?.message || err)})); return; }
+        return;
+      }
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'users',
+          'create',
+          'user',
+          user.id,
+          `User ${user.username} created`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(user));
+        return;
+      }
+
       if (pathname === '/users' && request.method === 'GET') {
         const principal = requirePrincipal(request, 'users.read');
         appendAudit(
@@ -1884,6 +1966,274 @@ export function createApiServer(options: ApiServerOptions) {
         return;
       }
 
+      // --- CEP Lookup (ViaCEP) ---
+
+      if (pathname === '/cep/lookup' && request.method === 'GET') {
+        const cep = url.searchParams.get('cep');
+        if (!cep) {
+          response.statusCode = 400;
+          response.end(JSON.stringify({ code: 'VALIDATION_ERROR', message: 'CEP parameter required', correlationId }));
+          return;
+        }
+        const cleanCep = cep.replace(/\D/g, '');
+        if (cleanCep.length !== 8) {
+          response.statusCode = 400;
+          response.end(JSON.stringify({ code: 'VALIDATION_ERROR', message: 'CEP must have 8 digits', correlationId }));
+          return;
+        }
+        try {
+          const viaCepResp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: AbortSignal.timeout(5000) });
+          const viaCepData = await viaCepResp.json() as Record<string, unknown>;
+          if (viaCepData.erro) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'CEP not found', correlationId }));
+            return;
+          }
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            cep: viaCepData.cep,
+            street: viaCepData.logradouro,
+            complement: viaCepData.complemento,
+            district: viaCepData.bairro,
+            city: viaCepData.localidade,
+            state: viaCepData.uf,
+            ibge: viaCepData.ibge,
+            found: true
+          }));
+        } catch (err) {
+          response.statusCode = 502;
+          response.end(JSON.stringify({ code: 'SERVICE_UNAVAILABLE', message: 'CEP service unavailable', correlationId }));
+        }
+        return;
+      }
+
+      // --- Discharges ---
+
+      if (pathname === '/discharges' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'discharges.read');
+        const items = discharges.list(principal.user.accountId as never);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'discharges',
+          'list',
+          'discharge',
+          '*',
+          'Discharges listed',
+          'low',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify({ items, total: items.length }));
+        return;
+      }
+
+      if (pathname === '/discharges' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'discharges.manage');
+        const payload = (await readJsonBody(request)) as CreateDischargeRequest;
+        validateRequestBody(payload as unknown as Record<string, unknown>, {
+          encounterId: { type: 'string', required: true, minLength: 1 },
+          dischargeType: { type: 'string', required: true, enum: ['ambulatory', 'inpatient', 'transfer', 'death'] }
+        }, correlationId);
+        const discharge = discharges.create(
+          principal.user.accountId as never,
+          principal.user.id as never,
+          payload
+        );
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'discharges',
+          'create',
+          'discharge',
+          discharge.id,
+          `Discharge created for encounter ${payload.encounterId}`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(discharge));
+        return;
+      }
+
+      if (pathname.startsWith('/discharges/') && request.method === 'GET' && !pathname.includes('?')) {
+        const principal = requirePrincipal(request, 'discharges.read');
+        const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
+        const discharge = discharges.getById(dischargeId as never);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'discharges',
+          'read',
+          'discharge',
+          discharge.id,
+          'Discharge detail consulted',
+          'low',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(discharge));
+        return;
+      }
+
+      if (pathname.startsWith('/discharges/') && request.method === 'PATCH') {
+        const principal = requirePrincipal(request, 'discharges.manage');
+        const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
+        const body = await readJsonBody(request);
+        const { expectedVersion, ...payload } = body as UpdateDischargeRequest & { expectedVersion?: number };
+        const discharge = discharges.update(dischargeId as never, payload, expectedVersion);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'discharges',
+          'update',
+          'discharge',
+          discharge.id,
+          'Discharge updated',
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(discharge));
+        return;
+      }
+
+      // --- Prescription Executions ---
+
+      if (pathname === '/prescription-executions' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'prescription-executions.read');
+        const encounterId = url.searchParams.get('encounterId');
+        const patientId = url.searchParams.get('patientId');
+        let items;
+        if (encounterId) {
+          items = prescriptionExecutions.listByEncounter(encounterId as never);
+        } else if (patientId) {
+          items = prescriptionExecutions.listByPatient(patientId as never);
+        } else {
+          items = prescriptionExecutions.list(principal.user.accountId as never);
+        }
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'list', 'prescription-execution', '*',
+          'Prescription executions listed', 'low', correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify({ items, total: items.length }));
+        return;
+      }
+
+      if (pathname === '/prescription-executions' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'prescription-executions.manage');
+        const payload = (await readJsonBody(request)) as CreatePrescriptionExecutionRequest;
+        validateRequestBody(payload as unknown as Record<string, unknown>, {
+          clinicalEntryId: { type: 'string', required: true },
+          patientId: { type: 'string', required: true },
+          encounterId: { type: 'string', required: true },
+          medicationName: { type: 'string', required: true, minLength: 1, maxLength: 255 },
+          dosage: { type: 'string', required: true, minLength: 1, maxLength: 255 },
+          scheduledAt: { type: 'string', required: true }
+        }, correlationId);
+        const execution = prescriptionExecutions.create(principal.user.accountId as never, payload);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'create', 'prescription-execution', execution.id,
+          `Prescription execution created for ${payload.medicationName}`, 'high', correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(execution));
+        return;
+      }
+
+      if (pathname.startsWith('/prescription-executions/') && request.method === 'GET' && !pathname.includes('/execute') && !pathname.includes('/log') && !pathname.includes('/suspend') && !pathname.includes('/resume')) {
+        const principal = requirePrincipal(request, 'prescription-executions.read');
+        const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+        const execution = prescriptionExecutions.getById(executionId as never);
+        const events = prescriptionExecutions.getEvents(executionId as never);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'read', 'prescription-execution', execution.id,
+          'Prescription execution detail consulted', 'low', correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify({ ...execution, events }));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/prescription-executions/') &&
+        pathname.endsWith('/execute') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'prescription-executions.manage');
+        const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+        const payload = (await readJsonBody(request)) as ExecutePrescriptionRequest;
+        const execution = prescriptionExecutions.execute(executionId as never, principal.user.id as never, payload);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', payload.status, 'prescription-execution', execution.id,
+          `Prescription execution ${payload.status}`, 'high', correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(execution));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/prescription-executions/') &&
+        pathname.endsWith('/suspend') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'prescription-executions.manage');
+        const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+        const payload = (await readJsonBody(request)) as SuspendPrescriptionRequest;
+        const execution = prescriptionExecutions.suspend(executionId as never, principal.user.id as never, payload);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'suspend', 'prescription-execution', execution.id,
+          'Prescription execution suspended', 'high', correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(execution));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/prescription-executions/') &&
+        pathname.endsWith('/resume') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'prescription-executions.manage');
+        const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+        const execution = prescriptionExecutions.resume(executionId as never, principal.user.id as never);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'resume', 'prescription-execution', execution.id,
+          'Prescription execution resumed', 'medium', correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(execution));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/prescription-executions/') &&
+        pathname.endsWith('/log') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'prescription-executions.manage');
+        const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+        const payload = (await readJsonBody(request)) as LogAdministrationEventRequest;
+        const event = prescriptionExecutions.logEvent(executionId as never, principal.user.id as never, payload);
+        appendAudit(
+          principal.user.id, principal.user.accountId,
+          'prescription-executions', 'log_event', 'administration-event', event.id,
+          `Event logged: ${payload.eventType}`, 'medium', correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(event));
+        return;
+      }
+
       response.statusCode = 404;
       response.end(
         JSON.stringify({ code: 'NOT_FOUND', message: 'Route not found', correlationId })
@@ -1983,5 +2333,46 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
     throw new ValidationError('Request body must be valid JSON', {
       cause: error
     });
+  }
+}
+
+// --- Body Validation Helper (F06 Hardening) ---
+
+interface FieldSpec {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  enum?: readonly string[];
+}
+
+function validateRequestBody(body: Record<string, unknown>, fields: Record<string, FieldSpec>, correlationId: string): void {
+  for (const [key, spec] of Object.entries(fields)) {
+    const value = body[key];
+
+    if (spec.required && (value === undefined || value === null)) {
+      throw new ValidationError(`Field '${key}' is required`, { correlationId, field: key });
+    }
+
+    if (value === undefined || value === null) continue;
+
+    // Type check
+    const actualType = Array.isArray(value) ? 'array' : typeof value;
+    if (actualType !== spec.type) {
+      throw new ValidationError(`Field '${key}' must be of type '${spec.type}', got '${actualType}'`, { correlationId, field: key });
+    }
+
+    // String validations
+    if (spec.type === 'string' && typeof value === 'string') {
+      if (spec.minLength !== undefined && value.length < spec.minLength) {
+        throw new ValidationError(`Field '${key}' must have at least ${spec.minLength} characters`, { correlationId, field: key });
+      }
+      if (spec.maxLength !== undefined && value.length > spec.maxLength) {
+        throw new ValidationError(`Field '${key}' must have at most ${spec.maxLength} characters`, { correlationId, field: key });
+      }
+      if (spec.enum && !spec.enum.includes(value)) {
+        throw new ValidationError(`Field '${key}' must be one of: ${spec.enum.join(', ')}`, { correlationId, field: key });
+      }
+    }
   }
 }

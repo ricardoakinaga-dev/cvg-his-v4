@@ -1,0 +1,8 @@
+-- Migration 013: Add versioning to key entities
+-- Adiciona coluna version para optimistic locking
+
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE encounters ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE inpatient_stays ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE owners ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;

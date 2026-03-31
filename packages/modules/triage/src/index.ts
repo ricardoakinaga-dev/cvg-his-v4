@@ -57,3 +57,5 @@ export class TriageService {
     return record;
   }
 }
+
+export { DatabaseTriageRepository, type TriageRepository } from "./repositories/database-triage.repository.js";

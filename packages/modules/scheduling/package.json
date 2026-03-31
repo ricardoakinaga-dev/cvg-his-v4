@@ -15,6 +15,7 @@
     "@cvg-his-v2/module-owners": "workspace:*",
     "@cvg-his-v2/module-patients": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-database": "workspace:^",
     "@cvg-his-v2/shared-errors": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",

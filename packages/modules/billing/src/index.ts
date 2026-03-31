@@ -164,3 +164,5 @@ function sumItems(items: readonly BillingItemSummary[]): number {
     items.reduce((total, item) => total + item.totalAmount, 0).toFixed(2),
   );
 }
+
+export { DatabaseBillingRepository, type BillingRepository } from "./repositories/database-billing.repository.js";

@@ -47,6 +47,17 @@ import type { SurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { TriageService } from '@cvg-his-v2/module-triage';
 import { UsersService } from '@cvg-his-v2/module-users';
 import type { DiagnosticOrderRepository } from '@cvg-his-v2/module-diagnostics';
+import { DischargesService } from '@cvg-his-v2/module-discharges';
+import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
+import { PrescriptionExecutionsService } from '@cvg-his-v2/module-prescription-executions';
+import type { PrescriptionExecutionRepository, AdministrationEventRepository } from '@cvg-his-v2/module-prescription-executions';
+
+import type { BillingRepository } from '@cvg-his-v2/module-billing';
+import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
+import type { SchedulingRepository } from '@cvg-his-v2/module-scheduling';
+import type { TriageRepository } from '@cvg-his-v2/module-triage';
+import type { UsersRepository } from '@cvg-his-v2/module-users';
+import type { AccessControlRepository } from '@cvg-his-v2/module-access-control';
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -66,6 +77,15 @@ export interface RuntimeRepositories {
   readonly inpatientProgress?: InpatientProgressRepository;
   readonly surgeryCase?: SurgeryCaseRepository;
   readonly diagnosticOrder?: DiagnosticOrderRepository;
+  readonly discharge?: DischargeRepository;
+  readonly prescriptionExecution?: PrescriptionExecutionRepository;
+  readonly administrationEvent?: AdministrationEventRepository;
+  readonly billing?: BillingRepository;
+  readonly inventory?: InventoryRepository;
+  readonly scheduling?: SchedulingRepository;
+  readonly triage?: TriageRepository;
+  readonly users?: UsersRepository;
+  readonly accessControl?: AccessControlRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -133,6 +153,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   });
   const audit = new AuditService({ auditRepository: repos.audit });
   audit.seedSystemEvent('Phase 8 administrative care bridge initialized');
+  const discharges = new DischargesService({ dischargeRepository: repos.discharge });
+  const prescriptionExecutions = new PrescriptionExecutionsService({
+    executionRepository: repos.prescriptionExecution,
+    eventRepository: repos.administrationEvent
+  });
   const auth = new AuthService({
     secret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
@@ -163,6 +188,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     inventory,
     notifications,
     audit,
+    discharges,
+    prescriptionExecutions,
     auth
   };
 }

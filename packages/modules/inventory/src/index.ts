@@ -139,3 +139,5 @@ export class InventoryService {
 }
 
 export { createSeedItems };
+
+export { DatabaseInventoryRepository, type InventoryRepository } from "./repositories/database-inventory.repository.js";

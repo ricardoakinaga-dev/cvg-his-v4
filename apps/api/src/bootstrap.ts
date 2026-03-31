@@ -60,6 +60,16 @@ import {
   DatabaseDiagnosticOrderRepository,
   type DiagnosticOrderRepository
 } from '@cvg-his-v2/module-diagnostics';
+import {
+  DatabaseDischargeRepository,
+  type DischargeRepository
+} from '@cvg-his-v2/module-discharges';
+import {
+  DatabasePrescriptionExecutionRepository,
+  DatabaseAdministrationEventRepository,
+  type PrescriptionExecutionRepository,
+  type AdministrationEventRepository
+} from '@cvg-his-v2/module-prescription-executions';
 import type {
   AccountId,
   AuditEventId,
@@ -583,7 +593,10 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         inpatientStay: new DatabaseInpatientStayRepository(db),
         inpatientProgress: new DatabaseInpatientProgressRepository(db),
         surgeryCase: new DatabaseSurgeryCaseRepository(db),
-        diagnosticOrder: new DatabaseDiagnosticOrderRepository(db)
+        diagnosticOrder: new DatabaseDiagnosticOrderRepository(db),
+        discharge: new DatabaseDischargeRepository(),
+        prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
+        administrationEvent: new DatabaseAdministrationEventRepository()
       };
       results.fileStorage = new LocalFileStorage({
         basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'

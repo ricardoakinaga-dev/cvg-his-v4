@@ -14,6 +14,7 @@
   "dependencies": {
     "@cvg-his-v2/module-encounters": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-database": "workspace:^",
     "@cvg-his-v2/shared-errors": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",

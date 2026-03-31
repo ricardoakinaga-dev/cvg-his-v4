@@ -522,6 +522,58 @@ export interface NotificationJobSummary {
   readonly processedAt?: string;
 }
 
+export type DischargeId = Brand<string, 'DischargeId'>;
+export type PrescriptionExecutionId = Brand<string, 'PrescriptionExecutionId'>;
+export type AdministrationEventId = Brand<string, 'AdministrationEventId'>;
+
+export interface DischargeSummary {
+  readonly id: DischargeId;
+  readonly accountId: AccountId;
+  readonly encounterId: EncounterId;
+  readonly dischargeType: 'ambulatory' | 'inpatient' | 'transfer' | 'death';
+  readonly outcome?: string;
+  readonly clinicalSummary?: string;
+  readonly continuityInstructions?: string;
+  readonly followUpDate?: string;
+  readonly followUpNotes?: string;
+  readonly dischargedBy: UserId;
+  readonly dischargedAt: string;
+  readonly version: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface PrescriptionExecutionSummary {
+  readonly id: PrescriptionExecutionId;
+  readonly accountId: AccountId;
+  readonly clinicalEntryId: ClinicalEntryId;
+  readonly patientId: PatientId;
+  readonly encounterId: EncounterId;
+  readonly medicationName: string;
+  readonly dosage: string;
+  readonly route?: string;
+  readonly frequency?: string;
+  readonly scheduledAt: string;
+  readonly status: 'pending' | 'administered' | 'not-administered' | 'suspended' | 'cancelled';
+  readonly administeredBy?: UserId;
+  readonly administeredAt?: string;
+  readonly notes?: string;
+  readonly version: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface AdministrationEventSummary {
+  readonly id: AdministrationEventId;
+  readonly executionId: PrescriptionExecutionId;
+  readonly eventType: string;
+  readonly actorId: UserId;
+  readonly occurredAt: string;
+  readonly notes?: string;
+  readonly vitalsSnapshot?: Record<string, unknown>;
+  readonly createdAt: string;
+}
+
 export interface SectorSummary {
   readonly id: SectorId;
   readonly accountId: AccountId;

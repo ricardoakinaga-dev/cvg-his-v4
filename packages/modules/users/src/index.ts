@@ -1,7 +1,7 @@
 import { scryptSync, timingSafeEqual } from 'node:crypto';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
-import type { UserId, UserSummary } from '@cvg-his-v2/shared-types';
+import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 
 export interface UserRecord extends UserSummary {
@@ -152,6 +152,38 @@ export class UsersService {
     return comparePassword(password, user.passwordHash);
   }
 
+  public create(input: {
+    readonly username: string;
+    readonly email: string;
+    readonly password: string;
+    readonly displayName?: string;
+    readonly department?: string;
+    readonly roleCode?: string;
+    readonly status?: 'active' | 'inactive';
+  }): UserSummary {
+    if (this.#usersByUsername.has(input.username)) {
+      throw new Error('Username already exists');
+    }
+    const now = nowIso();
+    const id = ('user_' + Math.random().toString(36).slice(2, 10)) as UserId;
+    const user: UserRecord = {
+      id,
+      accountId: 'acc_cvg_demo',
+      username: input.username,
+      email: input.email,
+      passwordHash: hashPassword(input.password),
+      displayName: input.displayName || input.username,
+      roleCodes: input.roleCode ? [input.roleCode] : [],
+      department: input.department,
+      status: input.status || 'active',
+      createdAt: now,
+      updatedAt: now
+    };
+    this.#users.set(id, user);
+    this.#usersByUsername.set(user.username, user);
+    return stripSecrets(user);
+  }
+
   public update(
     userId: UserId,
     changes: {
@@ -181,3 +213,5 @@ function stripSecrets(user: UserRecord): UserSummary {
 }
 
 export { createSeedUsers, hashPassword };
+
+export { DatabaseUsersRepository, type UsersRepository, type UserRecord } from "./repositories/database-users.repository.js";

@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 
 import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import { loadWebConfig } from '@cvg-his-v2/shared-config';
@@ -12,6 +12,7 @@ import { renderOwners } from './pages/owners.js';
 import { renderPatients } from './pages/patients.js';
 import { renderEncounters } from './pages/encounters.js';
 import { renderMedicalRecords } from './pages/medical-records.js';
+import { renderPrescriptions } from './pages/prescriptions.js';
 import { renderUsers } from './pages/users.js';
 import { renderStaff } from './pages/staff.js';
 import { renderAccessControl } from './pages/access-control.js';
@@ -29,6 +30,8 @@ import { renderMasterSearch } from './pages/master-search.js';
 import { renderSectors } from './pages/sectors.js';
 import { renderBeds } from './pages/beds.js';
 import { renderBedMap } from './pages/bedmap.js';
+import { renderDischarges } from './pages/discharges.js';
+import { renderPrescriptionExecutions } from './pages/prescription-executions.js';
 
 const config = loadWebConfig(process.env);
 const logger = createLogger(config.appName);
@@ -64,7 +67,10 @@ const routes: Record<string, { render: PageRenderer; title: string; nav: string 
   '/billing': { render: renderBilling, title: 'Billing', nav: '/billing' },
   '/notifications': { render: renderNotifications, title: 'Notificacoes', nav: '/notifications' },
   '/audit': { render: renderAudit, title: 'Auditoria', nav: '/audit' },
-  '/master-search': { render: renderMasterSearch, title: 'Busca Mestre', nav: '/master-search' }
+  '/master-search': { render: renderMasterSearch, title: 'Busca Mestre', nav: '/master-search' },
+  '/discharges': { render: renderDischarges, title: 'Altas', nav: '/discharges' },
+  '/prescription-executions': { render: renderPrescriptionExecutions, title: 'Exec. Prescricao', nav: '/prescription-executions' },
+  '/prescriptions': { render: renderPrescriptions, title: 'Prescricoes', nav: '/prescriptions' }
 };
 
 function buildPage(path: string): string {
@@ -74,7 +80,7 @@ function buildPage(path: string): string {
   const showChrome = path !== '/login';
 
   const clientApiScript = apiClientScript
-    .replace('__API_BASE_URL__', JSON.stringify(config.apiBaseUrl))
+    .replace('__API_BASE_URL__', JSON.stringify('/api'))
     .replace('__STORAGE_KEYS__', JSON.stringify(AUTH_STORAGE_KEYS));
 
   const authBootstrapScript = `
@@ -102,59 +108,68 @@ function buildPage(path: string): string {
         {
           id: 'essencial',
           label: 'Essencial',
+          icon: '⚡',
           links: [
-            { path: '/', label: 'Dashboard', icon: '▣' },
-            { path: '/owners', label: 'Tutores', icon: '◫' },
-            { path: '/patients', label: 'Pacientes', icon: '◪' },
-            { path: '/encounters', label: 'Atendimentos', icon: '◧' },
-            { path: '/medical-records', label: 'Prontuario', icon: '◩' }
-          ]
-        },
-        {
-          id: 'administrativo',
-          label: 'Administrativo',
-          links: [
-            { path: '/users', label: 'Usuarios', icon: '◉' },
-            { path: '/staff', label: 'Equipe', icon: '◎' },
-            { path: '/access-control', label: 'Permissoes', icon: '◌' }
+            { path: '/', label: 'Dashboard', icon: '📊' },
+            { path: '/owners', label: 'Tutores', icon: '👥' },
+            { path: '/patients', label: 'Pacientes', icon: '🐾' },
+            { path: '/encounters', label: 'Atendimentos', icon: '🩺' },
+            { path: '/medical-records', label: 'Prontuário', icon: '📋' }
           ]
         },
         {
           id: 'operacao',
-          label: 'Operacao',
+          label: 'Operação',
+          icon: '🔄',
           links: [
-            { path: '/appointments', label: 'Agenda', icon: '◐' },
-            { path: '/queue', label: 'Recepcao', icon: '◑' },
-            { path: '/triage', label: 'Triagem', icon: '◒' }
+            { path: '/appointments', label: 'Agenda', icon: '📅' },
+            { path: '/queue', label: 'Recepção', icon: '🔔' },
+            { path: '/triage', label: 'Triagem', icon: '🏷️' }
           ]
         },
         {
           id: 'assistencial',
           label: 'Assistencial',
+          icon: '🏥',
           links: [
-            { path: '/inpatient', label: 'Internacao', icon: '◓' },
-            { path: '/sectors', label: 'Setores', icon: '□' },
-            { path: '/beds', label: 'Leitos', icon: '▤' },
-            { path: '/bed-map', label: 'Mapa de Leitos', icon: '▥' },
-            { path: '/diagnostics', label: 'Diagnosticos', icon: '△' },
-            { path: '/surgeries', label: 'Cirurgia', icon: '▲' }
+            { path: '/inpatient', label: 'Internação', icon: '🏨' },
+            { path: '/prescriptions', label: 'Prescrições', icon: '💊' },
+            { path: '/prescription-executions', label: 'Exec. Prescrição', icon: '💉' },
+            { path: '/diagnostics', label: 'Exames', icon: '🔬' },
+            { path: '/surgeries', label: 'Cirurgias', icon: '⚕️' },
+            { path: '/sectors', label: 'Setores', icon: '🏢' },
+            { path: '/beds', label: 'Leitos', icon: '🛏️' },
+            { path: '/bed-map', label: 'Mapa de Leitos', icon: '🗺️' },
+            { path: '/discharges', label: 'Altas', icon: '🏠' }
+          ]
+        },
+        {
+          id: 'administrativo',
+          label: 'Administrativo',
+          icon: '⚙️',
+          links: [
+            { path: '/users', label: 'Usuários', icon: '👤' },
+            { path: '/staff', label: 'Equipe', icon: '👨‍⚕️' },
+            { path: '/access-control', label: 'Permissões', icon: '🔐' }
           ]
         },
         {
           id: 'backoffice',
           label: 'Backoffice',
+          icon: '📦',
           links: [
-            { path: '/inventory', label: 'Estoque', icon: '◈' },
-            { path: '/billing', label: 'Billing', icon: '◇' },
-            { path: '/notifications', label: 'Notificacoes', icon: '✦' }
+            { path: '/billing', label: 'Faturamento', icon: '💰' },
+            { path: '/inventory', label: 'Estoque', icon: '📦' },
+            { path: '/notifications', label: 'Notificações', icon: '🔔' }
           ]
         },
         {
           id: 'governanca',
-          label: 'Governanca',
+          label: 'Governança',
+          icon: '🛡️',
           links: [
-            { path: '/audit', label: 'Auditoria', icon: '◬' },
-            { path: '/master-search', label: 'Busca Mestre', icon: '⌕' }
+            { path: '/audit', label: 'Auditoria', icon: '📝' },
+            { path: '/master-search', label: 'Busca Global', icon: '🔍' }
           ]
         }
       ]
@@ -170,10 +185,10 @@ function buildPage(path: string): string {
         .join('');
 
       return `
-        <details class="sidebar-group" data-sidebar-group data-group-id="${group.id}">
+        <details class="sidebar-group" data-sidebar-group data-group-id="${group.id}" ${group.id === 'essencial' ? 'open' : ''}>
           <summary class="sidebar-group-toggle">
             <span class="sidebar-group-text">
-              <span class="sidebar-group-kicker">Modulo</span>
+              <span class="sidebar-group-icon">${group.icon}</span>
               <span class="sidebar-group-label">${group.label}</span>
             </span>
             <span class="sidebar-group-chevron">▾</span>
@@ -196,30 +211,59 @@ function buildPage(path: string): string {
     )
     .join('');
 
+  // Bottom navigation — 6 items essenciais para mobile
+  const bottomNavLinks = [
+    { path: '/', label: 'Início', icon: '🏠' },
+    { path: '/owners', label: 'Tutores', icon: '👥' },
+    { path: '/patients', label: 'Pacientes', icon: '🐾' },
+    { path: '/encounters', label: 'Atend.', icon: '🩺' },
+    { path: '/medical-records', label: 'Prontuário', icon: '📋' },
+    { path: '/appointments', label: 'Agenda', icon: '📅' }
+  ];
+
+  const bottomNavHtml = bottomNavLinks
+    .map(
+      (link) =>
+        `<a href="${link.path}" class="bottom-nav-item ${route.nav === link.path ? 'active' : ''}" aria-label="${link.label}">
+          <span class="bottom-nav-icon">${link.icon}</span>
+          <span class="bottom-nav-label">${link.label}</span>
+        </a>`
+    )
+    .join('');
+
   const chromeHtml = showChrome
     ? `
       <div class="app-shell" data-sidebar-state="expanded">
         <button class="sidebar-overlay" type="button" id="sidebar-overlay" aria-label="Fechar menu"></button>
         <aside class="sidebar" id="app-sidebar">
-          <div class="sidebar-top">
-            <button class="icon-button sidebar-collapse-button" type="button" id="sidebar-pin-button" aria-label="Recolher ou expandir menu" aria-controls="app-sidebar" aria-expanded="true">⇤</button>
+          <div class="sidebar-brand">
+            <a href="/" class="sidebar-brand-link" title="Ir para Dashboard">
+              <div class="sidebar-brand-logo">🏥</div>
+              <div class="sidebar-brand-text">
+                <strong>NexusVet</strong>
+                <span>HIS v2.0</span>
+              </div>
+            </a>
+            <button class="sidebar-collapse-btn" type="button" id="sidebar-pin-button" aria-label="Recolher menu" title="Recolher/Expandir" onclick="(function(){var s=document.querySelector('.app-shell');if(s){var c=s.getAttribute('data-sidebar-state')==='collapsed'?'expanded':'collapsed';s.setAttribute('data-sidebar-state',c);localStorage.setItem('cvg-his-v2.sidebar.state',c);}})()">⇤</button>
+          </div>
+          <div class="sidebar-search">
+            <input type="text" id="sidebar-search-input" placeholder="🔍 Buscar módulo..." aria-label="Buscar na navegação" />
           </div>
           <div class="sidebar-nav" id="sidebar-nav">${navHtml}</div>
-          <div class="sidebar-footer card-surface">
+          <div class="sidebar-footer">
             <div id="nav-user-info" class="sidebar-user-slot"></div>
           </div>
         </aside>
         <div class="workspace-shell">
           <header class="topbar">
             <div class="topbar-left">
-              <button class="icon-button topbar-toggle" type="button" id="sidebar-toggle" aria-label="Mostrar ou esconder menu" aria-controls="app-sidebar" aria-expanded="true">☰</button>
-              <div class="topbar-title-wrap">
-                <span class="topbar-overline">Painel operacional</span>
-                <strong class="topbar-title">${route.title}</strong>
+              <button class="topbar-menu-btn" type="button" id="sidebar-toggle" aria-label="Menu" onclick="(function(){var s=document.querySelector('.app-shell');if(s){var c=s.getAttribute('data-sidebar-state')==='collapsed'?'expanded':'collapsed';s.setAttribute('data-sidebar-state',c);localStorage.setItem('cvg-his-v2.sidebar.state',c);if(window.innerWidth<=768){document.body.classList.toggle('sidebar-open',c==='expanded');}}})()">☰</button>
+              <div class="topbar-breadcrumb">
+                <span class="topbar-title">${route.title}</span>
               </div>
             </div>
             <div class="topbar-right">
-              <span class="topbar-chip">Ambiente oficial</span>
+              <span class="topbar-chip">v2.0</span>
               <nav class="mobile-top-nav" role="navigation" aria-label="Menu móvel">${flatLinksHtml}</nav>
             </div>
           </header>
@@ -227,10 +271,11 @@ function buildPage(path: string): string {
             ${body}
           </main>
           <div class="status-bar">
-            <span>${config.appName} — ${config.apiBaseUrl}</span>
+            <span>${config.appName}</span>
             <span id="status-time"></span>
           </div>
         </div>
+        <nav class="mobile-bottom-nav" role="navigation" aria-label="Menu principal">${bottomNavHtml}</nav>
       </div>`
     : `<main id="page-content">${body}</main>`;
 
@@ -238,8 +283,11 @@ function buildPage(path: string): string {
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${route.title} — CVG-HIS V2</title>
+  <title>${route.title} — NexusVet HIS v${Date.now()}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
   <style>${baseStyles}
   body.auth-pending .app-shell,
@@ -264,6 +312,25 @@ function buildPage(path: string): string {
         if (el) el.textContent = new Date().toLocaleTimeString('pt-BR');
       }, 1000);
     }
+
+    // Auto-responsify tables: add data-label from headers for mobile card view
+    (function responsifyTables() {
+      if (window.innerWidth > 768) return;
+      document.querySelectorAll('table').forEach(function(table) {
+        var headers = [];
+        table.querySelectorAll('thead th').forEach(function(th) {
+          headers.push(th.textContent.trim());
+        });
+        if (headers.length === 0) return;
+        table.querySelectorAll('tbody tr').forEach(function(row) {
+          row.querySelectorAll('td').forEach(function(cell, i) {
+            if (headers[i] && !cell.getAttribute('data-label')) {
+              cell.setAttribute('data-label', headers[i]);
+            }
+          });
+        });
+      });
+    })();
 
     (function updateNavUser() {
       const el = document.getElementById('nav-user-info');
@@ -297,6 +364,25 @@ function buildPage(path: string): string {
       const savedSidebarState = localStorage.getItem(stateStorageKey);
       const savedGroupState = localStorage.getItem(groupStorageKey);
       const savedSidebarScroll = localStorage.getItem(scrollStorageKey);
+
+      // Sidebar search filter
+      const searchInput = document.getElementById('sidebar-search-input');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          const query = this.value.trim().toLowerCase();
+          document.querySelectorAll('.sidebar-link').forEach(function(link) {
+            const label = link.getAttribute('title') || link.textContent;
+            const match = !query || label.toLowerCase().includes(query);
+            link.style.display = match ? '' : 'none';
+          });
+          // Show/hide groups based on visible links
+          document.querySelectorAll('.sidebar-group').forEach(function(group) {
+            const visibleLinks = group.querySelectorAll('.sidebar-link:not([style*="display: none"])');
+            group.style.display = visibleLinks.length > 0 ? '' : 'none';
+            if (query && visibleLinks.length > 0) group.setAttribute('open', '');
+          });
+        });
+      }
 
       function setSidebarState(nextState) {
         shell.setAttribute('data-sidebar-state', nextState);
@@ -402,26 +488,86 @@ function buildPage(path: string): string {
           closeSidebar();
         }
       });
+
+      // Swipe-to-close for mobile drawer
+      if (sidebar && window.innerWidth <= 768) {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+
+        sidebar.addEventListener('touchstart', function(e) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          isSwiping = false;
+        }, { passive: true });
+
+        sidebar.addEventListener('touchmove', function(e) {
+          const dx = e.touches[0].clientX - touchStartX;
+          const dy = e.touches[0].clientY - touchStartY;
+          // Only close on left swipe, not vertical scroll
+          if (dx < -30 && Math.abs(dy) < 50) {
+            isSwiping = true;
+          }
+        }, { passive: true });
+
+        sidebar.addEventListener('touchend', function() {
+          if (isSwiping) {
+            closeSidebar();
+          }
+        }, { passive: true });
+      }
     })();
   </script>
 </body>
 </html>`;
 }
 
+const API_BACKEND = config.apiBaseUrl || 'http://127.0.0.1:3001';
+
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
   const path = url.pathname;
 
+  // CORS preflight
   if (request.method === 'OPTIONS') {
     response.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Correlation-Id'
     });
     response.end();
     return;
   }
 
+  // Proxy /api/* to backend
+  if (path.startsWith('/api/')) {
+    const backendPath = path.replace('/api', '');
+    const proxyReq = httpRequest(
+      `${API_BACKEND}${backendPath}${url.search}`,
+      {
+        method: request.method,
+        headers: {
+          ...request.headers,
+          host: new URL(API_BACKEND).host
+        }
+      },
+      (proxyRes) => {
+        response.writeHead(proxyRes.statusCode || 500, {
+          ...proxyRes.headers,
+          'Access-Control-Allow-Origin': '*'
+        });
+        proxyRes.pipe(response);
+      }
+    );
+    proxyReq.on('error', (err) => {
+      response.writeHead(502, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'Backend unavailable', message: err.message }));
+    });
+    request.pipe(proxyReq);
+    return;
+  }
+
+  // Serve HTML pages
   const html = buildPage(path);
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   response.end(html);

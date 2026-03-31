@@ -208,3 +208,5 @@ export class SchedulingService {
 }
 
 export { createSeedAppointments };
+
+export { DatabaseSchedulingRepository, type SchedulingRepository } from "./repositories/database-scheduling.repository.js";

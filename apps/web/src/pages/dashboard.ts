@@ -1,99 +1,103 @@
 export function renderDashboard(): string {
   return `
-    <div class="page-header">
-      <div>
-        <h1>Dashboard</h1>
-        <p class="subtitle">Visao geral do sistema hospitalar veterinario</p>
+    <div class="dashboard-welcome">
+      <h2>Bem-vindo ao NexusVet HIS</h2>
+      <p>Sistema de Informacao Hospitalar Veterinario — Centro Veterinario Guarapiranga</p>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="kpi-tutores">--</div>
+        <div class="stat-label">Tutores Cadastrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="kpi-pacientes">--</div>
+        <div class="stat-label">Pacientes Ativos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="kpi-abertos">--</div>
+        <div class="stat-label">Atendimentos Abertos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="kpi-notificacoes">--</div>
+        <div class="stat-label">Notificacoes</div>
       </div>
     </div>
 
-    <div class="kpi-grid">
-      <div class="kpi">
-        <div class="value" id="kpi-tutores">--</div>
-        <div class="label">Tutores</div>
+    <div class="grid grid-2" style="margin-bottom:20px;">
+      <div class="card">
+        <h2>Acesso Rapido</h2>
+        <div class="btn-row">
+          <button onclick="window.location.assign('/owners')">Tutores</button>
+          <button onclick="window.location.assign('/patients')" class="secondary">Pacientes</button>
+          <button onclick="window.location.assign('/encounters')" class="secondary">Atendimentos</button>
+          <button onclick="window.location.assign('/appointments')" class="secondary">Agenda</button>
+        </div>
+        <div class="btn-row">
+          <button onclick="window.location.assign('/inpatient')" class="secondary">Internacao</button>
+          <button onclick="window.location.assign('/diagnostics')" class="secondary">Exames</button>
+          <button onclick="window.location.assign('/discharges')" class="secondary">Altas</button>
+          <button onclick="window.location.assign('/prescription-executions')" class="secondary">Exec. Prescricao</button>
+        </div>
       </div>
-      <div class="kpi">
-        <div class="value" id="kpi-pacientes">--</div>
-        <div class="label">Pacientes</div>
-      </div>
-      <div class="kpi">
-        <div class="value" id="kpi-abertos">--</div>
-        <div class="label">Atendimentos Abertos</div>
-      </div>
-      <div class="kpi">
-        <div class="value" id="kpi-notificacoes">--</div>
-        <div class="label">Notificacoes</div>
-      </div>
-    </div>
 
-    <div class="btn-row" style="margin-bottom:24px;">
-      <button onclick="window.location.assign('/owners')">Tutores</button>
-      <button onclick="window.location.assign('/patients')" class="secondary">Pacientes</button>
-      <button onclick="window.location.assign('/encounters')" class="secondary">Atendimentos</button>
-      <button onclick="window.location.assign('/medical-records')" class="secondary">Prontuario</button>
+      <div class="card">
+        <h2>Administracao</h2>
+        <div class="btn-row">
+          <button onclick="window.location.assign('/users')" class="secondary">Usuarios</button>
+          <button onclick="window.location.assign('/staff')" class="secondary">Equipe</button>
+          <button onclick="window.location.assign('/access-control')" class="secondary">Permissoes</button>
+        </div>
+        <div class="btn-row">
+          <button onclick="window.location.assign('/audit')" class="secondary">Auditoria</button>
+          <button onclick="window.location.assign('/billing')" class="secondary">Faturamento</button>
+          <button onclick="window.location.assign('/inventory')" class="secondary">Estoque</button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
-      <h2>Atendimentos Recentes</h2>
-      <div id="recent-encounters">
-        <div class="loading">Carregando</div>
-      </div>
+      <h2>Status do Sistema</h2>
+      <table>
+        <thead>
+          <tr><th>Componente</th><th>Status</th><th>Versao</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>API Backend</td><td><span class="badge badge-success">Operacional</span></td><td>v2.0.0</td></tr>
+          <tr><td>Banco de Dados</td><td><span class="badge badge-success">Conectado</span></td><td>PostgreSQL 16</td></tr>
+          <tr><td>Cache</td><td><span class="badge badge-success">Ativo</span></td><td>Redis 7</td></tr>
+          <tr><td>Worker</td><td><span class="badge badge-info">Em espera</span></td><td>v2.0.0</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <script>
-      (async function loadDashboard() {
-        const results = await Promise.all([
-          apiRequest('/owners'),
-          apiRequest('/patients'),
-          apiRequest('/encounters?status=open'),
-          apiRequest('/notifications?status=pending'),
-          apiRequest('/encounters?limit=5&sort=-createdAt')
-        ]);
-
-        const [ownersRes, patientsRes, encountersRes, notificationsRes, recentRes] = results;
-
-        document.getElementById('kpi-tutores').textContent =
-          ownersRes.ok && Array.isArray(ownersRes.body) ? ownersRes.body.length : ownersRes.ok && ownersRes.body && ownersRes.body.total != null ? ownersRes.body.total : 0;
-
-        document.getElementById('kpi-pacientes').textContent =
-          patientsRes.ok && Array.isArray(patientsRes.body) ? patientsRes.body.length : patientsRes.ok && patientsRes.body && patientsRes.body.total != null ? patientsRes.body.total : 0;
-
-        document.getElementById('kpi-abertos').textContent =
-          encountersRes.ok && Array.isArray(encountersRes.body) ? encountersRes.body.length : encountersRes.ok && encountersRes.body && encountersRes.body.total != null ? encountersRes.body.total : 0;
-
-        document.getElementById('kpi-notificacoes').textContent =
-          notificationsRes.ok && Array.isArray(notificationsRes.body) ? notificationsRes.body.length : notificationsRes.ok && notificationsRes.body && notificationsRes.body.total != null ? notificationsRes.body.total : 0;
-
-        const container = document.getElementById('recent-encounters');
-        let encounters = [];
-        if (recentRes.ok) {
-          encounters = Array.isArray(recentRes.body) ? recentRes.body : (recentRes.body && recentRes.body.items) || [];
-        }
-
-        if (encounters.length === 0) {
-          container.innerHTML = '<div class="empty">Nenhum atendimento encontrado</div>';
-          return;
-        }
-
-        container.innerHTML =
-          '<table>' +
-          '<thead><tr><th>ID</th><th>Paciente</th><th>Status</th><th>Criado em</th></tr></thead>' +
-          '<tbody>' +
-          encounters.map(function(e) {
-            var statusBadge = e.status === 'open'
-              ? '<span class="badge badge-warning">Aberto</span>'
-              : e.status === 'closed'
-                ? '<span class="badge badge-success">Encerrado</span>'
-                : '<span class="badge badge-neutral">' + escapeHtml(e.status || '—') + '</span>';
-            return '<tr>' +
-              '<td>' + escapeHtml(e.id || e.encounterId || '—') + '</td>' +
-              '<td>' + escapeHtml(e.patientName || e.patientId || '—') + '</td>' +
-              '<td>' + statusBadge + '</td>' +
-              '<td>' + formatDate(e.createdAt) + '</td>' +
-              '</tr>';
-          }).join('') +
-          '</tbody></table>';
-      })();
+    (function() {
+      function loadKpis() {
+        apiRequest('/owners').then(function(d) {
+          document.getElementById('kpi-tutores').textContent = (d.body?.items || []).length;
+        }).catch(function() {
+          document.getElementById('kpi-tutores').textContent = '--';
+        });
+        apiRequest('/patients').then(function(d) {
+          document.getElementById('kpi-pacientes').textContent = (d.body?.items || []).length;
+        }).catch(function() {
+          document.getElementById('kpi-pacientes').textContent = '--';
+        });
+        apiRequest('/encounters').then(function(d) {
+          var open = (d.body?.items || []).filter(function(e) { return e.status === 'open'; });
+          document.getElementById('kpi-abertos').textContent = open.length;
+        }).catch(function() {
+          document.getElementById('kpi-abertos').textContent = '--';
+        });
+        apiRequest('/notifications').then(function(d) {
+          document.getElementById('kpi-notificacoes').textContent = (d.body?.items || []).length;
+        }).catch(function() {
+          document.getElementById('kpi-notificacoes').textContent = '--';
+        });
+      }
+      loadKpis();
+    })();
     </script>
   `;
 }

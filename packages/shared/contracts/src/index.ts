@@ -509,3 +509,63 @@ export interface AssignBedRequest {
   readonly sectorId: string;
   readonly bedId: string;
 }
+
+// --- Discharges ---
+
+export interface CreateDischargeRequest {
+  readonly encounterId: string;
+  readonly dischargeType: 'ambulatory' | 'inpatient' | 'transfer' | 'death';
+  readonly outcome?: string;
+  readonly clinicalSummary?: string;
+  readonly continuityInstructions?: string;
+  readonly followUpDate?: string;
+  readonly followUpNotes?: string;
+}
+
+export interface UpdateDischargeRequest {
+  readonly outcome?: string;
+  readonly clinicalSummary?: string;
+  readonly continuityInstructions?: string;
+  readonly followUpDate?: string;
+  readonly followUpNotes?: string;
+}
+
+export interface DischargeListResponse {
+  readonly items: readonly import('@cvg-his-v2/shared-types').DischargeSummary[];
+  readonly total: number;
+}
+
+// --- Prescription Executions ---
+
+export interface CreatePrescriptionExecutionRequest {
+  readonly clinicalEntryId: string;
+  readonly patientId: string;
+  readonly encounterId: string;
+  readonly medicationName: string;
+  readonly dosage: string;
+  readonly route?: string;
+  readonly frequency?: string;
+  readonly scheduledAt: string;
+  readonly notes?: string;
+}
+
+export interface ExecutePrescriptionRequest {
+  readonly status: 'administered' | 'not-administered';
+  readonly notes?: string;
+  readonly vitalsSnapshot?: Record<string, unknown>;
+}
+
+export interface SuspendPrescriptionRequest {
+  readonly reason: string;
+}
+
+export interface LogAdministrationEventRequest {
+  readonly eventType: string;
+  readonly notes?: string;
+  readonly vitalsSnapshot?: Record<string, unknown>;
+}
+
+export interface PrescriptionExecutionListResponse {
+  readonly items: readonly import('@cvg-his-v2/shared-types').PrescriptionExecutionSummary[];
+  readonly total: number;
+}

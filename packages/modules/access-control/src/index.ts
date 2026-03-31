@@ -459,3 +459,5 @@ export class AccessControlService {
     }
   }
 }
+
+export { DatabaseAccessControlRepository, type AccessControlRepository, type RoleRecord, type PermissionRecord } from "./repositories/database-access-control.repository.js";
