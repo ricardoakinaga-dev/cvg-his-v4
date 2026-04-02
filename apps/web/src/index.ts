@@ -1,4 +1,5 @@
 import { createServer, request as httpRequest } from 'node:http';
+import { pathToFileURL } from 'node:url';
 
 import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import { loadWebConfig } from '@cvg-his-v2/shared-config';
@@ -32,6 +33,12 @@ import { renderBeds } from './pages/beds.js';
 import { renderBedMap } from './pages/bedmap.js';
 import { renderDischarges } from './pages/discharges.js';
 import { renderPrescriptionExecutions } from './pages/prescription-executions.js';
+import { renderProducts } from './pages/products.js';
+import { renderServices } from './pages/services.js';
+import { renderCounterSales } from './pages/counter-sales.js';
+import { renderQuotes } from './pages/quotes.js';
+import { renderCommercialReports } from './pages/commercial-reports.js';
+import { renderCashRegister } from './pages/cash-register.js';
 
 const config = loadWebConfig(process.env);
 const logger = createLogger(config.appName);
@@ -40,7 +47,7 @@ interface PageRenderer {
   (): string;
 }
 
-const routes: Record<string, { render: PageRenderer; title: string; nav: string }> = {
+export const routes: Record<string, { render: PageRenderer; title: string; nav: string }> = {
   '/login': { render: renderLogin, title: 'Login', nav: '/login' },
   '/': { render: renderDashboard, title: 'Dashboard', nav: '/' },
   '/owners': { render: renderOwners, title: 'Tutores', nav: '/owners' },
@@ -69,11 +76,29 @@ const routes: Record<string, { render: PageRenderer; title: string; nav: string 
   '/audit': { render: renderAudit, title: 'Auditoria', nav: '/audit' },
   '/master-search': { render: renderMasterSearch, title: 'Busca Mestre', nav: '/master-search' },
   '/discharges': { render: renderDischarges, title: 'Altas', nav: '/discharges' },
-  '/prescription-executions': { render: renderPrescriptionExecutions, title: 'Exec. Prescricao', nav: '/prescription-executions' },
-  '/prescriptions': { render: renderPrescriptions, title: 'Prescricoes', nav: '/prescriptions' }
+  '/prescription-executions': {
+    render: renderPrescriptionExecutions,
+    title: 'Exec. Prescricao',
+    nav: '/prescription-executions'
+  },
+  '/prescriptions': { render: renderPrescriptions, title: 'Prescricoes', nav: '/prescriptions' },
+  '/products': { render: renderProducts, title: 'Produtos', nav: '/products' },
+  '/services': { render: renderServices, title: 'Servicos', nav: '/services' },
+  '/counter-sales': { render: renderCounterSales, title: 'Comanda', nav: '/counter-sales' },
+  '/quotes': { render: renderQuotes, title: 'Orcamentos', nav: '/quotes' },
+  '/commercial-reports': {
+    render: renderCommercialReports,
+    title: 'Relatorios',
+    nav: '/commercial-reports'
+  },
+  '/cash-register': {
+    render: renderCashRegister,
+    title: 'Caixa',
+    nav: '/cash-register'
+  }
 };
 
-function buildPage(path: string): string {
+export function buildPage(path: string): string {
   const route = routes[path] ?? routes['/'];
   const body = route.render();
   const requiresAuth = path !== '/login';
@@ -160,6 +185,12 @@ function buildPage(path: string): string {
           links: [
             { path: '/billing', label: 'Faturamento', icon: '💰' },
             { path: '/inventory', label: 'Estoque', icon: '📦' },
+            { path: '/products', label: 'Produtos', icon: '🏷️' },
+            { path: '/services', label: 'Servicos', icon: '🔧' },
+            { path: '/counter-sales', label: 'Comanda', icon: '🧾' },
+            { path: '/quotes', label: 'Orcamentos', icon: '📋' },
+            { path: '/commercial-reports', label: 'Relatorios', icon: '📊' },
+            { path: '/cash-register', label: 'Caixa', icon: '💵' },
             { path: '/notifications', label: 'Notificações', icon: '🔔' }
           ]
         },
@@ -522,63 +553,73 @@ function buildPage(path: string): string {
 </html>`;
 }
 
-const API_BACKEND = config.apiBaseUrl || 'http://127.0.0.1:3001';
+export function createWebServer(runtimeConfig = config) {
+  const apiBackend = runtimeConfig.apiBaseUrl || 'http://127.0.0.1:3001';
 
-const server = createServer((request, response) => {
-  const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
-  const path = url.pathname;
+  return createServer((request, response) => {
+    const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+    const path = url.pathname;
 
-  // CORS preflight
-  if (request.method === 'OPTIONS') {
-    response.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Correlation-Id'
-    });
-    response.end();
-    return;
-  }
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Correlation-Id'
+      });
+      response.end();
+      return;
+    }
 
-  // Proxy /api/* to backend
-  if (path.startsWith('/api/')) {
-    const backendPath = path.replace('/api', '');
-    const proxyReq = httpRequest(
-      `${API_BACKEND}${backendPath}${url.search}`,
-      {
-        method: request.method,
-        headers: {
-          ...request.headers,
-          host: new URL(API_BACKEND).host
+    if (path.startsWith('/api/')) {
+      const backendPath = path.replace('/api', '');
+      const proxyReq = httpRequest(
+        `${apiBackend}${backendPath}${url.search}`,
+        {
+          method: request.method,
+          headers: {
+            ...request.headers,
+            host: new URL(apiBackend).host
+          }
+        },
+        (proxyRes) => {
+          response.writeHead(proxyRes.statusCode || 500, {
+            ...proxyRes.headers,
+            'Access-Control-Allow-Origin': '*'
+          });
+          proxyRes.pipe(response);
         }
-      },
-      (proxyRes) => {
-        response.writeHead(proxyRes.statusCode || 500, {
-          ...proxyRes.headers,
-          'Access-Control-Allow-Origin': '*'
-        });
-        proxyRes.pipe(response);
-      }
-    );
-    proxyReq.on('error', (err) => {
-      response.writeHead(502, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({ error: 'Backend unavailable', message: err.message }));
-    });
-    request.pipe(proxyReq);
-    return;
-  }
+      );
+      proxyReq.on('error', (err) => {
+        response.writeHead(502, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ error: 'Backend unavailable', message: err.message }));
+      });
+      request.pipe(proxyReq);
+      return;
+    }
 
-  // Serve HTML pages
-  const html = buildPage(path);
-  response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  response.end(html);
-});
-
-server.listen(config.port, config.host, () => {
-  logger.info('web listening', {
-    service: config.appName,
-    host: config.host,
-    port: config.port,
-    environment: config.environment,
-    apiBaseUrl: config.apiBaseUrl
+    const html = buildPage(path);
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(html);
   });
-});
+}
+
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  return import.meta.url === pathToFileURL(entry).href;
+}
+
+if (isMainModule()) {
+  const server = createWebServer(config);
+  server.listen(config.port, config.host, () => {
+    logger.info('web listening', {
+      service: config.appName,
+      host: config.host,
+      port: config.port,
+      environment: config.environment,
+      apiBaseUrl: config.apiBaseUrl
+    });
+  });
+}

@@ -1,10 +1,12 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
+  EncounterId,
   InventoryConsumptionId,
   InventoryConsumptionSummary,
   InventoryItemId,
   InventoryItemSummary,
+  PatientId,
   UserId
 } from '@cvg-his-v2/shared-types';
 
@@ -89,8 +91,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
       id: row.id as InventoryConsumptionId,
       accountId: row.account_id as AccountId,
       inventoryItemId: row.inventory_item_id as InventoryItemId,
-      encounterId: row.encounter_id as string,
-      patientId: row.patient_id as string,
+      encounterId: row.encounter_id as unknown as EncounterId,
+      patientId: row.patient_id as unknown as PatientId,
       quantity: Number(row.quantity),
       unit: row.unit as string,
       costAmount: Number(row.cost_amount),

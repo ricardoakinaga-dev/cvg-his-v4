@@ -1,0 +1,4 @@
+# Placeholder for contract tests.
+# Contract tests for API request/response shapes exist in packages/contracts/.
+# This directory will host integration-level contract tests
+# that validate API routes against Zod schemas at runtime.

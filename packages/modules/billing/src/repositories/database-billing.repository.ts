@@ -6,6 +6,8 @@ import type {
   BillingRecordId,
   BillingRecordSummary,
   EncounterId,
+  OwnerId,
+  PatientId,
   UserId
 } from '@cvg-his-v2/shared-types';
 
@@ -80,8 +82,8 @@ export class DatabaseBillingRepository implements BillingRepository {
       id: row.id as BillingRecordId,
       accountId: row.account_id as AccountId,
       encounterId: row.encounter_id as EncounterId,
-      patientId: row.patient_id as string,
-      ownerId: row.owner_id as string,
+      patientId: row.patient_id as unknown as PatientId,
+      ownerId: row.owner_id as unknown as OwnerId,
       status: row.status as BillingRecordSummary['status'],
       subtotalAmount: Number(row.subtotal_amount),
       currency: row.currency as 'BRL',
@@ -102,7 +104,7 @@ export class DatabaseBillingRepository implements BillingRepository {
       quantity: Number(row.quantity),
       unitPriceAmount: Number(row.unit_price_amount),
       totalAmount: Number(row.total_amount),
-      sourceEntityType: (row.source_entity_type as string) ?? undefined,
+      sourceEntityType: (row.source_entity_type as BillingItemSummary['sourceEntityType']) ?? undefined,
       sourceEntityId: (row.source_entity_id as string) ?? undefined,
       createdByUserId: row.created_by_user_id as UserId,
       createdAt: new Date(row.created_at as string).toISOString()

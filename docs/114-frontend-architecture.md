@@ -1,65 +1,96 @@
-# Frontend Architecture
+# 114 - Frontend Architecture
 
-**Data atualizacao**: 2026-03-26
-**Decisao**: ADR-003, ADR-007, ENT-005
+**Status:** vivo
+**Data de validacao:** 2026-03-31
+**Fonte principal de evidencia:** `apps/web/src/index.ts`, `apps/web/src/pages/*`
 
-## Frontend Canonico
+## Papel do frontend
 
-**`apps/web` (`@cvg-his-v2/web`) e o frontend oficial do V2.**
+`apps/web` e o frontend canonico do CVG-HIS V2.
 
-Nenhum outro app de frontend e considerado trilha ativa. Ver `docs/adr/ADR-007-frontend-canonico-v2.md` para a decisao completa.
+Ele entrega hoje:
 
-### Estado atual
+- server-side routing por pathname
+- HTML inline com JS client-side leve
+- autenticacao baseada na API V2
+- navegacao assistencial, administrativa e operacional
 
-| Atributo     | Estado                                                                                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework    | Node.js HTTP server + SPA com hash routing                                                                                                                                                                    |
-| Pacote       | `@cvg-his-v2/web`                                                                                                                                                                                             |
-| Dependencias | `@cvg-his-v2/shared-auth-sdk`, `shared-config`, `shared-logging`                                                                                                                                              |
-| Build        | Compila e passa typecheck                                                                                                                                                                                     |
-| Modulos      | `index.ts` (server), `styles.ts`, `pages/api-client.ts`, `pages/layout.ts`, `pages/login.ts`, `pages/dashboard.ts`, `pages/owners.ts`, `pages/patients.ts`, `pages/encounters.ts`, `pages/medical-records.ts` |
-| Fluxos       | Login, Dashboard, Cadastro (owners/patients/links), Atendimento (fila/encounters/triagem), Prontuario (entries/timeline/anexos)                                                                               |
-| Navegacao    | Hash routing (`#/`, `#/login`, `#/owners`, `#/patients`, `#/encounters`, `#/medical-records`)                                                                                                                 |
-| Smoke E2E    | Playwright (`e2e/tests/smoke.spec.ts`); 6 testes integrados ao gate `test:all`; comando `./pnpm test:smoke` como atalho                                                                                       |
+## Estado real atual
 
-### Trilhas classificadas
+### Stack
 
-| App            | Classificacao | Destino                                            |
-| -------------- | ------------- | -------------------------------------------------- |
-| `apps/web`     | **Canonico**  | Evolui com a arquitetura modular do V2             |
-| `apps/his-web` | **Legado**    | Referencia de implementacao. Nao recebe dev ativo. |
+- app: `apps/web`
+- runtime: Node.js HTTP server
+- renderizacao: HTML server-side com scripts client-side
+- roteamento: path routing, nao hash routing
 
-## Papel do `apps/web`
+### Rotas de pagina existentes
 
-- navegacao e composicao de experiencia
-- formulacao de comandos para API
-- leitura de queries consolidadas
-- consumo de `auth-sdk`, `contracts`, `types` e `ui`
+- `/login`
+- `/`
+- `/owners`
+- `/patients`
+- `/encounters`
+- `/medical-records`
+- `/users`
+- `/staff`
+- `/access-control`
+- `/appointments`
+- `/queue`
+- `/triage`
+- `/inpatient`
+- `/sectors`
+- `/beds`
+- `/bed-map`
+- `/diagnostics`
+- `/surgeries`
+- `/inventory`
+- `/billing`
+- `/notifications`
+- `/audit`
+- `/master-search`
+- `/discharges`
+- `/prescription-executions`
+- `/prescriptions`
+
+## Capacidades cobertas
+
+- autenticacao e sessao
+- dashboard
+- cadastro mestre de tutores e pacientes
+- atendimento e fila
+- triagem
+- prontuario clinico
+- internacao, setores, leitos e mapa de leitos
+- exames e cirurgias
+- prescricoes e execucao de prescricoes
+- billing e estoque
+- usuarios, equipe e permissoes
+- notificacoes, auditoria e busca global
+- altas
 
 ## Responsabilidades
 
-- traduzir capabilities em affordances de UX
-- orientar o usuario sobre estados e riscos
-- apresentar timeline clinica, cadastros e fluxos operacionais
+- expor a superficie funcional do ERP de forma navegavel
+- formular requests para a API
+- refletir estados operacionais e de autorizacao
+- organizar a experiencia por dominios e fluxos de trabalho
 
 ## Nao responsabilidades
 
-- decidir permissao soberana
-- implementar regra clinica material de forma exclusiva
-- substituir validacao de dominio
+- decidir regra de dominio como fonte soberana
+- substituir validacoes de backend
+- manter regras clinicas apenas no cliente
 
-## Diretrizes
+## Lacunas ainda abertas
 
-- fluxo guiado por contracts publicos (`@cvg-his-v2/shared-contracts`)
-- evitar estado cliente que replique regra de negocio
-- componentes de UI compartilhados ficam em `packages/shared/ui`, sem absorver dominio clinico
-- framework de UI (React, Vue, etc.) pode ser introduzido em iteracao futura, se a trilha oficial precisar de mais ergonomia alem da base atual
+- suite E2E ainda nao cobre toda a superficie de tela
+- frontend ainda usa HTML inline; isso e aceitavel no curto prazo, mas exige disciplina de manutencao
+- falta consolidar documentacao de UX por dominio para os modulos mais novos
 
-## Referencia de implementacao
+## Direcao para a proxima fase
 
-Componentes, hooks e padroes de UX de `apps/his-web` podem ser adaptados como referencia durante ENT-006. Isso inclui:
-
-- componentes de UI (Card, Button, Input, ErrorBanner, LoadingState)
-- hooks (useDebouncedSearch, useSmartAutoRefresh)
-- padroes de auth e middleware
-- estrutura de features (encounter, inpatient, patients)
+- manter `apps/web` como frontend oficial
+- expandir cobertura E2E dos fluxos enterprise
+- documentar UX e contratos de cada modulo novo apenas quando eles estiverem operacionais de ponta a ponta
+- evitar criar trilhas paralelas de frontend

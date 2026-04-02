@@ -15,10 +15,10 @@ function createTestRuntime(repositories?: RuntimeRepositories) {
   });
 }
 
-test('login, session refresh and audit trail work end-to-end', () => {
+test('login, session refresh and audit trail work end-to-end', async () => {
   const runtime = createTestRuntime();
 
-  const login = runtime.auth.login(
+  const login = await runtime.auth.login(
     {
       username: 'admin',
       password: 'seed_admin'
@@ -51,9 +51,9 @@ test('login, session refresh and audit trail work end-to-end', () => {
   );
 });
 
-test('backend enforcement denies audit access to a role without permission', () => {
+test('backend enforcement denies audit access to a role without permission', async () => {
   const runtime = createTestRuntime();
-  const login = runtime.auth.login(
+  const login = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -78,9 +78,9 @@ test('backend enforcement denies audit access to a role without permission', () 
   );
 });
 
-test('master registry supports owner, patient, relationship and search flows', () => {
+test('master registry supports owner, patient, relationship and search flows', async () => {
   const runtime = createTestRuntime();
-  const login = runtime.auth.login(
+  const login = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -158,9 +158,9 @@ test('master registry supports owner, patient, relationship and search flows', (
   );
 });
 
-test('operational flow supports appointment, queue, encounter lifecycle, triage and timeline', () => {
+test('operational flow supports appointment, queue, encounter lifecycle, triage and timeline', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = runtime.auth.login(
+  const receptionLogin = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -169,7 +169,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   );
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
-  const appointment = runtime.scheduling.createAppointment(reception.user.accountId, {
+  const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
     patientId: 'patient_luna',
     ownerId: 'owner_maria_silva',
     scheduledAt: '2026-03-26T10:00:00.000Z',
@@ -177,14 +177,14 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     reason: 'Consulta de retorno'
   });
 
-  const queueEntry = runtime.scheduling.checkIn(reception.user.accountId, {
+  const queueEntry = await runtime.scheduling.checkIn(reception.user.accountId, {
     patientId: 'patient_luna',
     ownerId: 'owner_maria_silva',
     appointmentId: appointment.id,
     reason: 'Chegada para retorno',
     priority: 'medium'
   });
-  runtime.scheduling.callQueueEntry(queueEntry.id);
+  await runtime.scheduling.callQueueEntry(queueEntry.id);
 
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -195,7 +195,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     origin: 'schedule',
     reason: 'Retorno ambulatorial'
   });
-  runtime.scheduling.attachEncounter(queueEntry.id, encounter.id);
+  await runtime.scheduling.attachEncounter(queueEntry.id, encounter.id);
   runtime.encounters.appendTimeline(encounter.id, {
     accountId: encounter.accountId,
     eventType: 'queue_checked_in',
@@ -211,17 +211,16 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   runtime.encounters.transitionEncounter(encounter.id, reception.user.id, {
     nextStatus: 'in_triage'
   });
-  runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'in_triage');
 
-  const nurseLogin = runtime.auth.login(
+  const nurseLogin = await runtime.auth.login(
     {
       username: 'nurse',
-      password: 'nurse123'
+      password: 'seed_nurse'
     },
     'corr_operational_nurse'
   );
   const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
-  const triage = runtime.triage.createTriage(nurse.user.id, {
+  const triage = await runtime.triage.createTriage(nurse.user.id, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     priority: 'high',
@@ -239,12 +238,12 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   const inObservation = runtime.encounters.transitionEncounter(encounter.id, nurse.user.id, {
     nextStatus: triage.destination
   });
-  runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
+  await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
 
   const closed = runtime.encounters.closeEncounter(encounter.id, nurse.user.id, {
     closeReason: 'Fluxo operacional concluido para encaminhamento clinico posterior'
   });
-  runtime.scheduling.completeQueueEntry(queueEntry.id);
+  await runtime.scheduling.completeQueueEntry(queueEntry.id);
 
   const timeline = runtime.encounters.listTimeline(encounter.id);
 
@@ -261,9 +260,59 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
   );
 });
 
+test('triage can be updated while encounter is open', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'seed_reception'
+    },
+    'corr_triage_update_reception'
+  );
+  const nurseLogin = await runtime.auth.login(
+    {
+      username: 'nurse',
+      password: 'seed_nurse'
+    },
+    'corr_triage_update_nurse'
+  );
+
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+  const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
+
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Triagem com necessidade de correcao'
+  });
+
+  const created = await runtime.triage.createTriage(nurse.user.id, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    priority: 'medium',
+    chiefComplaint: 'Dor abdominal',
+    alerts: ['dor'],
+    destination: 'observation'
+  });
+
+  const updated = await runtime.triage.updateTriage(created.id, {
+    priority: 'high',
+    destination: 'in_care',
+    initialNotes: 'Piora clinica observada',
+    alerts: ['dor', 'vomito']
+  });
+
+  assert.equal(updated.priority, 'high');
+  assert.equal(updated.destination, 'in_care');
+  assert.equal(updated.chiefComplaint, 'Dor abdominal');
+  assert.deepEqual(updated.alerts, ['dor', 'vomito']);
+});
+
 test('clinical record supports entries, prescriptions, conduct and attachments linked to encounter', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = runtime.auth.login(
+  const receptionLogin = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -279,7 +328,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
     reason: 'Atendimento clinico basico'
   });
 
-  const vetLogin = runtime.auth.login(
+  const vetLogin = await runtime.auth.login(
     {
       username: 'vet',
       password: 'seed_vet'
@@ -359,7 +408,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
 
 test('advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = runtime.auth.login(
+  const receptionLogin = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -375,7 +424,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     reason: 'Caso clinico com necessidade de suporte avancado'
   });
 
-  const vetLogin = runtime.auth.login(
+  const vetLogin = await runtime.auth.login(
     {
       username: 'vet',
       password: 'seed_vet'
@@ -547,9 +596,9 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
   );
 });
 
-test('administrative modules keep billing, inventory and notifications linked without exposing clinical permissions', () => {
+test('administrative modules keep billing, inventory and notifications linked without exposing clinical permissions', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = runtime.auth.login(
+  const receptionLogin = await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
@@ -565,29 +614,29 @@ test('administrative modules keep billing, inventory and notifications linked wi
     reason: 'Atendimento com consumo administrativo vinculado'
   });
 
-  const financeLogin = runtime.auth.login(
+  const financeLogin = await runtime.auth.login(
     {
       username: 'finance',
-      password: 'finance123'
+      password: 'seed_finance'
     },
     'corr_admin_bridge_finance'
   );
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
-  const inventoryLogin = runtime.auth.login(
+  const inventoryLogin = await runtime.auth.login(
     {
       username: 'inventory',
-      password: 'inventory123'
+      password: 'seed_inventory'
     },
     'corr_admin_bridge_inventory'
   );
   const inventoryUser = runtime.auth.authenticateAccessToken(inventoryLogin.accessToken);
 
-  const estimate = runtime.billing.createEstimate({
+  const estimate = await runtime.billing.createEstimate({
     encounterId: encounter.id,
     administrativeNotes: 'Orcamento inicial emitido para tutor.'
   });
-  const item = runtime.billing.addItem(finance.user.id, {
+  const item = await runtime.billing.addItem(finance.user.id, {
     encounterId: encounter.id,
     itemType: 'exam',
     description: 'Ultrassonografia abdominal',
@@ -596,9 +645,9 @@ test('administrative modules keep billing, inventory and notifications linked wi
     sourceEntityType: 'encounter',
     sourceEntityId: encounter.id
   });
-  const openedBilling = runtime.billing.updateStatus(encounter.id, { status: 'open' });
+  const openedBilling = await runtime.billing.updateStatus(encounter.id, { status: 'open' });
 
-  const consumption = runtime.inventory.consume(inventoryUser.user.id, {
+  const consumption = await runtime.inventory.consume(inventoryUser.user.id, {
     encounterId: encounter.id,
     inventoryItemId: 'inv_gauze',
     quantity: 2,
@@ -606,7 +655,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
     sourceEntityId: encounter.id
   });
 
-  const notification = runtime.notifications.create(finance.user.id, finance.user.accountId, {
+  const notification = await runtime.notifications.create(finance.user.id, finance.user.accountId, {
     category: 'billing',
     encounterId: encounter.id,
     patientId: encounter.patientId,
@@ -656,7 +705,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
   const runtimeA = createTestRuntime(repositories);
 
   // Login and create session
-  const loginA = runtimeA.auth.login(
+  const loginA = await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_restart_test'
   );
@@ -802,7 +851,7 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   const runtimeA = createTestRuntime(repositories);
 
   // Login
-  const loginA = runtimeA.auth.login(
+  const loginA = await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_medical_restart_test'
   );
@@ -963,14 +1012,14 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
   const runtime = createTestRuntime(repositories);
 
   // Login as finance user
-  const financeLogin = runtime.auth.login(
-    { username: 'finance', password: 'finance123' },
+  const financeLogin = await runtime.auth.login(
+    { username: 'finance', password: 'seed_finance' },
     'corr_worker_integration'
   );
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification
-  const notification = runtime.notifications.create(finance.user.id, finance.user.accountId, {
+  const notification = await runtime.notifications.create(finance.user.id, finance.user.accountId, {
     category: 'billing',
     severity: 'high',
     title: 'Conta atrasada',
@@ -1020,18 +1069,22 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   const runtime2 = createTestRuntime();
 
   // API (runtime1) creates a notification
-  const financeLogin = runtime1.auth.login(
-    { username: 'finance', password: 'finance123' },
+  const financeLogin = await runtime1.auth.login(
+    { username: 'finance', password: 'seed_finance' },
     'corr_separate_instances'
   );
   const finance = runtime1.auth.authenticateAccessToken(financeLogin.accessToken);
 
-  const notification = runtime1.notifications.create(finance.user.id, finance.user.accountId, {
-    category: 'operations',
-    severity: 'medium',
-    title: 'Test separado',
-    message: 'Teste de instancias separadas'
-  });
+  const notification = await runtime1.notifications.create(
+    finance.user.id,
+    finance.user.accountId,
+    {
+      category: 'operations',
+      severity: 'medium',
+      title: 'Test separado',
+      message: 'Teste de instancias separadas'
+    }
+  );
 
   // Worker (runtime2) tries to process - finds nothing because it's a different instance
   const processed = runtime2.notifications.processPending({ limit: 10 });
@@ -1057,7 +1110,7 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   const runtime = createTestRuntime();
 
   // Login as reception
-  const receptionLogin = runtime.auth.login(
+  const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_cross_aggregate'
   );
@@ -1073,13 +1126,13 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   });
 
   // Create billing estimate
-  const estimate = runtime.billing.createEstimate({
+  const estimate = await runtime.billing.createEstimate({
     encounterId: encounter.id,
     administrativeNotes: 'Orcamento inicial'
   });
 
   // Add billing item
-  const item = runtime.billing.addItem(reception.user.id, {
+  const item = await runtime.billing.addItem(reception.user.id, {
     encounterId: encounter.id,
     itemType: 'service',
     description: 'Consulta veterinaria',
@@ -1088,14 +1141,18 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   });
 
   // Create notification about billing
-  const notification = runtime.notifications.create(reception.user.id, reception.user.accountId, {
-    category: 'billing',
-    severity: 'medium',
-    title: 'Orcamento criado',
-    message: `Orcamento de R$ 150 criado para ${encounter.patientId}`,
-    encounterId: encounter.id,
-    patientId: encounter.patientId
-  });
+  const notification = await runtime.notifications.create(
+    reception.user.id,
+    reception.user.accountId,
+    {
+      category: 'billing',
+      severity: 'medium',
+      title: 'Orcamento criado',
+      message: `Orcamento de R$ 150 criado para ${encounter.patientId}`,
+      encounterId: encounter.id,
+      patientId: encounter.patientId
+    }
+  );
 
   // Verify cross-aggregate links
   assert.equal(estimate.encounterId, encounter.id, 'Estimate should link to encounter');
@@ -1120,19 +1177,23 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   const apiRuntime = createTestRuntime(repositories);
 
   // Login as finance user
-  const financeLogin = apiRuntime.auth.login(
-    { username: 'finance', password: 'finance123' },
+  const financeLogin = await apiRuntime.auth.login(
+    { username: 'finance', password: 'seed_finance' },
     'corr_worker_repo_integration'
   );
   const finance = apiRuntime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification (writes to repository)
-  const notification = apiRuntime.notifications.create(finance.user.id, finance.user.accountId, {
-    category: 'billing',
-    severity: 'high',
-    title: 'Pagamento vencido',
-    message: 'Conta atrasada ha 60 dias.'
-  });
+  const notification = await apiRuntime.notifications.create(
+    finance.user.id,
+    finance.user.accountId,
+    {
+      category: 'billing',
+      severity: 'high',
+      title: 'Pagamento vencido',
+      message: 'Conta atrasada ha 60 dias.'
+    }
+  );
 
   // Verify notification is in repository
   const notifInRepo = await repositories.notification?.findNotificationById(notification.id);
@@ -1162,7 +1223,9 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   assert.equal(processed[0].id, notification.id, 'Worker should process the correct notification');
 
   // Verify notification is now sent in repository
-  const sentNotifications = await repositories.notification?.findNotifications('sent');
+  const sentNotifications = (await repositories.notification?.findNotifications())?.filter(
+    (entry) => entry.status === 'sent'
+  );
   assert.ok(
     sentNotifications && sentNotifications.some((n) => n.id === notification.id),
     'Notification should be marked as sent in repository'
@@ -1181,4 +1244,140 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   // 3. Worker processes and updates repository
   // 4. API sees worker's updates via repository
   // Real integration between API and worker via shared repository
+});
+
+test('scheduling hardening: cancel appointment, time conflict, and queue transitions', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_scheduling_hardening'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-10T10:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Consulta para cancelamento'
+  });
+  assert.equal(appointment.status, 'scheduled');
+
+  const cancelled = await runtime.scheduling.cancelAppointment(appointment.id, 'Cliente desistiu');
+  assert.equal(cancelled.status, 'cancelled');
+  assert.equal(cancelled.reason, 'Cliente desistiu');
+
+  const apptAfterCancel = runtime.scheduling.getAppointmentOrThrow(appointment.id);
+  assert.equal(apptAfterCancel.status, 'cancelled');
+});
+
+test('scheduling hardening: rejects double cancellation', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_double_cancel'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-11T10:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Consulta para cancelar duas vezes'
+  });
+
+  await runtime.scheduling.cancelAppointment(appointment.id, 'Primeiro cancelamento');
+
+  try {
+    await runtime.scheduling.cancelAppointment(appointment.id, 'Segundo cancelamento');
+    assert.fail('Should have thrown');
+  } catch (err) {
+    assert.ok(err instanceof Error, 'Should throw an error');
+    assert.ok(
+      err.message.includes('cannot be cancelled'),
+      'Should mention cancellation restriction'
+    );
+  }
+});
+
+test('scheduling hardening: time conflict blocks overlapping appointments', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_time_conflict'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  await runtime.scheduling.createAppointment(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-12T10:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Consulta base'
+  });
+
+  try {
+    await runtime.scheduling.createAppointment(reception.user.accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-12T10:15:00.000Z',
+      visitType: 'return',
+      reason: 'Consulta conflitante'
+    });
+    assert.fail('Should have thrown for overlapping appointment');
+  } catch (err) {
+    assert.ok(err instanceof Error, 'Should throw an error');
+    assert.ok(err.message.includes('30-minute window'), 'Should mention time window');
+  }
+
+  const later = await runtime.scheduling.createAppointment(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-12T11:00:00.000Z',
+    visitType: 'return',
+    reason: 'Consulta fora da janela'
+  });
+  assert.equal(later.status, 'scheduled');
+});
+
+test('scheduling hardening: queue transitions enforce state machine', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_queue_transitions'
+  );
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const queueEntry = await runtime.scheduling.checkIn(reception.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    reason: 'Fluxo de transicoes'
+  });
+  assert.equal(queueEntry.status, 'waiting');
+
+  await runtime.scheduling.callQueueEntry(queueEntry.id);
+  await runtime.scheduling.attachEncounter(queueEntry.id, 'enc_transitions' as never);
+  await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'in_care');
+  await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
+  await runtime.scheduling.transitionQueueEntry(queueEntry.id, 'completed');
+
+  try {
+    await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'waiting');
+    assert.fail('Should have thrown for invalid transition');
+  } catch (err) {
+    assert.ok(err instanceof Error, 'Should throw an error');
+    assert.ok(
+      err.message.includes('Invalid queue entry status transition'),
+      'Should mention invalid transition'
+    );
+  }
+
+  try {
+    await runtime.scheduling.callQueueEntry(queueEntry.id);
+    assert.fail('Should have thrown for calling completed entry');
+  } catch (err) {
+    assert.ok(err instanceof Error, 'Should throw an error');
+    assert.ok(err.message.includes('cannot be called'), 'Should mention call restriction');
+  }
 });

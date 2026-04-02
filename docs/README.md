@@ -1,121 +1,174 @@
-# CVG-HIS V2 Documentation Index
+# CVG-HIS V2 - Active Documentation
 
-Este diretorio concentra a documentacao de reconstrucao do `cvg-his-v2`.
+Esta raiz `docs/` agora contem apenas a documentacao viva e necessaria para conduzir a proxima etapa de construcao do CVG-HIS V2 como um ERP veterinario enterprise.
 
-## Como a numeracao foi organizada
+Todo o acervo historico, auditorias antigas, prompts, relatorios de fase e documentos fora da trilha viva foi arquivado em `docs/docs2/archive-active-reset-2026-03-31/`.
 
-- `010-099`: fase 0 e congelamento estrategico
-- `100-199`: fundacao documental e definicao do alvo
-- `200-299`: progresso, validacao e pendencias por fase executavel
-- `280-299`: migracao controlada e transicao legado -> V2
-- `900+`: auditorias executivas e backlog de proximos passos
+## Objetivo da trilha viva
 
-## Sequencia recomendada de leitura
+Levar o repositorio a uma base documental que sustente:
 
-1. `010-reconstruction-rationale.md`
-2. `011-legacy-inventory.md`
-3. `012-legacy-reuse-map.md`
-4. `013-legacy-discard-map.md`
-5. `100-domain-map.md`
-6. `101-bounded-contexts.md`
-7. `103-business-rules.md`
-8. `112-target-architecture.md`
-9. `123-phased-execution-plan.md`
-10. `900-executive-audit-backlog.md`
+- evolucao tecnica coerente com o codigo existente
+- construcao das lacunas restantes para um ERP veterinario enterprise
+- operacionalizacao de testes, release e deploy
+- nota documental alvo de `85/100` ao final da construcao
 
-## Bloco 01 - Fase 0 e Governanca Inicial
+## Ordem recomendada de leitura
 
-- `010-reconstruction-rationale.md`
-- `011-legacy-inventory.md`
-- `012-legacy-reuse-map.md`
-- `013-legacy-discard-map.md`
-- `014-phase-0-progress.md`
-- `015-phase-0-validation.md`
-- `016-phase-0-open-issues.md`
+1. `400-auditoria-documental-pente-fino.md`
+2. `410-matriz-aderencia-documental.md`
+3. `420-plano-atualizacao-documental.md`
+4. `430-fonte-de-verdade-documental.md`
+5. `440-roadmap-construcao-85.md`
+6. `450-gaps-enterprise-priorizados.md`
+7. `480-plano-execucao-85-plus-enterprise.md`
+8. `490-backlog-executavel-implementacao.md`
+9. `112-target-architecture.md`
+10. `113-module-contracts.md`
+11. `114-frontend-architecture.md`
+12. `115-backend-architecture.md`
+13. `116-worker-architecture.md`
+14. `123-phased-execution-plan.md`
+15. `460-qualidade-testes-e-gates.md`
+16. `470-politica-migracao-e-deploy.md`
+17. `130-instalacao-publicacao-cvg-his-v2-real.md`
+18. `131-checklist-cutover-servidor.md`
+19. `580-plano-modulos-comerciais-enterprise.md`
+20. `581-backlog-modulos-comerciais.md`
 
-## Bloco 02 - Fundacao Documental do V2
+## Trilha viva
 
-- `100-domain-map.md`
-- `101-bounded-contexts.md`
-- `102-ubiquitous-language.md`
-- `103-business-rules.md`
-- `104-clinical-workflows.md`
-- `105-operational-workflows.md`
-- `106-patient-safety-rules.md`
-- `107-roles-and-permissions.md`
-- `108-authentication-strategy.md`
-- `109-authorization-strategy.md`
-- `110-audit-trail-strategy.md`
-- `111-sensitive-data-handling.md`
+### Auditoria e governanca
+
+- `400-auditoria-documental-pente-fino.md`
+- `410-matriz-aderencia-documental.md`
+- `420-plano-atualizacao-documental.md`
+- `430-fonte-de-verdade-documental.md`
+
+### Construcao alvo
+
+- `440-roadmap-construcao-85.md`
+- `450-gaps-enterprise-priorizados.md`
+- `480-plano-execucao-85-plus-enterprise.md`
+- `490-backlog-executavel-implementacao.md`
+- `123-phased-execution-plan.md`
+
+### Arquitetura
+
 - `112-target-architecture.md`
 - `113-module-contracts.md`
 - `114-frontend-architecture.md`
 - `115-backend-architecture.md`
 - `116-worker-architecture.md`
-- `117-observability-foundation.md`
-- `118-data-foundation.md`
-- `119-aggregate-design.md`
-- `120-audit-model.md`
-- `121-soft-delete-and-versioning.md`
-- `122-attachment-model.md`
-- `123-phased-execution-plan.md`
-- `124-migration-strategy.md`
-- `125-validation-checkpoints.md`
-- `126-implementation-readiness-review.md`
-- `127-state-validation-report.md`
-- `128-phase-1-progress.md`
-- `129-phase-1-validation.md`
-- `130-phase-1-open-issues.md`
-
-## Bloco 03 - Execucao por Fase
-
-- `200-phase-2-progress.md`
-- `201-phase-2-validation.md`
-- `202-phase-2-open-issues.md`
-- `210-phase-3-progress.md`
-- `211-phase-3-validation.md`
-- `212-phase-3-open-issues.md`
-- `220-phase-4-progress.md`
-- `221-phase-4-validation.md`
-- `222-phase-4-open-issues.md`
-- `230-phase-5-progress.md`
-- `231-phase-5-validation.md`
-- `232-phase-5-open-issues.md`
-- `240-phase-6-progress.md`
-- `241-phase-6-validation.md`
-- `242-phase-6-open-issues.md`
-- `250-phase-7-progress.md`
-- `251-phase-7-validation.md`
-- `252-phase-7-open-issues.md`
-- `260-phase-8-progress.md`
-- `261-phase-8-validation.md`
-- `262-phase-8-open-issues.md`
-- `270-phase-9-progress.md`
-- `271-phase-9-validation.md`
-- `272-phase-9-open-issues.md`
-
-## Bloco 04 - Migracao e Transicao
-
-- `280-legacy-to-v2-map.md`
-- `281-data-migration-plan.md`
-- `282-functional-migration-plan.md`
-- `phase-9-migration-manifest.json`
-
-## Bloco 05 - Auditoria Executiva
-
-- `900-executive-audit-backlog.md`
-- `901-sprint-p0.1-audit.md`
-- `902-enterprise-acceleration-plan.md`
-- `aud-008-02-closure.md`
-
-## ADRs
-
 - `adr/ADR-003-arquitetura-canonica-v2.md`
 - `adr/ADR-004-stack-persistencia-v2.md`
 - `adr/ADR-005-persistencia-implementada-wave1.md`
 - `adr/ADR-006-repository-pattern.md`
 - `adr/ADR-007-frontend-canonico-v2.md`
+- `adr/ADR-009-module-structure-simplified.md`
 
-## Material de apoio complementar
+### Qualidade, dados e operacao
 
-Os subdiretorios `00_governance` a `08_reports`, alem de `docs2`, concentram artefatos historicos, checklists auxiliares, relatorios e aprofundamentos que nao substituem a sequencia principal numerada deste diretorio.
+- `460-qualidade-testes-e-gates.md`
+- `470-politica-migracao-e-deploy.md`
+- `130-instalacao-publicacao-cvg-his-v2-real.md`
+- `131-checklist-cutover-servidor.md`
+
+### Modulos enterprise (docs vivas minimas)
+
+- `500-modulo-access-control.md`
+- `501-modulo-attachments.md`
+- `502-modulo-billing.md`
+- `503-modulo-notifications.md`
+- `504-modulo-scheduling.md`
+- `505-modulo-staff.md`
+- `506-modulo-surgery.md`
+- `507-modulo-triage.md`
+- `508-modulo-users.md`
+
+### Fluxos criticos e gaps
+
+- `510-matriz-fluxos-criticos-enterprise.md`
+- `511-backlog-gaps-funcionais.md`
+
+### Expansao comercial enterprise
+
+- `580-plano-modulos-comerciais-enterprise.md`
+- `581-backlog-modulos-comerciais.md`
+- `582-modelagem-comercial-final.md`
+- `583-fase-c1-c2-validacao.md`
+- `584-fase-c3-c4-validacao.md`
+- `585-fase-c5-validacao.md`
+- `586-ciclo-comercial-final-validacao.md`
+- `587-veredito-comercial-operacional-final.md`
+
+### Release e checklist enterprise
+
+- `520-checklist-release-enterprise.md`
+
+### Score final e veredito
+
+- `530-score-final-85-plus.md`
+- `531-riscos-residuais-e-backlog-pos-85.md`
+- `540-veredito-final-enterprise.md`
+- `550-ciclo-1-fechamento-gaps-final.md`
+- `560-pacote-final-prontidao-publicacao.md`
+- `561-veredito-operacional-final.md`
+- `570-ciclo-2-autonomia-operacional.md`
+
+### Fechamento global
+
+- `590-consolidacao-global-produto.md`
+- `591-score-final-global.md`
+- `592-veredito-global-operacional.md`
+- `593-backlog-residual-pos-fechamento-global.md`
+- `594-fechamento-global-validacao.md`
+
+### Ciclo de Autonomia Operacional
+
+- `600-ciclo-autonomia-operacional-validacao.md`
+- `601-score-pos-autonomia-operacional.md`
+- `602-veredito-pos-autonomia-operacional.md`
+
+### Ciclo de Autonomia Plena
+
+- `610-ciclo-autonomia-plena-validacao.md`
+- `611-score-pos-autonomia-plena.md`
+- `612-veredito-pos-autonomia-plena.md`
+
+### Ciclo Residual Final
+
+- `620-ciclo-residual-final-validacao.md`
+
+### Avaliacao Atual
+
+- `630-avaliacao-atual-e-plano-producao-enterprise.md`
+- `631-fase-e1-qualidade-validacao.md`
+- `632-fase-e2-operacao-validacao.md`
+- `632-fase-paralela-triage-validacao.md`
+- `633-fase-paralela-scheduling-queue-validacao.md`
+- `634-fase-hardening-scheduling-validacao.md`
+- `634-fase-hardening-scheduling-validacao.md`
+
+### Validacao de ondas
+
+- `491-onda-1-validacao.md`
+- `492-onda-2-validacao.md`
+- `493-onda-3-validacao.md`
+- `494-onda-4-validacao.md`
+
+## Regras editoriais
+
+- documento vivo precisa refletir o estado real do codigo
+- historico nao fica mais no topo de `docs/`
+- prompts operacionais nao ficam mais misturados com documentacao de referencia
+- deploy, banco e testes devem ter uma fonte de verdade explicita
+- qualquer novo documento na raiz deve ser necessario para construcao ou operacao
+
+## Arquivo historico
+
+Os documentos arquivados foram preservados em:
+
+- `docs/docs2/archive-active-reset-2026-03-31/`
+
+Esse arquivo deve ser tratado como acervo historico e nao como trilha principal.

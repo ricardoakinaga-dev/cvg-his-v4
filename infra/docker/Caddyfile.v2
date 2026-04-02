@@ -1,9 +1,17 @@
+# CVG-HIS V2 — Caddyfile
+# his.domain.com → Web (porta externa 3001)
+# his-api.domain.com → API (porta externa 3000)
+#
+# Compose mapping:
+#   API:  3000:3001  (externa:interna)
+#   Web:  3001:3000  (externa:interna)
+
 his.centroveterinarioguarapiranga.com {
   encode gzip
-  reverse_proxy 127.0.0.1:3000
+  reverse_proxy 127.0.0.1:3001
 }
 
 his-api.centroveterinarioguarapiranga.com {
   encode gzip
-  reverse_proxy 127.0.0.1:3001
+  reverse_proxy 127.0.0.1:3000
 }

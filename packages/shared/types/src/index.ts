@@ -16,6 +16,7 @@ export type AppointmentId = Brand<string, 'AppointmentId'>;
 export type QueueEntryId = Brand<string, 'QueueEntryId'>;
 export type EncounterId = Brand<string, 'EncounterId'>;
 export type TriageRecordId = Brand<string, 'TriageRecordId'>;
+export type TriageVersionId = Brand<string, 'TriageVersionId'>;
 export type EncounterTimelineEventId = Brand<string, 'EncounterTimelineEventId'>;
 export type MedicalRecordId = Brand<string, 'MedicalRecordId'>;
 export type ClinicalEntryId = Brand<string, 'ClinicalEntryId'>;
@@ -239,6 +240,24 @@ export interface TriageSummary {
   readonly triagedByUserId: UserId;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface TriageVersionSummary {
+  readonly id: TriageVersionId;
+  readonly triageId: TriageRecordId;
+  readonly accountId: AccountId;
+  readonly encounterId: EncounterId;
+  readonly changedFields: readonly string[];
+  readonly previousSnapshot: Pick<
+    TriageSummary,
+    'priority' | 'chiefComplaint' | 'initialNotes' | 'alerts' | 'destination' | 'updatedAt'
+  >;
+  readonly nextSnapshot: Pick<
+    TriageSummary,
+    'priority' | 'chiefComplaint' | 'initialNotes' | 'alerts' | 'destination' | 'updatedAt'
+  >;
+  readonly changedByUserId: UserId;
+  readonly createdAt: string;
 }
 
 export interface EncounterTimelineEventSummary {

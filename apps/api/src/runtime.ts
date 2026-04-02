@@ -24,7 +24,7 @@ import type {
   InpatientStayRepository,
   InpatientProgressRepository
 } from '@cvg-his-v2/module-inpatient';
-import { InventoryService } from '@cvg-his-v2/module-inventory';
+import { InventoryService, createSeedItems } from '@cvg-his-v2/module-inventory';
 import {
   MedicalRecordsService,
   type MedicalRecordRepository,
@@ -40,17 +40,30 @@ import { OwnersService } from '@cvg-his-v2/module-owners';
 import type { OwnerRepository } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/module-patients';
-import { SchedulingService } from '@cvg-his-v2/module-scheduling';
+import { SchedulingService, createSeedAppointments } from '@cvg-his-v2/module-scheduling';
 import { StaffService } from '@cvg-his-v2/module-staff';
+import type { StaffRepository } from '@cvg-his-v2/module-staff';
 import { SurgeryService } from '@cvg-his-v2/module-surgery';
 import type { SurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { TriageService } from '@cvg-his-v2/module-triage';
 import { UsersService } from '@cvg-his-v2/module-users';
 import type { DiagnosticOrderRepository } from '@cvg-his-v2/module-diagnostics';
 import { DischargesService } from '@cvg-his-v2/module-discharges';
+import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
+import { QuotesService } from '@cvg-his-v2/module-quotes';
+import { CashService } from '@cvg-his-v2/module-cash';
+import type { AccountId } from '@cvg-his-v2/shared-types';
+import { ProductsService } from '@cvg-his-v2/module-products';
+import { ServicesService } from '@cvg-his-v2/module-services';
 import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
+import type { CounterSalesRepository } from '@cvg-his-v2/module-counter-sales';
+import type { QuotesRepository } from '@cvg-his-v2/module-quotes';
+import type { CashRepository } from '@cvg-his-v2/module-cash';
 import { PrescriptionExecutionsService } from '@cvg-his-v2/module-prescription-executions';
-import type { PrescriptionExecutionRepository, AdministrationEventRepository } from '@cvg-his-v2/module-prescription-executions';
+import type {
+  PrescriptionExecutionRepository,
+  AdministrationEventRepository
+} from '@cvg-his-v2/module-prescription-executions';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
 import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
@@ -58,6 +71,8 @@ import type { SchedulingRepository } from '@cvg-his-v2/module-scheduling';
 import type { TriageRepository } from '@cvg-his-v2/module-triage';
 import type { UsersRepository } from '@cvg-his-v2/module-users';
 import type { AccessControlRepository } from '@cvg-his-v2/module-access-control';
+import type { ProductsRepository } from '@cvg-his-v2/module-products';
+import type { ServicesRepository } from '@cvg-his-v2/module-services';
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -86,6 +101,12 @@ export interface RuntimeRepositories {
   readonly triage?: TriageRepository;
   readonly users?: UsersRepository;
   readonly accessControl?: AccessControlRepository;
+  readonly products?: ProductsRepository;
+  readonly services?: ServicesRepository;
+  readonly counterSales?: CounterSalesRepository;
+  readonly quotes?: QuotesRepository;
+  readonly cash?: CashRepository;
+  readonly staff?: StaffRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -101,8 +122,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const repos = options.repositories ?? {};
 
   const accessControl = new AccessControlService();
-  const users = new UsersService();
-  const staff = new StaffService();
+  const users = new UsersService({ repository: repos.users });
+  const staff = new StaffService({ repository: repos.staff });
   const owners = new OwnersService({ ownerRepository: repos.owner });
   const patients = new PatientsService({
     owners,
@@ -115,8 +136,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     encounterRepository: repos.encounter,
     encounterTimelineRepository: repos.encounterTimeline
   });
-  const scheduling = new SchedulingService(owners, patients);
-  const triage = new TriageService(encounters);
+  const scheduling = new SchedulingService(owners, patients, [], { repository: repos.scheduling });
+  const triage = new TriageService(encounters, { repository: repos.triage });
   const medicalRecords = new MedicalRecordsService({
     encounters,
     patients,
@@ -137,8 +158,10 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const diagnostics = new DiagnosticsService(encounters, {
     diagnosticOrderRepository: repos.diagnosticOrder
   });
-  const billing = new BillingService(encounters);
-  const inventory = new InventoryService(encounters);
+  const billing = new BillingService(encounters, { repository: repos.billing });
+  const inventory = new InventoryService(encounters, createSeedItems(), {
+    repository: repos.inventory
+  });
   const notifications = new NotificationsService({
     encounters,
     patients,
@@ -158,6 +181,65 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     executionRepository: repos.prescriptionExecution,
     eventRepository: repos.administrationEvent
   });
+  const products = new ProductsService({ repository: repos.products });
+  const services = new ServicesService({ repository: repos.services });
+  const cash = new CashService({ repository: repos.cash });
+  const counterSales = new CounterSalesService({
+    repository: repos.counterSales,
+    inventoryService: {
+      async consumeForSale(accountId: AccountId, codeSnapshot: string, quantity: number) {
+        const items = inventory.listItems().filter((i) => i.sku === codeSnapshot);
+        if (items.length === 0) {
+          throw new Error(`Inventory item not found for code: ${codeSnapshot}`);
+        }
+        const item = items[0];
+        return inventory.consumeForSale(accountId, item.id as never, quantity);
+      }
+    },
+    cashService: {
+      async getOpenRegister(accountId: AccountId) {
+        const reg = await cash.findOpenRegister(accountId);
+        if (!reg) return null;
+        const balance = await cash.getCurrentBalance(reg.id);
+        return { id: reg.id, runningBalance: balance };
+      },
+      async recordMovement(
+        cashRegisterId,
+        accountId,
+        movementType,
+        amount,
+        runningBalance,
+        reference,
+        notes,
+        createdByUserId
+      ) {
+        const movement = await cash.recordPaymentMovement(
+          cashRegisterId,
+          accountId,
+          amount,
+          reference,
+          notes,
+          createdByUserId
+        );
+        return {
+          id: movement.id,
+          cashRegisterId: movement.cashRegisterId,
+          movementType: movement.movementType as
+            | 'payment'
+            | 'opening'
+            | 'closing'
+            | 'supply'
+            | 'withdrawal'
+            | 'adjustment',
+          amount: movement.amount,
+          runningBalance: movement.runningBalance,
+          reference: movement.reference,
+          notes: movement.notes
+        };
+      }
+    }
+  });
+  const quotes = new QuotesService({ repository: repos.quotes });
   const auth = new AuthService({
     secret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
@@ -169,7 +251,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     sessionRepository: repos.session
   });
 
-  return {
+  const serviceMap = {
     accessControl,
     users,
     staff,
@@ -190,6 +272,29 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     audit,
     discharges,
     prescriptionExecutions,
+    products,
+    services,
+    counterSales,
+    quotes,
+    cash,
     auth
+  };
+
+  return {
+    ...serviceMap,
+    async initialize(): Promise<void> {
+      await Promise.allSettled([
+        billing.hydrateFromDatabase(),
+        inventory.hydrateFromDatabase(),
+        scheduling.hydrateFromDatabase(),
+        triage.hydrateFromDatabase(undefined as never),
+        staff.hydrateFromDatabase(undefined as never),
+        users.hydrateFromDatabase(),
+        products.hydrateFromDatabase('' as never),
+        services.hydrateFromDatabase('' as never),
+        counterSales.hydrateFromDatabase('' as never),
+        quotes.hydrateFromDatabase('' as never)
+      ]);
+    }
   };
 }

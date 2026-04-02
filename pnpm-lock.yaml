@@ -11,6 +11,12 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+      pg:
+        specifier: ^8.13.1
+        version: 8.18.0
     devDependencies:
       '@playwright/test':
         specifier: ^1.58.2
@@ -18,6 +24,9 @@ importers:
       '@types/node':
         specifier: ^22.13.5
         version: 22.19.11
+      '@types/pg':
+        specifier: ^8.15.0
+        version: 8.16.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.24.0
         version: 8.56.0(@typescript-eslint/parser@8.56.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
@@ -63,6 +72,12 @@ importers:
       '@cvg-his-v2/module-billing':
         specifier: workspace:*
         version: link:../../packages/modules/billing
+      '@cvg-his-v2/module-cash':
+        specifier: workspace:*
+        version: link:../../packages/modules/cash
+      '@cvg-his-v2/module-counter-sales':
+        specifier: workspace:*
+        version: link:../../packages/modules/counter-sales
       '@cvg-his-v2/module-diagnostics':
         specifier: workspace:*
         version: link:../../packages/modules/diagnostics
@@ -93,9 +108,18 @@ importers:
       '@cvg-his-v2/module-prescription-executions':
         specifier: workspace:^
         version: link:../../packages/modules/prescription-executions
+      '@cvg-his-v2/module-products':
+        specifier: workspace:*
+        version: link:../../packages/modules/products
+      '@cvg-his-v2/module-quotes':
+        specifier: workspace:*
+        version: link:../../packages/modules/quotes
       '@cvg-his-v2/module-scheduling':
         specifier: workspace:*
         version: link:../../packages/modules/scheduling
+      '@cvg-his-v2/module-services':
+        specifier: workspace:*
+        version: link:../../packages/modules/services
       '@cvg-his-v2/module-staff':
         specifier: workspace:*
         version: link:../../packages/modules/staff
@@ -209,12 +233,6 @@ importers:
         specifier: ^0.30.4
         version: 0.30.6
 
-  packages/domain:
-    dependencies:
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
-
   packages/events: {}
 
   packages/modules/access-control:
@@ -323,6 +341,42 @@ importers:
         version: link:../../shared/contracts
       '@cvg-his-v2/shared-database':
         specifier: workspace:^
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/cash:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/counter-sales:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
         version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
@@ -595,6 +649,42 @@ importers:
         specifier: workspace:*
         version: link:../../shared/validation
 
+  packages/modules/products:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/quotes:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
   packages/modules/scheduling:
     dependencies:
       '@cvg-his-v2/module-owners':
@@ -622,14 +712,38 @@ importers:
         specifier: workspace:*
         version: link:../../shared/validation
 
-  packages/modules/staff:
+  packages/modules/services:
     dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../shared/errors
       '@cvg-his-v2/shared-types':
         specifier: workspace:*
         version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+
+  packages/modules/staff:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
 
   packages/modules/surgery:
     dependencies:

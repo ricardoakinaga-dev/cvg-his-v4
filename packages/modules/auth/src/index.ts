@@ -70,15 +70,15 @@ export class AuthService {
     this.#sessionRepository = options.sessionRepository;
   }
 
-  public login(
+  public async login(
     input: { readonly username: string; readonly password: string },
     correlationId: string
-  ): AuthSessionResponse {
+  ): Promise<AuthSessionResponse> {
     const username = requireNonEmptyString(input.username, 'username');
     const password = requireNonEmptyString(input.password, 'password');
     const user = this.#users.findByUsername(username);
 
-    if (!user || !this.#users.verifyPassword(user, password)) {
+    if (!user || !(await this.#users.verifyPassword(user, password))) {
       this.#audit.write({
         actorId: user?.id ?? 'anonymous',
         accountId: (user?.accountId ?? 'acc_cvg_demo') as never,

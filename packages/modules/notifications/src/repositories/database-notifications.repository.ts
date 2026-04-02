@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { notifications, notificationJobs } from '@cvg-his-v2/shared-database';
 import type {
@@ -69,11 +69,18 @@ export class DatabaseNotificationRepository implements NotificationRepository {
   }
 
   public async findNotifications(
+    accountId?: AccountId,
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]> {
     let query = this.#db.select().from(notifications);
 
-    if (status) {
+    if (accountId && status) {
+      query = query.where(
+        and(eq(notifications.accountId, accountId), eq(notifications.status, status))
+      ) as typeof query;
+    } else if (accountId) {
+      query = query.where(eq(notifications.accountId, accountId)) as typeof query;
+    } else if (status) {
       query = query.where(eq(notifications.status, status)) as typeof query;
     }
 
@@ -118,13 +125,41 @@ export class DatabaseNotificationRepository implements NotificationRepository {
     return this.mapRowToJob(result[0]);
   }
 
-  public async findQueuedJobs(limit: number): Promise<readonly NotificationJobSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(notificationJobs)
-      .where(eq(notificationJobs.status, 'queued'))
-      .orderBy(notificationJobs.scheduledAt)
-      .limit(limit);
+  public async findJobs(
+    accountId?: AccountId,
+    status?: NotificationJobSummary['status']
+  ): Promise<readonly NotificationJobSummary[]> {
+    let query = this.#db.select().from(notificationJobs);
+
+    if (accountId && status) {
+      query = query.where(
+        and(eq(notificationJobs.accountId, accountId), eq(notificationJobs.status, status))
+      ) as typeof query;
+    } else if (accountId) {
+      query = query.where(eq(notificationJobs.accountId, accountId)) as typeof query;
+    } else if (status) {
+      query = query.where(eq(notificationJobs.status, status)) as typeof query;
+    }
+
+    const result = await query.orderBy(desc(notificationJobs.scheduledAt));
+    return result.map((row) => this.mapRowToJob(row));
+  }
+
+  public async findQueuedJobs(
+    limit: number,
+    accountId?: AccountId
+  ): Promise<readonly NotificationJobSummary[]> {
+    let query = this.#db.select().from(notificationJobs);
+
+    if (accountId) {
+      query = query.where(
+        and(eq(notificationJobs.status, 'queued'), eq(notificationJobs.accountId, accountId))
+      ) as typeof query;
+    } else {
+      query = query.where(eq(notificationJobs.status, 'queued')) as typeof query;
+    }
+
+    const result = await query.orderBy(asc(notificationJobs.scheduledAt)).limit(limit);
 
     return result.map((row) => this.mapRowToJob(row));
   }

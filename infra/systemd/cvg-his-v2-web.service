@@ -5,14 +5,20 @@ After=network.target cvg-his-v2-api.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/cvg-his-v2
+EnvironmentFile=/opt/cvg-his-v2/.env.production
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
 Environment=PORT=3000
 Environment=APP_NAME=cvg-his-v2-web
-Environment=API_BASE_URL=http://127.0.0.1:3001
 ExecStart=/usr/bin/node /opt/cvg-his-v2/apps/web/dist/index.js
 Restart=always
 RestartSec=5
+RestartPreventExitStatus=1 2 3 4
+TimeoutStartSec=30
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cvg-his-v2-web
 
 [Install]
 WantedBy=multi-user.target

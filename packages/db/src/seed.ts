@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
 import { and, eq, inArray } from 'drizzle-orm';
-import { CANONICAL_PERMISSIONS, ROLE_PERMISSIONS } from '@cvg-his/rbac';
 
 import { closeDbConnection, db } from './connection.js';
 import {
@@ -17,81 +16,175 @@ import {
 const DEFAULT_ACCOUNT_SLUG = 'default';
 const DEFAULT_UNIT_CODE = 'hq';
 
-const permissionDescriptions: Record<string, string> = {
-  'rbac.manage': 'Permite gerenciar papéis, permissões e vínculos de acesso.',
-  'audit.read': 'Permite leitura de trilhas de auditoria.',
-  'system.health.read': 'Permite consultar endpoints de saúde do sistema.',
-  'system.admin.test': 'Permite acesso aos endpoints administrativos de validação RBAC.',
-  'owner.read': 'Permite leitura de cadastros de proprietários.',
-  'owner.write': 'Permite criar e alterar cadastros de proprietários.',
-  'patient.read': 'Permite leitura de cadastros clínicos de pacientes.',
-  'patient.write': 'Permite criar e alterar cadastros clínicos de pacientes.',
-  'search.read': 'Permite uso de consultas e busca textual no domínio clínico.',
-  'encounter.read': 'Permite leitura de atendimentos e casos clínicos.',
-  'encounter.write': 'Permite abertura e atualização de atendimentos clínicos.',
-  'encounter.close': 'Permite encerramento formal de atendimentos clínicos.',
-  'note.read': 'Permite leitura de notas clínicas e evolução SOAP.',
-  'note.write': 'Permite criação e edição de notas clínicas.',
-  'note.sign': 'Permite assinatura de nota clínica.',
-  'note.version': 'Permite criação de novas versões de nota clínica.',
-  'timeline.read': 'Permite leitura da linha do tempo clínica consolidada.',
-  'document.read': 'Permite leitura de anexos e documentos clínicos.',
-  'document.write': 'Permite upload e vínculo de documentos clínicos.',
-  'ward.read': 'Permite leitura de alas de internação.',
-  'ward.write': 'Permite criar e alterar alas de internação.',
-  'bed.read': 'Permite leitura de leitos de internação.',
-  'bed.write': 'Permite criar e alterar leitos de internação.',
-  'bedmap.read': 'Permite consulta ao mapa de leitos e ocupação.',
-  'inpatient.read': 'Permite leitura de internações ativas e históricas.',
-  'inpatient.write': 'Permite admitir e transferir internações.',
-  'inpatient.discharge': 'Permite efetivar alta de internações.',
-  'handover.read': 'Permite leitura de handovers de plantão.',
-  'handover.write': 'Permite criar e editar rascunhos de handover.',
-  'handover.publish': 'Permite publicar handover de plantão.',
-  'medorder.read': 'Permite leitura de prescrições de medicação.',
-  'medorder.write': 'Permite criar e editar prescrições de medicação.',
-  'medorder.stop': 'Permite interromper prescrições de medicação ativas.',
-  'medadmin.read': 'Permite leitura de checagens/administrações de medicação.',
-  'medadmin.write': 'Permite registrar administração, recusa ou atraso de dose.',
-  'medlog.read': 'Permite leitura de logs e trilha operacional de medicação.',
-  'protocol.read': 'Permite leitura de protocolos clínicos.',
-  'protocol.write': 'Permite criar e editar protocolos clínicos.',
-  'protocol.publish': 'Permite publicar versões de protocolos clínicos.',
-  'protocol.diff.read': 'Permite leitura de diff entre versões de protocolos.',
-  'protocol.audit.read': 'Permite leitura de trilha de auditoria de protocolos.',
-  'protocol.ref.read': 'Permite leitura de referências/evidências de protocolos.',
-  'protocol.ref.write': 'Permite criar e editar referências/evidências de protocolos.',
-  'alerts.read': 'Permite leitura de alertas clínicos e operacionais.',
-  'product.read': 'Permite leitura do catálogo de produtos.',
-  'product.write': 'Permite criar e alterar itens do catálogo de produtos.',
-  'service.read': 'Permite leitura do catálogo de serviços.',
-  'service.write': 'Permite criar e alterar itens do catálogo de serviços.',
-  'billing_item.read': 'Permite leitura dos itens de cobrança vinculados ao atendimento.',
-  'billing_item.write': 'Permite criar, alterar e remover itens de cobrança do atendimento.',
-  'financial_account.read': 'Permite leitura do status financeiro e contas a receber do atendimento.',
-  'financial_account.close': 'Permite fechamento financeiro formal da conta do atendimento.',
-  'appointment.read': 'Permite leitura da agenda e agendamentos.',
-  'appointment.write': 'Permite criar, alterar e cancelar agendamentos.'
-};
-
-const permissionSeeds = CANONICAL_PERMISSIONS.map((key: string) => ({
-  key,
-  description: permissionDescriptions[key] ?? `Permissão canônica ${key}`
-}));
-
+// Role seeds now use AccessControlService codes (not @cvg-his/rbac codes)
+// This eliminates the dual RBAC divergence between seed and enforcement
 const roleSeeds = [
   { name: 'admin', description: 'Acesso administrativo completo.' },
-  { name: 'vet', description: 'Perfil de médico veterinário.' },
-  { name: 'enfermagem', description: 'Perfil de enfermagem.' },
-  { name: 'recepcao', description: 'Perfil de recepção.' }
+  { name: 'veterinarian', description: 'Perfil de medico veterinario.' },
+  { name: 'nurse', description: 'Perfil de enfermagem.' },
+  { name: 'reception', description: 'Perfil de recepcao.' },
+  { name: 'finance', description: 'Perfil financeiro e faturamento.' },
+  { name: 'inventory', description: 'Perfil de gestao de estoque.' },
+  { name: 'auditor', description: 'Perfil de auditoria.' }
 ];
 
-const rolePermissionMap: Record<string, string[]> = Object.fromEntries(
-  Object.entries(ROLE_PERMISSIONS).map(([roleName, rolePermissions]) => [
-    roleName,
-    [...(rolePermissions as readonly string[])]
-  ])
-);
+// Permission seeds now use AccessControlService codes (plural nouns + read/manage)
+// This eliminates the dual RBAC divergence between seed and enforcement
+const permissionSeeds = [
+  { key: 'auth.session.read', description: 'Permite leitura da propria sessao.' },
+  { key: 'users.read', description: 'Permite leitura de usuarios do sistema.' },
+  { key: 'users.manage', description: 'Permite criar e gerenciar usuarios.' },
+  { key: 'staff.read', description: 'Permite leitura de membros da equipe.' },
+  { key: 'staff.manage', description: 'Permite gerenciar membros da equipe.' },
+  { key: 'access.read', description: 'Permite leitura de roles e permissoes.' },
+  { key: 'audit.read', description: 'Permite leitura de trilhas de auditoria.' },
+  { key: 'audit.write', description: 'Permite gravar eventos de auditoria.' },
+  { key: 'owners.read', description: 'Permite leitura de cadastros de proprietarios.' },
+  { key: 'owners.manage', description: 'Permite criar e alterar cadastros de proprietarios.' },
+  { key: 'patients.read', description: 'Permite leitura de cadastros clinicos de pacientes.' },
+  {
+    key: 'patients.manage',
+    description: 'Permite criar e alterar cadastros clinicos de pacientes.'
+  },
+  { key: 'scheduling.read', description: 'Permite leitura de agendamentos e fila.' },
+  { key: 'scheduling.manage', description: 'Permite gerenciar agendamentos e fila.' },
+  { key: 'encounters.read', description: 'Permite leitura de atendimentos e casos clinicos.' },
+  {
+    key: 'encounters.manage',
+    description: 'Permite abertura e atualizacao de atendimentos clinicos.'
+  },
+  { key: 'triage.read', description: 'Permite leitura de triagens.' },
+  { key: 'triage.manage', description: 'Permite registrar e gerenciar triagens.' },
+  { key: 'medical-records.read', description: 'Permite leitura de prontuarios e notas clinicas.' },
+  {
+    key: 'medical-records.manage',
+    description: 'Permite criar e editar notas clinicas e prontuarios.'
+  },
+  { key: 'attachments.read', description: 'Permite leitura de anexos e documentos clinicos.' },
+  { key: 'attachments.manage', description: 'Permite upload e vinculo de documentos clinicos.' },
+  { key: 'inpatient.read', description: 'Permite leitura de internacoes ativas e historicas.' },
+  { key: 'inpatient.manage', description: 'Permite admitir e transferir internacoes.' },
+  { key: 'surgery.read', description: 'Permite leitura de casos cirurgicos.' },
+  { key: 'surgery.manage', description: 'Permite gerenciar casos cirurgicos.' },
+  { key: 'diagnostics.read', description: 'Permite leitura de ordens e resultados de exames.' },
+  {
+    key: 'diagnostics.manage',
+    description: 'Permite criar ordens de exame e registrar resultados.'
+  },
+  { key: 'billing.read', description: 'Permite leitura de registros de cobranca.' },
+  { key: 'billing.manage', description: 'Permite criar e gerenciar itens de cobranca.' },
+  { key: 'inventory.read', description: 'Permite leitura de itens de estoque.' },
+  { key: 'inventory.manage', description: 'Permite registrar consumo de estoque.' },
+  { key: 'notifications.read', description: 'Permite leitura de notificacoes operacionais.' },
+  { key: 'notifications.manage', description: 'Permite criar e processar notificacoes.' }
+];
+
+// Role-permission mapping aligned with AccessControlService vocabulary
+const rolePermissionMap: Record<string, string[]> = {
+  admin: permissionSeeds.map((p) => p.key),
+  veterinarian: [
+    'auth.session.read',
+    'audit.read',
+    'audit.write',
+    'owners.read',
+    'patients.read',
+    'patients.manage',
+    'scheduling.read',
+    'scheduling.manage',
+    'encounters.read',
+    'encounters.manage',
+    'triage.read',
+    'triage.manage',
+    'medical-records.read',
+    'medical-records.manage',
+    'attachments.read',
+    'attachments.manage',
+    'inpatient.read',
+    'inpatient.manage',
+    'surgery.read',
+    'surgery.manage',
+    'diagnostics.read',
+    'diagnostics.manage',
+    'billing.read',
+    'notifications.read'
+  ],
+  nurse: [
+    'auth.session.read',
+    'audit.read',
+    'owners.read',
+    'patients.read',
+    'scheduling.read',
+    'encounters.read',
+    'encounters.manage',
+    'triage.read',
+    'triage.manage',
+    'medical-records.read',
+    'medical-records.manage',
+    'attachments.read',
+    'attachments.manage',
+    'inpatient.read',
+    'inpatient.manage',
+    'surgery.read',
+    'diagnostics.read',
+    'diagnostics.manage',
+    'billing.read',
+    'inventory.read',
+    'inventory.manage',
+    'notifications.read'
+  ],
+  reception: [
+    'auth.session.read',
+    'owners.read',
+    'owners.manage',
+    'patients.read',
+    'patients.manage',
+    'scheduling.read',
+    'scheduling.manage',
+    'encounters.read',
+    'encounters.manage',
+    'triage.read',
+    'triage.manage',
+    'medical-records.read',
+    'attachments.read',
+    'inpatient.read',
+    'billing.read',
+    'notifications.read'
+  ],
+  finance: [
+    'auth.session.read',
+    'audit.read',
+    'owners.read',
+    'patients.read',
+    'encounters.read',
+    'medical-records.read',
+    'billing.read',
+    'billing.manage',
+    'notifications.read'
+  ],
+  inventory: [
+    'auth.session.read',
+    'encounters.read',
+    'inventory.read',
+    'inventory.manage',
+    'notifications.read'
+  ],
+  auditor: [
+    'auth.session.read',
+    'audit.read',
+    'owners.read',
+    'patients.read',
+    'encounters.read',
+    'triage.read',
+    'medical-records.read',
+    'attachments.read',
+    'inpatient.read',
+    'surgery.read',
+    'diagnostics.read',
+    'billing.read',
+    'inventory.read',
+    'notifications.read'
+  ]
+};
 
 function hashPassword(rawPassword: string): string {
   return createHash('sha256').update(rawPassword).digest('hex');
@@ -102,7 +195,7 @@ async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitI
     .insert(accounts)
     .values({
       slug: DEFAULT_ACCOUNT_SLUG,
-      name: 'Conta padrão'
+      name: 'Conta padrao'
     })
     .onConflictDoNothing({ target: accounts.slug });
 
@@ -139,21 +232,38 @@ async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitI
 }
 
 async function seedPermissionsAndRoles(): Promise<void> {
-  await db.insert(permissions).values(permissionSeeds).onConflictDoNothing({ target: permissions.key });
+  await db
+    .insert(permissions)
+    .values(permissionSeeds)
+    .onConflictDoNothing({ target: permissions.key });
   await db.insert(roles).values(roleSeeds).onConflictDoNothing({ target: roles.name });
 
   const dbPermissions = await db
     .select({ id: permissions.id, key: permissions.key })
     .from(permissions)
-    .where(inArray(permissions.key, permissionSeeds.map((permission) => permission.key)));
+    .where(
+      inArray(
+        permissions.key,
+        permissionSeeds.map((permission) => permission.key)
+      )
+    );
 
   const dbRoles = await db
     .select({ id: roles.id, name: roles.name })
     .from(roles)
-    .where(inArray(roles.name, roleSeeds.map((role) => role.name)));
+    .where(
+      inArray(
+        roles.name,
+        roleSeeds.map((role) => role.name)
+      )
+    );
 
-  const permissionIdByKey = new Map(dbPermissions.map((permission: { key: string; id: string }) => [permission.key, permission.id]));
-  const roleIdByName = new Map(dbRoles.map((role: { name: string; id: string }) => [role.name, role.id]));
+  const permissionIdByKey = new Map(
+    dbPermissions.map((permission: { key: string; id: string }) => [permission.key, permission.id])
+  );
+  const roleIdByName = new Map(
+    dbRoles.map((role: { name: string; id: string }) => [role.name, role.id])
+  );
 
   for (const [roleName, permissionKeys] of Object.entries(rolePermissionMap)) {
     const roleId = roleIdByName.get(roleName);
@@ -191,7 +301,7 @@ async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminEmail || !adminPassword) {
-    console.info('ADMIN_EMAIL/ADMIN_PASSWORD não definidos. Seed de usuário admin foi pulado.');
+    console.info('ADMIN_EMAIL/ADMIN_PASSWORD nao definidos. Seed de usuario admin foi pulado.');
     return;
   }
 
@@ -219,7 +329,7 @@ async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
     .limit(1);
 
   if (!adminUser || !adminRole) {
-    console.warn('Não foi possível vincular usuário admin ao role admin.');
+    console.warn('Nao foi possivel vincular usuario admin ao role admin.');
     return;
   }
 
@@ -237,7 +347,7 @@ async function runSeed(): Promise<void> {
     const { accountId, unitId } = await ensureDefaultAccountAndUnit();
     await seedPermissionsAndRoles();
     await seedAdminUser(accountId, unitId);
-    console.info('Seed concluído com sucesso.');
+    console.info('Seed concluido com sucesso.');
   } finally {
     await closeDbConnection();
   }

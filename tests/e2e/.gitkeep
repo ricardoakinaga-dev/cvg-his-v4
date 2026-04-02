@@ -1,0 +1,4 @@
+# Placeholder for E2E scenarios.
+# E2E tests remain in /e2e/ with Playwright.
+# This directory will host E2E scenario definitions
+# that bridge integration tests with full browser flows.

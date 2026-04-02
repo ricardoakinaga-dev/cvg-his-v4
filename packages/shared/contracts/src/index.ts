@@ -33,6 +33,7 @@ import type {
   SessionSummary,
   StaffSummary,
   TriageSummary,
+  TriageVersionSummary,
   UserSummary
 } from '@cvg-his-v2/shared-types';
 
@@ -242,8 +243,20 @@ export interface CreateTriageRequest {
   readonly destination: 'in_care' | 'observation';
 }
 
+export interface UpdateTriageRequest {
+  readonly priority?: 'low' | 'medium' | 'high' | 'critical';
+  readonly chiefComplaint?: string;
+  readonly initialNotes?: string;
+  readonly alerts?: readonly string[];
+  readonly destination?: 'in_care' | 'observation';
+}
+
 export interface TriageListResponse {
   readonly items: readonly TriageSummary[];
+}
+
+export interface TriageHistoryResponse {
+  readonly items: readonly TriageVersionSummary[];
 }
 
 export interface EncounterTimelineResponse {

@@ -1,21 +1,24 @@
 [Unit]
 Description=CVG HIS V2 API
-After=network.target
+After=network.target postgresql.service redis.service
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/cvg-his-v2
+EnvironmentFile=/opt/cvg-his-v2/.env.production
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
 Environment=PORT=3001
 Environment=APP_NAME=cvg-his-v2-api
-Environment=DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/cvg_his_v2
-Environment=REDIS_URL=redis://127.0.0.1:6379
-Environment=AUTH_SECRET=SUBSTITUA_POR_SEGREDO_FORTE
-Environment=FILE_STORAGE_PATH=/srv/cvg-his-v2/storage
 ExecStart=/usr/bin/node /opt/cvg-his-v2/apps/api/dist/index.js
 Restart=always
 RestartSec=5
+RestartPreventExitStatus=1 2 3 4
+TimeoutStartSec=30
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cvg-his-v2-api
 
 [Install]
 WantedBy=multi-user.target

@@ -28,6 +28,7 @@ import type {
   CreateBedRequest,
   CreateSurgeryCaseRequest,
   CreateTriageRequest,
+  UpdateTriageRequest,
   ExecutePrescriptionRequest,
   LoginRequest,
   LogoutRequest,
@@ -90,13 +91,41 @@ export function createApiServer(options: ApiServerOptions) {
     audit,
     discharges,
     prescriptionExecutions,
-    auth
+    products,
+    services,
+    counterSales,
+    quotes,
+    cash,
+    auth,
+    initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
     repositories: options.repositories,
     fileStorage: options.fileStorage
+  });
+
+  const notificationPersistence = notifications as unknown as {
+    listFromRepository(
+      status?: 'queued' | 'sent' | 'read',
+      accountId?: string
+    ): Promise<readonly unknown[]>;
+    listJobsFromRepository(status?: string, accountId?: string): Promise<readonly unknown[]>;
+    processPendingFromRepository(
+      payload?: ProcessNotificationsRequest,
+      accountId?: string
+    ): Promise<readonly unknown[]>;
+  };
+  const scopedScheduling = scheduling as unknown as {
+    listAppointments(accountId?: string): readonly unknown[];
+    getQueue(accountId?: string): readonly unknown[];
+  };
+
+  void initialize().catch((err) => {
+    logger.error('Failed to initialize services from database', {
+      error: err instanceof Error ? err.message : String(err)
+    });
   });
 
   return createServer((request: IncomingMessage, response: ServerResponse) => {
@@ -155,13 +184,44 @@ export function createApiServer(options: ApiServerOptions) {
             initialized: appState.initialized
           }
         );
-        logger.info('healthcheck served', {
-          correlationId,
-          persistenceMode: appState.persistenceMode,
-          productionReady: appState.productionReady
-        });
         response.statusCode = 200;
         response.end(JSON.stringify(payload));
+        return;
+      }
+
+      if (request.url === '/metrics' && request.method === 'GET') {
+        const appState = getAppState();
+        const uptime = process.uptime();
+        const memUsage = process.memoryUsage();
+        const metrics = {
+          uptime: Math.round(uptime),
+          timestamp: new Date().toISOString(),
+          version: options.version,
+          environment: options.environment,
+          database: {
+            configured: appState.databaseConfigured,
+            healthy: appState.databaseHealthy,
+            persistenceMode: appState.persistenceMode,
+            repositoriesReady: appState.repositoriesReady,
+            repositoryCount: appState.repositoryCount
+          },
+          worker: {
+            ready: appState.workerReady,
+            detail: appState.workerDetail
+          },
+          productionReady: appState.productionReady,
+          memory: {
+            rss: Math.round(memUsage.rss / 1024 / 1024),
+            heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+            heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+            external: Math.round(memUsage.external / 1024 / 1024)
+          },
+          nodeVersion: process.version,
+          platform: process.platform,
+          pid: process.pid
+        };
+        response.statusCode = 200;
+        response.end(JSON.stringify(metrics));
         return;
       }
 
@@ -209,7 +269,7 @@ export function createApiServer(options: ApiServerOptions) {
 
       if (pathname === '/auth/login' && request.method === 'POST') {
         const payload = (await readJsonBody(request)) as LoginRequest;
-        const session = auth.login(payload, correlationId);
+        const session = await auth.login(payload, correlationId);
         response.statusCode = 200;
         response.end(JSON.stringify(session));
         return;
@@ -502,460 +562,7 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: inpatient.list(encounterId) }));
-        return;
-      }
-
-      if (pathname === '/inpatient' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'inpatient.manage');
-        const payload = (await readJsonBody(request)) as CreateInpatientAdmissionRequest;
-        const stay = inpatient.admit(payload);
-        const encounter = encounters.getOrThrow(stay.encounterId);
-        if (encounter.status === 'in_care') {
-          encounters.transitionEncounter(encounter.id, principal.user.id, {
-            nextStatus: 'observation'
-          });
-          syncQueueWithEncounter(encounter.id, 'observation');
-        }
-        medicalRecords.appendAdvancedCareEvent(
-          stay.encounterId,
-          principal.user.id,
-          'inpatient_admitted',
-          `Inpatient admission at ${stay.unit}/${stay.ward}/${stay.bed}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inpatient',
-          'admit',
-          'inpatient-stay',
-          stay.id,
-          `Inpatient stay opened for encounter ${stay.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(stay));
-        return;
-      }
-
-      if (
-        pathname.startsWith('/inpatient/') &&
-        pathname.endsWith('/progress') &&
-        request.method === 'GET'
-      ) {
-        const principal = requirePrincipal(request, 'inpatient.read');
-        const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inpatient',
-          'list_progress',
-          'inpatient-progress',
-          stayId,
-          'Inpatient progress listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: inpatient.listProgress(stayId as never) }));
-        return;
-      }
-
-      if (pathname === '/inpatient/progress' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'inpatient.manage');
-        const payload = (await readJsonBody(request)) as AddInpatientProgressRequest;
-        const progress = inpatient.addProgress(principal.user.id, payload);
-        medicalRecords.appendAdvancedCareEvent(
-          progress.encounterId,
-          principal.user.id,
-          'inpatient_progressed',
-          `Inpatient progress registered: ${progress.note}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inpatient',
-          'add_progress',
-          'inpatient-progress',
-          progress.id,
-          `Inpatient progress added for stay ${progress.stayId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(progress));
-        return;
-      }
-
-      if (
-        pathname.startsWith('/inpatient/') &&
-        pathname.endsWith('/status') &&
-        request.method === 'POST'
-      ) {
-        const principal = requirePrincipal(request, 'inpatient.manage');
-        const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
-        const payload = (await readJsonBody(request)) as UpdateInpatientStatusRequest;
-        const stay = inpatient.updateStatus(stayId as never, payload);
-        medicalRecords.appendAdvancedCareEvent(
-          stay.encounterId,
-          principal.user.id,
-          'inpatient_progressed',
-          `Inpatient stay status changed to ${stay.status}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inpatient',
-          'update_status',
-          'inpatient-stay',
-          stay.id,
-          `Inpatient stay moved to ${stay.status}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify(stay));
-        return;
-      }
-
-      if (pathname === '/surgeries' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'surgery.read');
-        const encounterId = url.searchParams.get('encounterId') ?? undefined;
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'surgery',
-          'list',
-          'surgery-case',
-          encounterId ?? 'all',
-          'Surgery cases listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: surgery.list(encounterId) }));
-        return;
-      }
-
-      if (pathname === '/surgeries' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'surgery.manage');
-        const payload = (await readJsonBody(request)) as CreateSurgeryCaseRequest;
-        const surgeryCase = surgery.requestCase(payload);
-        medicalRecords.appendAdvancedCareEvent(
-          surgeryCase.encounterId,
-          principal.user.id,
-          'surgery_requested',
-          `Surgery requested: ${surgeryCase.procedureName}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'surgery',
-          'request',
-          'surgery-case',
-          surgeryCase.id,
-          `Surgery requested for encounter ${surgeryCase.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(surgeryCase));
-        return;
-      }
-
-      if (
-        pathname.startsWith('/surgeries/') &&
-        pathname.endsWith('/status') &&
-        request.method === 'POST'
-      ) {
-        const principal = requirePrincipal(request, 'surgery.manage');
-        const caseId = requireNonEmptyString(pathname.split('/')[2], 'caseId');
-        const payload = (await readJsonBody(request)) as UpdateSurgeryStatusRequest;
-        const surgeryCase = surgery.updateStatus(caseId as never, payload);
-        medicalRecords.appendAdvancedCareEvent(
-          surgeryCase.encounterId,
-          principal.user.id,
-          'surgery_status_changed',
-          `Surgery case moved to ${surgeryCase.status}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'surgery',
-          'update_status',
-          'surgery-case',
-          surgeryCase.id,
-          `Surgery case updated to ${surgeryCase.status}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify(surgeryCase));
-        return;
-      }
-
-      if (pathname === '/diagnostics/orders' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'diagnostics.read');
-        const encounterId = url.searchParams.get('encounterId') ?? undefined;
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'diagnostics',
-          'list',
-          'diagnostic-order',
-          encounterId ?? 'all',
-          'Diagnostic orders listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: diagnostics.list(encounterId) }));
-        return;
-      }
-
-      if (pathname === '/diagnostics/orders' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'diagnostics.manage');
-        const payload = (await readJsonBody(request)) as CreateDiagnosticOrderRequest;
-        const order = diagnostics.createOrder(payload);
-        medicalRecords.appendAdvancedCareEvent(
-          order.encounterId,
-          principal.user.id,
-          'diagnostic_requested',
-          `Diagnostic order requested: ${order.examType}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'diagnostics',
-          'request',
-          'diagnostic-order',
-          order.id,
-          `Diagnostic order created for encounter ${order.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(order));
-        return;
-      }
-
-      if (
-        pathname.startsWith('/diagnostics/orders/') &&
-        pathname.endsWith('/result') &&
-        request.method === 'POST'
-      ) {
-        const principal = requirePrincipal(request, 'diagnostics.manage');
-        const orderId = requireNonEmptyString(pathname.split('/')[3], 'orderId');
-        const payload = (await readJsonBody(request)) as RecordDiagnosticResultRequest;
-        const order = diagnostics.recordResult(orderId as never, payload);
-        medicalRecords.appendAdvancedCareEvent(
-          order.encounterId,
-          principal.user.id,
-          'diagnostic_resulted',
-          `Diagnostic result registered: ${order.resultSummary}`
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'diagnostics',
-          'record_result',
-          'diagnostic-order',
-          order.id,
-          `Diagnostic order resulted for encounter ${order.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify(order));
-        return;
-      }
-
-      if (pathname === '/billing' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'billing.read');
-        const encounterId = url.searchParams.get('encounterId') ?? undefined;
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'billing',
-          'list',
-          'billing-record',
-          encounterId ?? 'all',
-          'Billing records listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: billing.list(encounterId) }));
-        return;
-      }
-
-      if (pathname === '/billing/items' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'billing.read');
-        const encounterId = requireNonEmptyString(
-          url.searchParams.get('encounterId'),
-          'encounterId'
-        );
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'billing',
-          'list_items',
-          'billing-item',
-          encounterId,
-          'Billing items listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: billing.listItems(encounterId as never) }));
-        return;
-      }
-
-      if (pathname === '/billing/estimate' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'billing.manage');
-        const payload = (await readJsonBody(request)) as CreateBillingEstimateRequest;
-        const record = billing.createEstimate(payload);
-        notifications.create(principal.user.id, principal.user.accountId, {
-          category: 'billing',
-          encounterId: record.encounterId,
-          patientId: record.patientId,
-          recipientRoleCode: 'finance',
-          title: 'Orcamento assistencial atualizado',
-          message: `Encounter ${record.encounterId} com billing em estado ${record.status}.`,
-          severity: 'medium'
-        });
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'billing',
-          'create_estimate',
-          'billing-record',
-          record.id,
-          `Billing estimate prepared for encounter ${record.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(record));
-        return;
-      }
-
-      if (pathname === '/billing/items' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'billing.manage');
-        const payload = (await readJsonBody(request)) as CreateBillingItemRequest;
-        const item = billing.addItem(principal.user.id, payload);
-        const record = billing.getByEncounterOrThrow(item.encounterId as never);
-        if (record.status === 'draft') {
-          billing.updateStatus(item.encounterId as never, { status: 'open' });
-        }
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'billing',
-          'create_item',
-          'billing-item',
-          item.id,
-          `Billing item created for encounter ${item.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(item));
-        return;
-      }
-
-      if (
-        pathname.startsWith('/billing/') &&
-        pathname.endsWith('/status') &&
-        request.method === 'POST'
-      ) {
-        const principal = requirePrincipal(request, 'billing.manage');
-        const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-        const payload = (await readJsonBody(request)) as UpdateBillingStatusRequest;
-        const record = billing.updateStatus(encounterId as never, payload);
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'billing',
-          'update_status',
-          'billing-record',
-          record.id,
-          `Billing record moved to ${record.status}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify(record));
-        return;
-      }
-
-      if (pathname === '/inventory/items' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'inventory.read');
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inventory',
-          'list_items',
-          'inventory-item',
-          'all',
-          'Inventory items listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: inventory.listItems() }));
-        return;
-      }
-
-      if (pathname === '/inventory/consumptions' && request.method === 'GET') {
-        const principal = requirePrincipal(request, 'inventory.read');
-        const encounterId = url.searchParams.get('encounterId') ?? undefined;
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inventory',
-          'list_consumptions',
-          'inventory-consumption',
-          encounterId ?? 'all',
-          'Assistive consumptions listed',
-          'medium',
-          correlationId
-        );
-        response.statusCode = 200;
-        response.end(JSON.stringify({ items: inventory.listConsumptions(encounterId) }));
-        return;
-      }
-
-      if (pathname === '/inventory/consumptions' && request.method === 'POST') {
-        const principal = requirePrincipal(request, 'inventory.manage');
-        const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
-        const consumption = inventory.consume(principal.user.id, payload);
-        const item = inventory.getItemOrThrow(consumption.inventoryItemId);
-        if (item.onHandQuantity <= item.reorderLevel) {
-          notifications.create(principal.user.id, principal.user.accountId, {
-            category: 'inventory',
-            encounterId: consumption.encounterId,
-            patientId: consumption.patientId,
-            recipientRoleCode: 'inventory',
-            title: 'Reposicao recomendada',
-            message: `${item.name} atingiu nivel de reposicao apos consumo assistencial.`,
-            severity: 'high'
-          });
-        }
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'inventory',
-          'consume',
-          'inventory-consumption',
-          consumption.id,
-          `Assistive consumption recorded for encounter ${consumption.encounterId}`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(consumption));
+        response.end(JSON.stringify({ items: inpatient.list(encounterId as never) }));
         return;
       }
 
@@ -974,7 +581,14 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: notifications.list(status ?? undefined) }));
+        response.end(
+          JSON.stringify({
+            items: await notificationPersistence.listFromRepository(
+              status ?? undefined,
+              principal.user.accountId
+            )
+          })
+        );
         return;
       }
 
@@ -992,14 +606,21 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: notifications.listJobs() }));
+        response.end(
+          JSON.stringify({
+            items: await notificationPersistence.listJobsFromRepository(
+              undefined,
+              principal.user.accountId
+            )
+          })
+        );
         return;
       }
 
       if (pathname === '/notifications' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'notifications.manage');
         const payload = (await readJsonBody(request)) as CreateNotificationRequest;
-        const notification = notifications.create(
+        const notification = await notifications.create(
           principal.user.id,
           principal.user.accountId,
           payload
@@ -1025,7 +646,10 @@ export function createApiServer(options: ApiServerOptions) {
         const payload = (await readJsonBody(request).catch(
           () => ({})
         )) as ProcessNotificationsRequest;
-        const processed = notifications.processPending(payload);
+        const processed = await notificationPersistence.processPendingFromRepository(
+          payload,
+          principal.user.accountId
+        );
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1056,14 +680,16 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: scheduling.listAppointments() }));
+        response.end(
+          JSON.stringify({ items: scopedScheduling.listAppointments(principal.user.accountId) })
+        );
         return;
       }
 
       if (pathname === '/appointments' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'scheduling.manage');
         const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
-        const appointment = scheduling.createAppointment(principal.user.accountId, payload);
+        const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1077,6 +703,32 @@ export function createApiServer(options: ApiServerOptions) {
         );
         response.statusCode = 201;
         response.end(JSON.stringify(appointment));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/appointments/') &&
+        pathname.endsWith('/cancel') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'scheduling.manage');
+        const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+        const body = (await readJsonBody(request)) as Record<string, unknown> | undefined;
+        const reason = (body?.reason as string) ?? undefined;
+        const cancelled = await scheduling.cancelAppointment(appointmentId as never, reason);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'scheduling',
+          'cancel_appointment',
+          'appointment',
+          cancelled.id,
+          `Appointment cancelled for patient ${cancelled.patientId}`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(cancelled));
         return;
       }
 
@@ -1094,14 +746,16 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: scheduling.getQueue() }));
+        response.end(
+          JSON.stringify({ items: scopedScheduling.getQueue(principal.user.accountId) })
+        );
         return;
       }
 
       if (pathname === '/queue/check-in' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'scheduling.manage');
         const payload = (await readJsonBody(request)) as CheckInQueueRequest;
-        const entry = scheduling.checkIn(principal.user.accountId, payload);
+        const entry = await scheduling.checkIn(principal.user.accountId, payload);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1125,7 +779,7 @@ export function createApiServer(options: ApiServerOptions) {
       ) {
         const principal = requirePrincipal(request, 'scheduling.manage');
         const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-        const entry = scheduling.callQueueEntry(queueEntryId as never);
+        const entry = await scheduling.callQueueEntry(queueEntryId as never);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1169,7 +823,7 @@ export function createApiServer(options: ApiServerOptions) {
           payload
         );
         if (encounter.queueEntryId) {
-          const queueEntry = scheduling.attachEncounter(encounter.queueEntryId, encounter.id);
+          const queueEntry = await scheduling.attachEncounter(encounter.queueEntryId, encounter.id);
           encounters.appendTimeline(encounter.id, {
             accountId: encounter.accountId,
             eventType: 'queue_checked_in',
@@ -1237,7 +891,7 @@ export function createApiServer(options: ApiServerOptions) {
           principal.user.id,
           payload
         );
-        syncQueueWithEncounter(encounter.id, encounter.status);
+        await syncQueueWithEncounter(encounter.id, encounter.status);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1267,7 +921,7 @@ export function createApiServer(options: ApiServerOptions) {
           principal.user.id,
           payload
         );
-        syncQueueWithEncounter(encounter.id, encounter.status);
+        await syncQueueWithEncounter(encounter.id, encounter.status);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1332,9 +986,9 @@ export function createApiServer(options: ApiServerOptions) {
           encounters.transitionEncounter(currentEncounter.id, principal.user.id, {
             nextStatus: 'in_triage'
           });
-          syncQueueWithEncounter(currentEncounter.id, 'in_triage');
+          await syncQueueWithEncounter(currentEncounter.id, 'in_triage');
         }
-        const record = triage.createTriage(principal.user.id, payload);
+        const record = await triage.createTriage(principal.user.id, payload);
         encounters.appendTimeline(record.encounterId, {
           accountId: record.accountId,
           eventType: 'triage_recorded',
@@ -1344,7 +998,7 @@ export function createApiServer(options: ApiServerOptions) {
         const encounter = encounters.transitionEncounter(record.encounterId, principal.user.id, {
           nextStatus: record.destination
         });
-        syncQueueWithEncounter(encounter.id, encounter.status);
+        await syncQueueWithEncounter(encounter.id, encounter.status);
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1357,6 +1011,69 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 201;
+        response.end(JSON.stringify(record));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/triage/') &&
+        pathname.endsWith('/history') &&
+        request.method === 'GET'
+      ) {
+        const principal = requirePrincipal(request, 'triage.read');
+        const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
+        const record = triage.getOrThrow(triageId as never);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'triage',
+          'read_history',
+          'triage-record-version',
+          record.id,
+          `Triage history inspected for encounter ${record.encounterId}`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify({ items: triage.listVersions(triageId as never) }));
+        return;
+      }
+
+      if (pathname.startsWith('/triage/') && request.method === 'PATCH') {
+        const principal = requirePrincipal(request, 'triage.manage');
+        const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
+        const payload = (await readJsonBody(request)) as UpdateTriageRequest;
+        const before = triage.getOrThrow(triageId as never);
+        const record = await triage.updateTriage(triageId as never, payload, principal.user.id);
+        encounters.appendTimeline(record.encounterId, {
+          accountId: record.accountId,
+          eventType: 'triage_recorded',
+          summary: `Triage updated from ${before.priority}/${before.destination} to ${record.priority}/${record.destination}`,
+          actorUserId: principal.user.id
+        });
+        const encounter = encounters.getOrThrow(record.encounterId);
+        if (encounter.status !== 'closed' && encounter.status !== record.destination) {
+          const transitioned = encounters.transitionEncounter(
+            record.encounterId,
+            principal.user.id,
+            {
+              nextStatus: record.destination
+            }
+          );
+          await syncQueueWithEncounter(transitioned.id, transitioned.status);
+        }
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'triage',
+          'update',
+          'triage-record',
+          record.id,
+          `Triage updated for encounter ${record.encounterId}`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
         response.end(JSON.stringify(record));
         return;
       }
@@ -1591,66 +1308,61 @@ export function createApiServer(options: ApiServerOptions) {
 
       if (pathname === '/users' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'users.manage');
-        const payload = await readJsonBody(request) as Record<string, unknown>;
+        const payload = (await readJsonBody(request)) as Record<string, unknown>;
         try {
-        validateRequestBody(payload, {
-          username: { type: 'string', required: true, minLength: 3 },
-          email: { type: 'string', required: true },
-          password: { type: 'string', required: true, minLength: 8 },
-          displayName: { type: 'string', required: false }
-        }, correlationId);
-        
-        const now = new Date().toISOString();
-        const userId = 'user_' + Math.random().toString(36).slice(2, 10);
-        const salt = 'cvg-his-v2-seed-salt-v1';
-        const passwordHash = scryptSync(payload.password as string, salt, 64).toString('hex');
-        
-        const newUser = {
-          id: userId,
-          accountId: principal.user.accountId,
-          username: payload.username as string,
-          email: payload.email as string,
-          passwordHash,
-          displayName: (payload.displayName as string) || (payload.username as string),
-          roleCodes: payload.roleCode ? [payload.roleCode as string] : [],
-          department: payload.department as string || undefined,
-          status: (payload.status as string) || 'active',
-          createdAt: now,
-          updatedAt: now
-        };
-        
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'users',
-          'create',
-          'user',
-          userId,
-          `User ${newUser.username} created`,
-          'high',
-          correlationId
-        );
-        
-        // Return without passwordHash
-        const { passwordHash: _, ...safeUser } = newUser;
-        response.statusCode = 201;
-        response.end(JSON.stringify(safeUser));
-        } catch(err) { response.statusCode = 500; response.end(JSON.stringify({code:'ERROR',message:String((err as Error)?.message || err)})); return; }
-        return;
-      }
-        appendAudit(
-          principal.user.id,
-          principal.user.accountId,
-          'users',
-          'create',
-          'user',
-          user.id,
-          `User ${user.username} created`,
-          'high',
-          correlationId
-        );
-        response.statusCode = 201;
-        response.end(JSON.stringify(user));
+          validateRequestBody(
+            payload,
+            {
+              username: { type: 'string', required: true, minLength: 3 },
+              email: { type: 'string', required: true },
+              password: { type: 'string', required: true, minLength: 8 },
+              displayName: { type: 'string', required: false }
+            },
+            correlationId
+          );
+
+          const now = new Date().toISOString();
+          const userId = 'user_' + Math.random().toString(36).slice(2, 10);
+          const salt = 'cvg-his-v2-seed-salt-v1';
+          const passwordHash = scryptSync(payload.password as string, salt, 64).toString('hex');
+
+          const newUser = {
+            id: userId,
+            accountId: principal.user.accountId,
+            username: payload.username as string,
+            email: payload.email as string,
+            passwordHash,
+            displayName: (payload.displayName as string) || (payload.username as string),
+            roleCodes: payload.roleCode ? [payload.roleCode as string] : [],
+            department: (payload.department as string) || undefined,
+            status: (payload.status as string) || 'active',
+            createdAt: now,
+            updatedAt: now
+          };
+
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'users',
+            'create',
+            'user',
+            userId,
+            `User ${newUser.username} created`,
+            'high',
+            correlationId
+          );
+
+          // Return without passwordHash
+          const { passwordHash: _, ...safeUser } = newUser;
+          response.statusCode = 201;
+          response.end(JSON.stringify(safeUser));
+        } catch (err) {
+          response.statusCode = 500;
+          response.end(
+            JSON.stringify({ code: 'ERROR', message: String((err as Error)?.message || err) })
+          );
+          return;
+        }
         return;
       }
 
@@ -1697,7 +1409,7 @@ export function createApiServer(options: ApiServerOptions) {
         }
         if (request.method === 'PATCH') {
           const payload = (await readJsonBody(request)) as UpdateUserRequest;
-          const user = users.update(userId as never, payload);
+          const user = await users.update(userId as never, payload);
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -1729,7 +1441,11 @@ export function createApiServer(options: ApiServerOptions) {
           correlationId
         );
         response.statusCode = 200;
-        response.end(JSON.stringify({ items: staff.list() }));
+        response.end(
+          JSON.stringify({
+            items: staff.list().filter((member) => member.accountId === principal.user.accountId)
+          })
+        );
         return;
       }
 
@@ -1737,6 +1453,9 @@ export function createApiServer(options: ApiServerOptions) {
         const principal = requirePrincipal(request, 'staff.read');
         const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
         const member = staff.getOrThrow(staffId as never);
+        if (member.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Staff member not found for current account');
+        }
         appendAudit(
           principal.user.id,
           principal.user.accountId,
@@ -1745,6 +1464,354 @@ export function createApiServer(options: ApiServerOptions) {
           'staff',
           member.id,
           `Staff member ${member.employeeCode} inspected`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(member));
+        return;
+      }
+
+      if (pathname === '/quotes' && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'quote.read');
+        const search = url.searchParams.get('search') ?? undefined;
+        const status = url.searchParams.get('status') ?? undefined;
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'list',
+          'quote',
+          status ?? search ?? 'all',
+          'Quotes listed',
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(
+          JSON.stringify({
+            items: quotes.list(principal.user.accountId as never, { search, status })
+          })
+        );
+        return;
+      }
+
+      if (pathname === '/quotes' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'quote.write');
+        const payload = (await readJsonBody(request).catch(() => ({}))) as {
+          ownerId?: string | null;
+          validUntil?: string | null;
+          notes?: string | null;
+        };
+        const quote = await quotes.create(
+          principal.user.accountId as never,
+          principal.user.id,
+          payload
+        );
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'create',
+          'quote',
+          quote.id,
+          `Quote ${quote.number} created`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(quote));
+        return;
+      }
+
+      if (pathname.startsWith('/quotes/') && request.method === 'GET') {
+        const principal = requirePrincipal(request, 'quote.read');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const action = pathname.split('/')[3];
+        const quote = quotes.getOrThrow(quoteId);
+        if (quote.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Quote not found for current account');
+        }
+
+        if (action === 'print') {
+          const html = quotes.generatePrintHtml(quote, quotes.getItems(quote.id));
+          response.statusCode = 200;
+          response.end(JSON.stringify({ html }));
+          return;
+        }
+
+        if (action === 'pdf') {
+          const pdfBuffer = quotes.generatePdfBuffer(quote, quotes.getItems(quote.id));
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/pdf');
+          response.setHeader(
+            'content-disposition',
+            `inline; filename="orcamento-${quote.number}.pdf"`
+          );
+          response.end(pdfBuffer);
+          return;
+        }
+
+        if (!action) {
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'quotes',
+            'read',
+            'quote',
+            quote.id,
+            `Quote ${quote.number} inspected`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ ...quote, items: quotes.getItems(quote.id) }));
+          return;
+        }
+      }
+
+      if (
+        pathname.startsWith('/quotes/') &&
+        pathname.endsWith('/items') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'quote.write');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const quote = quotes.getOrThrow(quoteId);
+        if (quote.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Quote not found for current account');
+        }
+        const payload = (await readJsonBody(request)) as {
+          itemType: 'product' | 'service';
+          catalogItemId?: string | null;
+          nameSnapshot: string;
+          codeSnapshot?: string | null;
+          unitPrice: number;
+          quantity?: number;
+          discountAmount?: number;
+          notes?: string | null;
+        };
+        const result = await quotes.addItem(quoteId, payload);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'add_item',
+          'quote-item',
+          result.item.id,
+          `Item added to quote ${quote.number}`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(result.item));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/quotes/') &&
+        pathname.endsWith('/approve') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'quote.write');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const quote = await quotes.approve(quoteId);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'approve',
+          'quote',
+          quote.id,
+          `Quote ${quote.number} approved`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(quote));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/quotes/') &&
+        pathname.endsWith('/reject') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'quote.write');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const quote = await quotes.reject(quoteId);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'reject',
+          'quote',
+          quote.id,
+          `Quote ${quote.number} rejected`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(quote));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/quotes/') &&
+        pathname.endsWith('/cancel') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'quote.write');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const quote = await quotes.cancel(quoteId);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'cancel',
+          'quote',
+          quote.id,
+          `Quote ${quote.number} cancelled`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(quote));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/quotes/') &&
+        pathname.endsWith('/convert-to-sale') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'quote.write');
+        const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
+        const quote = quotes.getOrThrow(quoteId);
+        if (quote.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Quote not found for current account');
+        }
+        const sale = await counterSales.open(principal.user.accountId as never, principal.user.id, {
+          ownerId: quote.ownerId,
+          notes: `Convertida do orcamento ${quote.number}`
+        });
+        for (const item of quotes.getItems(quote.id)) {
+          await counterSales.addItem(sale.id, {
+            itemType: item.itemType,
+            catalogItemId: item.catalogItemId,
+            nameSnapshot: item.nameSnapshot,
+            codeSnapshot: item.codeSnapshot,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            discountAmount: item.discountAmount,
+            notes: item.notes
+          });
+        }
+        const converted = await quotes.convertToSale(quote.id, sale.id);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'quotes',
+          'convert_to_sale',
+          'quote',
+          converted.id,
+          `Quote ${converted.number} converted to counter sale ${sale.number}`,
+          'high',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify({ counterSaleId: sale.id, quoteId: converted.id }));
+        return;
+      }
+
+      if (pathname === '/staff' && request.method === 'POST') {
+        const principal = requirePrincipal(request, 'staff.manage');
+        const payload = (await readJsonBody(request)) as {
+          employeeCode: string;
+          fullName: string;
+          userId?: string | null;
+          department?: string | null;
+          jobTitle?: string | null;
+        };
+        const member = await staff.create(principal.user.accountId as never, {
+          employeeCode: requireNonEmptyString(payload.employeeCode, 'employeeCode'),
+          fullName: requireNonEmptyString(payload.fullName, 'fullName'),
+          userId: payload.userId as never,
+          department: payload.department,
+          jobTitle: payload.jobTitle
+        });
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'staff',
+          'create',
+          'staff',
+          member.id,
+          `Staff member created: ${member.employeeCode}`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 201;
+        response.end(JSON.stringify(member));
+        return;
+      }
+
+      if (pathname.startsWith('/staff/') && request.method === 'PATCH') {
+        const principal = requirePrincipal(request, 'staff.manage');
+        const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
+        const existingMember = staff.getOrThrow(staffId as never);
+        if (existingMember.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Staff member not found for current account');
+        }
+        const payload = (await readJsonBody(request)) as {
+          fullName?: string;
+          department?: string | null;
+          jobTitle?: string | null;
+          isActive?: boolean;
+        };
+        const member = await staff.update(staffId as never, {
+          fullName: payload.fullName,
+          department: payload.department,
+          jobTitle: payload.jobTitle,
+          isActive: payload.isActive
+        });
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'staff',
+          'update',
+          'staff',
+          member.id,
+          `Staff member updated: ${member.employeeCode}`,
+          'medium',
+          correlationId
+        );
+        response.statusCode = 200;
+        response.end(JSON.stringify(member));
+        return;
+      }
+
+      if (
+        pathname.startsWith('/staff/') &&
+        pathname.endsWith('/toggle-active') &&
+        request.method === 'POST'
+      ) {
+        const principal = requirePrincipal(request, 'staff.manage');
+        const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
+        const existingMember = staff.getOrThrow(staffId as never);
+        if (existingMember.accountId !== principal.user.accountId) {
+          throw new AuthenticationError('Staff member not found for current account');
+        }
+        const payload = (await readJsonBody(request)) as { isActive: boolean };
+        const member = await staff.toggleActive(staffId as never, payload.isActive);
+        appendAudit(
+          principal.user.id,
+          principal.user.accountId,
+          'staff',
+          payload.isActive ? 'activate' : 'deactivate',
+          'staff',
+          member.id,
+          `Staff member ${payload.isActive ? 'activated' : 'deactivated'}: ${member.employeeCode}`,
           'medium',
           correlationId
         );
@@ -1972,37 +2039,61 @@ export function createApiServer(options: ApiServerOptions) {
         const cep = url.searchParams.get('cep');
         if (!cep) {
           response.statusCode = 400;
-          response.end(JSON.stringify({ code: 'VALIDATION_ERROR', message: 'CEP parameter required', correlationId }));
+          response.end(
+            JSON.stringify({
+              code: 'VALIDATION_ERROR',
+              message: 'CEP parameter required',
+              correlationId
+            })
+          );
           return;
         }
         const cleanCep = cep.replace(/\D/g, '');
         if (cleanCep.length !== 8) {
           response.statusCode = 400;
-          response.end(JSON.stringify({ code: 'VALIDATION_ERROR', message: 'CEP must have 8 digits', correlationId }));
+          response.end(
+            JSON.stringify({
+              code: 'VALIDATION_ERROR',
+              message: 'CEP must have 8 digits',
+              correlationId
+            })
+          );
           return;
         }
         try {
-          const viaCepResp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: AbortSignal.timeout(5000) });
-          const viaCepData = await viaCepResp.json() as Record<string, unknown>;
+          const viaCepResp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+            signal: AbortSignal.timeout(5000)
+          });
+          const viaCepData = (await viaCepResp.json()) as Record<string, unknown>;
           if (viaCepData.erro) {
             response.statusCode = 404;
-            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'CEP not found', correlationId }));
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'CEP not found', correlationId })
+            );
             return;
           }
           response.statusCode = 200;
-          response.end(JSON.stringify({
-            cep: viaCepData.cep,
-            street: viaCepData.logradouro,
-            complement: viaCepData.complemento,
-            district: viaCepData.bairro,
-            city: viaCepData.localidade,
-            state: viaCepData.uf,
-            ibge: viaCepData.ibge,
-            found: true
-          }));
+          response.end(
+            JSON.stringify({
+              cep: viaCepData.cep,
+              street: viaCepData.logradouro,
+              complement: viaCepData.complemento,
+              district: viaCepData.bairro,
+              city: viaCepData.localidade,
+              state: viaCepData.uf,
+              ibge: viaCepData.ibge,
+              found: true
+            })
+          );
         } catch (err) {
           response.statusCode = 502;
-          response.end(JSON.stringify({ code: 'SERVICE_UNAVAILABLE', message: 'CEP service unavailable', correlationId }));
+          response.end(
+            JSON.stringify({
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'CEP service unavailable',
+              correlationId
+            })
+          );
         }
         return;
       }
@@ -2031,10 +2122,18 @@ export function createApiServer(options: ApiServerOptions) {
       if (pathname === '/discharges' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'discharges.manage');
         const payload = (await readJsonBody(request)) as CreateDischargeRequest;
-        validateRequestBody(payload as unknown as Record<string, unknown>, {
-          encounterId: { type: 'string', required: true, minLength: 1 },
-          dischargeType: { type: 'string', required: true, enum: ['ambulatory', 'inpatient', 'transfer', 'death'] }
-        }, correlationId);
+        validateRequestBody(
+          payload as unknown as Record<string, unknown>,
+          {
+            encounterId: { type: 'string', required: true, minLength: 1 },
+            dischargeType: {
+              type: 'string',
+              required: true,
+              enum: ['ambulatory', 'inpatient', 'transfer', 'death']
+            }
+          },
+          correlationId
+        );
         const discharge = discharges.create(
           principal.user.accountId as never,
           principal.user.id as never,
@@ -2056,7 +2155,11 @@ export function createApiServer(options: ApiServerOptions) {
         return;
       }
 
-      if (pathname.startsWith('/discharges/') && request.method === 'GET' && !pathname.includes('?')) {
+      if (
+        pathname.startsWith('/discharges/') &&
+        request.method === 'GET' &&
+        !pathname.includes('?')
+      ) {
         const principal = requirePrincipal(request, 'discharges.read');
         const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
         const discharge = discharges.getById(dischargeId as never);
@@ -2080,7 +2183,9 @@ export function createApiServer(options: ApiServerOptions) {
         const principal = requirePrincipal(request, 'discharges.manage');
         const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
         const body = await readJsonBody(request);
-        const { expectedVersion, ...payload } = body as UpdateDischargeRequest & { expectedVersion?: number };
+        const { expectedVersion, ...payload } = body as UpdateDischargeRequest & {
+          expectedVersion?: number;
+        };
         const discharge = discharges.update(dischargeId as never, payload, expectedVersion);
         appendAudit(
           principal.user.id,
@@ -2113,9 +2218,15 @@ export function createApiServer(options: ApiServerOptions) {
           items = prescriptionExecutions.list(principal.user.accountId as never);
         }
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'list', 'prescription-execution', '*',
-          'Prescription executions listed', 'low', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'list',
+          'prescription-execution',
+          '*',
+          'Prescription executions listed',
+          'low',
+          correlationId
         );
         response.statusCode = 200;
         response.end(JSON.stringify({ items, total: items.length }));
@@ -2125,34 +2236,57 @@ export function createApiServer(options: ApiServerOptions) {
       if (pathname === '/prescription-executions' && request.method === 'POST') {
         const principal = requirePrincipal(request, 'prescription-executions.manage');
         const payload = (await readJsonBody(request)) as CreatePrescriptionExecutionRequest;
-        validateRequestBody(payload as unknown as Record<string, unknown>, {
-          clinicalEntryId: { type: 'string', required: true },
-          patientId: { type: 'string', required: true },
-          encounterId: { type: 'string', required: true },
-          medicationName: { type: 'string', required: true, minLength: 1, maxLength: 255 },
-          dosage: { type: 'string', required: true, minLength: 1, maxLength: 255 },
-          scheduledAt: { type: 'string', required: true }
-        }, correlationId);
+        validateRequestBody(
+          payload as unknown as Record<string, unknown>,
+          {
+            clinicalEntryId: { type: 'string', required: true },
+            patientId: { type: 'string', required: true },
+            encounterId: { type: 'string', required: true },
+            medicationName: { type: 'string', required: true, minLength: 1, maxLength: 255 },
+            dosage: { type: 'string', required: true, minLength: 1, maxLength: 255 },
+            scheduledAt: { type: 'string', required: true }
+          },
+          correlationId
+        );
         const execution = prescriptionExecutions.create(principal.user.accountId as never, payload);
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'create', 'prescription-execution', execution.id,
-          `Prescription execution created for ${payload.medicationName}`, 'high', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'create',
+          'prescription-execution',
+          execution.id,
+          `Prescription execution created for ${payload.medicationName}`,
+          'high',
+          correlationId
         );
         response.statusCode = 201;
         response.end(JSON.stringify(execution));
         return;
       }
 
-      if (pathname.startsWith('/prescription-executions/') && request.method === 'GET' && !pathname.includes('/execute') && !pathname.includes('/log') && !pathname.includes('/suspend') && !pathname.includes('/resume')) {
+      if (
+        pathname.startsWith('/prescription-executions/') &&
+        request.method === 'GET' &&
+        !pathname.includes('/execute') &&
+        !pathname.includes('/log') &&
+        !pathname.includes('/suspend') &&
+        !pathname.includes('/resume')
+      ) {
         const principal = requirePrincipal(request, 'prescription-executions.read');
         const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
         const execution = prescriptionExecutions.getById(executionId as never);
         const events = prescriptionExecutions.getEvents(executionId as never);
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'read', 'prescription-execution', execution.id,
-          'Prescription execution detail consulted', 'low', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'read',
+          'prescription-execution',
+          execution.id,
+          'Prescription execution detail consulted',
+          'low',
+          correlationId
         );
         response.statusCode = 200;
         response.end(JSON.stringify({ ...execution, events }));
@@ -2167,11 +2301,21 @@ export function createApiServer(options: ApiServerOptions) {
         const principal = requirePrincipal(request, 'prescription-executions.manage');
         const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
         const payload = (await readJsonBody(request)) as ExecutePrescriptionRequest;
-        const execution = prescriptionExecutions.execute(executionId as never, principal.user.id as never, payload);
+        const execution = prescriptionExecutions.execute(
+          executionId as never,
+          principal.user.id as never,
+          payload
+        );
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', payload.status, 'prescription-execution', execution.id,
-          `Prescription execution ${payload.status}`, 'high', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          payload.status,
+          'prescription-execution',
+          execution.id,
+          `Prescription execution ${payload.status}`,
+          'high',
+          correlationId
         );
         response.statusCode = 200;
         response.end(JSON.stringify(execution));
@@ -2186,11 +2330,21 @@ export function createApiServer(options: ApiServerOptions) {
         const principal = requirePrincipal(request, 'prescription-executions.manage');
         const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
         const payload = (await readJsonBody(request)) as SuspendPrescriptionRequest;
-        const execution = prescriptionExecutions.suspend(executionId as never, principal.user.id as never, payload);
+        const execution = prescriptionExecutions.suspend(
+          executionId as never,
+          principal.user.id as never,
+          payload
+        );
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'suspend', 'prescription-execution', execution.id,
-          'Prescription execution suspended', 'high', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'suspend',
+          'prescription-execution',
+          execution.id,
+          'Prescription execution suspended',
+          'high',
+          correlationId
         );
         response.statusCode = 200;
         response.end(JSON.stringify(execution));
@@ -2204,11 +2358,20 @@ export function createApiServer(options: ApiServerOptions) {
       ) {
         const principal = requirePrincipal(request, 'prescription-executions.manage');
         const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
-        const execution = prescriptionExecutions.resume(executionId as never, principal.user.id as never);
+        const execution = prescriptionExecutions.resume(
+          executionId as never,
+          principal.user.id as never
+        );
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'resume', 'prescription-execution', execution.id,
-          'Prescription execution resumed', 'medium', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'resume',
+          'prescription-execution',
+          execution.id,
+          'Prescription execution resumed',
+          'medium',
+          correlationId
         );
         response.statusCode = 200;
         response.end(JSON.stringify(execution));
@@ -2223,11 +2386,21 @@ export function createApiServer(options: ApiServerOptions) {
         const principal = requirePrincipal(request, 'prescription-executions.manage');
         const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
         const payload = (await readJsonBody(request)) as LogAdministrationEventRequest;
-        const event = prescriptionExecutions.logEvent(executionId as never, principal.user.id as never, payload);
+        const event = prescriptionExecutions.logEvent(
+          executionId as never,
+          principal.user.id as never,
+          payload
+        );
         appendAudit(
-          principal.user.id, principal.user.accountId,
-          'prescription-executions', 'log_event', 'administration-event', event.id,
-          `Event logged: ${payload.eventType}`, 'medium', correlationId
+          principal.user.id,
+          principal.user.accountId,
+          'prescription-executions',
+          'log_event',
+          'administration-event',
+          event.id,
+          `Event logged: ${payload.eventType}`,
+          'medium',
+          correlationId
         );
         response.statusCode = 201;
         response.end(JSON.stringify(event));
@@ -2262,7 +2435,7 @@ export function createApiServer(options: ApiServerOptions) {
     return principal;
   }
 
-  function syncQueueWithEncounter(
+  async function syncQueueWithEncounter(
     encounterId: string,
     status: 'reception' | 'in_triage' | 'in_care' | 'observation' | 'closed'
   ) {
@@ -2272,7 +2445,7 @@ export function createApiServer(options: ApiServerOptions) {
     }
 
     if (status === 'closed') {
-      scheduling.completeQueueEntry(encounter.queueEntryId);
+      await scheduling.completeQueueEntry(encounter.queueEntryId);
       return;
     }
 
@@ -2282,7 +2455,7 @@ export function createApiServer(options: ApiServerOptions) {
 
     const queueStatus =
       status === 'in_triage' ? 'in_triage' : status === 'in_care' ? 'in_care' : 'observation';
-    scheduling.transitionQueueForEncounter(encounter.queueEntryId, queueStatus);
+    await scheduling.transitionQueueForEncounter(encounter.queueEntryId, queueStatus);
   }
 
   function appendAudit(
@@ -2346,7 +2519,11 @@ interface FieldSpec {
   enum?: readonly string[];
 }
 
-function validateRequestBody(body: Record<string, unknown>, fields: Record<string, FieldSpec>, correlationId: string): void {
+function validateRequestBody(
+  body: Record<string, unknown>,
+  fields: Record<string, FieldSpec>,
+  correlationId: string
+): void {
   for (const [key, spec] of Object.entries(fields)) {
     const value = body[key];
 
@@ -2359,19 +2536,31 @@ function validateRequestBody(body: Record<string, unknown>, fields: Record<strin
     // Type check
     const actualType = Array.isArray(value) ? 'array' : typeof value;
     if (actualType !== spec.type) {
-      throw new ValidationError(`Field '${key}' must be of type '${spec.type}', got '${actualType}'`, { correlationId, field: key });
+      throw new ValidationError(
+        `Field '${key}' must be of type '${spec.type}', got '${actualType}'`,
+        { correlationId, field: key }
+      );
     }
 
     // String validations
     if (spec.type === 'string' && typeof value === 'string') {
       if (spec.minLength !== undefined && value.length < spec.minLength) {
-        throw new ValidationError(`Field '${key}' must have at least ${spec.minLength} characters`, { correlationId, field: key });
+        throw new ValidationError(
+          `Field '${key}' must have at least ${spec.minLength} characters`,
+          { correlationId, field: key }
+        );
       }
       if (spec.maxLength !== undefined && value.length > spec.maxLength) {
-        throw new ValidationError(`Field '${key}' must have at most ${spec.maxLength} characters`, { correlationId, field: key });
+        throw new ValidationError(`Field '${key}' must have at most ${spec.maxLength} characters`, {
+          correlationId,
+          field: key
+        });
       }
       if (spec.enum && !spec.enum.includes(value)) {
-        throw new ValidationError(`Field '${key}' must be one of: ${spec.enum.join(', ')}`, { correlationId, field: key });
+        throw new ValidationError(`Field '${key}' must be one of: ${spec.enum.join(', ')}`, {
+          correlationId,
+          field: key
+        });
       }
     }
   }

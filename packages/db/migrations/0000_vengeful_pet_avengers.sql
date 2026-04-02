@@ -888,4 +888,228 @@ CREATE INDEX "idx_cash_movements_account_type" ON "cash_movements" USING btree (
 CREATE INDEX "idx_cash_movements_created_at" ON "cash_movements" USING btree ("account_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_cash_registers_account_status" ON "cash_registers" USING btree ("account_id","status");--> statement-breakpoint
 CREATE INDEX "idx_cash_registers_opened_at" ON "cash_registers" USING btree ("account_id","opened_at");--> statement-breakpoint
-CREATE INDEX "idx_cash_registers_opened_by" ON "cash_registers" USING btree ("opened_by_user_id");
+CREATE INDEX "idx_cash_registers_opened_by" ON "cash_registers" USING btree ("opened_by_user_id");--> statement-breakpoint
+CREATE TABLE "staff" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"account_id" uuid NOT NULL,
+	"user_id" uuid,
+	"employee_code" varchar(50) NOT NULL,
+	"full_name" varchar(255) NOT NULL,
+	"department" varchar(100),
+	"job_title" varchar(150),
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);--> statement-breakpoint
+CREATE TABLE "notifications" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"account_id" uuid NOT NULL,
+	"channel" varchar(50) DEFAULT 'internal' NOT NULL,
+	"category" varchar(50) NOT NULL,
+	"encounter_id" uuid,
+	"patient_id" uuid,
+	"recipient_role_code" varchar(100),
+	"title" varchar(255) NOT NULL,
+	"message" varchar(2000) NOT NULL,
+	"severity" varchar(20) NOT NULL,
+	"status" varchar(50) NOT NULL,
+	"created_by_user_id" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone
+);--> statement-breakpoint
+CREATE TABLE "notification_jobs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"account_id" uuid NOT NULL,
+	"notification_id" uuid NOT NULL,
+	"status" varchar(50) DEFAULT 'queued' NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"scheduled_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"processed_at" timestamp with time zone
+);--> statement-breakpoint
+CREATE TABLE "scheduling_queue_entries" (
+	"id" text PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"patient_id" text NOT NULL,
+	"owner_id" text NOT NULL,
+	"appointment_id" text,
+	"encounter_id" text,
+	"reason" text NOT NULL,
+	"priority" text DEFAULT 'medium' NOT NULL,
+	"status" text DEFAULT 'waiting' NOT NULL,
+	"checked_in_at" timestamp with time zone NOT NULL,
+	"called_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);--> statement-breakpoint
+CREATE TABLE "triage_records" (
+	"id" text PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"encounter_id" text NOT NULL,
+	"patient_id" text NOT NULL,
+	"priority" text NOT NULL,
+	"chief_complaint" text NOT NULL,
+	"initial_notes" text,
+	"alerts_json" text NOT NULL,
+	"destination" text NOT NULL,
+	"triaged_by" text NOT NULL,
+	"triaged_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone NOT NULL
+);--> statement-breakpoint
+CREATE TABLE "triage_record_versions" (
+	"id" text PRIMARY KEY NOT NULL,
+	"triage_id" text NOT NULL,
+	"account_id" text NOT NULL,
+	"encounter_id" text NOT NULL,
+	"changed_fields_json" text NOT NULL,
+	"previous_snapshot_json" text NOT NULL,
+	"next_snapshot_json" text NOT NULL,
+	"changed_by_user_id" text NOT NULL,
+	"created_at" timestamp with time zone NOT NULL
+);--> statement-breakpoint
+ALTER TABLE "staff" ADD CONSTRAINT "staff_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_encounter_id_encounters_id_fk" FOREIGN KEY ("encounter_id") REFERENCES "public"."encounters"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_patient_id_patients_id_fk" FOREIGN KEY ("patient_id") REFERENCES "public"."patients"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notification_jobs" ADD CONSTRAINT "notification_jobs_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notification_jobs" ADD CONSTRAINT "notification_jobs_notification_id_notifications_id_fk" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_staff_code_unique" ON "staff" USING btree ("account_id","employee_code");--> statement-breakpoint
+CREATE INDEX "idx_staff_account" ON "staff" USING btree ("account_id");--> statement-breakpoint
+CREATE INDEX "idx_staff_user" ON "staff" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "idx_notifications_account" ON "notifications" USING btree ("account_id");--> statement-breakpoint
+CREATE INDEX "idx_notifications_status" ON "notifications" USING btree ("account_id","status");--> statement-breakpoint
+CREATE INDEX "idx_notifications_patient" ON "notifications" USING btree ("patient_id");--> statement-breakpoint
+CREATE INDEX "idx_notifications_created" ON "notifications" USING btree ("account_id","created_at");--> statement-breakpoint
+CREATE INDEX "idx_notif_jobs_status" ON "notification_jobs" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "idx_notif_jobs_notification" ON "notification_jobs" USING btree ("notification_id");--> statement-breakpoint
+CREATE INDEX "idx_notif_jobs_scheduled" ON "notification_jobs" USING btree ("scheduled_at","status");--> statement-breakpoint
+CREATE INDEX "idx_scheduling_queue_account_checked_in" ON "scheduling_queue_entries" USING btree ("account_id","checked_in_at");--> statement-breakpoint
+CREATE INDEX "idx_scheduling_queue_account_status" ON "scheduling_queue_entries" USING btree ("account_id","status");--> statement-breakpoint
+CREATE INDEX "idx_scheduling_queue_account_priority" ON "scheduling_queue_entries" USING btree ("account_id","priority","checked_in_at");--> statement-breakpoint
+CREATE INDEX "idx_scheduling_queue_encounter" ON "scheduling_queue_entries" USING btree ("encounter_id");--> statement-breakpoint
+CREATE INDEX "idx_triage_records_account_created" ON "triage_records" USING btree ("account_id","created_at");--> statement-breakpoint
+CREATE INDEX "idx_triage_records_encounter" ON "triage_records" USING btree ("encounter_id");--> statement-breakpoint
+CREATE INDEX "idx_triage_records_patient" ON "triage_records" USING btree ("patient_id");--> statement-breakpoint
+CREATE INDEX "idx_triage_versions_triage_created" ON "triage_record_versions" USING btree ("triage_id","created_at");--> statement-breakpoint
+CREATE INDEX "idx_triage_versions_account_created" ON "triage_record_versions" USING btree ("account_id","created_at");--> statement-breakpoint
+CREATE INDEX "idx_triage_versions_encounter" ON "triage_record_versions" USING btree ("encounter_id");
+
+-- =====================
+-- Staff table
+-- =====================
+CREATE TABLE IF NOT EXISTS "staff" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+  "user_id" uuid,
+  "employee_code" varchar(50) NOT NULL,
+  "full_name" varchar(255) NOT NULL,
+  "department" varchar(100),
+  "job_title" varchar(150),
+  "is_active" boolean NOT NULL DEFAULT true,
+  "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+  "updated_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX "idx_staff_code_unique" ON "staff" USING btree ("account_id","employee_code");
+CREATE INDEX "idx_staff_account" ON "staff" USING btree ("account_id");
+CREATE INDEX "idx_staff_user" ON "staff" USING btree ("user_id");
+
+-- =====================
+-- Notification templates
+-- =====================
+CREATE TABLE IF NOT EXISTS "notification_templates" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+  "name" varchar(200) NOT NULL,
+  "type" notification_type NOT NULL,
+  "channel" notification_channel NOT NULL,
+  "subject" varchar(500),
+  "body_html" text,
+  "body_text" text NOT NULL,
+  "variables" json DEFAULT '[]'::json,
+  "active" boolean NOT NULL DEFAULT true,
+  "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+  "updated_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX "idx_notif_templates_account" ON "notification_templates" USING btree ("account_id");
+CREATE INDEX "idx_notif_templates_type" ON "notification_templates" USING btree ("account_id","type");
+CREATE UNIQUE INDEX "idx_notif_templates_unique" ON "notification_templates" USING btree ("account_id","type","channel");
+
+-- =====================
+-- Notifications
+-- =====================
+CREATE TABLE IF NOT EXISTS "notifications" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+  "template_id" uuid REFERENCES "notification_templates"("id") ON DELETE SET NULL,
+  "patient_id" uuid REFERENCES "patients"("id") ON DELETE SET NULL,
+  "appointment_id" uuid REFERENCES "appointments"("id") ON DELETE SET NULL,
+  "type" notification_type NOT NULL,
+  "channel" notification_channel NOT NULL,
+  "priority" notification_priority NOT NULL DEFAULT 'normal',
+  "status" notification_status NOT NULL DEFAULT 'pending',
+  "recipient" varchar(500) NOT NULL,
+  "recipient_name" varchar(255),
+  "subject" varchar(500),
+  "body" text NOT NULL,
+  "metadata" json DEFAULT '{}'::json,
+  "scheduled_for" timestamp with time zone,
+  "sent_at" timestamp with time zone,
+  "delivered_at" timestamp with time zone,
+  "failed_at" timestamp with time zone,
+  "error_message" text,
+  "retry_count" integer NOT NULL DEFAULT 0,
+  "max_retries" integer NOT NULL DEFAULT 3,
+  "created_by_user_id" uuid,
+  "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+  "updated_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX "idx_notifications_account" ON "notifications" USING btree ("account_id");
+CREATE INDEX "idx_notifications_status" ON "notifications" USING btree ("account_id","status");
+CREATE INDEX "idx_notifications_scheduled" ON "notifications" USING btree ("scheduled_for","status");
+CREATE INDEX "idx_notifications_patient" ON "notifications" USING btree ("patient_id");
+CREATE INDEX "idx_notifications_appointment" ON "notifications" USING btree ("appointment_id");
+CREATE INDEX "idx_notifications_created" ON "notifications" USING btree ("account_id","created_at");
+
+-- =====================
+-- Notification settings
+-- =====================
+CREATE TABLE IF NOT EXISTS "notification_settings" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+  "sms_enabled" boolean NOT NULL DEFAULT false,
+  "sms_provider" varchar(50),
+  "sms_api_key" varchar(255),
+  "sms_from" varchar(50),
+  "whatsapp_enabled" boolean NOT NULL DEFAULT false,
+  "whatsapp_provider" varchar(50),
+  "whatsapp_api_key" varchar(255),
+  "whatsapp_from" varchar(50),
+  "email_enabled" boolean NOT NULL DEFAULT false,
+  "email_provider" varchar(50),
+  "email_api_key" varchar(255),
+  "email_from" varchar(255),
+  "email_from_name" varchar(255),
+  "quiet_hours_enabled" boolean NOT NULL DEFAULT false,
+  "quiet_hours_start" varchar(5),
+  "quiet_hours_end" varchar(5),
+  "max_retries" integer NOT NULL DEFAULT 3,
+  "retry_interval_minutes" integer NOT NULL DEFAULT 5,
+  "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+  "updated_at" timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX "idx_notif_settings_account" ON "notification_settings" USING btree ("account_id");
+
+-- =====================
+-- Notification jobs
+-- =====================
+CREATE TABLE IF NOT EXISTS "notification_jobs" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+  "notification_id" uuid NOT NULL REFERENCES "notifications"("id") ON DELETE CASCADE,
+  "status" varchar(20) NOT NULL DEFAULT 'queued',
+  "attempts" integer NOT NULL DEFAULT 0,
+  "scheduled_at" timestamp with time zone NOT NULL DEFAULT now(),
+  "processed_at" timestamp with time zone
+);
+CREATE INDEX "idx_notif_jobs_status" ON "notification_jobs" USING btree ("status");
+CREATE INDEX "idx_notif_jobs_notification" ON "notification_jobs" USING btree ("notification_id");
+CREATE INDEX "idx_notif_jobs_scheduled" ON "notification_jobs" USING btree ("scheduled_at","status");

@@ -89,7 +89,7 @@ export class DatabasePrescriptionExecutionRepository implements PrescriptionExec
       frequency: (row.frequency as string) ?? undefined,
       scheduledAt: new Date(row.scheduled_at as string).toISOString(),
       status: row.status as PrescriptionExecutionSummary['status'],
-      administeredBy: (row.administered_by as string) ?? undefined,
+      administeredBy: row.administered_by ? (row.administered_by as unknown as UserId) : undefined,
       administeredAt: row.administered_at ? new Date(row.administered_at as string).toISOString() : undefined,
       notes: (row.notes as string) ?? undefined,
       version: row.version as number,

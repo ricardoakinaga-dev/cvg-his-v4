@@ -10,6 +10,7 @@ import {
   closeDatabaseClient,
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
+import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
 import { DatabaseMedicalRecordRepository } from '@cvg-his-v2/module-medical-records';
 import { DatabaseClinicalEntryRepository } from '@cvg-his-v2/module-medical-records';
 import { DatabaseClinicalTimelineRepository } from '@cvg-his-v2/module-medical-records';
@@ -93,6 +94,7 @@ async function waitFor<T>(
 describe('Database Persistence Integration Tests', () => {
   let db: DatabaseClient;
   let mrRepo: DatabaseMedicalRecordRepository;
+  let staffRepo: DatabaseStaffRepository;
   let ceRepo: DatabaseClinicalEntryRepository;
   let ctRepo: DatabaseClinicalTimelineRepository;
   let notifRepo: DatabaseNotificationRepository;
@@ -104,6 +106,7 @@ describe('Database Persistence Integration Tests', () => {
   before(async () => {
     db = createDatabaseClient(TEST_DATABASE_URL);
     mrRepo = new DatabaseMedicalRecordRepository(db);
+    staffRepo = new DatabaseStaffRepository();
     ceRepo = new DatabaseClinicalEntryRepository(db);
     ctRepo = new DatabaseClinicalTimelineRepository(db);
     notifRepo = new DatabaseNotificationRepository(db);
@@ -238,6 +241,22 @@ describe('Database Persistence Integration Tests', () => {
     assert.equal(found?.status, 'queued');
   });
 
+  it('should persist and retrieve staff members', async () => {
+    const created = await staffRepo.create({
+      accountId: 'acc_test' as any,
+      userId: null,
+      employeeCode: `STAFF-${Date.now()}`,
+      fullName: 'Staff Persistido',
+      department: 'Operacoes',
+      jobTitle: 'Supervisor'
+    });
+
+    const found = await staffRepo.findById(created.id);
+    assert.ok(found, 'Staff member should be found');
+    assert.equal(found?.employeeCode, created.employeeCode);
+    assert.equal(found?.fullName, 'Staff Persistido');
+  });
+
   it('should persist and retrieve notification jobs', async () => {
     const now = new Date().toISOString();
     const notifId = `notif_job_test_${Date.now()}` as NotificationId;
@@ -285,18 +304,22 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const financeLogin = runtime.auth.login(
+    const financeLogin = await runtime.auth.login(
       { username: 'finance', password: 'finance123' },
       'corr_db_worker_process'
     );
     const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
-    const notification = runtime.notifications.create(finance.user.id, finance.user.accountId, {
-      category: 'operations',
-      severity: 'high',
-      title: 'Worker process integration',
-      message: 'Notification created by API and processed by external worker process'
-    });
+    const notification = await runtime.notifications.create(
+      finance.user.id,
+      finance.user.accountId,
+      {
+        category: 'operations',
+        severity: 'high',
+        title: 'Worker process integration',
+        message: 'Notification created by API and processed by external worker process'
+      }
+    );
 
     const queuedJob = await waitFor(
       async () => {
@@ -330,6 +353,113 @@ describe('Database Persistence Integration Tests', () => {
     );
   });
 
+  it('should persist scheduling queue entries across runtime restart', async () => {
+    const bootstrap = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
+    const runtime = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrap.repositories,
+      fileStorage: bootstrap.fileStorage
+    });
+
+    const receptionLogin = await runtime.auth.login(
+      { username: 'reception', password: 'seed_reception' },
+      'corr_db_queue_persistence'
+    );
+    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+    const queued = await runtime.scheduling.checkIn(reception.user.accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Queue persistence across restart',
+      priority: 'high'
+    });
+    await runtime.scheduling.callQueueEntry(queued.id);
+
+    const runtimeAfterRestart = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrap.repositories,
+      fileStorage: bootstrap.fileStorage
+    });
+    await runtimeAfterRestart.initialize();
+
+    const restored = runtimeAfterRestart.scheduling.getQueueEntryOrThrow(queued.id);
+    assert.equal(restored.status, 'called');
+    assert.equal(restored.reason, 'Queue persistence across restart');
+    assert.equal(runtimeAfterRestart.scheduling.getQueue().length >= 1, true);
+  });
+
+  it('should persist triage revision history across runtime restart', async () => {
+    const bootstrap = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
+    const runtime = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrap.repositories,
+      fileStorage: bootstrap.fileStorage
+    });
+
+    const receptionLogin = await runtime.auth.login(
+      { username: 'reception', password: 'seed_reception' },
+      'corr_db_triage_versions_reception'
+    );
+    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+    const encounter = runtime.encounters.openEncounter(
+      reception.user.accountId,
+      reception.user.id,
+      {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Triage revision persistence'
+      }
+    );
+
+    const nurseLogin = await runtime.auth.login(
+      { username: 'nurse', password: 'seed_nurse' },
+      'corr_db_triage_versions_nurse'
+    );
+    const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
+
+    const triage = await runtime.triage.createTriage(nurse.user.id, {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      priority: 'medium',
+      chiefComplaint: 'Apatia',
+      initialNotes: 'Paciente quieto',
+      alerts: ['letargia'],
+      destination: 'observation'
+    });
+    await runtime.triage.updateTriage(
+      triage.id,
+      {
+        priority: 'high',
+        chiefComplaint: 'Apatia com desidratacao',
+        alerts: ['letargia', 'desidratacao'],
+        destination: 'in_care'
+      },
+      nurse.user.id
+    );
+
+    const runtimeAfterRestart = createApiRuntime({
+      authSecret: 'test-secret',
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      repositories: bootstrap.repositories,
+      fileStorage: bootstrap.fileStorage
+    });
+    await runtimeAfterRestart.initialize();
+
+    const versions = runtimeAfterRestart.triage.listVersions(triage.id);
+    assert.equal(versions.length, 1);
+    assert.equal(versions[0]?.nextSnapshot.destination, 'in_care');
+    assert.equal(versions[0]?.changedFields.includes('priority'), true);
+  });
+
   it('should persist inpatient stay lifecycle across runtime and repository reads', async () => {
     const bootstrap = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
     const runtime = createApiRuntime({
@@ -340,7 +470,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_inpatient_reception'
     );
@@ -412,7 +542,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_surgery_reception'
     );
@@ -479,7 +609,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_diag_reception'
     );
@@ -554,7 +684,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_attachment_reception'
     );
@@ -571,7 +701,7 @@ describe('Database Persistence Integration Tests', () => {
       }
     );
 
-    const vetLogin = runtime.auth.login(
+    const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_attachment_vet'
     );
@@ -646,7 +776,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_versioning_reception'
     );
@@ -663,7 +793,7 @@ describe('Database Persistence Integration Tests', () => {
       }
     );
 
-    const vetLogin = runtime.auth.login(
+    const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_versioning_vet'
     );
@@ -744,7 +874,7 @@ describe('Database Persistence Integration Tests', () => {
       fileStorage: bootstrap.fileStorage
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_archive_reception'
     );
@@ -761,7 +891,7 @@ describe('Database Persistence Integration Tests', () => {
       }
     );
 
-    const vetLogin = runtime.auth.login(
+    const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_archive_vet'
     );
@@ -868,7 +998,7 @@ describe('Database Persistence Integration Tests', () => {
       sectorBedOptions: { databaseClient: db }
     });
 
-    const receptionLogin = runtime.auth.login(
+    const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_sector_bed'
     );

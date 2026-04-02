@@ -15,27 +15,22 @@
     "typecheck": "pnpm -r --filter @cvg-his-v2/* run typecheck",
     "lint": "pnpm -r --filter @cvg-his-v2/* run lint",
     "test": "pnpm -r --filter @cvg-his-v2/* run test",
-    "test:all": "pnpm -r --filter @cvg-his-v2/* run test && pnpm --filter @cvg-his-v2/api run test:db && pnpm test:smoke",
+    "test:all": "pnpm test:critical && pnpm test:e2e",
     "test:smoke": "npx playwright test --config e2e/playwright-smoke.config.ts",
+    "test:integration": "vitest run tests/integration --config vitest.config.ts",
+    "test:db": "vitest run tests/integration/database --config vitest.config.ts",
+    "test:critical": "vitest run tests/integration/database tests/integration/foundational.test.ts --config vitest.config.ts --reporter=verbose",
+    "test:critical:bootstrap": "node infra/scripts/test-critical-bootstrap.mjs",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts",
+    "test:e2e": "npx playwright test e2e/tests/fluxos-criticos.spec.ts --config playwright.config.ts",
+    "test:db:start": "docker compose -f docker-compose.test.yml up -d postgres-test",
+    "test:db:stop": "docker compose -f docker-compose.test.yml down -v",
     "release:check": "pnpm typecheck && pnpm build && pnpm test:all",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:check": "node infra/scripts/check-staging.mjs",
     "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
     "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@types/node": "^22.13.5",
-    "@typescript-eslint/eslint-plugin": "^8.24.0",
-    "@typescript-eslint/parser": "^8.24.0",
-    "dotenv": "^16.4.7",
-    "eslint": "^8.57.1",
-    "prettier": "^3.5.1",
-    "tsx": "^4.19.2",
-    "turbo": "^2.5.0",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
   },
   "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
   "main": "index.js",
@@ -54,6 +49,22 @@
   },
   "homepage": "https://github.com/ricardoakinaga-dev/cvg-his-v2#readme",
   "dependencies": {
-    "bcryptjs": "^3.0.3"
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.38.4",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^22.13.5",
+    "@types/pg": "^8.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "prettier": "^3.5.1",
+    "tsx": "^4.19.2",
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }

@@ -70,6 +70,12 @@ import {
   type PrescriptionExecutionRepository,
   type AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
+import { DatabaseBillingRepository } from '@cvg-his-v2/module-billing';
+import { DatabaseInventoryRepository } from '@cvg-his-v2/module-inventory';
+import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
+import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
+import { DatabaseUsersRepository } from '@cvg-his-v2/module-users';
+import { DatabaseTriageRepository } from '@cvg-his-v2/module-triage';
 import type {
   AccountId,
   AuditEventId,
@@ -482,9 +488,12 @@ class InMemoryNotificationRepository {
   }
 
   async findNotifications(
+    accountId?: NotificationSummary['accountId'],
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]> {
-    return Array.from(this.#notifications.values()).filter((n) => !status || n.status === status);
+    return Array.from(this.#notifications.values()).filter(
+      (n) => (!accountId || n.accountId === accountId) && (!status || n.status === status)
+    );
   }
 
   async createJob(job: NotificationJobSummary): Promise<void> {
@@ -499,9 +508,21 @@ class InMemoryNotificationRepository {
     return this.#jobs.get(id) ?? null;
   }
 
-  async findQueuedJobs(limit: number): Promise<readonly NotificationJobSummary[]> {
+  async findJobs(
+    accountId?: NotificationJobSummary['accountId'],
+    status?: NotificationJobSummary['status']
+  ): Promise<readonly NotificationJobSummary[]> {
+    return Array.from(this.#jobs.values()).filter(
+      (job) => (!accountId || job.accountId === accountId) && (!status || job.status === status)
+    );
+  }
+
+  async findQueuedJobs(
+    limit: number,
+    accountId?: NotificationJobSummary['accountId']
+  ): Promise<readonly NotificationJobSummary[]> {
     return Array.from(this.#jobs.values())
-      .filter((j) => j.status === 'queued')
+      .filter((j) => j.status === 'queued' && (!accountId || j.accountId === accountId))
       .slice(0, limit);
   }
 
@@ -541,7 +562,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     clinicalTimeline: new InMemoryClinicalTimelineRepository(),
     entryRevision: new InMemoryEntryRevisionRepository(),
     attachment: new InMemoryAttachmentRepository(),
-    notification: new InMemoryNotificationRepository()
+    notification: new InMemoryNotificationRepository() as NotificationRepository
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
@@ -589,14 +610,20 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),
         entryRevision: new DatabaseEntryRevisionRepository(db),
         attachment: new DatabaseAttachmentRepository(db),
-        notification: new DatabaseNotificationRepository(db),
+        notification: new DatabaseNotificationRepository(db) as NotificationRepository,
         inpatientStay: new DatabaseInpatientStayRepository(db),
         inpatientProgress: new DatabaseInpatientProgressRepository(db),
         surgeryCase: new DatabaseSurgeryCaseRepository(db),
         diagnosticOrder: new DatabaseDiagnosticOrderRepository(db),
         discharge: new DatabaseDischargeRepository(),
         prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
-        administrationEvent: new DatabaseAdministrationEventRepository()
+        administrationEvent: new DatabaseAdministrationEventRepository(),
+        billing: new DatabaseBillingRepository(),
+        inventory: new DatabaseInventoryRepository(),
+        scheduling: new DatabaseSchedulingRepository(),
+        triage: new DatabaseTriageRepository(),
+        users: new DatabaseUsersRepository(),
+        staff: new DatabaseStaffRepository()
       };
       results.fileStorage = new LocalFileStorage({
         basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'

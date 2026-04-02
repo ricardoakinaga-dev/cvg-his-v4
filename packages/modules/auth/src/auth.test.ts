@@ -28,10 +28,10 @@ function createAuthService() {
   });
 }
 
-test('AuthService: login with valid credentials returns session', () => {
+test('AuthService: login with valid credentials returns session', async () => {
   const auth = createAuthService();
 
-  const result = auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-test-1');
+  const result = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-test-1');
 
   assert.ok(result.accessToken);
   assert.ok(result.refreshToken);
@@ -39,10 +39,10 @@ test('AuthService: login with valid credentials returns session', () => {
   assert.equal(result.principal.session.active, true);
 });
 
-test('AuthService: login with invalid credentials throws AuthenticationError', () => {
+test('AuthService: login with invalid credentials throws AuthenticationError', async () => {
   const auth = createAuthService();
 
-  assert.throws(
+  await assert.rejects(
     () => auth.login({ username: 'admin', password: 'wrong' }, 'corr-test-2'),
     (err) => {
       assert.ok(err instanceof AuthenticationError);
@@ -51,10 +51,10 @@ test('AuthService: login with invalid credentials throws AuthenticationError', (
   );
 });
 
-test('AuthService: login with non-existent user throws', () => {
+test('AuthService: login with non-existent user throws', async () => {
   const auth = createAuthService();
 
-  assert.throws(
+  await assert.rejects(
     () => auth.login({ username: 'nonexistent', password: 'test' }, 'corr-test-3'),
     (err) => {
       assert.ok(err instanceof AuthenticationError);
@@ -63,10 +63,10 @@ test('AuthService: login with non-existent user throws', () => {
   );
 });
 
-test('AuthService: refresh rotates tokens but keeps same session', () => {
+test('AuthService: refresh rotates tokens but keeps same session', async () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-4');
+  const login = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-4');
   const originalSessionId = login.principal.session.sessionId;
   const originalRefresh = login.refreshToken;
 
@@ -77,10 +77,10 @@ test('AuthService: refresh rotates tokens but keeps same session', () => {
   assert.ok(refreshed.accessToken);
 });
 
-test('AuthService: revoked session cannot be refreshed', () => {
+test('AuthService: revoked session cannot be refreshed', async () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-5');
+  const login = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-5');
 
   auth.logout({ refreshToken: login.refreshToken }, 'corr-test-5-logout');
 
@@ -93,10 +93,10 @@ test('AuthService: revoked session cannot be refreshed', () => {
   );
 });
 
-test('AuthService: authenticateAccessToken returns principal for valid token', () => {
+test('AuthService: authenticateAccessToken returns principal for valid token', async () => {
   const auth = createAuthService();
 
-  const login = auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-6');
+  const login = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-6');
 
   const principal = auth.authenticateAccessToken(login.accessToken);
 

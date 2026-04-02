@@ -105,13 +105,19 @@ apply_v2_schema() {
   fi
 
   local db_url="postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB:-cvg_his_v2}"
-  require_cmd psql
+  require_cmd npx
 
-  log "applying V2 schema and migrations"
-  psql "$db_url" -f packages/shared/database/src/migrations/001_initial_schema.sql
-  psql "$db_url" -f packages/shared/database/src/migrations/002_entry_revisions.sql
-  psql "$db_url" -f packages/shared/database/src/migrations/003_advanced_care_persistence.sql
-  psql "$db_url" -f packages/shared/database/src/migrations/004_clinical_entry_governance.sql
+  log "applying V2 schema via Drizzle migration"
+  DATABASE_URL="$db_url" npx tsx packages/db/src/migrate.ts
+  log "Drizzle migration applied successfully"
+
+  if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
+    log "running Drizzle seed with admin user"
+    DATABASE_URL="$db_url" ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npx tsx packages/db/src/seed.ts
+    log "Drizzle seed applied successfully"
+  else
+    log "ADMIN_EMAIL/ADMIN_PASSWORD not provided; skipping admin seed"
+  fi
 }
 
 build_and_start_v2() {
@@ -138,16 +144,25 @@ wait_for_http() {
 }
 
 validate_v2_stack() {
-  log "validating API /health"
-  wait_for_http "${API_HEALTH_URL:-http://127.0.0.1:3001/health}" 200 || die "API health check failed"
+  log "validating API /health (external port 3000)"
+  wait_for_http "${API_HEALTH_URL:-http://127.0.0.1:3000/health}" 200 || die "API health check failed"
 
-  log "validating API /ready"
-  wait_for_http "${API_READY_URL:-http://127.0.0.1:3001/ready}" 200 || die "API readiness check failed"
+  log "validating API /ready (external port 3000)"
+  wait_for_http "${API_READY_URL:-http://127.0.0.1:3000/ready}" 200 || die "API readiness check failed"
 
-  log "validating Web root"
+  log "validating API /metrics (external port 3000)"
+  wait_for_http "${API_METRICS_URL:-http://127.0.0.1:3000/metrics}" 200 || die "API metrics check failed"
+
+  log "validating Web root (external port 3001)"
   local web_code
-  web_code="$(curl -s -o /dev/null -w '%{http_code}' "${WEB_URL:-http://127.0.0.1:3000/}" || true)"
+  web_code="$(curl -s -o /dev/null -w '%{http_code}' "${WEB_URL:-http://127.0.0.1:3001/}" || true)"
   [[ "$web_code" == "200" ]] || die "web root returned unexpected status: $web_code"
+
+  log "validating Worker health (port 3002)"
+  wait_for_http "${WORKER_HEALTH_URL:-http://127.0.0.1:3002/health}" 200 30 2 || log "worker health not available (may start slower)"
+
+  log "validating Worker readiness (port 3002)"
+  wait_for_http "${WORKER_READY_URL:-http://127.0.0.1:3002/ready}" 200 30 2 || log "worker readiness not available (may start slower)"
 
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps > "$BACKUP_DIR/v2-compose-ps.txt"
 }
@@ -207,9 +222,17 @@ Env file:
   $ENV_FILE
 
 Next checks:
-  curl http://127.0.0.1:3001/health
-  curl http://127.0.0.1:3001/ready
-  curl -I http://127.0.0.1:3000/
+  curl http://127.0.0.1:3000/health
+  curl http://127.0.0.1:3000/ready
+  curl http://127.0.0.1:3000/metrics
+  curl -I http://127.0.0.1:3001/
+  curl http://127.0.0.1:3002/health
+  curl http://127.0.0.1:3002/ready
+  curl http://127.0.0.1:3002/metrics
+
+Rollback:
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
+  # Restore legacy containers from backup: $BACKUP_DIR
 
 Optional:
   ENABLE_CADDY_SWITCH=true CADDYFILE_TARGET=/etc/caddy/Caddyfile $0
@@ -221,8 +244,8 @@ main() {
   validate_compose
   prepare_backup_dir
   snapshot_legacy_state
-  build_and_start_v2
   apply_v2_schema
+  build_and_start_v2
   validate_v2_stack
   switch_caddy_if_enabled
   stop_legacy_if_requested

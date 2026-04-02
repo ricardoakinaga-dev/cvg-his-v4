@@ -12,13 +12,15 @@
     }
   },
   "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:*",
     "@cvg-his-v2/shared-errors": "workspace:*",
-    "@cvg-his-v2/shared-types": "workspace:*"
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('no tests for module-staff')\""
+    "test": "vitest run --config vitest.config.ts"
   }
 }

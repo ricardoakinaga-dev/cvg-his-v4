@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AccessControlService } from './index.js';
+import type { UserId, AccountId } from '@cvg-his-v2/shared-types';
 
 describe('AccessControlService', () => {
   let service: AccessControlService;
@@ -22,8 +23,6 @@ describe('AccessControlService', () => {
 
   it('should create a profile for admin', () => {
     const profile = service.createProfile({
-      userId: 'user_1',
-      accountId: 'acc_1',
       roleCodes: ['admin']
     });
     expect(profile.roleCodes.length).toBe(1);
@@ -33,8 +32,6 @@ describe('AccessControlService', () => {
 
   it('should create profile for multiple roles', () => {
     const profile = service.createProfile({
-      userId: 'user_1',
-      accountId: 'acc_1',
       roleCodes: ['admin', 'veterinarian']
     });
     expect(profile.roleCodes.length).toBe(2);
@@ -43,13 +40,11 @@ describe('AccessControlService', () => {
 
   it('should throw for unauthorized permission', () => {
     const profile = service.createProfile({
-      userId: 'user_1',
-      accountId: 'acc_1',
       roleCodes: ['reception']
     });
     expect(() =>
       service.assertAuthorized({
-        actor: { id: 'user_1', accountId: 'acc_1', status: 'active' },
+        actor: { id: 'user_1' as UserId, accountId: 'acc_1' as AccountId, username: 'test', email: 'test@test.com', displayName: 'Test', status: 'active', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
         access: profile,
         permissionCode: 'audit.read',
         accountId: 'acc_1'

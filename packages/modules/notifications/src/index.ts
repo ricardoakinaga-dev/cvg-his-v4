@@ -21,12 +21,20 @@ export interface NotificationRepository {
   updateNotification(notification: NotificationSummary): Promise<void>;
   findNotificationById(id: NotificationId): Promise<NotificationSummary | null>;
   findNotifications(
+    accountId?: NotificationSummary['accountId'],
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]>;
   createJob(job: NotificationJobSummary): Promise<void>;
   updateJob(job: NotificationJobSummary): Promise<void>;
   findJobById(id: NotificationJobId): Promise<NotificationJobSummary | null>;
-  findQueuedJobs(limit: number): Promise<readonly NotificationJobSummary[]>;
+  findJobs(
+    accountId?: NotificationJobSummary['accountId'],
+    status?: NotificationJobSummary['status']
+  ): Promise<readonly NotificationJobSummary[]>;
+  findQueuedJobs(
+    limit: number,
+    accountId?: NotificationJobSummary['accountId']
+  ): Promise<readonly NotificationJobSummary[]>;
 }
 
 export interface NotificationsServiceOptions {
@@ -48,11 +56,11 @@ export class NotificationsService {
     this.#repository = options?.notificationRepository;
   }
 
-  public create(
+  public async create(
     actorUserId: UserId,
     accountId: NotificationSummary['accountId'],
     payload: CreateNotificationRequest
-  ): NotificationSummary {
+  ): Promise<NotificationSummary> {
     const encounterId = payload.encounterId?.trim() || undefined;
     const patientId = payload.patientId?.trim() || undefined;
     if (encounterId && this.#encounters) {
@@ -97,40 +105,64 @@ export class NotificationsService {
 
     // Persist to repository if available
     if (this.#repository) {
-      this.#repository.createNotification(notification).catch(() => {});
-      this.#repository.createJob(job).catch(() => {});
+      await this.#repository.createNotification(notification);
+      await this.#repository.createJob(job);
     }
 
     return notification;
   }
 
-  public list(status?: NotificationSummary['status']): readonly NotificationSummary[] {
-    return this.#notifications.filter((notification) => !status || notification.status === status);
+  public list(
+    status?: NotificationSummary['status'],
+    accountId?: NotificationSummary['accountId']
+  ): readonly NotificationSummary[] {
+    return this.#notifications.filter(
+      (notification) =>
+        (!status || notification.status === status) &&
+        (!accountId || notification.accountId === accountId)
+    );
   }
 
-  public listJobs(status?: NotificationJobSummary['status']): readonly NotificationJobSummary[] {
-    return this.#jobs.filter((job) => !status || job.status === status);
+  public listJobs(
+    status?: NotificationJobSummary['status'],
+    accountId?: NotificationJobSummary['accountId']
+  ): readonly NotificationJobSummary[] {
+    return this.#jobs.filter(
+      (job) => (!status || job.status === status) && (!accountId || job.accountId === accountId)
+    );
   }
 
   public async listFromRepository(
-    status?: NotificationSummary['status']
+    status?: NotificationSummary['status'],
+    accountId?: NotificationSummary['accountId']
   ): Promise<readonly NotificationSummary[]> {
     if (!this.#repository) {
-      return this.list(status);
+      return this.list(status, accountId);
     }
-    return this.#repository.findNotifications(status);
+    return this.#repository.findNotifications(accountId, status);
+  }
+
+  public async listJobsFromRepository(
+    status?: NotificationJobSummary['status'],
+    accountId?: NotificationJobSummary['accountId']
+  ): Promise<readonly NotificationJobSummary[]> {
+    if (!this.#repository) {
+      return this.listJobs(status, accountId);
+    }
+    return this.#repository.findJobs(accountId, status);
   }
 
   public async processPendingFromRepository(
-    payload: ProcessNotificationsRequest = {}
+    payload: ProcessNotificationsRequest = {},
+    accountId?: NotificationSummary['accountId']
   ): Promise<readonly NotificationSummary[]> {
     if (!this.#repository) {
-      return this.processPending(payload);
+      return this.processPending(payload, accountId);
     }
 
     const limit =
       typeof payload.limit === 'number' && payload.limit > 0 ? Math.floor(payload.limit) : 10;
-    const pendingJobs = await this.#repository.findQueuedJobs(limit);
+    const pendingJobs = await this.#repository.findQueuedJobs(limit, accountId);
     const sentAt = nowIso();
     const processed: NotificationSummary[] = [];
 
@@ -157,10 +189,15 @@ export class NotificationsService {
     return processed;
   }
 
-  public processPending(payload: ProcessNotificationsRequest = {}): readonly NotificationSummary[] {
+  public processPending(
+    payload: ProcessNotificationsRequest = {},
+    accountId?: NotificationSummary['accountId']
+  ): readonly NotificationSummary[] {
     const limit =
       typeof payload.limit === 'number' && payload.limit > 0 ? Math.floor(payload.limit) : 10;
-    const pendingJobs = this.#jobs.filter((job) => job.status === 'queued').slice(0, limit);
+    const pendingJobs = this.#jobs
+      .filter((job) => job.status === 'queued' && (!accountId || job.accountId === accountId))
+      .slice(0, limit);
     const sentAt = nowIso();
     const processed: NotificationSummary[] = [];
 

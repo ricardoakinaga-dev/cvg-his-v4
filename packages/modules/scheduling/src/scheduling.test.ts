@@ -1,7 +1,74 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { SchedulingService } from './index.js';
+import { beforeEach, describe, expect, it } from 'vitest';
+
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
+import type {
+  AccountId,
+  AppointmentId,
+  EncounterId,
+  QueueEntryId,
+  QueueEntrySummary,
+  SchedulingAppointmentSummary
+} from '@cvg-his-v2/shared-types';
+
+import { SchedulingService } from './index.js';
+import type { SchedulingRepository } from './repositories/database-scheduling.repository.js';
+
+class InMemorySchedulingRepository implements SchedulingRepository {
+  readonly appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
+  readonly queueEntries = new Map<QueueEntryId, QueueEntrySummary>();
+
+  constructor(
+    seedAppointments: readonly SchedulingAppointmentSummary[] = [],
+    seedQueueEntries: readonly QueueEntrySummary[] = []
+  ) {
+    for (const appointment of seedAppointments) {
+      this.appointments.set(appointment.id, appointment);
+    }
+
+    for (const queueEntry of seedQueueEntries) {
+      this.queueEntries.set(queueEntry.id, queueEntry);
+    }
+  }
+
+  async createAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
+    this.appointments.set(appointment.id, appointment);
+  }
+
+  async updateAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
+    this.appointments.set(appointment.id, appointment);
+  }
+
+  async findAppointmentById(id: AppointmentId): Promise<SchedulingAppointmentSummary | null> {
+    return this.appointments.get(id) ?? null;
+  }
+
+  async findAllAppointments(
+    accountId?: AccountId
+  ): Promise<readonly SchedulingAppointmentSummary[]> {
+    return Array.from(this.appointments.values()).filter((item) =>
+      accountId ? item.accountId === accountId : true
+    );
+  }
+
+  async createQueueEntry(entry: QueueEntrySummary): Promise<void> {
+    this.queueEntries.set(entry.id, entry);
+  }
+
+  async updateQueueEntry(entry: QueueEntrySummary): Promise<void> {
+    this.queueEntries.set(entry.id, entry);
+  }
+
+  async findQueueEntryById(id: QueueEntryId): Promise<QueueEntrySummary | null> {
+    return this.queueEntries.get(id) ?? null;
+  }
+
+  async findAllQueueEntries(accountId?: AccountId): Promise<readonly QueueEntrySummary[]> {
+    return Array.from(this.queueEntries.values()).filter((item) =>
+      accountId ? item.accountId === accountId : true
+    );
+  }
+}
 
 describe('SchedulingService', () => {
   let owners: OwnersService;
@@ -9,16 +76,549 @@ describe('SchedulingService', () => {
   let service: SchedulingService;
 
   beforeEach(() => {
-    owners = new OwnersService({ seedOwners: [] });
-    patients = new PatientsService({ owners, seedPatients: [], seedLinks: [] });
+    owners = new OwnersService();
+    patients = new PatientsService({ owners });
     service = new SchedulingService(owners, patients, []);
   });
 
-  it('should list appointments (empty)', () => {
-    expect(service.listAppointments().length).toBe(0);
+  it('creates appointments and returns them ordered by scheduledAt', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const later = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-02T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta posterior'
+    });
+    const earlier = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T08:00:00.000Z',
+      visitType: 'return',
+      reason: 'Consulta anterior'
+    });
+
+    const items = service.listAppointments();
+    expect(items.map((item) => item.id)).toEqual([earlier.id, later.id]);
+    expect(service.getAppointmentOrThrow(earlier.id).reason).toBe('Consulta anterior');
   });
 
-  it('should get queue (empty)', () => {
-    expect(service.getQueue().length).toBe(0);
+  it('rejects conflicting appointments for the same patient and time slot', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original'
+    });
+
+    await expect(
+      service.createAppointment(accountId, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        scheduledAt: '2026-04-01T11:00:00.000Z',
+        visitType: 'return',
+        reason: 'Consulta conflitante'
+      })
+    ).rejects.toThrow('Patient already has an appointment within a 30-minute window');
+  });
+
+  it('rejects appointments within 30-minute window for same patient', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original'
+    });
+
+    await expect(
+      service.createAppointment(accountId, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        scheduledAt: '2026-04-01T11:15:00.000Z',
+        visitType: 'return',
+        reason: 'Consulta dentro da janela'
+      })
+    ).rejects.toThrow('Patient already has an appointment within a 30-minute window');
+  });
+
+  it('allows appointments outside 30-minute window for same patient', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original'
+    });
+
+    const later = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T12:00:00.000Z',
+      visitType: 'return',
+      reason: 'Consulta fora da janela'
+    });
+
+    expect(later.status).toBe('scheduled');
+  });
+
+  it('allows appointments for different patients at same time', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta luna'
+    });
+
+    const newPatient = patients.create(accountId, {
+      name: 'Simba',
+      species: 'cat',
+      breed: 'SRD',
+      sex: 'male',
+      primaryOwnerId: 'owner_maria_silva'
+    });
+
+    const other = await service.createAppointment(accountId, {
+      patientId: newPatient.id,
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta simba'
+    });
+
+    expect(other.status).toBe('scheduled');
+  });
+
+  it('cancels a scheduled appointment successfully', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta para cancelar'
+    });
+
+    const cancelled = await service.cancelAppointment(appointment.id, 'Cliente desistiu');
+
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.reason).toBe('Cliente desistiu');
+    expect(service.getAppointmentOrThrow(appointment.id).status).toBe('cancelled');
+  });
+
+  it('cancels a checked_in appointment successfully', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta com check-in'
+    });
+    await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      appointmentId: appointment.id,
+      reason: 'Check-in para cancelar'
+    });
+
+    const cancelled = await service.cancelAppointment(appointment.id);
+
+    expect(cancelled.status).toBe('cancelled');
+  });
+
+  it('rejects cancellation of completed appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta completada'
+    });
+
+    const completedAppointment = {
+      ...appointment,
+      status: 'completed' as const,
+      updatedAt: appointment.updatedAt
+    };
+    (
+      service as unknown as {
+        getAppointmentOrThrow: (id: AppointmentId) => SchedulingAppointmentSummary;
+      }
+    ).getAppointmentOrThrow = () => completedAppointment;
+
+    await expect(service.cancelAppointment(appointment.id)).rejects.toThrow(
+      'Appointment cannot be cancelled in its current state'
+    );
+  });
+
+  it('rejects cancellation of already cancelled appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta para cancelar duas vezes'
+    });
+
+    await service.cancelAppointment(appointment.id, 'Primeiro cancelamento');
+
+    await expect(service.cancelAppointment(appointment.id, 'Segundo cancelamento')).rejects.toThrow(
+      'Appointment cannot be cancelled in its current state'
+    );
+  });
+
+  it('persists cancelled appointment when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const appointment = await persistent.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-07T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Persist cancel appointment'
+    });
+
+    await persistent.cancelAppointment(appointment.id, 'Cancelado pelo cliente');
+
+    expect(repository.appointments.get(appointment.id)?.status).toBe('cancelled');
+  });
+
+  it('rejects cancelled appointment from being re-check-in', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta cancelada'
+    });
+
+    await service.cancelAppointment(appointment.id);
+
+    await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      appointmentId: appointment.id,
+      reason: 'Re-check-in apos cancelamento'
+    });
+
+    const checkedInAppt = service.getAppointmentOrThrow(appointment.id);
+    expect(checkedInAppt.status).toBe('checked_in');
+  });
+
+  it('allows valid queue transitions: waiting -> called -> in_triage -> in_care -> observation -> completed', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Fluxo completo'
+    });
+
+    expect(queued.status).toBe('waiting');
+
+    const called = await service.callQueueEntry(queued.id);
+    expect(called.status).toBe('called');
+
+    const attached = await service.attachEncounter(queued.id, 'enc_1' as EncounterId);
+    expect(attached.status).toBe('in_triage');
+
+    const inCare = await service.transitionQueueForEncounter(queued.id, 'in_care');
+    expect(inCare.status).toBe('in_care');
+
+    const observation = await service.transitionQueueForEncounter(queued.id, 'observation');
+    expect(observation.status).toBe('observation');
+
+    const completed = await service.completeQueueEntry(queued.id);
+    expect(completed.status).toBe('completed');
+  });
+
+  it('allows waiting -> cancelled transition', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Para cancelar da fila'
+    });
+
+    const cancelled = await service.transitionQueueEntry(queued.id, 'cancelled');
+    expect(cancelled.status).toBe('cancelled');
+  });
+
+  it('allows called -> cancelled transition', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Para cancelar depois de chamado'
+    });
+
+    await service.callQueueEntry(queued.id);
+    const cancelled = await service.transitionQueueEntry(queued.id, 'cancelled');
+    expect(cancelled.status).toBe('cancelled');
+  });
+
+  it('blocks invalid transition: completed -> waiting', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Fluxo para bloquear'
+    });
+
+    await service.callQueueEntry(queued.id);
+    await service.attachEncounter(queued.id, 'enc_2' as EncounterId);
+    await service.transitionQueueForEncounter(queued.id, 'in_care');
+    await service.completeQueueEntry(queued.id);
+
+    await expect(service.transitionQueueForEncounter(queued.id, 'waiting')).rejects.toThrow(
+      'Invalid queue entry status transition'
+    );
+  });
+
+  it('blocks invalid transition: cancelled -> waiting', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Cancelado para bloquear'
+    });
+
+    await service.transitionQueueEntry(queued.id, 'cancelled');
+
+    await expect(service.transitionQueueForEncounter(queued.id, 'waiting')).rejects.toThrow(
+      'Invalid queue entry status transition'
+    );
+  });
+
+  it('blocks invalid transition: waiting -> in_care (skip)', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Pular etapas'
+    });
+
+    await expect(service.transitionQueueForEncounter(queued.id, 'in_care')).rejects.toThrow(
+      'Invalid queue entry status transition'
+    );
+  });
+
+  it('blocks calling an already completed entry', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Completado para bloquear call'
+    });
+
+    await service.callQueueEntry(queued.id);
+    await service.attachEncounter(queued.id, 'enc_3' as EncounterId);
+    await service.transitionQueueForEncounter(queued.id, 'in_care');
+    await service.transitionQueueForEncounter(queued.id, 'observation');
+    await service.transitionQueueEntry(queued.id, 'completed');
+
+    await expect(service.callQueueEntry(queued.id)).rejects.toThrow(
+      'Queue entry cannot be called from its current status'
+    );
+  });
+
+  it('blocks attaching encounter to a completed entry', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Completado para bloquear attach'
+    });
+
+    await service.callQueueEntry(queued.id);
+    await service.attachEncounter(queued.id, 'enc_4' as EncounterId);
+    await service.transitionQueueForEncounter(queued.id, 'in_care');
+    await service.transitionQueueEntry(queued.id, 'completed');
+
+    await expect(service.attachEncounter(queued.id, 'enc_new' as EncounterId)).rejects.toThrow(
+      'Queue entry cannot attach encounter from its current status'
+    );
+  });
+
+  it('persists queue transition to cancelled when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const queueEntry = await persistent.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Persistir cancelamento de fila'
+    });
+
+    await persistent.transitionQueueEntry(queueEntry.id, 'cancelled');
+
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('cancelled');
+  });
+
+  it('checks in patient, updates linked appointment and keeps queue ordered by priority', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T09:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta com check-in'
+    });
+
+    const medium = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      appointmentId: appointment.id,
+      reason: 'Aguardando atendimento',
+      priority: 'medium'
+    });
+    const critical = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Emergencia',
+      priority: 'critical'
+    });
+
+    expect(service.getAppointmentOrThrow(appointment.id).status).toBe('checked_in');
+    expect(service.getQueue().map((entry) => entry.id)).toEqual([critical.id, medium.id]);
+  });
+
+  it('calls queue entries, attaches encounter and transitions main statuses', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Fluxo operacional'
+    });
+
+    const called = await service.callQueueEntry(queued.id);
+    const attached = await service.attachEncounter(queued.id, 'encounter_1' as EncounterId);
+    const inCare = await service.transitionQueueForEncounter(queued.id, 'in_care');
+    const completed = await service.completeQueueEntry(queued.id);
+
+    expect(called.status).toBe('called');
+    expect(called.calledAt).toBeDefined();
+    expect(attached.status).toBe('in_triage');
+    expect(attached.encounterId).toBe('encounter_1');
+    expect(inCare.status).toBe('in_care');
+    expect(completed.status).toBe('completed');
+  });
+
+  it('hydrates appointments from repository when available', async () => {
+    const repository = new InMemorySchedulingRepository([
+      {
+        id: 'appt_repo_1' as AppointmentId,
+        accountId: '' as AccountId,
+        patientId: 'patient_luna' as never,
+        ownerId: 'owner_maria_silva' as never,
+        scheduledAt: '2026-04-03T10:00:00.000Z',
+        visitType: 'scheduled',
+        reason: 'Hydrated appointment',
+        status: 'scheduled',
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-01T10:00:00.000Z'
+      }
+    ]);
+    const hydrated = new SchedulingService(owners, patients, [], { repository });
+
+    await hydrated.hydrateFromDatabase();
+
+    const appointments = hydrated.listAppointments();
+    expect(appointments).toHaveLength(1);
+    expect(appointments[0]?.id).toBe('appt_repo_1');
+    expect(appointments[0]?.reason).toBe('Hydrated appointment');
+  });
+
+  it('hydrates persisted queue entries when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository(
+      [],
+      [
+        {
+          id: 'queue_repo_1' as QueueEntryId,
+          accountId: 'acc_cvg_demo' as AccountId,
+          patientId: 'patient_luna' as never,
+          ownerId: 'owner_maria_silva' as never,
+          reason: 'Hydrated queue entry',
+          priority: 'high',
+          status: 'waiting',
+          checkedInAt: '2026-04-03T10:00:00.000Z',
+          createdAt: '2026-04-03T10:00:00.000Z',
+          updatedAt: '2026-04-03T10:00:00.000Z'
+        }
+      ]
+    );
+    const hydrated = new SchedulingService(owners, patients, [], { repository });
+
+    await hydrated.hydrateFromDatabase();
+
+    const queue = hydrated.getQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0]?.id).toBe('queue_repo_1');
+    expect(queue[0]?.reason).toBe('Hydrated queue entry');
+  });
+
+  it('persists created appointments when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+
+    const created = await persistent.createAppointment('acc_cvg_demo' as AccountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-05T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Persist appointment'
+    });
+
+    expect(repository.appointments.get(created.id)?.reason).toBe('Persist appointment');
+  });
+
+  it('persists queue lifecycle updates when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await persistent.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-06T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Queue persistence'
+    });
+
+    const queueEntry = await persistent.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      appointmentId: appointment.id,
+      reason: 'Persist queue entry',
+      priority: 'high'
+    });
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('waiting');
+    expect(repository.appointments.get(appointment.id)?.status).toBe('checked_in');
+
+    const called = await persistent.callQueueEntry(queueEntry.id);
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('called');
+    expect(repository.queueEntries.get(queueEntry.id)?.calledAt).toBe(called.calledAt);
+
+    await persistent.attachEncounter(queueEntry.id, 'encounter_repo_1' as EncounterId);
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('in_triage');
+    expect(repository.queueEntries.get(queueEntry.id)?.encounterId).toBe('encounter_repo_1');
+
+    await persistent.transitionQueueForEncounter(queueEntry.id, 'observation');
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('observation');
+
+    await persistent.completeQueueEntry(queueEntry.id);
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('completed');
   });
 });

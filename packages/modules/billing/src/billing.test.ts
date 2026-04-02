@@ -18,10 +18,10 @@ function createService() {
   } as never);
 }
 
-test('BillingService createEstimate moves billing record to estimated', () => {
+test('BillingService createEstimate moves billing record to estimated', async () => {
   const service = createService();
 
-  const record = service.createEstimate({
+  const record = await service.createEstimate({
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
@@ -31,22 +31,22 @@ test('BillingService createEstimate moves billing record to estimated', () => {
   assert.equal(record.administrativeNotes, 'Estimativa inicial');
 });
 
-test('BillingService addItem recalculates subtotal', () => {
+test('BillingService addItem recalculates subtotal', async () => {
   const service = createService();
 
-  service.createEstimate({
+  await service.createEstimate({
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
 
-  const itemA = service.addItem('finance_1' as never, {
+  const itemA = await service.addItem('finance_1' as never, {
     encounterId: 'encounter_1',
     itemType: 'service',
     description: 'Consulta',
     quantity: 1,
     unitPriceAmount: 120
   });
-  const itemB = service.addItem('finance_1' as never, {
+  const itemB = await service.addItem('finance_1' as never, {
     encounterId: 'encounter_1',
     itemType: 'exam',
     description: 'Hemograma',
@@ -54,26 +54,26 @@ test('BillingService addItem recalculates subtotal', () => {
     unitPriceAmount: 35
   });
 
-  const record = service.getByEncounterOrThrow('encounter_1' as never);
+  const record = await service.getByEncounterOrThrow('encounter_1' as never);
   assert.equal(itemA.totalAmount, 120);
   assert.equal(itemB.totalAmount, 70);
   assert.equal(record.subtotalAmount, 190);
-  assert.equal(service.listItems('encounter_1' as never).length, 2);
+  assert.equal((await service.listItems('encounter_1' as never)).length, 2);
 });
 
-test('BillingService blocks adding items to settled record', () => {
+test('BillingService blocks adding items to settled record', async () => {
   const service = createService();
 
-  service.createEstimate({
+  await service.createEstimate({
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
-  service.updateStatus('encounter_1' as never, {
+  await service.updateStatus('encounter_1' as never, {
     status: 'settled'
   });
 
-  assert.throws(
-    () =>
+  await assert.rejects(
+    async () =>
       service.addItem('finance_1' as never, {
         encounterId: 'encounter_1',
         itemType: 'service',
@@ -85,14 +85,14 @@ test('BillingService blocks adding items to settled record', () => {
   );
 });
 
-test('BillingService list filters by encounter', () => {
+test('BillingService list filters by encounter', async () => {
   const service = createService();
 
-  service.createEstimate({
+  await service.createEstimate({
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
-  service.createEstimate({
+  await service.createEstimate({
     encounterId: 'encounter_2',
     administrativeNotes: 'Estimativa 2'
   });
