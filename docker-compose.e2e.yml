@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Docker Compose for E2E SPA tests.
+# Starts PostgreSQL + Redis + API, then Playwright runs the SPA dev server.
+#
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up -d
+#   pnpm test:e2e:spa
+#   docker compose -f docker-compose.e2e.yml down -v
+
+services:
+  postgres-e2e:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cvg_his_e2e
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5434:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d cvg_his_e2e']
+      interval: 3s
+      timeout: 5s
+      retries: 15
+    restart: 'no'
+
+  redis-e2e:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379'
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping']
+      interval: 3s
+      timeout: 5s
+      retries: 10
+    restart: 'no'
+
+  api-e2e:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres-e2e:5432/cvg_his_e2e
+      REDIS_URL: redis://redis-e2e:6379
+      AUTH_SECRET: e2e-test-secret-key-do-not-use-in-production-12345678
+      AUTH_ACCESS_TOKEN_TTL_SECONDS: '900'
+      AUTH_REFRESH_TOKEN_TTL_SECONDS: '604800'
+      PORT: '3001'
+      NODE_ENV: test
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+      redis-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/health || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: 'no'
+
+  spa-e2e:
+    build:
+      context: .
+      dockerfile: apps/spa/Dockerfile
+    ports:
+      - '3002:3002'
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3002/ || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    restart: 'no'

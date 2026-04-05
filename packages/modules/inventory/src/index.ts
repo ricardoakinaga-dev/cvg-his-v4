@@ -1,6 +1,10 @@
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
-import type { CreateInventoryConsumptionRequest } from '@cvg-his-v2/shared-contracts';
+import type {
+  CreateInventoryConsumptionRequest,
+  CreateInventoryItemRequest,
+  UpdateInventoryItemRequest
+} from '@cvg-his-v2/shared-contracts';
 import type {
   AccountId,
   InventoryConsumptionId,
@@ -202,6 +206,75 @@ export class InventoryService {
     };
     this.#consumptions.unshift(consumption);
     return consumption;
+  }
+
+  public createItem(
+    accountId: AccountId,
+    payload: CreateInventoryItemRequest
+  ): InventoryItemSummary {
+    const id = createCorrelationId('inv') as InventoryItemId;
+    const now = nowIso();
+
+    // Validate SKU uniqueness
+    const existingBySku = Array.from(this.#items.values()).find((i) => i.sku === payload.sku);
+    if (existingBySku) {
+      throw new ConflictError('SKU already exists', { sku: payload.sku });
+    }
+
+    const item: InventoryItemSummary = {
+      id,
+      accountId,
+      sku: payload.sku.trim(),
+      name: payload.name.trim(),
+      unit: payload.unit.trim(),
+      onHandQuantity: requirePositiveNumber(payload.onHandQuantity, 'onHandQuantity'),
+      reorderLevel: Math.max(0, Math.floor(payload.reorderLevel)),
+      unitCostAmount: Math.max(0, Number(payload.unitCostAmount.toFixed(2))),
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#items.set(item.id, item);
+
+    if (this.#repository) {
+      this.#repository.createItem(item);
+    }
+
+    return item;
+  }
+
+  public updateItem(
+    inventoryItemId: InventoryItemId,
+    payload: UpdateInventoryItemRequest
+  ): InventoryItemSummary {
+    const existing = this.getItemOrThrow(inventoryItemId);
+
+    const updatedItem: InventoryItemSummary = {
+      ...existing,
+      name: payload.name !== undefined ? payload.name.trim() : existing.name,
+      unit: payload.unit !== undefined ? payload.unit.trim() : existing.unit,
+      onHandQuantity:
+        payload.onHandQuantity !== undefined
+          ? requirePositiveNumber(payload.onHandQuantity, 'onHandQuantity')
+          : existing.onHandQuantity,
+      reorderLevel:
+        payload.reorderLevel !== undefined
+          ? Math.max(0, Math.floor(payload.reorderLevel))
+          : existing.reorderLevel,
+      unitCostAmount:
+        payload.unitCostAmount !== undefined
+          ? Math.max(0, Number(payload.unitCostAmount.toFixed(2)))
+          : existing.unitCostAmount,
+      updatedAt: nowIso()
+    };
+
+    this.#items.set(updatedItem.id, updatedItem);
+
+    if (this.#repository) {
+      this.#repository.updateItem(updatedItem);
+    }
+
+    return updatedItem;
   }
 }
 

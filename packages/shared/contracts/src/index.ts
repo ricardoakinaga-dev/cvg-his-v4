@@ -441,6 +441,23 @@ export interface InventoryItemListResponse {
   readonly items: readonly InventoryItemSummary[];
 }
 
+export interface CreateInventoryItemRequest {
+  readonly sku: string;
+  readonly name: string;
+  readonly unit: string;
+  readonly onHandQuantity: number;
+  readonly reorderLevel: number;
+  readonly unitCostAmount: number;
+}
+
+export interface UpdateInventoryItemRequest {
+  readonly name?: string;
+  readonly unit?: string;
+  readonly onHandQuantity?: number;
+  readonly reorderLevel?: number;
+  readonly unitCostAmount?: number;
+}
+
 export interface InventoryConsumptionListResponse {
   readonly items: readonly InventoryConsumptionSummary[];
 }
@@ -581,4 +598,33 @@ export interface LogAdministrationEventRequest {
 export interface PrescriptionExecutionListResponse {
   readonly items: readonly import('@cvg-his-v2/shared-types').PrescriptionExecutionSummary[];
   readonly total: number;
+}
+
+// --- MFA TOTP ---
+
+export interface MfaSetupResponse {
+  readonly secret: string;
+  readonly provisioningUri: string;
+  readonly recoveryCodes: readonly string[];
+}
+
+export interface MfaSetupConfirmRequest {
+  readonly userId: string;
+  readonly token: string;
+}
+
+export interface MfaLoginRequest {
+  readonly userId: string;
+  readonly token: string;
+}
+
+export interface MfaStatusResponse {
+  readonly isActive: boolean;
+  readonly isRequired: boolean;
+}
+
+export interface LoginMfaRequiredResponse {
+  readonly requiresMfa: true;
+  readonly userId: string;
+  readonly mfaMethods: readonly string[];
 }

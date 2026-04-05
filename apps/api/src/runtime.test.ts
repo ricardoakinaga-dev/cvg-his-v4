@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
@@ -24,7 +25,7 @@ test('login, session refresh and audit trail work end-to-end', async () => {
       password: 'seed_admin'
     },
     'corr_login_test'
-  );
+  ) as AuthSessionResponse;
 
   assert.equal(login.principal.user.username, 'admin');
   assert.equal(login.principal.access.permissionCodes.includes('users.manage'), true);
@@ -37,7 +38,7 @@ test('login, session refresh and audit trail work end-to-end', async () => {
       refreshToken: login.refreshToken
     },
     'corr_refresh_test'
-  );
+  ) as AuthSessionResponse;
 
   assert.equal(refreshed.principal.session.sessionId, login.principal.session.sessionId);
   assert.notEqual(refreshed.refreshToken, login.refreshToken);
@@ -59,7 +60,7 @@ test('backend enforcement denies audit access to a role without permission', asy
       password: 'seed_reception'
     },
     'corr_permission_test'
-  );
+  ) as AuthSessionResponse;
 
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
@@ -86,7 +87,7 @@ test('master registry supports owner, patient, relationship and search flows', a
       password: 'seed_reception'
     },
     'corr_master_registry_test'
-  );
+  ) as AuthSessionResponse;
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
   runtime.accessControl.assertAuthorized({
@@ -166,7 +167,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
       password: 'seed_reception'
     },
     'corr_operational_reception'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -218,7 +219,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
       password: 'seed_nurse'
     },
     'corr_operational_nurse'
-  );
+  ) as AuthSessionResponse;
   const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
   const triage = await runtime.triage.createTriage(nurse.user.id, {
     encounterId: encounter.id,
@@ -268,14 +269,14 @@ test('triage can be updated while encounter is open', async () => {
       password: 'seed_reception'
     },
     'corr_triage_update_reception'
-  );
+  ) as AuthSessionResponse;
   const nurseLogin = await runtime.auth.login(
     {
       username: 'nurse',
       password: 'seed_nurse'
     },
     'corr_triage_update_nurse'
-  );
+  ) as AuthSessionResponse;
 
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
@@ -318,7 +319,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
       password: 'seed_reception'
     },
     'corr_clinical_reception'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -334,7 +335,7 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
       password: 'seed_vet'
     },
     'corr_clinical_vet'
-  );
+  ) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
   const anamnesis = runtime.medicalRecords.addEntry(veterinarian.user.id, {
@@ -414,7 +415,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
       password: 'seed_reception'
     },
     'corr_advanced_reception'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -430,7 +431,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
       password: 'seed_vet'
     },
     'corr_advanced_vet'
-  );
+  ) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
   runtime.encounters.transitionEncounter(encounter.id, veterinarian.user.id, {
@@ -604,7 +605,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
       password: 'seed_reception'
     },
     'corr_admin_bridge_reception'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -620,7 +621,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
       password: 'seed_finance'
     },
     'corr_admin_bridge_finance'
-  );
+  ) as AuthSessionResponse;
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   const inventoryLogin = await runtime.auth.login(
@@ -629,7 +630,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
       password: 'seed_inventory'
     },
     'corr_admin_bridge_inventory'
-  );
+  ) as AuthSessionResponse;
   const inventoryUser = runtime.auth.authenticateAccessToken(inventoryLogin.accessToken);
 
   const estimate = await runtime.billing.createEstimate({
@@ -708,7 +709,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
   const loginA = await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_restart_test'
-  );
+  ) as AuthSessionResponse;
   const sessionA = loginA.principal.session;
 
   // Create owner
@@ -854,7 +855,7 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   const loginA = await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_medical_restart_test'
-  );
+  ) as AuthSessionResponse;
 
   // Create owner and patient
   const owner = runtimeA.owners.create(loginA.principal.user.accountId, {
@@ -1015,7 +1016,7 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
   const financeLogin = await runtime.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_worker_integration'
-  );
+  ) as AuthSessionResponse;
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification
@@ -1072,7 +1073,7 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   const financeLogin = await runtime1.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_separate_instances'
-  );
+  ) as AuthSessionResponse;
   const finance = runtime1.auth.authenticateAccessToken(financeLogin.accessToken);
 
   const notification = await runtime1.notifications.create(
@@ -1113,7 +1114,7 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_cross_aggregate'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   // Open encounter
@@ -1180,7 +1181,7 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   const financeLogin = await apiRuntime.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_worker_repo_integration'
-  );
+  ) as AuthSessionResponse;
   const finance = apiRuntime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification (writes to repository)
@@ -1251,7 +1252,7 @@ test('scheduling hardening: cancel appointment, time conflict, and queue transit
   const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_scheduling_hardening'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1276,7 +1277,7 @@ test('scheduling hardening: rejects double cancellation', async () => {
   const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_double_cancel'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1306,7 +1307,7 @@ test('scheduling hardening: time conflict blocks overlapping appointments', asyn
   const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_time_conflict'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1346,7 +1347,7 @@ test('scheduling hardening: queue transitions enforce state machine', async () =
   const receptionLogin = await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_queue_transitions'
-  );
+  ) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const queueEntry = await runtime.scheduling.checkIn(reception.user.accountId, {

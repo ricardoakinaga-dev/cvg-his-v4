@@ -7,6 +7,7 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
+  AccountId,
   ClinicalEntryId,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
@@ -32,6 +33,7 @@ export interface MedicalRecordRepository {
   update(record: MedicalRecordSummary): Promise<void>;
   findById(id: MedicalRecordId): Promise<MedicalRecordSummary | null>;
   findByEncounterId(encounterId: EncounterId): Promise<MedicalRecordSummary | null>;
+  findAll(accountId: AccountId): Promise<readonly MedicalRecordSummary[]>;
 }
 
 export interface ClinicalEntryRepository {
@@ -287,10 +289,7 @@ export class MedicalRecordsService {
       throw new ValidationError('Archived clinical entry cannot be updated', { entryId });
     }
 
-    if (
-      payload.expectedVersion !== undefined &&
-      payload.expectedVersion !== foundEntry.version
-    ) {
+    if (payload.expectedVersion !== undefined && payload.expectedVersion !== foundEntry.version) {
       throw new ValidationError('Clinical entry version mismatch', {
         entryId,
         expectedVersion: payload.expectedVersion,
@@ -384,10 +383,7 @@ export class MedicalRecordsService {
       throw new ValidationError('Clinical entry already archived', { entryId });
     }
 
-    if (
-      payload.expectedVersion !== undefined &&
-      payload.expectedVersion !== foundEntry.version
-    ) {
+    if (payload.expectedVersion !== undefined && payload.expectedVersion !== foundEntry.version) {
       throw new ValidationError('Clinical entry version mismatch', {
         entryId,
         expectedVersion: payload.expectedVersion,
@@ -522,6 +518,37 @@ export class MedicalRecordsService {
     }
 
     return this.listTimelineByEncounter(encounterId);
+  }
+
+  public async listAll(accountId: AccountId): Promise<
+    ReadonlyArray<{
+      record: MedicalRecordSummary;
+      entryCount: number;
+    }>
+  > {
+    const records = this.#medicalRecordRepository
+      ? await this.#medicalRecordRepository.findAll(accountId)
+      : [...this.#records.values()].filter((r) => r.accountId === accountId);
+
+    const results: Array<{ record: MedicalRecordSummary; entryCount: number }> = [];
+
+    for (const record of records) {
+      this.#records.set(record.id, record);
+      this.#recordByEncounterId.set(record.encounterId, record.id);
+
+      const entries = this.#clinicalEntryRepository
+        ? await this.#clinicalEntryRepository.findByMedicalRecordId(record.id)
+        : (this.#entries.get(record.id) ?? []);
+
+      if (this.#clinicalEntryRepository) {
+        this.#entries.set(record.id, [...entries]);
+      }
+
+      const activeCount = entries.filter((e) => !e.deletedAt).length;
+      results.push({ record, entryCount: activeCount });
+    }
+
+    return results;
   }
 
   public appendAttachmentEvent(

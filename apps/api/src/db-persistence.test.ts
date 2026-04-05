@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import {
   createDatabaseClient,
   closeDatabaseClient,
@@ -307,7 +308,7 @@ describe('Database Persistence Integration Tests', () => {
     const financeLogin = await runtime.auth.login(
       { username: 'finance', password: 'finance123' },
       'corr_db_worker_process'
-    );
+    ) as AuthSessionResponse;
     const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
     const notification = await runtime.notifications.create(
@@ -366,7 +367,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_queue_persistence'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
     const queued = await runtime.scheduling.checkIn(reception.user.accountId, {
@@ -405,7 +406,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_triage_versions_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -422,7 +423,7 @@ describe('Database Persistence Integration Tests', () => {
     const nurseLogin = await runtime.auth.login(
       { username: 'nurse', password: 'seed_nurse' },
       'corr_db_triage_versions_nurse'
-    );
+    ) as AuthSessionResponse;
     const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
 
     const triage = await runtime.triage.createTriage(nurse.user.id, {
@@ -473,7 +474,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_inpatient_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -545,7 +546,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_surgery_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -612,7 +613,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_diag_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -687,7 +688,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_attachment_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -704,7 +705,7 @@ describe('Database Persistence Integration Tests', () => {
     const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_attachment_vet'
-    );
+    ) as AuthSessionResponse;
     const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
     const record = await runtime.medicalRecords.getRecordByEncounterOrThrowAsync(encounter.id);
     const fileContent = Buffer.from('attachment persistence content', 'utf8');
@@ -779,7 +780,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_versioning_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -796,7 +797,7 @@ describe('Database Persistence Integration Tests', () => {
     const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_versioning_vet'
-    );
+    ) as AuthSessionResponse;
     const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
     const entry = runtime.medicalRecords.addEntry(veterinarian.user.id, {
@@ -877,7 +878,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_archive_reception'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
     const encounter = runtime.encounters.openEncounter(
       reception.user.accountId,
@@ -894,7 +895,7 @@ describe('Database Persistence Integration Tests', () => {
     const vetLogin = await runtime.auth.login(
       { username: 'vet', password: 'seed_vet' },
       'corr_db_archive_vet'
-    );
+    ) as AuthSessionResponse;
     const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
     const entry = runtime.medicalRecords.addEntry(veterinarian.user.id, {
@@ -1001,7 +1002,7 @@ describe('Database Persistence Integration Tests', () => {
     const receptionLogin = await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_db_sector_bed'
-    );
+    ) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
     // 1. Create sector

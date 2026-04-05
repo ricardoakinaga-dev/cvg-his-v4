@@ -84,6 +84,15 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
     return this.mapRowToRecord(row);
   }
 
+  public async findAll(accountId: AccountId): Promise<readonly MedicalRecordSummary[]> {
+    const result = await this.#db
+      .select()
+      .from(medicalRecords)
+      .where(eq(medicalRecords.accountId, accountId));
+
+    return result.map((row) => this.mapRowToRecord(row));
+  }
+
   private mapRowToRecord(row: typeof medicalRecords.$inferSelect): MedicalRecordSummary {
     return {
       id: row.id as MedicalRecordId,

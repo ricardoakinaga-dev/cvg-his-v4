@@ -76,6 +76,11 @@ import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
 import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
 import { DatabaseUsersRepository } from '@cvg-his-v2/module-users';
 import { DatabaseTriageRepository } from '@cvg-his-v2/module-triage';
+import { DatabaseAccessControlRepository } from '@cvg-his-v2/module-access-control';
+import { DatabaseMfaRepository } from '@cvg-his-v2/module-mfa';
+import type { MfaRepository } from '@cvg-his-v2/module-mfa';
+import { DatabaseConsentRepository, DatabaseDsrRepository } from '@cvg-his-v2/module-lgpd';
+import type { ConsentRepository, DsrRepository } from '@cvg-his-v2/module-lgpd';
 import type {
   AccountId,
   AuditEventId,
@@ -364,6 +369,10 @@ class InMemoryMedicalRecordRepository {
     return id ? (this.#records.get(id) ?? null) : null;
   }
 
+  async findAll(accountId: AccountId): Promise<readonly MedicalRecordSummary[]> {
+    return [...this.#records.values()].filter((r) => r.accountId === accountId);
+  }
+
   clear(): void {
     this.#records.clear();
     this.#recordsByEncounter.clear();
@@ -623,7 +632,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         scheduling: new DatabaseSchedulingRepository(),
         triage: new DatabaseTriageRepository(),
         users: new DatabaseUsersRepository(),
-        staff: new DatabaseStaffRepository()
+        accessControl: new DatabaseAccessControlRepository(),
+        staff: new DatabaseStaffRepository(),
+        mfa: new DatabaseMfaRepository(db),
+        consent: new DatabaseConsentRepository(db),
+        dsr: new DatabaseDsrRepository(db)
       };
       results.fileStorage = new LocalFileStorage({
         basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'

@@ -1,0 +1,14 @@
+{
+  "name": "@cvg-his-v2/module-mfa",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/mfa.test.js"
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "drizzle-orm": "^0.36.4"
+  }
+}

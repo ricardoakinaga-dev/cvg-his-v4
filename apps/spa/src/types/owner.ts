@@ -1,0 +1,50 @@
+export interface OwnerContact {
+  label: string;
+  value: string;
+  type: 'phone' | 'email' | 'whatsapp';
+  primary: boolean;
+}
+
+export interface OwnerSummary {
+  id: string;
+  accountId: string;
+  fullName: string;
+  documentId?: string;
+  contacts: OwnerContact[];
+  financialResponsible: boolean;
+  administrativeNotes?: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOwnerRequest {
+  fullName: string;
+  documentId?: string;
+  contacts: {
+    label: string;
+    value: string;
+    type: 'phone' | 'email' | 'whatsapp';
+    primary?: boolean;
+  }[];
+  financialResponsible: boolean;
+  administrativeNotes?: string;
+}
+
+export interface UpdateOwnerRequest {
+  fullName?: string;
+  documentId?: string;
+  contacts?: {
+    label: string;
+    value: string;
+    type: 'phone' | 'email' | 'whatsapp';
+    primary?: boolean;
+  }[];
+  financialResponsible?: boolean;
+  administrativeNotes?: string;
+  status?: 'active' | 'inactive';
+}
+
+export interface OwnersListResponse {
+  items: OwnerSummary[];
+}

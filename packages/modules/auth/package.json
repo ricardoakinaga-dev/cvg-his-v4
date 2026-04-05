@@ -14,6 +14,7 @@
   "dependencies": {
     "@cvg-his-v2/module-access-control": "workspace:*",
     "@cvg-his-v2/module-audit": "workspace:*",
+    "@cvg-his-v2/module-mfa": "workspace:*",
     "@cvg-his-v2/module-staff": "workspace:*",
     "@cvg-his-v2/module-users": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",

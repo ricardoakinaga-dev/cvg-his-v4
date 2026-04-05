@@ -1,0 +1,14 @@
+{
+  "name": "@cvg-his-v2/module-lgpd",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "drizzle-orm": "^0.36.4"
+  }
+}

@@ -228,3 +228,292 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 30
+
+  test-e2e-spa:
+    name: E2E Tests (SPA)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: [typecheck, build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_e2e
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cvg_his_e2e"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e && break
+            sleep 1
+          done
+
+      - name: Apply DB schema and seed
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+        run: |
+          node infra/scripts/prepare-test-db.mjs 2>/dev/null || \
+          node infra/scripts/test-critical-bootstrap.mjs 2>/dev/null || \
+          echo "⚠️ DB setup failed, tests may fail"
+
+      - name: Start API
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          REDIS_URL: redis://localhost:6380
+          AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
+          PORT: '3001'
+          NODE_ENV: test
+        run: |
+          pnpm --filter @cvg-his-v2/api run build &
+          wait
+          pnpm --filter @cvg-his-v2/api run dev &
+          API_PID=$!
+          echo "API_PID=$API_PID" >> $GITHUB_ENV
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+              echo "✅ API is healthy"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Build SPA
+        run: pnpm --filter @cvg-his-v2/spa run build
+
+      - name: Start SPA (preview server)
+        run: |
+          pnpm --filter @cvg-his-v2/spa run preview &
+          SPA_PID=$!
+          echo "SPA_PID=$SPA_PID" >> $GITHUB_ENV
+
+      - name: Wait for SPA health
+        run: |
+          echo "⏳ Waiting for SPA to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
+              echo "✅ SPA is healthy (port 3002)"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run SPA E2E tests
+        env:
+          API_URL: http://localhost:3001
+          SPA_URL: http://localhost:3002
+          E2E_ADMIN_EMAIL: admin@cvg.local
+          E2E_ADMIN_PASSWORD: Admin123!
+        run: npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"
+
+      - name: Upload E2E report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-spa-report
+          path: e2e/spa-report/
+          retention-days: 30
+
+  test-visual:
+    name: Visual Regression
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: [typecheck, build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_e2e
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cvg_his_e2e"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e && break
+            sleep 1
+          done
+
+      - name: Apply DB schema and seed
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+        run: |
+          node infra/scripts/prepare-test-db.mjs 2>/dev/null || \
+          node infra/scripts/test-critical-bootstrap.mjs 2>/dev/null || \
+          echo "⚠️ DB setup failed, visual tests may skip"
+
+      - name: Start API
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          REDIS_URL: redis://localhost:6380
+          AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
+          PORT: '3001'
+          NODE_ENV: test
+        run: |
+          pnpm --filter @cvg-his-v2/api run build &
+          wait
+          pnpm --filter @cvg-his-v2/api run dev &
+          API_PID=$!
+          echo "API_PID=$API_PID" >> $GITHUB_ENV
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+              echo "✅ API is healthy"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Build SPA
+        run: pnpm --filter @cvg-his-v2/spa run build
+
+      - name: Start SPA (preview server)
+        run: |
+          pnpm --filter @cvg-his-v2/spa run preview &
+          SPA_PID=$!
+          echo "SPA_PID=$SPA_PID" >> $GITHUB_ENV
+
+      - name: Wait for SPA health
+        run: |
+          echo "⏳ Waiting for SPA to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
+              echo "✅ SPA is healthy (port 3002)"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run visual regression tests
+        env:
+          API_URL: http://localhost:3001
+          SPA_URL: http://localhost:3002
+          E2E_ADMIN_EMAIL: admin@cvg.local
+          E2E_ADMIN_PASSWORD: Admin123!
+        run: npx playwright test --config playwright-spa.config.ts -g "Visual"
+
+      - name: Upload visual regression report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-report
+          path: e2e/spa-report/
+          retention-days: 30
+
+      - name: Upload visual diff screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-regression-diffs
+          path: |
+            e2e/spa/snapshots/**/*.diff.png
+            e2e/spa/snapshots/**/*.actual.png
+            e2e/spa/snapshots/**/*.expected.png
+          retention-days: 14
+
+      - name: Upload visual test-results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-test-results
+          path: test-results/
+          retention-days: 14

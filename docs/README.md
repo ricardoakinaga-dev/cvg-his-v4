@@ -150,6 +150,13 @@ Levar o repositorio a uma base documental que sustente:
 - `634-fase-hardening-scheduling-validacao.md`
 - `634-fase-hardening-scheduling-validacao.md`
 
+### Governanca de acesso enterprise
+
+- `840-diagnostico-governanca-de-acesso-organizacional.md`
+- `850-modelo-alvo-de-governanca-de-acesso-enterprise.md`
+- `860-plano-enterprise-de-implementacao-da-governanca-de-acesso.md`
+- `870-relatorio-final-da-governanca-de-acesso-enterprise.md`
+
 ### Validacao de ondas
 
 - `491-onda-1-validacao.md`

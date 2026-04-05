@@ -1,0 +1,47 @@
+{
+  "name": "@cvg-his-v2/design-system",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens/index.d.ts",
+      "default": "./dist/tokens/index.js"
+    },
+    "./themes": {
+      "types": "./dist/themes/index.d.ts",
+      "default": "./dist/themes/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./dist/components/index.js"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "default": "./dist/vue/index.js"
+    },
+    "./vue/*": "./src/vue/*",
+    "./css": "./dist/tokens/variables.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vue-tsc -p tsconfig.vue.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.vue.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.vue.json --noEmit",
+    "test": "vitest run --config ../../vitest.config.ts tests/"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@cvg-his-v2/shared-utils": "workspace:*",
+    "@vue/test-utils": "^2.4.6",
+    "vue": "^3.5.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

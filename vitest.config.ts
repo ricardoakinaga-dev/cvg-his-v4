@@ -38,6 +38,8 @@ export default defineConfig({
       '@cvg-his-v2/module-surgery': resolve(root, 'packages/modules/surgery/src/index.ts'),
       '@cvg-his-v2/module-triage': resolve(root, 'packages/modules/triage/src/index.ts'),
       '@cvg-his-v2/module-users': resolve(root, 'packages/modules/users/src/index.ts'),
+      '@cvg-his-v2/module-mfa': resolve(root, 'packages/modules/mfa/src/index.ts'),
+      '@cvg-his-v2/module-lgpd': resolve(root, 'packages/modules/lgpd/src/index.ts'),
       '@cvg-his-v2/shared-auth-sdk': resolve(root, 'packages/shared/auth-sdk/src/index.ts'),
       '@cvg-his-v2/shared-config': resolve(root, 'packages/shared/config/src/index.ts'),
       '@cvg-his-v2/shared-contracts': resolve(root, 'packages/shared/contracts/src/index.ts'),
@@ -48,7 +50,8 @@ export default defineConfig({
       '@cvg-his-v2/shared-utils': resolve(root, 'packages/shared/utils/src/index.ts'),
       '@cvg-his-v2/shared-validation': resolve(root, 'packages/shared/validation/src/index.ts'),
       '@cvg-his/db': resolve(root, 'packages/db/src/index.ts'),
-      '@cvg-his/rbac': resolve(root, 'packages/rbac/src/index.ts')
+      '@cvg-his/rbac': resolve(root, 'packages/rbac/src/index.ts'),
+      '@cvg-his-v2/tenant-context': resolve(root, 'packages/tenant-context/src/index.ts')
     }
   },
   test: {

@@ -9,14 +9,17 @@ import {
   uuid
 } from 'drizzle-orm/pg-core';
 
+import { accounts } from './accounts.js';
 import { clinicalNotes } from './clinical_notes.js';
 import { users } from './users.js';
 
-// TODO(PR-SEC-03): add account_id for explicit tenant isolation without relying on note join.
 export const clinicalNoteVersions = pgTable(
   'clinical_note_versions',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     noteId: uuid('note_id')
       .notNull()
       .references(() => clinicalNotes.id, { onDelete: 'cascade' }),
@@ -29,6 +32,7 @@ export const clinicalNoteVersions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    accountIdIdx: index('idx_clinical_note_versions_account_id').on(table.accountId),
     noteIdIdx: index('idx_clinical_note_versions_note_id').on(table.noteId),
     noteVersionUnique: uniqueIndex('clinical_note_versions_note_version_unique').on(
       table.noteId,

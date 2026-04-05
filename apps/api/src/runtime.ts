@@ -64,6 +64,8 @@ import type {
   PrescriptionExecutionRepository,
   AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
+import { MfaService, validateMasterKey, type MfaRepository } from '@cvg-his-v2/module-mfa';
+import { LgpdService, type ConsentRepository, type DsrRepository } from '@cvg-his-v2/module-lgpd';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
 import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
@@ -107,6 +109,9 @@ export interface RuntimeRepositories {
   readonly quotes?: QuotesRepository;
   readonly cash?: CashRepository;
   readonly staff?: StaffRepository;
+  readonly mfa?: MfaRepository;
+  readonly consent?: ConsentRepository;
+  readonly dsr?: DsrRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -116,12 +121,14 @@ export interface ApiRuntimeOptions {
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
   readonly sectorBedOptions?: SectorBedServiceOptions;
+  readonly enableMfa?: boolean;
+  readonly mfaEncryptionKey?: string;
 }
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
   const repos = options.repositories ?? {};
 
-  const accessControl = new AccessControlService();
+  const accessControl = new AccessControlService({ repository: repos.accessControl });
   const users = new UsersService({ repository: repos.users });
   const staff = new StaffService({ repository: repos.staff });
   const owners = new OwnersService({ ownerRepository: repos.owner });
@@ -240,6 +247,19 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     }
   });
   const quotes = new QuotesService({ repository: repos.quotes });
+
+  let mfa: MfaService | undefined;
+  if (options.enableMfa === true) {
+    const encryptionKey = options.mfaEncryptionKey ?? process.env.MFA_SECRET_ENCRYPTION_KEY;
+    validateMasterKey(encryptionKey);
+    mfa = new MfaService({ repository: repos.mfa, encryptionKey });
+  }
+
+  const lgpd = new LgpdService({
+    consentRepository: repos.consent,
+    dsrRepository: repos.dsr
+  });
+
   const auth = new AuthService({
     secret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
@@ -248,6 +268,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     staff,
     accessControl,
     audit,
+    mfa,
     sessionRepository: repos.session
   });
 
@@ -277,13 +298,15 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     counterSales,
     quotes,
     cash,
-    auth
+    auth,
+    lgpd
   };
 
   return {
     ...serviceMap,
     async initialize(): Promise<void> {
       await Promise.allSettled([
+        accessControl.hydrateFromDatabase('acc_cvg_demo' as never),
         billing.hydrateFromDatabase(),
         inventory.hydrateFromDatabase(),
         scheduling.hydrateFromDatabase(),

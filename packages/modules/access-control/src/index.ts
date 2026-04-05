@@ -1,12 +1,30 @@
-import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
+  AccessAssignmentEffect,
+  AccessMembershipSummary,
+  AccessPermissionAssignmentSummary,
   AccessProfile,
+  AccessSectorId,
+  AccessSectorSummary,
+  AccessTeamId,
+  AccessTeamSummary,
+  AccountId,
+  EffectivePermissionSource,
+  EffectivePermissionSummary,
   PermissionId,
   PermissionDefinition,
   RoleId,
   RoleDefinition,
+  UserId,
   UserSummary
 } from '@cvg-his-v2/shared-types';
+import {
+  DatabaseAccessControlRepository,
+  type AccessControlRepository,
+  type AccessPermissionAssignmentRecord,
+  type PermissionRecord,
+  type RoleRecord
+} from './repositories/database-access-control.repository.js';
 
 const permissionCatalog: readonly PermissionDefinition[] = [
   {
@@ -269,50 +287,7 @@ const roleCatalog: readonly RoleDefinition[] = [
     code: 'admin',
     name: 'Admin',
     description: 'Governanca sistêmica e administracao de identidade.',
-    permissionCodes: [
-      'auth.session.read',
-      'users.read',
-      'users.manage',
-      'staff.read',
-      'staff.manage',
-      'access.read',
-      'audit.read',
-      'audit.write',
-      'owners.read',
-      'owners.manage',
-      'patients.read',
-      'patients.manage',
-      'scheduling.read',
-      'scheduling.manage',
-      'encounters.read',
-      'encounters.manage',
-      'triage.read',
-      'triage.manage',
-      'medical-records.read',
-      'medical-records.manage',
-      'attachments.read',
-      'attachments.manage',
-      'inpatient.read',
-      'inpatient.manage',
-      'surgery.read',
-      'surgery.manage',
-      'diagnostics.read',
-      'diagnostics.manage',
-      'billing.read',
-      'billing.manage',
-      'inventory.read',
-      'inventory.manage',
-      'notifications.read',
-      'notifications.manage',
-      'product.read',
-      'product.write',
-      'service.read',
-      'service.write',
-      'counter_sale.read',
-      'counter_sale.write',
-      'quote.read',
-      'quote.write'
-    ]
+    permissionCodes: permissionCatalog.map((permission) => permission.code)
   },
   {
     id: 'role_reception' as RoleId,
@@ -467,6 +442,8 @@ const roleMap = new Map(roleCatalog.map((role) => [role.code, role]));
 export interface AccessContext {
   readonly roleCodes: readonly string[];
   readonly department?: string;
+  readonly accountId?: AccountId;
+  readonly userId?: UserId;
 }
 
 export interface PolicyEvaluationInput {
@@ -476,38 +453,409 @@ export interface PolicyEvaluationInput {
   readonly accountId?: string;
 }
 
+export interface AccessControlServiceOptions {
+  readonly repository?: AccessControlRepository;
+}
+
+type SubjectType = 'user' | 'team' | 'sector';
+
 export class AccessControlService {
+  readonly #repository?: AccessControlRepository;
+  #permissions = [...permissionCatalog];
+  #roles = [...roleCatalog];
+  readonly #teams = new Map<AccessTeamId, AccessTeamSummary>();
+  readonly #sectors = new Map<AccessSectorId, AccessSectorSummary>();
+  readonly #userRoleCodes = new Map<UserId, readonly string[]>();
+  readonly #teamMembershipsByUser = new Map<UserId, readonly AccessTeamId[]>();
+  readonly #sectorMembershipsByUser = new Map<UserId, readonly AccessSectorId[]>();
+  readonly #userAssignments = new Map<UserId, readonly AccessPermissionAssignmentSummary[]>();
+  readonly #teamAssignments = new Map<AccessTeamId, readonly AccessPermissionAssignmentSummary[]>();
+  readonly #sectorAssignments = new Map<AccessSectorId, readonly AccessPermissionAssignmentSummary[]>();
+
+  public constructor(options?: AccessControlServiceOptions) {
+    this.#repository = options?.repository;
+  }
+
+  public get persistenceMode(): 'database' | 'in-memory' {
+    return this.#repository ? 'database' : 'in-memory';
+  }
+
+  public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
+    if (!this.#repository || !accountId) return;
+    const [roles, permissions, teams, sectors, membershipsTeams, membershipsSectors, assignments] =
+      await Promise.all([
+        this.#repository.findAllRoles(),
+        this.#repository.findAllPermissions(),
+        this.#repository.findAllTeams(accountId),
+        this.#repository.findAllSectors(accountId),
+        this.#repository.findTeamMemberships(accountId),
+        this.#repository.findSectorMemberships(accountId),
+        this.#repository.findPermissionAssignments(accountId)
+      ]);
+
+    this.#roles = roles.length ? roles.map(mapRoleRecord) : [...roleCatalog];
+    this.#permissions = permissions.length
+      ? permissions.map(mapPermissionRecord)
+      : [...permissionCatalog];
+
+    this.#teams.clear();
+    for (const team of teams) this.#teams.set(team.id, team);
+
+    this.#sectors.clear();
+    for (const sector of sectors) this.#sectors.set(sector.id, sector);
+
+    this.#userRoleCodes.clear();
+    const userIds = new Set<UserId>([
+      ...membershipsTeams.map((membership) => membership.userId),
+      ...membershipsSectors.map((membership) => membership.userId),
+      ...assignments
+        .filter((assignment) => assignment.subjectType === 'user')
+        .map((assignment) => assignment.subjectId as UserId)
+    ]);
+    for (const userId of userIds) {
+      const rolesByUser = await this.#repository.findRolesByUser(userId);
+      this.#userRoleCodes.set(
+        userId,
+        rolesByUser.map((role) => role.code)
+      );
+    }
+
+    this.#teamMembershipsByUser.clear();
+    for (const membership of membershipsTeams) {
+      const existing = this.#teamMembershipsByUser.get(membership.userId) ?? [];
+      this.#teamMembershipsByUser.set(membership.userId, [...existing, membership.subjectId as AccessTeamId]);
+    }
+
+    this.#sectorMembershipsByUser.clear();
+    for (const membership of membershipsSectors) {
+      const existing = this.#sectorMembershipsByUser.get(membership.userId) ?? [];
+      this.#sectorMembershipsByUser.set(membership.userId, [
+        ...existing,
+        membership.subjectId as AccessSectorId
+      ]);
+    }
+
+    this.#userAssignments.clear();
+    this.#teamAssignments.clear();
+    this.#sectorAssignments.clear();
+    for (const assignment of assignments) {
+      this.#storeAssignment(assignment);
+    }
+  }
+
   public listPermissions(): readonly PermissionDefinition[] {
-    return permissionCatalog;
+    return this.#permissions;
   }
 
   public listRoles(): readonly RoleDefinition[] {
-    return roleCatalog;
+    return this.#roles;
+  }
+
+  public listTeams(accountId?: AccountId): readonly AccessTeamSummary[] {
+    return Array.from(this.#teams.values()).filter((team) => !accountId || team.accountId === accountId);
+  }
+
+  public listSectors(accountId?: AccountId): readonly AccessSectorSummary[] {
+    return Array.from(this.#sectors.values()).filter(
+      (sector) => !accountId || sector.accountId === accountId
+    );
+  }
+
+  public listMemberships(userId: UserId): {
+    teams: readonly AccessTeamSummary[];
+    sectors: readonly AccessSectorSummary[];
+  } {
+    return {
+      teams: (this.#teamMembershipsByUser.get(userId) ?? [])
+        .map((id) => this.#teams.get(id))
+        .filter(Boolean) as readonly AccessTeamSummary[],
+      sectors: (this.#sectorMembershipsByUser.get(userId) ?? [])
+        .map((id) => this.#sectors.get(id))
+        .filter(Boolean) as readonly AccessSectorSummary[]
+    };
+  }
+
+  public listAssignments(): {
+    userPermissions: readonly AccessPermissionAssignmentSummary[];
+    teamPermissions: readonly AccessPermissionAssignmentSummary[];
+    sectorPermissions: readonly AccessPermissionAssignmentSummary[];
+  } {
+    return {
+      userPermissions: Array.from(this.#userAssignments.values()).flat(),
+      teamPermissions: Array.from(this.#teamAssignments.values()).flat(),
+      sectorPermissions: Array.from(this.#sectorAssignments.values()).flat()
+    };
+  }
+
+  public getLegacyRoleCodes(userId: UserId): readonly string[] {
+    return this.#userRoleCodes.get(userId) ?? [];
+  }
+
+  public async replaceLegacyRoles(userId: UserId, roleCodes: readonly string[]): Promise<void> {
+    if (this.#repository) {
+      const existing = await this.#repository.findRolesByUser(userId);
+      for (const role of existing) {
+        await this.#repository.removeRoleFromUser(userId, role.id);
+      }
+      for (const roleCode of roleCodes) {
+        const role = this.#roles.find((item) => item.code === roleCode);
+        if (role) {
+          await this.#repository.assignRoleToUser(userId, role.id);
+        }
+      }
+    }
+    this.#userRoleCodes.set(userId, [...roleCodes]);
+  }
+
+  public async createTeam(
+    accountId: AccountId,
+    input: { code: string; name: string; description?: string | null }
+  ): Promise<AccessTeamSummary> {
+    const team = this.#repository
+      ? await this.#repository.createTeam({ accountId, ...input })
+      : createInMemoryTeam(accountId, input);
+    this.#teams.set(team.id, team);
+    return team;
+  }
+
+  public async updateTeam(
+    id: AccessTeamId,
+    input: { code?: string; name?: string; description?: string | null; isActive?: boolean }
+  ): Promise<AccessTeamSummary> {
+    const existing = this.#teams.get(id);
+    if (!existing) throw new NotFoundError('Access team not found', { teamId: id });
+    const team = this.#repository
+      ? await this.#repository.updateTeam(id, input)
+      : {
+          ...existing,
+          code: input.code ?? existing.code,
+          name: input.name ?? existing.name,
+          description:
+            input.description !== undefined ? input.description ?? undefined : existing.description,
+          status:
+            input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
+          updatedAt: new Date().toISOString()
+        };
+    this.#teams.set(team.id, team);
+    return team;
+  }
+
+  public async createSector(
+    accountId: AccountId,
+    input: { code: string; name: string; description?: string | null }
+  ): Promise<AccessSectorSummary> {
+    const sector = this.#repository
+      ? await this.#repository.createSector({ accountId, ...input })
+      : createInMemorySector(accountId, input);
+    this.#sectors.set(sector.id, sector);
+    return sector;
+  }
+
+  public async updateSector(
+    id: AccessSectorId,
+    input: { code?: string; name?: string; description?: string | null; isActive?: boolean }
+  ): Promise<AccessSectorSummary> {
+    const existing = this.#sectors.get(id);
+    if (!existing) throw new NotFoundError('Access sector not found', { sectorId: id });
+    const sector = this.#repository
+      ? await this.#repository.updateSector(id, input)
+      : {
+          ...existing,
+          code: input.code ?? existing.code,
+          name: input.name ?? existing.name,
+          description:
+            input.description !== undefined ? input.description ?? undefined : existing.description,
+          status:
+            input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
+          updatedAt: new Date().toISOString()
+        };
+    this.#sectors.set(sector.id, sector);
+    return sector;
+  }
+
+  public async replaceUserTeams(userId: UserId, teamIds: readonly AccessTeamId[]): Promise<void> {
+    if (this.#repository) {
+      await this.#repository.replaceUserTeams(userId, teamIds);
+    }
+    this.#teamMembershipsByUser.set(userId, [...teamIds]);
+  }
+
+  public async replaceUserSectors(
+    userId: UserId,
+    sectorIds: readonly AccessSectorId[]
+  ): Promise<void> {
+    if (this.#repository) {
+      await this.#repository.replaceUserSectors(userId, sectorIds);
+    }
+    this.#sectorMembershipsByUser.set(userId, [...sectorIds]);
+  }
+
+  public async setPermissionAssignment(input: {
+    accountId: AccountId;
+    subjectType: SubjectType;
+    subjectId: string;
+    permissionCode: string;
+    effect?: AccessAssignmentEffect | 'inherit';
+  }): Promise<void> {
+    if (input.effect === 'inherit' || !input.effect) {
+      if (this.#repository) {
+        await this.#repository.removePermissionAssignment({
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          permissionCode: input.permissionCode
+        });
+      }
+      this.#removeAssignment(input.subjectType, input.subjectId, input.permissionCode);
+      return;
+    }
+
+    if (this.#repository) {
+      await this.#repository.upsertPermissionAssignment({
+        accountId: input.accountId,
+        subjectType: input.subjectType,
+        subjectId: input.subjectId,
+        permissionCode: input.permissionCode,
+        effect: input.effect
+      });
+    }
+
+    this.#storeAssignment({
+      accountId: input.accountId,
+      subjectType: input.subjectType,
+      subjectId: input.subjectId,
+      permissionCode: input.permissionCode,
+      effect: input.effect,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  public getEffectivePermissions(input: {
+    accountId: AccountId;
+    userId: UserId;
+    roleCodes?: readonly string[];
+  }): readonly EffectivePermissionSummary[] {
+    const permissionByCode = new Map(this.#permissions.map((permission) => [permission.code, permission]));
+    const effective: EffectivePermissionSummary[] = [];
+    const roleCodes = this.#userRoleCodes.get(input.userId) ?? input.roleCodes ?? [];
+    const teams = this.#teamMembershipsByUser.get(input.userId) ?? [];
+    const sectors = this.#sectorMembershipsByUser.get(input.userId) ?? [];
+    const userAssignments = this.#userAssignments.get(input.userId) ?? [];
+    const teamAssignments = teams.flatMap((teamId) => this.#teamAssignments.get(teamId) ?? []);
+    const sectorAssignments = sectors.flatMap((sectorId) => this.#sectorAssignments.get(sectorId) ?? []);
+
+    for (const permission of this.#permissions) {
+      const sources: EffectivePermissionSource[] = [];
+      for (const assignment of userAssignments.filter((item) => item.permissionCode === permission.code)) {
+        sources.push({
+          kind: 'user',
+          sourceId: String(input.userId),
+          sourceCode: String(input.userId),
+          sourceName: 'Usuario',
+          effect: assignment.effect,
+          inherited: false
+        });
+      }
+      for (const sectorId of sectors) {
+        const sector = this.#sectors.get(sectorId);
+        for (const assignment of (this.#sectorAssignments.get(sectorId) ?? []).filter(
+          (item) => item.permissionCode === permission.code
+        )) {
+          sources.push({
+            kind: 'sector',
+            sourceId: String(sectorId),
+            sourceCode: sector?.code ?? String(sectorId),
+            sourceName: sector?.name ?? 'Setor',
+            effect: assignment.effect,
+            inherited: true
+          });
+        }
+      }
+      for (const teamId of teams) {
+        const team = this.#teams.get(teamId);
+        for (const assignment of (this.#teamAssignments.get(teamId) ?? []).filter(
+          (item) => item.permissionCode === permission.code
+        )) {
+          sources.push({
+            kind: 'team',
+            sourceId: String(teamId),
+            sourceCode: team?.code ?? String(teamId),
+            sourceName: team?.name ?? 'Equipe',
+            effect: assignment.effect,
+            inherited: true
+          });
+        }
+      }
+      for (const roleCode of roleCodes) {
+        const role = this.#roles.find((item) => item.code === roleCode);
+        if (role?.permissionCodes.includes(permission.code)) {
+          sources.push({
+            kind: 'role',
+            sourceId: role.id,
+            sourceCode: role.code,
+            sourceName: role.name,
+            effect: 'allow_legacy',
+            inherited: true
+          });
+        }
+      }
+
+      const resolution = resolvePermission(sources);
+      effective.push({
+        permissionCode: permission.code,
+        module: permission.module,
+        description: permission.description,
+        effective: resolution !== 'none' && !resolution.endsWith('deny'),
+        direct: resolution.startsWith('user_'),
+        inherited: !resolution.startsWith('user_') && resolution !== 'none',
+        resolution,
+        sources
+      });
+      if (!permissionByCode.has(permission.code)) continue;
+    }
+    return effective;
   }
 
   public createProfile(context: AccessContext): AccessProfile {
-    const permissionCodes = new Set<string>();
+    const effectivePermissions =
+      context.userId && context.accountId
+        ? this.getEffectivePermissions({
+            accountId: context.accountId,
+            userId: context.userId,
+            roleCodes: context.roleCodes
+          })
+        : this.#permissions
+            .filter((permission) =>
+              context.roleCodes.some((roleCode) =>
+                (this.#roles.find((role) => role.code === roleCode) ?? roleMap.get(roleCode))?.permissionCodes.includes(permission.code)
+              )
+            )
+            .map((permission) => ({
+              permissionCode: permission.code,
+              module: permission.module,
+              description: permission.description,
+              effective: true,
+              direct: false,
+              inherited: true,
+              resolution: 'role_allow' as const,
+              sources: []
+            }));
 
-    for (const roleCode of context.roleCodes) {
-      const role = roleMap.get(roleCode);
-      if (!role) {
-        continue;
-      }
-
-      for (const permissionCode of role.permissionCodes) {
-        permissionCodes.add(permissionCode);
-      }
-    }
+    const permissionCodes = effectivePermissions
+      .filter((permission) => permission.effective)
+      .map((permission) => permission.permissionCode)
+      .sort();
 
     const capabilities = [
       'identity.authenticated',
-      ...Array.from(permissionCodes).map((permissionCode) => `cap:${permissionCode}`)
+      ...permissionCodes.map((permissionCode) => `cap:${permissionCode}`)
     ];
 
     return {
       roleCodes: [...context.roleCodes],
-      permissionCodes: Array.from(permissionCodes).sort(),
-      capabilities
+      permissionCodes,
+      capabilities,
+      effectivePermissions
     };
   }
 
@@ -531,11 +879,113 @@ export class AccessControlService {
       });
     }
   }
+
+  #storeAssignment(assignment: AccessPermissionAssignmentRecord | AccessPermissionAssignmentSummary) {
+    const normalized: AccessPermissionAssignmentSummary = {
+      accountId: assignment.accountId,
+      subjectType: assignment.subjectType,
+      subjectId: assignment.subjectId as UserId | AccessTeamId | AccessSectorId,
+      permissionCode: assignment.permissionCode,
+      effect: assignment.effect,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt
+    };
+    const target =
+      assignment.subjectType === 'user'
+        ? this.#userAssignments
+        : assignment.subjectType === 'team'
+          ? this.#teamAssignments
+          : this.#sectorAssignments;
+    const existing = target.get(normalized.subjectId as never) ?? [];
+    const filtered = existing.filter((item) => item.permissionCode !== normalized.permissionCode);
+    target.set(normalized.subjectId as never, [...filtered, normalized]);
+  }
+
+  #removeAssignment(subjectType: SubjectType, subjectId: string, permissionCode: string) {
+    const target =
+      subjectType === 'user'
+        ? this.#userAssignments
+        : subjectType === 'team'
+          ? this.#teamAssignments
+          : this.#sectorAssignments;
+    const existing = target.get(subjectId as never) ?? [];
+    target.set(
+      subjectId as never,
+      existing.filter((item) => item.permissionCode !== permissionCode)
+    );
+  }
+}
+
+function resolvePermission(
+  sources: readonly EffectivePermissionSource[]
+): EffectivePermissionSummary['resolution'] {
+  if (sources.some((source) => source.kind === 'user' && source.effect === 'deny')) return 'user_deny';
+  if (sources.some((source) => source.kind === 'user' && source.effect === 'allow')) return 'user_allow';
+  if (sources.some((source) => source.kind === 'sector' && source.effect === 'deny')) return 'sector_deny';
+  if (sources.some((source) => source.kind === 'sector' && source.effect === 'allow')) return 'sector_allow';
+  if (sources.some((source) => source.kind === 'team' && source.effect === 'deny')) return 'team_deny';
+  if (sources.some((source) => source.kind === 'team' && source.effect === 'allow')) return 'team_allow';
+  if (sources.some((source) => source.kind === 'role' && source.effect === 'allow_legacy')) return 'role_allow';
+  return 'none';
+}
+
+function mapRoleRecord(record: RoleRecord): RoleDefinition {
+  return {
+    id: record.id,
+    code: record.code,
+    name: record.name,
+    description: record.description ?? '',
+    permissionCodes: [...record.permissionCodes]
+  };
+}
+
+function mapPermissionRecord(record: PermissionRecord): PermissionDefinition {
+  return {
+    id: record.id,
+    code: record.key,
+    module: record.key.split('.')[0] ?? 'access-control',
+    description: record.description ?? record.key
+  };
+}
+
+function createInMemoryTeam(
+  accountId: AccountId,
+  input: { code: string; name: string; description?: string | null }
+): AccessTeamSummary {
+  const now = new Date().toISOString();
+  return {
+    id: `team_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` as AccessTeamId,
+    accountId,
+    code: input.code,
+    name: input.name,
+    description: input.description ?? undefined,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function createInMemorySector(
+  accountId: AccountId,
+  input: { code: string; name: string; description?: string | null }
+): AccessSectorSummary {
+  const now = new Date().toISOString();
+  return {
+    id: `sector_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` as AccessSectorId,
+    accountId,
+    code: input.code,
+    name: input.name,
+    description: input.description ?? undefined,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now
+  };
 }
 
 export {
   DatabaseAccessControlRepository,
   type AccessControlRepository,
   type RoleRecord,
-  type PermissionRecord
+  type PermissionRecord,
+  type AccessPermissionAssignmentRecord
 } from './repositories/database-access-control.repository.js';

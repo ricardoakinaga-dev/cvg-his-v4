@@ -7,7 +7,9 @@ import {
   bigint,
   integer,
   numeric,
-  date
+  date,
+  text,
+  uuid
 } from 'drizzle-orm/pg-core';
 
 export const sessions = pgTable('sessions', {
@@ -355,6 +357,53 @@ export const beds = pgTable('beds', {
   status: varchar('status', { length: 50 }).notNull().default('available'),
   supportsSpecies: varchar('supports_species', { length: 100 }),
   active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const mfaCredentials = pgTable('mfa_credentials', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull(),
+  secretEncrypted: text('secret_encrypted').notNull(),
+  isActive: boolean('is_active').notNull().default(false),
+  recoveryCodesHash: jsonb('recovery_codes_hash').$type<string[]>().notNull().default([]),
+  createdAt: timestamp('created_at').notNull(),
+  activatedAt: timestamp('activated_at'),
+  lastUsedAt: timestamp('last_used_at'),
+  lastRecoveryCodesRegeneratedAt: timestamp('last_recovery_codes_regenerated_at')
+});
+
+export const consentRecords = pgTable('consent_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  subjectId: uuid('subject_id').notNull(),
+  subjectType: text('subject_type').notNull(),
+  purpose: text('purpose').notNull(),
+  status: text('status').notNull().default('granted'),
+  origin: text('origin').notNull().default('api'),
+  grantedBy: uuid('granted_by').notNull(),
+  grantedAt: timestamp('granted_at').notNull(),
+  revokedBy: uuid('revoked_by'),
+  revokedAt: timestamp('revoked_at'),
+  expiresAt: timestamp('expires_at'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').notNull()
+});
+
+export const dataSubjectRequests = pgTable('data_subject_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  subjectId: uuid('subject_id').notNull(),
+  subjectType: text('subject_type').notNull(),
+  requestType: text('request_type').notNull(),
+  status: text('status').notNull().default('pending'),
+  requestedBy: uuid('requested_by').notNull(),
+  requestedAt: timestamp('requested_at').notNull(),
+  completedAt: timestamp('completed_at'),
+  completedBy: uuid('completed_by'),
+  notes: text('notes'),
+  rejectionReason: text('rejection_reason'),
+  resultJson: jsonb('result_json').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

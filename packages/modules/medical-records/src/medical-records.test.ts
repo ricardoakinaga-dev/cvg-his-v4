@@ -27,6 +27,9 @@ function createService() {
     },
     async findByEncounterId() {
       return null;
+    },
+    async findAll() {
+      return [];
     }
   };
 

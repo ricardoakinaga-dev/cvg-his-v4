@@ -1,16 +1,19 @@
 import { index, integer, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 
+import { accounts } from './accounts.js';
 import { encounters } from './encounters.js';
 import { users } from './users.js';
 
 export const clinicalNoteTypeEnum = pgEnum('clinical_note_type', ['SOAP']);
 export const clinicalNoteStatusEnum = pgEnum('clinical_note_status', ['draft', 'signed']);
 
-// TODO(PR-SEC-03): add account_id for direct tenant filtering and index support.
 export const clinicalNotes = pgTable(
   'clinical_notes',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     encounterId: uuid('encounter_id')
       .notNull()
       .references(() => encounters.id, { onDelete: 'cascade' }),
@@ -29,6 +32,7 @@ export const clinicalNotes = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    accountIdIdx: index('idx_clinical_notes_account_id').on(table.accountId),
     encounterIdIdx: index('idx_clinical_notes_encounter_id').on(table.encounterId)
   })
 );

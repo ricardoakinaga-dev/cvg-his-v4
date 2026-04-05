@@ -8,6 +8,8 @@ export type StaffId = Brand<string, 'StaffId'>;
 export type SessionId = Brand<string, 'SessionId'>;
 export type RoleId = Brand<string, 'RoleId'>;
 export type PermissionId = Brand<string, 'PermissionId'>;
+export type AccessTeamId = Brand<string, 'AccessTeamId'>;
+export type AccessSectorId = Brand<string, 'AccessSectorId'>;
 export type AuditEventId = Brand<string, 'AuditEventId'>;
 export type OwnerId = Brand<string, 'OwnerId'>;
 export type PatientId = Brand<string, 'PatientId'>;
@@ -81,6 +83,76 @@ export interface PermissionDefinition {
   readonly description: string;
 }
 
+export type AccessAssignmentEffect = 'allow' | 'deny';
+
+export interface AccessTeamSummary {
+  readonly id: AccessTeamId;
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly status: 'active' | 'inactive';
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface AccessSectorSummary {
+  readonly id: AccessSectorId;
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly status: 'active' | 'inactive';
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface AccessMembershipSummary {
+  readonly userId: UserId;
+  readonly accountId: AccountId;
+  readonly subjectType: 'team' | 'sector';
+  readonly subjectId: AccessTeamId | AccessSectorId;
+  readonly createdAt: string;
+}
+
+export interface AccessPermissionAssignmentSummary {
+  readonly accountId: AccountId;
+  readonly subjectType: 'user' | 'team' | 'sector';
+  readonly subjectId: UserId | AccessTeamId | AccessSectorId;
+  readonly permissionCode: string;
+  readonly effect: AccessAssignmentEffect;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface EffectivePermissionSource {
+  readonly kind: 'user' | 'team' | 'sector' | 'role';
+  readonly sourceId: string;
+  readonly sourceCode: string;
+  readonly sourceName: string;
+  readonly effect: AccessAssignmentEffect | 'allow_legacy';
+  readonly inherited: boolean;
+}
+
+export interface EffectivePermissionSummary {
+  readonly permissionCode: string;
+  readonly module: string;
+  readonly description: string;
+  readonly effective: boolean;
+  readonly direct: boolean;
+  readonly inherited: boolean;
+  readonly resolution:
+    | 'user_deny'
+    | 'user_allow'
+    | 'sector_deny'
+    | 'sector_allow'
+    | 'team_deny'
+    | 'team_allow'
+    | 'role_allow'
+    | 'none';
+  readonly sources: readonly EffectivePermissionSource[];
+}
+
 export interface RoleDefinition {
   readonly id: RoleId;
   readonly code: string;
@@ -93,6 +165,7 @@ export interface AccessProfile {
   readonly roleCodes: readonly string[];
   readonly permissionCodes: readonly string[];
   readonly capabilities: readonly string[];
+  readonly effectivePermissions?: readonly EffectivePermissionSummary[];
 }
 
 export interface SessionSummary {

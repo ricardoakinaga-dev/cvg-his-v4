@@ -5,6 +5,7 @@ import { auditEvents } from './schema/index.js';
 
 export * from './connection.js';
 export * from './schema/index.js';
+export * from './rls.js';
 
 export type AuditEventInsert = Omit<InferInsertModel<typeof auditEvents>, 'id' | 'createdAt'>;
 

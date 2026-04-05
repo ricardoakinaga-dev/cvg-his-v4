@@ -1,10 +1,14 @@
-import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
+import { accounts } from './accounts.js';
 
 export const schedulingQueueEntries = pgTable(
   'scheduling_queue_entries',
   {
     id: text('id').primaryKey(),
-    accountId: text('account_id').notNull(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     patientId: text('patient_id').notNull(),
     ownerId: text('owner_id').notNull(),
     appointmentId: text('appointment_id'),

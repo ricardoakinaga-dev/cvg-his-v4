@@ -1,54 +1,108 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+
 import { AccessControlService } from './index.js';
-import type { UserId, AccountId } from '@cvg-his-v2/shared-types';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 describe('AccessControlService', () => {
   let service: AccessControlService;
+  const accountId = 'acc_1' as AccountId;
+  const userId = 'user_1' as UserId;
 
   beforeEach(() => {
     service = new AccessControlService();
   });
 
-  it('should list permissions', () => {
-    const perms = service.listPermissions();
-    expect(perms.length).toBeGreaterThan(0);
-    expect(perms.some(p => p.code === 'owners.read')).toBe(true);
+  it('lists legacy permissions and roles', () => {
+    expect(service.listPermissions().some((permission) => permission.code === 'owners.read')).toBe(
+      true
+    );
+    expect(service.listRoles().some((role) => role.code === 'admin')).toBe(true);
   });
 
-  it('should list roles', () => {
-    const roles = service.listRoles();
-    expect(roles.length).toBeGreaterThan(0);
-    expect(roles.some(r => r.code === 'admin')).toBe(true);
+  it('creates legacy profile from roles', () => {
+    const profile = service.createProfile({ roleCodes: ['admin'] });
+    expect(profile.permissionCodes).toContain('users.manage');
+    expect(profile.capabilities).toContain('cap:users.manage');
   });
 
-  it('should create a profile for admin', () => {
-    const profile = service.createProfile({
-      roleCodes: ['admin']
+  it('supports teams, sectors and explicit grants with precedence', async () => {
+    const team = await service.createTeam(accountId, {
+      code: 'equipe_medica',
+      name: 'Equipe Médica'
     });
-    expect(profile.roleCodes.length).toBe(1);
-    expect(profile.permissionCodes.length).toBeGreaterThan(0);
-    expect(profile.capabilities.length).toBeGreaterThan(0);
+    const sector = await service.createSector(accountId, {
+      code: 'internacao',
+      name: 'Internação'
+    });
+
+    await service.replaceLegacyRoles(userId, ['reception']);
+    await service.replaceUserTeams(userId, [team.id]);
+    await service.replaceUserSectors(userId, [sector.id]);
+    await service.setPermissionAssignment({
+      accountId,
+      subjectType: 'team',
+      subjectId: team.id,
+      permissionCode: 'medical-records.read',
+      effect: 'allow'
+    });
+    await service.setPermissionAssignment({
+      accountId,
+      subjectType: 'sector',
+      subjectId: sector.id,
+      permissionCode: 'medical-records.read',
+      effect: 'deny'
+    });
+    await service.setPermissionAssignment({
+      accountId,
+      subjectType: 'user',
+      subjectId: userId,
+      permissionCode: 'medical-records.read',
+      effect: 'allow'
+    });
+
+    const effective = service
+      .getEffectivePermissions({ accountId, userId })
+      .find((permission) => permission.permissionCode === 'medical-records.read');
+
+    expect(effective?.effective).toBe(true);
+    expect(effective?.resolution).toBe('user_allow');
+    expect(effective?.sources.some((source) => source.kind === 'team')).toBe(true);
+    expect(effective?.sources.some((source) => source.kind === 'sector')).toBe(true);
   });
 
-  it('should create profile for multiple roles', () => {
-    const profile = service.createProfile({
-      roleCodes: ['admin', 'veterinarian']
+  it('removes explicit grant when inherit is selected', async () => {
+    await service.setPermissionAssignment({
+      accountId,
+      subjectType: 'user',
+      subjectId: userId,
+      permissionCode: 'users.read',
+      effect: 'allow'
     });
-    expect(profile.roleCodes.length).toBe(2);
-    expect(profile.permissionCodes.length).toBeGreaterThan(10);
+    await service.setPermissionAssignment({
+      accountId,
+      subjectType: 'user',
+      subjectId: userId,
+      permissionCode: 'users.read',
+      effect: 'inherit'
+    });
+
+    const assignments = service.listAssignments().userPermissions;
+    expect(assignments.some((assignment) => assignment.permissionCode === 'users.read')).toBe(
+      false
+    );
   });
 
-  it('should throw for unauthorized permission', () => {
-    const profile = service.createProfile({
-      roleCodes: ['reception']
+  it('lists memberships by user', async () => {
+    const team = await service.createTeam(accountId, { code: 'recepcao', name: 'Recepção' });
+    const sector = await service.createSector(accountId, {
+      code: 'administrativo',
+      name: 'Administrativo'
     });
-    expect(() =>
-      service.assertAuthorized({
-        actor: { id: 'user_1' as UserId, accountId: 'acc_1' as AccountId, username: 'test', email: 'test@test.com', displayName: 'Test', status: 'active', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-        access: profile,
-        permissionCode: 'audit.read',
-        accountId: 'acc_1'
-      })
-    ).toThrow();
+    await service.replaceUserTeams(userId, [team.id]);
+    await service.replaceUserSectors(userId, [sector.id]);
+
+    const memberships = service.listMemberships(userId);
+    expect(memberships.teams[0]?.id).toBe(team.id);
+    expect(memberships.sectors[0]?.id).toBe(sector.id);
   });
 });

@@ -3,10 +3,12 @@ import { createHmac } from 'node:crypto';
 import type {
   AuthSessionResponse,
   AuthTokens,
+  LoginMfaRequiredResponse,
   RefreshSessionRequest
 } from '@cvg-his-v2/shared-contracts';
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
+import { MfaService } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
 import { AuthenticationError, ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
@@ -45,6 +47,7 @@ export interface AuthServiceOptions {
   readonly staff: StaffService;
   readonly accessControl: AccessControlService;
   readonly audit: AuditService;
+  readonly mfa?: MfaService;
   readonly sessionRepository?: SessionRepository;
 }
 
@@ -56,6 +59,7 @@ export class AuthService {
   readonly #staff: StaffService;
   readonly #accessControl: AccessControlService;
   readonly #audit: AuditService;
+  readonly #mfa?: MfaService;
   readonly #sessionRepository?: SessionRepository;
   readonly #sessions = new Map<SessionId, SessionRecord>();
 
@@ -67,13 +71,18 @@ export class AuthService {
     this.#staff = options.staff;
     this.#accessControl = options.accessControl;
     this.#audit = options.audit;
+    this.#mfa = options.mfa;
     this.#sessionRepository = options.sessionRepository;
+  }
+
+  public get mfaService(): MfaService | undefined {
+    return this.#mfa;
   }
 
   public async login(
     input: { readonly username: string; readonly password: string },
     correlationId: string
-  ): Promise<AuthSessionResponse> {
+  ): Promise<AuthSessionResponse | LoginMfaRequiredResponse> {
     const username = requireNonEmptyString(input.username, 'username');
     const password = requireNonEmptyString(input.password, 'password');
     const user = this.#users.findByUsername(username);
@@ -97,6 +106,63 @@ export class AuthService {
       throw new ForbiddenError('Inactive users cannot sign in');
     }
 
+    if (this.#mfa && this.#mfa.isMfaRequired(user.roleCodes)) {
+      const mfaActive = await this.#mfa.isMfaActive(user.id);
+      if (!mfaActive) {
+        this.#audit.write({
+          actorId: user.id,
+          accountId: user.accountId,
+          module: 'auth',
+          action: 'login_mfa_required',
+          entityType: 'user',
+          entityId: user.id,
+          correlationId,
+          payloadSummary: `MFA required for user ${user.username} with roles: ${user.roleCodes.join(', ')}`,
+          riskLevel: 'medium'
+        });
+        return {
+          requiresMfa: true,
+          userId: user.id,
+          mfaMethods: ['totp']
+        };
+      }
+    }
+
+    return this.#completeLogin(user, correlationId);
+  }
+
+  public async completeMfaLogin(
+    input: { readonly userId: string; readonly token: string },
+    correlationId: string
+  ): Promise<AuthSessionResponse> {
+    if (!this.#mfa) {
+      throw new AuthenticationError('MFA is not configured on this server');
+    }
+
+    const userId = requireNonEmptyString(input.userId, 'userId');
+    const token = requireNonEmptyString(input.token, 'token');
+
+    const isValid = await this.#mfa.verifyLogin(userId, token);
+    if (!isValid) {
+      this.#audit.write({
+        actorId: userId,
+        accountId: 'unknown' as never,
+        module: 'auth',
+        action: 'mfa_login_failed',
+        entityType: 'user',
+        entityId: userId,
+        correlationId,
+        payloadSummary: 'Invalid MFA TOTP code',
+        riskLevel: 'high'
+      });
+      throw new AuthenticationError('Invalid MFA code');
+    }
+
+    const user = this.#users.getOrThrow(userId as UserId);
+    return this.#completeLogin(user, correlationId);
+  }
+
+  #completeLogin(user: UserRecord, correlationId: string): AuthSessionResponse {
     const session = this.#createSession(user);
     const principal = this.#buildPrincipal(user, session);
     const tokens = this.#createTokens(session);
@@ -137,7 +203,6 @@ export class AuthService {
     };
     this.#sessions.set(rotatedSession.sessionId, rotatedSession);
 
-    // Persist to database if repository is available
     if (this.#sessionRepository) {
       this.#sessionRepository.update(rotatedSession).catch((err) => {
         console.error('Failed to update session in database:', err);
@@ -186,7 +251,6 @@ export class AuthService {
       revokedAt
     });
 
-    // Persist to database if repository is available
     if (this.#sessionRepository) {
       this.#sessionRepository
         .update({
@@ -244,7 +308,6 @@ export class AuthService {
 
     this.#sessions.set(session.sessionId, session);
 
-    // Persist to database if repository is available
     if (this.#sessionRepository) {
       this.#sessionRepository.create(session).catch((err) => {
         console.error('Failed to persist session to database:', err);
@@ -258,7 +321,9 @@ export class AuthService {
     const staff = this.#staff.findByUserId(user.id);
     const access: AccessProfile = this.#accessControl.createProfile({
       roleCodes: session.roleCodes,
-      department: staff?.department
+      department: staff?.department,
+      accountId: user.accountId,
+      userId: user.id
     });
 
     return {

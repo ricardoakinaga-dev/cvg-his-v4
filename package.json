@@ -23,6 +23,13 @@
     "test:critical:bootstrap": "node infra/scripts/test-critical-bootstrap.mjs",
     "test:coverage": "vitest run --coverage --config vitest.config.ts",
     "test:e2e": "npx playwright test e2e/tests/fluxos-criticos.spec.ts --config playwright.config.ts",
+    "test:e2e:spa": "npx playwright test --config playwright-spa.config.ts",
+    "test:e2e:spa:headed": "npx playwright test --config playwright-spa.config.ts --headed",
+    "test:e2e:spa:docker": "bash infra/scripts/run-e2e-spa.sh",
+    "test:e2e:spa:docker:keep": "bash infra/scripts/run-e2e-spa.sh --no-cleanup",
+    "test:visual": "npx playwright test --config playwright-spa.config.ts -g \"Visual\"",
+    "test:visual:update": "npx playwright test --config playwright-spa.config.ts -g \"Visual\" --update-snapshots",
+    "test:visual:headed": "npx playwright test --config playwright-spa.config.ts -g \"Visual\" --headed",
     "test:db:start": "docker compose -f docker-compose.test.yml up -d postgres-test",
     "test:db:stop": "docker compose -f docker-compose.test.yml down -v",
     "release:check": "pnpm typecheck && pnpm build && pnpm test:all",
@@ -30,7 +37,8 @@
     "staging:bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:check": "node infra/scripts/check-staging.mjs",
     "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
-    "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*"
+    "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*",
+    "guardrail:ds-imports": "bash scripts/check-legacy-ds-imports.sh"
   },
   "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
   "main": "index.js",

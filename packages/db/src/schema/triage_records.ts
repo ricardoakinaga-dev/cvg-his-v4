@@ -1,10 +1,14 @@
-import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
+import { accounts } from './accounts.js';
 
 export const triageRecords = pgTable(
   'triage_records',
   {
     id: text('id').primaryKey(),
-    accountId: text('account_id').notNull(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     encounterId: text('encounter_id').notNull(),
     patientId: text('patient_id').notNull(),
     priority: text('priority').notNull(),
