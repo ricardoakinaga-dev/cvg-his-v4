@@ -1,0 +1,79 @@
+groups:
+  - name: cvg-his-v2-api
+    rules:
+      # AL-01: API Down
+      - alert: CVG_HIS_API_Down
+        expr: sum(rate(http_requests_total[5m])) == 0 unless app_uptime_seconds > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'API CVG-HIS-V2 está indisponível'
+          description: 'Nenhum request processado nos últimos 5 minutos enquanto API está no ar.'
+          runbook_url: 'https://docs.cvg.com/runbooks/api-down'
+
+      # AL-02: High Error Rate 5xx
+      - alert: CVG_HIS_API_HighErrorRate
+        expr: sum(rate(http_errors_total{status_category="5xx"}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Taxa de erros 5xx elevada na API CVG-HIS-V2'
+          description: 'Mais de 5% das requests resultam em erro 5xx nos últimos 5 minutos.'
+          runbook_url: 'https://docs.cvg.com/runbooks/high-error-rate'
+
+      # AL-03: Database Unhealthy
+      - alert: CVG_HIS_DB_Unhealthy
+        expr: app_database_healthy == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Banco de dados da API CVG-HIS-V2 está unreachable'
+          description: 'O banco de dados não está respondendo há mais de 1 minuto.'
+          runbook_url: 'https://docs.cvg.com/runbooks/db-unhealthy'
+
+      # AL-04: Liveness Failing
+      - alert: CVG_HIS_API_Liveness_Failing
+        expr: up{job="cvg-his-v2-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Liveness probe da API CVG-HIS-V2 falhando'
+          description: 'O processo da API não está respondendo ao probe de liveness.'
+          runbook_url: 'https://docs.cvg.com/runbooks/liveness-failing'
+
+      # AL-05: High Latency
+      - alert: CVG_HIS_API_HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Latência elevada na API CVG-HIS-V2'
+          description: 'P95 de latência acima de 1 segundo nos últimos 5 minutos.'
+          runbook_url: 'https://docs.cvg.com/runbooks/high-latency'
+
+      # AL-06: In-Memory Mode in Production
+      - alert: CVG_HIS_API_InMemoryMode
+        expr: app_persistence_mode{mode="in-memory"} == 1 and app_uptime_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'API CVG-HIS-V2 rodando em modo in-memory'
+          description: 'API está em fallback in-memory há mais de 5 minutos. Dados serão perdidos em restart.'
+          runbook_url: 'https://docs.cvg.com/runbooks/in-memory-mode'
+
+      # AL-07: High Client Error Rate 4xx
+      - alert: CVG_HIS_API_HighClientErrorRate
+        expr: sum(rate(http_errors_total{status_category="4xx"}[5m])) / sum(rate(http_requests_total[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Taxa de erros 4xx elevada na API CVG-HIS-V2'
+          description: 'Mais de 10% das requests resultam em erro 4xx. Pode indicar problema no cliente ou tentativa de acesso não autorizado.'
+          runbook_url: 'https://docs.cvg.com/runbooks/high-client-error-rate'

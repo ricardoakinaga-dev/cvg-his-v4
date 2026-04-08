@@ -183,7 +183,7 @@ Gates:
 ## 9. Estado de CI
 
 - **Arquivo:** `.github/workflows/ci.yml`
-- **Jobs:** typecheck → build → test-unit → test-integration
+- **Jobs:** typecheck → build → unit-tests → integration-tests
 - **Infra:** Node 22, pnpm 10, PostgreSQL 16 service
 - **Trigger:** push/PR para main e develop
 

@@ -35,6 +35,8 @@ export type NotificationId = Brand<string, 'NotificationId'>;
 export type NotificationJobId = Brand<string, 'NotificationJobId'>;
 export type SectorId = Brand<string, 'SectorId'>;
 export type BedId = Brand<string, 'BedId'>;
+export type WebhookId = Brand<string, 'WebhookId'>;
+export type WebhookDeliveryId = Brand<string, 'WebhookDeliveryId'>;
 
 export interface AppInfo {
   readonly name: string;
@@ -688,4 +690,29 @@ export interface BedSummary {
   readonly active: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface WebhookSummary {
+  readonly id: WebhookId;
+  readonly accountId: AccountId;
+  readonly url: string;
+  readonly events: readonly string[];
+  readonly secret?: string;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface WebhookDeliverySummary {
+  readonly id: WebhookDeliveryId;
+  readonly webhookId: WebhookId;
+  readonly event: string;
+  readonly payload: Record<string, unknown>;
+  readonly status: 'pending' | 'delivered' | 'failed';
+  readonly attempts: number;
+  readonly lastAttemptAt?: string;
+  readonly responseStatus?: number;
+  readonly responseBody?: string;
+  readonly nextRetryAt?: string;
+  readonly createdAt: string;
 }

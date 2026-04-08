@@ -38,7 +38,8 @@
     "staging:check": "node infra/scripts/check-staging.mjs",
     "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
     "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*",
-    "guardrail:ds-imports": "bash scripts/check-legacy-ds-imports.sh"
+    "guardrail:ds-imports": "bash scripts/check-legacy-ds-imports.sh",
+    "validate:openapi": "node scripts/validate-openapi.js"
   },
   "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
   "main": "index.js",
@@ -67,12 +68,15 @@
     "@types/pg": "^8.15.0",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^16.4.7",
     "eslint": "^8.57.1",
     "prettier": "^3.5.1",
     "tsx": "^4.19.2",
     "turbo": "^2.5.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.2.4",
+    "yaml": "^2.8.3"
   }
 }

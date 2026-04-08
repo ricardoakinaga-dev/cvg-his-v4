@@ -80,6 +80,7 @@ export interface PatientsServiceOptions {
   readonly ownerPatientLinkRepository?: OwnerPatientLinkRepository;
   readonly seedPatients?: readonly PatientSummary[];
   readonly seedLinks?: readonly OwnerPatientLinkSummary[];
+  readonly onPatientCreated?: (patient: PatientSummary) => Promise<void>;
 }
 
 export class PatientsService {
@@ -88,11 +89,13 @@ export class PatientsService {
   readonly #links = new Map<OwnerPatientLinkId, OwnerPatientLinkSummary>();
   readonly #patientRepository?: PatientRepository;
   readonly #ownerPatientLinkRepository?: OwnerPatientLinkRepository;
+  readonly #onPatientCreated?: (patient: PatientSummary) => Promise<void>;
 
   public constructor(options: PatientsServiceOptions) {
     this.#owners = options.owners;
     this.#patientRepository = options.patientRepository;
     this.#ownerPatientLinkRepository = options.ownerPatientLinkRepository;
+    this.#onPatientCreated = options.onPatientCreated;
 
     const seedPatients = options.seedPatients ?? createSeedPatients();
     const seedLinks = options.seedLinks ?? createSeedLinks();
@@ -199,6 +202,8 @@ export class PatientsService {
         console.error('Failed to persist patient to database:', err);
       });
     }
+
+    void this.#onPatientCreated?.(patient);
 
     return patient;
   }

@@ -20,10 +20,8 @@
           <span class="muted" style="margin-left: 8px">@{{ user.username }}</span>
         </template>
         <template #actions>
-          <DsButton variant="secondary" tag="router-link" :to="`/users/${user.id}/edit`"
-            >Editar</DsButton
-          >
-          <router-link to="/users" class="btn btn--secondary">Voltar</router-link>
+          <DsButton variant="secondary" tag="a" :to="`/users/${user.id}/edit`">Editar</DsButton>
+          <DsButton variant="secondary" tag="a" to="/users">Voltar</DsButton>
         </template>
       </AppPageHeader>
 

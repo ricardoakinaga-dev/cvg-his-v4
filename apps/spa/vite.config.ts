@@ -14,15 +14,21 @@ export default defineConfig({
       '@cvg-his-v2/design-system/src/vue': resolve(
         __dirname,
         '../../packages/design-system/src/vue'
+      ),
+      '@cvg-his-v2/design-system/src/tokens': resolve(
+        __dirname,
+        '../../packages/design-system/src/tokens'
       )
     }
   },
   server: {
     port: 3002,
+    allowedHosts: ['tired-bugs-refuse.loca.lt', '.loca.lt'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
-        changeOrigin: true
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   },

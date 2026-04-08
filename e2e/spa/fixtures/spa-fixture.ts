@@ -35,7 +35,7 @@ export type PatientFormData = {
 };
 
 export type CreatedResource = {
-  type: 'owner' | 'patient' | 'encounter' | 'appointment';
+  type: 'owner' | 'patient' | 'encounter' | 'appointment' | 'webhook';
   id: string;
 };
 
@@ -145,7 +145,8 @@ export class CleanupTracker {
           appointment: `/appointments/${r.id}`,
           encounter: `/encounters/${r.id}`,
           patient: `/patients/${r.id}`,
-          owner: `/owners/${r.id}`
+          owner: `/owners/${r.id}`,
+          webhook: `/webhooks/${r.id}`
         };
         const endpoint = endpointMap[r.type];
         if (endpoint) {
@@ -164,8 +165,8 @@ export class CleanupTracker {
 // ── Login helpers ──────────────────────────────────────────────────────
 
 async function loginViaUI(page: Page) {
-  const email = process.env.E2E_ADMIN_EMAIL || 'admin@cvg.local';
-  const password = process.env.E2E_ADMIN_PASSWORD || 'Admin123!';
+  const username = process.env.E2E_ADMIN_USERNAME || 'admin';
+  const password = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
 
   await page.goto(`${SPA_URL}/login`);
   await page.waitForLoadState('networkidle');
@@ -174,7 +175,7 @@ async function loginViaUI(page: Page) {
   const url = page.url();
   if (!url.includes('/login')) return;
 
-  await page.fill('#email', email);
+  await page.fill('#email', username);
   await page.fill('#password', password);
   await page.click('button[type="submit"]');
 

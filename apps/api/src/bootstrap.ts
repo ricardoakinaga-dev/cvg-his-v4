@@ -81,6 +81,8 @@ import { DatabaseMfaRepository } from '@cvg-his-v2/module-mfa';
 import type { MfaRepository } from '@cvg-his-v2/module-mfa';
 import { DatabaseConsentRepository, DatabaseDsrRepository } from '@cvg-his-v2/module-lgpd';
 import type { ConsentRepository, DsrRepository } from '@cvg-his-v2/module-lgpd';
+import { DatabaseWebhookRepository } from '@cvg-his-v2/module-webhooks';
+import type { WebhookRepository } from '@cvg-his-v2/module-webhooks';
 import type {
   AccountId,
   AuditEventId,
@@ -636,7 +638,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         staff: new DatabaseStaffRepository(),
         mfa: new DatabaseMfaRepository(db),
         consent: new DatabaseConsentRepository(db),
-        dsr: new DatabaseDsrRepository(db)
+        dsr: new DatabaseDsrRepository(db),
+        webhook: new DatabaseWebhookRepository(db)
       };
       results.fileStorage = new LocalFileStorage({
         basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'

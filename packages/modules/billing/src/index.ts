@@ -23,6 +23,11 @@ import type { BillingRepository } from './repositories/database-billing.reposito
 
 export interface BillingServiceOptions {
   readonly repository?: BillingRepository;
+  readonly onRecordCreated?: (record: BillingRecordSummary) => Promise<void>;
+  readonly onStatusChanged?: (
+    record: BillingRecordSummary,
+    previousStatus: string
+  ) => Promise<void>;
 }
 
 export class BillingService {
@@ -31,10 +36,17 @@ export class BillingService {
   readonly #records = new Map<BillingRecordId, BillingRecordSummary>();
   readonly #recordByEncounterId = new Map<EncounterId, BillingRecordId>();
   readonly #items = new Map<BillingRecordId, BillingItemSummary[]>();
+  readonly #onRecordCreated?: (record: BillingRecordSummary) => Promise<void>;
+  readonly #onStatusChanged?: (
+    record: BillingRecordSummary,
+    previousStatus: string
+  ) => Promise<void>;
 
   public constructor(encounters: EncountersService, options?: BillingServiceOptions) {
     this.#encounters = encounters;
     this.#repository = options?.repository;
+    this.#onRecordCreated = options?.onRecordCreated;
+    this.#onStatusChanged = options?.onStatusChanged;
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -91,6 +103,8 @@ export class BillingService {
     if (this.#repository) {
       await this.#repository.createRecord(record);
     }
+
+    await this.#onRecordCreated?.(record);
 
     return record;
   }
@@ -195,6 +209,7 @@ export class BillingService {
     payload: UpdateBillingStatusRequest
   ): Promise<BillingRecordSummary> {
     const record = await this.ensureRecord(encounterId);
+    const previousStatus = record.status;
     const updated: BillingRecordSummary = {
       ...record,
       status: payload.status,
@@ -206,6 +221,10 @@ export class BillingService {
 
     if (this.#repository) {
       await this.#repository.updateRecord(updated);
+    }
+
+    if (payload.status !== previousStatus) {
+      await this.#onStatusChanged?.(updated, previousStatus);
     }
 
     return updated;

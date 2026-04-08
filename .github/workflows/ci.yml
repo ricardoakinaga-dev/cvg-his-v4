@@ -47,11 +47,48 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  validate-openapi:
+    name: Validate OpenAPI
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    needs: [typecheck]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate OpenAPI
+        run: pnpm validate:openapi
+
   build:
     name: Build
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    needs: [typecheck]
+    needs: [typecheck, validate-openapi]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,11 +121,11 @@ jobs:
       - name: Build
         run: pnpm build
 
-  test-unit:
+  unit-tests:
     name: Unit Tests
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    needs: [typecheck]
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -120,13 +157,12 @@ jobs:
 
       - name: Run unit tests
         run: pnpm test
-        continue-on-error: true
 
-  test-integration:
+  integration-tests:
     name: Integration Tests
     runs-on: ubuntu-22.04
     timeout-minutes: 15
-    needs: [typecheck]
+    needs: [build]
     services:
       postgres:
         image: postgres:16
@@ -221,6 +257,26 @@ jobs:
         run: pnpm test:coverage
         continue-on-error: true
 
+      - name: Display coverage summary
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const d = require('fs').readFileSync('coverage/coverage-summary.json','utf8');
+              const j = JSON.parse(d);
+              const t = j.total;
+              console.log('| Metric    | Coverage |');
+              console.log('| ----------| -------- |');
+              console.log('| Lines     | ' + t.lines.pct + '% |');
+              console.log('| Functions | ' + t.functions.pct + '% |');
+              console.log('| Branches  | ' + t.branches.pct + '% |');
+              console.log('| Statements| ' + t.statements.pct + '% |');
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage report available in artifact" >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
@@ -233,7 +289,7 @@ jobs:
     name: E2E Tests (SPA)
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    needs: [typecheck, build]
+    needs: [build]
     services:
       postgres:
         image: postgres:16-alpine
@@ -300,9 +356,12 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
         run: |
-          node infra/scripts/prepare-test-db.mjs 2>/dev/null || \
-          node infra/scripts/test-critical-bootstrap.mjs 2>/dev/null || \
-          echo "⚠️ DB setup failed, tests may fail"
+          if ! node infra/scripts/prepare-test-db.mjs; then
+            if ! node infra/scripts/test-critical-bootstrap.mjs; then
+              echo "ERROR: DB setup failed - both bootstrap scripts failed"
+              exit 1
+            fi
+          fi
 
       - name: Start API
         env:
@@ -368,7 +427,7 @@ jobs:
     name: Visual Regression
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    needs: [typecheck, build]
+    needs: [build]
     services:
       postgres:
         image: postgres:16-alpine
@@ -435,9 +494,12 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
         run: |
-          node infra/scripts/prepare-test-db.mjs 2>/dev/null || \
-          node infra/scripts/test-critical-bootstrap.mjs 2>/dev/null || \
-          echo "⚠️ DB setup failed, visual tests may skip"
+          if ! node infra/scripts/prepare-test-db.mjs; then
+            if ! node infra/scripts/test-critical-bootstrap.mjs; then
+              echo "ERROR: DB setup failed - both bootstrap scripts failed"
+              exit 1
+            fi
+          fi
 
       - name: Start API
         env:

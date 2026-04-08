@@ -34,7 +34,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const { skipAuth, headers: customHeaders, ...restOptions } = options;
 
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const url = path.startsWith('http') ? path : `${API_BASE}/api${path}`;
   const correlationId = generateCorrelationId();
 
   const headers = new Headers(customHeaders as HeadersInit | undefined);

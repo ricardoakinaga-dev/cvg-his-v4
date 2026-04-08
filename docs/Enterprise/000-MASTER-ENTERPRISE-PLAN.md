@@ -62,7 +62,9 @@ O CVG-HIS-V2 tem uma base sólida (26 módulos, 49 tabelas, arquitetura modular 
 | 3 — Integrações | 4 meses | 3 | 9 | R$ 450K | R$ 1.8M |
 | 4 — AI/ML | 3 meses | 2 | 6 | R$ 300K | R$ 0.9M |
 | 5 — Excelência | 2 meses | 2 | 6 | R$ 300K | R$ 0.6M |
-| **Total** | **18 meses** | **~8 squads** | **~43** | | **R$ 8.2M** |
+| **Total** | **18 meses** | **~8 squads** | **~43** | | **R$ 8.9M** |
+
+> **Nota**: O custo total de R$ 8.9M inclui R$ 0.5M de infraestrutura e R$ 0.2M de ferramentas/licenças.see Resource Plan (302) para breakdown detalhado.
 
 ## CRITÉRIOS DE SUCESSO
 

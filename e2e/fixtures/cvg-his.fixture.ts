@@ -6,7 +6,7 @@ import { test as base, expect, type Page, type APIRequestContext } from '@playwr
 
 // Types
 export type TestUser = {
-  email: string;
+  username: string;
   password: string;
   token?: string;
   userId?: string;
@@ -25,7 +25,11 @@ export type CVGHTestFixture = {
   /** Helper: create a patient via API */
   createPatient: (ownerId: string, name?: string) => Promise<{ id: string; name: string }>;
   /** Helper: create an appointment via API */
-  createAppointment: (patientId: string, ownerId: string, professionalUserId: string) => Promise<{ id: string }>;
+  createAppointment: (
+    patientId: string,
+    ownerId: string,
+    professionalUserId: string
+  ) => Promise<{ id: string }>;
   /** Helper: create an encounter via API */
   createEncounter: (patientId: string, ownerId: string) => Promise<{ id: string }>;
   /** Helper: clean up test data */
@@ -38,8 +42,8 @@ const createdResources: Array<{ type: string; id: string }> = [];
 export const test = base.extend<CVGHTestFixture>({
   testUser: async ({}, use) => {
     const user: TestUser = {
-      email: process.env.E2E_ADMIN_EMAIL || 'admin@cvg.local',
-      password: process.env.E2E_ADMIN_PASSWORD || 'Admin123!',
+      username: process.env.E2E_ADMIN_USERNAME || 'admin',
+      password: process.env.E2E_ADMIN_PASSWORD || 'seed_admin',
       token: process.env.E2E_AUTH_TOKEN,
       userId: process.env.E2E_USER_ID,
       accountId: process.env.E2E_ACCOUNT_ID
@@ -50,7 +54,7 @@ export const test = base.extend<CVGHTestFixture>({
   authPage: async ({ page, testUser }, use) => {
     // Login via UI
     await page.goto('/login');
-    
+
     // Check if already logged in
     const currentUrl = page.url();
     if (!currentUrl.includes('/login')) {
@@ -58,23 +62,28 @@ export const test = base.extend<CVGHTestFixture>({
       return;
     }
 
-    // Fill login form
-    await page.fill('input[name="email"], input[type="email"], input#email', testUser.email);
-    await page.fill('input[name="password"], input[type="password"], input#password', testUser.password);
+    // Fill login form — LoginPage uses #email for username field
+    await page.fill('#email', testUser.username);
+    await page.fill(
+      'input[name="password"], input[type="password"], input#password',
+      testUser.password
+    );
     await page.click('button[type="submit"], button:has-text("Entrar"), button:has-text("Login")');
-    
+
     // Wait for redirect to dashboard
     await page.waitForURL(/^(?!.*\/login)/, { timeout: 10000 });
-    
+
     await use(page);
   },
 
   apiContext: async ({ playwright, testUser }, use) => {
     const context = await playwright.request.newContext({
       baseURL: process.env.API_URL || 'http://localhost:3000',
-      extraHTTPHeaders: testUser.token ? {
-        'Authorization': `Bearer ${testUser.token}`
-      } : {}
+      extraHTTPHeaders: testUser.token
+        ? {
+            Authorization: `Bearer ${testUser.token}`
+          }
+        : {}
     });
     await use(context);
     await context.dispose();

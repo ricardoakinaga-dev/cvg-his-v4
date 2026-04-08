@@ -22,10 +22,10 @@
           <StatusBadge v-if="patient.size" :label="patientSizeLabel(patient.size)" variant="info" />
         </template>
         <template #actions>
-          <router-link :to="`/patients/${patient.id}/edit`" class="btn btn--secondary"
-            >Editar</router-link
+          <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="secondary"
+            >Editar</DsButton
           >
-          <router-link to="/patients" class="btn btn--secondary">Voltar</router-link>
+          <DsButton variant="secondary" tag="a" to="/patients">Voltar</DsButton>
         </template>
       </AppPageHeader>
 
@@ -58,8 +58,8 @@
 
         <AppDetailSection title="Tutor Responsável">
           <p>{{ ownerName }}</p>
-          <router-link :to="`/owners/${patient.primaryOwnerId}`" class="btn btn--sm btn--secondary"
-            >Ver tutor →</router-link
+          <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" size="sm" variant="secondary"
+            >Ver tutor →</DsButton
           >
         </AppDetailSection>
 
@@ -87,8 +87,8 @@ import {
 import { useEntityCache } from '@/composables/useEntityCache';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 

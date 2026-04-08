@@ -44,12 +44,14 @@
         {{ formatDate((row as MedicalRecordListSummary).record.updatedAt) }}
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/medical-records/${(row as MedicalRecordListSummary).record.encounterId}`"
-          class="btn btn--sm btn--secondary"
+          size="sm"
+          variant="secondary"
         >
           Ver prontuário
-        </router-link>
+        </DsButton>
       </template>
     </DataTable>
   </div>
@@ -62,6 +64,7 @@ import type { MedicalRecordListSummary } from '@/types/medicalRecords';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';

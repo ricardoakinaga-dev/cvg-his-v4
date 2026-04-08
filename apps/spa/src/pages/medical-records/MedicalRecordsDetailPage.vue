@@ -13,28 +13,23 @@
     </DsAlert>
 
     <template v-else-if="record">
-      <div class="page-header">
-        <div>
-          <h1 class="page-header__title">📋 Prontuário Clínico</h1>
-          <p class="page-header__subtitle">
-            <StatusBadge
-              :label="record.status === 'open' ? 'Aberto' : 'Concluído'"
-              :variant="record.status === 'open' ? 'warning' : 'success'"
-            />
-            <span class="muted" style="margin-left: 8px"> Paciente: {{ patientName }} </span>
-          </p>
-        </div>
-        <div class="page-header__actions">
-          <button class="btn btn--primary" @click="showNewEntryModal = true">+ Nova Entrada</button>
-          <router-link to="/medical-records" class="btn btn--secondary">Voltar</router-link>
-        </div>
-      </div>
+      <AppPageHeader title="📋 Prontuário Clínico" :subtitle="`Paciente: ${patientName}`">
+        <template #subtitle>
+          <StatusBadge
+            :label="record.status === 'open' ? 'Aberto' : 'Concluído'"
+            :variant="record.status === 'open' ? 'warning' : 'success'"
+          />
+          <span class="muted" style="margin-left: 8px"> Paciente: {{ patientName }} </span>
+        </template>
+        <template #actions>
+          <DsButton variant="primary" @click="showNewEntryModal = true">+ Nova Entrada</DsButton>
+          <DsButton variant="secondary" tag="a" to="/medical-records">Voltar</DsButton>
+        </template>
+      </AppPageHeader>
 
       <div class="medical-records-detail-page__grid">
         <!-- Clinical Entries -->
-        <div class="detail-section">
-          <h2 class="detail-section__title">Entradas Clínicas ({{ entries.length }})</h2>
-
+        <AppDetailSection title="Entradas Clínicas">
           <div v-if="entries.length === 0" class="muted">
             Nenhuma entrada clínica registrada ainda.
           </div>
@@ -55,20 +50,22 @@
               <p class="entry-card__content">{{ entry.content }}</p>
               <div class="entry-card__footer">
                 <span class="muted">Por: {{ entry.authoredByUserId.slice(0, 8) }}...</span>
-                <button
+                <DsButton
                   v-if="!entry.deletedAt"
-                  class="btn btn--sm btn--secondary"
+                  size="sm"
+                  variant="secondary"
                   @click="openEditEntry(entry)"
                 >
                   Editar
-                </button>
-                <button
+                </DsButton>
+                <DsButton
                   v-if="!entry.deletedAt"
-                  class="btn btn--sm btn--danger"
+                  size="sm"
+                  variant="danger"
                   @click="openArchiveEntry(entry)"
                 >
                   Arquivar
-                </button>
+                </DsButton>
               </div>
               <div v-if="entry.deletedAt" class="entry-card__archived">
                 Arquivado em {{ formatDate(entry.deletedAt) }}
@@ -76,11 +73,10 @@
               </div>
             </div>
           </div>
-        </div>
+        </AppDetailSection>
 
         <!-- Timeline -->
-        <div class="detail-section">
-          <h2 class="detail-section__title">Timeline Clínica</h2>
+        <AppDetailSection title="Timeline Clínica">
           <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
           <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado</div>
           <div v-else class="timeline-list">
@@ -92,7 +88,7 @@
               <span class="timeline-event__time">{{ formatDateTime(event.occurredAt) }}</span>
             </div>
           </div>
-        </div>
+        </AppDetailSection>
       </div>
     </template>
 
@@ -201,6 +197,8 @@ import type {
 import { useEntityCache } from '@/composables/useEntityCache';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppDetailSection from '@/components/AppDetailSection.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -504,9 +502,5 @@ onMounted(async () => {
 .timeline-event__time {
   color: var(--color-text-muted, #94a3b8);
   flex-shrink: 0;
-}
-
-.modal-content--lg {
-  max-width: 640px;
 }
 </style>

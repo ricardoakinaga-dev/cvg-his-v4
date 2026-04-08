@@ -621,4 +621,95 @@ describe('SchedulingService', () => {
     await persistent.completeQueueEntry(queueEntry.id);
     expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('completed');
   });
+
+  it('should invoke onAppointmentCreated callback when creating an appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    let callbackInvoked = false;
+    let capturedAppointmentId: string | null = null;
+
+    const serviceWithCallback = new SchedulingService(owners, patients, [], {
+      onAppointmentCreated: async (appointment) => {
+        callbackInvoked = true;
+        capturedAppointmentId = appointment.id;
+      }
+    });
+
+    const appointment = await serviceWithCallback.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-10T09:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Callback test'
+    });
+
+    expect(callbackInvoked).toBe(true);
+    expect(capturedAppointmentId).toBe(appointment.id);
+  });
+
+  it('should invoke onAppointmentStatusChanged callback when cancelling an appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    let callbackInvoked = false;
+    let capturedAppointmentId: string | null = null;
+    let capturedPreviousStatus: string | null = null;
+
+    const serviceWithCallback = new SchedulingService(owners, patients, [], {
+      onAppointmentStatusChanged: async (appointment, previousStatus) => {
+        callbackInvoked = true;
+        capturedAppointmentId = appointment.id;
+        capturedPreviousStatus = previousStatus;
+      }
+    });
+
+    const appointment = await serviceWithCallback.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-11T09:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Status change test'
+    });
+
+    expect(callbackInvoked).toBe(false);
+
+    await serviceWithCallback.cancelAppointment(appointment.id, 'Cliente desistiu');
+
+    expect(callbackInvoked).toBe(true);
+    expect(capturedAppointmentId).toBe(appointment.id);
+    expect(capturedPreviousStatus).toBe('scheduled');
+  });
+
+  it('should invoke onAppointmentStatusChanged callback when checking in and linking appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    let callbackInvoked = false;
+    let capturedPreviousStatus: string | null = null;
+
+    const serviceWithCallback = new SchedulingService(owners, patients, [], {
+      onAppointmentStatusChanged: async (_appointment, previousStatus) => {
+        callbackInvoked = true;
+        capturedPreviousStatus = previousStatus;
+      }
+    });
+
+    const appointment = await serviceWithCallback.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-12T09:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Check-in status change test'
+    });
+
+    expect(callbackInvoked).toBe(false);
+
+    await serviceWithCallback.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      appointmentId: appointment.id,
+      reason: 'Check-in'
+    });
+
+    expect(callbackInvoked).toBe(true);
+    expect(capturedPreviousStatus).toBe('scheduled');
+  });
 });

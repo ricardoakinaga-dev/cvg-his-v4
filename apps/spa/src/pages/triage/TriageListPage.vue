@@ -31,9 +31,9 @@
         </DsBadge>
       </template>
       <template #actions="{ row }">
-        <router-link :to="`/triage/${(row as TriageSummary).id}`" class="btn btn--sm">
-          Ver
-        </router-link>
+        <DsButton tag="a" :to="`/triage/${(row as TriageSummary).id}`" size="sm" variant="secondary"
+          >Ver</DsButton
+        >
       </template>
     </DataTable>
   </div>

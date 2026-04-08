@@ -1,16 +1,13 @@
 <template>
   <div class="appointments-list-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">📅 Agenda</h1>
-        <p class="page-header__subtitle">Gestão operacional de agendamentos e fluxo do hospital</p>
-      </div>
-      <div class="page-header__actions">
-        <router-link to="/appointments/new" class="btn btn--primary"
-          >+ Novo Agendamento</router-link
-        >
-      </div>
-    </div>
+    <AppPageHeader
+      title="📅 Agenda"
+      subtitle="Gestão operacional de agendamentos e fluxo do hospital"
+    >
+      <template #actions>
+        <DsButton tag="a" to="/appointments/new" variant="primary">+ Novo Agendamento</DsButton>
+      </template>
+    </AppPageHeader>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -18,21 +15,20 @@
 
     <!-- Status filter -->
     <div class="appointments-list-page__filters">
-      <select
+      <DsInput
         v-model="statusFilter"
-        class="appointments-list-page__filter-select"
+        type="select"
+        placeholder="Todos status"
         @change="applyFilters"
       >
-        <option value="">Todos status</option>
         <option value="scheduled">📅 Agendado</option>
         <option value="checked_in">🔄 Em atendimento</option>
         <option value="completed">✔ Concluído</option>
         <option value="cancelled">✕ Cancelado</option>
-      </select>
-      <input
+      </DsInput>
+      <DsInput
         v-model="search"
         type="search"
-        class="search-bar__input"
         placeholder="Buscar paciente ou tutor..."
         @keyup.enter="applyFilters"
       />
@@ -49,9 +45,7 @@
       description="Crie o primeiro agendamento para começar."
     >
       <template #action>
-        <router-link to="/appointments/new" class="btn btn--primary"
-          >+ Novo Agendamento</router-link
-        >
+        <DsButton tag="a" to="/appointments/new" variant="primary">+ Novo Agendamento</DsButton>
       </template>
     </EmptyState>
 
@@ -91,7 +85,10 @@ import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
 import { visitTypeLabel, formatTime, truncate } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const router = useRouter();
 const appointments = ref<AppointmentSummary[]>([]);

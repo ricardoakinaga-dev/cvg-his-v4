@@ -2,35 +2,27 @@
   <div class="appointment-detail-page">
     <div v-if="!appointment" class="page-loading">
       <p>Carregando ou agendamento não encontrado.</p>
-      <router-link to="/appointments" class="btn btn--secondary">Voltar à agenda</router-link>
+      <DsButton variant="secondary" tag="a" href="/appointments">Voltar à agenda</DsButton>
     </div>
     <template v-else>
-      <div class="page-header">
-        <div>
-          <h1 class="page-header__title">📅 Agendamento</h1>
-          <p class="page-header__subtitle">
-            <StatusBadge
-              :label="appointmentStatusLabel(appointment.status)"
-              :variant="appointmentStatusVariant(appointment.status)"
-            />
-          </p>
-        </div>
-        <div class="page-header__actions">
-          <button
-            v-if="canCancel"
-            class="btn btn--danger"
-            :disabled="cancelling"
-            @click="handleCancel"
-          >
+      <AppPageHeader>
+        <template #title>📅 Agendamento</template>
+        <template #subtitle>
+          <StatusBadge
+            :label="appointmentStatusLabel(appointment.status)"
+            :variant="appointmentStatusVariant(appointment.status)"
+          />
+        </template>
+        <template #actions>
+          <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
-          </button>
-          <router-link to="/appointments" class="btn btn--secondary">Voltar</router-link>
-        </div>
-      </div>
+          </DsButton>
+          <DsButton variant="secondary" tag="a" href="/appointments">Voltar</DsButton>
+        </template>
+      </AppPageHeader>
 
       <div class="appointment-detail-page__grid">
-        <div class="detail-section">
-          <h2 class="detail-section__title">Informações</h2>
+        <AppDetailSection title="Informações">
           <div class="detail-row">
             <span class="detail-row__label">Data/Hora</span>
             <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
@@ -47,18 +39,16 @@
             <span class="detail-row__label">Tutor</span>
             <span>{{ ownerName }}</span>
           </div>
-        </div>
+        </AppDetailSection>
 
-        <div v-if="appointment.reason" class="detail-section">
-          <h2 class="detail-section__title">Motivo</h2>
+        <AppDetailSection v-if="appointment.reason" title="Motivo">
           <p>{{ appointment.reason }}</p>
-        </div>
+        </AppDetailSection>
 
-        <div class="detail-section">
-          <h2 class="detail-section__title">Informações Administrativas</h2>
+        <AppDetailSection title="Informações Administrativas">
           <p class="muted">Criado em: {{ formatDate(appointment.createdAt) }}</p>
           <p class="muted">Atualizado em: {{ formatDate(appointment.updatedAt) }}</p>
-        </div>
+        </AppDetailSection>
       </div>
     </template>
   </div>
@@ -66,15 +56,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
 import { visitTypeLabel, appointmentStatusLabel, formatDateTime, formatDate } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
 import StatusBadge from '@/components/StatusBadge.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppDetailSection from '@/components/AppDetailSection.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 
 const route = useRoute();
-const router = useRouter();
 const appointment = ref<AppointmentSummary | null>(null);
 const cancelling = ref(false);
 const entityCache = useEntityCache();

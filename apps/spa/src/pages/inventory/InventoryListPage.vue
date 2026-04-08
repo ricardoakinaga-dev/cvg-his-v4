@@ -2,7 +2,7 @@
   <div class="inventory-list-page">
     <AppPageHeader title="Estoque" subtitle="Controle de materiais e medicamentos">
       <template #actions>
-        <router-link to="/inventory/new" class="btn btn--primary">+ Novo Item</router-link>
+        <DsButton tag="a" to="/inventory/new" variant="primary">+ Novo Item</DsButton>
       </template>
     </AppPageHeader>
 
@@ -11,14 +11,13 @@
     </DsAlert>
 
     <div class="search-bar">
-      <input
+      <DsInput
         v-model="search"
         type="search"
-        class="search-bar__input"
         placeholder="Buscar por SKU, nome ou unidade..."
         @keyup.enter="load"
       />
-      <button class="btn btn--secondary" @click="load">Buscar</button>
+      <DsButton variant="secondary" @click="load">Buscar</DsButton>
     </div>
 
     <DataTable
@@ -47,12 +46,13 @@
         {{ formatCurrency((row as InventoryItemSummary).unitCostAmount) }}
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/inventory/${(row as InventoryItemSummary).id}`"
-          class="btn btn--sm btn--secondary"
+          size="sm"
+          variant="secondary"
+          >Ver</DsButton
         >
-          Ver
-        </router-link>
       </template>
     </DataTable>
   </div>
@@ -63,6 +63,8 @@ import { ref } from 'vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryItemSummary } from '@/types/inventory';
 import { useListData } from '@/composables/useListData';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';

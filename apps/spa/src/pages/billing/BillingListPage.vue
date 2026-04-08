@@ -44,20 +44,24 @@
         {{ formatCurrency((row as BillingRecordSummary).subtotalAmount) }}
       </template>
       <template #cell-items="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/billing/${(row as BillingRecordSummary).encounterId}`"
-          class="btn btn--sm btn--secondary"
+          size="sm"
+          variant="secondary"
         >
           Ver itens →
-        </router-link>
+        </DsButton>
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/billing/${(row as BillingRecordSummary).encounterId}`"
-          class="btn btn--sm btn--secondary"
+          size="sm"
+          variant="secondary"
         >
           Gerenciar
-        </router-link>
+        </DsButton>
       </template>
     </DataTable>
   </div>
@@ -69,10 +73,11 @@ import { billingService } from '@/services/billing';
 import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});

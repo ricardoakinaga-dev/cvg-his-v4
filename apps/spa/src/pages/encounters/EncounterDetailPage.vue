@@ -29,7 +29,7 @@
           <DsButton v-if="canClose" variant="danger" @click="showCloseModal = true">
             Fechar Atendimento
           </DsButton>
-          <router-link to="/encounters" class="btn btn--secondary">Voltar</router-link>
+          <DsButton variant="secondary" tag="a" to="/encounters">Voltar</DsButton>
         </div>
       </div>
 
@@ -106,13 +106,13 @@
     >
       <div class="form-field">
         <label for="closeReason" class="form-field__label">Motivo do fechamento *</label>
-        <textarea
+        <DsInput
           id="closeReason"
           v-model="closeReason"
-          class="form-field__input form-field__textarea"
-          rows="3"
+          type="textarea"
+          :rows="3"
           placeholder="Descreva o motivo..."
-        ></textarea>
+        />
       </div>
       <template #footer>
         <DsButton variant="danger" :disabled="!closeReason.trim() || closing" @click="handleClose">
@@ -143,6 +143,7 @@ import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 
 const route = useRoute();
 const encounter = ref<EncounterSummary | null>(null);
@@ -300,27 +301,8 @@ onMounted(async () => {
   color: var(--color-text-secondary, #475569);
 }
 
-.form-field__input {
-  padding: 10px 14px;
-  font-size: 15px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text, #0f172a);
-  min-height: 44px;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
 .form-field__textarea {
   resize: vertical;
   min-height: 80px;
-}
-
-.form-field__input:focus {
-  outline: none;
-  border-color: var(--color-primary-500, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
 }
 </style>

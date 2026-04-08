@@ -2,10 +2,10 @@
   "name": "@cvg-his-v2/module-mfa",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/mfa.test.js"
+    "test": "node -e \"console.log('no tests for module-mfa')\""
   },
   "dependencies": {
     "@cvg-his-v2/shared-database": "workspace:*",

@@ -29,6 +29,20 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() })
 }));
 
+vi.mock('@/components/AppPageHeader.vue', () => ({
+  default: {
+    template:
+      '<div class="app-page-header"><slot name="title"/><slot name="subtitle"/><slot name="actions"/></div>'
+  }
+}));
+
+vi.mock('@/components/AppDetailSection.vue', () => ({
+  default: {
+    template: '<div class="app-detail-section"><slot name="title"/><slot/></div>',
+    props: ['title']
+  }
+}));
+
 describe('InventoryDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();

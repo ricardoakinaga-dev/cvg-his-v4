@@ -66,6 +66,19 @@ import type {
 } from '@cvg-his-v2/module-prescription-executions';
 import { MfaService, validateMasterKey, type MfaRepository } from '@cvg-his-v2/module-mfa';
 import { LgpdService, type ConsentRepository, type DsrRepository } from '@cvg-his-v2/module-lgpd';
+import { WebhooksService, type WebhookRepository } from '@cvg-his-v2/module-webhooks';
+import {
+  WhatsAppProviderService,
+  RuntimeOwnerLookup,
+  RuntimePatientLookup,
+  RuntimeSettingsLookup,
+  EnvNotificationSettingsProvider,
+  AppointmentReminderWorkflow,
+  type NotificationSettingsProvider,
+  type OwnerLookup,
+  type PatientLookup,
+  type SettingsLookup
+} from '@cvg-his-v2/module-notifications-whatsapp';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
 import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
@@ -112,6 +125,7 @@ export interface RuntimeRepositories {
   readonly mfa?: MfaRepository;
   readonly consent?: ConsentRepository;
   readonly dsr?: DsrRepository;
+  readonly webhook?: WebhookRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -132,18 +146,97 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const users = new UsersService({ repository: repos.users });
   const staff = new StaffService({ repository: repos.staff });
   const owners = new OwnersService({ ownerRepository: repos.owner });
+  const webhooks = new WebhooksService({ repository: repos.webhook });
   const patients = new PatientsService({
     owners,
     patientRepository: repos.patient,
-    ownerPatientLinkRepository: repos.ownerPatientLink
+    ownerPatientLinkRepository: repos.ownerPatientLink,
+    async onPatientCreated(patient) {
+      await webhooks.dispatch(patient.accountId, 'patient.created', {
+        id: patient.id,
+        accountId: patient.accountId,
+        name: patient.name,
+        species: patient.species,
+        breed: patient.breed,
+        sex: patient.sex,
+        size: patient.size,
+        primaryOwnerId: patient.primaryOwnerId,
+        status: patient.status,
+        createdAt: patient.createdAt
+      });
+    }
+  });
+  const whatsAppProvider = new WhatsAppProviderService(
+    new EnvNotificationSettingsProvider('acc_cvg_demo' as AccountId),
+    new RuntimeOwnerLookup(owners),
+    new RuntimePatientLookup(patients)
+  );
+  const settingsLookup = new RuntimeSettingsLookup();
+  const appointmentReminderWorkflow = new AppointmentReminderWorkflow(
+    whatsAppProvider,
+    new RuntimeOwnerLookup(owners),
+    new RuntimePatientLookup(patients),
+    settingsLookup
+  );
+  const scheduling = new SchedulingService(owners, patients, [], {
+    repository: repos.scheduling,
+    async onAppointmentCreated(appointment) {
+      await webhooks.dispatch(appointment.accountId, 'appointment.scheduled', {
+        id: appointment.id,
+        accountId: appointment.accountId,
+        patientId: appointment.patientId,
+        ownerId: appointment.ownerId,
+        scheduledAt: appointment.scheduledAt,
+        visitType: appointment.visitType,
+        reason: appointment.reason,
+        status: appointment.status,
+        createdAt: appointment.createdAt
+      });
+      void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
+    },
+    async onAppointmentStatusChanged(appointment, previousStatus) {
+      await webhooks.dispatch(appointment.accountId, 'appointment.status_changed', {
+        id: appointment.id,
+        accountId: appointment.accountId,
+        patientId: appointment.patientId,
+        ownerId: appointment.ownerId,
+        previousStatus,
+        newStatus: appointment.status,
+        reason: appointment.reason,
+        updatedAt: appointment.updatedAt
+      });
+    }
   });
   const encounters = new EncountersService({
     owners,
     patients,
     encounterRepository: repos.encounter,
-    encounterTimelineRepository: repos.encounterTimeline
+    encounterTimelineRepository: repos.encounterTimeline,
+    async onEncounterCreated(encounter) {
+      await webhooks.dispatch(encounter.accountId, 'encounter.created', {
+        id: encounter.id,
+        accountId: encounter.accountId,
+        patientId: encounter.patientId,
+        ownerId: encounter.ownerId,
+        status: encounter.status,
+        visitType: encounter.visitType,
+        origin: encounter.origin,
+        reason: encounter.reason,
+        openedAt: encounter.openedAt,
+        createdByUserId: encounter.createdByUserId
+      });
+    },
+    async onEncounterStatusChanged(encounter, previousStatus) {
+      await webhooks.dispatch(encounter.accountId, 'encounter.status_changed', {
+        id: encounter.id,
+        accountId: encounter.accountId,
+        patientId: encounter.patientId,
+        previousStatus,
+        newStatus: encounter.status,
+        updatedAt: encounter.updatedAt
+      });
+    }
   });
-  const scheduling = new SchedulingService(owners, patients, [], { repository: repos.scheduling });
   const triage = new TriageService(encounters, { repository: repos.triage });
   const medicalRecords = new MedicalRecordsService({
     encounters,
@@ -165,14 +258,51 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const diagnostics = new DiagnosticsService(encounters, {
     diagnosticOrderRepository: repos.diagnosticOrder
   });
-  const billing = new BillingService(encounters, { repository: repos.billing });
+  const billing = new BillingService(encounters, {
+    repository: repos.billing,
+    async onRecordCreated(record) {
+      await webhooks.dispatch(record.accountId, 'billing.record.created', {
+        id: record.id,
+        accountId: record.accountId,
+        encounterId: record.encounterId,
+        patientId: record.patientId,
+        ownerId: record.ownerId,
+        status: record.status,
+        createdAt: record.createdAt
+      });
+    },
+    async onStatusChanged(record, previousStatus) {
+      await webhooks.dispatch(record.accountId, 'billing.status_changed', {
+        recordId: record.id,
+        encounterId: record.encounterId,
+        patientId: record.patientId,
+        ownerId: record.ownerId,
+        previousStatus,
+        newStatus: record.status,
+        subtotalAmount: record.subtotalAmount,
+        currency: record.currency,
+        updatedAt: record.updatedAt
+      });
+    }
+  });
   const inventory = new InventoryService(encounters, createSeedItems(), {
     repository: repos.inventory
   });
   const notifications = new NotificationsService({
     encounters,
     patients,
-    notificationRepository: repos.notification
+    notificationRepository: repos.notification,
+    async onNotificationSent(notification) {
+      await webhooks.dispatch(notification.accountId, 'notification.sent', {
+        id: notification.id,
+        accountId: notification.accountId,
+        category: notification.category,
+        title: notification.title,
+        message: notification.message,
+        channel: notification.channel,
+        sentAt: notification.sentAt
+      });
+    }
   });
   const attachments = new AttachmentsService({
     encounters,
@@ -299,7 +429,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     quotes,
     cash,
     auth,
-    lgpd
+    lgpd,
+    webhooks
   };
 
   return {

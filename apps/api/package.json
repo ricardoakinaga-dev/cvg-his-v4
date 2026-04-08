@@ -21,6 +21,7 @@
     "@cvg-his-v2/module-lgpd": "workspace:*",
     "@cvg-his-v2/module-medical-records": "workspace:*",
     "@cvg-his-v2/module-mfa": "workspace:*",
+    "@cvg-his-v2/module-notifications-whatsapp": "workspace:*",
     "@cvg-his-v2/module-notifications": "workspace:*",
     "@cvg-his-v2/module-owners": "workspace:*",
     "@cvg-his-v2/module-patients": "workspace:*",
@@ -43,7 +44,8 @@
     "@cvg-his-v2/shared-utils": "workspace:*",
     "@cvg-his-v2/shared-validation": "workspace:*",
     "@cvg-his-v2/tenant-context": "workspace:*",
-    "prom-client": "^15.1.3"
+    "prom-client": "^15.1.3",
+    "yaml": "^2.8.3"
   },
   "scripts": {
     "dev": "tsx src/index.ts",

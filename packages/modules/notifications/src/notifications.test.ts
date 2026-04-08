@@ -216,3 +216,63 @@ test('NotificationsService: repository-backed list and processing stay account-s
   assert.equal(acc1Jobs[0].status, 'processed');
   assert.equal(acc2Jobs[0].status, 'queued');
 });
+
+test('NotificationsService: processPending fires onNotificationSent callback', async () => {
+  let callbackInvocation: any = null;
+  const notifications = new NotificationsService({
+    async onNotificationSent(notification) {
+      callbackInvocation = notification;
+    }
+  });
+
+  await notifications.create('user_1' as never, 'acc_1' as never, {
+    category: 'billing',
+    severity: 'medium',
+    title: 'Webhook Test',
+    message: 'Should trigger callback'
+  });
+
+  const processed = notifications.processPending({ limit: 10 });
+  assert.equal(processed.length, 1);
+  assert.equal(processed[0].status, 'sent');
+  assert.ok(callbackInvocation !== null);
+  assert.equal(callbackInvocation.id, processed[0].id);
+  assert.equal(callbackInvocation.status, 'sent');
+  assert.equal(callbackInvocation.accountId, 'acc_1');
+});
+
+test('NotificationsService: processPendingFromRepository fires onNotificationSent callback', async () => {
+  const notificationsStore = new Map();
+  const jobsStore = new Map();
+  let callbackInvocation: any = null;
+  const repository = {
+    async createNotification(notification: any) { notificationsStore.set(notification.id, notification); },
+    async updateNotification(notification: any) { notificationsStore.set(notification.id, notification); },
+    async findNotificationById(id: any) { return notificationsStore.get(id) ?? null; },
+    async findNotifications() { return Array.from(notificationsStore.values()); },
+    async createJob(job: any) { jobsStore.set(job.id, job); },
+    async updateJob(job: any) { jobsStore.set(job.id, job); },
+    async findJobById(id: any) { return jobsStore.get(id) ?? null; },
+    async findJobs() { return Array.from(jobsStore.values()); },
+    async findQueuedJobs(limit: any) {
+      return Array.from(jobsStore.values()).filter((i: any) => i.status === 'queued').slice(0, limit);
+    }
+  };
+  const notifications = new NotificationsService({
+    notificationRepository: repository as never,
+    async onNotificationSent(notification) { callbackInvocation = notification; }
+  });
+
+  await notifications.create('user_1' as never, 'acc_1' as never, {
+    category: 'operations',
+    severity: 'high',
+    title: 'Repo Callback Test',
+    message: 'Should trigger via repository path'
+  });
+
+  const processed = await notifications.processPendingFromRepository({ limit: 10 });
+  assert.equal(processed.length, 1);
+  assert.equal(processed[0].status, 'sent');
+  assert.ok(callbackInvocation !== null);
+  assert.equal(callbackInvocation.id, processed[0].id);
+});

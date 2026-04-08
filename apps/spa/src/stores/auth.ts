@@ -32,11 +32,29 @@ function removeFromStorage(key: string): void {
   }
 }
 
+function decodeBase64Url(value: string): string | null {
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return atob(padded);
+  } catch {
+    return null;
+  }
+}
+
 function decodeJwt(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    return JSON.parse(atob(parts[1]));
+    // Backend emits signed tokens as payload.signature.
+    // We also accept standard JWTs for forward compatibility.
+    const encodedPayload =
+      parts.length === 2 ? parts[0] : parts.length === 3 ? parts[1] : null;
+    if (!encodedPayload) return null;
+
+    const decoded = decodeBase64Url(encodedPayload);
+    if (!decoded) return null;
+
+    return JSON.parse(decoded) as Record<string, unknown>;
   } catch {
     return null;
   }

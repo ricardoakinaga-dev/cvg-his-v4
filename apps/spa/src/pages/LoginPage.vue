@@ -6,11 +6,11 @@
         <DsInput
           id="email"
           v-model="email"
-          type="email"
-          label="E-mail"
-          placeholder="seu@email.com"
+          type="text"
+          label="Usuário"
+          placeholder="admin"
           required
-          autocomplete="email"
+          autocomplete="username"
         />
         <DsInput
           id="password"
@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { apiRequest } from '@/services/api';
@@ -65,7 +65,8 @@ async function handleLogin() {
       mfaRequired?: boolean;
     }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: email.value, password: password.value })
+      skipAuth: true,
+      body: JSON.stringify({ username: email.value, password: password.value })
     });
 
     authStore.setTokens(response.accessToken, response.refreshToken);
@@ -76,8 +77,8 @@ async function handleLogin() {
       return;
     }
 
-    const next = route.query.next as string;
-    router.push(next || '/');
+    // Full page reload to ensure auth state is fresh
+    window.location.href = window.location.origin + '/';
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Falha ao fazer login';
     error.value = message;

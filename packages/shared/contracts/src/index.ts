@@ -628,3 +628,31 @@ export interface LoginMfaRequiredResponse {
   readonly userId: string;
   readonly mfaMethods: readonly string[];
 }
+
+export interface CreateWebhookRequest {
+  readonly url: string;
+  readonly events: readonly string[];
+  readonly secret?: string;
+}
+
+export interface UpdateWebhookRequest {
+  readonly url?: string;
+  readonly events?: readonly string[];
+  readonly isActive?: boolean;
+}
+
+export interface WebhookListResponse {
+  readonly items: readonly import('@cvg-his-v2/shared-types').WebhookSummary[];
+}
+
+export interface WebhookDeliveryListResponse {
+  readonly items: readonly import('@cvg-his-v2/shared-types').WebhookDeliverySummary[];
+}
+
+export interface WebhookPayload {
+  readonly id: string;
+  readonly event: string;
+  readonly timestamp: string;
+  readonly accountId: string;
+  readonly data: Record<string, unknown>;
+}

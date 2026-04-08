@@ -63,7 +63,9 @@ describe('Migration — Table Existence', () => {
     'professional_availability',
     'appointment_type_configs',
     'shift_handovers',
-    'shift_handover_items'
+    'shift_handover_items',
+    'webhooks',
+    'webhook_deliveries'
   ];
 
   it.each(CRITICAL_TABLES)('should have table: %s', async (tableName) => {

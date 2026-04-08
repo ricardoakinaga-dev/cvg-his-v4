@@ -2,7 +2,7 @@
   <div class="owners-list-page">
     <AppPageHeader title="Tutores" subtitle="Cadastro mestre de responsáveis por pacientes">
       <template #actions>
-        <router-link to="/owners/new" class="btn btn--primary">+ Novo Tutor</router-link>
+        <DsButton tag="a" to="/owners/new" variant="primary">+ Novo Tutor</DsButton>
       </template>
     </AppPageHeader>
 
@@ -11,14 +11,13 @@
     </DsAlert>
 
     <div class="search-bar">
-      <input
+      <DsInput
         v-model="search"
         type="search"
-        class="search-bar__input"
         placeholder="Buscar por nome, documento ou contato..."
         @keyup.enter="load"
       />
-      <button class="btn btn--secondary" @click="load">Buscar</button>
+      <DsButton variant="secondary" @click="load">Buscar</DsButton>
     </div>
 
     <DataTable
@@ -31,7 +30,7 @@
       variant="hoverable"
     >
       <template #emptyAction>
-        <router-link to="/owners/new" class="btn btn--primary">+ Novo Tutor</router-link>
+        <DsButton tag="a" to="/owners/new" variant="primary">+ Novo Tutor</DsButton>
       </template>
       <template #cell-name="{ row }">
         <strong>{{ (row as OwnerSummary).fullName }}</strong>
@@ -50,13 +49,15 @@
         />
       </template>
       <template #cell-actions="{ row }">
-        <router-link :to="`/owners/${(row as OwnerSummary).id}`" class="btn btn--sm btn--secondary"
-          >Ver</router-link
+        <DsButton tag="a" :to="`/owners/${(row as OwnerSummary).id}`" size="sm" variant="secondary"
+          >Ver</DsButton
         >
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/owners/${(row as OwnerSummary).id}/edit`"
-          class="btn btn--sm btn--secondary"
-          >Editar</router-link
+          size="sm"
+          variant="secondary"
+          >Editar</DsButton
         >
       </template>
     </DataTable>
@@ -68,6 +69,8 @@ import { ownerService } from '@/services/owner';
 import type { OwnerSummary, OwnerContact } from '@/types/owner';
 import { ownerStatusLabel } from '@/utils/labels';
 import { useListData } from '@/composables/useListData';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';

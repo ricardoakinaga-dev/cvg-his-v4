@@ -1,21 +1,18 @@
 <template>
   <div class="queue-page">
-    <div class="page-header">
-      <div class="page-header__left">
-        <h1 class="page-header__title">🏥 Fila Operacional</h1>
-        <span v-if="lastRefresh" class="page-header__refresh-info">
-          Atualizado: {{ formatTime(lastRefresh.toISOString()) }}
-        </span>
+    <AppPageHeader title="🏥 Fila Operacional">
+      <template #subtitle v-if="lastRefresh">
+        <span class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
         <DsSpinner v-if="isRefreshing" size="sm" inline label="Atualizando..." />
-      </div>
-      <div class="page-header__actions">
+      </template>
+      <template #actions>
         <DsButton variant="secondary" @click="manualRefresh" :loading="isRefreshing">
           🔄 Atualizar
         </DsButton>
         <DsButton variant="secondary" tag="a" href="/scheduling">Voltar à Agenda</DsButton>
         <DsButton variant="success" @click="openCheckInModal">Check-in Rápido</DsButton>
-      </div>
-    </div>
+      </template>
+    </AppPageHeader>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -114,33 +111,34 @@
     <DsModal :open="showCheckInModal" title="Check-in Rápido" size="sm" @close="closeCheckInModal">
       <div class="checkin-form">
         <div class="form-field">
-          <label class="form-field__label">Paciente *</label>
+          <label class="ds-input__label">Paciente *</label>
           <SearchSelect
             v-model="checkinForm.patientId"
             :options="patientOptions"
             placeholder="Buscar paciente..."
           />
+          <p class="ds-input__hint">Selecione o paciente para check-in</p>
         </div>
-        <div class="form-field">
-          <label for="checkin-priority" class="form-field__label">Prioridade</label>
-          <select id="checkin-priority" v-model="checkinForm.priority" class="form-field__input">
-            <option value="low">Baixa</option>
-            <option value="medium" selected>Média</option>
-            <option value="high">Alta</option>
-            <option value="critical">Crítica</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label for="checkin-reason" class="form-field__label">Motivo *</label>
-          <textarea
-            id="checkin-reason"
-            v-model="checkinForm.reason"
-            class="form-field__input form-field__textarea"
-            placeholder="Descreva o motivo do check-in"
-            rows="3"
-            required
-          />
-        </div>
+        <DsInput
+          id="checkin-priority"
+          v-model="checkinForm.priority"
+          type="select"
+          label="Prioridade"
+        >
+          <option value="low">Baixa</option>
+          <option value="medium" selected>Média</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </DsInput>
+        <DsInput
+          id="checkin-reason"
+          v-model="checkinForm.reason"
+          type="textarea"
+          label="Motivo *"
+          placeholder="Descreva o motivo do check-in"
+          :rows="3"
+          required
+        />
       </div>
       <template #footer>
         <DsButton variant="ghost" @click="closeCheckInModal">Cancelar</DsButton>
@@ -200,9 +198,11 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SearchSelect from '@/components/SearchSelect.vue';
 import type { SearchSelectOption } from '@/components/SearchSelect.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const entries = ref<QueueEntrySummary[]>([]);
 const loading = ref(true);
@@ -575,25 +575,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-.form-field__label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-.form-field__input {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 6px;
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text, #0f172a);
-}
-.form-field__textarea {
-  resize: vertical;
-  min-height: 80px;
 }
 .noshow-confirm-text {
   font-size: 14px;

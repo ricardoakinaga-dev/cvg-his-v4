@@ -1,8 +1,8 @@
 <template>
   <div class="inventory-form-page">
-    <div class="page-header">
-      <h1 class="page-header__title">{{ isEdit ? 'Editar Item' : 'Novo Item de Estoque' }}</h1>
-    </div>
+    <AppPageHeader>
+      <template #title>{{ isEdit ? 'Editar Item' : 'Novo Item de Estoque' }}</template>
+    </AppPageHeader>
 
     <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
       {{ formError }}
@@ -11,34 +11,27 @@
       {{ successMessage }}
     </DsAlert>
 
-    <form class="form-section" @submit.prevent="onSubmit">
-      <div class="form-field">
-        <label for="sku" class="form-field__label">SKU *</label>
-        <input
+    <DsCard>
+      <form @submit.prevent="onSubmit">
+        <DsInput
           id="sku"
           v-model="form.sku"
-          class="form-field__input"
+          label="SKU *"
           placeholder="Ex: MED-001"
-          required
           :disabled="isEdit"
+          hint="Código único do item. Não editável após criação."
+          required
         />
-        <span class="form-field__hint">Código único do item. Não editável após criação.</span>
-      </div>
 
-      <div class="form-field">
-        <label for="name" class="form-field__label">Nome *</label>
-        <input
+        <DsInput
           id="name"
           v-model="form.name"
-          class="form-field__input"
+          label="Nome *"
           placeholder="Ex: Dipirona Injetavel"
           required
         />
-      </div>
 
-      <div class="form-field">
-        <label for="unit" class="form-field__label">Unidade de Medida *</label>
-        <select id="unit" v-model="form.unit" class="form-field__input" required>
+        <DsInput id="unit" v-model="form.unit" type="select" label="Unidade de Medida *" required>
           <option value="" disabled>Selecione a unidade</option>
           <option value="unidade">Unidade</option>
           <option value="ampola">Ampola</option>
@@ -49,60 +42,50 @@
           <option value="ml">Mililitro (ml)</option>
           <option value="frasco">Frasco</option>
           <option value="rolo">Rolo</option>
-        </select>
-      </div>
+        </DsInput>
 
-      <div class="form-row form-row--2">
-        <div class="form-field">
-          <label for="onHandQuantity" class="form-field__label">Quantidade em Estoque *</label>
-          <input
+        <div class="form-row">
+          <DsInput
             id="onHandQuantity"
             v-model.number="form.onHandQuantity"
             type="number"
+            label="Quantidade em Estoque *"
+            placeholder="0"
             min="0"
             step="0.01"
-            class="form-field__input"
-            placeholder="0"
             required
           />
-        </div>
-
-        <div class="form-field">
-          <label for="reorderLevel" class="form-field__label">Ponto de Reposição *</label>
-          <input
+          <DsInput
             id="reorderLevel"
             v-model.number="form.reorderLevel"
             type="number"
+            label="Ponto de Reposição *"
+            placeholder="5"
             min="0"
             step="1"
-            class="form-field__input"
-            placeholder="5"
             required
           />
         </div>
-      </div>
 
-      <div class="form-field">
-        <label for="unitCostAmount" class="form-field__label">Custo Unitário (R$) *</label>
-        <input
+        <DsInput
           id="unitCostAmount"
           v-model.number="form.unitCostAmount"
           type="number"
+          label="Custo Unitário (R$) *"
+          placeholder="0.00"
           min="0"
           step="0.01"
-          class="form-field__input"
-          placeholder="0.00"
           required
         />
-      </div>
 
-      <div class="form-actions">
-        <DsButton type="submit" variant="primary" :loading="saving" :disabled="saving">
-          {{ saving ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Item' }}
-        </DsButton>
-        <router-link to="/inventory" class="btn btn--secondary">Cancelar</router-link>
-      </div>
-    </form>
+        <div class="form-actions">
+          <DsButton type="submit" variant="primary" :loading="saving" :disabled="saving">
+            {{ saving ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Item' }}
+          </DsButton>
+          <DsButton variant="secondary" tag="a" href="/inventory">Cancelar</DsButton>
+        </div>
+      </form>
+    </DsCard>
   </div>
 </template>
 
@@ -110,8 +93,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { inventoryService } from '@/services/inventory';
-import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -186,15 +172,25 @@ async function onSubmit() {
 </script>
 
 <style scoped>
+.inventory-form-page {
+  max-width: 720px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-.form-field__hint {
-  display: block;
-  font-size: 12px;
-  color: var(--color-text-muted, #64748b);
-  margin-top: 4px;
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
 }
 </style>

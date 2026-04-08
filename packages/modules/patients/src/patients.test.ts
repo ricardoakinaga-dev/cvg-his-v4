@@ -38,4 +38,35 @@ describe('PatientsService', () => {
   it('should throw NotFoundError for missing patient', () => {
     expect(() => service.getOrThrow('missing' as PatientId)).toThrow();
   });
+
+  it('should invoke onPatientCreated callback when creating a patient', () => {
+    const owner = owners.create(ACCOUNT_ID, {
+      fullName: 'Owner',
+      contacts: [{ label: 'Phone', value: '111', type: 'phone', primary: true }],
+      financialResponsible: true
+    });
+
+    let callbackInvoked = false;
+    let capturedPatientId: string | null = null;
+
+    const serviceWithCallback = new PatientsService({
+      owners,
+      seedPatients: [],
+      seedLinks: [],
+      onPatientCreated: async (patient) => {
+        callbackInvoked = true;
+        capturedPatientId = patient.id;
+      }
+    });
+
+    const patient = serviceWithCallback.create(ACCOUNT_ID, {
+      name: 'Luna',
+      species: 'Cão',
+      sex: 'female',
+      primaryOwnerId: owner.id
+    });
+
+    expect(callbackInvoked).toBe(true);
+    expect(capturedPatientId).toBe(patient.id);
+  });
 });

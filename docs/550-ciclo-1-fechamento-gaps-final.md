@@ -192,12 +192,12 @@ Nenhum pipeline de CI existia. Validacao dependia de execucao manual, com risco 
 
 Pipeline com 4 jobs:
 
-| Job                | Trigger | O que faz                              | Depende de |
-| ------------------ | ------- | -------------------------------------- | ---------- |
-| `typecheck`        | push/PR | `pnpm typecheck`                       | —          |
-| `build`            | push/PR | `pnpm build`                           | typecheck  |
-| `test-unit`        | push/PR | `pnpm test`                            | typecheck  |
-| `test-integration` | push/PR | `pnpm test:critical` com PostgreSQL 16 | typecheck  |
+| Job                 | Trigger | O que faz                              | Depende de |
+| ------------------- | ------- | -------------------------------------- | ---------- |
+| `typecheck`         | push/PR | `pnpm typecheck`                       | —          |
+| `build`             | push/PR | `pnpm build`                           | typecheck  |
+| `unit-tests`        | push/PR | `pnpm test`                            | build      |
+| `integration-tests` | push/PR | `pnpm test:critical` com PostgreSQL 16 | build      |
 
 **Caracteristicas:**
 

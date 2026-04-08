@@ -46,13 +46,16 @@ import type {
   UpdateOwnerRequest,
   UpdateSurgeryStatusRequest,
   UpdatePatientRequest,
-  UpdateUserRequest
+  UpdateUserRequest,
+  CreateWebhookRequest,
+  UpdateWebhookRequest
 } from '@cvg-his-v2/shared-contracts';
 import { AuthenticationError, ValidationError, toErrorResponse } from '@cvg-his-v2/shared-errors';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { runWithTenantContext, type TenantContext } from '@cvg-his-v2/tenant-context';
+import type { SchedulingAppointmentSummary } from '@cvg-his-v2/shared-types';
 
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
@@ -108,6 +111,7 @@ export function createApiServer(options: ApiServerOptions) {
     cash,
     auth,
     lgpd,
+    webhooks,
     initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
@@ -131,6 +135,15 @@ export function createApiServer(options: ApiServerOptions) {
   const scopedScheduling = scheduling as unknown as {
     listAppointments(accountId?: string): readonly unknown[];
     getQueue(accountId?: string): readonly unknown[];
+    getAppointmentOrThrow(appointmentId: string): SchedulingAppointmentSummary;
+    cancelAppointment(
+      appointmentId: string,
+      reason?: string
+    ): Promise<SchedulingAppointmentSummary>;
+    checkIn(
+      accountId: string,
+      payload: { patientId: string; ownerId: string; appointmentId?: string; reason?: string }
+    ): Promise<unknown>;
   };
 
   void initialize().catch((err) => {
@@ -357,10 +370,17 @@ export function createApiServer(options: ApiServerOptions) {
         const pathname = url.pathname;
 
         if (pathname === '/auth/login' && request.method === 'POST') {
-          const payload = (await readJsonBody(request)) as LoginRequest;
-          const session = await auth.login(payload, correlationId);
-          response.statusCode = 200;
-          response.end(JSON.stringify(session));
+          try {
+            const payload = (await readJsonBody(request)) as LoginRequest;
+            const session = await auth.login(payload, correlationId);
+            response.statusCode = 200;
+            response.end(JSON.stringify(session));
+          } catch (error) {
+            logger.error('auth login failed', { correlationId, error });
+            const errorResponse = toErrorResponse(error, correlationId);
+            response.statusCode = errorResponse.statusCode;
+            response.end(JSON.stringify(errorResponse.body));
+          }
           return;
         }
 
@@ -3514,6 +3534,236 @@ export function createApiServer(options: ApiServerOptions) {
               throw err;
             }
           }
+          return;
+        }
+
+        // --- Webhooks ---
+        if (pathname === '/webhooks' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const items = await webhooks.list(principal.user.accountId as never);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/webhooks' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'webhooks.manage');
+          const payload = (await readJsonBody(request)) as CreateWebhookRequest;
+          const webhook = await webhooks.register(
+            principal.user.id,
+            principal.user.accountId as never,
+            payload
+          );
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'webhooks',
+            'register',
+            'webhook',
+            webhook.id,
+            `Webhook registered for URL ${webhook.url}`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(webhook));
+          return;
+        }
+
+        if (pathname === '/webhooks/whatsapp/inbound' && request.method === 'POST') {
+          const body = (await readJsonBody(request)) as Record<string, unknown>;
+          const correlationId = createCorrelationId('wa-in');
+          const messageSid =
+            typeof body['MessageSid'] === 'string' ? body['MessageSid'] : 'unknown';
+          const from = typeof body['From'] === 'string' ? body['From'] : '';
+          const to = typeof body['To'] === 'string' ? body['To'] : '';
+          const bodyText =
+            typeof body['Body'] === 'string' ? body['Body'].trim().toUpperCase() : '';
+          const appointmentId =
+            typeof body['AppointmentId'] === 'string' ? body['AppointmentId'] : undefined;
+
+          appendAudit(
+            'system',
+            'system' as never,
+            'whatsapp',
+            'inbound_received',
+            'webhook',
+            messageSid,
+            `WhatsApp inbound: from=${from}, body="${bodyText}", appointmentId=${appointmentId ?? 'unknown'}`,
+            'low',
+            correlationId
+          );
+
+          let responseMessage = 'OK';
+          let transitioned = false;
+
+          if ((bodyText === 'CONFIRMAR' || bodyText === 'CONFIRM') && appointmentId !== undefined) {
+            try {
+              const appointment = scopedScheduling.getAppointmentOrThrow(appointmentId);
+              if (appointment.status === 'scheduled') {
+                await scopedScheduling.checkIn(appointment.accountId as string, {
+                  appointmentId,
+                  patientId: appointment.patientId as string,
+                  ownerId: appointment.ownerId as string,
+                  reason: 'Confirmed via WhatsApp by tutor'
+                });
+                appendAudit(
+                  'system',
+                  appointment.accountId as never,
+                  'scheduling',
+                  'whatsapp_confirm',
+                  'appointment',
+                  appointmentId,
+                  `Appointment ${appointmentId} confirmed via WhatsApp from ${from}`,
+                  'high',
+                  correlationId
+                );
+                transitioned = true;
+              }
+              responseMessage = 'CONFIRMADO';
+            } catch {
+              responseMessage = 'CONFIRMADO';
+            }
+          } else if (
+            (bodyText === 'CANCELAR' || bodyText === 'CANCELAR CONSULTA') &&
+            appointmentId !== undefined
+          ) {
+            try {
+              const appointment = scopedScheduling.getAppointmentOrThrow(appointmentId);
+              await scopedScheduling.cancelAppointment(
+                appointmentId,
+                'Cancelled via WhatsApp by tutor'
+              );
+              appendAudit(
+                'system',
+                appointment.accountId as never,
+                'scheduling',
+                'whatsapp_cancel',
+                'appointment',
+                appointmentId,
+                `Appointment ${appointmentId} cancelled via WhatsApp from ${from}`,
+                'high',
+                correlationId
+              );
+              transitioned = true;
+              responseMessage = 'CANCELADO';
+            } catch {
+              responseMessage = 'CANCELADO';
+            }
+          } else if (bodyText === 'REMARCAR') {
+            responseMessage = 'AGUARDANDO REMARCA';
+            if (appointmentId !== undefined) {
+              appendAudit(
+                'system',
+                'system' as never,
+                'whatsapp',
+                'inbound_reschedule_request',
+                'appointment',
+                appointmentId,
+                `Reschedule requested via WhatsApp from ${from}`,
+                'medium',
+                correlationId
+              );
+            }
+          }
+
+          response.statusCode = 200;
+          response.setHeader('Content-Type', 'text/plain');
+          response.end(responseMessage);
+          return;
+        }
+
+        if (
+          pathname.startsWith('/webhooks/') &&
+          pathname.endsWith('/deliveries') &&
+          request.method === 'GET'
+        ) {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const existing = await webhooks.get(webhookId as never);
+          if (!existing || existing.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          const items = await webhooks.listDeliveries(webhookId as never);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname.startsWith('/webhooks/') && request.method === 'GET') {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const webhook = await webhooks.get(webhookId as never);
+          if (!webhook || webhook.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          response.statusCode = 200;
+          response.end(JSON.stringify(webhook));
+          return;
+        }
+
+        if (pathname.startsWith('/webhooks/') && request.method === 'PATCH') {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.manage');
+          const existing = await webhooks.get(webhookId as never);
+          if (!existing || existing.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          const payload = (await readJsonBody(request)) as UpdateWebhookRequest;
+          const updated = await webhooks.update(webhookId as never, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'webhooks',
+            'update',
+            'webhook',
+            webhookId,
+            `Webhook ${webhookId} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(updated));
+          return;
+        }
+
+        if (pathname.startsWith('/webhooks/') && request.method === 'DELETE') {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.manage');
+          const existing = await webhooks.get(webhookId as never);
+          if (!existing || existing.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          await webhooks.delete(webhookId as never);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'webhooks',
+            'delete',
+            'webhook',
+            webhookId,
+            `Webhook ${webhookId} deleted`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
           return;
         }
 

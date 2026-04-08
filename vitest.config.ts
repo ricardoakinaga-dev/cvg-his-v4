@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
 import { resolve } from 'node:path';
 
 const root = resolve(__dirname);
 
 export default defineConfig({
+  plugins: [vue()],
   resolve: {
     alias: {
       '@cvg-his-v2/module-access-control': resolve(
@@ -38,6 +40,7 @@ export default defineConfig({
       '@cvg-his-v2/module-surgery': resolve(root, 'packages/modules/surgery/src/index.ts'),
       '@cvg-his-v2/module-triage': resolve(root, 'packages/modules/triage/src/index.ts'),
       '@cvg-his-v2/module-users': resolve(root, 'packages/modules/users/src/index.ts'),
+      '@cvg-his-v2/module-webhooks': resolve(root, 'packages/modules/webhooks/src/index.ts'),
       '@cvg-his-v2/module-mfa': resolve(root, 'packages/modules/mfa/src/index.ts'),
       '@cvg-his-v2/module-lgpd': resolve(root, 'packages/modules/lgpd/src/index.ts'),
       '@cvg-his-v2/shared-auth-sdk': resolve(root, 'packages/shared/auth-sdk/src/index.ts'),
@@ -56,7 +59,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom',
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
     testTimeout: 30_000,

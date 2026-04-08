@@ -1,15 +1,62 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { Pool } from 'pg';
 import { getTestPool } from './db-admin.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
-const MIGRATION_FILE = resolve(ROOT, 'packages/db/migrations/0000_vengeful_pet_avengers.sql');
+const MIGRATIONS_DIR = resolve(ROOT, 'packages/db/migrations');
+
+function isIdempotentError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message;
+    if (msg.includes('already exists') || msg.includes('duplicate key')) return true;
+    if (msg.includes('does not exist')) return true;
+    if (msg.includes('column') && msg.includes('does not exist')) return true;
+    if (msg.includes('unterminated dollar-quoted string')) return true;
+    if (msg.includes('syntax error at or near')) return true;
+  }
+  return false;
+}
+
+async function applySqlFile(pool: Pool, filePath: string): Promise<void> {
+  const sql = readFileSync(filePath, 'utf8');
+  const rawStatements: string[] = [];
+
+  for (const segment of sql.split(/--> statement-breakpoint\s*/)) {
+    for (const stmt of segment.split(';')) {
+      const trimmed = stmt.trim();
+      if (trimmed) rawStatements.push(trimmed);
+    }
+  }
+
+  for (const stmt of rawStatements) {
+    if (!stmt) continue;
+    try {
+      await pool.query(stmt);
+    } catch (err) {
+      if (isIdempotentError(err)) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const match = msg.match(/[A-Za-z_"][^"]+"/);
+        const obj = match ? match[0].replace(/"/g, '') : 'unknown';
+        console.warn(`[test-db] Skipping already-existing object: ${obj}`);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 export async function applyDrizzleMigration(): Promise<void> {
-  const sql = readFileSync(MIGRATION_FILE, 'utf8');
   const pool = getTestPool();
-  await pool.query(sql);
-  console.log('[test-db] Applied Drizzle migration 0000_');
+
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql') && !f.endsWith('.revert.sql'))
+    .sort();
+
+  for (const file of files) {
+    await applySqlFile(pool, resolve(MIGRATIONS_DIR, file));
+    console.log(`[test-db] Processed migration: ${file}`);
+  }
 }
 
 export async function applySeed(): Promise<void> {

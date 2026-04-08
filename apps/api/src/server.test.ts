@@ -403,3 +403,253 @@ test('quotes expose dedicated PDF generation over HTTP semantics', async () => {
   assert.ok(pdfResponse.getHeader('content-disposition')?.includes('.pdf'));
   assert.ok(pdfResponse.bodyText().startsWith('%PDF-1.4'));
 });
+
+// =============================================================================
+// WhatsApp inbound webhook tests
+// =============================================================================
+
+test('POST /webhooks/whatsapp/inbound confirms a scheduled appointment', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  // Create a scheduled appointment
+  const aptResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/appointments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-05-01T09:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Confirm test'
+    }
+  });
+  assert.equal(aptResponse.statusCode, 201);
+  const appointment = aptResponse.bodyJson<{ id: string; status: string }>();
+  assert.equal(appointment.status, 'scheduled');
+
+  // Send CONFIRMAR via WhatsApp inbound
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestconfirm001',
+      From: 'whatsapp:+5511999998888',
+      To: 'whatsapp:+551155555555',
+      Body: 'CONFIRMAR',
+      AppointmentId: appointment.id
+    }
+  });
+
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'CONFIRMADO');
+
+  // Verify appointment status changed to checked_in
+  const aptGetResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/appointments/${appointment.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(aptGetResponse.statusCode, 200);
+  const updatedApt = aptGetResponse.bodyJson<{ status: string }>();
+  assert.equal(updatedApt.status, 'checked_in');
+});
+
+test('POST /webhooks/whatsapp/inbound cancels a scheduled appointment', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  // Create a scheduled appointment
+  const aptResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/appointments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-05-02T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Cancel test'
+    }
+  });
+  assert.equal(aptResponse.statusCode, 201);
+  const appointment = aptResponse.bodyJson<{ id: string; status: string }>();
+  assert.equal(appointment.status, 'scheduled');
+
+  // Send CANCELAR via WhatsApp inbound
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestcancel001',
+      From: 'whatsapp:+5511999998888',
+      To: 'whatsapp:+551155555555',
+      Body: 'CANCELAR',
+      AppointmentId: appointment.id
+    }
+  });
+
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'CANCELADO');
+
+  // Verify appointment status changed to cancelled
+  const aptGetResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/appointments/${appointment.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(aptGetResponse.statusCode, 200);
+  const cancelledApt = aptGetResponse.bodyJson<{ status: string }>();
+  assert.equal(cancelledApt.status, 'cancelled');
+});
+
+test('POST /webhooks/whatsapp/inbound with REMARCAR returns AGUARDANDO REMARCA', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  // Create a scheduled appointment
+  const aptResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/appointments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-05-03T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Reschedule test'
+    }
+  });
+  assert.equal(aptResponse.statusCode, 201);
+  const appointment = aptResponse.bodyJson<{ id: string; status: string }>();
+
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestremarcar001',
+      From: 'whatsapp:+5511999998888',
+      To: 'whatsapp:+551155555555',
+      Body: 'REMARCAR',
+      AppointmentId: appointment.id
+    }
+  });
+
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'AGUARDANDO REMARCA');
+
+  // Status should remain scheduled (REMARCAR does not change status)
+  const aptGetResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/appointments/${appointment.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(aptGetResponse.statusCode, 200);
+  const unchangedApt = aptGetResponse.bodyJson<{ status: string }>();
+  assert.equal(unchangedApt.status, 'scheduled');
+});
+
+test('POST /webhooks/whatsapp/inbound with malformed payload returns OK', async () => {
+  const server = createServerUnderTest();
+
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestmalformed001',
+      From: 'whatsapp:+5511999998888',
+      Body: 'CONFIRMAR'
+      // no AppointmentId
+    }
+  });
+
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'OK');
+});
+
+test('POST /webhooks/whatsapp/inbound returns CONFIRMADO even if appointment not found (fail-safe)', async () => {
+  const server = createServerUnderTest();
+
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestnotfound001',
+      From: 'whatsapp:+5511999998888',
+      To: 'whatsapp:+551155555555',
+      Body: 'CONFIRMAR',
+      AppointmentId: 'appt_nonexistent_999'
+    }
+  });
+
+  // Fail-safe: always return CONFIRMADO even if appointment lookup fails
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'CONFIRMADO');
+});
+
+test('POST /webhooks/whatsapp/inbound CONFIRM returns CONFIRMADO (alias)', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const aptResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/appointments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-05-04T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Confirm alias test'
+    }
+  });
+  assert.equal(aptResponse.statusCode, 201);
+  const appointment = aptResponse.bodyJson<{ id: string }>();
+
+  // Use CONFIRM (alias) instead of CONFIRMAR
+  const inboundResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/webhooks/whatsapp/inbound',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: {
+      MessageSid: 'SMtestconfirmalias001',
+      From: 'whatsapp:+5511999998888',
+      Body: 'CONFIRM',
+      AppointmentId: appointment.id
+    }
+  });
+
+  assert.equal(inboundResponse.statusCode, 200);
+  assert.equal(inboundResponse.bodyText(), 'CONFIRMADO');
+});

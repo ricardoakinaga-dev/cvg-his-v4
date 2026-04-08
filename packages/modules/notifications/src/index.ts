@@ -41,6 +41,7 @@ export interface NotificationsServiceOptions {
   readonly encounters?: Pick<EncountersService, 'getOrThrow'>;
   readonly patients?: Pick<PatientsService, 'getOrThrow'>;
   readonly notificationRepository?: NotificationRepository;
+  readonly onNotificationSent?: (notification: NotificationSummary) => Promise<void>;
 }
 
 export class NotificationsService {
@@ -49,11 +50,13 @@ export class NotificationsService {
   readonly #repository?: NotificationRepository;
   readonly #notifications: NotificationSummary[] = [];
   readonly #jobs: NotificationJobSummary[] = [];
+  readonly #onNotificationSent?: (notification: NotificationSummary) => Promise<void>;
 
   public constructor(options?: NotificationsServiceOptions) {
     this.#encounters = options?.encounters;
     this.#patients = options?.patients;
     this.#repository = options?.notificationRepository;
+    this.#onNotificationSent = options?.onNotificationSent;
   }
 
   public async create(
@@ -183,6 +186,7 @@ export class NotificationsService {
         };
         await this.#repository.updateNotification(updated);
         processed.push(updated);
+        void this.#onNotificationSent?.(updated);
       }
     }
 
@@ -223,6 +227,7 @@ export class NotificationsService {
         };
         this.#notifications[notificationIndex] = updated;
         processed.push(updated);
+        void this.#onNotificationSent?.(updated);
       }
     }
 

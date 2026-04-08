@@ -145,3 +145,99 @@ test('EncountersService: listActive excludes closed encounters', () => {
   assert.ok(active.some((e) => e.id === e2.id));
   assert.ok(!active.some((e) => e.id === e1.id));
 });
+
+test('EncountersService: onEncounterCreated callback is invoked on openEncounter', () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+
+  let callbackInvoked = false;
+  let capturedEncounterId: string | null = null;
+
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    onEncounterCreated: async (encounter) => {
+      callbackInvoked = true;
+      capturedEncounterId = encounter.id;
+    }
+  });
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Callback test'
+  });
+
+  assert.equal(callbackInvoked, true);
+  assert.equal(capturedEncounterId, encounter.id);
+});
+
+test('EncountersService: onEncounterStatusChanged callback is invoked on transitionEncounter', () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+
+  let callbackInvoked = false;
+  let capturedPreviousStatus: string | null = null;
+
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    onEncounterStatusChanged: async (encounter, previousStatus) => {
+      callbackInvoked = true;
+      capturedPreviousStatus = previousStatus;
+    }
+  });
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Callback test'
+  });
+
+  callbackInvoked = false;
+
+  encounters.transitionEncounter(encounter.id, 'user_admin' as never, {
+    nextStatus: 'in_triage'
+  });
+
+  assert.equal(callbackInvoked, true);
+  assert.equal(capturedPreviousStatus, 'reception');
+});
+
+test('EncountersService: onEncounterStatusChanged callback is invoked on closeEncounter', () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+
+  let callbackInvoked = false;
+  let capturedPreviousStatus: string | null = null;
+
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    onEncounterStatusChanged: async (encounter, previousStatus) => {
+      callbackInvoked = true;
+      capturedPreviousStatus = previousStatus;
+    }
+  });
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Callback test'
+  });
+
+  callbackInvoked = false;
+
+  encounters.closeEncounter(encounter.id, 'user_admin' as never, {
+    closeReason: 'Test done'
+  });
+
+  assert.equal(callbackInvoked, true);
+  assert.equal(capturedPreviousStatus, 'reception');
+});

@@ -8,7 +8,7 @@
       <DsAlert variant="danger" dismissible @dismiss="error = ''">
         {{ error }}
       </DsAlert>
-      <router-link to="/triage" class="btn btn--secondary">Voltar para Triagem</router-link>
+      <DsButton variant="secondary" tag="a" to="/triage">Voltar para Triagem</DsButton>
     </template>
 
     <template v-else-if="record">
@@ -88,7 +88,7 @@
         </div>
       </div>
 
-      <router-link to="/triage" class="btn btn--secondary">Voltar para Triagem</router-link>
+      <DsButton variant="secondary" tag="a" to="/triage">Voltar para Triagem</DsButton>
     </template>
 
     <DsModal
@@ -99,45 +99,35 @@
       @close="showEdit = false"
     >
       <form @submit.prevent="handleUpdate">
-        <div class="form-field">
-          <label for="edit-priority" class="form-field__label">Prioridade</label>
-          <select id="edit-priority" v-model="editForm.priority" class="form-field__input">
-            <option value="low">Baixa</option>
-            <option value="medium">Média</option>
-            <option value="high">Alta</option>
-            <option value="critical">Crítica</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label for="edit-destination" class="form-field__label">Destino</label>
-          <select id="edit-destination" v-model="editForm.destination" class="form-field__input">
-            <option value="in_care">Em Atendimento</option>
-            <option value="observation">Observação</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label for="edit-complaint" class="form-field__label">Queixa Principal</label>
-          <textarea
-            id="edit-complaint"
-            v-model="editForm.chiefComplaint"
-            class="form-field__input"
-            rows="3"
-          />
-        </div>
-        <div class="form-field">
-          <label for="edit-notes" class="form-field__label">Notas Iniciais</label>
-          <textarea
-            id="edit-notes"
-            v-model="editForm.initialNotes"
-            class="form-field__input"
-            rows="3"
-          />
-        </div>
+        <DsInput id="edit-priority" v-model="editForm.priority" type="select" label="Prioridade">
+          <option value="low">Baixa</option>
+          <option value="medium">Média</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </DsInput>
+        <DsInput id="edit-destination" v-model="editForm.destination" type="select" label="Destino">
+          <option value="in_care">Em Atendimento</option>
+          <option value="observation">Observação</option>
+        </DsInput>
+        <DsInput
+          id="edit-complaint"
+          v-model="editForm.chiefComplaint"
+          type="textarea"
+          label="Queixa Principal"
+          :rows="3"
+        />
+        <DsInput
+          id="edit-notes"
+          v-model="editForm.initialNotes"
+          type="textarea"
+          label="Notas Iniciais"
+          :rows="3"
+        />
         <div class="modal-actions">
           <DsButton type="submit" variant="primary" :loading="updating">
             {{ updating ? 'Salvando...' : 'Salvar' }}
           </DsButton>
-          <DsButton type="button" variant="ghost" @click="showEdit = false"> Cancelar </DsButton>
+          <DsButton type="button" variant="ghost" @click="showEdit = false">Cancelar</DsButton>
         </div>
       </form>
     </DsModal>
@@ -159,6 +149,7 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { formatDate } from '@/utils/labels';
 
 const route = useRoute();

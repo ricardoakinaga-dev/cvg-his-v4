@@ -99,7 +99,8 @@ const navItems = computed<NavItem[]>(() => [
   { label: 'Internação', path: '/inpatient', icon: '🛏️' },
   { label: 'Faturamento', path: '/billing', icon: '💰' },
   { label: 'Estoque', path: '/inventory', icon: '📦' },
-  { label: 'Usuários', path: '/users', icon: '👥' }
+  { label: 'Usuários', path: '/users', icon: '👥' },
+  { label: 'Webhooks', path: '/webhooks', icon: '🔗' }
 ]);
 
 function handleLogout() {

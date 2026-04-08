@@ -2,7 +2,7 @@ import { chromium, type FullConfig } from '@playwright/test';
 
 /**
  * Global setup for E2E tests.
- * 
+ *
  * This runs once before all tests and:
  * 1. Ensures the API is healthy
  * 2. Creates a test user if needed
@@ -25,14 +25,16 @@ async function globalSetup(config: FullConfig) {
       const res = await fetch(`${API_URL}/health`);
       if (res.ok) {
         const data = await res.json();
-        console.log(`   ✅ API healthy (status: ${data.status}, uptime: ${Math.round(data.uptime)}s)`);
+        console.log(
+          `   ✅ API healthy (status: ${data.status}, uptime: ${Math.round(data.uptime)}s)`
+        );
         healthy = true;
         break;
       }
     } catch {
       // ignore
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
   }
   if (!healthy) {
     throw new Error('API is not healthy after 30 seconds');
@@ -50,7 +52,7 @@ async function globalSetup(config: FullConfig) {
     } catch {
       // ignore
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
   }
 
   // 3. Login with seeded admin user
@@ -61,18 +63,17 @@ async function globalSetup(config: FullConfig) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'email',
-        email: process.env.E2E_ADMIN_EMAIL || 'admin@cvg.local',
-        password: process.env.E2E_ADMIN_PASSWORD || 'Admin123!'
+        username: process.env.E2E_ADMIN_USERNAME || 'admin',
+        password: process.env.E2E_ADMIN_PASSWORD || 'seed_admin'
       })
     });
-    
+
     if (loginRes.ok) {
       const data = await loginRes.json();
       console.log('   ✅ Test user authenticated');
-      
+
       // Save token for tests (note: actor is nested in response)
-      process.env.E2E_AUTH_TOKEN = data.token;
+      process.env.E2E_AUTH_TOKEN = data.accessToken;
       process.env.E2E_USER_ID = data.actor?.userId || data.user?.id;
       process.env.E2E_ACCOUNT_ID = data.actor?.accountId || data.user?.accountId;
       console.log(`   ℹ️  User ID: ${process.env.E2E_USER_ID}`);
@@ -80,7 +81,7 @@ async function globalSetup(config: FullConfig) {
     } else {
       const err = await loginRes.text();
       console.log(`   ⚠️  Login failed (${loginRes.status}): ${err}`);
-      
+
       // Try dev login as fallback
       console.log('   ⏳ Trying dev login...');
       const devLoginRes = await fetch(`${API_URL}/auth/dev-login`, {
@@ -91,11 +92,11 @@ async function globalSetup(config: FullConfig) {
           role: 'admin'
         })
       });
-      
+
       if (devLoginRes.ok) {
         const data = await devLoginRes.json();
         console.log('   ✅ Dev login successful');
-        process.env.E2E_AUTH_TOKEN = data.token;
+        process.env.E2E_AUTH_TOKEN = data.accessToken;
         process.env.E2E_USER_ID = data.user?.id || 'dev-user';
         process.env.E2E_ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
       } else {

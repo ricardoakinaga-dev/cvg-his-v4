@@ -392,6 +392,50 @@ export const routes: RouteRecordRaw[] = [
           breadcrumbParent: 'Estoque',
           icon: '📦'
         }
+      },
+      {
+        path: 'webhooks',
+        name: 'Webhooks',
+        component: () => import('@/pages/webhooks/WebhooksListPage.vue'),
+        meta: {
+          title: 'Webhooks',
+          breadcrumb: 'Webhooks',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔗'
+        }
+      },
+      {
+        path: 'webhooks/new',
+        name: 'WebhookNew',
+        component: () => import('@/pages/webhooks/WebhookFormPage.vue'),
+        meta: {
+          title: 'Novo Webhook',
+          breadcrumb: 'Novo Webhook',
+          breadcrumbParent: 'Webhooks',
+          icon: '🔗'
+        }
+      },
+      {
+        path: 'webhooks/:id',
+        name: 'WebhookDetail',
+        component: () => import('@/pages/webhooks/WebhookDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Webhook',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Webhooks',
+          icon: '🔗'
+        }
+      },
+      {
+        path: 'webhooks/:id/edit',
+        name: 'WebhookEdit',
+        component: () => import('@/pages/webhooks/WebhookFormPage.vue'),
+        meta: {
+          title: 'Editar Webhook',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Webhooks',
+          icon: '🔗'
+        }
       }
     ]
   },

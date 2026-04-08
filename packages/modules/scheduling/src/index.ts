@@ -55,6 +55,11 @@ import type { SchedulingRepository } from './repositories/database-scheduling.re
 
 export interface SchedulingServiceOptions {
   readonly repository?: SchedulingRepository;
+  readonly onAppointmentCreated?: (appointment: SchedulingAppointmentSummary) => Promise<void>;
+  readonly onAppointmentStatusChanged?: (
+    appointment: SchedulingAppointmentSummary,
+    previousStatus: SchedulingAppointmentSummary['status']
+  ) => Promise<void>;
 }
 
 export class SchedulingService {
@@ -63,6 +68,11 @@ export class SchedulingService {
   readonly #patients: PatientsService;
   readonly #appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
   readonly #queue = new Map<QueueEntryId, QueueEntrySummary>();
+  readonly #onAppointmentCreated?: (appointment: SchedulingAppointmentSummary) => Promise<void>;
+  readonly #onAppointmentStatusChanged?: (
+    appointment: SchedulingAppointmentSummary,
+    previousStatus: SchedulingAppointmentSummary['status']
+  ) => Promise<void>;
 
   public constructor(
     owners: OwnersService,
@@ -73,6 +83,8 @@ export class SchedulingService {
     this.#repository = options?.repository;
     this.#owners = owners;
     this.#patients = patients;
+    this.#onAppointmentCreated = options?.onAppointmentCreated;
+    this.#onAppointmentStatusChanged = options?.onAppointmentStatusChanged;
 
     for (const appointment of seedAppointments) {
       this.#appointments.set(appointment.id, appointment);
@@ -148,6 +160,8 @@ export class SchedulingService {
       await this.#repository.createAppointment(appointment);
     }
 
+    void this.#onAppointmentCreated?.(appointment);
+
     return appointment;
   }
 
@@ -208,6 +222,7 @@ export class SchedulingService {
 
     if (appointmentId) {
       const appointment = this.getAppointmentOrThrow(appointmentId);
+      const previousStatus = appointment.status;
       const updatedAppointment = {
         ...appointment,
         status: 'checked_in' as const,
@@ -217,6 +232,7 @@ export class SchedulingService {
       if (this.#repository) {
         await this.#repository.updateAppointment(updatedAppointment);
       }
+      void this.#onAppointmentStatusChanged?.(updatedAppointment, previousStatus);
     }
 
     this.#queue.set(entry.id, entry);
@@ -339,6 +355,8 @@ export class SchedulingService {
     if (this.#repository) {
       await this.#repository.updateAppointment(cancelledAppointment);
     }
+
+    void this.#onAppointmentStatusChanged?.(cancelledAppointment, current.status);
 
     return cancelledAppointment;
   }

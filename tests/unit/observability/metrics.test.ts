@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeRoute } from '../../../apps/api/src/metrics.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  normalizeRoute,
+  updateAppMetrics,
+  incrementActiveRequests,
+  decrementActiveRequests,
+  resetActiveRequestsCount,
+  getMetricsText
+} from '../../../apps/api/src/metrics.js';
 
 describe('Metrics — Route Normalization', () => {
   it('should return exact match for known routes', () => {
@@ -56,5 +63,70 @@ describe('Metrics — Route Normalization', () => {
   it('should normalize scheduling and triage routes to resource pattern', () => {
     expect(normalizeRoute('/scheduling/appointments')).toBe('/{resource}/:id');
     expect(normalizeRoute('/triage/records')).toBe('/{resource}/:id');
+  });
+});
+
+describe('Metrics — App Metrics', () => {
+  beforeEach(() => {
+    resetActiveRequestsCount();
+  });
+
+  it('should update uptime, db healthy and persistence mode', async () => {
+    updateAppMetrics({
+      uptime: 3600,
+      dbHealthy: true,
+      persistenceMode: 'database'
+    });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain('app_uptime_seconds 3600');
+    expect(metrics).toContain('app_database_healthy 1');
+    expect(metrics).toContain('app_persistence_mode{mode="database"} 1');
+  });
+
+  it('should set in-memory mode correctly', async () => {
+    updateAppMetrics({
+      uptime: 100,
+      dbHealthy: false,
+      persistenceMode: 'in-memory'
+    });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain('app_persistence_mode{mode="in-memory"} 1');
+    expect(metrics).not.toContain('app_persistence_mode{mode="database"} 1');
+  });
+
+  it('should track active requests with increment/decrement', async () => {
+    incrementActiveRequests();
+    incrementActiveRequests();
+    incrementActiveRequests();
+
+    let metrics = await getMetricsText();
+    expect(metrics).toContain('app_active_requests 3');
+
+    decrementActiveRequests();
+
+    metrics = await getMetricsText();
+    expect(metrics).toContain('app_active_requests 2');
+  });
+
+  it('should not go below zero on decrement', async () => {
+    decrementActiveRequests();
+    decrementActiveRequests();
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain('app_active_requests 0');
+  });
+
+  it('should handle alternating increment and decrement', async () => {
+    incrementActiveRequests();
+    incrementActiveRequests();
+    decrementActiveRequests();
+    incrementActiveRequests();
+    decrementActiveRequests();
+    decrementActiveRequests();
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain('app_active_requests 0');
   });
 });

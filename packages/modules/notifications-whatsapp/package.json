@@ -1,0 +1,33 @@
+{
+  "name": "@cvg-his-v2/module-notifications-whatsapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./reminder-workflow": {
+      "types": "./dist/reminder-workflow.d.ts",
+      "default": "./dist/reminder-workflow.js"
+    }
+  },
+  "dependencies": {
+    "@cvg-his-v2/module-notifications": "workspace:*",
+    "@cvg-his-v2/module-owners": "workspace:*",
+    "@cvg-his-v2/module-patients": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@cvg-his-v2/module-notifications": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/whatsapp.test.js"
+  }
+}

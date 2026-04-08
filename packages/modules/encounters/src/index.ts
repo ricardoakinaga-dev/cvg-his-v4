@@ -50,6 +50,11 @@ export interface EncountersServiceOptions {
   readonly patients: PatientsService;
   readonly encounterRepository?: EncounterRepository;
   readonly encounterTimelineRepository?: EncounterTimelineRepository;
+  readonly onEncounterCreated?: (encounter: EncounterSummary) => Promise<void>;
+  readonly onEncounterStatusChanged?: (
+    encounter: EncounterSummary,
+    previousStatus: EncounterSummary['status']
+  ) => Promise<void>;
 }
 
 export class EncountersService {
@@ -59,12 +64,19 @@ export class EncountersService {
   readonly #timeline = new Map<EncounterId, EncounterTimelineEventSummary[]>();
   readonly #encounterRepository?: EncounterRepository;
   readonly #encounterTimelineRepository?: EncounterTimelineRepository;
+  readonly #onEncounterCreated?: (encounter: EncounterSummary) => Promise<void>;
+  readonly #onEncounterStatusChanged?: (
+    encounter: EncounterSummary,
+    previousStatus: EncounterSummary['status']
+  ) => Promise<void>;
 
   public constructor(options: EncountersServiceOptions) {
     this.#owners = options.owners;
     this.#patients = options.patients;
     this.#encounterRepository = options.encounterRepository;
     this.#encounterTimelineRepository = options.encounterTimelineRepository;
+    this.#onEncounterCreated = options.onEncounterCreated;
+    this.#onEncounterStatusChanged = options.onEncounterStatusChanged;
   }
 
   public listActive(): readonly EncounterSummary[] {
@@ -135,6 +147,8 @@ export class EncountersService {
       });
     }
 
+    void this.#onEncounterCreated?.(encounter);
+
     return encounter;
   }
 
@@ -174,6 +188,8 @@ export class EncountersService {
       });
     }
 
+    void this.#onEncounterStatusChanged?.(updated, current.status);
+
     return updated;
   }
 
@@ -210,6 +226,8 @@ export class EncountersService {
         console.error('Failed to close encounter in database:', err);
       });
     }
+
+    void this.#onEncounterStatusChanged?.(updated, current.status);
 
     return updated;
   }

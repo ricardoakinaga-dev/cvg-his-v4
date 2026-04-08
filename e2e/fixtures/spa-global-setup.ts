@@ -54,15 +54,14 @@ async function globalSetup(config: FullConfig) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'email',
-        email: process.env.E2E_ADMIN_EMAIL || 'admin@cvg.local',
-        password: process.env.E2E_ADMIN_PASSWORD || 'Admin123!'
+        username: process.env.E2E_ADMIN_USERNAME || 'admin',
+        password: process.env.E2E_ADMIN_PASSWORD || 'seed_admin'
       })
     });
 
     if (loginRes.ok) {
       const data = await loginRes.json();
-      token = data.token;
+      token = data.accessToken;
       userId = data.actor?.userId || data.user?.id;
       accountId = data.actor?.accountId || data.user?.accountId;
       console.log('   ✅ Authenticated via API login');
@@ -78,7 +77,7 @@ async function globalSetup(config: FullConfig) {
       });
       if (devRes.ok) {
         const data = await devRes.json();
-        token = data.token;
+        token = data.accessToken;
         userId = data.user?.id || 'dev-user';
         accountId = '00000000-0000-0000-0000-000000000001';
         console.log('   ✅ Authenticated via dev login');

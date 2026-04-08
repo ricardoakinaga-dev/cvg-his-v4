@@ -42,7 +42,7 @@
 | QA + Docs | 3 | Testes, Documentação | 17-18 |
 | **Total** | **6** | | **2 meses** |
 
-## Custo Total
+## Custo Total (Consolidado com Master Plan)
 
 | Item | Valor |
 |------|-------|
@@ -54,6 +54,8 @@
 | Infraestrutura (18m × R$30K) | R$ 0.5M |
 | Ferramentas/Licenças (18m × R$10K) | R$ 0.2M |
 | **TOTAL** | **R$ 8.9M** |
+
+> **Alinhamento**: O valor de R$ 8.9M está alinhado com o Master Plan (000). A diferença anterior (R$ 8.2M) não incluía infraestrutura e ferramentas.
 
 ## ROI Esperado
 

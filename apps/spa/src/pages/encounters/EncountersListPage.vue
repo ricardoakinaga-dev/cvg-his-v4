@@ -1,14 +1,10 @@
 <template>
   <div class="encounters-list-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">🩺 Atendimentos</h1>
-        <p class="page-header__subtitle">Abertura e controle do episódio clínico</p>
-      </div>
-      <div class="page-header__actions">
-        <router-link to="/encounters/new" class="btn btn--primary">+ Abrir Atendimento</router-link>
-      </div>
-    </div>
+    <AppPageHeader title="🩺 Atendimentos" subtitle="Abertura e controle do episódio clínico">
+      <template #actions>
+        <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
+      </template>
+    </AppPageHeader>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -24,7 +20,7 @@
       variant="hoverable"
     >
       <template #emptyAction>
-        <router-link to="/encounters/new" class="btn btn--primary">+ Abrir Atendimento</router-link>
+        <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
       </template>
       <template #cell-patient="{ row }">
         <strong>🐾 {{ patientName((row as EncounterSummary).patientId) }}</strong>
@@ -47,10 +43,12 @@
         {{ formatDateTime((row as EncounterSummary).openedAt) }}
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/encounters/${(row as EncounterSummary).id}`"
-          class="btn btn--sm btn--secondary"
-          >Ver</router-link
+          size="sm"
+          variant="secondary"
+          >Ver</DsButton
         >
       </template>
     </DataTable>
@@ -64,7 +62,9 @@ import type { EncounterSummary } from '@/types/encounter';
 import { visitTypeLabel, encounterStatusLabel, formatDateTime, truncate } from '@/utils/labels';
 import { useListData } from '@/composables/useListData';
 import { useEntityCache } from '@/composables/useEntityCache';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 

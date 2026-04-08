@@ -2,7 +2,7 @@
   <div class="patients-list-page">
     <AppPageHeader title="Pacientes" subtitle="Cadastro clínico de animais atendidos">
       <template #actions>
-        <router-link to="/patients/new" class="btn btn--primary">+ Novo Paciente</router-link>
+        <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
       </template>
     </AppPageHeader>
 
@@ -11,14 +11,13 @@
     </DsAlert>
 
     <div class="search-bar">
-      <input
+      <DsInput
         v-model="search"
         type="search"
-        class="search-bar__input"
         placeholder="Buscar por nome, espécie, raça ou tutor..."
         @keyup.enter="load"
       />
-      <button class="btn btn--secondary" @click="load">Buscar</button>
+      <DsButton variant="secondary" @click="load">Buscar</DsButton>
     </div>
 
     <DataTable
@@ -31,7 +30,7 @@
       variant="hoverable"
     >
       <template #emptyAction>
-        <router-link to="/patients/new" class="btn btn--primary">+ Novo Paciente</router-link>
+        <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
       </template>
       <template #cell-name="{ row }">
         <strong>{{ (row as PatientSummary).name }}</strong>
@@ -55,15 +54,19 @@
         />
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/patients/${(row as PatientSummary).id}`"
-          class="btn btn--sm btn--secondary"
-          >Ver</router-link
+          size="sm"
+          variant="secondary"
+          >Ver</DsButton
         >
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/patients/${(row as PatientSummary).id}/edit`"
-          class="btn btn--sm btn--secondary"
-          >Editar</router-link
+          size="sm"
+          variant="secondary"
+          >Editar</DsButton
         >
       </template>
     </DataTable>
@@ -77,6 +80,8 @@ import type { PatientSummary } from '@/types/patient';
 import { speciesLabel, sexLabel, patientStatusLabel } from '@/utils/labels';
 import { useListData } from '@/composables/useListData';
 import { useEntityCache } from '@/composables/useEntityCache';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';

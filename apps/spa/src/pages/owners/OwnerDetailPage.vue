@@ -22,10 +22,8 @@
           <StatusBadge v-if="owner.financialResponsible" label="Resp. Financeiro" variant="info" />
         </template>
         <template #actions>
-          <router-link :to="`/owners/${owner.id}/edit`" class="btn btn--secondary"
-            >Editar</router-link
-          >
-          <router-link to="/owners" class="btn btn--secondary">Voltar</router-link>
+          <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="secondary">Editar</DsButton>
+          <DsButton variant="secondary" tag="a" to="/owners">Voltar</DsButton>
         </template>
       </AppPageHeader>
 
@@ -75,8 +73,8 @@ import type { OwnerSummary } from '@/types/owner';
 import { formatDate } from '@/utils/labels';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 

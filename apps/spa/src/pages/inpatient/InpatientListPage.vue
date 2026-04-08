@@ -6,10 +6,8 @@
         <p class="page-header__subtitle">Gestão de internações e leitos</p>
       </div>
       <div class="page-header__actions">
-        <router-link to="/inpatient/board" class="btn btn--secondary"
-          >🗺️ Mapa de Leitos</router-link
-        >
-        <router-link to="/encounters" class="btn btn--secondary">+ Admitir Paciente</router-link>
+        <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>
+        <DsButton tag="a" to="/encounters" variant="secondary">+ Admitir Paciente</DsButton>
       </div>
     </div>
 
@@ -46,12 +44,13 @@
         {{ formatDate((row as InpatientStaySummary).admittedAt) }}
       </template>
       <template #cell-actions="{ row }">
-        <router-link
+        <DsButton
+          tag="a"
           :to="`/inpatient/${(row as InpatientStaySummary).id}`"
-          class="btn btn--sm btn--secondary"
+          size="sm"
+          variant="secondary"
+          >Ver</DsButton
         >
-          Ver
-        </router-link>
       </template>
     </DataTable>
   </div>
@@ -64,10 +63,11 @@ import type { InpatientStaySummary } from '@/types/inpatient';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});

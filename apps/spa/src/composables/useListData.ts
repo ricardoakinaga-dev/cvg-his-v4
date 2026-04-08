@@ -11,13 +11,13 @@ export function useListData<T>(options: UseListDataOptions<T>) {
   const items = ref<T[]>([]) as Ref<T[]>;
   const loading = ref(false);
   const error = ref('');
-  const search = options.withSearch ? ref('') : null;
+  const search = ref('');
 
   async function load() {
     loading.value = true;
     error.value = '';
     try {
-      const searchValue = search?.value || undefined;
+      const searchValue = options.withSearch ? search.value || undefined : undefined;
       items.value = await options.fetchFn(searchValue);
       if (options.onLoaded) {
         await options.onLoaded(items.value);

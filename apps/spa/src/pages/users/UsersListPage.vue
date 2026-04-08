@@ -3,13 +3,18 @@
     <AppPageHeader>
       <template #title>👤 Usuários</template>
       <template #actions>
-        <router-link to="/users/new" class="btn btn--primary">+ Novo Usuário</router-link>
+        <DsButton tag="a" to="/users/new" variant="primary">+ Novo Usuário</DsButton>
       </template>
     </AppPageHeader>
 
     <div class="search-bar">
-      <input v-model="search" class="search-bar__input" placeholder="Buscar por nome, e-mail..." />
-      <select v-model="roleFilter" class="search-bar__input" style="max-width: 180px">
+      <DsInput v-model="search" placeholder="Buscar por nome, e-mail..." />
+      <DsInput
+        v-model="roleFilter"
+        type="select"
+        placeholder="Todos perfis"
+        style="max-width: 180px"
+      >
         <option value="">Todos perfis</option>
         <option value="admin">👑 Admin</option>
         <option value="veterinarian">🩺 Veterinário</option>
@@ -18,12 +23,17 @@
         <option value="auditor">📝 Auditor</option>
         <option value="finance">💰 Financeiro</option>
         <option value="inventory">📦 Estoque</option>
-      </select>
-      <select v-model="statusFilter" class="search-bar__input" style="max-width: 160px">
+      </DsInput>
+      <DsInput
+        v-model="statusFilter"
+        type="select"
+        placeholder="Todos status"
+        style="max-width: 160px"
+      >
         <option value="">Todos status</option>
         <option value="active">✅ Ativo</option>
         <option value="inactive">⏸ Inativo</option>
-      </select>
+      </DsInput>
     </div>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -45,9 +55,9 @@
         />
       </template>
       <template #cell-actions="{ row }">
-        <router-link :to="`/users/${row.id}`" class="btn btn--sm btn--secondary">Ver</router-link>
-        <router-link :to="`/users/${row.id}/edit`" class="btn btn--sm btn--secondary"
-          >Editar</router-link
+        <DsButton tag="a" :to="`/users/${row.id}`" size="sm" variant="secondary">Ver</DsButton>
+        <DsButton tag="a" :to="`/users/${row.id}/edit`" size="sm" variant="secondary"
+          >Editar</DsButton
         >
       </template>
     </DataTable>
@@ -61,6 +71,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { useListData } from '@/composables/useListData';
 import { userService } from '@/services/user';
 import type { UserSummary } from '@/types/user';

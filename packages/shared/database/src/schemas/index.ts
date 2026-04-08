@@ -407,3 +407,28 @@ export const dataSubjectRequests = pgTable('data_subject_requests', {
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
+
+export const webhooks = pgTable('webhooks', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  url: varchar('url', { length: 2048 }).notNull(),
+  events: jsonb('events').$type<string[]>().notNull(),
+  secret: varchar('secret', { length: 512 }),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const webhookDeliveries = pgTable('webhook_deliveries', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  webhookId: varchar('webhook_id', { length: 255 }).notNull(),
+  event: varchar('event', { length: 100 }).notNull(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+  status: varchar('status', { length: 50 }).notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  lastAttemptAt: timestamp('last_attempt_at'),
+  responseStatus: integer('response_status'),
+  responseBody: text('response_body'),
+  nextRetryAt: timestamp('next_retry_at'),
+  createdAt: timestamp('created_at').notNull()
+});
