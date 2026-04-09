@@ -49,7 +49,7 @@
 | --- | --- | --- | ---: |
 | `130-instalacao-publicacao-cvg-his-v2-real.md` identifica a trilha canonica correta | Bate com `README.md`, `apps/*`, `infra/systemd/*` e `docker-compose.v2.yml` | Correto no eixo principal | 90 |
 | Migrations descritas no fluxo principal | O documento manda aplicar apenas `001-004`, mas existem `001-016` em `packages/shared/database/src/migrations/` | Incompleto para banco atual | 35 |
-| Portas sugeridas para API e Web | O documento sugere API externa `3001` e Web externa `3000`; `docker-compose.v2.yml` publica `3000:3001` para API e `3001:3000` para Web | Divergencia operacional relevante | 30 |
+| Portas sugeridas para API e Web | O documento vivo `130-instalacao-publicacao-cvg-his-v2-real.md` esta alinhado ao `docker-compose.v2.yml`: API externa `3000` e Web externa `3001` | Divergencia operacional saneada na trilha viva | 90 |
 | Artefatos operacionais citados existem | `docker-compose.v2.yml`, `.env.v2.example`, `infra/docker/Caddyfile.v2`, `infra/systemd/*`, `infra/scripts/cutover-v2.sh` existem | Alta aderencia | 92 |
 | Script de cutover aplica schema completo | `infra/scripts/cutover-v2.sh` aplica apenas migrations `001-004` | Incompleto frente ao banco documentado e ao restante das migrations | 40 |
 

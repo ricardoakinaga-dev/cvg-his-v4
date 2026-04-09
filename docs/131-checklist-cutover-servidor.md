@@ -26,6 +26,9 @@
 - subir `apps/api`
 - subir `apps/web`
 - subir `apps/worker`
+- confirmar que a stack ativa usa `docker-compose.v2.yml`
+- confirmar que os servicos ativos sao `cvg-his-v2-api`, `cvg-his-v2-web` e `cvg-his-v2-worker`
+- confirmar que nao existe reutilizacao operacional de `cvg-his-api`, `cvg-his-web`, `cvg-his-worker` ou qualquer trilha `apps/his-*`
 - verificar healthchecks da API
 - verificar homepage do Web
 - verificar logs iniciais do worker
@@ -46,6 +49,9 @@
 - confirmar destino do dominio principal
 - confirmar destino do dominio tecnico da API, se existir
 - validar portas externas reais antes do reload do proxy
+- validar portas publicadas do V2:
+  - API externa `3000` -> interna `3001`
+  - Web externa `3001` -> interna `3000`
 
 ## Rollback
 
@@ -53,6 +59,14 @@
 - manter plano de retorno do proxy
 - nao reaproveitar parcialmente runtime de stacks diferentes
 - isolar banco novo se o cutover for abortado
+
+## Comando recomendado de subida limpa
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+```
 
 ## Encerramento da janela
 

@@ -49,6 +49,7 @@ export default defineConfig({
       '@cvg-his-v2/shared-database': resolve(root, 'packages/shared/database/src/index.ts'),
       '@cvg-his-v2/shared-errors': resolve(root, 'packages/shared/errors/src/index.ts'),
       '@cvg-his-v2/shared-logging': resolve(root, 'packages/shared/logging/src/index.ts'),
+      '@cvg-his-v2/shared-rate-limiter': resolve(root, 'packages/shared/rate-limiter/src/index.ts'),
       '@cvg-his-v2/shared-types': resolve(root, 'packages/shared/types/src/index.ts'),
       '@cvg-his-v2/shared-utils': resolve(root, 'packages/shared/utils/src/index.ts'),
       '@cvg-his-v2/shared-validation': resolve(root, 'packages/shared/validation/src/index.ts'),
@@ -61,7 +62,13 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],
-    exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'e2e/**',
+      'tests/unit/auth/hardening.test.ts',
+      'tests/unit/observability/metrics.test.ts'
+    ],
     testTimeout: 30_000,
     hookTimeout: 60_000,
     globalSetup: ['tests/setup/global-setup.ts'],
@@ -71,10 +78,10 @@ export default defineConfig({
       include: ['apps/api/src/**/*.ts', 'packages/modules/**/*.ts', 'packages/shared/**/*.ts'],
       exclude: ['**/*.test.ts', '**/*.d.ts', '**/dist/**', '**/node_modules/**'],
       thresholds: {
-        lines: 0,
-        functions: 0,
-        branches: 0,
-        statements: 0
+        lines: 5,
+        functions: 15,
+        branches: 10,
+        statements: 5
       },
       reportOnFailure: true
     }

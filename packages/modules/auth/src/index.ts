@@ -431,3 +431,4 @@ function toEpochSeconds(isoDate: string): number {
 
 export type { SessionRepository } from './repositories/session.repository.js';
 export { DatabaseSessionRepository } from './repositories/database-session.repository.js';
+export { BruteForceProtection } from './brute-force.js';

@@ -21,7 +21,8 @@ CI pipeline gates determine what is required for merge and what is expected for 
 
 - Any merge gate failure blocks the PR from being merged
 - Artifacts are uploaded automatically on failure for debugging
-- No `continue-on-error` flags are used — failures are always reported
+- Merge gate jobs (typecheck, validate-openapi, build, unit-tests, integration-tests) do **not** use `continue-on-error` — failures are always reported
+- Release assist jobs (coverage, test-e2e-spa, test-visual) use `continue-on-error: true` — failures are visible but do not block merge
 
 ### Artifacts
 
@@ -44,8 +45,8 @@ CI pipeline gates determine what is required for merge and what is expected for 
 
 ### Failure behavior
 
-- These jobs can fail without blocking merge
-- Failures are visible in the PR status but do not prevent merging
+- These jobs use `continue-on-error: true` in CI — failures are visible in the PR status but do not prevent merging
+- Artifacts are uploaded regardless of pass/fail for debugging
 - The `release-ready` job summarizes all gates including these
 
 ### Artifacts
@@ -147,6 +148,7 @@ When adding a new gate:
 
 - No security scanning (SAST/DAST)
 - No contract testing
-- Coverage thresholds are 0% (informational only)
+- Coverage thresholds at 15% lines/15% functions/10% branches/15% statements — informational with warning (2026-04-09)
 - No artifact signing or provenance
 - Release assist gates run on every push, not just release tags
+- `test-e2e-spa` and `test-visual` are informational only, do not block merge

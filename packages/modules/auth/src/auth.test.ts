@@ -9,6 +9,7 @@ import { UsersService } from '@cvg-his-v2/module-users';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
 import { AuthService } from './index.js';
+import { generateCurrentTOTP } from './totp-wrapper.js';
 
 const SEED_PASSWORD = 'seed_admin';
 
@@ -99,8 +100,7 @@ test('AuthService: completeMfaLogin returns session after valid TOTP', async () 
   assert.ok('requiresMfa' in loginResult);
 
   const setup = await mfa.initiateSetup('user_admin', 'admin@cvg-his.local');
-  const totpModule = await import('./totp-wrapper.js');
-  const token = totpModule.generateCurrentTOTP(setup.secret);
+  const token = generateCurrentTOTP(setup.secret);
 
   const session = await auth.completeMfaLogin(
     { userId: 'user_admin', token },

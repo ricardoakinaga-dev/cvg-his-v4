@@ -34,6 +34,42 @@ Se o objetivo e publicar o sistema que realmente foi construido no roadmap enter
 
 Nao existe mais trilha `apps/his-*` no repositório.
 
+### Regra de imagem canonica
+
+Para evitar que o agente instale a imagem errada do programa antigo, a regra operacional passa a ser:
+
+- a stack correta do projeto atual e **somente** a definida em `docker-compose.v2.yml`
+- as imagens corretas da aplicacao sao **somente** as imagens construidas a partir dos Dockerfiles atuais:
+  - `apps/api/Dockerfile`
+  - `apps/web/Dockerfile`
+  - `apps/worker/Dockerfile`
+- os servicos corretos da stack atual sao:
+  - `cvg-his-v2-api`
+  - `cvg-his-v2-web`
+  - `cvg-his-v2-worker`
+- o agente **nunca** deve tentar instalar, subir, reutilizar ou dar pull em qualquer imagem/container legado com nomes como:
+  - `cvg-his-api`
+  - `cvg-his-web`
+  - `cvg-his-worker`
+  - qualquer trilha `apps/his-*`
+
+Importante:
+
+- o `docker-compose.v2.yml` usa `build:` para a aplicacao; portanto a imagem correta deve ser gerada **a partir do codigo atual do repositório**, e nao reaproveitada de stack antiga
+- se houver qualquer duvida entre imagem antiga e imagem atual, a resposta correta e sempre: **usar apenas `docker-compose.v2.yml` + `.env.v2` + Dockerfiles atuais**
+
+### Sequencia obrigatoria para evitar imagem antiga
+
+Antes de subir a stack do V2 real, o agente deve seguir esta ordem:
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+```
+
+Se o agente usar qualquer compose diferente, qualquer imagem legada ou qualquer nome antigo de servico, o deploy deve ser considerado incorreto.
+
 Documentos operacionais diretos:
 
 - [OPENCLAW_DEPLOY_DIRETRIZES.md](/root/.openclaw/workspace/cvg-his-v2/OPENCLAW_DEPLOY_DIRETRIZES.md) - diretrizes obrigatorias para o OpenClaw executar deploy, migrations e validacoes sem ambiguidade
@@ -182,7 +218,14 @@ Ver `docs/README.md` para indice completo de documentacao.
 
 ```bash
 curl http://localhost:3000/health
+curl -I http://localhost:3001/
 ```
+
+Mapa operacional da stack V2 real:
+
+- `cvg-his-v2-api` exposto em `localhost:3000` -> porta interna `3001`
+- `cvg-his-v2-web` exposto em `localhost:3001` -> porta interna `3000`
+- `cvg-his-v2-worker` sem porta HTTP publica
 
 ## Documentacao
 

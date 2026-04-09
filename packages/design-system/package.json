@@ -33,7 +33,7 @@
     "build": "tsc -p tsconfig.json && vue-tsc -p tsconfig.vue.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.vue.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.vue.json --noEmit",
-    "test": "vitest run --config ../../vitest.config.ts tests/"
+    "test": "vitest run --config vitest.config.ts"
   },
   "peerDependencies": {
     "vue": "^3.4.0"

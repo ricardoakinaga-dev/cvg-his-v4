@@ -22,6 +22,29 @@ O OpenClaw nao deve tentar usar:
 - qualquer trilha `apps/his-*`
 - scripts antigos de deploy fora da trilha V2
 - compose legado para subir API/Web/Worker
+- imagens legadas `cvg-his-api`, `cvg-his-web`, `cvg-his-worker`
+- qualquer imagem antiga previamente presente no host como substituta da stack atual
+
+## 1.1 Regra obrigatoria de imagem correta
+
+Para este repositório, a imagem correta da aplicacao **nao** e uma imagem antiga preexistente no host.
+
+O OpenClaw deve assumir como correto apenas:
+
+- `cvg-his-v2-api`
+- `cvg-his-v2-web`
+- `cvg-his-v2-worker`
+
+Esses servicos devem ser construidos a partir de:
+
+- `apps/api/Dockerfile`
+- `apps/web/Dockerfile`
+- `apps/worker/Dockerfile`
+
+Regra obrigatoria:
+
+- se houver duvida entre “reusar imagem antiga” e “rebuild da stack V2 atual”, a unica acao correta e **rebuild da stack V2 atual**
+- o OpenClaw nao deve dar deploy bem-sucedido se tiver subido qualquer container antigo com naming legado
 
 ## 2. Regra operacional principal
 
@@ -33,6 +56,8 @@ Antes de qualquer deploy, o OpenClaw deve validar explicitamente:
 4. que as migrations serao aplicadas na ordem correta
 5. que `AUTH_SECRET` existe e nao usa placeholder inseguro
 6. que `postgres`, `redis`, `api`, `web` e `worker` vao subir no mesmo stack V2
+7. que os servicos efetivamente alvo sao `cvg-his-v2-api`, `cvg-his-v2-web` e `cvg-his-v2-worker`
+8. que nenhuma imagem/container legado com prefixo `cvg-his-` sera reutilizado no lugar dos servicos V2
 
 Se qualquer uma dessas validacoes falhar, o OpenClaw deve parar e reportar o bloqueio antes de continuar.
 
@@ -139,20 +164,22 @@ O OpenClaw deve seguir exatamente esta ordem:
 
 1. validar `.env.v2`
 2. validar `docker-compose.v2.yml`
-3. subir `postgres` e `redis`
-4. esperar healthcheck de `postgres`
-5. esperar healthcheck de `redis`
-6. aplicar migrations do banco
-7. subir `cvg-his-v2-api`
-8. validar `/health`
-9. validar `/ready`
-10. subir `cvg-his-v2-web`
-11. subir `cvg-his-v2-worker`
-12. validar logs de API, web e worker
-13. validar login
-14. validar dashboard
-15. validar worker sem crash
-16. só então executar o cutover do proxy/domínio
+3. derrubar orfaos e stack antiga do compose V2 antes de rebuild
+4. rebuildar sem cache `cvg-his-v2-api`, `cvg-his-v2-web` e `cvg-his-v2-worker`
+5. subir `postgres` e `redis`
+6. esperar healthcheck de `postgres`
+7. esperar healthcheck de `redis`
+8. aplicar migrations do banco
+9. subir `cvg-his-v2-api`
+10. validar `/health`
+11. validar `/ready`
+12. subir `cvg-his-v2-web`
+13. subir `cvg-his-v2-worker`
+14. validar logs de API, web e worker
+15. validar login
+16. validar dashboard
+17. validar worker sem crash
+18. só então executar o cutover do proxy/domínio
 
 ## 9. Regras obrigatorias do frontend
 
@@ -191,9 +218,17 @@ O OpenClaw deve preferir estes comandos:
 
 ```bash
 docker compose --env-file .env.v2 -f docker-compose.v2.yml config
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d --build
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
 infra/scripts/cutover-v2.sh
 ```
+
+Interpretacao obrigatoria:
+
+- `build --no-cache` e o padrao preferido quando houver historico de stack antiga sendo instalada por engano
+- `up -d --build` generico e menos explicito; a preferencia operacional passa a ser build explicito + subida explicita dos servicos V2
+- o OpenClaw deve registrar no relatorio final os nomes exatos dos servicos subidos
 
 Para aplicar migrations manualmente:
 
@@ -209,9 +244,9 @@ psql "$DATABASE_URL" -f packages/shared/database/src/migrations/004_clinical_ent
 O OpenClaw deve rodar e registrar:
 
 ```bash
-curl http://127.0.0.1:3001/health
-curl http://127.0.0.1:3001/ready
-curl -I http://127.0.0.1:3000/
+curl http://127.0.0.1:3000/health
+curl http://127.0.0.1:3000/ready
+curl -I http://127.0.0.1:3001/
 docker compose --env-file .env.v2 -f docker-compose.v2.yml ps
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-api
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-web
@@ -264,6 +299,7 @@ O OpenClaw deve:
 - parar ao primeiro bloqueio real
 - não improvisar migrations alternativas
 - não reintroduzir stack legado
+- não reutilizar imagens antigas como atalho
 - não mudar o schema fora das migrations oficiais sem justificativa explícita
 - não marcar deploy como sucesso sem validação funcional real de login e dashboard
 

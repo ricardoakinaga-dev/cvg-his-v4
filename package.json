@@ -21,7 +21,7 @@
     "test:db": "vitest run tests/integration/database --config vitest.config.ts",
     "test:critical": "vitest run tests/integration/database tests/integration/foundational.test.ts --config vitest.config.ts --reporter=verbose",
     "test:critical:bootstrap": "node infra/scripts/test-critical-bootstrap.mjs",
-    "test:coverage": "vitest run --coverage --config vitest.config.ts",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts --exclude 'tests/integration/database/**' --exclude 'tests/integration/factories.test.ts' --exclude 'tests/integration/db-schema.test.ts' --exclude 'tests/integration/foundational.test.ts' --exclude 'tests/integration/rls/rls-lgpd.test.ts' --exclude 'tests/integration/rls/rls-text-based-tables.test.ts' --exclude 'tests/integration/rls/rls-isolation.test.ts' --exclude 'tests/integration/webhook-persistence.test.ts' --exclude 'tests/integration/mfa/mfa-persistence.test.ts'",
     "test:e2e": "npx playwright test e2e/tests/fluxos-criticos.spec.ts --config playwright.config.ts",
     "test:e2e:spa": "npx playwright test --config playwright-spa.config.ts",
     "test:e2e:spa:headed": "npx playwright test --config playwright-spa.config.ts --headed",

@@ -363,7 +363,6 @@ async function confirmNoShow() {
 }
 
 function startPolling() {
-  console.log('[QueuePage] startPolling called');
   if (pollTimer.value) clearInterval(pollTimer.value);
   pollTimer.value = setInterval(() => {
     if (isVisible.value) {

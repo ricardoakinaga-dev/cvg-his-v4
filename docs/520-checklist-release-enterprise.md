@@ -111,8 +111,9 @@ Tests       162 passed (162)
 ### Docker Compose
 
 - [ ] `docker compose -f docker-compose.v2.yml config` valida sem erro
-- [ ] Todos os servicos sobem: postgres, redis, api, web, worker
+- [ ] Todos os servicos sobem na stack atual: postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
 - [ ] Healthchecks passam: postgres (pg_isready), redis (redis-cli ping), api (/health)
+- [ ] Nenhum container legado `cvg-his-api`, `cvg-his-web`, `cvg-his-worker` e reutilizado como runtime oficial
 
 ### Proxy Reverso (Caddy)
 
@@ -187,6 +188,10 @@ O web e considerado pronto quando:
 - [ ] Migration Drizzle aplicada com sucesso
 - [ ] Seed executado com sucesso
 - [ ] Stack V2 sobe via compose
+- [ ] Subida manual, quando usada, segue a trilha limpa:
+  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans`
+  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker`
+  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker`
 - [ ] Healthchecks passam em todos os servicos
 - [ ] Proxy reverso atualizado (se ENABLE_CADDY_SWITCH=true)
 

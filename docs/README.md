@@ -13,6 +13,16 @@ Levar o repositorio a uma base documental que sustente:
 - operacionalizacao de testes, release e deploy
 - nota documental alvo de `85/100` ao final da construcao
 
+## Regra operacional de deploy
+
+Para deploy e cutover do projeto atual, a trilha canonica e exclusivamente a do V2:
+
+- compose oficial: `docker-compose.v2.yml`
+- apps oficiais: `apps/api`, `apps/web`, `apps/worker`
+- servicos oficiais: `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+
+Documentos historicos em `docs/docs2/` ou referencias antigas a `apps/his-*`, `cvg-his-api`, `cvg-his-web` e `cvg-his-worker` nao devem ser usados como instrucao operacional do deploy atual.
+
 ## Ordem recomendada de leitura
 
 1. `400-auditoria-documental-pente-fino.md`
@@ -73,6 +83,17 @@ Levar o repositorio a uma base documental que sustente:
 - `470-politica-migracao-e-deploy.md`
 - `130-instalacao-publicacao-cvg-his-v2-real.md`
 - `131-checklist-cutover-servidor.md`
+
+Leitura obrigatoria para deploy atual:
+
+- `130-instalacao-publicacao-cvg-his-v2-real.md`
+- `131-checklist-cutover-servidor.md`
+
+Complemento fora de `docs/`:
+
+- `README.md`
+- `INSTALACAO_V2_OPENCLAW.md`
+- `OPENCLAW_DEPLOY_DIRETRIZES.md`
 
 ### Modulos enterprise (docs vivas minimas)
 

@@ -19,6 +19,7 @@
     "@cvg-his-v2/module-users": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
     "@cvg-his-v2/shared-errors": "workspace:*",
+    "@cvg-his-v2/shared-logging": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",
     "@cvg-his-v2/shared-validation": "workspace:*",

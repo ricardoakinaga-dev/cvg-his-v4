@@ -8,11 +8,13 @@ import {
   permissions,
   rolePermissions,
   roles,
+  tenants,
   units,
   userRoles,
   users
 } from './schema/index.js';
 
+const DEFAULT_TENANT_SLUG = 'default';
 const DEFAULT_ACCOUNT_SLUG = 'default';
 const DEFAULT_UNIT_CODE = 'hq';
 
@@ -192,8 +194,27 @@ function hashPassword(rawPassword: string): string {
 
 async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitId: string }> {
   await db
+    .insert(tenants)
+    .values({
+      slug: DEFAULT_TENANT_SLUG,
+      name: 'Tenant padrao'
+    })
+    .onConflictDoNothing({ target: tenants.slug });
+
+  const [tenant] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.slug, DEFAULT_TENANT_SLUG))
+    .limit(1);
+
+  if (!tenant) {
+    throw new Error('Failed to ensure default tenant');
+  }
+
+  await db
     .insert(accounts)
     .values({
+      tenantId: tenant.id,
       slug: DEFAULT_ACCOUNT_SLUG,
       name: 'Conta padrao'
     })

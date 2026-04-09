@@ -56,7 +56,7 @@ O principal risco nao e ausencia total de documentacao. O principal risco e **do
 - Existem **duplicidades de numeracao** como `130`, `134`, `135`, `136`, `137`, `138`, `51`, `88`, `89`, `90`, `91`.
 - A documentacao de frontend afirma hash routing e um conjunto pequeno de paginas, mas o frontend real usa path routing e 25 rotas.
 - O guia de instalacao considera apenas 4 migrations SQL legadas no fluxo principal, embora existam 16 arquivos em `packages/shared/database/src/migrations/`.
-- O `docker-compose.v2.yml` publica portas invertidas em relacao ao que o documento 130 apresenta como porta externa sugerida.
+- A divergencia historica de portas entre o compose e o documento 130 foi saneada na trilha viva; hoje a documentacao operacional principal aponta API externa `3000` e Web externa `3001`, coerente com `docker-compose.v2.yml`.
 - A trilha de modulos documentados e menor que a trilha de modulos efetivamente implementados.
 
 ## Evidencias objetivas encontradas

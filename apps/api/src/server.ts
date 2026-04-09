@@ -240,7 +240,7 @@ export function createApiServer(options: ApiServerOptions) {
         correlationId
       };
 
-      return runWithTenantContext(tenantCtx, async () => {
+      return await runWithTenantContext(tenantCtx, async () => {
         if (request.method === 'OPTIONS') {
           response.statusCode = 204;
           response.end();
@@ -1271,6 +1271,26 @@ export function createApiServer(options: ApiServerOptions) {
             correlationId
           );
           response.statusCode = 201;
+          response.end(JSON.stringify(appointment));
+          return;
+        }
+
+        if (pathname.startsWith('/appointments/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'scheduling.read');
+          const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+          const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'scheduling',
+            'get_appointment',
+            'appointment',
+            appointmentId,
+            `Appointment ${appointmentId} retrieved`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
           response.end(JSON.stringify(appointment));
           return;
         }

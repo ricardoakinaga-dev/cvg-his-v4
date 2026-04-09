@@ -1,4 +1,4 @@
-import { ref, onMounted, type Ref } from 'vue';
+import { ref, onMounted, getCurrentInstance, type Ref } from 'vue';
 
 export interface UseListDataOptions<T> {
   fetchFn: (search?: string) => Promise<T[]>;
@@ -29,7 +29,9 @@ export function useListData<T>(options: UseListDataOptions<T>) {
     }
   }
 
-  onMounted(load);
+  if (getCurrentInstance()) {
+    onMounted(load);
+  }
 
   return {
     items,

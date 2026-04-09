@@ -106,6 +106,14 @@ export class MfaService {
   }
 
   async verifyLogin(userId: string, token: string): Promise<boolean> {
+    const pending = this.#pendingSetups.get(userId);
+    if (pending) {
+      if (verifyTOTP(pending.secret, token)) {
+        return true;
+      }
+      return false;
+    }
+
     const record = await this.#getRecord(userId);
     if (!record || !record.isActive) {
       return false;

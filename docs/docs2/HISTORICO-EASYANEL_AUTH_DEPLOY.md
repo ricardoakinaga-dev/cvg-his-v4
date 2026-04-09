@@ -1,5 +1,23 @@
 # EasyPanel Deployment Guide - Auth Routes
 
+> **AVISO DE ARQUIVO HISTÓRICO**
+>
+> Este guia pertence à trilha anterior e **não deve ser usado para deploy atual** do CVG-HIS-V2.
+>
+> Para a stack vigente, usar somente:
+>
+> - `docker-compose.v2.yml`
+> - `apps/api`, `apps/web`, `apps/worker`
+> - serviços `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+>
+> Referências operacionais corretas:
+>
+> - `README.md`
+> - `INSTALACAO_V2_OPENCLAW.md`
+> - `OPENCLAW_DEPLOY_DIRETRIZES.md`
+> - `docs/130-instalacao-publicacao-cvg-his-v2-real.md`
+> - `docs/131-checklist-cutover-servidor.md`
+
 ## Overview
 
 This guide covers deploying the CVG HIS authentication routes to EasyPanel, including JWT configuration and security considerations.

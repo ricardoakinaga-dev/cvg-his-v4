@@ -34,7 +34,7 @@ Estes jobs **devem passar** para que um PR possa ser mergeado:
 
 ## Gates de Release Assistido (Informacionais)
 
-Estes jobs são executados para dar confiança adicional, mas **não bloqueiam o merge**:
+Estes jobs são executados para dar confiança adicional, mas **não bloqueiam o merge** via `continue-on-error: true` no CI:
 
 | Job            | Descrição                                   | Timeout | Dependência |
 | -------------- | ------------------------------------------- | ------- | ----------- |
@@ -106,7 +106,18 @@ git commit -m "feat(visual): update baseline snapshots"
 
 ## Coverage
 
-Coverage é coletado via `vitest --coverage` e o report é upado como artifact. Não há threshold mínimo configurado como gate — o report serve como **sinal de qualidade**.
+Coverage é coletado via `vitest --coverage` e o report é upado como artifact. Thresholds mínimos foram ativados em 2026-04-09:
+
+| Métrica    | Threshold |
+| ---------- | --------- |
+| Lines      | 15%       |
+| Functions  | 15%       |
+| Branches   | 10%       |
+| Statements | 15%       |
+
+Estes thresholds são **informacionais com warning** — failures não bloqueiam merge, mas são visíveis no CI summary.
+
+> **Nota de implementação:** Os thresholds são baixos propositalmente para não quebrar o workspace durante estabilização. A meta é aumentá-los progressivamente conforme a cobertura real aumentar.
 
 Para consultar coverage localmente:
 
@@ -133,6 +144,29 @@ pnpm test:e2e:spa
 pnpm test:visual
 pnpm test:visual:update  # atualiza baseline
 ```
+
+## Modelo de Execução Local vs CI
+
+### Fluxo Local (Oficial Atual)
+
+O script `test` em `package.json` usa **`pnpm -r --filter @cvg-his-v2/* run test`**, que executa recursivamente em todos os workspaces **sem passar pelo turbo.json**. Isso significa:
+
+- `pnpm test` executa **diretamente via pnpm**, ignorando `turbo.json`
+- `turbo run test` (ou `pnpm turbo run test`) **respeitaria** `turbo.json` com `dependsOn: ["^build"]`
+- A proteção `dependsOn: ["^build"]` em `turbo.json` (adicionada por Executor 8) **não é efetiva** no fluxo local atual
+
+### Proteção Real de Build-Before-Test
+
+| Ambiente            | Mecanismo                                          | Status       |
+| ------------------- | -------------------------------------------------- | ------------ |
+| Local (`pnpm test`) | Nenhum — `pnpm -r` ignora turbo.json               | ⚠️ Cosmético |
+| CI (`unit-tests`)   | `needs: [build]` em `.github/workflows/ci.yml:128` | ✅ Funcional |
+
+### Decisão Registrada
+
+- **Fluxo local oficial**: `pnpm -r` (atualmente implementado)
+- **Proteção build-before-test local**: Não existe no fluxo `pnpm -r` — a garantia existe apenas no CI via `needs: [build]`
+- **Alternativa futura**: Se desired, mudar `package.json` de `pnpm -r` para `turbo run test` para que `turbo.json` seja respeitado localmente
 
 ## Critérios de Aceitação
 

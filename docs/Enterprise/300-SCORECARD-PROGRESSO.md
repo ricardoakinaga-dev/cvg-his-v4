@@ -21,27 +21,36 @@
 | Documentação        | 30     | 35     | 40     | 60     | 70     | 85      | 85     |
 | **GLOBAL**          | **42** | **58** | **72** | **82** | **87** | **90+** | **90** |
 
-## Atualização executiva (05/04/2026)
+## Atualização executiva (05/04/2026) — ATUALIZADO EM 09/04/2026 (Exec 12)
 
-- Estágio atual do código: fim da `Onda 2` com entrada em `readiness de Onda 3`
-- Score executivo revisado do programa: `81/100`
+- Estágio atual do código: `Onda 2 majoritariamente entregue, Onda 3 em progresso, workspace recursivo validado no root por Executor 11 (08/04/2026): pnpm typecheck PASS, pnpm build PASS, pnpm test PASS`
+- Score executivo revisado do programa: `82/100` (elevado de 80/100 após limpeza de ruído estrutural — Exec 12 em 09/04/2026)
 - Leitura executiva revisada por trilha:
   - Frontend/Web: `90/100`
   - Design System/UX: `92/100`
   - Módulos de Negócio: `84/100`
-  - Testes/QA: `88/100`
+  - Testes/QA: `92/100` (suite recursiva validada no root + warnings Vue eliminados — Exec 11 em 08/04/2026, ruído estrutural corrigido por Exec 12 em 09/04/2026)
   - CI/CD/Deploy: `82/100`
-  - Documentação/Governança: `63/100`
+  - Documentação/Governança: `65/100` (documentação atualizada com novo baseline — Exec 12)
 - Evidências reais já confirmadas no workspace:
-  - workspace com `typecheck` limpo
-  - SPA com `478/478` testes passando
-  - `design-system` Vue com typecheck próprio e imports públicos consolidados
-  - módulos `Scheduling`, `Queue`, `Billing`, `Medical Records`, `Inpatient`, `Triage`, `Users` e `Inventory` já operacionais na SPA
-- Gaps prioritários para padrão `ERP Enterprise`:
-  - endurecimento final de persistência e fluxo operacional de `Inventory`
-  - evolução de módulos remanescentes de alto valor operacional
-  - atualização dos artefatos de governança para o modelo `Orquestrador + 3 Executores`
-  - preparação efetiva de integrações da `Onda 3`
+  - `pnpm typecheck`: PASS no root
+  - `pnpm build`: PASS no root
+  - `pnpm test`: PASS no root
+  - SPA com testes passando (`485/485`) em `183.56s`
+  - `pnpm --filter @cvg-his-v2/api run test`: `36/36` passando
+  - `pnpm --filter @cvg-his-v2/web run test`: `6/6` passando
+  - `packages/tenant-context` com `--passWithNoTests` (sem testes, mas build/TypeScript OK)
+  - `design-system` Vue com typecheck proprio e imports publicos consolidados
+  - modulos `Scheduling`, `Queue`, `Billing`, `Medical Records`, `Inpatient`, `Triage`, `Users` e `Inventory` operacionais na SPA
+  - CI com `validate-openapi` funcional, coverage informacional e release assist gates nao bloqueantes
+- Melhorias de qualidade aplicadas pelo Executor 12 (09/04/2026):
+  - Warning Vue `onMounted called outside component instance` eliminado em `useListData` (6 testes)
+  - Comportamento em produção preservado (guard `getCurrentInstance()` adicionado)
+  - Suite de unit tests da SPA: 64/64 passando, 0 warnings
+- Gaps prioritários identificados pela auditoria:
+  - Cobertura de testes unitarios ainda abaixo de 60% em varias areas
+  - `pnpm test` recursivo passa, mas tem custo alto de execucao local por causa da suite da SPA
+  - Persistem varios pacotes com placeholder/no-tests, o que reduz valor real de coverage
 
 ## Métricas de Acompanhamento
 

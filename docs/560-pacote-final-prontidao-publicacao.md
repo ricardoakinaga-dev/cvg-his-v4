@@ -72,11 +72,12 @@
 ### Docker Compose
 
 - **Arquivo:** `docker-compose.v2.yml`
-- **Servicos:** postgres, redis, api, web, worker
+- **Servicos:** postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
 - **Portas:** API externa 3000 (interna 3001), Web externa 3001 (interna 3000)
 - **Healthchecks:** postgres (pg_isready), redis (redis-cli ping), api (/health)
 - **Volumes:** postgres_data, redis_data, storage
 - **Dependencias:** api espera postgres+redis; web espera api; worker espera postgres+api
+- **Regra operacional:** nao reutilizar imagens/containers legados `cvg-his-api`, `cvg-his-web`, `cvg-his-worker`
 
 ### Proxy Reverso
 
@@ -196,7 +197,9 @@ pnpm test:db:stop
 
 # 3. Deploy
 # Via compose:
-docker compose -f docker-compose.v2.yml up -d --build
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
 
 # Via cutover script:
 ENV_FILE=/opt/cvg-his-v2/.env.v2 infra/scripts/cutover-v2.sh

@@ -1,5 +1,23 @@
 # 📋 RELATÓRIO FINAL — CVG-HIS Módulo Vet-Os
 
+> **AVISO DE ARQUIVO HISTÓRICO**
+>
+> Este relatório descreve infraestrutura e nomes de containers de uma trilha antiga e **não deve ser usado para deploy atual** do CVG-HIS-V2.
+>
+> Containers/serviços corretos do projeto atual:
+>
+> - `cvg-his-v2-api`
+> - `cvg-his-v2-web`
+> - `cvg-his-v2-worker`
+>
+> Documentação operacional vigente:
+>
+> - `README.md`
+> - `INSTALACAO_V2_OPENCLAW.md`
+> - `OPENCLAW_DEPLOY_DIRETRIZES.md`
+> - `docs/130-instalacao-publicacao-cvg-his-v2-real.md`
+> - `docs/131-checklist-cutover-servidor.md`
+
 **Data:** 2026-03-18 16:00 GMT-3  
 **Projeto:** CVG-HIS (Hospital Information System)  
 **Módulo:** Veterinary Module  

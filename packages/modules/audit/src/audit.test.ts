@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { AccountId, AuditEventId } from '@cvg-his-v2/shared-types';
 import { AuditService } from './index.js';
-import type { UserId, AccountId } from '@cvg-his-v2/shared-types';
+import { InMemoryAuditRepository } from './repositories/in-memory-audit.repository.js';
 
 describe('AuditService', () => {
   let service: AuditService;
@@ -9,7 +10,7 @@ describe('AuditService', () => {
     service = new AuditService();
   });
 
-  it('should write an audit event', () => {
+  it('writes an audit event and returns it', () => {
     const event = service.write({
       actorId: 'user_1',
       accountId: 'acc_1' as AccountId,
@@ -23,36 +24,264 @@ describe('AuditService', () => {
     expect(event.module).toBe('owners');
     expect(event.action).toBe('create');
     expect(event.payloadSummary).toBe('Owner created');
+    expect(event.riskLevel).toBe('medium');
+    expect(event.eventId).toBeDefined();
+    expect(event.occurredAt).toBeDefined();
   });
 
-  it('should list events', () => {
-    service.write({
+  it('writes event with custom correlationId', () => {
+    const event = service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'billing',
+      action: 'update',
+      entityType: 'invoice',
+      entityId: 'inv_123',
+      correlationId: 'corr_abc_123',
+      payloadSummary: 'Invoice updated',
+      riskLevel: 'low'
+    });
+    expect(event.correlationId).toBe('corr_abc_123');
+  });
+
+  it('writes events with all risk levels', () => {
+    const low = service.write({
       actorId: 'user_1',
       accountId: 'acc_1' as AccountId,
       module: 'owners',
-      action: 'create',
+      action: 'read',
       entityType: 'owner',
       entityId: 'owner_1',
-      payloadSummary: 'Created',
+      payloadSummary: 'Read owner',
+      riskLevel: 'low'
+    });
+    const medium = service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'patients',
+      action: 'update',
+      entityType: 'patient',
+      entityId: 'patient_1',
+      payloadSummary: 'Update patient',
+      riskLevel: 'medium'
+    });
+    const high = service.write({
+      actorId: 'admin_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'auth',
+      action: 'delete',
+      entityType: 'user',
+      entityId: 'user_99',
+      payloadSummary: 'Delete user',
+      riskLevel: 'high'
+    });
+    expect(low.riskLevel).toBe('low');
+    expect(medium.riskLevel).toBe('medium');
+    expect(high.riskLevel).toBe('high');
+  });
+
+  it('returns most recent events first in list', () => {
+    service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'module_a',
+      action: 'action_a',
+      entityType: 'entity',
+      entityId: 'id_1',
+      payloadSummary: 'First',
       riskLevel: 'low'
     });
     service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'module_b',
+      action: 'action_b',
+      entityType: 'entity',
+      entityId: 'id_2',
+      payloadSummary: 'Second',
+      riskLevel: 'low'
+    });
+    const events = service.list();
+    expect(events).toHaveLength(2);
+    expect(events[0].payloadSummary).toBe('Second');
+    expect(events[1].payloadSummary).toBe('First');
+  });
+
+  it('seeds system event with system actor', () => {
+    service.seedSystemEvent('System started');
+    const events = service.list();
+    expect(events).toHaveLength(1);
+    expect(events[0].payloadSummary).toBe('System started');
+    expect(events[0].actorId).toBe('system');
+    expect(events[0].module).toBe('audit');
+    expect(events[0].action).toBe('bootstrap');
+  });
+
+  it('seeds multiple system events', () => {
+    service.seedSystemEvent('System started');
+    service.seedSystemEvent('Database connected');
+    const events = service.list();
+    expect(events).toHaveLength(2);
+    expect(events[0].payloadSummary).toBe('Database connected');
+  });
+});
+
+describe('AuditService with repository', () => {
+  let repo: InMemoryAuditRepository;
+  let service: AuditService;
+
+  beforeEach(() => {
+    repo = new InMemoryAuditRepository();
+    service = new AuditService({ auditRepository: repo });
+  });
+
+  it('writes event and persists to repository asynchronously', async () => {
+    const event = service.write({
       actorId: 'user_1',
       accountId: 'acc_1' as AccountId,
       module: 'patients',
       action: 'create',
       entityType: 'patient',
       entityId: 'patient_1',
-      payloadSummary: 'Created',
+      payloadSummary: 'Patient created',
       riskLevel: 'low'
     });
-    expect(service.list().length).toBe(2);
+    await new Promise((r) => setTimeout(r, 10));
+    const fromRepo = await repo.list();
+    expect(fromRepo).toHaveLength(1);
+    expect(fromRepo[0].eventId).toBe(event.eventId);
+    expect(fromRepo[0].payloadSummary).toBe('Patient created');
   });
 
-  it('should seed system event', () => {
-    service.seedSystemEvent('System started');
-    const events = service.list();
-    expect(events.length).toBe(1);
-    expect(events[0].payloadSummary).toBe('System started');
+  it('persists multiple events to repository', async () => {
+    service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'module_a',
+      action: 'create',
+      entityType: 'entity',
+      entityId: 'id_1',
+      payloadSummary: 'Event 1',
+      riskLevel: 'low'
+    });
+    service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'module_b',
+      action: 'update',
+      entityType: 'entity',
+      entityId: 'id_2',
+      payloadSummary: 'Event 2',
+      riskLevel: 'medium'
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    const fromRepo = await repo.list();
+    expect(fromRepo).toHaveLength(2);
+  });
+});
+
+describe('InMemoryAuditRepository', () => {
+  let repo: InMemoryAuditRepository;
+
+  beforeEach(() => {
+    repo = new InMemoryAuditRepository();
+  });
+
+  async function createEvent(
+    overrides?: Partial<{
+      eventId: string;
+      accountId: string;
+      actorId: string;
+      module: string;
+      action: string;
+      entityType: string;
+      entityId: string;
+      payloadSummary: string;
+      riskLevel: 'low' | 'medium' | 'high';
+    }>
+  ) {
+    const event = {
+      eventId: `evt_${Math.random().toString(36).slice(2)}` as AuditEventId,
+      occurredAt: new Date().toISOString(),
+      actorId: overrides?.actorId ?? 'user_1',
+      accountId: (overrides?.accountId ?? 'acc_1') as AccountId,
+      module: overrides?.module ?? 'test',
+      action: overrides?.action ?? 'create',
+      entityType: overrides?.entityType ?? 'entity',
+      entityId: overrides?.entityId ?? 'entity_1',
+      correlationId: 'corr_test',
+      payloadSummary: overrides?.payloadSummary ?? 'Test event',
+      riskLevel: overrides?.riskLevel ?? 'low'
+    };
+    await repo.create(event);
+    return event;
+  }
+
+  it('creates and retrieves an event', async () => {
+    const created = await createEvent();
+    const all = await repo.list();
+    expect(all).toHaveLength(1);
+    expect(all[0].eventId).toBe(created.eventId);
+  });
+
+  it('lists events filtered by accountId', async () => {
+    await createEvent({ accountId: 'acc_1' });
+    await createEvent({ accountId: 'acc_1' });
+    await createEvent({ accountId: 'acc_2' });
+
+    const acc1Events = await repo.list('acc_1' as AccountId);
+    const acc2Events = await repo.list('acc_2' as AccountId);
+
+    expect(acc1Events).toHaveLength(2);
+    expect(acc2Events).toHaveLength(1);
+  });
+
+  it('limits results with limit parameter', async () => {
+    await createEvent({ payloadSummary: 'Event 1' });
+    await createEvent({ payloadSummary: 'Event 2' });
+    await createEvent({ payloadSummary: 'Event 3' });
+    await createEvent({ payloadSummary: 'Event 4' });
+
+    const limited = await repo.list(undefined, 2);
+    expect(limited).toHaveLength(2);
+  });
+
+  it('combines accountId filter with limit', async () => {
+    await createEvent({ accountId: 'acc_1', payloadSummary: 'acc1_ev1' });
+    await createEvent({ accountId: 'acc_1', payloadSummary: 'acc1_ev2' });
+    await createEvent({ accountId: 'acc_1', payloadSummary: 'acc1_ev3' });
+    await createEvent({ accountId: 'acc_2', payloadSummary: 'acc2_ev1' });
+
+    const result = await repo.list('acc_1' as AccountId, 2);
+    expect(result).toHaveLength(2);
+    expect(result.every((e) => e.accountId === 'acc_1')).toBe(true);
+  });
+
+  it('finds event by id', async () => {
+    const created = await createEvent({ payloadSummary: 'Find me' });
+    const found = await repo.findById(created.eventId);
+    expect(found).not.toBeNull();
+    expect(found?.payloadSummary).toBe('Find me');
+  });
+
+  it('returns null for non-existent event id', async () => {
+    const found = await repo.findById('nonexistent_id' as AuditEventId);
+    expect(found).toBeNull();
+  });
+
+  it('clear removes all events', async () => {
+    await createEvent();
+    await createEvent();
+    repo.clear();
+    const all = await repo.list();
+    expect(all).toHaveLength(0);
+  });
+
+  it('getAll returns all events without limit', async () => {
+    await createEvent({ payloadSummary: 'A' });
+    await createEvent({ payloadSummary: 'B' });
+    await createEvent({ payloadSummary: 'C' });
+    const all = repo.getAll();
+    expect(all).toHaveLength(3);
   });
 });

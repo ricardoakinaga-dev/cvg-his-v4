@@ -2,10 +2,11 @@
   "name": "@cvg-his-v2/tenant-context",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",

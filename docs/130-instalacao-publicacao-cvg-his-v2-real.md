@@ -16,6 +16,31 @@ Este documento descreve a trilha oficial para instalar e publicar o stack canoni
 
 Nao usar trilhas `apps/his-*` como deploy oficial.
 
+Nao reutilizar imagens, containers ou nomes de servico legados do programa antigo.
+
+## Stack oficial obrigatoria
+
+O deploy oficial do projeto atual usa exclusivamente:
+
+- `docker-compose.v2.yml`
+- `apps/api/Dockerfile`
+- `apps/web/Dockerfile`
+- `apps/worker/Dockerfile`
+
+Os nomes de servico validos da stack atual sao:
+
+- `cvg-his-v2-api`
+- `cvg-his-v2-web`
+- `cvg-his-v2-worker`
+
+Nao usar como runtime oficial:
+
+- `cvg-his-api`
+- `cvg-his-web`
+- `cvg-his-worker`
+- qualquer trilha `apps/his-*`
+- qualquer imagem antiga reaproveitada de build anterior
+
 ## Requisitos minimos
 
 - Linux
@@ -94,6 +119,18 @@ Os arquivos em `packages/shared/database/src/migrations/001-016` sao classificad
 Arquivo:
 
 - `docker-compose.v2.yml`
+
+### Sequencia operacional recomendada
+
+Para evitar reaproveitamento acidental de imagem antiga, usar a sequencia abaixo:
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+```
+
+Essa e a trilha recomendada para garantir que o agente construa a stack atual do V2 e nao uma imagem residual do legado.
 
 ### Portas publicadas
 

@@ -1,5 +1,23 @@
 # Deploy Checklist - EasyPanel
 
+> **AVISO DE ARQUIVO HISTÓRICO**
+>
+> Este checklist reflete uma trilha antiga (`his-api`, `his-web`, `his-worker`) e **não deve ser usado como instrução operacional do deploy atual**.
+>
+> O deploy vigente do CVG-HIS-V2 usa exclusivamente:
+>
+> - `docker-compose.v2.yml`
+> - `apps/api`, `apps/web`, `apps/worker`
+> - serviços `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+>
+> Guias corretos para operação atual:
+>
+> - `README.md`
+> - `INSTALACAO_V2_OPENCLAW.md`
+> - `OPENCLAW_DEPLOY_DIRETRIZES.md`
+> - `docs/130-instalacao-publicacao-cvg-his-v2-real.md`
+> - `docs/131-checklist-cutover-servidor.md`
+
 **Generated:** 2026-02-20
 **Project:** CVG HIS (Hospital Information System)
 

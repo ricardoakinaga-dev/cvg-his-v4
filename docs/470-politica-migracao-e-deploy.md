@@ -28,8 +28,34 @@ A trilha `packages/shared/database/src/migrations/001-016` e classificada como *
 
 1. Aplicar migration Drizzle `0000_` em banco limpo
 2. Executar seed Drizzle (`packages/db/src/seed.ts`)
-3. Subir stack via `docker-compose.v2.yml`
+3. Subir stack oficial do V2 via `docker-compose.v2.yml`
 4. Validar health/readiness/liveness
+
+### Stack oficial obrigatoria
+
+O deploy oficial do projeto atual deve usar exclusivamente:
+
+- `docker-compose.v2.yml`
+- `apps/api`, `apps/web`, `apps/worker`
+- servicos `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+
+Nao usar como runtime oficial:
+
+- `cvg-his-api`
+- `cvg-his-web`
+- `cvg-his-worker`
+- qualquer trilha `apps/his-*`
+- qualquer imagem antiga reaproveitada de build anterior
+
+### Sequencia recomendada de subida limpa
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+```
+
+Essa e a sequencia recomendada para evitar reaproveitamento acidental de imagem antiga ou container residual do legado.
 
 ### Ambiente de teste
 

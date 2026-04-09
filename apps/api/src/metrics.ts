@@ -99,6 +99,18 @@ export function updateAppMetrics(options: {
   }
 }
 
+export function incrementActiveRequests(): void {
+  appActiveRequests.inc();
+}
+
+export function decrementActiveRequests(): void {
+  appActiveRequests.dec();
+}
+
+export function resetActiveRequestsCount(): void {
+  appActiveRequests.set(0);
+}
+
 // ============================================================================
 // Route Normalization
 // Prevents high cardinality from dynamic route segments
