@@ -34,6 +34,7 @@
     "@cvg-his-v2/module-surgery": "workspace:*",
     "@cvg-his-v2/module-triage": "workspace:*",
     "@cvg-his-v2/module-users": "workspace:*",
+    "@cvg-his-v2/module-webhooks": "workspace:*",
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
