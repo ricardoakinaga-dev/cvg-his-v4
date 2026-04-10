@@ -20,9 +20,15 @@ export interface PatientRepository {
 
 export interface OwnerPatientLinkRepository {
   create(link: OwnerPatientLinkSummary): Promise<void>;
-  findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null>;
-  findByPatientId(patientId: PatientId): Promise<readonly OwnerPatientLinkSummary[]>;
-  findByOwnerId(ownerId: OwnerId): Promise<readonly OwnerPatientLinkSummary[]>;
+  findById(id: OwnerPatientLinkId, accountId: AccountId): Promise<OwnerPatientLinkSummary | null>;
+  findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
+  findByOwnerId(
+    ownerId: OwnerId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
   delete(id: OwnerPatientLinkId): Promise<void>;
 }
 
@@ -39,12 +45,12 @@ export class DatabasePatientRepository implements PatientRepository {
       accountId: patient.accountId,
       ownerId: patient.primaryOwnerId,
       name: patient.name,
-      species: patient.species ?? null,
+      species: patient.species,
       breed: patient.breed ?? null,
       sex: patient.sex ?? null,
       birthDate: patient.birthDateApproximate ?? null,
-      weight: patient.baseWeightKg?.toString() ?? null,
-      status: patient.status,
+      weightKg: patient.baseWeightKg?.toString() ?? null,
+      alertsJson: {},
       createdAt: new Date(patient.createdAt),
       updatedAt: new Date(patient.updatedAt)
     });
@@ -56,12 +62,11 @@ export class DatabasePatientRepository implements PatientRepository {
       .set({
         ownerId: patient.primaryOwnerId,
         name: patient.name,
-        species: patient.species ?? null,
+        species: patient.species,
         breed: patient.breed ?? null,
         sex: patient.sex ?? null,
         birthDate: patient.birthDateApproximate ?? null,
-        weight: patient.baseWeightKg?.toString() ?? null,
-        status: patient.status,
+        weightKg: patient.baseWeightKg?.toString() ?? null,
         updatedAt: new Date(patient.updatedAt)
       })
       .where(eq(patients.id, patient.id));
@@ -117,10 +122,10 @@ export class DatabasePatientRepository implements PatientRepository {
       breed: row.breed ?? undefined,
       sex: (row.sex ?? 'unknown') as 'male' | 'female' | 'unknown',
       size: undefined,
-      baseWeightKg: row.weight ? parseFloat(row.weight) : undefined,
+      baseWeightKg: row.weightKg ? parseFloat(row.weightKg) : undefined,
       birthDateApproximate: row.birthDate ?? undefined,
       primaryOwnerId: row.ownerId as OwnerId,
-      status: row.status as 'active' | 'inactive' | 'deceased',
+      status: 'active',
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     };
@@ -145,7 +150,10 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     });
   }
 
-  public async findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null> {
+  public async findById(
+    id: OwnerPatientLinkId,
+    accountId: AccountId
+  ): Promise<OwnerPatientLinkSummary | null> {
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
@@ -157,36 +165,45 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     }
 
     const row = result[0];
-    return this.mapRowToLink(row);
+    return this.mapRowToLink(row, accountId);
   }
 
-  public async findByPatientId(patientId: PatientId): Promise<readonly OwnerPatientLinkSummary[]> {
+  public async findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]> {
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
       .where(eq(ownerPatientLinks.patientId, patientId));
 
-    return result.map((row) => this.mapRowToLink(row));
+    return result.map((row) => this.mapRowToLink(row, accountId));
   }
 
-  public async findByOwnerId(ownerId: OwnerId): Promise<readonly OwnerPatientLinkSummary[]> {
+  public async findByOwnerId(
+    ownerId: OwnerId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]> {
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
       .where(eq(ownerPatientLinks.ownerId, ownerId));
 
-    return result.map((row) => this.mapRowToLink(row));
+    return result.map((row) => this.mapRowToLink(row, accountId));
   }
 
   public async delete(id: OwnerPatientLinkId): Promise<void> {
     await this.#db.delete(ownerPatientLinks).where(eq(ownerPatientLinks.id, id));
   }
 
-  private mapRowToLink(row: typeof ownerPatientLinks.$inferSelect): OwnerPatientLinkSummary {
+  private mapRowToLink(
+    row: typeof ownerPatientLinks.$inferSelect,
+    accountId: AccountId
+  ): OwnerPatientLinkSummary {
     const relType = row.relationship ?? 'primary';
     return {
       id: row.id as OwnerPatientLinkId,
-      accountId: 'acc_cvg_demo' as AccountId, // TODO: Add accountId to schema
+      accountId,
       ownerId: row.ownerId as OwnerId,
       patientId: row.patientId as PatientId,
       relationshipType:

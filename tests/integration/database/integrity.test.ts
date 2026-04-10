@@ -156,8 +156,8 @@ describe('Unique Constraints', () => {
     try {
       const pool = getTestPool();
       await pool.query(
-        `INSERT INTO accounts (id, slug, name)
-         VALUES (gen_random_uuid(), 'default', 'Duplicate')`
+        `INSERT INTO accounts (id, slug, name, tenant_id)
+         VALUES (gen_random_uuid(), 'default', 'Duplicate', '00000000-0000-0000-0000-000000000001')`
       );
       expect.unreachable('Should have thrown unique violation');
     } catch (error) {

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/spa-fixture';
+import { test, expect, loginViaToken } from './fixtures/spa-fixture';
 
 /**
  * SPA E2E — Fluxo de Agendamento (Appointment)
@@ -22,8 +22,8 @@ import { test, expect } from './fixtures/spa-fixture';
  *   npx playwright test --config playwright-spa.config.ts -g "Agendamento"
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://localhost:3101';
+const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo de Agendamento (Appointment)', () => {
   test('cria agendamento pela UI, valida no Kanban e cancela', async ({
@@ -31,12 +31,6 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     apiCall,
     cleanup
   }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // ── Step 0: Prepare test data ──
     console.log('   📦 Creating test data...');
     const ownerName = `Tutor Appt E2E ${Date.now()}`;
@@ -64,11 +58,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
 
     // ── Step 1: Login ──
     console.log('   🔐 Logging in...');
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
     console.log('   ✅ Logged in');
 
@@ -77,7 +67,9 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments/new`);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Novo Agendamento')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Novo Agendamento/ })).toBeVisible({
+      timeout: 10000
+    });
 
     // Select patient using deterministic wait
     const searchInput = page.getByPlaceholder(/buscar paciente/i);
@@ -109,7 +101,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     console.log('   ✅ Appointment created');
 
     // Wait for redirect to detail page
-    await page.waitForURL(/\/appointments\/appt-/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
     const appointmentUrl = page.url();
     const appointmentId = appointmentUrl.split('/').pop();
     console.log(`   ✅ Appointment ID: ${appointmentId}`);
@@ -120,7 +112,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for Kanban view to load
-    await expect(page.getByText('Agenda')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Agenda/ })).toBeVisible({ timeout: 15000 });
 
     // Verify the Kanban columns exist
     const kanbanColumns = page.locator('.kanban-column');
@@ -142,18 +134,21 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     const appointmentCard = page.locator('.kanban-card').first();
     await appointmentCard.click();
 
-    await page.waitForURL(/\/appointments\/appt-/, { timeout: 10000 });
-    await expect(page.getByText('Agendamento')).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Agendamento/ })).toBeVisible({
+      timeout: 15000
+    });
     console.log('   ✅ Appointment detail page loaded');
 
     // Verify appointment details
-    await expect(page.getByText(patientName)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(ownerName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(patientName).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(ownerName).first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Consulta de rotina - E2E')).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Appointment details verified');
 
     // ── Step 5: Cancel appointment ──
     console.log('   ❌ Cancelling appointment...');
+    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Cancelar Agendamento' }).click();
 
     // Wait for status to change
@@ -177,25 +172,15 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('Agenda')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Agenda/ })).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Appointments list accessible');
 
     console.log('   🎉 Appointment flow completed successfully!');
   });
 
   test('valida elementos da página de agendamento (Kanban)', async ({ page }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // Login
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Navigate to appointments

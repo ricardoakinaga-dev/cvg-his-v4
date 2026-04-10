@@ -20,6 +20,8 @@ export interface UsersRepository {
   update(user: UserRecord): Promise<void>;
   findById(id: UserId): Promise<UserRecord | null>;
   findByEmail(accountId: AccountId, email: string): Promise<UserRecord | null>;
+  findAll(): Promise<readonly UserRecord[]>;
+  findRoleCodesByUserId(id: UserId): Promise<readonly string[]>;
   findByAccountId(accountId: AccountId): Promise<readonly UserRecord[]>;
 }
 
@@ -54,6 +56,25 @@ export class DatabaseUsersRepository implements UsersRepository {
     const result = await pool.query('SELECT * FROM users WHERE account_id = $1 AND email = $2', [accountId, email]);
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
+  }
+
+  async findAll(): Promise<readonly UserRecord[]> {
+    const pool = getPool();
+    const result = await pool.query('SELECT * FROM users ORDER BY full_name');
+    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+  }
+
+  async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
+    const pool = getPool();
+    const result = await pool.query(
+      `SELECT r.name
+       FROM user_roles ur
+       JOIN roles r ON r.id = ur.role_id
+       WHERE ur.user_id = $1
+       ORDER BY r.name`,
+      [id]
+    );
+    return result.rows.map((row: Record<string, unknown>) => row.name as string);
   }
 
   async findByAccountId(accountId: AccountId): Promise<readonly UserRecord[]> {

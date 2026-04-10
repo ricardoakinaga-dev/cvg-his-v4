@@ -8,15 +8,17 @@
  *   DATABASE_URL_TEST=postgres://user:pass@host:5433/cvg_his_v2_test node infra/scripts/test-critical-bootstrap.mjs
  *
  * Requirements:
- *   - PostgreSQL accessible at DATABASE_URL_TEST (default: localhost:5432)
+ *   - Docker + docker compose available to start the isolated test PostgreSQL service
+ *   - PostgreSQL accessible at DATABASE_URL_TEST (default: localhost:5433)
  *   - pnpm installed
  *
  * What this script does:
- *   1. Validates PostgreSQL connectivity
- *   2. Creates/resets the test database
- *   3. Applies Drizzle migration
- *   4. Applies seed data
- *   5. Runs pnpm test:critical
+ *   1. Starts the isolated PostgreSQL test service
+ *   2. Validates PostgreSQL connectivity
+ *   3. Runs pnpm test:critical with REQUIRE_TEST_DB=1
+ *
+ * The Vitest global setup owns database reset, canonical migration application,
+ * and seed provisioning.
  */
 
 import { execSync } from 'node:child_process';
@@ -25,13 +27,14 @@ import { env } from 'node:process';
 const TEST_DB_URL =
   env.DATABASE_URL_TEST ??
   env.DATABASE_URL ??
-  'postgres://postgres:postgres@localhost:5432/cvg_his_v2_test';
+  'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
 const TEST_DB_NAME = new URL(TEST_DB_URL).pathname.replace(/^\//, '');
 const ADMIN_DB_URL = (() => {
   const u = new URL(TEST_DB_URL);
   u.pathname = '/postgres';
   return u.toString();
 })();
+const COMPOSE_FILE = 'docker-compose.test.yml';
 
 function log(msg) {
   console.log(`[test-critical-bootstrap] ${msg}`);
@@ -46,41 +49,50 @@ function run(cmd, opts = {}) {
   }
 }
 
+function tryRun(cmd, opts = {}) {
+  try {
+    execSync(cmd, { stdio: 'ignore', env: { ...env, ...opts.env }, cwd: process.cwd() });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function main() {
   log(`Using test database: ${TEST_DB_NAME}`);
   log(`Database URL: ${TEST_DB_URL.replace(/\/\/.*:.*@/, '//***:***@')}`);
 
-  // Step 1: Validate PostgreSQL connectivity
+  // Step 1: Start isolated test PostgreSQL and validate connectivity
+  log('Starting isolated PostgreSQL test service...');
+  run(`docker compose -f ${COMPOSE_FILE} up -d --force-recreate postgres-test`);
+
   log('Checking PostgreSQL connectivity...');
-  try {
-    run(`psql "${ADMIN_DB_URL}" -c "SELECT 1"`, { env: { PGCONNECT_TIMEOUT: '5' } });
-    log('PostgreSQL is reachable.');
-  } catch {
-    log('ERROR: Cannot connect to PostgreSQL.');
-    log('Make sure PostgreSQL is running and accessible.');
-    log('For local testing: pnpm test:db:start');
-    process.exit(1);
+  let connected = false;
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    connected = tryRun(`psql "${ADMIN_DB_URL}" -c "SELECT 1"`, { env: { PGCONNECT_TIMEOUT: '5' } });
+    if (connected) {
+      break;
+    }
+    await sleep(1000);
   }
 
-  // Step 2: Create/reset test database
-  log('Creating test database if not exists...');
+  if (!connected) {
+    log('ERROR: Cannot connect to isolated PostgreSQL test service.');
+    log(`Expected connection string: ${TEST_DB_URL.replace(/\/\/.*:.*@/, '//***:***@')}`);
+    log('For local validation: pnpm test:db:start');
+    process.exit(1);
+  }
+  log('PostgreSQL is reachable.');
+
+  // Step 2: Run critical tests. The Vitest global setup owns reset + migrate + seed.
+  log('Running critical tests with canonical DB setup...');
   run(
-    `psql "${ADMIN_DB_URL}" -c "SELECT 'CREATE DATABASE \\"${TEST_DB_NAME}\\"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${TEST_DB_NAME}')\\gexec"`
+    `REQUIRE_TEST_DB=1 DATABASE_URL_TEST="${TEST_DB_URL}" DATABASE_URL="${TEST_DB_URL}" pnpm test:critical`
   );
-
-  // Step 3: Apply migration
-  log('Applying Drizzle migration...');
-  run(`DATABASE_URL="${TEST_DB_URL}" npx tsx packages/db/src/migrate.ts`);
-
-  // Step 4: Apply seed
-  log('Applying seed data...');
-  run(
-    `DATABASE_URL="${TEST_DB_URL}" ADMIN_EMAIL=test@cvg.local ADMIN_PASSWORD=Test123! npx tsx packages/db/src/seed.ts`
-  );
-
-  // Step 5: Run critical tests
-  log('Running critical tests...');
-  run(`DATABASE_URL_TEST="${TEST_DB_URL}" DATABASE_URL="${TEST_DB_URL}" pnpm test:critical`);
 
   log('All critical tests passed.');
 }

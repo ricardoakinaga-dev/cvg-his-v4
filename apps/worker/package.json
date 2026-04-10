@@ -6,6 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@cvg-his-v2/module-event-bus": "workspace:*",
     "@cvg-his-v2/module-notifications": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",
     "@cvg-his-v2/shared-database": "workspace:*",
@@ -17,6 +18,6 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('no tests for worker skeleton')\""
+    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js"
   }
 }

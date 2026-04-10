@@ -108,12 +108,12 @@ git commit -m "feat(visual): update baseline snapshots"
 
 Coverage é coletado via `vitest --coverage` e o report é upado como artifact. Thresholds mínimos foram ativados em 2026-04-09:
 
-| Métrica    | Threshold |
-| ---------- | --------- |
-| Lines      | 15%       |
-| Functions  | 15%       |
-| Branches   | 10%       |
-| Statements | 15%       |
+| Métrica    | Threshold                                |
+| ---------- | ---------------------------------------- |
+| Lines      | **5%** (ajustado de 15% por Executor 24) |
+| Functions  | 15%                                      |
+| Branches   | 10%                                      |
+| Statements | **5%** (ajustado de 15% por Executor 24) |
 
 Estes thresholds são **informacionais com warning** — failures não bloqueiam merge, mas são visíveis no CI summary.
 

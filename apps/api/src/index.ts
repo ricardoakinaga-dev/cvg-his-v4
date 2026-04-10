@@ -9,6 +9,18 @@ const config = loadApiConfig(process.env);
 const logger = createLogger(config.appName);
 const version = '0.1.0';
 
+process.on('uncaughtException', (error) => {
+  logger.error('uncaught exception in api runtime', {
+    error: error instanceof Error ? error.message : String(error)
+  });
+});
+
+process.on('unhandledRejection', (error) => {
+  logger.error('unhandled rejection in api runtime', {
+    error: error instanceof Error ? error.message : String(error)
+  });
+});
+
 async function main() {
   logger.info('starting api server bootstrap');
 

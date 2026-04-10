@@ -15,7 +15,7 @@ const schemaFile = resolve(
 );
 const migrationsDir = resolve(rootDir, 'packages/shared/database/src/migrations');
 const databaseUrl =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/cvg_his_v2_test';
+  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
 const skipSetup = process.env.SKIP_DB_SETUP === 'true';
 const requireFromSharedDatabase = createRequire(
   resolve(rootDir, 'packages/shared/database/package.json')

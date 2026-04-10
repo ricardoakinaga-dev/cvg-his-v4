@@ -116,4 +116,31 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
 .ds-alert__dismiss:hover {
   opacity: 1;
 }
+
+/* Dark mode support via CSS variables */
+@media (prefers-color-scheme: dark) {
+  .ds-alert--info {
+    background: var(--color-info-900, #1e3a8a);
+    color: var(--color-info-100, #dbeafe);
+    border-color: var(--color-info-700, #1d4ed8);
+  }
+
+  .ds-alert--success {
+    background: var(--color-success-900, #14532d);
+    color: var(--color-success-100, #d1fae5);
+    border-color: var(--color-success-700, #047857);
+  }
+
+  .ds-alert--warning {
+    background: var(--color-warning-900, #78350f);
+    color: var(--color-warning-100, #fef3c7);
+    border-color: var(--color-warning-700, #b45309);
+  }
+
+  .ds-alert--danger {
+    background: var(--color-danger-900, #7f1d1d);
+    color: var(--color-danger-100, #fee2e2);
+    border-color: var(--color-danger-700, #b91c1c);
+  }
+}
 </style>

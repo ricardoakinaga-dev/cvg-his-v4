@@ -11,7 +11,7 @@ import type { Pool, PoolClient } from 'pg';
  *   client.release();
  */
 export async function setSessionAccountId(client: PoolClient, accountId: string): Promise<void> {
-  await client.query('SET LOCAL app.current_account_id = $1', [accountId]);
+  await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
 }
 
 /**
@@ -32,7 +32,7 @@ export async function withTenantContext<T>(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('SET LOCAL app.current_account_id = $1', [accountId]);
+    await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;

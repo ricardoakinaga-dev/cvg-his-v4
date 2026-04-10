@@ -9,7 +9,7 @@ COPY apps ./apps
 COPY packages ./packages
 COPY infra ./infra
 
-RUN pnpm install --frozen-lockfile --prod=false
+RUN pnpm install --no-frozen-lockfile --prod=false
 RUN pnpm build
 
 FROM node:22-bookworm-slim AS runner

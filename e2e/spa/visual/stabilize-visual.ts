@@ -176,6 +176,15 @@ export async function stabilizeVisual(page: Page, options?: StabilizeOptions): P
     });
   }
 
+  await page.addStyleTag({
+    content: `
+      .pwa-toast,
+      .offline-banner {
+        display: none !important;
+      }
+    `
+  });
+
   await page.waitForTimeout(100);
 }
 

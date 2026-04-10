@@ -278,6 +278,18 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     code: 'quote.write',
     module: 'quotes',
     description: 'Create and manage quotes.'
+  },
+  {
+    id: 'perm_webhooks_read' as PermissionId,
+    code: 'webhooks.read',
+    module: 'webhooks',
+    description: 'Read webhook integrations and delivery history.'
+  },
+  {
+    id: 'perm_webhooks_manage' as PermissionId,
+    code: 'webhooks.manage',
+    module: 'webhooks',
+    description: 'Register, update and disable webhook integrations.'
   }
 ] as const;
 
@@ -311,6 +323,8 @@ const roleCatalog: readonly RoleDefinition[] = [
       'inventory.read',
       'notifications.read',
       'notifications.manage',
+      'webhooks.read',
+      'webhooks.manage',
       'product.read',
       'service.read',
       'counter_sale.read',

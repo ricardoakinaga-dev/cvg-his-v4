@@ -26,13 +26,13 @@ const TEST_USER_ID = 'user_admin';
 
 // --- ICT-001: User with role receives effective permissions ---
 describe('ICT-001 — User → Role → Effective Permission', () => {
-  it('creation of user with valid role results in effective permission', () => {
+  it('creation of user with valid role results in effective permission', async () => {
     const accessControl = new AccessControlService();
     const users = new UsersService();
 
     // Create user with reception role (matches AccessControlService role code)
     const roleCode = 'reception';
-    const user = users.create({
+    const user = await users.create({
       username: `test_user_${Date.now()}`,
       email: `test_${Date.now()}@test.com`,
       password: 'TestPassword123',
@@ -179,7 +179,7 @@ describe('ICT-006 — Owner + Patient → Scheduling Selection', () => {
 
 // --- ICT-007: Appointment persists correct linkage ---
 describe('ICT-007 — Appointment → Correct Linkage', () => {
-  it('appointment creation persists correct patient and owner linkage', () => {
+  it('appointment creation persists correct patient and owner linkage', async () => {
     const owners = new OwnersService();
     const patients = new PatientsService({ owners });
     const scheduling = new SchedulingService(owners, patients);
@@ -199,7 +199,7 @@ describe('ICT-007 — Appointment → Correct Linkage', () => {
 
     // Create appointment (real API: createAppointment(accountId, payload))
     const scheduledAt = new Date(Date.now() + 3600000).toISOString();
-    const appointment = scheduling.createAppointment(TEST_ACCOUNT_ID, {
+    const appointment = await scheduling.createAppointment(TEST_ACCOUNT_ID, {
       patientId: patient.id,
       ownerId: owner.id,
       scheduledAt,
@@ -270,6 +270,11 @@ describe('ICT-008 — Scheduling → Encounter Chain', () => {
     expect(encounter.ownerId).toBe(owner.id);
     expect(encounter.status).toBe('reception');
 
+    // First call the queue entry (waiting -> called), then attach encounter
+    await scheduling.callQueueEntry(queueEntry.id);
+    const calledEntry = scheduling.getQueueEntryOrThrow(queueEntry.id);
+    expect(calledEntry.status).toBe('called');
+
     // Attach encounter to queue
     await scheduling.attachEncounter(queueEntry.id, encounter.id);
     const updatedQueue = scheduling.getQueueEntryOrThrow(queueEntry.id);
@@ -309,7 +314,7 @@ describe('ICT-009 — Clinical Action → Auditable Record', () => {
 
 // --- ICT-010: Billable/consumption generates expected reflex ---
 describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
-  it('billable item creation generates expected reflex in billing module', () => {
+  it('billable item creation generates expected reflex in billing module', async () => {
     const owners = new OwnersService();
     const patients = new PatientsService({ owners });
     // Shared encounters instance so billing can see test encounters
@@ -335,10 +340,10 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     });
 
     // Create billing estimate + item
-    const estimate = billing.createEstimate({ encounterId: encounter.id });
+    const estimate = await billing.createEstimate({ encounterId: encounter.id });
     expect(estimate.encounterId).toBe(encounter.id);
 
-    billing.addItem(TEST_USER_ID, {
+    await billing.addItem(TEST_USER_ID, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta',
@@ -347,10 +352,10 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     });
 
     // Verify reflex: billing record exists with item
-    const record = billing.getByEncounterOrThrow(encounter.id);
+    const record = await billing.getByEncounterOrThrow(encounter.id);
     expect(record).toBeDefined();
 
-    const items = billing.listItems(encounter.id);
+    const items = await billing.listItems(encounter.id);
     expect(items.length).toBe(1);
     expect(items[0].description).toBe('Consulta');
     expect(items[0].quantity).toBe(1);

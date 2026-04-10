@@ -25,7 +25,7 @@ export const appointmentService = {
   async cancel(id: string, reason?: string): Promise<AppointmentSummary> {
     return apiRequest<AppointmentSummary>(`/appointments/${id}/cancel`, {
       method: 'POST',
-      body: reason ? JSON.stringify({ reason }) : undefined
+      body: JSON.stringify(reason ? { reason } : {})
     });
   }
 };

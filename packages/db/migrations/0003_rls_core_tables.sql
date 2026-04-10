@@ -12,6 +12,9 @@
 -- 1. CONFIGURACAO DE SESSAO
 -- ============================================================================
 
+-- Schema para funcoes de aplicacao
+CREATE SCHEMA IF NOT EXISTS app;
+
 -- Custom GUC para tenant/account corrente
 -- Esta variavel e setada pela aplicacao ao iniciar cada transacao
 -- Formato: UUID do account
@@ -40,17 +43,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Funcao helper para verificar se o contexto de tenant esta presente
-CREATE OR REPLACE FUNCTION app.has_account_context()
-RETURNS boolean AS $$
-BEGIN
-  RETURN app.current_account_id() IS NOT NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Schema para funcoes de aplicacao
-CREATE SCHEMA IF NOT EXISTS app;
-
--- Recriar as funcoes no schema app
 CREATE OR REPLACE FUNCTION app.current_account_id()
 RETURNS uuid AS $$
 BEGIN

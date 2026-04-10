@@ -101,3 +101,12 @@ Thresholds por snapshot estão calibrados no arquivo de teste (`e2e/spa/visual/v
 | lists (owners, patients, encounters...) | 100 px          |
 | kanban                                  | 150 px          |
 | detail pages                            | 120–150 px      |
+
+---
+
+## Estado Operacional em 10/04/2026
+
+- a reta final canonicalizou também a página de billing list, removendo linhas efêmeras antes da captura
+- `billing-list-page.png` foi regenerado como baseline governado
+- apesar disso, a suíte visual ainda não fechou `PASS` de forma estável na revalidação final desta rodada
+- enquanto esse estado persistir, governança visual mínima continua `NAO RESOLVIDA` para efeito de gate do Bloco 2

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
@@ -36,6 +38,15 @@ class InMemoryUsersRepository implements UsersRepository {
         (user) => user.accountId === accountId && user.email === email
       ) ?? null
     );
+  }
+
+  async findAll(): Promise<readonly any[]> {
+    return Array.from(this.#users.values());
+  }
+
+  async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
+    const user = this.#users.get(id);
+    return (user?.roleCodes as readonly string[] | undefined) ?? [];
   }
 
   async findByAccountId(accountId: AccountId): Promise<readonly any[]> {
@@ -107,6 +118,13 @@ describe('UsersService', () => {
     expect(await new UsersService().verifyPassword(seedAdmin, 'seed_admin')).toBe(true);
   });
 
+  it('keeps compatibility with legacy sha256 seeded passwords from Drizzle seed', async () => {
+    const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
+
+    expect(await comparePassword('LegacyPass123!', legacyHash)).toBe(true);
+    expect(await comparePassword('wrong', legacyHash)).toBe(false);
+  });
+
   it('hydrates repository users and supports lookup by username afterwards', async () => {
     const repository = new InMemoryUsersRepository([
       {
@@ -116,6 +134,7 @@ describe('UsersService', () => {
         passwordHash: await hashPassword('HydratedPass123!'),
         fullName: 'Hydrated User',
         isActive: true,
+        roleCodes: ['admin'],
         createdAt: '2026-04-01T10:00:00.000Z',
         updatedAt: '2026-04-01T10:00:00.000Z'
       }
@@ -127,6 +146,7 @@ describe('UsersService', () => {
     const hydrated = hydratedService.findByUsername('hydrated');
     expect(hydrated).toBeDefined();
     expect(hydrated?.email).toBe('hydrated@cvg.local');
+    expect(hydrated?.roleCodes).toEqual(['admin']);
     expect(await hydratedService.verifyPassword(hydrated!, 'HydratedPass123!')).toBe(true);
   });
 

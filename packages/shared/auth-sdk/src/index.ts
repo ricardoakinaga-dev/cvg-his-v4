@@ -11,8 +11,8 @@ export function extractBearerToken(headerValue: string | undefined): string | un
     return undefined;
   }
 
-  const [scheme, token] = headerValue.split(" ");
-  if (scheme !== "Bearer" || !token) {
+  const [scheme, token] = headerValue.split(' ');
+  if (scheme !== 'Bearer' || !token) {
     return undefined;
   }
 
@@ -20,6 +20,8 @@ export function extractBearerToken(headerValue: string | undefined): string | un
 }
 
 export const AUTH_STORAGE_KEYS = {
-  accessToken: "cvg_his_v2_access_token",
-  refreshToken: "cvg_his_v2_refresh_token",
+  accessToken: 'cvg-his-v2:access_token',
+  refreshToken: 'cvg-his-v2:refresh_token',
+  mfaRequired: 'cvg-his-v2:mfa_required',
+  mfaSetupRequired: 'cvg-his-v2:mfa_setup_required'
 } as const;

@@ -40,16 +40,12 @@ export class DatabaseEncounterRepository implements EncounterRepository {
       accountId: encounter.accountId,
       ownerId: encounter.ownerId,
       patientId: encounter.patientId,
-      appointmentId: encounter.appointmentId,
-      visitType: encounter.visitType,
-      status: encounter.status,
-      priority: null,
-      assignedToUserId: null,
-      chiefComplaint: encounter.reason,
-      queuedAt: null,
-      triagedAt: null,
-      inCareAt: null,
+      status: encounter.status === 'closed' ? 'closed' : 'open',
+      openedByUserId: encounter.createdByUserId,
+      closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
+      openedAt: new Date(encounter.openedAt),
       closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
+      reason: encounter.reason,
       createdAt: new Date(encounter.openedAt),
       updatedAt: new Date(encounter.updatedAt)
     });
@@ -59,8 +55,10 @@ export class DatabaseEncounterRepository implements EncounterRepository {
     await this.#db
       .update(encounters)
       .set({
-        status: encounter.status,
+        status: encounter.status === 'closed' ? 'closed' : 'open',
+        closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
         closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
+        reason: encounter.reason,
         updatedAt: new Date(encounter.updatedAt)
       })
       .where(eq(encounters.id, encounter.id));
@@ -115,27 +113,25 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   private mapRowToEncounter(row: typeof encounters.$inferSelect): EncounterSummary {
-    const visitType = (row.visitType ?? 'walk_in') as 'walk_in' | 'scheduled' | 'return';
-    const origin: 'reception' | 'schedule' | 'return' =
-      visitType === 'scheduled' ? 'schedule' : visitType === 'return' ? 'return' : 'reception';
+    const visitType: 'walk_in' | 'scheduled' | 'return' = 'walk_in';
     return {
       id: row.id as EncounterId,
       accountId: row.accountId as AccountId,
       patientId: row.patientId as PatientId,
       ownerId: row.ownerId as OwnerId,
-      appointmentId: (row.appointmentId ?? undefined) as never,
+      appointmentId: undefined,
       queueEntryId: undefined,
       visitType,
-      origin,
-      reason: row.chiefComplaint ?? '',
-      status: (row.status ?? 'reception') as
+      origin: 'reception',
+      reason: row.reason ?? '',
+      status: (row.status === 'closed' ? 'closed' : 'reception') as
         | 'reception'
         | 'in_triage'
         | 'in_care'
         | 'observation'
         | 'closed',
-      openedAt: row.createdAt.toISOString(),
-      createdByUserId: (row.assignedToUserId ?? 'system') as UserId,
+      openedAt: row.openedAt.toISOString(),
+      createdByUserId: row.openedByUserId as UserId,
       updatedAt: row.updatedAt.toISOString(),
       closedAt: row.closedAt?.toISOString(),
       closeReason: undefined

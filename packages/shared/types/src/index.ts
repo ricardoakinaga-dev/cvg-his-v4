@@ -37,6 +37,34 @@ export type SectorId = Brand<string, 'SectorId'>;
 export type BedId = Brand<string, 'BedId'>;
 export type WebhookId = Brand<string, 'WebhookId'>;
 export type WebhookDeliveryId = Brand<string, 'WebhookDeliveryId'>;
+export type ApiKeyId = Brand<string, 'ApiKeyId'>;
+
+export interface ApiKeySummary {
+  readonly id: ApiKeyId;
+  readonly accountId: AccountId;
+  readonly name: string;
+  readonly keyPrefix: string;
+  readonly keyHash: string;
+  readonly permissions: readonly string[];
+  readonly rateLimit: number;
+  readonly rateLimitWindow: number;
+  readonly expiresAt: string | null;
+  readonly lastUsedAt: string | null;
+  readonly isActive: boolean;
+  readonly createdBy: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ApiKeyUsageSummary {
+  readonly id: string;
+  readonly apiKeyId: string;
+  readonly endpoint: string;
+  readonly method: string;
+  readonly statusCode: number | null;
+  readonly responseTimeMs: number | null;
+  readonly createdAt: string;
+}
 
 export interface AppInfo {
   readonly name: string;

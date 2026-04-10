@@ -116,3 +116,68 @@ export interface DsRadioProps {
   disabled?: boolean;
   id?: string;
 }
+
+export interface DsDatePickerProps {
+  modelValue?: string | Date | null;
+  label?: string;
+  placeholder?: string;
+  error?: string;
+  hint?: string;
+  disabled?: boolean;
+  required?: boolean;
+  readonly?: boolean;
+  min?: string | Date;
+  max?: string | Date;
+  locale?: string;
+  format?: string;
+  showTime?: boolean;
+  id?: string;
+}
+
+export interface DsTimePickerProps {
+  modelValue?: string;
+  label?: string;
+  placeholder?: string;
+  error?: string;
+  hint?: string;
+  disabled?: boolean;
+  required?: boolean;
+  readonly?: boolean;
+  id?: string;
+  format24h?: boolean;
+}
+
+export type ChartType = 'bar' | 'line' | 'doughnut' | 'pie';
+
+export interface DsChartsProps {
+  type?: ChartType;
+  data: {
+    labels: string[];
+    datasets: {
+      label?: string;
+      data: number[];
+      backgroundColor?: string | string[];
+      borderColor?: string | string[];
+      borderWidth?: number;
+      fill?: boolean;
+      tension?: number;
+    }[];
+  };
+  options?: Record<string, unknown>;
+  height?: number;
+  width?: number | string;
+}
+
+export interface DsFileUploadProps {
+  modelValue?: File | File[] | null;
+  label?: string;
+  hint?: string;
+  error?: string;
+  disabled?: boolean;
+  required?: boolean;
+  accept?: string;
+  multiple?: boolean;
+  maxSize?: number;
+  maxFiles?: number;
+  id?: string;
+}

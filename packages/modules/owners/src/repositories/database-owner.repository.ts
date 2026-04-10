@@ -22,13 +22,12 @@ export class DatabaseOwnerRepository implements OwnerRepository {
     await this.#db.insert(owners).values({
       id: owner.id,
       accountId: owner.accountId,
-      documentType: owner.documentId ? 'cpf' : null,
-      documentNumber: owner.documentId ?? null,
-      name: owner.fullName,
+      document: owner.documentId ?? null,
+      fullName: owner.fullName,
       email: owner.contacts.find((c) => c.type === 'email')?.value ?? null,
-      phone: owner.contacts.find((c) => c.type === 'phone' || c.type === 'whatsapp')?.value ?? null,
-      address: null,
-      status: owner.status,
+      phoneMain:
+        owner.contacts.find((c) => c.type === 'phone' || c.type === 'whatsapp')?.value ?? null,
+      addressJson: null,
       createdAt: new Date(owner.createdAt),
       updatedAt: new Date(owner.updatedAt)
     });
@@ -38,13 +37,11 @@ export class DatabaseOwnerRepository implements OwnerRepository {
     await this.#db
       .update(owners)
       .set({
-        documentType: owner.documentId ? 'cpf' : null,
-        documentNumber: owner.documentId ?? null,
-        name: owner.fullName,
+        document: owner.documentId ?? null,
+        fullName: owner.fullName,
         email: owner.contacts.find((c) => c.type === 'email')?.value ?? null,
-        phone:
+        phoneMain:
           owner.contacts.find((c) => c.type === 'phone' || c.type === 'whatsapp')?.value ?? null,
-        status: owner.status,
         updatedAt: new Date(owner.updatedAt)
       })
       .where(eq(owners.id, owner.id));
@@ -76,10 +73,10 @@ export class DatabaseOwnerRepository implements OwnerRepository {
           and(
             eq(owners.accountId, accountId),
             or(
-              ilike(owners.name, searchTerm),
-              ilike(owners.documentNumber, searchTerm),
+              ilike(owners.fullName, searchTerm),
+              ilike(owners.document, searchTerm),
               ilike(owners.email, searchTerm),
-              ilike(owners.phone, searchTerm)
+              ilike(owners.phoneMain, searchTerm)
             )
           )
         );
@@ -95,10 +92,10 @@ export class DatabaseOwnerRepository implements OwnerRepository {
 
   private mapRowToOwner(row: typeof owners.$inferSelect): OwnerSummary {
     const contacts: Array<OwnerContact> = [];
-    if (row.phone) {
+    if (row.phoneMain) {
       contacts.push({
         label: 'Telefone',
-        value: row.phone,
+        value: row.phoneMain,
         type: 'phone',
         primary: true
       });
@@ -108,19 +105,19 @@ export class DatabaseOwnerRepository implements OwnerRepository {
         label: 'Email',
         value: row.email,
         type: 'email',
-        primary: !row.phone
+        primary: !row.phoneMain
       });
     }
 
     return {
       id: row.id as OwnerId,
       accountId: row.accountId as AccountId,
-      fullName: row.name,
-      documentId: row.documentNumber ?? undefined,
+      fullName: row.fullName,
+      documentId: row.document ?? undefined,
       contacts,
       financialResponsible: true,
       administrativeNotes: undefined,
-      status: row.status as 'active' | 'inactive',
+      status: 'active',
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     };

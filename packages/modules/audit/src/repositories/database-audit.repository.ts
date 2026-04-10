@@ -30,6 +30,7 @@ export class DatabaseAuditRepository implements AuditRepository {
       },
       correlationId: event.correlationId,
       occurredAt: new Date(event.occurredAt),
+      createdAt: new Date(event.occurredAt),
     });
   }
 

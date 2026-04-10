@@ -7,7 +7,7 @@ import type {
   PatientId,
   SchedulingAppointmentSummary
 } from '@cvg-his-v2/shared-types';
-import { TwilioWhatsAppAdapter, NoOpWhatsAppAdapter, createWhatsAppProvider } from './adapters.js';
+import { TwilioWhatsAppAdapter, NoOpWhatsAppAdapter, WhatsApp360DialogAdapter, createWhatsAppProvider } from './adapters.js';
 import type { WhatsAppMessagePayload, NotificationChannelConfig } from './types.js';
 import { MissingCredentialsError, ProviderNotConfiguredError } from './types.js';
 import {
@@ -156,7 +156,7 @@ describe('createWhatsAppProvider', () => {
     assert.throws(() => createWhatsAppProvider(config), MissingCredentialsError);
   });
 
-  it('returns NoOp (enabled) for 360dialog (not implemented yet)', () => {
+  it('returns WhatsApp360DialogAdapter for 360dialog provider', () => {
     const config: NotificationChannelConfig = {
       providerType: '360dialog',
       enabled: true,
@@ -165,7 +165,7 @@ describe('createWhatsAppProvider', () => {
       accountId: ACCOUNT_ID
     };
     const provider = createWhatsAppProvider(config);
-    assert.ok(provider instanceof NoOpWhatsAppAdapter);
+    assert.ok(provider instanceof WhatsApp360DialogAdapter);
   });
 
   it('throws ProviderNotConfiguredError for unknown provider type', () => {

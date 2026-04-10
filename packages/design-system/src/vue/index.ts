@@ -9,5 +9,10 @@ export type {
   DsSpinnerProps,
   DsInputProps,
   DsCheckboxProps,
-  DsRadioProps
+  DsRadioProps,
+  DsDatePickerProps,
+  DsTimePickerProps,
+  DsChartsProps,
+  DsFileUploadProps,
+  ChartType
 } from './types.js';

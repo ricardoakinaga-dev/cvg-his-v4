@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import * as schema from '@cvg-his-v2/shared-database';
 import {
@@ -35,7 +36,7 @@ beforeAll(async () => {
     connectionString:
       process.env.DATABASE_URL_TEST ??
       process.env.DATABASE_URL ??
-      'postgres://postgres:postgres@localhost:5432/cvg_his_v2_test',
+      'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test',
     max: 2
   });
 
@@ -54,7 +55,7 @@ afterAll(async () => {
 async function cleanupMfa(userId: string): Promise<void> {
   await db
     .delete(schema.mfaCredentials)
-    .where(schema.mfaCredentials.userId.equals(userId as never));
+    .where(eq(schema.mfaCredentials.userId, userId as never));
 }
 
 // ============================================================================

@@ -14,8 +14,23 @@ import { test as base, expect, type Page } from '@playwright/test';
  *   - Semantic selectors (getByRole, getByLabel, getByPlaceholder)
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3101';
+const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
+const AUTH_STORAGE_KEYS = {
+  accessToken: 'cvg-his-v2:access_token',
+  refreshToken: 'cvg-his-v2:refresh_token'
+} as const;
+
+type AuthSessionResponse = {
+  accessToken: string;
+  refreshToken?: string;
+  principal?: {
+    user?: {
+      id?: string;
+      accountId?: string;
+    };
+  };
+};
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -119,6 +134,40 @@ export class ApiCall {
   }
 }
 
+async function requestFreshAuthSession(): Promise<AuthSessionResponse> {
+  const username = process.env.E2E_ADMIN_USERNAME || 'admin';
+  const password = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
+
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!response.ok) {
+    throw new Error(`E2E login failed: ${response.status} ${await response.text()}`);
+  }
+
+  const session = (await response.json()) as AuthSessionResponse;
+  process.env.E2E_AUTH_TOKEN = session.accessToken;
+  if (session.refreshToken) {
+    process.env.E2E_REFRESH_TOKEN = session.refreshToken;
+  }
+  if (session.principal?.user?.id) {
+    process.env.E2E_USER_ID = session.principal.user.id;
+  }
+  if (session.principal?.user?.accountId) {
+    process.env.E2E_ACCOUNT_ID = session.principal.user.accountId;
+  }
+
+  return session;
+}
+
+export async function getE2EAccessToken(): Promise<string> {
+  const session = await requestFreshAuthSession();
+  return session.accessToken;
+}
+
 // ── Cleanup helper ─────────────────────────────────────────────────────
 
 export class CleanupTracker {
@@ -184,14 +233,43 @@ async function loginViaUI(page: Page) {
 }
 
 export async function loginViaToken(page: Page) {
-  const token = process.env.E2E_AUTH_TOKEN;
-  if (!token) throw new Error('E2E_AUTH_TOKEN not set');
+  const session = await requestFreshAuthSession();
+  const authState = {
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken ?? null,
+    accessTokenKey: AUTH_STORAGE_KEYS.accessToken,
+    refreshTokenKey: AUTH_STORAGE_KEYS.refreshToken
+  };
 
-  await page.goto(SPA_URL);
-  await page.evaluate((t: string) => {
-    localStorage.setItem('cvg-his-v2:access_token', t);
-  }, token);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.addInitScript(
+    ({ accessToken, refreshToken, accessTokenKey, refreshTokenKey }) => {
+      localStorage.setItem(accessTokenKey, accessToken);
+      if (refreshToken) {
+        localStorage.setItem(refreshTokenKey, refreshToken);
+      }
+    },
+    authState
+  );
+
+  await page.goto(`${SPA_URL}/login`);
+  await page.waitForLoadState('domcontentloaded');
+
+  await page.evaluate(
+    ({ accessToken, refreshToken, accessTokenKey, refreshTokenKey }) => {
+      localStorage.setItem(accessTokenKey, accessToken);
+      if (refreshToken) {
+        localStorage.setItem(refreshTokenKey, refreshToken);
+      }
+    },
+    authState
+  );
+
+  await page.goto(`${SPA_URL}/`);
+  await page.waitForLoadState('networkidle');
+
+  if (page.url().includes('/login')) {
+    await loginViaUI(page);
+  }
 }
 
 // ── UI creation helpers ────────────────────────────────────────────────
@@ -205,23 +283,18 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
   await page.fill('#fullName', data.fullName);
   if (data.documentId) await page.fill('#documentId', data.documentId);
 
-  // Fill first contact — use placeholder for robustness
-  const contactInput = page.getByPlaceholder(/telefone|celular|contato/i).first();
-  if (await contactInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await contactInput.fill(data.phone || '11999999999');
-  } else {
-    // Fallback to ID-based selector
-    await page.fill('#contact-value-0', data.phone || '11999999999');
-  }
+  // Fill the required contact value field explicitly to avoid matching the contact label input.
+  await page.fill('#contact-value-0', data.phone || '11999999999');
 
   await page.click('button[type="submit"]');
 
   // Wait for success message (deterministic)
   await expect(page.getByText('Tutor cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
+  await page.waitForURL(/\/owners\/owner_/, { timeout: 15000 });
 
   // Extract owner ID from URL after redirect
   const url = page.url();
-  const match = url.match(/\/owners\/([a-f0-9-]+)$/);
+  const match = url.match(/\/owners\/([^/]+)$/);
   return match ? match[1] : '';
 }
 
@@ -262,10 +335,11 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
 
   // Wait for success
   await expect(page.getByText('Paciente cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
+  await page.waitForURL(/\/patients\/patient_/, { timeout: 15000 });
 
   // Extract patient ID from URL
   const url = page.url();
-  const match = url.match(/\/patients\/([a-f0-9-]+)$/);
+  const match = url.match(/\/patients\/([^/]+)$/);
   return match ? match[1] : '';
 }
 
@@ -285,7 +359,7 @@ export const test = base.extend<{
   },
 
   apiCall: async ({}, use) => {
-    const token = process.env.E2E_AUTH_TOKEN || '';
+    const token = await getE2EAccessToken();
     await use(new ApiCall(token));
   },
 

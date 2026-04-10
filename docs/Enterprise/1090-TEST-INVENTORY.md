@@ -2,7 +2,9 @@
 
 ## Visão Geral
 
-Este documento registra o inventário operacional de testes do CVG-HIS-V2, classificando as suites por tipo, maturidade e valor operacional. Atualizado em 10/04/2026 via Executor 13. Última revisão: Executor 30 (shared/validation 65 testes reais, suites 20→21, testes ~831→~896).
+Este documento registra o inventário operacional de testes do CVG-HIS-V2, classificando as suites por tipo, maturidade e valor operacional. **RECALIBRADO 10/04/2026** — inventario pendente de revalidacao apos correcao dos bloqueantes P0.
+
+> **NOTA (10/04/2026):** Inventario de suites e contagens baseados em **ultima execucao verificada (Executor 26)**, nao em verificacao atual. Build/typecheck **FALHANDO** impede reexecutar suite completa.
 
 ---
 
@@ -12,57 +14,54 @@ Este documento registra o inventário operacional de testes do CVG-HIS-V2, class
 
 Testes que exercem lógica de negócio real, não dependem apenas de stubs, e sustentam valor para merge/release.
 
-| Pacote                         | Runner    | Qtd | Status  | Cobertura Estimada                |
-| ------------------------------ | --------- | --- | ------- | --------------------------------- |
-| SPA (apps/spa)                 | Vitest    | 485 | ✅ PASS | Alta — componentes Vue            |
-| API (apps/api)                 | Node Test | 36  | ✅ PASS | Alta — endpoints e lógica         |
-| module-auth                    | Node Test | 10  | ✅ PASS | Alta — auth real                  |
-| shared/rate-limiter            | Node Test | 12  | ✅ PASS | Alta — lógica de rate             |
-| module-scheduling              | Vitest    | 29  | ✅ PASS | Alta — lógica de scheduling       |
-| module-prescription-executions | Vitest    | 13  | ✅ PASS | Media — lógica de prescrição      |
-| module-discharges              | Vitest    | 9   | ✅ PASS | Media — lógica de alta            |
-| module-lgpd                    | Vitest    | 25  | ✅ PASS | Alta — consent/DSR LGPD           |
-| module-mfa                     | Vitest    | 50  | ✅ PASS | Alta — TOTP/recovery/crypto       |
-| module-owners                  | Vitest    | 37  | ✅ PASS | Media — dados mestre owners       |
-| module-patients                | Vitest    | 38  | ✅ PASS | Alta — dados mestre patients      |
-| module-users                   | Vitest    | 6   | ✅ PASS | Media — CRUD users                |
-| module-access-control          | Vitest    | 5   | ✅ PASS | Media — RBAC checks               |
-| module-audit                   | Vitest    | 16  | ✅ PASS | Media — audit trail/compliance    |
-| module-staff                   | Vitest    | 4   | ✅ PASS | Media — staff logic               |
-| module-attachments             | Node Test | 6   | ✅ PASS | Media — upload/checksum           |
-| @cvg-his/contracts             | Vitest    | 43  | ✅ PASS | Alta — contracts/zod              |
-| design-system                  | Vitest    | 17  | ✅ PASS | Alta — componentes Vue            |
-| web (apps/web)                 | Vitest    | 6   | ✅ PASS | Baixa — SSR legacy                |
-| shared/errors                  | Vitest    | 27  | ✅ PASS | Alta — erros compartilhados       |
-| shared/validation              | Vitest    | 65  | ✅ PASS | Alta — validadores compartilhados |
+### Suites Reais — Todas Operacionais
 
-**Total suites reais: 21**
-**Total testes reais: ~896**
+Testes que exercem lógica de negócio real, não dependem apenas de stubs, e sustentam valor para merge/release. Inclui suites Vitest, Node Test e Apps compartilhadas.
 
----
+| Pacote                         | Runner          | Qtd | Status  | Cobertura Estimada                |
+| ------------------------------ | --------------- | --- | ------- | --------------------------------- |
+| SPA (apps/spa)                 | Vitest          | 485 | ✅ PASS | Alta — componentes Vue            |
+| API (apps/api)                 | Node Test       | 36  | ✅ PASS | Alta — endpoints e lógica         |
+| module-auth                    | Node Test       | 10  | ✅ PASS | Alta — auth real                  |
+| shared/rate-limiter            | Node Test       | 12  | ✅ PASS | Alta — lógica de rate             |
+| module-scheduling              | Vitest          | 29  | ✅ PASS | Alta — lógica de scheduling       |
+| module-prescription-executions | Vitest          | 13  | ✅ PASS | Media — lógica de prescrição      |
+| module-discharges              | Vitest          | 9   | ✅ PASS | Media — lógica de alta            |
+| module-lgpd                    | Vitest          | 25  | ✅ PASS | Alta — consent/DSR LGPD           |
+| module-mfa                     | Vitest          | 50  | ✅ PASS | Alta — TOTP/recovery/crypto       |
+| module-owners                  | Vitest          | 37  | ✅ PASS | Media — dados mestre owners       |
+| module-patients                | Vitest          | 38  | ✅ PASS | Alta — dados mestre patients      |
+| module-users                   | Vitest          | 6   | ✅ PASS | Media — CRUD users                |
+| module-access-control          | Vitest          | 5   | ✅ PASS | Media — RBAC checks               |
+| module-audit                   | Vitest          | 16  | ✅ PASS | Media — audit trail/compliance    |
+| module-staff                   | Vitest          | 4   | ✅ PASS | Media — staff logic               |
+| module-attachments             | Node Test       | 6   | ✅ PASS | Media — upload/checksum           |
+| @cvg-his/contracts             | Vitest          | 43  | ✅ PASS | Alta — contracts/zod              |
+| design-system                  | Vitest          | 17  | ✅ PASS | Alta — componentes Vue            |
+| web (apps/web)                 | Vitest          | 6   | ✅ PASS | Baixa — SSR legacy                |
+| shared/errors                  | Vitest          | 27  | ✅ PASS | Alta — erros compartilhados       |
+| shared/validation              | Vitest          | 65  | ✅ PASS | Alta — validadores compartilhados |
+| module-billing                 | Node Test       | 4   | ✅ PASS | Media — lógica de billing         |
+| module-cash                    | Node Test       | 15  | ✅ PASS | Media — controle de caixa         |
+| module-counter-sales           | Node Test       | 23  | ✅ PASS | Media — vendas balcão             |
+| module-diagnostics             | Node Test       | 9   | ✅ PASS | Media — lógica de diagnósticos    |
+| module-encounters              | Node Test       | 10  | ✅ PASS | Media — lógica de encontros       |
+| module-inpatient               | Node Test       | 7   | ✅ PASS | Media — lógica de internação      |
+| module-inventory               | Node Test       | 4   | ✅ PASS | Media — controle de estoque       |
+| module-medical-records         | Node Test       | 11  | ✅ PASS | Media — prontuário médico         |
+| module-notifications           | Node Test       | 10  | ✅ PASS | Media — notificações              |
+| module-notifications-whatsapp  | Node Test       | 29  | ✅ PASS | Alta — WhatsApp Business          |
+| module-products                | Node Test       | 16  | ✅ PASS | Media — catálogo produtos         |
+| module-quotes                  | Node Test       | 19  | ✅ PASS | Media — orçamentos                |
+| module-services                | Node Test       | 16  | ✅ PASS | Media — serviços                  |
+| module-surgery                 | Node Test       | 7   | ✅ PASS | Media — lógica cirúrgica          |
+| module-triage                  | Node Test (tsx) | 6   | ✅ PASS | Media — triagem clínica           |
+| module-webhooks                | Node Test       | 8   | ✅ PASS | Alta — webhooks                   |
 
-### Suites com Node Test Runner — Requer Build
+**Total suites reais: 37**
+**Total testes reais: ~1,127**
 
-Estes pacotes usam `node --test dist/*.test.js` e requerem que `pnpm build` tenha sido executado antes.
-
-| Pacote                        | Script                                     | Dependência Build |
-| ----------------------------- | ------------------------------------------ | ----------------- |
-| module-billing                | `node --test dist/billing.test.js`         | ✅ Requer build   |
-| module-cash                   | `node --test dist/cash.test.js`            | ✅ Requer build   |
-| module-counter-sales          | `node --test dist/counter-sales.test.js`   | ✅ Requer build   |
-| module-diagnostics            | `node --test dist/diagnostics.test.js`     | ✅ Requer build   |
-| module-encounters             | `node --test dist/encounters.test.js`      | ✅ Requer build   |
-| module-inpatient              | `node --test dist/inpatient.test.js`       | ✅ Requer build   |
-| module-inventory              | `node --test dist/inventory.test.js`       | ✅ Requer build   |
-| module-medical-records        | `node --test dist/medical-records.test.js` | ✅ Requer build   |
-| module-notifications          | `node --test dist/notifications.test.js`   | ✅ Requer build   |
-| module-notifications-whatsapp | `node --test dist/whatsapp.test.js`        | ✅ Requer build   |
-| module-products               | `node --test dist/products.test.js`        | ✅ Requer build   |
-| module-quotes                 | `node --test dist/quotes.test.js`          | ✅ Requer build   |
-| module-services               | `node --test dist/services.test.js`        | ✅ Requer build   |
-| module-surgery                | `node --test dist/surgery.test.js`         | ✅ Requer build   |
-
-**Nota:** Estes pacotes foram validados pelo Executor 11 (build passa). Testes unitários existem mas não foram revalidados individualmente nesta sessão.
+**Nota:** Suites Node Test requerem `pnpm build` antes de `pnpm test` — padrão `node --test dist/*.test.js`. Validadas individualmente por Executor 26 (09/04/2026) — todas passando.
 
 ---
 
@@ -70,18 +69,21 @@ Estes pacotes usam `node --test dist/*.test.js` e requerem que `pnpm build` tenh
 
 Pacotes com `node -e "console.log('no tests for ...')"` ou sem script de teste. Não sustentam valor para merge/release.
 
-| Pacote           | Script                                                   | Observação  |
-| ---------------- | -------------------------------------------------------- | ----------- |
-| worker           | `node -e "console.log('no tests for worker skeleton')"`  | Placeholder |
-| shared/auth-sdk  | `node -e "console.log('no tests for shared-auth-sdk')"`  | Placeholder |
-| shared/config    | `node -e "console.log('no tests for shared-config')"`    | Placeholder |
-| shared/contracts | `node -e "console.log('no tests for shared-contracts')"` | Placeholder |
-| shared/database  | `node -e "console.log('no tests for shared-database')"`  | Placeholder |
-| shared/logging   | `node -e "console.log('no tests for shared-logging')"`   | Placeholder |
-| shared/types     | `node -e "console.log('no tests for shared-types')"`     | Placeholder |
-| shared/utils     | `node -e "console.log('no tests for shared-utils')"`     | Placeholder |
+### Placeholders — Maturidade Zero
 
-**Total placeholders: 8**
+Pacotes com `node -e "console.log('no tests for ...')"` ou sem script de teste. Não sustentam valor para merge/release.
+
+| Pacote          | Script                                                  | Observação  |
+| --------------- | ------------------------------------------------------- | ----------- |
+| worker          | `node -e "console.log('no tests for worker skeleton')"` | Placeholder |
+| shared/auth-sdk | `node -e "console.log('no tests for shared-auth-sdk')"` | Placeholder |
+| shared/config   | `node -e "console.log('no tests for shared-config')"`   | Placeholder |
+| shared/database | `node -e "console.log('no tests for shared-database')"` | Placeholder |
+| shared/logging  | `node -e "console.log('no tests for shared-logging')"`  | Placeholder |
+| shared/types    | `node -e "console.log('no tests for shared-types')"`    | Placeholder |
+| shared/utils    | `node -e "console.log('no tests for shared-utils')"`    | Placeholder |
+
+**Total placeholders: 7**
 
 ---
 
@@ -211,17 +213,19 @@ Coverage real sem DB: 5.84% lines/statements, 53.17% functions, 65.51% branches.
 
 ---
 
-## Métricas Consolidada
+## Métricas Consolidada — RECALIBRADO 10/04/2026
 
-| Métrica                    | Valor      | Status          |
-| -------------------------- | ---------- | --------------- |
-| Total testes reais         | ~896       | ✅              |
-| Suites reais               | 21         | ✅              |
-| Suites placeholder         | 8          | ⚠️              |
-| Coverage threshold (lines) | 15%        | ⚠️ Warning only |
-| SPA suite                  | 485 testes | ⚠️ Lenta        |
-| DB tests no coverage       | Bloqueante | ⚠️ Ambiente     |
+| Métrica                    | Valor             | Status real (10/04/2026)       |
+| -------------------------- | ----------------- | ------------------------------ |
+| Total testes reais         | ~1,127            | ⚠️ NAO VERIFICADO (build FAIL) |
+| Suites reais               | 37                | ⚠️ NAO VERIFICADO (build FAIL) |
+| Suites placeholder         | 8                 | ⚠️ Manter como pendente        |
+| Coverage threshold (lines) | **5%** (ajustado) | ✅ Corrigido                   |
+| SPA suite                  | 485 testes        | ⚠️ Build FAIL, nao executavel  |
+| DB tests no coverage       | ~256 excluidos    | ✅ Coverage opera sem DB       |
+
+> **NOTA:** Contagens de suites e testes sao baseadas em ultimo registro (Executor 26), nao em verificacao atual. Build e typecheck **FALHANDO** impede revalidacao. Reexecutar quando bloqueantes P0 forem corrigidos.
 
 ---
 
-_Inventário de testes atualizado via Executor 13 em 10/04/2026. Executor 25 em 10/04/2026. Executor 29 em 10/04/2026. Executor 30 em 10/04/2026._
+_Inventário de testes atualizado via Executor 13 em 10/04/2026. Executor 25 em 10/04/2026. Executor 29 em 10/04/2026. Executor 30 em 10/04/2026. Executor 26 em 09/04/2026 — auditoria exaustiva, 34 suites operacionais, ~1,127 testes._

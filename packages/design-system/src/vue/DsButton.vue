@@ -131,7 +131,7 @@ function onClick(event: MouseEvent) {
 
 .ds-btn--primary {
   background: var(--color-primary-600, #2563eb);
-  color: var(--color-neutral-0, #ffffff);
+  color: var(--color-text-inverse, #ffffff);
 }
 
 .ds-btn--primary:hover:not(:disabled) {
@@ -139,13 +139,13 @@ function onClick(event: MouseEvent) {
 }
 
 .ds-btn--secondary {
-  background: var(--color-neutral-100, #f1f5f9);
+  background: var(--color-surface, #ffffff);
   color: var(--color-text, #0f172a);
   border-color: var(--color-border, #e2e8f0);
 }
 
 .ds-btn--secondary:hover:not(:disabled) {
-  background: var(--color-neutral-200, #e2e8f0);
+  background: var(--color-surface-hover, #f8fafc);
 }
 
 .ds-btn--ghost {
@@ -154,12 +154,12 @@ function onClick(event: MouseEvent) {
 }
 
 .ds-btn--ghost:hover:not(:disabled) {
-  background: var(--color-neutral-100, #f1f5f9);
+  background: var(--color-surface-hover, #f8fafc);
 }
 
 .ds-btn--danger {
   background: var(--color-danger-600, #dc2626);
-  color: var(--color-neutral-0, #ffffff);
+  color: var(--color-text-inverse, #ffffff);
 }
 
 .ds-btn--danger:hover:not(:disabled) {
@@ -168,7 +168,7 @@ function onClick(event: MouseEvent) {
 
 .ds-btn--success {
   background: var(--color-success-600, #16a34a);
-  color: var(--color-neutral-0, #ffffff);
+  color: var(--color-text-inverse, #ffffff);
 }
 
 .ds-btn--success:hover:not(:disabled) {

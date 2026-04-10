@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
-
-const TEST_DB_URL =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/cvg_his_test';
+import { TEST_DB_URL } from '../../setup/env.js';
+import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 
 describe('RLS Integration Tests', () => {
   let pool: Pool;
@@ -11,6 +10,10 @@ describe('RLS Integration Tests', () => {
   const ACCOUNT_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const ACCOUNT_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
   const DEFAULT_TENANT = '00000000-0000-0000-0000-000000000001';
+  const OWNER_A = '11111111-1111-4111-8111-111111111111';
+  const OWNER_B = '22222222-2222-4222-8222-222222222222';
+  const OWNER_UPDATE_A = '33333333-3333-4333-8333-333333333333';
+  const OWNER_UPDATE_B = '44444444-4444-4444-8444-444444444444';
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: TEST_DB_URL });
@@ -41,14 +44,6 @@ describe('RLS Integration Tests', () => {
     if (adminClient) adminClient.release();
     await pool.end();
   });
-
-  async function setAccountContext(client: PoolClient, accountId: string | null) {
-    if (accountId) {
-      await client.query('SET app.current_account_id = $1', [accountId]);
-    } else {
-      await client.query('RESET app.current_account_id');
-    }
-  }
 
   describe('RLS infrastructure', () => {
     it('should have app.current_account_id function', async () => {
@@ -169,17 +164,18 @@ describe('RLS Integration Tests', () => {
       await adminClient.query(
         `
         INSERT INTO owners (id, account_id, full_name)
-        VALUES ('owner-a-001', $1, 'Owner from A'),
-               ('owner-b-001', $2, 'Owner from B')
+        VALUES ($3, $1, 'Owner from A'),
+               ($4, $2, 'Owner from B')
         ON CONFLICT (id) DO NOTHING
       `,
-        [ACCOUNT_A, ACCOUNT_B]
+        [ACCOUNT_A, ACCOUNT_B, OWNER_A, OWNER_B]
       );
 
       // Set context to Account A
       const clientA = await pool.connect();
       try {
         await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
         await setAccountContext(clientA, ACCOUNT_A);
 
         const result = await clientA.query(
@@ -198,6 +194,7 @@ describe('RLS Integration Tests', () => {
       const clientB = await pool.connect();
       try {
         await clientB.query('BEGIN');
+        await activateRlsRole(clientB);
         await setAccountContext(clientB, ACCOUNT_B);
 
         const result = await clientB.query(
@@ -216,6 +213,7 @@ describe('RLS Integration Tests', () => {
       const clientA = await pool.connect();
       try {
         await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
         await setAccountContext(clientA, ACCOUNT_A);
 
         const result = await clientA.query(
@@ -234,12 +232,13 @@ describe('RLS Integration Tests', () => {
       const clientA = await pool.connect();
       try {
         await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
         await setAccountContext(clientA, ACCOUNT_A);
 
         // Try to insert data for Account B while context is Account A
         await expect(
           clientA.query('INSERT INTO owners (id, account_id, full_name) VALUES ($1, $2, $3)', [
-            'owner-hack-001',
+            '55555555-5555-4555-8555-555555555555',
             ACCOUNT_B,
             'Hacked Owner'
           ])
@@ -256,21 +255,23 @@ describe('RLS Integration Tests', () => {
       await adminClient.query(
         `
         INSERT INTO owners (id, account_id, full_name)
-        VALUES ('owner-update-a', $1, 'Original A'),
-               ('owner-update-b', $2, 'Original B')
+        VALUES ($3, $1, 'Original A'),
+               ($4, $2, 'Original B')
         ON CONFLICT (id) DO NOTHING
       `,
-        [ACCOUNT_A, ACCOUNT_B]
+        [ACCOUNT_A, ACCOUNT_B, OWNER_UPDATE_A, OWNER_UPDATE_B]
       );
 
       const clientA = await pool.connect();
       try {
         await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
         await setAccountContext(clientA, ACCOUNT_A);
 
         // Try to update Account B's data
         const result = await clientA.query(
-          "UPDATE owners SET full_name = 'Hacked' WHERE id = 'owner-update-b' RETURNING id"
+          'UPDATE owners SET full_name = $1 WHERE id = $2 RETURNING id',
+          ['Hacked', OWNER_UPDATE_B]
         );
 
         expect(result.rows.length).toBe(0);
@@ -284,11 +285,12 @@ describe('RLS Integration Tests', () => {
       const clientA = await pool.connect();
       try {
         await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
         await setAccountContext(clientA, ACCOUNT_A);
 
-        const result = await clientA.query(
-          "DELETE FROM owners WHERE id = 'owner-b-001' RETURNING id"
-        );
+        const result = await clientA.query('DELETE FROM owners WHERE id = $1 RETURNING id', [
+          OWNER_B
+        ]);
 
         expect(result.rows.length).toBe(0);
         await clientA.query('ROLLBACK');

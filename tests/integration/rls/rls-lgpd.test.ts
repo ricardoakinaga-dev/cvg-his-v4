@@ -1,5 +1,6 @@
 import { getTestPool } from '../../db/db-admin.js';
 import { queryOne, queryMany, uuid } from '../../helpers/db-helpers.js';
+import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 
 // ============================================================================
 // RLS LGPD Tests — Fase 5b
@@ -11,6 +12,40 @@ const ACCOUNT_A = uuid();
 const ACCOUNT_B = uuid();
 const USER_A = uuid();
 const USER_B = uuid();
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+beforeAll(async () => {
+  const pool = getTestPool();
+  await pool.query(
+    `
+      INSERT INTO tenants (id, slug, name, status)
+      VALUES ($1, 'rls-lgpd-tenant', 'RLS LGPD Tenant', 'active')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [TENANT_ID]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO accounts (id, tenant_id, slug, name)
+      VALUES ($1, $3, 'rls-lgpd-a', 'RLS LGPD Account A'),
+             ($2, $3, 'rls-lgpd-b', 'RLS LGPD Account B')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [ACCOUNT_A, ACCOUNT_B, TENANT_ID]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO users (id, account_id, email, password_hash, full_name)
+      VALUES
+        ($1, $3, 'rls-lgpd-a@example.com', 'hash', 'RLS LGPD User A'),
+        ($2, $4, 'rls-lgpd-b@example.com', 'hash', 'RLS LGPD User B')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [USER_A, USER_B, ACCOUNT_A, ACCOUNT_B]
+  );
+});
 
 // ============================================================================
 // RLS-LGPD-001: Tables have RLS enabled
@@ -120,9 +155,10 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Set account A context
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       // Insert consent for account A
       await client.query(
@@ -132,7 +168,7 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
       );
 
       // Set account B context
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
 
       // Account B should NOT see account A's consent
       const result = await client.query(
@@ -154,9 +190,10 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Set account A context and insert
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       await client.query(
         `INSERT INTO data_subject_requests (id, account_id, subject_id, subject_type, request_type, status, requested_by, requested_at, created_at, updated_at)
@@ -165,7 +202,7 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
       );
 
       // Set account B context
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
 
       // Account B should NOT see account A's request
       const result = await client.query(
@@ -187,16 +224,17 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Insert for both accounts
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO consent_records (id, account_id, subject_id, subject_type, purpose, status, origin, granted_by, granted_at, created_at)
          VALUES ($1, $2, $3, 'owner', 'marketing', 'granted', 'api', $4, NOW(), NOW())`,
         [uuid(), ACCOUNT_A, uuid(), USER_A]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
       await client.query(
         `INSERT INTO consent_records (id, account_id, subject_id, subject_type, purpose, status, origin, granted_by, granted_at, created_at)
          VALUES ($1, $2, $3, 'owner', 'analytics', 'granted', 'api', $4, NOW(), NOW())`,
@@ -204,12 +242,12 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
       );
 
       // Account A should only see its own record
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       const resultA = await client.query(`SELECT COUNT(*) FROM consent_records`);
       expect(parseInt(resultA.rows[0].count, 10)).toBe(1);
 
       // Account B should only see its own record
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
       const resultB = await client.query(`SELECT COUNT(*) FROM consent_records`);
       expect(parseInt(resultB.rows[0].count, 10)).toBe(1);
 
@@ -225,12 +263,13 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Clear session context
-      await client.query("SET LOCAL app.current_account_id = ''");
+      await setAccountContext(client, null);
 
       // Insert data for account A
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO consent_records (id, account_id, subject_id, subject_type, purpose, status, origin, granted_by, granted_at, created_at)
          VALUES ($1, $2, $3, 'owner', 'clinical', 'granted', 'api', $4, NOW(), NOW())`,
@@ -238,7 +277,7 @@ describe('RLS-LGPD-005 — Cross-Account Isolation via Session', () => {
       );
 
       // Clear context and try to read
-      await client.query("SET LOCAL app.current_account_id = ''");
+      await setAccountContext(client, null);
       const result = await client.query(`SELECT COUNT(*) FROM consent_records`);
 
       expect(parseInt(result.rows[0].count, 10)).toBe(0);
@@ -260,9 +299,10 @@ describe('RLS-LGPD-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Set account A context
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       // Try to insert with account B's ID — should fail due to WITH CHECK
       await expect(
@@ -285,9 +325,10 @@ describe('RLS-LGPD-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       // Insert as account A
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       const consentId = uuid();
       await client.query(
         `INSERT INTO consent_records (id, account_id, subject_id, subject_type, purpose, status, origin, granted_by, granted_at, created_at)

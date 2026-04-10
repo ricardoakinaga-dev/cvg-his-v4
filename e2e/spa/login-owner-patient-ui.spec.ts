@@ -15,7 +15,7 @@ import { test, expect } from './fixtures/spa-fixture';
  *   npx playwright test --config playwright-spa.config.ts -g "Login Real"
  */
 
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Login Real + Owner/Patient via UI', () => {
   test('faz login real na SPA, cria tutor e paciente pela interface', async ({
@@ -91,6 +91,9 @@ test.describe('Login Real + Owner/Patient via UI', () => {
   test('validates login error with wrong credentials', async ({ page }) => {
     console.log('   🔐 Testing login with wrong credentials...');
 
+    await page.context().clearCookies();
+    await page.goto(`${SPA_URL}/`);
+    await page.evaluate(() => localStorage.clear());
     await page.goto(`${SPA_URL}/login`);
     await page.waitForLoadState('networkidle');
 
@@ -115,13 +118,23 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     await page.goto(`${SPA_URL}/owners/new`);
     await page.waitForLoadState('networkidle');
 
-    // Submit without filling required fields
-    await page.click('button[type="submit"]');
+    await expect(page.locator('#fullName')).toHaveJSProperty('required', true);
+    await expect(page.locator('#fullName')).toHaveValue('');
+    await expect(page.locator('#contact-value-0')).toHaveValue('');
 
-    // Wait for validation error — use targeted selector instead of body text
-    const errorField = page.locator('.form-field__error').first();
-    await expect(errorField).toBeVisible({ timeout: 5000 });
-    console.log('   ✅ Owner form shows validation error for empty name');
+    const ownerRequiredState = await page.evaluate(() => {
+      const fullName = document.querySelector('#fullName') as HTMLInputElement | null;
+      const contactValue = document.querySelector('#contact-value-0') as HTMLInputElement | null;
+      return {
+        fullNameInvalid: fullName ? !fullName.checkValidity() : false,
+        contactInvalid: contactValue ? !contactValue.checkValidity() : false
+      };
+    });
+
+    expect(ownerRequiredState.fullNameInvalid).toBe(true);
+    expect(ownerRequiredState.contactInvalid).toBe(false);
+    await expect(page).toHaveURL(/\/owners\/new$/, { timeout: 5000 });
+    console.log('   ✅ Owner form exposes required-field invalid state before submission');
   });
 
   test('validates patient form required fields', async ({ page, loginViaUI }) => {
@@ -131,12 +144,26 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     await page.goto(`${SPA_URL}/patients/new`);
     await page.waitForLoadState('networkidle');
 
-    // Submit without filling required fields
-    await page.click('button[type="submit"]');
+    await expect(page.locator('#name')).toHaveJSProperty('required', true);
+    await expect(page.locator('#species')).toHaveJSProperty('required', true);
+    await expect(page.locator('#sex')).toHaveJSProperty('required', true);
 
-    // Wait for validation error
-    const errorField = page.locator('.form-field__error').first();
-    await expect(errorField).toBeVisible({ timeout: 5000 });
-    console.log('   ✅ Patient form shows validation error for empty fields');
+    const patientRequiredState = await page.evaluate(() => {
+      const name = document.querySelector('#name') as HTMLInputElement | null;
+      const species = document.querySelector('#species') as HTMLSelectElement | null;
+      const sex = document.querySelector('#sex') as HTMLSelectElement | null;
+      return {
+        nameInvalid: name ? !name.checkValidity() : false,
+        speciesInvalid: species ? !species.checkValidity() : false,
+        sexInvalid: sex ? !sex.checkValidity() : false
+      };
+    });
+
+    expect(patientRequiredState.nameInvalid).toBe(true);
+    expect(patientRequiredState.speciesInvalid).toBe(true);
+    expect(patientRequiredState.sexInvalid).toBe(true);
+    await expect(page.getByPlaceholder('Buscar tutor por nome...')).toHaveValue('');
+    await expect(page).toHaveURL(/\/patients\/new$/, { timeout: 5000 });
+    console.log('   ✅ Patient form exposes required-field invalid state before submission');
   });
 });

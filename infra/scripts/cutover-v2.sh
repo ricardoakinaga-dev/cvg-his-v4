@@ -23,6 +23,10 @@ LEGACY_CONTAINERS_DEFAULT=(
   cvg-his-v2-redis-1
 )
 
+docker_compose() {
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
 log() {
   printf '[cutover-v2] %s\n' "$*"
 }
@@ -62,7 +66,7 @@ ensure_prereqs() {
 
 validate_compose() {
   log "validating docker compose file"
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >/dev/null
+  docker_compose config >/dev/null
 }
 
 prepare_backup_dir() {
@@ -98,6 +102,48 @@ snapshot_legacy_state() {
   fi
 }
 
+stop_previous_v2_stack() {
+  log "stopping previous V2 stack"
+  docker_compose down --remove-orphans || true
+}
+
+build_v2_images() {
+  log "building V2 images with explicit service list"
+  docker_compose build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+}
+
+wait_for_service_health() {
+  local service="$1"
+  local attempts="${2:-60}"
+  local sleep_s="${3:-2}"
+
+  for _ in $(seq 1 "$attempts"); do
+    local container_id
+    container_id="$(docker_compose ps -q "$service" 2>/dev/null || true)"
+    if [[ -n "$container_id" ]]; then
+      local status
+      status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
+      if [[ "$status" == "healthy" || "$status" == "running" ]]; then
+        return 0
+      fi
+    fi
+    sleep "$sleep_s"
+  done
+
+  return 1
+}
+
+start_dependencies() {
+  log "starting postgres and redis first"
+  docker_compose up -d postgres redis
+
+  log "waiting for postgres healthcheck"
+  wait_for_service_health postgres 60 2 || die "postgres did not become healthy"
+
+  log "waiting for redis healthcheck"
+  wait_for_service_health redis 60 2 || die "redis did not become healthy"
+}
+
 apply_v2_schema() {
   if [[ "${APPLY_SCHEMA:-true}" != "true" ]]; then
     log "APPLY_SCHEMA=false; skipping schema application"
@@ -120,9 +166,21 @@ apply_v2_schema() {
   fi
 }
 
-build_and_start_v2() {
-  log "building and starting V2 stack"
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
+start_v2_applications() {
+  log "starting V2 application services"
+  docker_compose up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+
+  log "waiting for API service"
+  wait_for_service_health cvg-his-v2-api 60 2 || die "api service did not become healthy"
+
+  log "waiting for Web service"
+  wait_for_service_health cvg-his-v2-web 60 2 || die "web service did not become healthy"
+
+  log "waiting for SPA service"
+  wait_for_service_health cvg-his-v2-spa 60 2 || die "spa service did not become healthy"
+
+  log "waiting for Worker service"
+  wait_for_service_health cvg-his-v2-worker 60 2 || die "worker service did not reach running state"
 }
 
 wait_for_http() {
@@ -144,27 +202,37 @@ wait_for_http() {
 }
 
 validate_v2_stack() {
-  log "validating API /health (external port 3000)"
-  wait_for_http "${API_HEALTH_URL:-http://127.0.0.1:3000/health}" 200 || die "API health check failed"
+  log "validating API /health (external port 3003)"
+  wait_for_http "${API_HEALTH_URL:-http://127.0.0.1:3003/health}" 200 || die "API health check failed"
 
-  log "validating API /ready (external port 3000)"
-  wait_for_http "${API_READY_URL:-http://127.0.0.1:3000/ready}" 200 || die "API readiness check failed"
+  log "validating API /ready (external port 3003)"
+  wait_for_http "${API_READY_URL:-http://127.0.0.1:3003/ready}" 200 || die "API readiness check failed"
 
-  log "validating API /metrics (external port 3000)"
-  wait_for_http "${API_METRICS_URL:-http://127.0.0.1:3000/metrics}" 200 || die "API metrics check failed"
+  log "validating API /metrics (external port 3003)"
+  wait_for_http "${API_METRICS_URL:-http://127.0.0.1:3003/metrics}" 200 || die "API metrics check failed"
 
-  log "validating Web root (external port 3001)"
+  log "validating Web root (external port 3004)"
   local web_code
-  web_code="$(curl -s -o /dev/null -w '%{http_code}' "${WEB_URL:-http://127.0.0.1:3001/}" || true)"
+  web_code="$(curl -s -o /dev/null -w '%{http_code}' "${WEB_URL:-http://127.0.0.1:3004/}" || true)"
   [[ "$web_code" == "200" ]] || die "web root returned unexpected status: $web_code"
 
-  log "validating Worker health (port 3002)"
-  wait_for_http "${WORKER_HEALTH_URL:-http://127.0.0.1:3002/health}" 200 30 2 || log "worker health not available (may start slower)"
+  log "validating SPA root (external port 3002)"
+  local spa_code
+  spa_code="$(curl -s -o /dev/null -w '%{http_code}' "${SPA_URL:-http://127.0.0.1:3002/}" || true)"
+  [[ "$spa_code" == "200" ]] || die "spa root returned unexpected status: $spa_code"
 
-  log "validating Worker readiness (port 3002)"
-  wait_for_http "${WORKER_READY_URL:-http://127.0.0.1:3002/ready}" 200 30 2 || log "worker readiness not available (may start slower)"
+  if [[ -n "${WORKER_HEALTH_URL:-}" ]]; then
+    log "validating Worker health at custom URL"
+    wait_for_http "$WORKER_HEALTH_URL" 200 30 2 || die "worker health check failed at custom URL"
+  else
+    log "skipping worker HTTP health validation because the compose does not publish a worker port by default"
+  fi
 
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps > "$BACKUP_DIR/v2-compose-ps.txt"
+  docker_compose ps > "$BACKUP_DIR/v2-compose-ps.txt"
+  docker_compose logs --tail=200 cvg-his-v2-api > "$BACKUP_DIR/v2-api.logs.txt" 2>&1 || true
+  docker_compose logs --tail=200 cvg-his-v2-web > "$BACKUP_DIR/v2-web.logs.txt" 2>&1 || true
+  docker_compose logs --tail=200 cvg-his-v2-worker > "$BACKUP_DIR/v2-worker.logs.txt" 2>&1 || true
+  docker_compose logs --tail=200 cvg-his-v2-spa > "$BACKUP_DIR/v2-spa.logs.txt" 2>&1 || true
 }
 
 switch_caddy_if_enabled() {
@@ -221,14 +289,16 @@ Compose:
 Env file:
   $ENV_FILE
 
-Next checks:
-  curl http://127.0.0.1:3000/health
-  curl http://127.0.0.1:3000/ready
-  curl http://127.0.0.1:3000/metrics
-  curl -I http://127.0.0.1:3001/
-  curl http://127.0.0.1:3002/health
-  curl http://127.0.0.1:3002/ready
-  curl http://127.0.0.1:3002/metrics
+Validated endpoints:
+  curl http://127.0.0.1:3003/health
+  curl http://127.0.0.1:3003/ready
+  curl http://127.0.0.1:3003/metrics
+  curl -I http://127.0.0.1:3004/
+  curl -I http://127.0.0.1:3002/
+
+Worker:
+  validated via docker compose ps and logs
+  set WORKER_HEALTH_URL if you explicitly expose a worker HTTP port
 
 Rollback:
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
@@ -244,8 +314,11 @@ main() {
   validate_compose
   prepare_backup_dir
   snapshot_legacy_state
+  stop_previous_v2_stack
+  build_v2_images
+  start_dependencies
   apply_v2_schema
-  build_and_start_v2
+  start_v2_applications
   validate_v2_stack
   switch_caddy_if_enabled
   stop_legacy_if_requested

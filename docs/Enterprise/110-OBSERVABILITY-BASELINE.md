@@ -17,6 +17,20 @@ Este documento consolida o baseline de observabilidade operacional do CVG-HIS-V2
 - Preservar a arquitetura atual da API
 - Métricas e logs devem ser acionáveis, não decorativos
 
+### Evidência executada em 10/04/2026
+
+Na reta final do Bloco 2, a API foi exercitada em runtime real via Playwright/webServer isolado em `127.0.0.1:3101`, com os seguintes resultados:
+
+- `GET /health` -> `200 OK`
+- `GET /ready` -> `503 Service Unavailable` em modo `in-memory`, com `readiness.ready=false` e `productionReady=false`
+- `GET /metrics` -> `200 OK`, expondo ao menos `http_requests_total`, `http_request_duration_seconds`, `app_database_healthy` e `app_persistence_mode`
+
+Leitura operacional:
+
+- o sinal de liveness/health está funcional
+- o sinal de readiness diferencia corretamente ambiente degradado/in-memory de estado pronto para produção
+- a trilha mínima de métricas Prometheus está executável
+
 ---
 
 ## 2. Instrumentação Atual — O que Existe

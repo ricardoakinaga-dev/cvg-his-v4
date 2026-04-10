@@ -52,28 +52,28 @@ const classes = computed(() => [
 }
 
 .ds-badge--default {
-  background: var(--color-neutral-100, #f1f5f9);
-  color: var(--color-neutral-700, #334155);
+  background: var(--color-neutral-700, #334155);
+  color: var(--color-neutral-50, #f8fafc);
 }
 
 .ds-badge--success {
-  background: var(--color-success-100, #dcfce7);
-  color: var(--color-success-700, #15803d);
+  background: var(--color-success-700, #166534);
+  color: var(--color-success-50, #f0fdf4);
 }
 
 .ds-badge--warning {
-  background: var(--color-warning-100, #fef3c7);
-  color: var(--color-warning-700, #b45309);
+  background: var(--color-warning-700, #b45309);
+  color: var(--color-warning-50, #fffbeb);
 }
 
 .ds-badge--danger {
-  background: var(--color-danger-100, #fee2e2);
-  color: var(--color-danger-700, #b91c1c);
+  background: var(--color-danger-700, #991b1b);
+  color: var(--color-danger-50, #fef2f2);
 }
 
 .ds-badge--info {
-  background: var(--color-info-100, #dbeafe);
-  color: var(--color-info-700, #1d4ed8);
+  background: var(--color-info-700, #1d4ed8);
+  color: var(--color-info-50, #eff6ff);
 }
 
 .ds-badge--dot::before {

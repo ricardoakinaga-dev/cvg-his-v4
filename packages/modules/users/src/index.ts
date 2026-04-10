@@ -1,4 +1,4 @@
-import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
@@ -13,6 +13,7 @@ export interface UserRecord extends UserSummary {
 
 export interface UsersServiceOptions {
   readonly repository?: UsersRepository;
+  readonly seedUsersEnabled?: boolean;
 }
 
 const SCRYPT_KEYLEN = 64;
@@ -20,6 +21,11 @@ const SCRYPT_SALT_LENGTH = 16;
 const SEED_SALT = 'cvg-his-v2-seed-salt-v1';
 
 const scryptAsync = promisify(scrypt);
+
+function isSeedEnvironment(): boolean {
+  const env = process.env.NODE_ENV;
+  return !env || env === 'development' || env === 'test';
+}
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SCRYPT_SALT_LENGTH);
@@ -29,13 +35,17 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function comparePassword(password: string, passwordHash: string): Promise<boolean> {
   const parts = passwordHash.split(':');
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) {
+    // Backward compatibility for legacy Drizzle seed values stored as plain SHA-256 hex.
+    return createHash('sha256').update(password).digest('hex') === passwordHash;
+  }
   const saltHex = parts[0];
   const hashHex = parts[1];
 
-  // Legacy seed format: salt is not hex, hash is not real scrypt output
-  // Handle seed users with predictable passwords
   if (saltHex === SEED_SALT && hashHex.startsWith('seed_')) {
+    if (!isSeedEnvironment()) {
+      return false;
+    }
     const expectedPassword = hashHex;
     return password === expectedPassword;
   }
@@ -157,9 +167,12 @@ export class UsersService {
     seedUsers: readonly UserRecord[] = createSeedUsers()
   ) {
     this.#repository = options?.repository;
-    for (const user of seedUsers) {
-      this.#users.set(user.id, user);
-      this.#usersByUsername.set(user.username, user);
+    const seedEnabled = options?.seedUsersEnabled ?? isSeedEnvironment();
+    if (seedEnabled) {
+      for (const user of seedUsers) {
+        this.#users.set(user.id, user);
+        this.#usersByUsername.set(user.username, user);
+      }
     }
   }
 
@@ -169,9 +182,10 @@ export class UsersService {
 
   public async hydrateFromDatabase(): Promise<void> {
     if (!this.#repository) return;
-    const dbUsers = await this.#repository.findByAccountId('' as never);
+    const dbUsers = await this.#repository.findAll();
     for (const dbUser of dbUsers) {
       if (this.#users.has(dbUser.id as UserId)) continue;
+      const roleCodes = await this.#repository.findRoleCodesByUserId(dbUser.id as UserId);
       const userRecord: UserRecord = {
         id: dbUser.id as UserId,
         accountId: dbUser.accountId,
@@ -183,7 +197,7 @@ export class UsersService {
         createdAt: dbUser.createdAt,
         updatedAt: dbUser.updatedAt,
         passwordHash: dbUser.passwordHash,
-        roleCodes: []
+        roleCodes
       };
       this.#users.set(userRecord.id, userRecord);
       this.#usersByUsername.set(userRecord.username, userRecord);

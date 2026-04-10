@@ -32,9 +32,15 @@ export interface PatientRepository {
 
 export interface OwnerPatientLinkRepository {
   create(link: OwnerPatientLinkSummary): Promise<void>;
-  findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null>;
-  findByPatientId(patientId: PatientId): Promise<readonly OwnerPatientLinkSummary[]>;
-  findByOwnerId(ownerId: OwnerId): Promise<readonly OwnerPatientLinkSummary[]>;
+  findById(id: OwnerPatientLinkId, accountId: AccountId): Promise<OwnerPatientLinkSummary | null>;
+  findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
+  findByOwnerId(
+    ownerId: OwnerId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
   delete(id: OwnerPatientLinkId): Promise<void>;
 }
 

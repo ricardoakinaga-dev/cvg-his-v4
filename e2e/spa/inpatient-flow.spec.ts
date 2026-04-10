@@ -22,8 +22,8 @@ import {
  *   npx playwright test --config playwright-spa.config.ts -g "Internação"
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://localhost:3101';
+const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       await page.waitForLoadState('networkidle');
 
       // Validate page title using heading role
-      await expect(page.getByRole('heading', { name: /Internacao/ })).toBeVisible({
+      await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
         timeout: 15000
       });
       console.log('   ✅ Inpatient list page loaded');
@@ -165,7 +165,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       console.log('   🔙 Verifying navigation back to list...');
       await page.goto(`${SPA_URL}/inpatient`);
       await page.waitForLoadState('networkidle');
-      await expect(page.getByRole('heading', { name: /Internacao/ })).toBeVisible({
+      await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
         timeout: 10000
       });
       console.log('   ✅ Navigation back to list works');
@@ -191,7 +191,9 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(page.getByRole('heading', { name: /Internacao/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
+      timeout: 15000
+    });
 
     // Validate bed map button and its link
     const bedMapBtn = page.getByRole('link', { name: 'Mapa de Leitos' });

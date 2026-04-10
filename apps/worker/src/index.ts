@@ -4,8 +4,8 @@ import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
 import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
-import { createWorkerNotifications } from './runner.js';
-import { runWorkerTick } from './runner.js';
+import { createWorkerNotifications, createWorkerEventBus } from './runner.js';
+import { runWorkerTick, runEventBusTick } from './runner.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
@@ -37,6 +37,10 @@ async function main() {
 
   const notifications = createWorkerNotifications({
     notificationRepository: bootstrap.notificationRepository
+  });
+
+  const eventBus = createWorkerEventBus({
+    eventBusRepository: bootstrap.outboxRepository
   });
 
   const healthServer = createServer((req, res) => {
@@ -98,6 +102,20 @@ async function main() {
         },
         notifications
       );
+
+      await runEventBusTick(
+        logger,
+        {
+          service: config.appName,
+          environment: config.environment,
+          correlationId,
+          persistenceMode: workerState.persistenceMode,
+          databaseHealthy: workerState.databaseHealthy,
+          databaseDetail: 'connected'
+        },
+        eventBus
+      );
+
       workerState.ticksCompleted++;
       workerState.lastTickAt = new Date().toISOString();
       workerState.lastTickDurationMs = Date.now() - tickStart;

@@ -1,125 +1,145 @@
 # Instalacao Canonica do CVG-HIS V2
 
-Este arquivo existe na raiz do repositório para evitar ambiguidade durante deploy, bootstrap e uso do OpenClaw.
+Guia rapido e sem ambiguidade para instalacao, atualizacao das imagens e deploy da stack atual.
 
-## Fonte da verdade
+## Regra principal
 
-Use apenas a trilha canônica do V2:
+Para deploy real, use somente:
 
-- `apps/api`
-- `apps/web`
-- `apps/worker`
+- `docker-compose.v2.yml`
+- `.env.v2` a partir de `.env.v2.example`
+- `packages/db/src/migrate.ts`
+- `packages/db/src/seed.ts`
 
-Nao use nenhuma trilha `apps/his-*`.
+Nao use:
 
-## Imagem correta do projeto atual
+- qualquer `apps/his-*`
+- qualquer imagem `cvg-his-api`, `cvg-his-web`, `cvg-his-worker`
+- qualquer compose antigo
+- `packages/shared/database/src/migrations/*.sql` como fluxo principal de deploy
 
-Para eliminar o risco de o OpenClaw instalar a imagem antiga, considere obrigatorio:
+## Servicos e portas reais
 
-- o deploy correto do projeto atual usa **somente** `docker-compose.v2.yml`
-- a aplicacao atual **nao** deve ser instalada por imagem legada ou compose antigo
-- os servicos corretos da stack atual sao:
-  - `cvg-his-v2-api`
-  - `cvg-his-v2-web`
-  - `cvg-his-v2-worker`
-- essas imagens devem ser construidas a partir dos Dockerfiles atuais do repositório:
-  - `apps/api/Dockerfile`
-  - `apps/web/Dockerfile`
-  - `apps/worker/Dockerfile`
-
-Nunca usar:
-
-- `cvg-his-api`
-- `cvg-his-web`
-- `cvg-his-worker`
-- qualquer stack `apps/his-*`
-- qualquer compose antigo para API/Web/Worker
-
-Se existir ambiguidade entre imagem atual e imagem antiga, a correta e sempre a imagem reconstruida localmente pelo compose V2.
-
-## Banco e migrations
-
-As migrations oficiais do V2 estao em:
-
-- `packages/shared/database/src/migrations/001_initial_schema.sql`
-- `packages/shared/database/src/migrations/002_entry_revisions.sql`
-- `packages/shared/database/src/migrations/003_advanced_care_persistence.sql`
-- `packages/shared/database/src/migrations/004_clinical_entry_governance.sql`
-
-Se o OpenClaw precisar aplicar schema manualmente, execute nesta ordem:
-
-```bash
-psql "$DATABASE_URL" -f packages/shared/database/src/migrations/001_initial_schema.sql
-psql "$DATABASE_URL" -f packages/shared/database/src/migrations/002_entry_revisions.sql
-psql "$DATABASE_URL" -f packages/shared/database/src/migrations/003_advanced_care_persistence.sql
-psql "$DATABASE_URL" -f packages/shared/database/src/migrations/004_clinical_entry_governance.sql
-```
-
-## Bootstrap local canonico
-
-Para infraestrutura local minima do V2:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d postgres redis
-```
-
-Esse compose de desenvolvimento agora contem apenas:
+Servicos da stack:
 
 - `postgres`
 - `redis`
+- `cvg-his-v2-api`
+- `cvg-his-v2-web`
+- `cvg-his-v2-worker`
+- `cvg-his-v2-spa`
 
-Ele nao sobe nenhuma stack legada.
+Portas externas do compose atual:
 
-## Deploy real do V2
+- API: `3003`
+- Web: `3004`
+- SPA: `3002`
+- Postgres: `5432`
+- Redis: `6380`
+- Worker: sem porta publicada
 
-Para publicar o V2 real:
+## Ordem obrigatoria
 
-- compose principal: `docker-compose.v2.yml`
-- env principal: `.env.v2`
-- cutover assistido: `infra/scripts/cutover-v2.sh`
+### 1. Preparar o arquivo de ambiente
 
-Comandos base:
+```bash
+cp .env.v2.example .env.v2
+```
+
+Preencher:
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `AUTH_SECRET`
+- `AUTH_ACCESS_TOKEN_TTL_SECONDS`
+- `AUTH_REFRESH_TOKEN_TTL_SECONDS`
+- `WORKER_INTERVAL_MS`
+
+### 2. Validar o compose
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml config
+```
+
+### 3. Derrubar stack anterior
 
 ```bash
 docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
-infra/scripts/cutover-v2.sh
 ```
 
-Interpretacao obrigatoria:
-
-- `--no-cache` deve ser preferido quando houver historico de imagem antiga sendo reutilizada
-- a subida correta deve citar os nomes dos servicos V2 explicitamente
-- se o agente tentar subir nomes antigos de container/imagem, a execucao deve ser interrompida
-
-## Validacoes minimas
-
-API:
+### 4. Reconstruir as imagens corretas
 
 ```bash
-curl http://127.0.0.1:3000/health
-curl http://127.0.0.1:3000/ready
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
 ```
 
-Web:
+### 5. Subir dependencias
 
 ```bash
-curl -I http://127.0.0.1:3001/
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
 ```
 
-## Docs operacionais
+### 6. Aplicar schema oficial
 
+```bash
+DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
+npx tsx packages/db/src/migrate.ts
+```
+
+### 7. Aplicar seed apenas se for intencional
+
+```bash
+DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD=troque-esta-senha \
+npx tsx packages/db/src/seed.ts
+```
+
+### 8. Subir aplicacao
+
+```bash
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+```
+
+### 9. Validar
+
+```bash
+curl http://127.0.0.1:3003/health
+curl http://127.0.0.1:3003/ready
+curl -I http://127.0.0.1:3004/
+curl -I http://127.0.0.1:3002/
+docker compose --env-file .env.v2 -f docker-compose.v2.yml ps
+docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-api
+docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-worker
+```
+
+## Atualizacao de imagens
+
+Quando houver nova versao:
+
+1. atualizar o codigo
+2. validar o compose
+3. derrubar a stack antiga
+4. rebuildar as imagens do `docker-compose.v2.yml`
+5. subir `postgres` e `redis`
+6. rodar `packages/db/src/migrate.ts`
+7. subir a aplicacao
+8. validar health, ready e logs
+
+## Observacao critica
+
+`infra/scripts/cutover-v2.sh` e `infra/docker/Caddyfile.v2` ainda possuem defaults historicos de portas `3000` e `3001`.
+
+Antes de usar esses artefatos:
+
+- alinhe API para `3003`
+- alinhe Web para `3004`
+- nao use `3002` para validar worker, porque `3002` pertence a SPA no compose atual
+
+## Referencias
+
+- `README.md`
 - `OPENCLAW_DEPLOY_DIRETRIZES.md`
-- `docs/130-instalacao-publicacao-cvg-his-v2-real.md`
-- `docs/131-checklist-cutover-servidor.md`
-
-## Regra operacional
-
-Se houver divergencia entre artefatos antigos e estes arquivos:
-
-1. considere `apps/api`, `apps/web`, `apps/worker` como canonicos
-2. considere `docker-compose.v2.yml` como deploy real
-3. considere `docker-compose.dev.yml` como bootstrap local de infra
-4. considere as migrations em `packages/shared/database/src/migrations` como fonte oficial do schema
-5. considere `cvg-his-v2-api`, `cvg-his-v2-web` e `cvg-his-v2-worker` como os unicos servicos validos da aplicacao atual
+- `docker-compose.v2.yml`
+- `.env.v2.example`

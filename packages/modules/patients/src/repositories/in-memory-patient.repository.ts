@@ -17,9 +17,15 @@ export interface PatientRepository {
 
 export interface OwnerPatientLinkRepository {
   create(link: OwnerPatientLinkSummary): Promise<void>;
-  findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null>;
-  findByPatientId(patientId: PatientId): Promise<readonly OwnerPatientLinkSummary[]>;
-  findByOwnerId(ownerId: OwnerId): Promise<readonly OwnerPatientLinkSummary[]>;
+  findById(id: OwnerPatientLinkId, accountId: AccountId): Promise<OwnerPatientLinkSummary | null>;
+  findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
+  findByOwnerId(
+    ownerId: OwnerId,
+    accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]>;
   delete(id: OwnerPatientLinkId): Promise<void>;
 }
 
@@ -73,15 +79,24 @@ export class InMemoryOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     this.#links.set(link.id, link);
   }
 
-  async findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null> {
+  async findById(
+    id: OwnerPatientLinkId,
+    _accountId: AccountId
+  ): Promise<OwnerPatientLinkSummary | null> {
     return this.#links.get(id) ?? null;
   }
 
-  async findByPatientId(patientId: PatientId): Promise<readonly OwnerPatientLinkSummary[]> {
+  async findByPatientId(
+    patientId: PatientId,
+    _accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]> {
     return Array.from(this.#links.values()).filter((l) => l.patientId === patientId);
   }
 
-  async findByOwnerId(ownerId: OwnerId): Promise<readonly OwnerPatientLinkSummary[]> {
+  async findByOwnerId(
+    ownerId: OwnerId,
+    _accountId: AccountId
+  ): Promise<readonly OwnerPatientLinkSummary[]> {
     return Array.from(this.#links.values()).filter((l) => l.ownerId === ownerId);
   }
 

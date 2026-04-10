@@ -40,7 +40,13 @@ interface BruteForceConfig {
 
 ## Integration with AuthService
 
-The `AuthService` is configured with a `BruteForceProtection` instance in `runtime.ts`:
+The `BruteForceProtection` is integrated into `AuthService` via the `bruteForce` option in `AuthServiceOptions`. It is wired into:
+
+- `AuthService.login()` — checks lockout before credential verification, records failures, resets on success
+- `AuthService.completeMfaLogin()` — checks MFA lockout before TOTP verification, records failures, resets on success
+- `AuthService.logout()` — clears all failure counters for the user via `recordSuccess()`
+
+To enable, pass a `BruteForceProtection` instance when constructing `AuthService`:
 
 ```typescript
 const auth = new AuthService({
@@ -49,19 +55,48 @@ const auth = new AuthService({
 });
 ```
 
-### Login Flow
+### Login Flow (with Brute Force Protection)
 
-1. Check if identifier is locked → throw generic "Invalid username or password"
+1. Check if identifier is password-locked → throw `"Account temporarily locked due to too many failed attempts"` (HTTP 401)
 2. Verify credentials
-3. On failure → record failure, throw generic "Invalid username or password"
-4. On success → reset failure counter
+3. On failure → record password failure, throw generic `"Invalid username or password"`
+4. On success → reset password failure counter
 
-### MFA Flow
+### MFA Flow (with Brute Force Protection)
 
-1. Check if identifier is locked for MFA → throw generic "Invalid MFA code"
+1. Check if identifier is MFA-locked → throw `"Account temporarily locked due to too many failed MFA attempts"` (HTTP 401)
 2. Verify MFA token
-3. On failure → record MFA failure, throw generic "Invalid MFA code"
+3. On failure → record MFA failure, throw generic `"Invalid MFA code"`
 4. On success → reset MFA failure counter
+
+## Seed Credentials — Environment Isolation
+
+Seed users with predictable passwords (e.g., `admin`/`seed_admin`) are **automatically disabled in production and staging environments**.
+
+The `UsersService` constructor accepts a `seedUsersEnabled` option:
+
+```typescript
+// Defaults to true in development/test, false in production/staging
+const users = new UsersService({ seedUsersEnabled: false });
+```
+
+Additionally, the `comparePassword()` function refuses to use the seed backdoor when `NODE_ENV` is `production`, `staging`, `prod`, or `stage` — even if a seed user somehow exists in the database.
+
+**Seed users are only operational in `development` and `test` environments.**
+
+## Storage Key Unification
+
+Storage keys for auth tokens are now centralized in `@cvg-his-v2/shared-auth-sdk`:
+
+```typescript
+import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
+// AUTH_STORAGE_KEYS.accessToken = 'cvg-his-v2:access_token'
+// AUTH_STORAGE_KEYS.refreshToken = 'cvg-his-v2:refresh_token'
+// AUTH_STORAGE_KEYS.mfaRequired = 'cvg-his-v2:mfa_required'
+// AUTH_STORAGE_KEYS.mfaSetupRequired = 'cvg-his-v2:mfa_setup_required'
+```
+
+Both `apps/spa/src/stores/auth.ts` and `apps/spa/src/services/api.ts` import from this SDK, eliminating the previous drift where the SPA used `cvg-his-v2:access_token` (colon-separated) and the SDK used `cvg_his_v2_access_token` (underscore-separated).
 
 ## Security Properties
 

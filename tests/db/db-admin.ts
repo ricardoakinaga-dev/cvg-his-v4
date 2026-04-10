@@ -4,7 +4,7 @@ import { ADMIN_DB_URL, TEST_DB_NAME, TEST_DB_URL } from '../setup/env.js';
 let adminPool: Pool | null = null;
 let testPool: Pool | null = null;
 
-function getAdminPool(): Pool {
+export function getAdminPool(): Pool {
   if (!adminPool) {
     adminPool = new Pool({ connectionString: ADMIN_DB_URL, max: 2 });
   }
@@ -29,15 +29,32 @@ export async function ensureTestDatabase(): Promise<void> {
 
 export async function resetTestDatabase(): Promise<void> {
   const client = getAdminPool();
-  await client.query(`
-    SELECT pg_terminate_backend(pg_stat_activity.pid)
-    FROM pg_stat_activity
-    WHERE pg_stat_activity.datname = '${TEST_DB_NAME}'
-      AND pid <> pg_backend_pid()
-  `);
-  await client.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}"`);
-  await client.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
-  console.log(`[test-db] Reset database ${TEST_DB_NAME}`);
+  try {
+    await client.query(`
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE pg_stat_activity.datname = '${TEST_DB_NAME}'
+        AND pid <> pg_backend_pid()
+    `);
+  } catch {
+    // No active connections to terminate — continue
+  }
+  try {
+    await client.query(`DROP DATABASE IF EXISTS "${TEST_DB_NAME}"`);
+  } catch {
+    // Database may not exist — continue
+  }
+  try {
+    await client.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
+    console.log(`[test-db] Reset database ${TEST_DB_NAME}`);
+  } catch (err) {
+    // Database might already exist (race condition on rapid calls)
+    if (err instanceof Error && err.message.includes('already exists')) {
+      console.log(`[test-db] Database ${TEST_DB_NAME} already exists, skipping create`);
+    } else {
+      throw err;
+    }
+  }
 }
 
 export async function closePools(): Promise<void> {

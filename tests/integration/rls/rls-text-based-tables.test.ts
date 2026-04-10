@@ -1,5 +1,6 @@
 import { getTestPool } from '../../db/db-admin.js';
 import { queryOne, uuid } from '../../helpers/db-helpers.js';
+import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 
 // ============================================================================
 // RLS Text-Based Tables Tests — Fase 3c
@@ -14,10 +15,87 @@ const ACCOUNT_A = uuid();
 const ACCOUNT_B = uuid();
 const USER_A = uuid();
 const USER_B = uuid();
+const OWNER_A = uuid();
+const OWNER_B = uuid();
 const PATIENT_A = uuid();
 const PATIENT_B = uuid();
 const ENCOUNTER_A = uuid();
 const ENCOUNTER_B = uuid();
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+beforeAll(async () => {
+  const pool = getTestPool();
+  await pool.query(
+    `
+      INSERT INTO tenants (id, slug, name, status)
+      VALUES ($1, 'rls-text-tenant', 'RLS Text Tenant', 'active')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [TENANT_ID]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO accounts (id, tenant_id, slug, name)
+      VALUES ($1, $3, 'rls-text-a', 'RLS Text Account A'),
+             ($2, $3, 'rls-text-b', 'RLS Text Account B')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [ACCOUNT_A, ACCOUNT_B, TENANT_ID]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO users (id, account_id, email, password_hash, full_name)
+      VALUES
+        ($1, $3, 'rls-text-a@example.com', 'hash', 'RLS Text User A'),
+        ($2, $4, 'rls-text-b@example.com', 'hash', 'RLS Text User B')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [USER_A, USER_B, ACCOUNT_A, ACCOUNT_B]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO owners (id, account_id, full_name)
+      VALUES ($1, $3, 'RLS Owner A'),
+             ($2, $4, 'RLS Owner B')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [OWNER_A, OWNER_B, ACCOUNT_A, ACCOUNT_B]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO patients (id, account_id, owner_id, name, species)
+      VALUES ($1, $3, $5, 'RLS Patient A', 'canine'),
+             ($2, $4, $6, 'RLS Patient B', 'feline')
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [PATIENT_A, PATIENT_B, ACCOUNT_A, ACCOUNT_B, OWNER_A, OWNER_B]
+  );
+
+  await pool.query(
+    `
+      INSERT INTO encounters (id, account_id, patient_id, owner_id, status, opened_by_user_id)
+      VALUES ($1, $3, $5, $7, 'open', $9),
+             ($2, $4, $6, $8, 'open', $10)
+      ON CONFLICT (id) DO NOTHING
+    `,
+    [
+      ENCOUNTER_A,
+      ENCOUNTER_B,
+      ACCOUNT_A,
+      ACCOUNT_B,
+      PATIENT_A,
+      PATIENT_B,
+      OWNER_A,
+      OWNER_B,
+      USER_A,
+      USER_B
+    ]
+  );
+});
 
 // ============================================================================
 // RLS-TXT-001: Tables have RLS enabled
@@ -190,8 +268,9 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       const triageId = uuid();
       await client.query(
@@ -200,7 +279,7 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
         [triageId, ACCOUNT_A, ENCOUNTER_A, PATIENT_A, USER_A]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
 
       const result = await client.query(
         `SELECT COUNT(*) FROM triage_records WHERE account_id = $1`,
@@ -221,8 +300,9 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       const versionId = uuid();
       await client.query(
@@ -231,7 +311,7 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
         [versionId, uuid(), ACCOUNT_A, ENCOUNTER_A, USER_A]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
 
       const result = await client.query(
         `SELECT COUNT(*) FROM triage_record_versions WHERE account_id = $1`,
@@ -252,17 +332,18 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       const queueId = uuid();
       await client.query(
         `INSERT INTO scheduling_queue_entries (id, account_id, patient_id, owner_id, encounter_id, reason, priority, status, checked_in_at, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, 'Follow-up', 'medium', 'waiting', NOW(), NOW(), NOW())`,
-        [queueId, ACCOUNT_A, PATIENT_A, USER_A, ENCOUNTER_A]
+        [queueId, ACCOUNT_A, PATIENT_A, OWNER_A, ENCOUNTER_A]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
 
       const result = await client.query(
         `SELECT COUNT(*) FROM scheduling_queue_entries WHERE account_id = $1`,
@@ -283,26 +364,27 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO triage_records (id, account_id, encounter_id, patient_id, priority, chief_complaint, alerts_json, destination, triaged_by, triaged_at, created_at)
          VALUES ($1, $2, $3, $4, 'low', 'Headache', '[]', 'home', $5, NOW(), NOW())`,
         [uuid(), ACCOUNT_A, ENCOUNTER_A, PATIENT_A, USER_A]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
       await client.query(
         `INSERT INTO triage_records (id, account_id, encounter_id, patient_id, priority, chief_complaint, alerts_json, destination, triaged_by, triaged_at, created_at)
          VALUES ($1, $2, $3, $4, 'medium', 'Fever', '[]', 'observation', $5, NOW(), NOW())`,
         [uuid(), ACCOUNT_B, ENCOUNTER_B, PATIENT_B, USER_B]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       const resultA = await client.query(`SELECT COUNT(*) FROM triage_records`);
       expect(parseInt(resultA.rows[0].count, 10)).toBe(1);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
       const resultB = await client.query(`SELECT COUNT(*) FROM triage_records`);
       expect(parseInt(resultB.rows[0].count, 10)).toBe(1);
 
@@ -318,15 +400,16 @@ describe('RLS-TXT-005 — Cross-Account Isolation via Session', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO scheduling_queue_entries (id, account_id, patient_id, owner_id, encounter_id, reason, priority, status, checked_in_at, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, 'Urgent', 'high', 'waiting', NOW(), NOW(), NOW())`,
-        [uuid(), ACCOUNT_A, PATIENT_A, USER_A, ENCOUNTER_A]
+        [uuid(), ACCOUNT_A, PATIENT_A, OWNER_A, ENCOUNTER_A]
       );
 
-      await client.query("SET LOCAL app.current_account_id = ''");
+      await setAccountContext(client, null);
       const result = await client.query(`SELECT COUNT(*) FROM scheduling_queue_entries`);
 
       expect(parseInt(result.rows[0].count, 10)).toBe(0);
@@ -348,8 +431,9 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       await expect(
         client.query(
@@ -371,9 +455,10 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       const triageId = uuid();
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO triage_records (id, account_id, encounter_id, patient_id, priority, chief_complaint, alerts_json, destination, triaged_by, triaged_at, created_at)
          VALUES ($1, $2, $3, $4, 'low', 'Headache', '[]', 'home', $5, NOW(), NOW())`,
@@ -399,14 +484,15 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
 
       await expect(
         client.query(
           `INSERT INTO scheduling_queue_entries (id, account_id, patient_id, owner_id, encounter_id, reason, priority, status, checked_in_at, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, 'Follow-up', 'medium', 'waiting', NOW(), NOW(), NOW())`,
-          [uuid(), ACCOUNT_B, PATIENT_A, USER_A, ENCOUNTER_A]
+          [uuid(), ACCOUNT_B, PATIENT_A, OWNER_A, ENCOUNTER_A]
         )
       ).rejects.toThrow();
 
@@ -422,13 +508,14 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
       const queueId = uuid();
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       await client.query(
         `INSERT INTO scheduling_queue_entries (id, account_id, patient_id, owner_id, encounter_id, reason, priority, status, checked_in_at, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, 'Follow-up', 'medium', 'waiting', NOW(), NOW(), NOW())`,
-        [queueId, ACCOUNT_A, PATIENT_A, USER_A, ENCOUNTER_A]
+        [queueId, ACCOUNT_A, PATIENT_A, OWNER_A, ENCOUNTER_A]
       );
 
       await expect(
@@ -450,8 +537,9 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
 
     try {
       await client.query('BEGIN');
+      await activateRlsRole(client);
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_B]);
+      await setAccountContext(client, ACCOUNT_B);
       const triageId = uuid();
       await client.query(
         `INSERT INTO triage_records (id, account_id, encounter_id, patient_id, priority, chief_complaint, alerts_json, destination, triaged_by, triaged_at, created_at)
@@ -459,7 +547,7 @@ describe('RLS-TXT-006 — Cross-Account Write Protection', () => {
         [triageId, ACCOUNT_B, ENCOUNTER_B, PATIENT_B, USER_B]
       );
 
-      await client.query('SET LOCAL app.current_account_id = $1', [ACCOUNT_A]);
+      await setAccountContext(client, ACCOUNT_A);
       const result = await client.query(`DELETE FROM triage_records WHERE id = $1 RETURNING id`, [
         triageId
       ]);

@@ -21,36 +21,53 @@
 | Documentação        | 30     | 35     | 40     | 60     | 70     | 85      | 85     |
 | **GLOBAL**          | **42** | **58** | **72** | **82** | **87** | **90+** | **90** |
 
-## Atualização executiva (05/04/2026) — ATUALIZADO EM 09/04/2026 (Exec 12)
+> **NOTA DE RECALIBRAGEM (10/04/2026):** Esta tabela reflete scores **declarados historicamente**, nao o estado atual verificavel. Auditoria Codex 1011 estimou score real em **70-75/100**. Onda 1 e Onda 2 tem construcao real, porem build/typecheck/test estao falhando atualmente, impedindo sustentar os scores elevados declarados. Ver `0103-GAP-ANALYSIS-DOCUMENTACAO-VS-REALIDADE-10042026.md`.
 
-- Estágio atual do código: `Onda 2 majoritariamente entregue, Onda 3 em progresso, workspace recursivo validado no root por Executor 11 (08/04/2026): pnpm typecheck PASS, pnpm build PASS, pnpm test PASS`
-- Score executivo revisado do programa: `82/100` (elevado de 80/100 após limpeza de ruído estrutural — Exec 12 em 09/04/2026)
-- Leitura executiva revisada por trilha:
-  - Frontend/Web: `90/100`
-  - Design System/UX: `92/100`
-  - Módulos de Negócio: `84/100`
-  - Testes/QA: `92/100` (suite recursiva validada no root + warnings Vue eliminados — Exec 11 em 08/04/2026, ruído estrutural corrigido por Exec 12 em 09/04/2026)
-  - CI/CD/Deploy: `82/100`
-  - Documentação/Governança: `65/100` (documentação atualizada com novo baseline — Exec 12)
-- Evidências reais já confirmadas no workspace:
-  - `pnpm typecheck`: PASS no root
-  - `pnpm build`: PASS no root
-  - `pnpm test`: PASS no root
-  - SPA com testes passando (`485/485`) em `183.56s`
-  - `pnpm --filter @cvg-his-v2/api run test`: `36/36` passando
-  - `pnpm --filter @cvg-his-v2/web run test`: `6/6` passando
-  - `packages/tenant-context` com `--passWithNoTests` (sem testes, mas build/TypeScript OK)
-  - `design-system` Vue com typecheck proprio e imports publicos consolidados
-  - modulos `Scheduling`, `Queue`, `Billing`, `Medical Records`, `Inpatient`, `Triage`, `Users` e `Inventory` operacionais na SPA
-  - CI com `validate-openapi` funcional, coverage informacional e release assist gates nao bloqueantes
-- Melhorias de qualidade aplicadas pelo Executor 12 (09/04/2026):
-  - Warning Vue `onMounted called outside component instance` eliminado em `useListData` (6 testes)
-  - Comportamento em produção preservado (guard `getCurrentInstance()` adicionado)
-  - Suite de unit tests da SPA: 64/64 passando, 0 warnings
-- Gaps prioritários identificados pela auditoria:
-  - Cobertura de testes unitarios ainda abaixo de 60% em varias areas
-  - `pnpm test` recursivo passa, mas tem custo alto de execucao local por causa da suite da SPA
-  - Persistem varios pacotes com placeholder/no-tests, o que reduz valor real de coverage
+## Atualização executiva (05/04/2026) — ATUALIZADO EM 09/04/2026 (Exec 12) — OBSOLETA
+
+> **AVISO (10/04/2026):** Esta secao contem informacoes desatualizadas. As claims de "pnpm typecheck PASS, pnpm build PASS, pnpm test PASS" **NAO sao sustentadas por evidencia atual**. Auditoria Codex 1011 (09/04/2026) e verificacao direta (10/04/2026) confirmam que typecheck, build e test **FALHAM**.
+
+- ~~Estágio atual do código: `Onda 2 majoritariamente entregue, Onda 3 em progresso, workspace recursivo validado no root por Executor 11 (08/04/2026): pnpm typecheck PASS, pnpm build PASS, pnpm test PASS`~~
+- ~~Score executivo revisado do programa: `82/100`~~
+
+**Estado real (10/04/2026):**
+
+- Estágio atual do código: Build e typecheck **FALHANDO** - `apps/spa` nao consegue resolver `@cvg-his-v2/shared-auth-sdk`; `packages/design-system` falta `@types/node`
+- Score executivo real: **70-75/100** (Auditoria Codex 1011)
+- `pnpm typecheck`: **FAIL**
+- `pnpm build`: **FAIL**
+- `pnpm test:critical`: **FAIL** (161 falhos, 8 passando)
+- ~~Leitura executiva revisada por trilha:~~
+  - ~~Frontend/Web: `90/100`~~ — **SUPERESTIMADO**
+  - ~~Design System/UX: `92/100`~~ — **SUPERESTIMADO**
+  - ~~Módulos de Negócio: `84/100`~~ — **SUPERESTIMADO**
+  - ~~Testes/QA: `92/100`~~ — **SUPERESTIMADO** (testes estao falhando)
+  - ~~CI/CD/Deploy: `82/100`~~ — **SUPERESTIMADO**
+  - ~~Documentação/Governança: `65/100`~~ — **SUPERESTIMADO**
+
+**Scores reais estimados (Auditoria Codex 1011):**
+
+- Frontend/Web: ~75-80/100
+- Design System/UX: ~78-82/100
+- Módulos de Negócio: ~70-75/100
+- Testes/QA: ~60-65/100
+- CI/CD/Deploy: ~65-70/100
+- Documentação/Governança: ~60-65/100
+
+**Evidencias verificadas (10/04/2026):**
+
+- `pnpm typecheck`: **FAIL** — apps/spa nao consegue resolver '@cvg-his-v2/shared-auth-sdk'
+- `pnpm build`: **FAIL** — mesmo bloqueio + design-system falta @types/node
+- `pnpm test` (API): **FAIL** — ERR_MODULE_NOT_FOUND para shared-utils, shared-errors, shared-auth-sdk
+- `pnpm test:coverage`: **PASS** (threshold 5%, coverage 5.84%)
+
+**Gaps prioritários identificados (Auditoria Codex 1011):**
+
+- Build/typecheck/test globais falhando — nao ha workspace verde verificavel
+- Multi-tenancy incompleto na borda HTTP
+- accountId 'pending' na API + accountId hardcoded em persistencia
+- OpenAPI runtime serve paths vazios {}
+- Credenciais seed preditiveis no nucleo de auth
 
 ## Métricas de Acompanhamento
 

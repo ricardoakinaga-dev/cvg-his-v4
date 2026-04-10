@@ -5,7 +5,9 @@ import {
   getDatabaseClient
 } from '@cvg-his-v2/shared-database';
 import { DatabaseNotificationRepository } from '@cvg-his-v2/module-notifications';
+import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
+import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 
 const logger = createLogger('worker-bootstrap');
@@ -18,6 +20,7 @@ export interface WorkerBootstrapResult {
   readonly databaseHealthy: boolean;
   readonly databaseDetail: string;
   readonly notificationRepository?: NotificationRepository;
+  readonly outboxRepository?: OutboxRepository;
 }
 
 export async function bootstrapWorkerServices(
@@ -49,7 +52,8 @@ export async function bootstrapWorkerServices(
     return {
       databaseHealthy: true,
       databaseDetail: health.detail,
-      notificationRepository: new DatabaseNotificationRepository(db)
+      notificationRepository: new DatabaseNotificationRepository(db),
+      outboxRepository: new DatabaseOutboxRepository()
     };
   } catch (error) {
     return {

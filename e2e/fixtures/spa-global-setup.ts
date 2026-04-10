@@ -12,8 +12,8 @@ import { chromium, type FullConfig } from '@playwright/test';
  * the token directly into localStorage before navigating.
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3101';
+const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
 
 async function globalSetup(config: FullConfig) {
   console.log('\n🔧 SPA E2E Global Setup');

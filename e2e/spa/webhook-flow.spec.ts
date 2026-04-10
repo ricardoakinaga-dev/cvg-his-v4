@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/spa-fixture';
+import { test, expect, loginViaToken } from './fixtures/spa-fixture';
 
 /**
  * SPA E2E — Fluxo de Webhooks (Webhook Management UI)
@@ -18,24 +18,14 @@ import { test, expect } from './fixtures/spa-fixture';
  *   npx playwright test --config playwright-spa.config.ts -g "Webhook"
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://localhost:3101';
+const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
   test('CRUD completo: criar, editar e desativar webhook', async ({ page, apiCall, cleanup }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // ── Step 1: Login ──
     console.log('   🔐 Logging in...');
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
     console.log('   ✅ Logged in');
 
@@ -51,7 +41,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 3: Create webhook via UI ──
     console.log('   ➕ Creating webhook via UI...');
-    await page.getByRole('link', { name: /Novo Webhook/i }).click();
+    await page.getByRole('link', { name: /Novo Webhook/i }).first().click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: /Novo Webhook/ })).toBeVisible({
@@ -74,7 +64,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // Wait for success and redirect to detail
     await expect(page.getByText(/Webhook cadastrado com sucesso/i)).toBeVisible({ timeout: 15000 });
-    await page.waitForURL(/\/webhooks\/webhook-/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
     const webhookId = page.url().split('/').pop();
     console.log(`   ✅ Webhook created with ID: ${webhookId}`);
 
@@ -91,9 +81,12 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 5: Open webhook detail ──
     console.log('   🔍 Opening webhook detail...');
-    await page.locator('.webhook-url', { hasText: webhookUrl }).click();
-    await page.waitForURL(/\/webhooks\/webhook-/, { timeout: 10000 });
-    await expect(page.getByText(/Webhook/)).toBeVisible({ timeout: 10000 });
+    const webhookRow = page.locator('tr', { hasText: webhookUrl });
+    await webhookRow.getByRole('link', { name: /Ver/i }).click();
+    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /^Webhook$/ })).toBeVisible({
+      timeout: 10000
+    });
     await expect(page.locator('.detail-value', { hasText: webhookUrl })).toBeVisible({
       timeout: 10000
     });
@@ -125,7 +118,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 7: Verify edit ──
     console.log('   ✅ Verifying edit...');
-    await page.waitForURL(/\/webhooks\/webhook-/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
     await expect(page.locator('.detail-value', { hasText: webhookUrlEdited })).toBeVisible({
       timeout: 10000
     });
@@ -134,10 +127,8 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 8: Deactivate webhook ──
     console.log('   ❌ Deactivating webhook...');
+    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Desativar/ }).click();
-
-    // Confirm dialog
-    page.on('dialog', (dialog) => dialog.accept());
 
     // Wait for redirect to list
     await page.waitForURL(/\/webhooks$/, { timeout: 10000 });
@@ -156,18 +147,8 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
   });
 
   test('valida elementos da página de lista de webhooks', async ({ page }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // Login
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Navigate to webhooks
@@ -178,7 +159,9 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     await expect(page.getByRole('heading', { name: /Webhooks/ })).toBeVisible({ timeout: 15000 });
 
     // Validate "Novo Webhook" button
-    await expect(page.getByRole('link', { name: /Novo Webhook/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('link', { name: /Novo Webhook/i }).first()).toBeVisible({
+      timeout: 10000
+    });
 
     // Validate table columns (even if empty)
     const columns = page.locator('thead th, .data-table th');

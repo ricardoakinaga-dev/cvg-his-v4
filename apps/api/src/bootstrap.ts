@@ -88,7 +88,11 @@ import type {
   AuditEventId,
   AuditEventSummary,
   SessionId,
-  SessionSummary
+  SessionSummary,
+  WebhookDeliveryId,
+  WebhookDeliverySummary,
+  WebhookId,
+  WebhookSummary
 } from '@cvg-his-v2/shared-types';
 import type {
   OwnerId,
@@ -551,6 +555,62 @@ class InMemoryNotificationRepository {
   }
 }
 
+class InMemoryWebhookRepository {
+  readonly #webhooks = new Map<WebhookId, WebhookSummary>();
+  readonly #deliveries = new Map<WebhookDeliveryId, WebhookDeliverySummary>();
+
+  async create(webhook: WebhookSummary): Promise<void> {
+    this.#webhooks.set(webhook.id, webhook);
+  }
+
+  async update(webhook: WebhookSummary): Promise<void> {
+    this.#webhooks.set(webhook.id, webhook);
+  }
+
+  async findById(id: WebhookId): Promise<WebhookSummary | null> {
+    return this.#webhooks.get(id) ?? null;
+  }
+
+  async findByAccount(accountId: AccountId): Promise<readonly WebhookSummary[]> {
+    return Array.from(this.#webhooks.values())
+      .filter((webhook) => webhook.accountId === accountId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  async findActiveByEvent(
+    accountId: AccountId,
+    event: string
+  ): Promise<readonly WebhookSummary[]> {
+    return Array.from(this.#webhooks.values()).filter(
+      (webhook) =>
+        webhook.accountId === accountId && webhook.isActive && webhook.events.includes(event)
+    );
+  }
+
+  async createDelivery(delivery: WebhookDeliverySummary): Promise<void> {
+    this.#deliveries.set(delivery.id, delivery);
+  }
+
+  async updateDelivery(delivery: WebhookDeliverySummary): Promise<void> {
+    this.#deliveries.set(delivery.id, delivery);
+  }
+
+  async findDeliveriesByWebhook(
+    webhookId: WebhookId
+  ): Promise<readonly WebhookDeliverySummary[]> {
+    return Array.from(this.#deliveries.values())
+      .filter((delivery) => delivery.webhookId === webhookId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  async findPendingDeliveries(limit: number): Promise<readonly WebhookDeliverySummary[]> {
+    return Array.from(this.#deliveries.values())
+      .filter((delivery) => delivery.status === 'pending')
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .slice(0, limit);
+  }
+}
+
 export async function bootstrapServices(options: BootstrapOptions = {}): Promise<BootstrapResult> {
   const results: BootstrapResult = {
     databaseHealthy: false,
@@ -573,7 +633,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     clinicalTimeline: new InMemoryClinicalTimelineRepository(),
     entryRevision: new InMemoryEntryRevisionRepository(),
     attachment: new InMemoryAttachmentRepository(),
-    notification: new InMemoryNotificationRepository() as NotificationRepository
+    notification: new InMemoryNotificationRepository() as NotificationRepository,
+    webhook: new InMemoryWebhookRepository()
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
@@ -615,7 +676,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         patient: new DatabasePatientRepository(db),
         ownerPatientLink: new DatabaseOwnerPatientLinkRepository(db),
         encounter: new DatabaseEncounterRepository(db),
-        encounterTimeline: new DatabaseEncounterTimelineRepository(db),
+        encounterTimeline: new InMemoryEncounterTimelineRepository(),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
         clinicalEntry: new DatabaseClinicalEntryRepository(db),
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),

@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface TenantContext {
   readonly tenantId: string;
-  readonly accountId: string;
+  readonly accountId?: string;
   readonly branchId?: string;
   readonly userId?: string;
   readonly correlationId: string;
@@ -33,5 +33,9 @@ export function requireTenantId(): string {
 }
 
 export function requireAccountId(): string {
-  return requireTenantContext().accountId;
+  const ctx = requireTenantContext();
+  if (!ctx.accountId) {
+    throw new Error('Account ID is not set in tenant context. Ensure the request is authenticated with a valid token.');
+  }
+  return ctx.accountId;
 }

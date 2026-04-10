@@ -24,44 +24,51 @@ export const sessions = pgTable('sessions', {
 });
 
 export const auditEvents = pgTable('audit_events', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  actorUserId: varchar('actor_user_id', { length: 255 }),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id'),
+  actorUserId: uuid('actor_user_id'),
+  actorRole: varchar('actor_role', { length: 64 }),
+  actorRoles: jsonb('actor_roles').notNull().default([]),
   action: varchar('action', { length: 100 }).notNull(),
-  entityType: varchar('entity_type', { length: 100 }),
-  entityId: varchar('entity_id', { length: 255 }),
+  entityType: varchar('entity_type', { length: 64 }).notNull(),
+  entityId: varchar('entity_id', { length: 128 }).notNull(),
   metadata: jsonb('metadata'),
   correlationId: varchar('correlation_id', { length: 255 }),
-  ipAddress: varchar('ip_address', { length: 50 }),
-  userAgent: varchar('user_agent', { length: 500 }),
-  occurredAt: timestamp('occurred_at').notNull()
+  occurredAt: timestamp('occurred_at').notNull(),
+  beforeJson: jsonb('before_json'),
+  afterJson: jsonb('after_json'),
+  reason: text('reason'),
+  requestId: varchar('request_id', { length: 128 }),
+  createdAt: timestamp('created_at').notNull()
 });
 
 export const owners = pgTable('owners', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  documentType: varchar('document_type', { length: 20 }),
-  documentNumber: varchar('document_number', { length: 50 }),
-  name: varchar('name', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  unitId: uuid('unit_id'),
+  fullName: text('full_name').notNull(),
+  document: text('document'),
   email: varchar('email', { length: 255 }),
-  phone: varchar('phone', { length: 50 }),
-  address: jsonb('address'),
-  status: varchar('status', { length: 20 }).notNull().default('active'),
+  phoneMain: text('phone_main'),
+  phoneAlt: text('phone_alt'),
+  addressJson: jsonb('address_json'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
 
 export const patients = pgTable('patients', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  unitId: uuid('unit_id'),
+  ownerId: uuid('owner_id').notNull(),
   name: varchar('name', { length: 255 }).notNull(),
-  species: varchar('species', { length: 50 }),
+  species: varchar('species', { length: 50 }).notNull(),
   breed: varchar('breed', { length: 100 }),
   sex: varchar('sex', { length: 20 }),
   birthDate: date('birth_date'),
-  weight: numeric('weight', { precision: 10, scale: 2 }),
-  status: varchar('status', { length: 20 }).notNull().default('active'),
+  weightKg: numeric('weight_kg', { precision: 10, scale: 3 }),
+  microchip: text('microchip'),
+  alertsJson: jsonb('alerts_json').notNull().default({}),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
@@ -76,20 +83,16 @@ export const ownerPatientLinks = pgTable('owner_patient_links', {
 });
 
 export const encounters = pgTable('encounters', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  appointmentId: varchar('appointment_id', { length: 255 }),
-  visitType: varchar('visit_type', { length: 50 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  priority: varchar('priority', { length: 20 }),
-  assignedToUserId: varchar('assigned_to_user_id', { length: 255 }),
-  chiefComplaint: varchar('chief_complaint', { length: 1000 }),
-  queuedAt: timestamp('queued_at'),
-  triagedAt: timestamp('triaged_at'),
-  inCareAt: timestamp('in_care_at'),
+  openedByUserId: uuid('opened_by_user_id').notNull(),
+  closedByUserId: uuid('closed_by_user_id'),
+  openedAt: timestamp('opened_at').notNull(),
   closedAt: timestamp('closed_at'),
+  reason: text('reason'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

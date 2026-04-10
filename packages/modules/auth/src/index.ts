@@ -8,6 +8,7 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
+import { BruteForceProtection } from './brute-force.js';
 import { MfaService } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
@@ -49,6 +50,7 @@ export interface AuthServiceOptions {
   readonly audit: AuditService;
   readonly mfa?: MfaService;
   readonly sessionRepository?: SessionRepository;
+  readonly bruteForce?: BruteForceProtection;
 }
 
 export class AuthService {
@@ -61,6 +63,7 @@ export class AuthService {
   readonly #audit: AuditService;
   readonly #mfa?: MfaService;
   readonly #sessionRepository?: SessionRepository;
+  readonly #bruteForce?: BruteForceProtection;
   readonly #sessions = new Map<SessionId, SessionRecord>();
 
   public constructor(options: AuthServiceOptions) {
@@ -73,6 +76,7 @@ export class AuthService {
     this.#audit = options.audit;
     this.#mfa = options.mfa;
     this.#sessionRepository = options.sessionRepository;
+    this.#bruteForce = options.bruteForce;
   }
 
   public get mfaService(): MfaService | undefined {
@@ -85,9 +89,29 @@ export class AuthService {
   ): Promise<AuthSessionResponse | LoginMfaRequiredResponse> {
     const username = requireNonEmptyString(input.username, 'username');
     const password = requireNonEmptyString(input.password, 'password');
+
+    if (this.#bruteForce?.isPasswordLocked(username)) {
+      const remaining = this.#bruteForce.getRemainingLockSeconds(username);
+      this.#audit.write({
+        actorId: 'anonymous',
+        accountId: 'acc_cvg_demo' as never,
+        module: 'auth',
+        action: 'login_blocked_locked',
+        entityType: 'user',
+        entityId: username,
+        correlationId,
+        payloadSummary: `Login blocked due to lockout, ${remaining}s remaining`,
+        riskLevel: 'high'
+      });
+      throw new AuthenticationError('Account temporarily locked due to too many failed attempts');
+    }
+
     const user = this.#users.findByUsername(username);
 
     if (!user || !(await this.#users.verifyPassword(user, password))) {
+      if (this.#bruteForce) {
+        this.#bruteForce.recordPasswordFailure(username);
+      }
       this.#audit.write({
         actorId: user?.id ?? 'anonymous',
         accountId: (user?.accountId ?? 'acc_cvg_demo') as never,
@@ -100,6 +124,10 @@ export class AuthService {
         riskLevel: 'medium'
       });
       throw new AuthenticationError('Invalid username or password');
+    }
+
+    if (this.#bruteForce) {
+      this.#bruteForce.recordPasswordSuccess(username);
     }
 
     if (user.status !== 'active') {
@@ -142,8 +170,29 @@ export class AuthService {
     const userId = requireNonEmptyString(input.userId, 'userId');
     const token = requireNonEmptyString(input.token, 'token');
 
+    if (this.#bruteForce?.isMfaLocked(userId)) {
+      const remaining = this.#bruteForce.getRemainingLockSeconds(userId);
+      this.#audit.write({
+        actorId: userId,
+        accountId: 'unknown' as never,
+        module: 'auth',
+        action: 'mfa_blocked_locked',
+        entityType: 'user',
+        entityId: userId,
+        correlationId,
+        payloadSummary: `MFA blocked due to lockout, ${remaining}s remaining`,
+        riskLevel: 'high'
+      });
+      throw new AuthenticationError(
+        'Account temporarily locked due to too many failed MFA attempts'
+      );
+    }
+
     const isValid = await this.#mfa.verifyLogin(userId, token);
     if (!isValid) {
+      if (this.#bruteForce) {
+        this.#bruteForce.recordMfaFailure(userId);
+      }
       this.#audit.write({
         actorId: userId,
         accountId: 'unknown' as never,
@@ -156,6 +205,10 @@ export class AuthService {
         riskLevel: 'high'
       });
       throw new AuthenticationError('Invalid MFA code');
+    }
+
+    if (this.#bruteForce) {
+      this.#bruteForce.recordMfaSuccess(userId);
     }
 
     const user = this.#users.getOrThrow(userId as UserId);
@@ -260,6 +313,10 @@ export class AuthService {
         .catch((err) => {
           console.error('Failed to revoke session in database:', err);
         });
+    }
+
+    if (this.#bruteForce) {
+      this.#bruteForce.recordSuccess(session.userId);
     }
 
     this.#audit.write({

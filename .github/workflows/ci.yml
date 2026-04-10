@@ -84,6 +84,106 @@ jobs:
       - name: Validate OpenAPI
         run: pnpm validate:openapi
 
+  api-contract-tests:
+    name: API Contract Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_v2_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5433 -U postgres && break
+            sleep 1
+          done
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+        run: node packages/db/src/migrate.ts
+
+      - name: Start API
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          REDIS_URL: redis://localhost:6380
+          AUTH_SECRET: ci-test-secret-key-do-not-use-in-production-123456789012
+          PORT: '3001'
+          NODE_ENV: test
+        run: |
+          pnpm --filter @cvg-his-v2/api run build
+          pnpm --filter @cvg-his-v2/api run dev &
+          API_PID=$!
+          echo "API_PID=$API_PID" >> $GITHUB_ENV
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+              echo "API is healthy"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run API contract tests
+        env:
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          API_RUNTIME_URL: http://localhost:3001
+        run: pnpm vitest run tests/integration/openapi-runtime.test.ts --config vitest.config.ts
+
+      - name: Run API keys tests
+        run: pnpm --filter @cvg-his-v2/module-api-keys run test
+
   build:
     name: Build
     runs-on: ubuntu-22.04

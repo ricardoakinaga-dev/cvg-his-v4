@@ -6,5 +6,5 @@
     "composite": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "src/vue/**/*.vue", "src/vue/__tests__/**/*"]
+  "exclude": ["node_modules", "dist", "src/vue/**/*.vue", "src/vue/__tests__/**/*", "src/stories/**/*"]
 }

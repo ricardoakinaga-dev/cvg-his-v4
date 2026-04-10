@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/spa-fixture';
+import { test, expect, loginViaToken } from './fixtures/spa-fixture';
 
 /**
  * SPA E2E — Fluxo Completo de Billing (Faturamento)
@@ -22,8 +22,8 @@ import { test, expect } from './fixtures/spa-fixture';
  *   npx playwright test --config playwright-spa.config.ts -g "Billing"
  */
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
-const SPA_URL = process.env.SPA_URL || 'http://localhost:3002';
+const API_URL = process.env.API_URL || 'http://localhost:3101';
+const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo Completo de Billing (Faturamento)', () => {
   test('gera estimativa, adiciona itens, atualiza status e quita faturamento', async ({
@@ -31,12 +31,6 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     apiCall,
     cleanup
   }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // ── Step 0: Prepare test data ──
     console.log('   📦 Creating test data...');
     const ownerName = `Tutor Billing E2E ${Date.now()}`;
@@ -74,11 +68,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
 
     // ── Step 1: Login ──
     console.log('   🔐 Logging in...');
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
     console.log('   ✅ Logged in');
 
@@ -124,13 +114,15 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
 
     // Add first item: Consulta
     await page.getByRole('button', { name: 'Adicionar Item' }).click();
-    await expect(page.getByText('Adicionar Item de Cobran')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Adicionar Item de Cobran/i })).toBeVisible({
+      timeout: 10000
+    });
 
     await page.selectOption('#itemType', 'service');
     await page.locator('#itemDescription').fill('Consulta veterinária');
     await page.locator('#itemQuantity').fill('1');
     await page.locator('#itemPrice').fill('150');
-    await page.getByRole('button', { name: 'Adicionar' }).click();
+    await page.getByRole('button', { name: /^Adicionar$/ }).click();
 
     // Wait for item to appear in table
     await expect(page.getByText('Consulta veterinária')).toBeVisible({ timeout: 15000 });
@@ -142,7 +134,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.locator('#itemDescription').fill('Hemograma completo');
     await page.locator('#itemQuantity').fill('1');
     await page.locator('#itemPrice').fill('200');
-    await page.getByRole('button', { name: 'Adicionar' }).click();
+    await page.getByRole('button', { name: /^Adicionar$/ }).click();
 
     await expect(page.getByText('Hemograma completo')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Item 2 added: Hemograma completo');
@@ -159,26 +151,30 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     });
     await page.getByRole('button', { name: 'Atualizar Status' }).click();
 
-    await expect(page.getByText('Atualizar Status')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /^Atualizar Status$/ })).toBeVisible({
+      timeout: 10000
+    });
     await page.selectOption('#newStatus', 'open');
     await page.locator('#adminNotes').fill('Faturamento aberto para cobrança');
-    await page.getByRole('button', { name: 'Atualizar' }).click();
+    await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change
-    await expect(page.getByText('Aberto')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel('Aberto')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Aberto (open)');
 
     // ── Step 6: Settle the billing ──
     console.log('   💵 Settling billing...');
     await page.getByRole('button', { name: 'Atualizar Status' }).click();
-    await expect(page.getByText('Atualizar Status')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /^Atualizar Status$/ })).toBeVisible({
+      timeout: 10000
+    });
 
     await page.selectOption('#newStatus', 'settled');
     await page.locator('#adminNotes').fill('Pagamento recebido via PIX');
-    await page.getByRole('button', { name: 'Atualizar' }).click();
+    await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change to "Quitado"
-    await expect(page.getByText('Quitado')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel('Quitado')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Quitado (settled)');
 
     // ── Step 7: Validate final state ──
@@ -218,12 +214,6 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
   });
 
   test('valida elementos da página de billing e navegação', async ({ page, apiCall, cleanup }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // Prepare minimal data
     const owner = await apiCall.post('/owners', {
       fullName: `Tutor BillList ${Date.now()}`,
@@ -253,11 +243,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     cleanup.track({ type: 'encounter', id: encounter.id });
 
     // Login
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Navigate to billing list

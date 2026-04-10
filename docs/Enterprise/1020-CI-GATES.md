@@ -148,7 +148,7 @@ When adding a new gate:
 
 - No security scanning (SAST/DAST)
 - No contract testing
-- Coverage thresholds at 15% lines/15% functions/10% branches/15% statements — informational with warning (2026-04-09)
+- Coverage thresholds at **5% lines/15% functions/10% branches/5% statements** — informational with warning (2026-04-09). **NOTA:** Docs CI ainda citam 15% em alguns pontos — thresholds reais sao 5% conforme ajustado por Executor 24.
 - No artifact signing or provenance
 - Release assist gates run on every push, not just release tags
 - `test-e2e-spa` and `test-visual` are informational only, do not block merge

@@ -495,7 +495,7 @@ describe('PatientsService', () => {
         financialResponsible: false
       });
 
-      const found = await linkRepo.findById(link.id);
+      const found = await linkRepo.findById(link.id, ACCOUNT_ID);
       expect(found).not.toBeNull();
       expect(found!.relationshipType).toBe('secondary');
     });

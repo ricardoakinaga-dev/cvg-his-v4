@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { parse as parseYaml } from 'yaml';
 
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
@@ -229,14 +231,30 @@ export function createApiServer(options: ApiServerOptions) {
     });
 
     try {
-      // Inject tenant context for this request
+      // Extract accountId from Authorization header if present
+      let accountId: string | undefined = undefined;
+      let userId: string | undefined;
+      const authHeader = request.headers['authorization'];
+      if (authHeader) {
+        const accessToken = extractBearerToken(authHeader);
+        if (accessToken) {
+          try {
+            const principal = auth.authenticateAccessToken(accessToken);
+            accountId = principal.user.accountId;
+            userId = principal.user.id;
+          } catch {
+            // Token invalid or expired - will be rejected at route level if needed
+          }
+        }
+      }
+
       const tenantId =
         (request.headers['x-tenant-id'] as string) ?? '00000000-0000-0000-0000-000000000001';
       const tenantCtx: TenantContext = {
         tenantId,
-        accountId: 'pending',
+        accountId,
         branchId: (request.headers['x-branch-id'] as string) ?? undefined,
-        userId: undefined,
+        userId,
         correlationId
       };
 
@@ -285,6 +303,81 @@ export function createApiServer(options: ApiServerOptions) {
           response.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
           response.statusCode = 200;
           response.end(metricsText);
+          return;
+        }
+
+        if (request.url === '/openapi.json' && request.method === 'GET') {
+          try {
+            const specPath = new URL('./openapi.yaml', import.meta.url);
+            const specContent = readFileSync(specPath, 'utf8');
+            const openApiSpec = parseYaml(specContent);
+            response.setHeader('content-type', 'application/json');
+            response.statusCode = 200;
+            response.end(JSON.stringify(openApiSpec));
+          } catch (err) {
+            const openApiSpec = {
+              openapi: '3.0.3',
+              info: {
+                title: 'CVG HIS API',
+                version: '1.0.0',
+                description: 'CVG Hospital Information System REST API'
+              },
+              servers: [{ url: '/', description: 'Local development' }],
+              paths: {}
+            };
+            response.setHeader('content-type', 'application/json');
+            response.statusCode = 200;
+            response.end(JSON.stringify(openApiSpec));
+          }
+          return;
+        }
+
+        if (request.url === '/openapi.yaml' && request.method === 'GET') {
+          try {
+            const specPath = new URL('./openapi.yaml', import.meta.url);
+            const specContent = readFileSync(specPath, 'utf8');
+            response.setHeader('content-type', 'text/yaml');
+            response.statusCode = 200;
+            response.end(specContent);
+          } catch {
+            response.statusCode = 500;
+            response.end('OpenAPI spec not available');
+          }
+          return;
+        }
+
+        if (request.url === '/api-docs' && request.method === 'GET') {
+          const docsResponse = {
+            title: 'CVG HIS API',
+            version: '1.0.0',
+            description: 'CVG Hospital Information System REST API',
+            endpoints: {
+              health: { url: '/health', method: 'GET', description: 'Health check' },
+              ready: { url: '/ready', method: 'GET', description: 'Readiness check' },
+              metrics: { url: '/metrics', method: 'GET', description: 'Prometheus metrics' },
+              openapi: {
+                url: '/openapi.json',
+                method: 'GET',
+                description: 'OpenAPI 3.0 specification'
+              }
+            },
+            documentation: {
+              swagger_ui: 'Use /openapi.json with external Swagger UI tools',
+              postman: 'Import /openapi.json into Postman or Insomnia'
+            },
+            rate_limits: {
+              header_prefix: 'X-RateLimit',
+              headers: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset']
+            },
+            authentication: {
+              type: 'Bearer Token',
+              header: 'Authorization: Bearer <access_token>',
+              alternative: 'X-API-Key header for API keys'
+            }
+          };
+          response.setHeader('content-type', 'application/json');
+          response.statusCode = 200;
+          response.end(JSON.stringify(docsResponse));
           return;
         }
 
@@ -3161,7 +3254,12 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        if (pathname.match(/^\/billing\/[a-f0-9-]+$/) && request.method === 'GET') {
+        if (
+          pathname.startsWith('/billing/') &&
+          !pathname.endsWith('/items') &&
+          !pathname.endsWith('/status') &&
+          request.method === 'GET'
+        ) {
           const principal = requirePrincipal(request, 'billing.read');
           const encounterId = pathname.split('/')[2];
           const record = await billing.getByEncounterOrThrow(encounterId as never);
@@ -3221,7 +3319,11 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        if (pathname.match(/^\/billing\/[a-f0-9-]+\/status$/) && request.method === 'PATCH') {
+        if (
+          pathname.startsWith('/billing/') &&
+          pathname.endsWith('/status') &&
+          request.method === 'PATCH'
+        ) {
           const principal = requirePrincipal(request, 'billing.manage');
           const encounterId = pathname.split('/')[2];
           const payload = (await readJsonBody(request)) as UpdateBillingStatusRequest;

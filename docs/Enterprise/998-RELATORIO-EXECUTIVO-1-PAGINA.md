@@ -87,7 +87,9 @@ O plano esta dividido em `5 ondas` sequenciais:
 - modelos de AI terem baixa precisao
 - time nao ter capacidade suficiente para todas as ondas
 
-## Status de execucao (atualizado 02/04/2026)
+## Status de execucao (atualizado 02/04/2026) — OBSOLETO
+
+> **AVISO (10/04/2026):** Esta secao contem informacoes desatualizadas. Claims de "typecheck passando" e "testes passando" **NAO correspondem a realidade verificavel em 10/04/2026**. Ver `0103-GAP-ANALYSIS-DOCUMENTACAO-VS-REALIDADE-10042026.md`.
 
 ### Onda 1 — Fase 1: Concluida
 

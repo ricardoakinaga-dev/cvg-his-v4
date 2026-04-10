@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '@cvg-his-v2/shared-database';
@@ -25,7 +25,7 @@ beforeAll(async () => {
     connectionString:
       process.env.DATABASE_URL_TEST ??
       process.env.DATABASE_URL ??
-      'postgres://postgres:postgres@localhost:5432/cvg_his_v2_test',
+      'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test',
     max: 2
   });
 
@@ -54,6 +54,14 @@ async function cleanupWebhooks(): Promise<void> {
 // WH-001: Webhook registration and persistence
 // ============================================================================
 describe('WH-001 — Webhook Registration with Database Persistence', () => {
+  beforeEach(async () => {
+    await cleanupWebhooks();
+  });
+
+  afterEach(async () => {
+    await cleanupWebhooks();
+  });
+
   it('registers a webhook and persists it to the database', async () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
@@ -151,6 +159,14 @@ describe('WH-001 — Webhook Registration with Database Persistence', () => {
 // WH-002: Webhook delivery log persistence
 // ============================================================================
 describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
+  beforeEach(async () => {
+    await cleanupWebhooks();
+  });
+
+  afterEach(async () => {
+    await cleanupWebhooks();
+  });
+
   it('dispatches an event and creates a delivery record in the database', async () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
@@ -217,6 +233,14 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
 // WH-003: Database constraint — webhook_deliveries references webhooks
 // ============================================================================
 describe('WH-003 — Delivery Log Cascade Delete', () => {
+  beforeEach(async () => {
+    await cleanupWebhooks();
+  });
+
+  afterEach(async () => {
+    await cleanupWebhooks();
+  });
+
   it('cascade deletes deliveries when webhook is deleted', async () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,

@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia';
+import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import type { AuthState } from '@/types';
 
 const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'cvg-his-v2:access_token',
-  REFRESH_TOKEN: 'cvg-his-v2:refresh_token',
-  MFA_REQUIRED: 'cvg-his-v2:mfa_required',
-  MFA_SETUP_REQUIRED: 'cvg-his-v2:mfa_setup_required'
+  ACCESS_TOKEN: AUTH_STORAGE_KEYS.accessToken,
+  REFRESH_TOKEN: AUTH_STORAGE_KEYS.refreshToken,
+  MFA_REQUIRED: AUTH_STORAGE_KEYS.mfaRequired,
+  MFA_SETUP_REQUIRED: AUTH_STORAGE_KEYS.mfaSetupRequired
 } as const;
 
 function loadFromStorage(key: string): string | null {
@@ -47,8 +48,7 @@ function decodeJwt(token: string): Record<string, unknown> | null {
     const parts = token.split('.');
     // Backend emits signed tokens as payload.signature.
     // We also accept standard JWTs for forward compatibility.
-    const encodedPayload =
-      parts.length === 2 ? parts[0] : parts.length === 3 ? parts[1] : null;
+    const encodedPayload = parts.length === 2 ? parts[0] : parts.length === 3 ? parts[1] : null;
     if (!encodedPayload) return null;
 
     const decoded = decodeBase64Url(encodedPayload);
@@ -68,14 +68,40 @@ function isExpired(token: string): boolean {
   return Date.now() >= exp * 1000;
 }
 
+function emptyUser(): AuthState['user'] {
+  return { id: null, email: null, name: null, roles: [], accountId: null };
+}
+
+function userFromToken(token: string | null): AuthState['user'] {
+  if (!token) {
+    return emptyUser();
+  }
+
+  const payload = decodeJwt(token);
+  if (!payload) {
+    return emptyUser();
+  }
+
+  return {
+    id: (payload.sub as string) ?? null,
+    email: (payload.email as string) ?? null,
+    name: ((payload.displayName as string) ?? (payload.name as string) ?? null),
+    roles: (payload.roles as string[]) ?? [],
+    accountId: ((payload.accountId as string) ?? (payload.account_id as string) ?? null)
+  };
+}
+
 export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => ({
-    accessToken: loadFromStorage(STORAGE_KEYS.ACCESS_TOKEN),
-    refreshToken: loadFromStorage(STORAGE_KEYS.REFRESH_TOKEN),
-    mfaRequired: loadFromStorage(STORAGE_KEYS.MFA_REQUIRED) === 'true',
-    mfaSetupRequired: loadFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED) === 'true',
-    user: { id: null, email: null, name: null, roles: [] }
-  }),
+  state: (): AuthState => {
+    const accessToken = loadFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
+    return {
+      accessToken,
+      refreshToken: loadFromStorage(STORAGE_KEYS.REFRESH_TOKEN),
+      mfaRequired: loadFromStorage(STORAGE_KEYS.MFA_REQUIRED) === 'true',
+      mfaSetupRequired: loadFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED) === 'true',
+      user: userFromToken(accessToken)
+    };
+  },
 
   getters: {
     isAuthenticated: (state) => {
@@ -96,16 +122,7 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = refreshToken ?? null;
       saveToStorage(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
       if (refreshToken) saveToStorage(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
-
-      const payload = decodeJwt(accessToken);
-      if (payload) {
-        this.user = {
-          id: (payload.sub as string) ?? null,
-          email: (payload.email as string) ?? null,
-          name: (payload.name as string) ?? null,
-          roles: (payload.roles as string[]) ?? []
-        };
-      }
+      this.user = userFromToken(accessToken);
     },
 
     setMfaRequired(required: boolean) {
@@ -131,7 +148,7 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = null;
       this.mfaRequired = false;
       this.mfaSetupRequired = false;
-      this.user = { id: null, email: null, name: null, roles: [] };
+      this.user = emptyUser();
       removeFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
       removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
       removeFromStorage(STORAGE_KEYS.MFA_REQUIRED);

@@ -347,7 +347,9 @@ Os maiores desafios estao na execucao: especialmente a concentracao de escopo na
 - Payback estimado: `~14 meses`
 - Maior prioridade: executar a Onda 1 com rigor de escopo, mitigacao de risco e medicao real de progresso
 
-## 17. Status de execucao atualizado (03/04/2026)
+## 17. Status de execucao atualizado (03/04/2026) — OBSOLETO
+
+> **AVISO (10/04/2026):** Esta secao contem informacoes desatualizadas. Claims de "concluida" para Onda 1 e Onda 2 sao questionaveis dado que build/typecheck/test estao falhando atualmente. Ver `0103-GAP-ANALYSIS-DOCUMENTACAO-VS-REALIDADE-10042026.md`.
 
 ### Onda 1 — Progresso real
 

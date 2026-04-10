@@ -16,6 +16,9 @@ export const auditEvents = pgTable(
     entityType: varchar('entity_type', { length: 64 }).notNull(),
     entityId: varchar('entity_id', { length: 128 }).notNull(),
     action: varchar('action', { length: 64 }).notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown> | null>(),
+    correlationId: varchar('correlation_id', { length: 255 }),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
     beforeJson: jsonb('before_json').$type<Record<string, unknown> | null>(),
     afterJson: jsonb('after_json').$type<Record<string, unknown> | null>(),
     reason: text('reason'),
@@ -23,7 +26,9 @@ export const auditEvents = pgTable(
   },
   (table) => ({
     createdAtIdx: index('audit_events_created_at_idx').on(table.createdAt),
+    occurredAtIdx: index('audit_events_occurred_at_idx').on(table.occurredAt),
     entityIdx: index('audit_events_entity_idx').on(table.entityType, table.entityId),
-    accountCreatedAtIdx: index('audit_events_account_created_at_idx').on(table.accountId, table.createdAt)
+    accountCreatedAtIdx: index('audit_events_account_created_at_idx').on(table.accountId, table.createdAt),
+    correlationIdx: index('audit_events_correlation_id_idx').on(table.correlationId)
   })
 );
