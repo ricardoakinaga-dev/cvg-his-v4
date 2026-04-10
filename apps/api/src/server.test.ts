@@ -404,6 +404,82 @@ test('quotes expose dedicated PDF generation over HTTP semantics', async () => {
   assert.ok(pdfResponse.bodyText().startsWith('%PDF-1.4'));
 });
 
+test('API keys unlock integration catalog and PIX intent creation over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const createKeyResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/api-keys',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Third-party integration key',
+      permissions: ['integrations.read', 'payments.manage'],
+      rateLimit: 120,
+      rateLimitWindow: 3600
+    }
+  });
+  assert.equal(createKeyResponse.statusCode, 201);
+  const createdKey = createKeyResponse.bodyJson<{ apiKey: { id: string }; rawKey: string }>();
+  assert.ok(createdKey.rawKey.startsWith('cvg_'));
+
+  const listKeyResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/api-keys',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(listKeyResponse.statusCode, 200);
+  const apiKeyList = listKeyResponse.bodyJson<{ items: Array<{ id: string; keyHash?: string }> }>();
+  assert.equal(apiKeyList.items.some((item) => item.id === createdKey.apiKey.id), true);
+  assert.equal(apiKeyList.items.some((item) => 'keyHash' in item), false);
+
+  const catalogResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/integrations/catalog',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      host: 'localhost'
+    }
+  });
+  assert.equal(catalogResponse.statusCode, 200);
+  const catalog = catalogResponse.bodyJson<{ payments: { provider: string } }>();
+  assert.equal(catalog.payments.provider, 'local-pix');
+
+  const paymentResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/payments/pix/intents',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      billingRecordId: 'bill_123',
+      amount: 149.9,
+      description: 'Consulta de acompanhamento',
+      expirationMinutes: 45
+    }
+  });
+  assert.equal(paymentResponse.statusCode, 201);
+  const payment = paymentResponse.bodyJson<{
+    provider: string;
+    status: string;
+    eventId: string;
+    qrCodePayload: string;
+  }>();
+  assert.equal(payment.provider, 'local-pix');
+  assert.equal(payment.status, 'pending');
+  assert.ok(payment.eventId);
+  assert.ok(payment.qrCodePayload.includes('bill_123'));
+});
+
 // =============================================================================
 // WhatsApp inbound webhook tests
 // =============================================================================

@@ -15,6 +15,12 @@ export interface CreateOutboxEventInput {
   scheduledAt?: string;
 }
 
+/**
+ * Event handler function signature.
+ * Subscribers to the EventBusService must conform to this interface.
+ */
+export type EventHandler = (event: OutboxEvent) => Promise<void>;
+
 export class DatabaseOutboxRepository implements OutboxRepository {
   async create(event: OutboxEvent): Promise<void> {
     const pool = getPool();
@@ -102,10 +108,21 @@ export class DatabaseOutboxRepository implements OutboxRepository {
 }
 
 export class EventBusService {
-  private repository: OutboxRepository;
+  readonly #repository: OutboxRepository;
+  readonly #handlers: Set<EventHandler>;
 
   constructor(repository?: OutboxRepository) {
-    this.repository = repository ?? new DatabaseOutboxRepository();
+    this.#repository = repository ?? new DatabaseOutboxRepository();
+    this.#handlers = new Set();
+  }
+
+  /**
+   * Subscribe an event handler to be called when events are processed.
+   * Handlers are called after an event is marked as 'completed'.
+   */
+  subscribe(handler: EventHandler): () => void {
+    this.#handlers.add(handler);
+    return () => this.#handlers.delete(handler);
   }
 
   async publish(input: CreateOutboxEventInput): Promise<OutboxEvent> {
@@ -124,12 +141,12 @@ export class EventBusService {
       createdAt: nowIso()
     };
 
-    await this.repository.create(event);
+    await this.#repository.create(event);
     return event;
   }
 
   async processPending(limit = 10): Promise<readonly OutboxEvent[]> {
-    const pending = await this.repository.findPending(limit);
+    const pending = await this.#repository.findPending(limit);
     const processed: OutboxEvent[] = [];
 
     for (const event of pending) {
@@ -137,15 +154,24 @@ export class EventBusService {
         ...event,
         status: 'processing'
       };
-      await this.repository.update(updated);
+      await this.#repository.update(updated);
 
       try {
+        // Notify all subscribers before marking as completed
+        await Promise.all(
+          Array.from(this.#handlers).map((handler) =>
+            handler(event).catch((err) => {
+              console.error(`[EventBus] Handler error for ${event.eventType}:`, err);
+            })
+          )
+        );
+
         const completed: OutboxEvent = {
           ...updated,
           status: 'completed',
           processedAt: nowIso()
         };
-        await this.repository.update(completed);
+        await this.#repository.update(completed);
         processed.push(completed);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -157,7 +183,7 @@ export class EventBusService {
           attempts: event.attempts + 1,
           error: errorMessage
         };
-        await this.repository.update(failed);
+        await this.#repository.update(failed);
       }
     }
 
@@ -165,10 +191,10 @@ export class EventBusService {
   }
 
   async getEvent(id: string): Promise<OutboxEvent | null> {
-    return this.repository.findById(id);
+    return this.#repository.findById(id);
   }
 
   async getEventsByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
-    return this.repository.findByCorrelationId(correlationId);
+    return this.#repository.findByCorrelationId(correlationId);
   }
 }

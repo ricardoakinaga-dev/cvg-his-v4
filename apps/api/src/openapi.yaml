@@ -93,6 +93,12 @@ tags:
     description: Notification management
   - name: Webhooks
     description: Webhook subscription management for external integrations
+  - name: API Keys
+    description: API key lifecycle for third-party access
+  - name: Integrations
+    description: Premium integration catalog and contract surface
+  - name: Payments
+    description: Safe payment intent and provider abstraction endpoints
   - name: Access Control
     description: Roles, permissions and team management
   - name: Audit
@@ -1922,6 +1928,36 @@ paths:
         '404':
           description: Webhook not found
 
+  /webhooks/{webhookId}/test:
+    post:
+      operationId: testWebhook
+      summary: Send a test event to a registered webhook
+      description: >
+        Dispatches a test payload to the registered webhook URL and returns
+        the delivery result (success flag, HTTP status code, and response body).
+        Does not store the test in delivery history.
+      tags: [Webhooks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the webhook to test
+      responses:
+        '200':
+          description: Test delivery result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookTestResult'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook not found
+
   /webhooks/{webhookId}/deliveries:
     get:
       operationId: listWebhookDeliveries
@@ -1949,6 +1985,94 @@ paths:
                       $ref: '#/components/schemas/WebhookDelivery'
         '401':
           description: Unauthorized
+
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys for the current account
+      tags: [API Keys]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          description: Unauthorized
+    post:
+      operationId: createApiKey
+      summary: Create an API key for third-party access
+      tags: [API Keys]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreatedResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /integrations/catalog:
+    get:
+      operationId: getIntegrationCatalog
+      summary: Read the premium integration catalog
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Integration catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationCatalogResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /payments/pix/intents:
+    post:
+      operationId: createPixPaymentIntent
+      summary: Create a PIX payment intent through the safe gateway abstraction
+      tags: [Payments]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PixPaymentIntentRequest'
+      responses:
+        '201':
+          description: PIX intent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixPaymentIntentResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
   /webhooks/whatsapp/inbound:
     post:
@@ -3351,6 +3475,12 @@ components:
       description: |
         JWT access token obtained from /auth/login.
         Include as: Authorization: Bearer <token>
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key issued by the /api-keys endpoint for third-party access.
 
   schemas:
     ErrorResponse:
@@ -4463,6 +4593,180 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    WebhookTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the webhook endpoint responded with 2xx
+        statusCode:
+          type: integer
+          description: HTTP status code returned by the webhook endpoint
+        body:
+          type: string
+          description: Response body from the webhook endpoint
+
+    ApiKeySummaryPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        rateLimit:
+          type: integer
+        rateLimitWindow:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApiKeyListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeySummaryPublic'
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name, permissions]
+      properties:
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        rateLimit:
+          type: integer
+        rateLimitWindow:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+
+    ApiKeyCreatedResponse:
+      type: object
+      properties:
+        apiKey:
+          $ref: '#/components/schemas/ApiKeySummaryPublic'
+        rawKey:
+          type: string
+
+    IntegrationCatalogResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+        apiKeyId:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        eventBus:
+          type: object
+          properties:
+            provider:
+              type: string
+            state:
+              type: string
+            endpoints:
+              type: array
+              items:
+                type: string
+        webhooks:
+          type: object
+          properties:
+            endpoints:
+              type: array
+              items:
+                type: string
+            delivery:
+              type: string
+        payments:
+          type: object
+          properties:
+            provider:
+              type: string
+            endpoints:
+              type: array
+              items:
+                type: string
+
+    PixPaymentIntentRequest:
+      type: object
+      required: [amount, description]
+      properties:
+        billingRecordId:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+        expirationMinutes:
+          type: integer
+
+    PixPaymentIntentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        accountId:
+          type: string
+        billingRecordId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        qrCodePayload:
+          type: string
+        qrCodeBase64:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        eventId:
+          type: string
+        eventCorrelationId:
+          type: string
 
     CreateWebhookRequest:
       type: object

@@ -52,15 +52,26 @@ import type {
   CreateWebhookRequest,
   UpdateWebhookRequest
 } from '@cvg-his-v2/shared-contracts';
-import { AuthenticationError, ValidationError, toErrorResponse } from '@cvg-his-v2/shared-errors';
+import {
+  AuthenticationError,
+  ForbiddenError,
+  ValidationError,
+  toErrorResponse
+} from '@cvg-his-v2/shared-errors';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { runWithTenantContext, type TenantContext } from '@cvg-his-v2/tenant-context';
-import type { SchedulingAppointmentSummary } from '@cvg-his-v2/shared-types';
+import type {
+  ApiKeySummary,
+  CorrelationId,
+  ModuleName,
+  SchedulingAppointmentSummary
+} from '@cvg-his-v2/shared-types';
 
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
+import { LocalPixPaymentGateway } from './payment-gateway.js';
 import {
   getMetricsText,
   httpErrorsTotal,
@@ -114,6 +125,8 @@ export function createApiServer(options: ApiServerOptions) {
     auth,
     lgpd,
     webhooks,
+    apiKeys,
+    eventBus,
     initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
@@ -122,6 +135,7 @@ export function createApiServer(options: ApiServerOptions) {
     repositories: options.repositories,
     fileStorage: options.fileStorage
   });
+  const paymentGateway = new LocalPixPaymentGateway();
 
   const notificationPersistence = notifications as unknown as {
     listFromRepository(
@@ -3692,6 +3706,184 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
+        if (pathname === '/api-keys' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'api_keys.manage');
+          const body = (await readJsonBody(request)) as Record<string, unknown>;
+
+          validateRequestBody(
+            body,
+            {
+              name: { type: 'string', required: true, minLength: 3, maxLength: 120 },
+              permissions: { type: 'array', required: true }
+            },
+            correlationId
+          );
+
+          const permissions = Array.isArray(body.permissions)
+            ? body.permissions.filter((value): value is string => typeof value === 'string')
+            : [];
+          if (permissions.length === 0) {
+            throw new ValidationError('permissions must contain at least one permission');
+          }
+
+          const knownPermissions = new Set(accessControl.listPermissions().map((item) => item.code));
+          const unknownPermissions = permissions.filter((permission) => !knownPermissions.has(permission));
+          if (unknownPermissions.length > 0) {
+            throw new ValidationError('permissions contains unknown permission codes', {
+              unknownPermissions
+            });
+          }
+
+          const created = await apiKeys.create({
+            accountId: principal.user.accountId,
+            name: String(body.name),
+            permissions,
+            rateLimit:
+              typeof body.rateLimit === 'number' ? Math.max(1, Math.floor(body.rateLimit)) : undefined,
+            rateLimitWindow:
+              typeof body.rateLimitWindow === 'number'
+                ? Math.max(60, Math.floor(body.rateLimitWindow))
+                : undefined,
+            expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : undefined,
+            createdBy: principal.user.id
+          });
+
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'integrations',
+            'api_key_create',
+            'api_key',
+            created.apiKey.id,
+            `API key ${created.apiKey.name} created with ${created.apiKey.permissions.length} permissions`,
+            'medium',
+            correlationId
+          );
+
+          response.statusCode = 201;
+          response.end(
+            JSON.stringify({
+              apiKey: sanitizeApiKey(created.apiKey),
+              rawKey: created.rawKey
+            })
+          );
+          return;
+        }
+
+        if (pathname === '/api-keys' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'api_keys.manage');
+          const items = await apiKeys.getByAccount(principal.user.accountId);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items: items.map(sanitizeApiKey) }));
+          return;
+        }
+
+        if (pathname === '/integrations/catalog' && request.method === 'GET') {
+          const apiKeyPrincipal = await requireApiKey(request, 'integrations.read');
+          const payload = {
+            accountId: apiKeyPrincipal.apiKey.accountId,
+            apiKeyId: apiKeyPrincipal.apiKey.id,
+            permissions: apiKeyPrincipal.apiKey.permissions,
+            eventBus: {
+              provider: 'database-outbox',
+              state: 'operational',
+              endpoints: ['/internal/events/publish', '/internal/events/:correlationId']
+            },
+            webhooks: {
+              endpoints: ['/webhooks', '/webhooks/{webhookId}', '/webhooks/{webhookId}/test'],
+              delivery: 'retry-3x'
+            },
+            payments: {
+              provider: 'local-pix',
+              endpoints: ['/payments/pix/intents']
+            }
+          };
+          await apiKeys.recordUsage({
+            apiKeyId: apiKeyPrincipal.apiKey.id,
+            endpoint: '/integrations/catalog',
+            method: 'GET',
+            statusCode: 200,
+            responseTimeMs: null
+          });
+          response.statusCode = 200;
+          response.end(JSON.stringify(payload));
+          return;
+        }
+
+        if (pathname === '/payments/pix/intents' && request.method === 'POST') {
+          const apiKeyPrincipal = await requireApiKey(request, 'payments.manage');
+          const body = (await readJsonBody(request)) as Record<string, unknown>;
+
+          validateRequestBody(
+            body,
+            {
+              amount: { type: 'number', required: true },
+              description: { type: 'string', required: true, minLength: 3, maxLength: 140 }
+            },
+            correlationId
+          );
+
+          if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
+            throw new ValidationError('amount must be a positive number');
+          }
+
+          const intent = await paymentGateway.createPixIntent({
+            accountId: apiKeyPrincipal.apiKey.accountId,
+            billingRecordId:
+              typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined,
+            amount: body.amount,
+            description: String(body.description),
+            expirationMinutes:
+              typeof body.expirationMinutes === 'number'
+                ? Math.max(5, Math.floor(body.expirationMinutes))
+                : undefined
+          });
+          const event = await eventBus.publish({
+            correlationId: createCorrelationId('pix') as CorrelationId,
+            moduleName: 'billing' as ModuleName,
+            eventType: 'payment.pix.intent.created',
+            payload: {
+              accountId: apiKeyPrincipal.apiKey.accountId,
+              intentId: intent.id,
+              billingRecordId: intent.billingRecordId,
+              amount: intent.amount,
+              currency: intent.currency,
+              provider: intent.provider,
+              status: intent.status,
+              expiresAt: intent.expiresAt
+            }
+          });
+
+          appendAudit(
+            'system',
+            apiKeyPrincipal.apiKey.accountId,
+            'billing',
+            'pix_intent_create',
+            'payment_intent',
+            intent.id,
+            `PIX intent ${intent.id} created via API key ${apiKeyPrincipal.apiKey.id}`,
+            'medium',
+            correlationId
+          );
+
+          await apiKeys.recordUsage({
+            apiKeyId: apiKeyPrincipal.apiKey.id,
+            endpoint: '/payments/pix/intents',
+            method: 'POST',
+            statusCode: 201,
+            responseTimeMs: null
+          });
+          response.statusCode = 201;
+          response.end(
+            JSON.stringify({
+              ...intent,
+              eventId: event.id,
+              eventCorrelationId: event.correlationId
+            })
+          );
+          return;
+        }
+
         if (pathname === '/webhooks/whatsapp/inbound' && request.method === 'POST') {
           const body = (await readJsonBody(request)) as Record<string, unknown>;
           const correlationId = createCorrelationId('wa-in');
@@ -3816,6 +4008,38 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
+        // POST /webhooks/{webhookId}/test — send a test event to the webhook
+        if (
+          pathname.startsWith('/webhooks/') &&
+          pathname.endsWith('/test') &&
+          request.method === 'POST'
+        ) {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const result = await webhooks.test(webhookId as never, principal.user.accountId as never);
+          if (!result) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'webhooks',
+            'test',
+            'webhook',
+            webhookId,
+            `Webhook test sent to ${webhookId}: success=${result.success}, status=${result.statusCode}`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(result));
+          return;
+        }
+
         if (pathname.startsWith('/webhooks/') && request.method === 'GET') {
           const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
           const principal = requirePrincipal(request, 'webhooks.read');
@@ -3916,6 +4140,30 @@ export function createApiServer(options: ApiServerOptions) {
       accountId: principal.user.accountId
     });
     return principal;
+  }
+
+  async function requireApiKey(request: IncomingMessage, permissionCode: string) {
+    const apiKeyValue = readHeader(request, 'x-api-key') ?? readHeader(request, 'X-API-Key');
+    if (!apiKeyValue) {
+      throw new AuthenticationError('API key required');
+    }
+
+    const apiKey = await apiKeys.validate(apiKeyValue);
+    if (!apiKey) {
+      throw new AuthenticationError('Invalid API key');
+    }
+
+    if (!apiKey.permissions.includes(permissionCode)) {
+      throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
+    }
+
+    void apiKeys.updateLastUsed(apiKey.id);
+    return { apiKey };
+  }
+
+  function sanitizeApiKey(apiKey: ApiKeySummary): Omit<ApiKeySummary, 'keyHash'> {
+    const { keyHash: _keyHash, ...safe } = apiKey;
+    return safe;
   }
 
   async function syncQueueWithEncounter(

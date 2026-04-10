@@ -110,3 +110,73 @@ test('EventBusService getEventsByCorrelationId returns events for correlation', 
 
   assert.equal(results.length, 2);
 });
+
+test('EventBusService subscribe calls handler when event is processed', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  const handledEvents: any[] = [];
+  const unsubscribe = service.subscribe(async (event) => {
+    handledEvents.push(event);
+  });
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.event',
+    payload: { key: 'value' }
+  });
+
+  await service.processPending(10);
+
+  assert.equal(handledEvents.length, 1);
+  assert.equal(handledEvents[0].eventType, 'test.event');
+  assert.deepEqual(handledEvents[0].payload, { key: 'value' });
+
+  unsubscribe();
+});
+
+test('EventBusService subscribe returns unsubscribe function', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  const handledEvents: any[] = [];
+  const unsubscribe = service.subscribe(async (event) => {
+    handledEvents.push(event);
+  });
+
+  unsubscribe();
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.event',
+    payload: {}
+  });
+
+  await service.processPending(10);
+
+  assert.equal(handledEvents.length, 0, 'Handler should not be called after unsubscribe');
+});
+
+test('EventBusService multiple handlers are all called', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  const calls: number[] = [];
+  service.subscribe(async () => { calls.push(1); });
+  service.subscribe(async () => { calls.push(2); });
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.event',
+    payload: {}
+  });
+
+  await service.processPending(10);
+
+  assert.equal(calls.length, 2);
+  assert.ok(calls.includes(1));
+  assert.ok(calls.includes(2));
+});

@@ -52,6 +52,36 @@ test('login, session refresh and audit trail work end-to-end', async () => {
   );
 });
 
+test('runtime exposes API keys and event bus persistence for integrations', async () => {
+  const runtime = createTestRuntime();
+
+  const created = await runtime.apiKeys.create({
+    accountId: 'acc_cvg_demo' as never,
+    name: 'Integration key',
+    permissions: ['integrations.read', 'payments.manage'],
+    createdBy: 'user_admin'
+  });
+
+  const validated = await runtime.apiKeys.validate(created.rawKey);
+  assert.ok(validated);
+  assert.equal(validated?.id, created.apiKey.id);
+
+  const event = await runtime.eventBus.publish({
+    correlationId: 'corr_runtime_event' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.pix.intent.created',
+    payload: {
+      accountId: created.apiKey.accountId,
+      intentId: 'pix_123',
+      amount: 99.9
+    }
+  });
+
+  const fetched = await runtime.eventBus.getEvent(event.id);
+  assert.equal(fetched?.status, 'pending');
+  assert.equal(fetched?.eventType, 'payment.pix.intent.created');
+});
+
 test('backend enforcement denies audit access to a role without permission', async () => {
   const runtime = createTestRuntime();
   const login = await runtime.auth.login(

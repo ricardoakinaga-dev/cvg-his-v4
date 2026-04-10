@@ -51,7 +51,7 @@ Todas as tarefas, status, e entregas devem ser registradas aqui.
 
 ## GATE BLOCO 2 -> BLOCO 3
 
-**Revalidado em:** 2026-04-10 14:12:00 UTC
+**Revalidado em:** 2026-04-10 14:08:00 UTC
 **Status:** BLOCO 2 APROVADO ✅
 **Impacto:** BLOCO 3 DESBLOQUEADO
 
@@ -69,8 +69,8 @@ Todas as tarefas, status, e entregas devem ser registradas aqui.
 | MFA module | ✅ PASS | 50/50 |
 | RLS/LGPD integration tests | ✅ PASS | 54/54 |
 | Storybook / design system | ✅ PASS | build-storybook PASS |
-| `pnpm test:e2e:spa` | ✅ PASS | 22/22 PASS, 3 SKIP; suite integrada fechou após estabilizacao do bloco visual e rerun final limpo |
-| `pnpm test:visual` | ✅ PASS | 9/9 snapshots governados, 3 SKIP; baseline atualizado de forma intencional e reprodutivel |
+| `pnpm test:e2e:spa` | ✅ PASS | 22/22 PASS, 3 SKIP (confirmado 10/04/2026 14:08 UTC) |
+| `pnpm test:visual` | ✅ PASS | 9/9 snapshots governados, 3 SKIP (confirmado 10/04/2026 14:08 UTC) |
 | WCAG auditoria | ✅ PONTUAL OK | Telas tocadas mantiveram headings, labels, foco, contraste e estados ARIA coerentes |
 | Coverage > baseline | ⚠️ 5.31% | Threshold CI: 5% |
 

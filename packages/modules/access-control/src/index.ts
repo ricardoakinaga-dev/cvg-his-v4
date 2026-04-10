@@ -290,6 +290,30 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     code: 'webhooks.manage',
     module: 'webhooks',
     description: 'Register, update and disable webhook integrations.'
+  },
+  {
+    id: 'perm_integrations_read' as PermissionId,
+    code: 'integrations.read',
+    module: 'integrations',
+    description: 'Read the premium integrations catalog and event surface.'
+  },
+  {
+    id: 'perm_integrations_manage' as PermissionId,
+    code: 'integrations.manage',
+    module: 'integrations',
+    description: 'Manage premium integrations and third-party access.'
+  },
+  {
+    id: 'perm_api_keys_manage' as PermissionId,
+    code: 'api_keys.manage',
+    module: 'integrations',
+    description: 'Create and manage API keys for third-party access.'
+  },
+  {
+    id: 'perm_payments_manage' as PermissionId,
+    code: 'payments.manage',
+    module: 'billing',
+    description: 'Create and manage payment intents and provider access.'
   }
 ] as const;
 

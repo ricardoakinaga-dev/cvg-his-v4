@@ -3,7 +3,12 @@ import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
-import { createWorkerNotifications, runWorkerTick } from './runner.js';
+import {
+  createWorkerNotifications,
+  createWorkerEventBus,
+  runWorkerTick,
+  runEventBusTick
+} from './runner.js';
 
 async function main() {
   const config = loadWorkerConfig(process.env);
@@ -19,6 +24,9 @@ async function main() {
   const notifications = createWorkerNotifications({
     notificationRepository: bootstrap.notificationRepository
   });
+  const eventBus = createWorkerEventBus({
+    eventBusRepository: bootstrap.outboxRepository
+  });
 
   await runWorkerTick(
     logger,
@@ -31,6 +39,19 @@ async function main() {
       databaseDetail: bootstrap.databaseDetail
     },
     notifications
+  );
+
+  await runEventBusTick(
+    logger,
+    {
+      service: config.appName,
+      environment: config.environment,
+      correlationId: createCorrelationId('worker'),
+      persistenceMode: bootstrap.outboxRepository ? 'database' : 'in-memory',
+      databaseHealthy: bootstrap.databaseHealthy,
+      databaseDetail: bootstrap.databaseDetail
+    },
+    eventBus
   );
 
   await shutdownWorkerServices();

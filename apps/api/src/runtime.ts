@@ -8,6 +8,7 @@ import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
 import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
 import type { SessionRepository } from '@cvg-his-v2/module-auth';
+import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import { DiagnosticsService } from '@cvg-his-v2/module-diagnostics';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
@@ -67,6 +68,7 @@ import type {
 import { MfaService, validateMasterKey, type MfaRepository } from '@cvg-his-v2/module-mfa';
 import { LgpdService, type ConsentRepository, type DsrRepository } from '@cvg-his-v2/module-lgpd';
 import { WebhooksService, type WebhookRepository } from '@cvg-his-v2/module-webhooks';
+import { EventBusService, type OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import {
   WhatsAppProviderService,
   RuntimeOwnerLookup,
@@ -79,6 +81,8 @@ import {
   type PatientLookup,
   type SettingsLookup
 } from '@cvg-his-v2/module-notifications-whatsapp';
+import type { ApiKeyRepository } from '@cvg-his-v2/module-api-keys';
+import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
 import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
@@ -88,6 +92,9 @@ import type { UsersRepository } from '@cvg-his-v2/module-users';
 import type { AccessControlRepository } from '@cvg-his-v2/module-access-control';
 import type { ProductsRepository } from '@cvg-his-v2/module-products';
 import type { ServicesRepository } from '@cvg-his-v2/module-services';
+import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
+
+import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -126,6 +133,8 @@ export interface RuntimeRepositories {
   readonly consent?: ConsentRepository;
   readonly dsr?: DsrRepository;
   readonly webhook?: WebhookRepository;
+  readonly apiKey?: ApiKeyRepository;
+  readonly outbox?: OutboxRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -141,17 +150,46 @@ export interface ApiRuntimeOptions {
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
   const repos = options.repositories ?? {};
+  const inMemoryRepos = createInMemoryRuntimeRepositories();
 
   const accessControl = new AccessControlService({ repository: repos.accessControl });
   const users = new UsersService({ repository: repos.users });
   const staff = new StaffService({ repository: repos.staff });
   const owners = new OwnersService({ ownerRepository: repos.owner });
-  const webhooks = new WebhooksService({ repository: repos.webhook });
+  const webhooks = new WebhooksService({ repository: repos.webhook ?? inMemoryRepos.webhook });
+  const apiKeys = new ApiKeysService(repos.apiKey ?? inMemoryRepos.apiKey);
+  const eventBus = new EventBusService(repos.outbox ?? inMemoryRepos.outbox);
+
+  async function publishEvent(
+    moduleName: ModuleName,
+    eventType: string,
+    payload: Record<string, unknown>
+  ) {
+    await eventBus.publish({
+      correlationId: createCorrelationId('evt') as CorrelationId,
+      moduleName,
+      eventType,
+      payload
+    });
+  }
+
   const patients = new PatientsService({
     owners,
     patientRepository: repos.patient,
     ownerPatientLinkRepository: repos.ownerPatientLink,
     async onPatientCreated(patient) {
+      await publishEvent('patients' as ModuleName, 'patient.created', {
+        id: patient.id,
+        accountId: patient.accountId,
+        name: patient.name,
+        species: patient.species,
+        breed: patient.breed,
+        sex: patient.sex,
+        size: patient.size,
+        primaryOwnerId: patient.primaryOwnerId,
+        status: patient.status,
+        createdAt: patient.createdAt
+      });
       await webhooks.dispatch(patient.accountId, 'patient.created', {
         id: patient.id,
         accountId: patient.accountId,
@@ -181,6 +219,17 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const scheduling = new SchedulingService(owners, patients, [], {
     repository: repos.scheduling,
     async onAppointmentCreated(appointment) {
+      await publishEvent('scheduling' as ModuleName, 'appointment.scheduled', {
+        id: appointment.id,
+        accountId: appointment.accountId,
+        patientId: appointment.patientId,
+        ownerId: appointment.ownerId,
+        scheduledAt: appointment.scheduledAt,
+        visitType: appointment.visitType,
+        reason: appointment.reason,
+        status: appointment.status,
+        createdAt: appointment.createdAt
+      });
       await webhooks.dispatch(appointment.accountId, 'appointment.scheduled', {
         id: appointment.id,
         accountId: appointment.accountId,
@@ -195,6 +244,16 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
     },
     async onAppointmentStatusChanged(appointment, previousStatus) {
+      await publishEvent('scheduling' as ModuleName, 'appointment.status_changed', {
+        id: appointment.id,
+        accountId: appointment.accountId,
+        patientId: appointment.patientId,
+        ownerId: appointment.ownerId,
+        previousStatus,
+        newStatus: appointment.status,
+        reason: appointment.reason,
+        updatedAt: appointment.updatedAt
+      });
       await webhooks.dispatch(appointment.accountId, 'appointment.status_changed', {
         id: appointment.id,
         accountId: appointment.accountId,
@@ -213,6 +272,18 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     encounterRepository: repos.encounter,
     encounterTimelineRepository: repos.encounterTimeline,
     async onEncounterCreated(encounter) {
+      await publishEvent('encounters' as ModuleName, 'encounter.created', {
+        id: encounter.id,
+        accountId: encounter.accountId,
+        patientId: encounter.patientId,
+        ownerId: encounter.ownerId,
+        status: encounter.status,
+        visitType: encounter.visitType,
+        origin: encounter.origin,
+        reason: encounter.reason,
+        openedAt: encounter.openedAt,
+        createdByUserId: encounter.createdByUserId
+      });
       await webhooks.dispatch(encounter.accountId, 'encounter.created', {
         id: encounter.id,
         accountId: encounter.accountId,
@@ -227,6 +298,14 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     },
     async onEncounterStatusChanged(encounter, previousStatus) {
+      await publishEvent('encounters' as ModuleName, 'encounter.status_changed', {
+        id: encounter.id,
+        accountId: encounter.accountId,
+        patientId: encounter.patientId,
+        previousStatus,
+        newStatus: encounter.status,
+        updatedAt: encounter.updatedAt
+      });
       await webhooks.dispatch(encounter.accountId, 'encounter.status_changed', {
         id: encounter.id,
         accountId: encounter.accountId,
@@ -261,6 +340,15 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const billing = new BillingService(encounters, {
     repository: repos.billing,
     async onRecordCreated(record) {
+      await publishEvent('billing' as ModuleName, 'billing.record.created', {
+        id: record.id,
+        accountId: record.accountId,
+        encounterId: record.encounterId,
+        patientId: record.patientId,
+        ownerId: record.ownerId,
+        status: record.status,
+        createdAt: record.createdAt
+      });
       await webhooks.dispatch(record.accountId, 'billing.record.created', {
         id: record.id,
         accountId: record.accountId,
@@ -272,6 +360,17 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     },
     async onStatusChanged(record, previousStatus) {
+      await publishEvent('billing' as ModuleName, 'billing.status_changed', {
+        recordId: record.id,
+        encounterId: record.encounterId,
+        patientId: record.patientId,
+        ownerId: record.ownerId,
+        previousStatus,
+        newStatus: record.status,
+        subtotalAmount: record.subtotalAmount,
+        currency: record.currency,
+        updatedAt: record.updatedAt
+      });
       await webhooks.dispatch(record.accountId, 'billing.status_changed', {
         recordId: record.id,
         encounterId: record.encounterId,
@@ -293,6 +392,15 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     patients,
     notificationRepository: repos.notification,
     async onNotificationSent(notification) {
+      await publishEvent('notifications' as ModuleName, 'notification.sent', {
+        id: notification.id,
+        accountId: notification.accountId,
+        category: notification.category,
+        title: notification.title,
+        message: notification.message,
+        channel: notification.channel,
+        sentAt: notification.sentAt
+      });
       await webhooks.dispatch(notification.accountId, 'notification.sent', {
         id: notification.id,
         accountId: notification.accountId,
@@ -430,7 +538,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     cash,
     auth,
     lgpd,
-    webhooks
+    webhooks,
+    apiKeys,
+    eventBus
   };
 
   return {

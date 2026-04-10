@@ -70,6 +70,46 @@ export class WebhooksService {
     return this.#repository.findByAccount(accountId);
   }
 
+  /**
+   * Send a test event to a registered webhook.
+   * Returns the delivery result without storing in delivery history.
+   */
+  public async test(
+    webhookId: WebhookId,
+    accountId: AccountId
+  ): Promise<{ success: boolean; statusCode?: number; body?: string } | null> {
+    if (!this.#repository) {
+      return null;
+    }
+
+    const webhook = await this.#repository.findById(webhookId);
+    if (!webhook || webhook.accountId !== accountId) {
+      return null;
+    }
+
+    const payload: WebhookPayload = {
+      id: createCorrelationId('whpay'),
+      event: 'webhook.test',
+      timestamp: nowIso(),
+      accountId,
+      data: {
+        message: 'This is a test webhook delivery from CVG HIS',
+        webhookId: webhook.id,
+        accountId
+      }
+    };
+
+    return this.#attemptDelivery(webhook, payload, {
+      id: createCorrelationId('whdel') as WebhookDeliveryId,
+      webhookId,
+      event: 'webhook.test',
+      payload: payload as unknown as Record<string, unknown>,
+      status: 'pending',
+      attempts: 0,
+      createdAt: nowIso()
+    });
+  }
+
   public async get(webhookId: WebhookId): Promise<WebhookSummary | null> {
     if (!this.#repository) {
       return null;

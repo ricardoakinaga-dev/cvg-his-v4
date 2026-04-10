@@ -10,12 +10,14 @@
     "@cvg-his-v2/module-attachments": "workspace:*",
     "@cvg-his-v2/module-audit": "workspace:*",
     "@cvg-his-v2/module-auth": "workspace:*",
+    "@cvg-his-v2/module-api-keys": "workspace:*",
     "@cvg-his-v2/module-billing": "workspace:*",
     "@cvg-his-v2/module-cash": "workspace:*",
     "@cvg-his-v2/module-counter-sales": "workspace:*",
     "@cvg-his-v2/module-diagnostics": "workspace:*",
     "@cvg-his-v2/module-discharges": "workspace:^",
     "@cvg-his-v2/module-encounters": "workspace:*",
+    "@cvg-his-v2/module-event-bus": "workspace:*",
     "@cvg-his-v2/module-inpatient": "workspace:*",
     "@cvg-his-v2/module-inventory": "workspace:*",
     "@cvg-his-v2/module-lgpd": "workspace:*",
@@ -53,8 +55,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/health.test.js dist/runtime.test.js dist/server.test.js",
+    "test": "node --test dist/health.test.js dist/payment-gateway.test.js dist/runtime.test.js dist/server.test.js",
     "test:db": "DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_test node ../../infra/scripts/prepare-test-db.mjs && DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_test node --test dist/db-persistence.test.js",
-    "test:all": "node --test dist/health.test.js dist/runtime.test.js dist/server.test.js dist/db-persistence.test.js"
+    "test:all": "node --test dist/health.test.js dist/payment-gateway.test.js dist/runtime.test.js dist/server.test.js dist/db-persistence.test.js"
   }
 }

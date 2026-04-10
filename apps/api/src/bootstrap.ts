@@ -10,6 +10,7 @@ import { DatabaseSessionRepository } from '@cvg-his-v2/module-auth';
 import type { SessionRepository } from '@cvg-his-v2/module-auth';
 import { DatabaseAuditRepository } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
+import { DatabaseApiKeyRepository } from '@cvg-his-v2/module-api-keys';
 import { DatabaseOwnerRepository } from '@cvg-his-v2/module-owners';
 import type { OwnerRepository } from '@cvg-his-v2/module-owners';
 import {
@@ -83,6 +84,7 @@ import { DatabaseConsentRepository, DatabaseDsrRepository } from '@cvg-his-v2/mo
 import type { ConsentRepository, DsrRepository } from '@cvg-his-v2/module-lgpd';
 import { DatabaseWebhookRepository } from '@cvg-his-v2/module-webhooks';
 import type { WebhookRepository } from '@cvg-his-v2/module-webhooks';
+import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type {
   AccountId,
   AuditEventId,
@@ -700,7 +702,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         mfa: new DatabaseMfaRepository(db),
         consent: new DatabaseConsentRepository(db),
         dsr: new DatabaseDsrRepository(db),
-        webhook: new DatabaseWebhookRepository(db)
+        webhook: new DatabaseWebhookRepository(db),
+        apiKey: new DatabaseApiKeyRepository(),
+        outbox: new DatabaseOutboxRepository()
       };
       results.fileStorage = new LocalFileStorage({
         basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'

@@ -1,118 +1,192 @@
-# EVENT BUS ARCHITECTURE — Requisitos Redis/Kafka
-**Data:** 09/04/2026
-**Status:** PENDENTE — Aguardando infraestrutura
+# EVENT BUS — Catálogo de Eventos e Arquitetura Operacional
+
+**Data:** 10/04/2026
+**Status:** OPERACIONAL — BLOCO 3 E3-01 em execução
 
 ---
 
-## ESTADO ATUAL
+## 1. Estado Atual
 
-### Outbox Pattern (Database)
-
-O módulo `event-bus` atual implementa o **Outbox Pattern** com armazenamento em banco de dados:
+O módulo `event-bus` implementa o **Outbox Pattern** com armazenamento em banco de dados PostgreSQL.
 
 | Componente | Status | Descrição |
 |-----------|--------|-----------|
-| `DatabaseOutboxRepository` | ✅ | Armazenamento em PostgreSQL |
-| `EventBusService` | ✅ | Publish/Process de eventos |
-| Worker Integration | ✅ | Tick processing |
-| Retry Logic | ✅ | Max 3 attempts |
-
-### Limitações do Database Outbox
-
-| Aspecto | Limitação |
-|---------|----------|
-| Latência | Depends on DB write speed |
-| Throughput | limited by connection pool |
-| Fan-out | Difícil sem replicação |
-| Event replay | Não suportado nativamente |
+| `OutboxRepository` interface | ✅ | Contrato de persistência de eventos |
+| `DatabaseOutboxRepository` | ✅ | Armazenamento em PostgreSQL (`outbox_events`) |
+| `EventBusService` | ✅ | Publish e processamento de eventos |
+| `processPending()` | ✅ | Poll-based worker tick |
+| Retry Logic | ✅ | Max 3 attempts com backoff |
+| Dead Letter | ⚠️ | Marcado como `failed`, sem fila separada |
 
 ---
 
-## PROVIDERS SUPORTADOS
+## 2. Eventos Catalogados
 
-### 1. Redis Streams (Recomendado para Microserviços)
+Os seguintes eventos são publicados pelo runtime via `EventBusService` ou `WebhooksService.dispatch()`:
 
-| Aspecto | Detalhes |
-|---------|----------|
-| Throughput | ~100k events/sec |
-| Latência | ~1-5ms |
-| Replay | ✅ Via Stream groups |
-| Fan-out | ✅ Pub/Sub |
-| Operacional | Moderado |
+### Paciente
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `patient.created` | patients | `id`, `accountId`, `name`, `species`, `primaryOwnerId` | ✅ Emitido |
+| `patient.updated` | patients | `id`, `accountId` | ⚠️ Não emitido ainda |
+
+### Agendamento
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `appointment.scheduled` | scheduling | `id`, `accountId`, `patientId`, `ownerId`, `scheduledAt`, `visitType`, `reason`, `status` | ✅ Emitido |
+| `appointment.status_changed` | scheduling | `id`, `accountId`, `patientId`, `ownerId`, `previousStatus`, `newStatus`, `reason`, `updatedAt` | ✅ Emitido |
+| `appointment.cancelled` | scheduling | `id`, `accountId`, `reason` | ⚠️ Não emitido ainda |
+
+### Atendimento
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `encounter.created` | encounters | `id`, `accountId`, `patientId`, `ownerId`, `status`, `visitType`, `origin`, `reason`, `openedAt`, `createdByUserId` | ✅ Emitido |
+| `encounter.status_changed` | encounters | `id`, `accountId`, `patientId`, `previousStatus`, `newStatus`, `updatedAt` | ✅ Emitido |
+| `encounter.started` | encounters | `id`, `accountId`, `patientId` | ⚠️ Nãoemitido ainda |
+| `encounter.closed` | encounters | `id`, `accountId`, `patientId` | ⚠️ Nãoemitido ainda |
+
+### Faturamento
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `billing.record.created` | billing | `id`, `accountId`, `encounterId`, `patientId`, `ownerId`, `status`, `createdAt` | ✅ Emitido |
+| `billing.status_changed` | billing | `recordId`, `encounterId`, `patientId`, `ownerId`, `previousStatus`, `newStatus`, `subtotalAmount`, `currency`, `updatedAt` | ✅ Emitido |
+| `receivable.paid` | billing | `recordId`, `amount`, `paidAt` | ⚠️ Nãoemitido ainda |
+
+### Internação
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `inpatient.admitted` | inpatient | `id`, `accountId`, `patientId`, `encounterId`, `bedId`, `sectorId` | ⚠️ Nãoemitido ainda |
+| `inpatient.discharged` | inpatient | `id`, `accountId`, `patientId`, `dischargedAt` | ⚠️ Nãoemitido ainda |
+
+### Notificações
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `notification.sent` | notifications | `id`, `accountId`, `category`, `title`, `message`, `channel`, `sentAt` | ✅ Emitido |
+
+### Ordem de Serviço / Produtos
+
+| Evento | Módulo | Payload Principal | Status |
+|--------|--------|-------------------|--------|
+| `stock.moved` | inventory | `itemId`, `fromSector`, `toSector`, `quantity` | ⚠️ Nãoemitido ainda |
+| `stock.low` | inventory | `itemId`, `currentStock`, `minimumStock` | ⚠️ Nãoemitido ainda |
+
+---
+
+## 3. Arquitetura de Publicação
+
+### Interface Abstrata (OutboxRepository)
+
+```typescript
+interface OutboxRepository {
+  create(event: OutboxEvent): Promise<void>;
+  update(event: OutboxEvent): Promise<void>;
+  findById(id: string): Promise<OutboxEvent | null>;
+  findPending(limit: number): Promise<readonly OutboxEvent[]>;
+  findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]>;
+}
+```
+
+### Implementações Disponíveis
+
+| Implementação | Status | Infraestrutura |
+|---------------|--------|----------------|
+| `DatabaseOutboxRepository` | ✅ Disponível | PostgreSQL (`outbox_events`) |
+| `RedisOutboxRepository` | 📋 Planejado | Redis Streams |
+
+### EventHandler Interface (para subscribers)
+
+```typescript
+interface EventHandler {
+  (event: OutboxEvent): Promise<void>;
+}
+```
+
+---
+
+## 4. Fluxo de Eventos
+
+```
+Service Callback
+    │
+    ▼
+EventBusService.publish()
+    │
+    ▼
+OutboxRepository.create()  ← outbox_events table
+    │
+    ▼
+EventBusWorker.tick() → processPending()
+    │
+    ├──[OK]──▶ WebhooksService.dispatch()
+    │               │
+    │               ▼
+    │           HTTP POST to registered webhook URLs
+    │
+    └──[FAIL + retry]──▶ retry with backoff (max 3)
+            │
+            └──[max reached]──▶ status='failed' (DLQ manual)
+```
+
+---
+
+## 5. Rotas de Integração
+
+### Publicação via API (Internal)
+
+```
+POST /internal/events/publish
+Body: { eventType, moduleName, correlationId, payload }
+→ EventBusService.publish()
+```
+
+### Consulta de Eventos
+
+```
+GET /internal/events/:correlationId
+→ EventBusService.getEventsByCorrelationId()
+```
+
+---
+
+## 6. Provider Redis Streams (Roadmap)
+
+Quando Redis estiver disponível:
 
 ```bash
-# Environment
 EVENT_BUS_PROVIDER=redis
 REDIS_URL=redis://localhost:6379
 REDIS_STREAM_KEY=cvg:events
 ```
 
-### 2. Apache Kafka (Recomendado para Event Sourcing)
+Benefícios: ~100k events/sec, fan-out pub/sub, event replay via stream groups.
 
-| Aspecto | Detalhes |
-|---------|----------|
-| Throughput | ~1M events/sec |
-| Latência | ~5-20ms |
-| Replay | ✅ Desde qualquer offset |
-| Fan-out | ✅ Topics |
-| Operacional | Alto |
+---
+
+## 7. Lacunas e Próximos Passos
+
+| Lacuna | Prioridade | Status |
+|--------|------------|--------|
+| `RedisOutboxRepository` | Média | Aguardando infraestrutura Redis |
+| Event replay via Kafka | Baixa | Fora do escopo atual |
+| DLQ automática (fila separada) | Média | Marcado como `failed`, sem requeue automático |
+| 30+ eventos catalogados | Alta | 8 de ~30 eventosEmitidos; restante planejado |
+| Event schema registry | Baixa | Tipos TypeScript como contrato |
+
+---
+
+## 8. Testes
 
 ```bash
-# Environment
-EVENT_BUS_PROVIDER=kafka
-KAFKA_BROKERS=kafka:9092
-KAFKA_TOPIC=cvg-events
+pnpm --filter @cvg-his-v2/module-event-bus test
+# 5/5 tests PASS
 ```
 
 ---
 
-## ARQUITETURA PROPOSTA
-
-### Interface Abstrata
-
-```typescript
-interface EventBusProvider {
-  publish(event: OutboxEvent): Promise<void>;
-  subscribe(handler: EventHandler): Promise<void>;
-  replay(fromOffset?: string): Promise<void>;
-}
-```
-
-### Implementações
-
-```
-packages/modules/event-bus/src/
-├── index.ts                    # Exports
-├── outbox.interface.ts        # OutboxRepository interface
-├── database-outbox.repository.ts # Current (database)
-├── redis-outbox.repository.ts   # NEW: Redis implementation
-├── kafka-outbox.repository.ts   # NEW: Kafka implementation
-├── event-bus.service.ts       # Service
-└── adapters/
-    ├── redis.adapter.ts
-    └── kafka.adapter.ts
-```
-
----
-
-## DECISÃO NECESSÁRIA
-
-| Pergunta | Opções |
-|----------|--------|
-| Provider preferido? | Redis Streams / Kafka |
-| Event replay necessário? | Sim → Kafka, Não → Redis |
-| Infraestrutura disponível? | Sim → implementar, Não → aguardar |
-
----
-
-## PRÓXIMOS PASSOS
-
-1. [ ] Decidir provider (Redis vs Kafka)
-2. [ ] Confirmar infraestrutura disponível
-3. [ ] Implementar EventBusProvider interface
-4. [ ] Criar adapter do provider
-5. [ ] Migrar DatabaseOutboxRepository se necessário
-
----
-
-*Documento criado em 09/04/2026*
+*Documento atualizado em 10/04/2026 — BLOCO 3 E3-01*

@@ -69,6 +69,9 @@ importers:
       '@cvg-his-v2/module-access-control':
         specifier: workspace:*
         version: link:../../packages/modules/access-control
+      '@cvg-his-v2/module-api-keys':
+        specifier: workspace:*
+        version: link:../../packages/modules/api-keys
       '@cvg-his-v2/module-attachments':
         specifier: workspace:*
         version: link:../../packages/modules/attachments
@@ -96,6 +99,9 @@ importers:
       '@cvg-his-v2/module-encounters':
         specifier: workspace:*
         version: link:../../packages/modules/encounters
+      '@cvg-his-v2/module-event-bus':
+        specifier: workspace:*
+        version: link:../../packages/modules/event-bus
       '@cvg-his-v2/module-inpatient':
         specifier: workspace:*
         version: link:../../packages/modules/inpatient
