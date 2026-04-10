@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '6379:6379'
+      - '6380:6379'
     volumes:
       - cvg_his_v2_redis_data:/data
     healthcheck:
@@ -54,7 +54,7 @@ services:
     volumes:
       - cvg_his_v2_storage:/srv/cvg-his-v2/storage
     ports:
-      - '3000:3001'
+      - '3003:3001'
 
   cvg-his-v2-web:
     build:
@@ -71,7 +71,7 @@ services:
       cvg-his-v2-api:
         condition: service_healthy
     ports:
-      - '3001:3000'
+      - '3004:3000'
 
   cvg-his-v2-worker:
     build:
@@ -91,10 +91,34 @@ services:
     volumes:
       - cvg_his_v2_storage:/srv/cvg-his-v2/storage
 
+  cvg-his-v2-spa:
+    build:
+      context: .
+      dockerfile: apps/spa/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      VITE_API_BASE_URL: http://localhost:3000/api
+      VITE_APP_NAME: CVG HIS V2
+    depends_on:
+      cvg-his-v2-api:
+        condition: service_healthy
+    ports:
+      - '3002:3002'
+    volumes:
+      - cvg_his_v2_spa_static:/usr/share/nginx/html
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3002/ || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
 volumes:
   cvg_his_v2_postgres_data:
   cvg_his_v2_redis_data:
   cvg_his_v2_storage:
+  cvg_his_v2_spa_static:
 
 networks:
   default:
