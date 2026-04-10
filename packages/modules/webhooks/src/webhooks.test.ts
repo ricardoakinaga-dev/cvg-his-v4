@@ -141,3 +141,32 @@ test('WebhooksService delete deactivates webhook', async () => {
   assert.ok(found);
   assert.equal(found!.isActive, false);
 });
+
+test('WebhooksService test returns null for non-existent webhook', async () => {
+  const repo = createMockRepository();
+  const service = new WebhooksService({ repository: repo });
+
+  const result = await service.test('wh_nonexistent' as never, 'acc_test' as never);
+  assert.equal(result, null);
+});
+
+test('WebhooksService test returns null when repository is undefined', async () => {
+  const service = new WebhooksService({ repository: undefined });
+
+  const result = await service.test('wh_123' as never, 'acc_test' as never);
+  assert.equal(result, null);
+});
+
+test('WebhooksService retestDelivery returns null for non-existent webhook', async () => {
+  const service = new WebhooksService({ repository: undefined });
+
+  const result = await service.retestDelivery('wh_123' as never, 'del_123' as never, 'acc_test' as never);
+  assert.equal(result, null);
+});
+
+test('WebhooksService getDeliveryStats returns null when repository is undefined', async () => {
+  const service = new WebhooksService({ repository: undefined });
+
+  const result = await service.getDeliveryStats('wh_123' as never);
+  assert.equal(result, null);
+});

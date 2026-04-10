@@ -1,6 +1,6 @@
-# PIX PAYMENT INTEGRATION — Requisitos
+# PIX PAYMENT INTEGRATION — Requisitos e primeira abstracao
 **Data:** 09/04/2026
-**Status:** PENDENTE — Aguardando provedor PIX
+**Status:** AVANÇADO — confirmacao PIX implementada, fluxo outbox operacao
 
 ---
 
@@ -11,13 +11,13 @@ Módulo de billing existente (`packages/modules/billing`) gerencia:
 - Itens de cobrança (serviços, produtos, procedimentos)
 - Status: draft → estimated → open → settled
 
-**Falta:** Integração com pagamentos PIX
+**Falta:** Integração com pagamentos PIX completa e decisão final de provedor
 
 ---
 
 ## PROVIDERS SUPORTADOS
 
-### 1. Pagar.me (Recomendado)
+### 1. Pagar.me (Ainda candidato)
 
 | Aspecto | Detalhes |
 |---------|----------|
@@ -131,13 +131,16 @@ STRIPE_PIX_KEY=your_pix_key
 
 ## PRÓXIMOS PASSOS
 
-1. [ ] Selecionar provedor PIX (Pagar.me recomendado)
-2. [ ] Criar módulo `packages/modules/pix`
-3. [ ] Implementar PixProvider interface
-4. [ ] Implementar adapter do provider
-5. [ ] Integrar com BillingService
-6. [ ] Adicionar webhook handler na API
-7. [ ] Criar UI de pagamento no SPA
+1. [ ] Selecionar provedor PIX final
+2. [x] Criar módulo `packages/modules/pix` com abstracao PixProvider
+3. [x] Implementar `PixProvider` via `MockPixAdapter` e `PagarMePixAdapter` (stub)
+4. [x] Expor a primeira superficie executavel de intent em `POST /payments/pix/intents`
+5. [x] Publicar evento `payment.pix.intent.created` no outbox do runtime
+6. [x] Adicionar hook de confirmacao PIX em `POST /payments/pix/intents/:intentId/confirm`
+7. [x] Publicar evento `payment.pix.confirmed` no outbox após confirmacao
+8. [x] Integrar confirmação PIX com `BillingService.updateStatus(encounterId, {status:'settled'})` — via eventBus.subscribe() handler em runtime.ts
+9. [ ] Adicionar webhook handler de confirmação real do provedor (Pagar.me/Stripe)
+10. [ ] Criar UI de pagamento no SPA
 
 ---
 
@@ -150,4 +153,4 @@ STRIPE_PIX_KEY=your_pix_key
 
 ---
 
-*Documento criado em 09/04/2026*
+*Documento atualizado em 10/04/2026 com a primeira superficie executável e o contrato de abstracao local*

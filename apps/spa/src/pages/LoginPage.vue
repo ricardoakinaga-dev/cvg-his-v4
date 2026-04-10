@@ -36,10 +36,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { apiRequest } from '@/services/api';
+import type { AuthSessionResponse, LoginMfaRequiredResponse } from '@cvg-his-v2/shared-contracts';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -53,32 +54,37 @@ const email = ref('');
 const password = ref('');
 const error = ref('');
 const loading = ref(false);
+const nextPath = computed(() => (typeof route.query.next === 'string' ? route.query.next : '/'));
 
 async function handleLogin() {
   error.value = '';
   loading.value = true;
 
   try {
-    const response = await apiRequest<{
-      accessToken: string;
-      refreshToken?: string;
-      mfaRequired?: boolean;
-    }>('/auth/login', {
-      method: 'POST',
-      skipAuth: true,
-      body: JSON.stringify({ username: email.value, password: password.value })
-    });
+    const response = await apiRequest<AuthSessionResponse | LoginMfaRequiredResponse>(
+      '/auth/login',
+      {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ username: email.value, password: password.value })
+      }
+    );
 
-    authStore.setTokens(response.accessToken, response.refreshToken);
-
-    if (response.mfaRequired) {
+    if ('requiresMfa' in response) {
       authStore.setMfaRequired(true);
-      router.push('/auth/mfa');
+      authStore.setPendingMfaUserId(response.userId);
+      router.push({
+        path: '/auth/mfa',
+        query: nextPath.value && nextPath.value !== '/' ? { next: nextPath.value } : undefined
+      });
       return;
     }
 
+    authStore.setTokens(response.accessToken, response.refreshToken);
+    authStore.clearMfaChallenge();
+
     // Full page reload to ensure auth state is fresh
-    window.location.href = window.location.origin + '/';
+    window.location.href = window.location.origin + nextPath.value;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Falha ao fazer login';
     error.value = message;

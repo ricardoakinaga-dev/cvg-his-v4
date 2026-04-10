@@ -61,6 +61,61 @@
           </div>
         </div>
       </AppDetailSection>
+
+      <AppDetailSection title="Segurança">
+        <div class="mfa-status">
+          <div v-if="mfaLoading" class="muted">Carregando status MFA...</div>
+          <template v-else>
+            <div class="mfa-row">
+              <span class="mfa-label">MFA TOTP</span>
+              <StatusBadge
+                :label="mfaStatus.isActive ? 'Ativo' : 'Inativo'"
+                :variant="mfaStatus.isActive ? 'success' : 'neutral'"
+              />
+            </div>
+            <div class="mfa-row">
+              <span class="mfa-label">MFA Obrigatório</span>
+              <StatusBadge
+                :label="mfaStatus.isRequired ? 'Sim' : 'Não'"
+                :variant="mfaStatus.isRequired ? 'warning' : 'neutral'"
+              />
+            </div>
+            <div v-if="!mfaStatus.isActive" class="mfa-actions">
+              <DsButton variant="primary" size="sm" :loading="mfaActionLoading" @click="initiateMfaSetup">
+                Ativar MFA
+              </DsButton>
+            </div>
+            <div v-else class="mfa-actions">
+              <DsButton variant="secondary" size="sm" :loading="mfaActionLoading" @click="disableMfa">
+                Desativar MFA
+              </DsButton>
+              <DsButton variant="secondary" size="sm" :loading="mfaActionLoading" @click="regenerateCodes">
+                Regenerar Códigos
+              </DsButton>
+            </div>
+            <div v-if="setupData" class="setup-qr">
+              <p class="setup-hint">Escaneie o QR Code no seu autenticador:</p>
+              <div class="qr-secret">
+                <span class="secret-label">Chave secreta:</span>
+                <code class="secret-value">{{ setupData.secret }}</code>
+              </div>
+              <form class="confirm-form" @submit.prevent="confirmMfaSetup">
+                <DsInput v-model="setupToken" label="Código do autenticador" placeholder="000000" maxlength="6" required />
+                <DsButton variant="primary" size="sm" type="submit" :loading="mfaActionLoading">Confirmar</DsButton>
+              </form>
+            </div>
+            <div v-if="recoveryCodes.length > 0" class="recovery-codes">
+              <p class="codes-label">Guarde estes códigos em local seguro:</p>
+              <div class="codes-list">
+                <code v-for="code in recoveryCodes" :key="code" class="code-item">{{ code }}</code>
+              </div>
+            </div>
+          </template>
+          <DsAlert v-if="mfaError" variant="danger" dismissible @dismiss="mfaError = ''">
+            {{ mfaError }}
+          </DsAlert>
+        </div>
+      </AppDetailSection>
     </template>
   </div>
 </template>
@@ -69,6 +124,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { userService } from '@/services/user';
+import { mfaService } from '@/services/mfa';
 import type { UserSummary } from '@/types/user';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
@@ -85,6 +141,13 @@ const userId = route.params.id as string;
 const user = ref<UserSummary | null>(null);
 const loading = ref(true);
 const error = ref('');
+const mfaLoading = ref(false);
+const mfaActionLoading = ref(false);
+const mfaError = ref('');
+const mfaStatus = ref({ isActive: false, isRequired: false });
+const setupData = ref<{ secret: string; qrCodeUrl: string } | null>(null);
+const setupToken = ref('');
+const recoveryCodes = ref<string[]>([]);
 
 const roleLabelMap: Record<string, string> = {
   admin: '👑 Admin',
@@ -100,9 +163,78 @@ function roleLabel(code: string) {
   return roleLabelMap[code] || code;
 }
 
+async function loadMfaStatus() {
+  mfaLoading.value = true;
+  mfaError.value = '';
+  try {
+    mfaStatus.value = await mfaService.getStatus();
+  } catch {
+    mfaStatus.value = { isActive: false, isRequired: false };
+  } finally {
+    mfaLoading.value = false;
+  }
+}
+
+async function initiateMfaSetup() {
+  mfaActionLoading.value = true;
+  mfaError.value = '';
+  try {
+    setupData.value = await mfaService.initiateSetup();
+  } catch (err: unknown) {
+    mfaError.value = err instanceof Error ? err.message : 'Erro ao iniciar setup MFA';
+  } finally {
+    mfaActionLoading.value = false;
+  }
+}
+
+async function confirmMfaSetup() {
+  if (!setupToken.value.trim()) return;
+  mfaActionLoading.value = true;
+  mfaError.value = '';
+  try {
+    await mfaService.confirmSetup(setupToken.value.trim());
+    setupData.value = null;
+    setupToken.value = '';
+    await loadMfaStatus();
+  } catch (err: unknown) {
+    mfaError.value = err instanceof Error ? err.message : 'Erro ao confirmar MFA';
+  } finally {
+    mfaActionLoading.value = false;
+  }
+}
+
+async function disableMfa() {
+  const token = prompt('Informe o código TOTP para desativar:');
+  if (!token) return;
+  mfaActionLoading.value = true;
+  mfaError.value = '';
+  try {
+    await mfaService.disable(token);
+    await loadMfaStatus();
+  } catch (err: unknown) {
+    mfaError.value = err instanceof Error ? err.message : 'Erro ao desativar MFA';
+  } finally {
+    mfaActionLoading.value = false;
+  }
+}
+
+async function regenerateCodes() {
+  mfaActionLoading.value = true;
+  mfaError.value = '';
+  try {
+    const result = await mfaService.regenerateRecoveryCodes();
+    recoveryCodes.value = [...result.recoveryCodes];
+  } catch (err: unknown) {
+    mfaError.value = err instanceof Error ? err.message : 'Erro ao regenerar códigos';
+  } finally {
+    mfaActionLoading.value = false;
+  }
+}
+
 onMounted(async () => {
   try {
     user.value = await userService.getById(userId);
+    await loadMfaStatus();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar usuário';
   } finally {
@@ -132,5 +264,95 @@ onMounted(async () => {
 .detail-item__value {
   font-size: 15px;
   color: var(--color-text, #0f172a);
+}
+
+.mfa-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mfa-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mfa-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #475569);
+  min-width: 120px;
+}
+
+.mfa-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.setup-qr {
+  padding: 16px;
+  background: var(--color-bg-subtle, #f8fafc);
+  border-radius: 8px;
+}
+
+.setup-hint {
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+  margin: 0 0 12px;
+}
+
+.qr-secret {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.secret-label {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.secret-value {
+  font-size: 14px;
+  background: var(--color-surface, #fff);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.confirm-form {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.recovery-codes {
+  padding: 16px;
+  background: var(--color-bg-subtle, #f8fafc);
+  border-radius: 8px;
+}
+
+.codes-label {
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+  margin: 0 0 12px;
+}
+
+.codes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.code-item {
+  font-size: 13px;
+  background: var(--color-surface, #fff);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  text-align: center;
 }
 </style>

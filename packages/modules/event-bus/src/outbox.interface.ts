@@ -21,6 +21,9 @@ export interface OutboxRepository {
   create(event: OutboxEvent): Promise<void>;
   update(event: OutboxEvent): Promise<void>;
   findById(id: string): Promise<OutboxEvent | null>;
+  /** Returns pending and retrying events that can be processed now */
   findPending(limit: number): Promise<readonly OutboxEvent[]>;
+  /** Returns events that exhausted all retry attempts (DLQ candidates) */
+  findFailed(limit: number): Promise<readonly OutboxEvent[]>;
   findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]>;
 }

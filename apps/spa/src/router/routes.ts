@@ -2,6 +2,12 @@ import type { RouteRecordRaw } from 'vue-router';
 
 export const routes: RouteRecordRaw[] = [
   {
+    path: '/auth/mfa',
+    name: 'Mfa',
+    component: () => import('@/pages/auth/MfaPage.vue'),
+    meta: { requiresAuth: false, title: 'MFA', breadcrumb: 'MFA' }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/pages/LoginPage.vue'),
@@ -185,6 +191,61 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'diagnostics',
+        name: 'Diagnostics',
+        component: () => import('@/pages/clinical/DiagnosticsPage.vue'),
+        meta: {
+          title: 'Diagnósticos',
+          breadcrumb: 'Diagnósticos',
+          breadcrumbParent: 'Dashboard',
+          icon: '🧪'
+        }
+      },
+      {
+        path: 'prescriptions',
+        name: 'Prescriptions',
+        component: () => import('@/pages/clinical/PrescriptionsPage.vue'),
+        meta: {
+          title: 'Prescrições',
+          breadcrumb: 'Prescrições',
+          breadcrumbParent: 'Dashboard',
+          icon: '💊'
+        }
+      },
+      {
+        path: 'prescription-executions',
+        name: 'PrescriptionExecutions',
+        component: () => import('@/pages/clinical/PrescriptionExecutionsPage.vue'),
+        meta: {
+          title: 'Execuções de Prescrição',
+          breadcrumb: 'Execuções',
+          breadcrumbParent: 'Dashboard',
+          icon: '🩺'
+        }
+      },
+      {
+        path: 'discharges',
+        name: 'Discharges',
+        component: () => import('@/pages/clinical/DischargesPage.vue'),
+        meta: {
+          title: 'Altas',
+          breadcrumb: 'Altas',
+          breadcrumbParent: 'Dashboard',
+          icon: '🏠'
+        }
+      },
+      {
+        path: 'surgery',
+        name: 'Surgery',
+        component: () => import('@/pages/clinical/SurgeryPage.vue'),
+        meta: {
+          title: 'Cirurgias',
+          breadcrumb: 'Cirurgias',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔪'
+        }
+      },
+      {
         path: 'inpatient',
         name: 'Inpatient',
         component: () => import('@/pages/inpatient/InpatientListPage.vue'),
@@ -317,6 +378,83 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'api-keys',
+        name: 'ApiKeys',
+        component: () => import('@/pages/api-keys/ApiKeysPage.vue'),
+        meta: {
+          title: 'Chaves de API',
+          breadcrumb: 'Chaves de API',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔐'
+        }
+      },
+      {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('@/pages/notifications/NotificationsPage.vue'),
+        meta: {
+          title: 'Notificações',
+          breadcrumb: 'Notificações',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔔'
+        }
+      },
+      {
+        path: 'notifications/whatsapp',
+        name: 'WhatsAppNotifications',
+        component: () => import('@/pages/notifications/WhatsAppPage.vue'),
+        meta: {
+          title: 'WhatsApp Operacional',
+          breadcrumb: 'WhatsApp',
+          breadcrumbParent: 'Notificações',
+          icon: '💬'
+        }
+      },
+      {
+        path: 'pix',
+        name: 'Pix',
+        component: () => import('@/pages/finance/PixPage.vue'),
+        meta: {
+          title: 'PIX',
+          breadcrumb: 'PIX',
+          breadcrumbParent: 'Dashboard',
+          icon: '💸'
+        }
+      },
+      {
+        path: 'cash',
+        name: 'Cash',
+        component: () => import('@/pages/finance/CashPage.vue'),
+        meta: {
+          title: 'Caixa',
+          breadcrumb: 'Caixa',
+          breadcrumbParent: 'Dashboard',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'counter-sales',
+        name: 'CounterSales',
+        component: () => import('@/pages/sales/CounterSalesPage.vue'),
+        meta: {
+          title: 'Vendas Assistidas',
+          breadcrumb: 'Vendas',
+          breadcrumbParent: 'Dashboard',
+          icon: '🛒'
+        }
+      },
+      {
+        path: 'quotes',
+        name: 'Quotes',
+        component: () => import('@/pages/sales/QuotesPage.vue'),
+        meta: {
+          title: 'Orçamentos',
+          breadcrumb: 'Orçamentos',
+          breadcrumbParent: 'Dashboard',
+          icon: '📝'
+        }
+      },
+      {
         path: 'scheduling',
         name: 'Scheduling',
         component: () => import('@/pages/scheduling/SchedulingListPage.vue'),
@@ -435,6 +573,138 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Webhooks',
           icon: '🔗'
+        }
+      },
+      {
+        path: 'products',
+        name: 'Products',
+        component: () => import('@/pages/products/ProductsListPage.vue'),
+        meta: {
+          title: 'Produtos',
+          breadcrumb: 'Produtos',
+          breadcrumbParent: 'Dashboard',
+          icon: '📦'
+        }
+      },
+      {
+        path: 'products/new',
+        name: 'ProductNew',
+        component: () => import('@/pages/products/ProductFormPage.vue'),
+        meta: {
+          title: 'Novo Produto',
+          breadcrumb: 'Novo Produto',
+          breadcrumbParent: 'Produtos',
+          icon: '📦'
+        }
+      },
+      {
+        path: 'products/:id',
+        name: 'ProductDetail',
+        component: () => import('@/pages/products/ProductDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Produto',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Produtos',
+          icon: '📦'
+        }
+      },
+      {
+        path: 'products/:id/edit',
+        name: 'ProductEdit',
+        component: () => import('@/pages/products/ProductFormPage.vue'),
+        meta: {
+          title: 'Editar Produto',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Produtos',
+          icon: '📦'
+        }
+      },
+      {
+        path: 'services',
+        name: 'Services',
+        component: () => import('@/pages/services/ServicesListPage.vue'),
+        meta: {
+          title: 'Serviços',
+          breadcrumb: 'Serviços',
+          breadcrumbParent: 'Dashboard',
+          icon: '🛠️'
+        }
+      },
+      {
+        path: 'services/new',
+        name: 'ServiceNew',
+        component: () => import('@/pages/services/ServiceFormPage.vue'),
+        meta: {
+          title: 'Novo Serviço',
+          breadcrumb: 'Novo Serviço',
+          breadcrumbParent: 'Serviços',
+          icon: '🛠️'
+        }
+      },
+      {
+        path: 'services/:id',
+        name: 'ServiceDetail',
+        component: () => import('@/pages/services/ServiceDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Serviço',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Serviços',
+          icon: '🛠️'
+        }
+      },
+      {
+        path: 'services/:id/edit',
+        name: 'ServiceEdit',
+        component: () => import('@/pages/services/ServiceFormPage.vue'),
+        meta: {
+          title: 'Editar Serviço',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Serviços',
+          icon: '🛠️'
+        }
+      },
+      {
+        path: 'staff',
+        name: 'Staff',
+        component: () => import('@/pages/staff/StaffListPage.vue'),
+        meta: {
+          title: 'Equipe',
+          breadcrumb: 'Equipe',
+          breadcrumbParent: 'Dashboard',
+          icon: '👨‍⚕️'
+        }
+      },
+      {
+        path: 'staff/new',
+        name: 'StaffNew',
+        component: () => import('@/pages/staff/StaffFormPage.vue'),
+        meta: {
+          title: 'Novo Membro',
+          breadcrumb: 'Novo Membro',
+          breadcrumbParent: 'Equipe',
+          icon: '👨‍⚕️'
+        }
+      },
+      {
+        path: 'staff/:id',
+        name: 'StaffDetail',
+        component: () => import('@/pages/staff/StaffDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Membro',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Equipe',
+          icon: '👨‍⚕️'
+        }
+      },
+      {
+        path: 'staff/:id/edit',
+        name: 'StaffEdit',
+        component: () => import('@/pages/staff/StaffFormPage.vue'),
+        meta: {
+          title: 'Editar Membro',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Equipe',
+          icon: '👨‍⚕️'
         }
       }
     ]

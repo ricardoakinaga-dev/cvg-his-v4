@@ -204,6 +204,11 @@ export class BillingService {
     return [...(this.#items.get(record.id) ?? [])];
   }
 
+  public async settleByRecordId(recordId: BillingRecordId): Promise<BillingRecordSummary> {
+    const record = this.getOrThrow(recordId);
+    return this.updateStatus(record.encounterId, { status: 'settled' });
+  }
+
   public async updateStatus(
     encounterId: EncounterId,
     payload: UpdateBillingStatusRequest

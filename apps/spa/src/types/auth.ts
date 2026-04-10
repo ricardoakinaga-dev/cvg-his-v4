@@ -3,6 +3,7 @@ export interface AuthState {
   refreshToken: string | null;
   mfaRequired: boolean;
   mfaSetupRequired: boolean;
+  pendingMfaUserId: string | null;
   user: {
     id: string | null;
     email: string | null;

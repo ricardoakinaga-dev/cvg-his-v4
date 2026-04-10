@@ -61,6 +61,21 @@ test('BillingService addItem recalculates subtotal', async () => {
   assert.equal((await service.listItems('encounter_1' as never)).length, 2);
 });
 
+test('BillingService settleByRecordId moves record to settled', async () => {
+  const service = createService();
+
+  const record = await service.createEstimate({
+    encounterId: 'encounter_1',
+    administrativeNotes: 'Estimativa para liquidacao PIX'
+  });
+
+  assert.equal(record.status, 'estimated');
+
+  const settled = await service.settleByRecordId(record.id);
+
+  assert.equal(settled.status, 'settled');
+});
+
 test('BillingService blocks adding items to settled record', async () => {
   const service = createService();
 

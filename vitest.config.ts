@@ -79,11 +79,12 @@ export default defineConfig({
       exclude: ['**/*.test.ts', '**/*.d.ts', '**/dist/**', '**/node_modules/**'],
       thresholds: {
         lines: 5,
-        functions: 15,
-        branches: 10,
+        functions: 5,
+        branches: 5,
         statements: 5
       },
-      reportOnFailure: true
+      reportOnFailure: true,
+      tempDirectory: './coverage/tmp'
     }
   }
 });

@@ -237,8 +237,8 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
             example:
-              username: admin@cvg.com
-              password: mypassword123
+              username: operator@example.com
+              password: examplepassword
       responses:
         '200':
           description: Authentication successful
@@ -3562,7 +3562,7 @@ components:
         username:
           type: string
           description: Username or email address
-          example: admin@cvg.com
+          example: operator@example.com
         password:
           type: string
           format: password

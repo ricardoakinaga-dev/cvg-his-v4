@@ -74,6 +74,26 @@
         <DsCard v-if="encounter.closeReason" title="Motivo do Fechamento">
           <p>{{ encounter.closeReason }}</p>
         </DsCard>
+
+        <DsCard title="Anexos">
+          <div v-if="attachmentsLoading" class="muted">Carregando anexos...</div>
+          <div v-else-if="attachments.length === 0" class="muted">Nenhum anexo registrado</div>
+          <div v-else class="attachments-list">
+            <div v-for="att in attachments" :key="att.id" class="attachment-item">
+              <span class="attachment-item__icon">📎</span>
+              <span class="attachment-item__name">{{ att.fileName }}</span>
+              <span class="attachment-item__category">{{ att.category }}</span>
+            </div>
+          </div>
+          <div class="attachment-upload">
+            <DsInput v-model="newAttachment.fileName" label="" placeholder="Nome do arquivo" />
+            <DsInput v-model="newAttachment.mimeType" label="" placeholder="MIME type" />
+            <DsInput v-model="newAttachment.checksum" label="" placeholder="Checksum" />
+            <DsButton variant="secondary" size="sm" :loading="uploadingAttachment" @click="uploadAttachment">
+              Anexar
+            </DsButton>
+          </div>
+        </DsCard>
       </div>
     </template>
 
@@ -128,6 +148,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
+import { attachmentService } from '@/services/attachments';
 import type { EncounterSummary, EncounterTimelineEventSummary } from '@/types/encounter';
 import {
   visitTypeLabel,
@@ -156,6 +177,10 @@ const showCloseModal = ref(false);
 const closeReason = ref('');
 const closing = ref(false);
 const entityCache = useEntityCache();
+const attachments = ref<any[]>([]);
+const attachmentsLoading = ref(false);
+const uploadingAttachment = ref(false);
+const newAttachment = ref({ fileName: '', mimeType: 'application/pdf', checksum: '' });
 
 const patientName = ref('');
 const ownerName = ref('');
@@ -231,13 +256,46 @@ async function loadTimeline() {
   }
 }
 
+async function loadAttachments() {
+  if (!encounter.value) return;
+  attachmentsLoading.value = true;
+  try {
+    attachments.value = await attachmentService.list('encounter', encounter.value.id);
+  } catch {
+    // Attachment load failure is non-critical
+  } finally {
+    attachmentsLoading.value = false;
+  }
+}
+
+async function uploadAttachment() {
+  if (!encounter.value || !newAttachment.value.fileName.trim() || !newAttachment.value.checksum.trim()) return;
+  uploadingAttachment.value = true;
+  try {
+    await attachmentService.upload({
+      linkedEntityType: 'encounter',
+      linkedEntityId: encounter.value.id,
+      category: 'document',
+      fileName: newAttachment.value.fileName.trim(),
+      mimeType: newAttachment.value.mimeType.trim() || 'application/pdf',
+      checksum: newAttachment.value.checksum.trim()
+    });
+    newAttachment.value = { fileName: '', mimeType: 'application/pdf', checksum: '' };
+    await loadAttachments();
+  } catch {
+    // Upload failure is non-critical
+  } finally {
+    uploadingAttachment.value = false;
+  }
+}
+
 onMounted(async () => {
   const id = route.params.id as string;
   try {
     const enc = await encounterService.getById(id);
     encounter.value = enc;
     await loadEntityNames(enc);
-    await loadTimeline();
+    await Promise.all([loadTimeline(), loadAttachments()]);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimento';
   } finally {
@@ -304,5 +362,46 @@ onMounted(async () => {
 .form-field__textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.attachment-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--color-bg-subtle, #f8fafc);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.attachment-item__icon {
+  flex-shrink: 0;
+}
+
+.attachment-item__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-item__category {
+  font-size: 11px;
+  color: var(--color-text-muted, #94a3b8);
+  text-transform: uppercase;
+}
+
+.attachment-upload {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
 }
 </style>

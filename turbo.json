@@ -22,11 +22,5 @@
     }
   },
   "globalDependencies": ["**/.env.*local"],
-  "globalEnv": ["NODE_ENV"],
-  "pipeline": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    }
-  }
+  "globalEnv": ["NODE_ENV"]
 }

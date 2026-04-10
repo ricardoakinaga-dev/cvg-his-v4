@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
   ACCESS_TOKEN: AUTH_STORAGE_KEYS.accessToken,
   REFRESH_TOKEN: AUTH_STORAGE_KEYS.refreshToken,
   MFA_REQUIRED: AUTH_STORAGE_KEYS.mfaRequired,
-  MFA_SETUP_REQUIRED: AUTH_STORAGE_KEYS.mfaSetupRequired
+  MFA_SETUP_REQUIRED: AUTH_STORAGE_KEYS.mfaSetupRequired,
+  MFA_USER_ID: 'cvg-his-v2:mfa_user_id'
 } as const;
 
 function loadFromStorage(key: string): string | null {
@@ -99,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
       refreshToken: loadFromStorage(STORAGE_KEYS.REFRESH_TOKEN),
       mfaRequired: loadFromStorage(STORAGE_KEYS.MFA_REQUIRED) === 'true',
       mfaSetupRequired: loadFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED) === 'true',
+      pendingMfaUserId: loadFromStorage(STORAGE_KEYS.MFA_USER_ID),
       user: userFromToken(accessToken)
     };
   },
@@ -112,6 +114,8 @@ export const useAuthStore = defineStore('auth', {
     needsMfa: (state) => state.mfaRequired,
 
     needsMfaSetup: (state) => state.mfaSetupRequired,
+
+    pendingMfaUserId: (state) => state.pendingMfaUserId,
 
     userName: (state) => state.user.name ?? state.user.email ?? 'Usuário'
   },
@@ -134,6 +138,20 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    setPendingMfaUserId(userId: string | null) {
+      this.pendingMfaUserId = userId;
+      if (userId) {
+        saveToStorage(STORAGE_KEYS.MFA_USER_ID, userId);
+      } else {
+        removeFromStorage(STORAGE_KEYS.MFA_USER_ID);
+      }
+    },
+
+    clearMfaChallenge() {
+      this.setMfaRequired(false);
+      this.setPendingMfaUserId(null);
+    },
+
     setMfaSetupRequired(required: boolean) {
       this.mfaSetupRequired = required;
       if (required) {
@@ -148,11 +166,13 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = null;
       this.mfaRequired = false;
       this.mfaSetupRequired = false;
+      this.pendingMfaUserId = null;
       this.user = emptyUser();
       removeFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
       removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
       removeFromStorage(STORAGE_KEYS.MFA_REQUIRED);
       removeFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED);
+      removeFromStorage(STORAGE_KEYS.MFA_USER_ID);
     }
   }
 });

@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",
+    "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
     "pinia": "^2.3.0",
     "vite-plugin-pwa": "^1.2.0",
     "vue": "^3.5.13",

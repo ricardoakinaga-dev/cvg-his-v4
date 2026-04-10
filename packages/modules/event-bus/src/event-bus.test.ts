@@ -9,13 +9,25 @@ const mockModuleName = 'notifications' as ModuleName;
 function createMockRepository() {
   const events: any[] = [];
   return {
+    events, // expose for test assertions
     create: async (event: any) => { events.push(event); },
     update: async (event: any) => {
       const idx = events.findIndex(e => e.id === event.id);
       if (idx >= 0) events[idx] = event;
     },
     findById: async (id: string) => events.find(e => e.id === id) ?? null,
-    findPending: async () => events.filter(e => e.status === 'pending' || e.status === 'retrying'),
+    findPending: async () => {
+      const now = new Date();
+      return events.filter(
+        (e) =>
+          (e.status === 'pending' || e.status === 'retrying') &&
+          e.attempts < e.maxAttempts &&
+          new Date(e.scheduledAt) <= now
+      );
+    },
+    findFailed: async (limit: number) => events
+      .filter((e) => e.status === 'failed')
+      .slice(0, limit),
     findByCorrelationId: async (correlationId: CorrelationId) => events.filter(e => e.correlationId === correlationId)
   };
 }
@@ -179,4 +191,160 @@ test('EventBusService multiple handlers are all called', async () => {
   assert.equal(calls.length, 2);
   assert.ok(calls.includes(1));
   assert.ok(calls.includes(2));
+});
+
+test('EventBusService processPending schedules retry with backoff on failure', async () => {
+  const repo = createMockRepository();
+  // Use tiny backoff (1ms base) so tests run fast
+  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
+
+  // Subscribe a handler that always throws — forcing a retry
+  service.subscribe(async () => {
+    throw new Error('always fails');
+  });
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.retry_event',
+    payload: {},
+    maxAttempts: 3
+  });
+
+  const processed = await service.processPending(10);
+
+  // Event was processed (attempted), but is now 'retrying' (not 'failed')
+  assert.equal(processed.length, 0, 'No event should be marked completed on handler failure');
+
+  const allEvents = (repo as any).events;
+  assert.equal(allEvents.length, 1);
+  const event = allEvents[0];
+  assert.equal(event.status, 'retrying');
+  assert.equal(event.attempts, 1);
+  assert.ok(event.error?.includes('always fails'));
+  // scheduledAt should be in the future
+  assert.ok(new Date(event.scheduledAt) > new Date());
+});
+
+test('EventBusService processPending moves event to DLQ after max attempts', async () => {
+  const repo = createMockRepository();
+  // Use tiny backoff for fast tests
+  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
+
+  service.subscribe(async () => {
+    throw new Error('always fails');
+  });
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.dlq_event',
+    payload: {},
+    maxAttempts: 2
+  });
+
+  // First attempt: retrying
+  await service.processPending(10);
+  // Second attempt: DLQ (failed) — wait for backoff delay to elapse
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await service.processPending(10);
+
+  const allEvents = (repo as any).events;
+  const event = allEvents[0];
+
+  assert.equal(event.status, 'failed', 'Should be marked as DLQ after exhausting retries');
+  assert.equal(event.attempts, 2, 'Should have all attempts recorded');
+  assert.ok(event.error?.includes('DLQ'));
+  assert.ok(event.error?.includes('always fails'));
+  assert.ok(event.error?.includes('2 attempts'));
+});
+
+test('EventBusService getDeadLetterEvents returns failed events', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
+
+  service.subscribe(async () => { throw new Error('always fails'); });
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.dlq_1',
+    payload: {},
+    maxAttempts: 1
+  });
+  await service.processPending(10);
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.dlq_2',
+    payload: {},
+    maxAttempts: 1
+  });
+  await service.processPending(10);
+
+  const dlq = await service.getDeadLetterEvents(10);
+  assert.equal(dlq.length, 2);
+  assert.ok(dlq.every((e: any) => e.status === 'failed'));
+});
+
+test('EventBusService reprocessEvent resets failed event to pending', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
+
+  service.subscribe(async () => { throw new Error('always fails'); });
+
+  // Publish an event that will fail and go to DLQ
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.reprocess_event',
+    payload: {},
+    maxAttempts: 1
+  });
+  await service.processPending(10);
+
+  const allEvents = (repo as any).events;
+  assert.equal(allEvents.length, 1);
+  assert.equal(allEvents[0].status, 'failed');
+
+  const eventId = allEvents[0].id;
+
+  // Reprocess the failed event
+  const reprocessed = await service.reprocessEvent(eventId);
+
+  assert.ok(reprocessed, 'reprocessEvent should return the event');
+  assert.equal(reprocessed!.status, 'pending');
+  assert.equal(reprocessed!.attempts, 0);
+  assert.equal(reprocessed!.error, null);
+});
+
+test('EventBusService reprocessEvent returns null for non-existent event', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  const result = await service.reprocessEvent('non-existent-id');
+  assert.equal(result, null);
+});
+
+test('EventBusService getPendingEvents returns pending/retrying events', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.pending_1',
+    payload: {}
+  });
+  await service.publish({
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.pending_2',
+    payload: {}
+  });
+
+  const pending = await service.getPendingEvents(50);
+  // Both events are pending (not processed yet)
+  assert.ok(pending.length >= 2);
 });

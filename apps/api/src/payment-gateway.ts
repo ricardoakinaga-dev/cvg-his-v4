@@ -23,11 +23,22 @@ export interface PixPaymentIntentSummary {
   readonly createdAt: string;
 }
 
+export interface PixPaymentConfirmResult {
+  readonly transactionId: string;
+  readonly status: 'completed';
+  readonly providerTransactionId?: string;
+  readonly billingRecordId?: string;
+  readonly completedAt: string;
+}
+
 export interface PaymentGateway {
   createPixIntent(input: PixPaymentIntentInput): Promise<PixPaymentIntentSummary>;
+  confirmPayment?(transactionId: string): PixPaymentConfirmResult;
 }
 
 export class LocalPixPaymentGateway implements PaymentGateway {
+  readonly #intents = new Map<string, PixPaymentIntentSummary>();
+
   async createPixIntent(input: PixPaymentIntentInput): Promise<PixPaymentIntentSummary> {
     const id = createCorrelationId('pix');
     const createdAt = nowIso();
@@ -43,7 +54,7 @@ export class LocalPixPaymentGateway implements PaymentGateway {
       id
     ].join('|');
 
-    return {
+    const intent: PixPaymentIntentSummary = {
       id,
       provider: 'local-pix',
       accountId: input.accountId,
@@ -56,6 +67,21 @@ export class LocalPixPaymentGateway implements PaymentGateway {
       expiresAt,
       status: 'pending',
       createdAt
+    };
+    this.#intents.set(id, intent);
+    return intent;
+  }
+
+  confirmPayment(transactionId: string): PixPaymentConfirmResult {
+    const intent = this.#intents.get(transactionId);
+    return {
+      transactionId,
+      status: 'completed',
+      providerTransactionId: intent?.billingRecordId
+        ? `local_confirm_${transactionId}_for_${intent.billingRecordId}`
+        : `local_confirm_${transactionId}`,
+      completedAt: nowIso(),
+      billingRecordId: intent?.billingRecordId
     };
   }
 }

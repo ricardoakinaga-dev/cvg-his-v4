@@ -21,6 +21,24 @@ export interface CreateOutboxEventInput {
  */
 export type EventHandler = (event: OutboxEvent) => Promise<void>;
 
+/**
+ * Backoff strategy for retries.
+ * Formula: min(baseMs * 2^attempt, maxMs)
+ */
+export interface BackoffOptions {
+  readonly baseMs: number;
+  readonly maxMs: number;
+}
+
+export const DEFAULT_BACKOFF: BackoffOptions = {
+  baseMs: 1_000,   // 1 second
+  maxMs: 60_000    // 1 minute
+};
+
+function computeBackoffDelay(attempt: number, opts: BackoffOptions): number {
+  return Math.min(opts.baseMs * Math.pow(2, attempt), opts.maxMs);
+}
+
 export class DatabaseOutboxRepository implements OutboxRepository {
   async create(event: OutboxEvent): Promise<void> {
     const pool = getPool();
@@ -80,6 +98,18 @@ export class DatabaseOutboxRepository implements OutboxRepository {
     return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
   }
 
+  async findFailed(limit: number): Promise<readonly OutboxEvent[]> {
+    const pool = getPool();
+    const result = await pool.query(
+      `SELECT * FROM outbox_events
+       WHERE status = 'failed'
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+  }
+
   async findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
     const pool = getPool();
     const result = await pool.query(
@@ -110,10 +140,12 @@ export class DatabaseOutboxRepository implements OutboxRepository {
 export class EventBusService {
   readonly #repository: OutboxRepository;
   readonly #handlers: Set<EventHandler>;
+  readonly #backoff: BackoffOptions;
 
-  constructor(repository?: OutboxRepository) {
+  constructor(repository?: OutboxRepository, backoff?: BackoffOptions) {
     this.#repository = repository ?? new DatabaseOutboxRepository();
     this.#handlers = new Set();
+    this.#backoff = backoff ?? DEFAULT_BACKOFF;
   }
 
   /**
@@ -145,9 +177,18 @@ export class EventBusService {
     return event;
   }
 
+  /**
+   * Process up to `limit` pending events.
+   * Events that fail are rescheduled with exponential backoff.
+   * Events that exhaust all retry attempts are moved to DLQ (status='failed').
+   */
   async processPending(limit = 10): Promise<readonly OutboxEvent[]> {
     const pending = await this.#repository.findPending(limit);
     const processed: OutboxEvent[] = [];
+
+    if (pending.length > 0) {
+      console.info(`[EventBus] Processing ${pending.length} pending event(s) with ${this.#handlers.size} handler(s) registered`);
+    }
 
     for (const event of pending) {
       const updated: OutboxEvent = {
@@ -156,15 +197,28 @@ export class EventBusService {
       };
       await this.#repository.update(updated);
 
+      console.info(
+        `[EventBus] Dispatching event ${event.eventType} (${event.id}) to ${this.#handlers.size} handler(s) — attempt ${event.attempts + 1}/${event.maxAttempts}`
+      );
+
       try {
-        // Notify all subscribers before marking as completed
-        await Promise.all(
-          Array.from(this.#handlers).map((handler) =>
-            handler(event).catch((err) => {
-              console.error(`[EventBus] Handler error for ${event.eventType}:`, err);
-            })
-          )
+        let handlerFailed = false;
+        const handlerResults = await Promise.allSettled(
+          Array.from(this.#handlers).map((handler) => handler(event))
         );
+        for (const result of handlerResults) {
+          if (result.status === 'rejected') {
+            console.error(`[EventBus] Handler error for ${event.eventType} (${event.id}):`, result.reason);
+            handlerFailed = true;
+          }
+        }
+
+        if (handlerFailed) {
+          const failedErrors = handlerResults
+            .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+            .map((r) => r.reason instanceof Error ? r.reason.message : String(r.reason));
+          throw new Error(failedErrors.join('; '));
+        }
 
         const completed: OutboxEvent = {
           ...updated,
@@ -173,21 +227,50 @@ export class EventBusService {
         };
         await this.#repository.update(completed);
         processed.push(completed);
+        console.info(`[EventBus] Event ${event.eventType} (${event.id}) completed — ${this.#handlers.size} handler(s) succeeded`);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         const shouldRetry = event.attempts + 1 < event.maxAttempts;
 
-        const failed: OutboxEvent = {
-          ...event,
-          status: shouldRetry ? 'retrying' : 'failed',
-          attempts: event.attempts + 1,
-          error: errorMessage
-        };
-        await this.#repository.update(failed);
+        if (shouldRetry) {
+          // Apply exponential backoff before the next retry
+          const delayMs = computeBackoffDelay(event.attempts, this.#backoff);
+          const scheduledAt = new Date(Date.now() + delayMs).toISOString();
+          const retrying: OutboxEvent = {
+            ...event,
+            status: 'retrying',
+            attempts: event.attempts + 1,
+            error: errorMessage,
+            scheduledAt
+          };
+          await this.#repository.update(retrying);
+          console.warn(
+            `[EventBus] ${event.eventType} (${event.id}) retry ${event.attempts + 1}/${event.maxAttempts} in ${delayMs}ms: ${errorMessage}`
+          );
+        } else {
+          // Exhausted all attempts — move to DLQ
+          const failed: OutboxEvent = {
+            ...event,
+            status: 'failed',
+            attempts: event.maxAttempts,
+            error: `[DLQ] All ${event.maxAttempts} attempts exhausted. Last error: ${errorMessage}`
+          };
+          await this.#repository.update(failed);
+          console.error(
+            `[EventBus] [DLQ] ${event.eventType} (${event.id}) moved to dead-letter queue after ${event.maxAttempts} attempts: ${errorMessage}`
+          );
+        }
       }
     }
 
     return processed;
+  }
+
+  /**
+   * Retrieve dead-letter events for inspection/reprocessing.
+   */
+  async getDeadLetterEvents(limit = 100): Promise<readonly OutboxEvent[]> {
+    return this.#repository.findFailed(limit);
   }
 
   async getEvent(id: string): Promise<OutboxEvent | null> {
@@ -196,5 +279,51 @@ export class EventBusService {
 
   async getEventsByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
     return this.#repository.findByCorrelationId(correlationId);
+  }
+
+  /**
+   * Reprocess a failed or retrying event by resetting it to pending status.
+   * The event will be picked up by processPending() on next worker tick.
+   */
+  async reprocessEvent(eventId: string): Promise<OutboxEvent | null> {
+    const event = await this.#repository.findById(eventId);
+    if (!event) return null;
+    const reprocessed: OutboxEvent = {
+      ...event,
+      status: 'pending',
+      attempts: 0,
+      error: null,
+      scheduledAt: nowIso()
+    };
+    await this.#repository.update(reprocessed);
+    return reprocessed;
+  }
+
+  /**
+   * Return event count breakdown by status.
+   * Useful for operational dashboards without fetching full event lists.
+   */
+  async countEvents(): Promise<{ pending: number; retrying: number; completed: number; failed: number; total: number }> {
+    const pool = getPool();
+    const countResult = await pool.query(
+      `SELECT status, COUNT(*) as count FROM outbox_events GROUP BY status`
+    );
+    const counts = { pending: 0, retrying: 0, completed: 0, failed: 0, total: 0 };
+    for (const row of countResult.rows as Record<string, unknown>[]) {
+      const status = row.status as string;
+      const cnt = Number(row.count) || 0;
+      if (status === 'pending' || status === 'retrying' || status === 'completed' || status === 'failed') {
+        (counts as Record<string, number>)[status] = cnt;
+        counts.total += cnt;
+      }
+    }
+    return counts;
+  }
+
+  /**
+   * Retrieve pending and retrying events for inspection (does not reprocess them).
+   */
+  async getPendingEvents(limit = 50): Promise<readonly OutboxEvent[]> {
+    return this.#repository.findPending(limit);
   }
 }

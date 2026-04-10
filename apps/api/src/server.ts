@@ -70,6 +70,9 @@ import type {
 } from '@cvg-his-v2/shared-types';
 
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
+import { handleHealthRoutes } from './routes/health-routes.js';
+import { handlePaymentsRoutes } from './routes/payments-routes.js';
+import { handleWebhooksRoutes } from './routes/webhooks-routes.js';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { LocalPixPaymentGateway } from './payment-gateway.js';
 import {
@@ -193,8 +196,13 @@ export function createApiServer(options: ApiServerOptions) {
     response.setHeader('x-frame-options', 'DENY');
     response.setHeader('x-xss-protection', '1; mode=block');
     response.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
-    response.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains');
+    response.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
     response.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
+    // CSP: restrictive default-src, no inline/eval, allow self for API routes only
+    response.setHeader(
+      'content-security-policy',
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+    );
 
     // Track metrics when response finishes
     response.on('finish', () => {
@@ -279,28 +287,8 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        if (request.url === '/health' && request.method === 'GET') {
-          const appState = getAppState();
-          const payload = createHealthResponse(
-            options.appName,
-            options.environment,
-            options.version,
-            request,
-            {
-              databaseConfigured: appState.databaseConfigured,
-              databaseHealthy: appState.databaseHealthy,
-              databaseDetail: appState.databaseDetail,
-              persistenceMode: appState.persistenceMode,
-              repositoriesReady: appState.repositoriesReady,
-              repositoryCount: appState.repositoryCount,
-              workerReady: appState.workerReady,
-              workerDetail: appState.workerDetail,
-              productionReady: appState.productionReady,
-              initialized: appState.initialized
-            }
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(payload));
+        // Delegate health/liveness/readiness routes to extracted module
+        if (handleHealthRoutes(request, response, options)) {
           return;
         }
 
@@ -2572,6 +2560,234 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
+        if (pathname === '/products' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'products.read');
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'products',
+            'list',
+            'product',
+            'all',
+            'Products catalog inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(
+            JSON.stringify({
+              items: products.list(principal.user.accountId as never)
+            })
+          );
+          return;
+        }
+
+        if (pathname === '/products' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'products.manage');
+          const payload = (await readJsonBody(request)) as {
+            name: string;
+            code?: string | null;
+            description?: string | null;
+            basePrice: number;
+            active?: boolean;
+          };
+          const product = await products.create(principal.user.accountId as never, {
+            name: requireNonEmptyString(payload.name, 'name'),
+            code: payload.code,
+            description: payload.description,
+            basePrice: payload.basePrice,
+            active: payload.active
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'products',
+            'create',
+            'product',
+            product.id,
+            `Product ${product.name} created`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(product));
+          return;
+        }
+
+        if (pathname.startsWith('/products/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'products.read');
+          const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
+          const product = products.getOrThrow(productId);
+          if (product.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Product not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'products',
+            'read',
+            'product',
+            product.id,
+            `Product ${product.name} inspected`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(product));
+          return;
+        }
+
+        if (pathname.startsWith('/products/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'products.manage');
+          const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
+          const existingProduct = products.getOrThrow(productId);
+          if (existingProduct.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Product not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as {
+            name?: string;
+            code?: string | null;
+            description?: string | null;
+            basePrice?: number;
+            active?: boolean;
+          };
+          const product = await products.update(productId, {
+            name: payload.name,
+            code: payload.code,
+            description: payload.description,
+            basePrice: payload.basePrice,
+            active: payload.active
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'products',
+            'update',
+            'product',
+            product.id,
+            `Product ${product.name} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(product));
+          return;
+        }
+
+        if (pathname === '/services' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'services.read');
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'services',
+            'list',
+            'service',
+            'all',
+            'Services catalog inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(
+            JSON.stringify({
+              items: services.list(principal.user.accountId as never)
+            })
+          );
+          return;
+        }
+
+        if (pathname === '/services' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'services.manage');
+          const payload = (await readJsonBody(request)) as {
+            name: string;
+            code?: string | null;
+            description?: string | null;
+            basePrice: number;
+            active?: boolean;
+          };
+          const service = await services.create(principal.user.accountId as never, {
+            name: requireNonEmptyString(payload.name, 'name'),
+            code: payload.code,
+            description: payload.description,
+            basePrice: payload.basePrice,
+            active: payload.active
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'services',
+            'create',
+            'service',
+            service.id,
+            `Service ${service.name} created`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(service));
+          return;
+        }
+
+        if (pathname.startsWith('/services/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'services.read');
+          const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
+          const service = services.getOrThrow(serviceId);
+          if (service.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Service not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'services',
+            'read',
+            'service',
+            service.id,
+            `Service ${service.name} inspected`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(service));
+          return;
+        }
+
+        if (pathname.startsWith('/services/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'services.manage');
+          const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
+          const existingService = services.getOrThrow(serviceId);
+          if (existingService.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Service not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as {
+            name?: string;
+            code?: string | null;
+            description?: string | null;
+            basePrice?: number;
+            active?: boolean;
+          };
+          const service = await services.update(serviceId, {
+            name: payload.name,
+            code: payload.code,
+            description: payload.description,
+            basePrice: payload.basePrice,
+            active: payload.active
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'services',
+            'update',
+            'service',
+            service.id,
+            `Service ${service.name} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(service));
+          return;
+        }
+
         if (pathname === '/access-control' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'access.read');
           appendAudit(
@@ -3673,38 +3889,13 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        // --- Webhooks ---
-        if (pathname === '/webhooks' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'webhooks.read');
-          const items = await webhooks.list(principal.user.accountId as never);
-          response.statusCode = 200;
-          response.end(JSON.stringify({ items }));
-          return;
-        }
-
-        if (pathname === '/webhooks' && request.method === 'POST') {
-          const principal = requirePrincipal(request, 'webhooks.manage');
-          const payload = (await readJsonBody(request)) as CreateWebhookRequest;
-          const webhook = await webhooks.register(
-            principal.user.id,
-            principal.user.accountId as never,
-            payload
-          );
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'webhooks',
-            'register',
-            'webhook',
-            webhook.id,
-            `Webhook registered for URL ${webhook.url}`,
-            'medium',
-            correlationId
-          );
-          response.statusCode = 201;
-          response.end(JSON.stringify(webhook));
-          return;
-        }
+        // --- Webhooks (delegated to webhooks-routes) ---
+        const webhooksHandled = handleWebhooksRoutes(pathname, request, response, correlationId, {
+          webhooks,
+          audit,
+          requirePrincipal
+        });
+        if (await webhooksHandled) return;
 
         if (pathname === '/api-keys' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'api_keys.manage');
@@ -3810,77 +4001,145 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        if (pathname === '/payments/pix/intents' && request.method === 'POST') {
-          const apiKeyPrincipal = await requireApiKey(request, 'payments.manage');
-          const body = (await readJsonBody(request)) as Record<string, unknown>;
+        // GET /internal/events/dlq — list dead-letter events
+        if (pathname === '/internal/events/dlq' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'audit.read');
+          const url = new globalThis.URL(request.url!, 'http://localhost');
+          const limitRaw = url.searchParams.get('limit') ?? '';
+          const limit = limitRaw ? Math.min(parseInt(limitRaw, 10), 200) : 50;
+          const dlqEvents = await eventBus.getDeadLetterEvents(limit);
+          const sanitized = dlqEvents.map((e) => ({
+            id: e.id,
+            correlationId: e.correlationId,
+            moduleName: e.moduleName,
+            eventType: e.eventType,
+            status: e.status,
+            attempts: e.attempts,
+            maxAttempts: e.maxAttempts,
+            error: e.error,
+            createdAt: e.createdAt,
+            processedAt: e.processedAt,
+            scheduledAt: e.scheduledAt
+          }));
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify({ items: sanitized, count: sanitized.length }));
+          return;
+        }
 
-          validateRequestBody(
-            body,
-            {
-              amount: { type: 'number', required: true },
-              description: { type: 'string', required: true, minLength: 3, maxLength: 140 }
-            },
-            correlationId
-          );
+        // GET /internal/events/stats — event count breakdown by status
+        if (pathname === '/internal/events/stats' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'audit.read');
+          const counts = await eventBus.countEvents();
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify(counts));
+          return;
+        }
 
-          if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
-            throw new ValidationError('amount must be a positive number');
+        // GET /internal/events/pending — list pending/retrying events (not yet processed)
+        if (pathname === '/internal/events/pending' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'audit.read');
+          const limitParam = new globalThis.URL(request.url ?? '/', 'http://localhost').searchParams.get('limit');
+          const limit = limitParam ? Math.min(parseInt(limitParam, 10), 200) : 50;
+          const events = await eventBus.getPendingEvents(limit);
+          const sanitized = events.map((e) => ({
+            id: e.id,
+            correlationId: e.correlationId,
+            moduleName: e.moduleName,
+            eventType: e.eventType,
+            status: e.status,
+            attempts: e.attempts,
+            maxAttempts: e.maxAttempts,
+            error: e.error,
+            createdAt: e.createdAt,
+            scheduledAt: e.scheduledAt
+          }));
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify({ items: sanitized, count: sanitized.length }));
+          return;
+        }
+
+        // GET /internal/events/:eventId — get single event by ID
+        if (
+          pathname.match(/^\/internal\/events\/[^/]+$/) &&
+          request.method === 'GET'
+        ) {
+          const eventId = pathname.split('/')[3];
+          if (!eventId || eventId === 'dlq' || eventId === 'publish') {
+            return;
           }
+          const principal = requirePrincipal(request, 'audit.read');
+          const event = await eventBus.getEvent(eventId);
+          if (!event) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Event not found' }));
+            return;
+          }
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify(event));
+          return;
+        }
 
-          const intent = await paymentGateway.createPixIntent({
-            accountId: apiKeyPrincipal.apiKey.accountId,
-            billingRecordId:
-              typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined,
-            amount: body.amount,
-            description: String(body.description),
-            expirationMinutes:
-              typeof body.expirationMinutes === 'number'
-                ? Math.max(5, Math.floor(body.expirationMinutes))
-                : undefined
-          });
-          const event = await eventBus.publish({
-            correlationId: createCorrelationId('pix') as CorrelationId,
-            moduleName: 'billing' as ModuleName,
-            eventType: 'payment.pix.intent.created',
-            payload: {
-              accountId: apiKeyPrincipal.apiKey.accountId,
-              intentId: intent.id,
-              billingRecordId: intent.billingRecordId,
-              amount: intent.amount,
-              currency: intent.currency,
-              provider: intent.provider,
-              status: intent.status,
-              expiresAt: intent.expiresAt
-            }
-          });
+        // GET /internal/events/:correlationId — get events by correlation
+        if (pathname.startsWith('/internal/events/') && request.method === 'GET') {
+          const parts = pathname.split('/');
+          const corrId = parts[3];
+          if (corrId && corrId !== 'dlq' && corrId !== 'publish') {
+            const principal = requirePrincipal(request, 'audit.read');
+            const events = await eventBus.getEventsByCorrelationId(corrId as CorrelationId);
+            response.statusCode = 200;
+            response.setHeader('content-type', 'application/json');
+            response.end(JSON.stringify({ items: events, count: events.length }));
+            return;
+          }
+        }
 
-          appendAudit(
-            'system',
-            apiKeyPrincipal.apiKey.accountId,
-            'billing',
-            'pix_intent_create',
-            'payment_intent',
-            intent.id,
-            `PIX intent ${intent.id} created via API key ${apiKeyPrincipal.apiKey.id}`,
-            'medium',
-            correlationId
-          );
+        // POST /internal/events/:eventId/reprocess — replay a failed event
+        if (pathname.match(/^\/internal\/events\/[^/]+\/reprocess$/) && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'audit.write');
+          const eventId = pathname.split('/')[3];
+          if (!eventId) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'BAD_REQUEST', message: 'eventId required' }));
+            return;
+          }
+          const event = await eventBus.getEvent(eventId);
+          if (!event) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Event not found' }));
+            return;
+          }
+          // Reset failed/retrying event to pending for reprocessing
+          const reprocessed = await eventBus.reprocessEvent(eventId);
+          if (!reprocessed) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Event not found' }));
+            return;
+          }
+          response.statusCode = 202;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify({ id: event.id, status: 'reprocessing', message: 'Event queued for reprocessing' }));
+          return;
+        }
 
-          await apiKeys.recordUsage({
-            apiKeyId: apiKeyPrincipal.apiKey.id,
-            endpoint: '/payments/pix/intents',
-            method: 'POST',
-            statusCode: 201,
-            responseTimeMs: null
-          });
-          response.statusCode = 201;
-          response.end(
-            JSON.stringify({
-              ...intent,
-              eventId: event.id,
-              eventCorrelationId: event.correlationId
-            })
-          );
+        // --- Payments (delegated to payments-routes) ---
+        const paymentsHandled = handlePaymentsRoutes(pathname, request, response, correlationId, {
+          eventBus,
+          paymentGateway,
+          apiKeys,
+          audit
+        });
+        if (await paymentsHandled) return;
+
+        // POST /payments/pix/intents/:intentId/confirm — confirm PIX payment settlement
+        if (
+          pathname.match(/^\/payments\/pix\/intents\/([^/]+)\/confirm$/) &&
+          request.method === 'POST'
+        ) {
+          // Delegated to handlePaymentsRoutes — this block is superseded
           return;
         }
 
@@ -4008,6 +4267,91 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
+        // GET /webhooks/{webhookId}/deliveries/stats — delivery statistics for a webhook
+        if (
+          pathname.match(/^\/webhooks\/[^/]+\/deliveries\/stats$/) &&
+          request.method === 'GET'
+        ) {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const existing = await webhooks.get(webhookId as never);
+          if (!existing || existing.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+            );
+            return;
+          }
+          const stats = await webhooks.getDeliveryStats(webhookId as never);
+          response.statusCode = 200;
+          response.end(JSON.stringify(stats));
+          return;
+        }
+
+        // POST /webhooks/{webhookId}/deliveries/{deliveryId}/retest — retest a specific delivery
+        if (
+          pathname.match(/^\/webhooks\/[^/]+\/deliveries\/[^/]+\/retest$/) &&
+          request.method === 'POST'
+        ) {
+          const parts = pathname.split('/');
+          const webhookId = requireNonEmptyString(parts[2], 'webhookId');
+          const deliveryId = requireNonEmptyString(parts[4], 'deliveryId');
+          const principal = requirePrincipal(request, 'webhooks.manage');
+          const result = await webhooks.retestDelivery(
+            webhookId as never,
+            deliveryId as never,
+            principal.user.accountId as never
+          );
+          if (!result) {
+            response.statusCode = 404;
+            response.end(
+              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook or delivery not found', correlationId })
+            );
+            return;
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'webhooks',
+            'retest_delivery',
+            'webhook_delivery',
+            `${webhookId}:${deliveryId}`,
+            `Webhook delivery retest: ${result.message}`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 202;
+          response.end(JSON.stringify(result));
+          return;
+        }
+
+        // GET /webhooks/{webhookId}/deliveries/{deliveryId} — get a single delivery
+        if (
+          pathname.match(/^\/webhooks\/[^/]+\/deliveries\/[^/]+$/) &&
+          request.method === 'GET'
+        ) {
+          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
+          const deliveryId = requireNonEmptyString(pathname.split('/')[4], 'deliveryId');
+          const principal = requirePrincipal(request, 'webhooks.read');
+          const webhook = await webhooks.get(webhookId as never);
+          if (!webhook || webhook.accountId !== principal.user.accountId) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found' }));
+            return;
+          }
+          const deliveries = await webhooks.listDeliveries(webhookId as never);
+          const delivery = deliveries.find((d) => d.id === deliveryId);
+          if (!delivery) {
+            response.statusCode = 404;
+            response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Delivery not found' }));
+            return;
+          }
+          response.statusCode = 200;
+          response.setHeader('content-type', 'application/json');
+          response.end(JSON.stringify(delivery));
+          return;
+        }
+
         // POST /webhooks/{webhookId}/test — send a test event to the webhook
         if (
           pathname.startsWith('/webhooks/') &&
@@ -4041,75 +4385,17 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/webhooks/') && request.method === 'GET') {
-          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-          const principal = requirePrincipal(request, 'webhooks.read');
-          const webhook = await webhooks.get(webhookId as never);
-          if (!webhook || webhook.accountId !== principal.user.accountId) {
-            response.statusCode = 404;
-            response.end(
-              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
-            );
-            return;
-          }
-          response.statusCode = 200;
-          response.end(JSON.stringify(webhook));
+          // Delegated to handleWebhooksRoutes — this block is superseded
           return;
         }
 
         if (pathname.startsWith('/webhooks/') && request.method === 'PATCH') {
-          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-          const principal = requirePrincipal(request, 'webhooks.manage');
-          const existing = await webhooks.get(webhookId as never);
-          if (!existing || existing.accountId !== principal.user.accountId) {
-            response.statusCode = 404;
-            response.end(
-              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
-            );
-            return;
-          }
-          const payload = (await readJsonBody(request)) as UpdateWebhookRequest;
-          const updated = await webhooks.update(webhookId as never, payload);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'webhooks',
-            'update',
-            'webhook',
-            webhookId,
-            `Webhook ${webhookId} updated`,
-            'medium',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(updated));
+          // Delegated to handleWebhooksRoutes — this block is superseded
           return;
         }
 
         if (pathname.startsWith('/webhooks/') && request.method === 'DELETE') {
-          const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-          const principal = requirePrincipal(request, 'webhooks.manage');
-          const existing = await webhooks.get(webhookId as never);
-          if (!existing || existing.accountId !== principal.user.accountId) {
-            response.statusCode = 404;
-            response.end(
-              JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
-            );
-            return;
-          }
-          await webhooks.delete(webhookId as never);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'webhooks',
-            'delete',
-            'webhook',
-            webhookId,
-            `Webhook ${webhookId} deleted`,
-            'medium',
-            correlationId
-          );
-          response.statusCode = 204;
-          response.end();
+          // Delegated to handleWebhooksRoutes — this block is superseded
           return;
         }
 

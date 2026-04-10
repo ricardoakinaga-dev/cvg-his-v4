@@ -2,16 +2,16 @@
 
 ## Overview
 
-Baseline OpenAPI 3.0.3 specification for the CVG HIS API. A especificação cobre 104 paths e 70 schemas, documentando todas as rotas funcionais do runtime.
+Baseline OpenAPI 3.0.3 specification for the CVG HIS API. A especificação cobre 112 paths e 82 schemas, documentando todas as rotas funcionais do runtime e as novas superfícies do BLOCO 3.
 
 ## What Was Delivered
 
 ### OpenAPI Specification
 
-**File:** `apps/api/src/openapi.yaml` (4398 lines, 107 paths, 74 schemas, 24 tags)
+**File:** `apps/api/src/openapi.yaml` (atualizado em 10/04/2026, 112 paths, 82 schemas, 27 tags)
 
-Covers all functional endpoints across 24 tags:
-Health, Authentication, MFA, LGPD, Owners, Patients, Encounters, Appointments, Queue, Medical Records, Inpatient, Triage, Billing, Inventory, Notifications, **Webhooks**, Access Control, Audit, Staff, Products, Quotes, Prescriptions, Discharges, Utilities
+Covers all functional endpoints across 27 tags:
+Health, Authentication, MFA, LGPD, Owners, Patients, Encounters, Appointments, Queue, Medical Records, Inpatient, Triage, Billing, Inventory, Notifications, **Webhooks**, **API Keys**, **Integrations**, **Payments**, Access Control, Audit, Staff, Products, Services, Quotes, Prescriptions, Discharges, Utilities
 
 ### Endpoint de Spec
 
@@ -55,7 +55,10 @@ node scripts/validate-openapi.js apps/api/src/openapi.yaml
 | Billing         | 5     | completo |
 | Inventory       | 3     | completo |
 | Notifications   | 4     | completo |
-| Webhooks        | 4     | completo |
+| Webhooks        | 5     | completo |
+| API Keys        | 2     | BLOCO 3 |
+| Integrations    | 1     | BLOCO 3 |
+| Payments        | 1     | BLOCO 3 |
 | Access Control  | 10    | completo |
 | Audit           | 1     | completo |
 | Staff           | 4     | completo |
@@ -93,17 +96,21 @@ Audit confirmed: todas as rotas funcionais em `server.ts` estão documentadas na
 - Access control (teams, org-sectors, users, grants)
 - Staff, Products, Services, Quotes, Prescriptions, Discharges
 - master-search, owner-patient-links
-- Webhooks (CRUD: list, register, get, update, delete + delivery history)
+- Webhooks (CRUD: list, register, get, update, delete + delivery history + test delivery)
+- API Keys (`GET /api-keys`, `POST /api-keys`)
+- Integrations catalog (`GET /integrations/catalog`)
+- Payments safe surface (`POST /payments/pix/intents`)
 
 ### Webhooks — Onda 3.2
 
 Webhook dispatch ativo no evento:
 
-| Evento                   | Trigger                         |
-| ------------------------ | ------------------------------- |
-| `billing.record.created` | Novo registro de billing criado |
+| Evento                        | Trigger                              |
+| ---------------------------- | ------------------------------------ |
+| `billing.record.created`     | Novo registro de billing criado      |
+| `payment.pix.intent.created` | Nova intent PIX criada via API premium |
 
-> **Nota:** Este é o evento atualmente dispatchado pelo `BillingService`. O módulo `WebhooksService` está operacional com retry 3x (5s, 30s, 90s) e delivery log em `webhook_deliveries`. Novos eventos serão adicionados conforme demanda real.
+> **Nota:** Os eventos acima são publicados pelo runtime e persistidos em `outbox_events`. O módulo `WebhooksService` segue operacional com retry 3x (5s, 30s, 90s) e delivery log em `webhook_deliveries`. A nova superfície `X-API-Key` já está documentada e executavel.
 
 Webhooks são registrados via API (`POST /webhooks`) e delivery é feito com retry exponencial. Delivery log mantido em `webhook_deliveries`.
 

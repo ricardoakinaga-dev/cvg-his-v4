@@ -163,6 +163,74 @@ export class WebhooksService {
     return this.#repository.findDeliveriesByWebhook(webhookId);
   }
 
+  /**
+   * Retest a specific webhook delivery by re-attempting delivery.
+   * Resets the delivery status to 'pending' and triggers async retry.
+   */
+  public async retestDelivery(
+    webhookId: WebhookId,
+    deliveryId: WebhookDeliveryId,
+    accountId: AccountId
+  ): Promise<{ success: boolean; message: string } | null> {
+    if (!this.#repository) {
+      return null;
+    }
+
+    const webhook = await this.#repository.findById(webhookId);
+    if (!webhook || webhook.accountId !== accountId) {
+      return null;
+    }
+
+    const deliveries = await this.#repository.findDeliveriesByWebhook(webhookId);
+    const delivery = deliveries.find((d) => d.id === deliveryId);
+    if (!delivery) {
+      return null;
+    }
+
+    // Reset delivery to pending for retry
+    const resetDelivery: WebhookDeliverySummary = {
+      ...delivery,
+      status: 'pending',
+      attempts: 0,
+      lastAttemptAt: undefined,
+      responseStatus: undefined,
+      responseBody: undefined,
+      nextRetryAt: undefined
+    };
+    await this.#repository.updateDelivery(resetDelivery);
+
+    // Trigger async retry
+    void this.#deliverWithRetry(webhook, resetDelivery, delivery.payload as unknown as WebhookPayload);
+
+    return { success: true, message: 'Delivery re-queued for retry' };
+  }
+
+  /**
+   * Return delivery statistics for a webhook: breakdown by status and totals.
+   */
+  public async getDeliveryStats(webhookId: WebhookId): Promise<{
+    total: number;
+    pending: number;
+    delivered: number;
+    failed: number;
+  } | null> {
+    if (!this.#repository) {
+      return null;
+    }
+
+    const webhook = await this.#repository.findById(webhookId);
+    if (!webhook) return null;
+
+    const deliveries = await this.#repository.findDeliveriesByWebhook(webhookId);
+    const stats = { total: deliveries.length, pending: 0, delivered: 0, failed: 0 };
+    for (const d of deliveries) {
+      if (d.status === 'pending') stats.pending++;
+      else if (d.status === 'delivered') stats.delivered++;
+      else if (d.status === 'failed') stats.failed++;
+    }
+    return stats;
+  }
+
   public async dispatch(
     accountId: AccountId,
     event: string,

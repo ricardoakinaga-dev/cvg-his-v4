@@ -1,0 +1,25 @@
+{
+  "name": "@cvg-his-v2/module-pix",
+  "version": "0.1.0",
+  "description": "PIX payment integration module for CVG HIS",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/pix.test.js"
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

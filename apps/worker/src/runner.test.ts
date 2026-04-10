@@ -69,6 +69,7 @@ test('createWorkerEventBus creates service with provided repository', () => {
     update: async () => {},
     findById: async () => null,
     findPending: async () => [],
+    findFailed: async () => [],
     findByCorrelationId: async () => []
   };
 
@@ -119,6 +120,7 @@ test('runEventBusTick handles empty event queue', async () => {
     update: async () => {},
     findById: async () => null,
     findPending: async () => [],
+    findFailed: async () => [],
     findByCorrelationId: async () => []
   };
 
@@ -162,6 +164,7 @@ test('runEventBusTick uses provided eventBus', async () => {
     update: async () => {},
     findById: async () => null,
     findPending: async () => [],
+    findFailed: async () => [],
     findByCorrelationId: async () => []
   };
 

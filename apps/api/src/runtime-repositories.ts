@@ -107,6 +107,13 @@ class InMemoryOutboxRepository implements OutboxRepository {
       .filter((event) => event.correlationId === correlationId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+
+  async findFailed(limit: number): Promise<readonly OutboxEvent[]> {
+    return Array.from(this.#events.values())
+      .filter((event) => event.status === 'failed')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  }
 }
 
 class InMemoryWebhookRepository implements WebhookRepository {

@@ -201,6 +201,12 @@ importers:
       '@cvg-his-v2/shared-auth-sdk':
         specifier: workspace:*
         version: link:../../packages/shared/auth-sdk
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../packages/shared/contracts
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared/types
       pinia:
         specifier: ^2.3.0
         version: 2.3.1(typescript@5.7.3)(vue@3.5.32(typescript@5.7.3))
@@ -909,6 +915,19 @@ importers:
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
+
+  packages/modules/pix:
+    dependencies:
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
 
   packages/modules/prescription-executions:
     dependencies:
