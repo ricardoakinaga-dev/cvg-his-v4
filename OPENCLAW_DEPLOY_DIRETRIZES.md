@@ -9,7 +9,6 @@ O OpenClaw deve considerar como canonico, para deploy da stack atual:
 - `docker-compose.v2.yml`
 - `.env.v2` derivado de `.env.v2.example`
 - `apps/api/Dockerfile`
-- `apps/web/Dockerfile`
 - `apps/worker/Dockerfile`
 - `apps/spa/Dockerfile`
 - `packages/db/src/migrate.ts`
@@ -41,14 +40,15 @@ Os servicos corretos no compose atual sao:
 - `postgres`
 - `redis`
 - `cvg-his-v2-api`
-- `cvg-his-v2-web`
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
+
+`cvg-his-v2-web` e `apps/web` permanecem apenas como legado de transicao, fora do fluxo canonico.
 
 Mapeamento externo atual:
 
 - API: `3003:3001`
-- Web: `3004:3000`
+- Web: `3004:3000` (legado; fora do fluxo canonico)
 - SPA: `3002:3002`
 - Postgres: `5432:5432`
 - Redis: `6380:6379`
@@ -58,7 +58,7 @@ Consequencia operacional:
 
 - health da API deve ser validado em `http://127.0.0.1:3003/health`
 - ready da API deve ser validado em `http://127.0.0.1:3003/ready`
-- Web deve ser validado em `http://127.0.0.1:3004/`
+- Web legado, se ainda estiver ativo, deve ser validado em `http://127.0.0.1:3004/`
 - SPA deve ser validada em `http://127.0.0.1:3002/`
 - Worker deve ser validado por `docker compose ps` e logs, a menos que a porta seja publicada explicitamente
 
@@ -113,8 +113,8 @@ O OpenClaw deve seguir exatamente esta ordem:
 7. aguardar `postgres` e `redis` saudaveis
 8. aplicar migrations com `packages/db/src/migrate.ts`
 9. aplicar seed apenas se for necessario e intencional
-10. subir `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker` e `cvg-his-v2-spa`
-11. validar API, Web, SPA, logs e estado dos containers
+10. subir `cvg-his-v2-api`, `cvg-his-v2-worker` e `cvg-his-v2-spa`
+11. validar API, SPA, logs e estado dos containers
 12. so depois disso alinhar proxy e trafego externo
 
 ## 7. Comandos canonicos
@@ -140,13 +140,13 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
 ### 7.4 Reconstruir imagens corretas
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 Se precisar atualizar tambem a imagem base:
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --pull --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --pull --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ### 7.5 Subir dependencias primeiro
@@ -174,7 +174,7 @@ npx tsx packages/db/src/seed.ts
 ### 7.8 Subir aplicacao
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ## 8. Validacoes obrigatorias apos subir o stack
@@ -184,11 +184,9 @@ O OpenClaw deve rodar e registrar:
 ```bash
 curl http://127.0.0.1:3003/health
 curl http://127.0.0.1:3003/ready
-curl -I http://127.0.0.1:3004/
 curl -I http://127.0.0.1:3002/
 docker compose --env-file .env.v2 -f docker-compose.v2.yml ps
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-api
-docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-web
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-worker
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-spa
 ```
@@ -219,36 +217,37 @@ O OpenClaw nao deve:
 - instalar dependencia manual fora do fluxo do monorepo
 - misturar compose antigo com compose atual
 
-## 10. Observacao critica sobre cutover e proxy
+## 10. Observacao critica sobre SPA como frontend canonico
 
-Os arquivos abaixo ainda contem defaults historicos que nao coincidem com o `docker-compose.v2.yml` atual:
+**REGRA DEPLOY:** O dominio principal `his.centroveterinarioguarapiranga.com` DEVE servir
+`cvg-his-v2-spa` (porta 3002, apps/spa). **NUNCA** apontar para `cvg-his-v2-web` (porta 3004).
 
-- `infra/scripts/cutover-v2.sh`
-- `infra/docker/Caddyfile.v2`
+`infra/docker/Caddyfile.v2` ja esta configurado com `reverse_proxy 127.0.0.1:3002` (SPA).
+Se o Caddyfile local divergir, alinhar para `reverse_proxy 127.0.0.1:3002` antes de expor trafego.
 
-Problema:
+Mapeamento de portas:
 
-- eles assumem portas externas `3000` e `3001`
-- o compose atual publica API em `3003`, Web em `3004` e SPA em `3002`
-- o script de cutover ainda tenta validar worker em `3002`, mas essa porta hoje pertence a SPA no compose atual
+- `127.0.0.1:3002` — SPA (frontend canonico, apps/spa) — o que o dominio publica
+- `127.0.0.1:3003` — API
+- `127.0.0.1:3004` — Web (portal alternativo, apps/web — NAO o frontend principal)
 
-Regra obrigatoria:
-
-- nao usar esses defaults cegamente
-- se usar `cutover-v2.sh`, sobrescrever explicitamente as URLs
-- se usar `Caddyfile.v2`, ajustar `reverse_proxy` para as portas externas reais antes de expor trafego
-
-Exemplo seguro para o script:
+Exemplo seguro para o script de cutover:
 
 ```bash
 API_HEALTH_URL=http://127.0.0.1:3003/health \
 API_READY_URL=http://127.0.0.1:3003/ready \
 API_METRICS_URL=http://127.0.0.1:3003/metrics \
-WEB_URL=http://127.0.0.1:3004/ \
+SPA_URL=http://127.0.0.1:3002/ \
 infra/scripts/cutover-v2.sh
 ```
 
-Sem esse ajuste, o deploy pode ser validado contra portas erradas.
+**Validacao anti-regressao obrigatoria apos qualquer deploy:**
+
+```bash
+curl -s https://his.centroveterinarioguarapiranga.com/assets/ApiKeysPage*.js | head -c 100
+# Se falhar: dominio esta servindo um alvo incorreto
+# Se retornar JS: dominio esta servindo SPA (deploy correto)
+```
 
 ## 11. Condicoes de bloqueio imediato
 

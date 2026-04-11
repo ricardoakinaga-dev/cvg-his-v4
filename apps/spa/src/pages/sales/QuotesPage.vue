@@ -19,113 +19,152 @@
       {{ successMessage }}
     </DsAlert>
 
-    <div class="workspace-grid">
-      <DsCard title="Novo orçamento">
-        <form class="form-grid" @submit.prevent="createQuote">
-          <DsInput id="quote-owner" v-model="quoteForm.ownerId" label="Owner ID" placeholder="opcional" />
-          <DsInput id="quote-valid-until" v-model="quoteForm.validUntil" type="date" label="Validade" />
-          <DsInput id="quote-notes" v-model="quoteForm.notes" type="textarea" label="Observações" :rows="3" />
-          <div class="form-actions">
-            <DsButton variant="primary" :loading="creatingQuote">Criar orçamento</DsButton>
+    <div class="workspace-layout">
+      <DsCard title="Painel comercial">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
           </div>
-        </form>
-      </DsCard>
-
-      <DsCard title="Lista de orçamentos">
-        <div class="toolbar">
-          <DsInput
-            v-model="search"
-            type="search"
-            placeholder="Buscar por número ou observação"
-            @keyup.enter="loadQuotes"
-          />
-          <DsButton variant="secondary" @click="loadQuotes">Buscar</DsButton>
         </div>
-        <DataTable
-          :columns="quoteColumns"
-          :rows="quotes"
-          :loading="listLoading"
-          empty-icon="📝"
-          empty-title="Nenhum orçamento encontrado"
-          empty-description="Crie um orçamento para iniciar a trilha comercial."
-          variant="hoverable"
-        >
-          <template #cell-status="{ row }">
-            <StatusBadge :label="quoteStatusLabel((row as QuoteSummary).status)" :variant="quoteStatusVariant((row as QuoteSummary).status)" />
-          </template>
-          <template #cell-total="{ row }">
-            {{ formatCurrency((row as QuoteSummary).total) }}
-          </template>
-          <template #cell-convertedToSaleId="{ row }">
-            <code v-if="(row as QuoteSummary).convertedToSaleId">{{ (row as QuoteSummary).convertedToSaleId }}</code>
-            <span v-else class="muted">—</span>
-          </template>
-          <template #cell-actions="{ row }">
-            <DsButton size="sm" variant="secondary" @click="selectQuote((row as QuoteSummary).id)">Abrir</DsButton>
-          </template>
-        </DataTable>
       </DsCard>
 
-      <DsCard title="Detalhes e itens">
-        <div v-if="detailLoading" class="muted">Carregando orçamento...</div>
-        <template v-else-if="selectedQuote">
-          <div class="detail-grid">
-            <div><strong>Número:</strong> {{ selectedQuote.number }}</div>
-            <div><strong>Status:</strong> {{ quoteStatusLabel(selectedQuote.status) }}</div>
-            <div><strong>Total:</strong> {{ formatCurrency(selectedQuote.total) }}</div>
-            <div><strong>Validade:</strong> {{ formatDate(selectedQuote.validUntil ?? '') || '—' }}</div>
-            <div><strong>Venda:</strong> {{ selectedQuote.convertedToSaleId ?? '—' }}</div>
-          </div>
-
-          <div class="action-row">
-            <DsButton variant="secondary" :loading="actionLoading === 'print'" @click="previewQuote">Pré-visualizar</DsButton>
-            <DsButton variant="primary" :loading="actionLoading === 'approve'" @click="approveQuote">Aprovar</DsButton>
-            <DsButton variant="secondary" :loading="actionLoading === 'reject'" @click="rejectQuote">Rejeitar</DsButton>
-            <DsButton variant="secondary" :loading="actionLoading === 'cancel'" @click="cancelQuote">Cancelar</DsButton>
-            <DsButton variant="secondary" :loading="actionLoading === 'convert'" @click="convertQuote">Converter em venda</DsButton>
-          </div>
-
-          <DsCard title="Itens">
-            <DataTable
-              :columns="itemColumns"
-              :rows="selectedItems"
-              :loading="itemsLoading"
-              empty-icon="📦"
-              empty-title="Sem itens"
-              empty-description="Adicione um item ao orçamento."
-              variant="hoverable"
-              :compact="true"
-            >
-              <template #cell-unitPrice="{ row }">{{ formatCurrency((row as QuoteItemSummary).unitPrice) }}</template>
-              <template #cell-lineTotal="{ row }">{{ formatCurrency((row as QuoteItemSummary).lineTotal) }}</template>
-            </DataTable>
-          </DsCard>
-
-          <form class="item-form" @submit.prevent="addItem">
-            <h3 class="section-title">Adicionar item</h3>
-            <div class="item-grid">
-              <DsInput id="item-type" v-model="itemForm.itemType" type="select" label="Tipo">
-                <option value="product">Produto</option>
-                <option value="service">Serviço</option>
-              </DsInput>
-              <DsInput id="item-name" v-model="itemForm.nameSnapshot" label="Nome" required />
-              <DsInput id="item-code" v-model="itemForm.codeSnapshot" label="Código" />
-              <DsInput id="item-price" v-model.number="itemForm.unitPrice" type="number" label="Valor unitário" required />
-              <DsInput id="item-qty" v-model.number="itemForm.quantity" type="number" label="Quantidade" required />
-              <DsInput id="item-discount" v-model.number="itemForm.discountAmount" type="number" label="Desconto" />
-              <DsInput id="item-notes" v-model="itemForm.notes" type="textarea" label="Observações" :rows="2" />
-            </div>
+      <div class="workspace-grid">
+        <DsCard title="Novo orçamento">
+          <form class="form-grid" @submit.prevent="createQuote">
+            <DsInput id="quote-owner" v-model="quoteForm.ownerId" label="Owner ID" placeholder="opcional" />
+            <DsInput id="quote-valid-until" v-model="quoteForm.validUntil" type="date" label="Validade" />
+            <DsInput id="quote-notes" v-model="quoteForm.notes" type="textarea" label="Observações" :rows="3" />
             <div class="form-actions">
-              <DsButton variant="primary" :loading="actionLoading === 'item'">Adicionar item</DsButton>
+              <DsButton variant="primary" :loading="creatingQuote">Criar orçamento</DsButton>
             </div>
           </form>
+        </DsCard>
 
-          <DsAlert v-if="printPreview" variant="info" size="sm">
-            Prévia HTML carregada com sucesso. Use a aba de impressão do navegador se necessário.
-          </DsAlert>
-        </template>
-        <div v-else class="muted">Selecione um orçamento na lista para operar itens e status.</div>
-      </DsCard>
+        <DsCard title="Lista de orçamentos">
+          <div class="toolbar">
+            <DsInput
+              v-model="search"
+              type="search"
+              placeholder="Buscar por número ou observação"
+              @keyup.enter="loadQuotes"
+            />
+            <DsButton variant="secondary" @click="loadQuotes">Buscar</DsButton>
+          </div>
+          <DataTable
+            :columns="quoteColumns"
+            :rows="quotes"
+            :loading="listLoading"
+            empty-icon="📝"
+            empty-title="Nenhum orçamento encontrado"
+            empty-description="Crie um orçamento para iniciar a trilha comercial."
+            variant="hoverable"
+          >
+            <template #cell-status="{ row }">
+              <StatusBadge
+                :label="quoteStatusLabel((row as QuoteSummary).status)"
+                :variant="quoteStatusVariant((row as QuoteSummary).status)"
+              />
+            </template>
+            <template #cell-total="{ row }">
+              {{ formatCurrency((row as QuoteSummary).total) }}
+            </template>
+            <template #cell-convertedToSaleId="{ row }">
+              <code v-if="(row as QuoteSummary).convertedToSaleId">{{
+                (row as QuoteSummary).convertedToSaleId
+              }}</code>
+              <span v-else class="muted">—</span>
+            </template>
+            <template #cell-actions="{ row }">
+              <DsButton size="sm" variant="secondary" @click="selectQuote((row as QuoteSummary).id)">
+                Abrir
+              </DsButton>
+            </template>
+          </DataTable>
+        </DsCard>
+
+        <DsCard title="Detalhes e itens">
+          <div v-if="detailLoading" class="muted">Carregando orçamento...</div>
+          <template v-else-if="selectedQuote">
+            <div class="detail-grid">
+              <div><strong>Número:</strong> {{ selectedQuote.number }}</div>
+              <div><strong>Status:</strong> {{ quoteStatusLabel(selectedQuote.status) }}</div>
+              <div><strong>Total:</strong> {{ formatCurrency(selectedQuote.total) }}</div>
+              <div><strong>Validade:</strong> {{ formatDate(selectedQuote.validUntil ?? '') || '—' }}</div>
+              <div><strong>Venda:</strong> {{ selectedQuote.convertedToSaleId ?? '—' }}</div>
+            </div>
+
+            <div class="action-row">
+              <DsButton variant="secondary" :loading="actionLoading === 'print'" @click="previewQuote">
+                Pré-visualizar
+              </DsButton>
+              <DsButton variant="primary" :loading="actionLoading === 'approve'" @click="approveQuote">
+                Aprovar
+              </DsButton>
+              <DsButton variant="secondary" :loading="actionLoading === 'reject'" @click="rejectQuote">
+                Rejeitar
+              </DsButton>
+              <DsButton variant="secondary" :loading="actionLoading === 'cancel'" @click="cancelQuote">
+                Cancelar
+              </DsButton>
+              <DsButton variant="secondary" :loading="actionLoading === 'convert'" @click="convertQuote">
+                Converter em venda
+              </DsButton>
+            </div>
+
+            <DsCard title="Itens">
+              <DataTable
+                :columns="itemColumns"
+                :rows="selectedItems"
+                :loading="itemsLoading"
+                empty-icon="📦"
+                empty-title="Sem itens"
+                empty-description="Adicione um item ao orçamento."
+                variant="hoverable"
+                :compact="true"
+              >
+                <template #cell-unitPrice="{ row }">{{
+                  formatCurrency((row as QuoteItemSummary).unitPrice)
+                }}</template>
+                <template #cell-lineTotal="{ row }">{{
+                  formatCurrency((row as QuoteItemSummary).lineTotal)
+                }}</template>
+              </DataTable>
+            </DsCard>
+
+            <form class="item-form" @submit.prevent="addItem">
+              <h3 class="section-title">Adicionar item</h3>
+              <div class="item-grid">
+                <DsInput id="item-type" v-model="itemForm.itemType" type="select" label="Tipo">
+                  <option value="product">Produto</option>
+                  <option value="service">Serviço</option>
+                </DsInput>
+                <DsInput id="item-name" v-model="itemForm.nameSnapshot" label="Nome" required />
+                <DsInput id="item-code" v-model="itemForm.codeSnapshot" label="Código" />
+                <DsInput
+                  id="item-price"
+                  v-model.number="itemForm.unitPrice"
+                  type="number"
+                  label="Valor unitário"
+                  required
+                />
+                <DsInput id="item-qty" v-model.number="itemForm.quantity" type="number" label="Quantidade" required />
+                <DsInput id="item-discount" v-model.number="itemForm.discountAmount" type="number" label="Desconto" />
+                <DsInput id="item-notes" v-model="itemForm.notes" type="textarea" label="Observações" :rows="2" />
+              </div>
+              <div class="form-actions">
+                <DsButton variant="primary" :loading="actionLoading === 'item'">Adicionar item</DsButton>
+              </div>
+            </form>
+
+            <DsAlert v-if="printPreview" variant="info" size="sm">
+              Prévia HTML carregada com sucesso. Use a aba de impressão do navegador se necessário.
+            </DsAlert>
+          </template>
+          <div v-else class="muted">Selecione um orçamento na lista para operar itens e status.</div>
+        </DsCard>
+      </div>
     </div>
   </div>
 </template>
@@ -143,6 +182,7 @@ import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
 import { quoteService, type QuoteItemSummary, type QuoteSummary } from '@/services/quotes';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import { computed } from 'vue';
 
 const quoteColumns: DataTableColumn[] = [
   { key: 'number', label: 'Número' },
@@ -184,6 +224,20 @@ const itemForm = ref({
   quantity: 1,
   discountAmount: 0,
   notes: ''
+});
+
+const summaryCards = computed(() => {
+  const total = quotes.value.length;
+  const approved = quotes.value.filter((quote) => quote.status === 'approved').length;
+  const converted = quotes.value.filter((quote) => quote.convertedToSaleId).length;
+  const subtotal = quotes.value.reduce((sum, quote) => sum + quote.total, 0);
+
+  return [
+    { label: 'Orçamentos', value: total.toString(), hint: 'Total na fila comercial' },
+    { label: 'Aprovados', value: approved.toString(), hint: 'Prontos para conversão' },
+    { label: 'Convertidos', value: converted.toString(), hint: 'Já viraram venda' },
+    { label: 'Volume', value: formatCurrency(subtotal), hint: 'Valor total catalogado' }
+  ];
 });
 
 const {
@@ -370,6 +424,12 @@ onMounted(() => {
   gap: 16px;
 }
 
+.workspace-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .toolbar,
 .action-row,
 .form-actions {
@@ -405,6 +465,43 @@ code {
 }
 
 .muted {
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
 </style>

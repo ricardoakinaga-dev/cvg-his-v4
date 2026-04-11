@@ -78,10 +78,10 @@ export default defineConfig({
       include: ['apps/api/src/**/*.ts', 'packages/modules/**/*.ts', 'packages/shared/**/*.ts'],
       exclude: ['**/*.test.ts', '**/*.d.ts', '**/dist/**', '**/node_modules/**'],
       thresholds: {
-        lines: 5,
-        functions: 5,
-        branches: 5,
-        statements: 5
+        lines: 8,
+        functions: 10,
+        branches: 8,
+        statements: 8
       },
       reportOnFailure: true,
       tempDirectory: './coverage/tmp'

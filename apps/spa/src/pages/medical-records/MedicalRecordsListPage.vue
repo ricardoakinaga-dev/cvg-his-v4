@@ -1,11 +1,45 @@
 <template>
   <div class="medical-records-list-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">📋 Prontuário Clínico</h1>
-        <p class="page-header__subtitle">Registro clínico por atendimento</p>
-      </div>
-    </div>
+    <AppPageHeader title="📋 Prontuário Clínico" subtitle="Registro clínico por atendimento">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
+      </template>
+    </AppPageHeader>
+
+    <section class="medical-records-list-page__overview">
+      <DsCard title="Visão consolidada">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ items.length }}</span>
+            <span class="overview-metric__label">Prontuários carregados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ openRecords }}</span>
+            <span class="overview-metric__label">Em aberto</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ closedRecords }}</span>
+            <span class="overview-metric__label">Concluídos</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ totalEntries }}</span>
+            <span class="overview-metric__label">Entradas clínicas</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="medical-records-list-page__story">
+      <DsCard title="Leitura rápida">
+        <div class="story-grid">
+          <div v-for="card in storyCards" :key="card.label" class="story-card">
+            <span class="story-card__label">{{ card.label }}</span>
+            <strong class="story-card__value">{{ card.value }}</strong>
+            <span class="story-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DataTable
       :columns="columns"
@@ -58,16 +92,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { medicalRecordsService } from '@/services/medicalRecords';
 import type { MedicalRecordListSummary } from '@/types/medicalRecords';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
@@ -98,9 +134,99 @@ const { items, loading, error, load } = useListData<MedicalRecordListSummary>({
   },
   entityLabel: 'prontuários'
 });
+
+const openRecords = computed(
+  () => items.value.filter((summary) => summary.record.status === 'open').length
+);
+const closedRecords = computed(
+  () => items.value.filter((summary) => summary.record.status !== 'open').length
+);
+const totalEntries = computed(() => items.value.reduce((sum, summary) => sum + summary.entryCount, 0));
+const openRate = computed(() => {
+  if (!items.value.length) return '0%';
+  return `${Math.round((openRecords.value / items.value.length) * 100)}%`;
+});
+const storyCards = computed(() => [
+  { label: 'Abertos', value: openRecords.value.toString(), hint: 'Prontuários ainda em curso' },
+  { label: 'Concluídos', value: closedRecords.value.toString(), hint: 'Prontuários fechados' },
+  { label: 'Entradas', value: totalEntries.value.toString(), hint: 'Volume clínico acumulado' },
+  { label: 'Taxa aberta', value: openRate.value, hint: 'Proporção de casos em aberto' }
+]);
 </script>
 
 <style scoped>
+.medical-records-list-page__overview {
+  margin-bottom: 16px;
+}
+
+.medical-records-list-page__story {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.story-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.story-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.story-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
 .encounter-link {
   color: var(--color-primary-600, #2563eb);
   text-decoration: none;

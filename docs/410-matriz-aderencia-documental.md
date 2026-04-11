@@ -15,7 +15,7 @@
 
 | Documento | Evidencia no codigo | Avaliacao | Nota |
 | --- | --- | --- | ---: |
-| `112-target-architecture.md` | Repositorio realmente usa `apps/web`, `apps/api`, `apps/worker`, `packages/modules`, `packages/shared`, `infra`, `tools` | Alta aderencia estrutural | 90 |
+| `112-target-architecture.md` | O repositorio tem `apps/api`, `apps/worker`, `apps/spa`, `packages/modules`, `packages/shared`, `infra`, `tools`; `apps/web` ficou como legado de transicao | Alta aderencia estrutural, com migracao de frontend em andamento | 90 |
 | `113-module-contracts.md` | Modulos expoem `src/index.ts`; ha centralizacao de contratos em `packages/shared/contracts/src/index.ts` | Boa aderencia, apesar de simplificar parte da realidade | 84 |
 | `123-phased-execution-plan.md` | As fases batem com os dominios implementados no monorepo | Documento segue util como mapa conceitual | 82 |
 
@@ -23,9 +23,9 @@
 
 | Documento | Evidencia no codigo | Avaliacao | Nota |
 | --- | --- | --- | ---: |
-| `114-frontend-architecture.md` descreve `apps/web` como canonico | Correto; `apps/web` e o frontend ativo | Aderente na decisao principal | 90 |
-| `114-frontend-architecture.md` diz que a navegacao usa hash routing | `apps/web/src/index.ts` usa path routing server-side como `/owners`, `/patients`, `/encounters` | Desatualizado tecnicamente | 20 |
-| `114-frontend-architecture.md` lista poucos modulos/paginas | O frontend real tem 25 rotas, incluindo `users`, `staff`, `access-control`, `appointments`, `queue`, `triage`, `inpatient`, `beds`, `billing`, `inventory`, `notifications`, `audit`, `discharges`, `prescriptions` | Cobertura funcional muito aquem do construido | 30 |
+| `114-frontend-architecture.md` descreve `apps/web` como canonico | Historicamente correto, mas a trilha oficial atual migrou para `apps/spa` | Registro historico; nao deve mais orientar deploy | 40 |
+| `114-frontend-architecture.md` diz que a navegacao usa hash routing | `apps/web/src/index.ts` usa path routing server-side como `/owners`, `/patients`, `/encounters` | Desatualizado tecnicamente no frontend legado | 20 |
+| `114-frontend-architecture.md` lista poucos modulos/paginas | O frontend real agora esta em `apps/spa` com shell e rotas premium mais amplas | Cobertura historica insuficiente para o estado atual | 30 |
 | `apps/web/README.md` | Chama o app de frontend oficial, mas descreve apenas um subconjunto de fluxos e ainda diz que nao ha testes web automatizados | Parcialmente correto; desatualizado em cobertura e testes | 45 |
 
 ## 4. Backend
@@ -104,6 +104,8 @@
 | `users` | Implementado no codigo, sem trilha modular clara | 20 |
 
 **Leitura:** a cobertura documental dos modulos existe, mas e claramente desigual. A pasta `docs/` representa melhor os dominios "classicos" do roadmap do que o estado integral do monorepo atual.
+
+**Atualizacao de leitura:** a arquitetura de frontend foi deslocada para `apps/spa`; qualquer menção a `apps/web` nesta matriz deve ser lida como registro historico do estado anterior.
 
 ## 8. Testes e validacao
 

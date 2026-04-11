@@ -1,13 +1,34 @@
 <template>
   <div class="triage-list-page">
-    <div class="page-header">
-      <h1>Triagem</h1>
-      <div class="page-header__actions">
-        <DsButton variant="primary" size="sm" @click="$router.push('/triage/new')">
-          Nova Triagem
-        </DsButton>
-      </div>
-    </div>
+    <AppPageHeader title="🧭 Triagem" subtitle="Classificação inicial e direcionamento do fluxo">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="fetchData">Atualizar</DsButton>
+        <DsButton tag="a" to="/triage/new" variant="primary">+ Nova Triagem</DsButton>
+      </template>
+    </AppPageHeader>
+
+    <section class="triage-list-page__overview">
+      <DsCard title="Resumo da triagem">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ records.length }}</span>
+            <span class="overview-metric__label">Registros</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ criticalCount }}</span>
+            <span class="overview-metric__label">Críticas</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ inCareCount }}</span>
+            <span class="overview-metric__label">Em atendimento</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ observationCount }}</span>
+            <span class="overview-metric__label">Observação</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -46,7 +67,10 @@ import type { TriageSummary } from '@/types/triage';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
+import { computed } from 'vue';
 
 const columns = [
   { key: 'patientId', label: 'Paciente' },
@@ -96,10 +120,46 @@ function destinationVariant(d: string): 'success' | 'info' {
 function destinationLabel(d: string): string {
   return d === 'in_care' ? 'Em Atendimento' : 'Observação';
 }
+
+const criticalCount = computed(() => records.value.filter((r) => r.priority === 'critical').length);
+const inCareCount = computed(() => records.value.filter((r) => r.destination === 'in_care').length);
+const observationCount = computed(
+  () => records.value.filter((r) => r.destination === 'observation').length
+);
 </script>
 
 <style scoped>
 .triage-list-page {
   max-width: 1280px;
+}
+
+.triage-list-page__overview {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
 }
 </style>

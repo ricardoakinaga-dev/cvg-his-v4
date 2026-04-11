@@ -7,9 +7,10 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/web --filter @cvg-his-v2/worker run dev",
+    "dev": "pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/spa --filter @cvg-his-v2/worker run dev",
     "dev:api": "pnpm --filter @cvg-his-v2/api run dev",
-    "dev:web": "pnpm --filter @cvg-his-v2/web run dev",
+    "dev:spa": "pnpm --filter @cvg-his-v2/spa run dev",
+    "dev:legacy-web": "pnpm --filter @cvg-his-v2/web run dev",
     "dev:worker": "pnpm --filter @cvg-his-v2/worker run dev",
     "build": "pnpm -r --filter @cvg-his-v2/* run build",
     "typecheck": "pnpm -r --filter @cvg-his-v2/* run typecheck",

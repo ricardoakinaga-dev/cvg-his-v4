@@ -4,6 +4,10 @@
       <template #title>
         {{ isEdit ? 'Editar Tutor' : 'Novo Tutor' }}
       </template>
+      <template #subtitle>
+        Cadastro central de tutores e responsáveis. Mantenha contato principal, status e
+        responsabilidade financeira consistentes para reduzir retrabalho operacional.
+      </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
       </template>
@@ -16,94 +20,122 @@
       {{ successMessage }}
     </DsAlert>
 
-    <form class="owner-form" @submit.prevent="onSubmit">
-      <DsCard title="Dados Pessoais">
-        <DsInput
-          id="fullName"
-          v-model="form.fullName"
-          label="Nome Completo *"
-          placeholder="Nome completo do tutor"
-          :error="errors.fullName"
-          required
-        />
-        <DsInput
-          id="documentId"
-          v-model="form.documentId"
-          label="Documento (CPF/CNPJ)"
-          placeholder="000.000.000-00"
-        />
-      </DsCard>
+    <div class="owner-form-page__layout">
+      <form class="owner-form" @submit.prevent="onSubmit">
+        <DsCard title="Dados Pessoais">
+          <DsInput
+            id="fullName"
+            v-model="form.fullName"
+            label="Nome Completo *"
+            placeholder="Nome completo do tutor"
+            :error="errors.fullName"
+            required
+          />
+          <DsInput
+            id="documentId"
+            v-model="form.documentId"
+            label="Documento (CPF/CNPJ)"
+            placeholder="000.000.000-00"
+          />
+        </DsCard>
 
-      <DsCard>
-        <template #header>
-          <div class="form-section__header">
-            <h2 class="form-section__title">Contatos</h2>
-            <DsButton variant="secondary" size="sm" @click="addContact"> + Adicionar </DsButton>
+        <DsCard>
+          <template #header>
+            <div class="form-section__header">
+              <h2 class="form-section__title">Contatos</h2>
+              <DsButton variant="secondary" size="sm" @click="addContact"> + Adicionar </DsButton>
+            </div>
+          </template>
+
+          <div v-for="(contact, i) in form.contacts" :key="i" class="contact-row">
+            <div class="form-row form-row--3">
+              <DsInput
+                :id="`contact-label-${i}`"
+                v-model="contact.label"
+                label="Rótulo"
+                placeholder="Ex: Celular"
+              />
+              <DsInput :id="`contact-type-${i}`" v-model="contact.type" label="Tipo" type="select">
+                <option value="phone">Telefone</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">E-mail</option>
+              </DsInput>
+              <DsInput
+                :id="`contact-value-${i}`"
+                v-model="contact.value"
+                label="Valor *"
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div class="contact-row__actions">
+              <DsRadio
+                :name="'contact-primary'"
+                :value="i"
+                v-model="primaryIndex"
+                label="Principal"
+              />
+              <DsButton
+                v-if="form.contacts.length > 1"
+                variant="danger"
+                size="sm"
+                @click="removeContact(i)"
+              >
+                Remover
+              </DsButton>
+            </div>
           </div>
-        </template>
+          <span v-if="errors.contacts" class="form-field__error">{{ errors.contacts }}</span>
+        </DsCard>
 
-        <div v-for="(contact, i) in form.contacts" :key="i" class="contact-row">
-          <div class="form-row form-row--3">
-            <DsInput
-              :id="`contact-label-${i}`"
-              v-model="contact.label"
-              label="Rótulo"
-              placeholder="Ex: Celular"
-            />
-            <DsInput :id="`contact-type-${i}`" v-model="contact.type" label="Tipo" type="select">
-              <option value="phone">Telefone</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="email">E-mail</option>
+        <DsCard title="Informações Administrativas">
+          <div class="form-row">
+            <DsInput id="status" v-model="form.status" label="Status" type="select">
+              <option value="active">Ativo</option>
+              <option value="inactive">Inativo</option>
             </DsInput>
-            <DsInput
-              :id="`contact-value-${i}`"
-              v-model="contact.value"
-              label="Valor *"
-              placeholder="(11) 99999-9999"
-            />
+            <div class="form-field form-field--inline">
+              <DsCheckbox v-model="form.financialResponsible" label="Responsável financeiro" />
+            </div>
           </div>
-          <div class="contact-row__actions">
-            <DsRadio :name="'contact-primary'" :value="i" v-model="primaryIndex" label="Principal" />
-            <DsButton
-              v-if="form.contacts.length > 1"
-              variant="danger"
-              size="sm"
-              @click="removeContact(i)"
-            >
-              Remover
-            </DsButton>
-          </div>
-        </div>
-        <span v-if="errors.contacts" class="form-field__error">{{ errors.contacts }}</span>
-      </DsCard>
+          <DsInput
+            id="notes"
+            v-model="form.administrativeNotes"
+            label="Observações"
+            type="textarea"
+            placeholder="Notas administrativas"
+            :rows="3"
+          />
+        </DsCard>
 
-      <DsCard title="Informações Administrativas">
-        <div class="form-row">
-          <DsInput id="status" v-model="form.status" label="Status" type="select">
-            <option value="active">Ativo</option>
-            <option value="inactive">Inativo</option>
-          </DsInput>
-          <div class="form-field" style="display: flex; align-items: center; padding-top: 24px;">
-            <DsCheckbox v-model="form.financialResponsible" label="Responsável financeiro" />
-          </div>
+        <div class="form-actions">
+          <DsButton type="submit" variant="primary" :loading="submitting">
+            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Tutor' }}
+          </DsButton>
+          <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
         </div>
-        <DsInput
-          id="notes"
-          v-model="form.administrativeNotes"
-          label="Observações"
-          type="textarea"
-          placeholder="Notas administrativas"
-          :rows="3"
-        />
-      </DsCard>
+      </form>
 
-      <div class="form-actions">
-        <DsButton type="submit" variant="primary" :loading="submitting">
-          {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Tutor' }}
-        </DsButton>
-        <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
-      </div>
-    </form>
+      <aside class="owner-form-page__aside">
+        <DsCard title="Resumo em tempo real">
+          <div class="summary-grid">
+            <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+              <span class="summary-card__label">{{ card.label }}</span>
+              <strong class="summary-card__value">{{ card.value }}</strong>
+              <span class="summary-card__hint">{{ card.hint }}</span>
+            </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Guia de cadastro">
+          <ul class="guide-list">
+            <li>Defina sempre um contato principal para evitar ambiguidade operacional.</li>
+            <li>Marque responsabilidade financeira apenas quando houver validação real.</li>
+            <li>Use observações para regras administrativas, não para histórico clínico.</li>
+            <li>Mantenha o documento preenchido quando houver CPF/CNPJ disponível.</li>
+          </ul>
+        </DsCard>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -156,6 +188,32 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+
+const summaryCards = computed(() => [
+  {
+    label: 'Contatos',
+    value: form.contacts.filter((contact) => contact.value.trim()).length.toString(),
+    hint: 'Com valor preenchido'
+  },
+  {
+    label: 'Principal',
+    value:
+      form.contacts[primaryIndex.value]?.label?.trim() ||
+      form.contacts[primaryIndex.value]?.type ||
+      '—',
+    hint: 'Contato de referência'
+  },
+  {
+    label: 'Financeiro',
+    value: form.financialResponsible ? 'Sim' : 'Não',
+    hint: 'Responsável financeiro'
+  },
+  {
+    label: 'Status',
+    value: form.status === 'active' ? 'Ativo' : 'Inativo',
+    hint: 'Situação operacional'
+  }
+]);
 
 function addContact() {
   form.contacts.push({ label: 'Contato', type: 'phone', value: '', primary: false });
@@ -265,11 +323,25 @@ onMounted(async () => {
   color: var(--color-text, #0f172a);
 }
 
+.owner-form-page__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: start;
+}
+
 .owner-form {
-  max-width: 720px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.owner-form-page__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 24px;
 }
 
 .form-section__header {
@@ -303,6 +375,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.form-field--inline {
+  padding-top: 24px;
 }
 
 .form-field__error {
@@ -340,6 +416,7 @@ onMounted(async () => {
 .form-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .btn--secondary {
@@ -361,5 +438,63 @@ onMounted(async () => {
 
 .btn--secondary:hover {
   background: var(--color-surface-hover, #f8fafc);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+  margin-bottom: 4px;
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .owner-form-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-form-page__aside {
+    position: static;
+  }
 }
 </style>

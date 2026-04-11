@@ -109,7 +109,7 @@ stop_previous_v2_stack() {
 
 build_v2_images() {
   log "building V2 images with explicit service list"
-  docker_compose build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+  docker_compose build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 }
 
 wait_for_service_health() {
@@ -168,13 +168,10 @@ apply_v2_schema() {
 
 start_v2_applications() {
   log "starting V2 application services"
-  docker_compose up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+  docker_compose up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 
   log "waiting for API service"
   wait_for_service_health cvg-his-v2-api 60 2 || die "api service did not become healthy"
-
-  log "waiting for Web service"
-  wait_for_service_health cvg-his-v2-web 60 2 || die "web service did not become healthy"
 
   log "waiting for SPA service"
   wait_for_service_health cvg-his-v2-spa 60 2 || die "spa service did not become healthy"
@@ -211,11 +208,6 @@ validate_v2_stack() {
   log "validating API /metrics (external port 3003)"
   wait_for_http "${API_METRICS_URL:-http://127.0.0.1:3003/metrics}" 200 || die "API metrics check failed"
 
-  log "validating Web root (external port 3004)"
-  local web_code
-  web_code="$(curl -s -o /dev/null -w '%{http_code}' "${WEB_URL:-http://127.0.0.1:3004/}" || true)"
-  [[ "$web_code" == "200" ]] || die "web root returned unexpected status: $web_code"
-
   log "validating SPA root (external port 3002)"
   local spa_code
   spa_code="$(curl -s -o /dev/null -w '%{http_code}' "${SPA_URL:-http://127.0.0.1:3002/}" || true)"
@@ -230,7 +222,6 @@ validate_v2_stack() {
 
   docker_compose ps > "$BACKUP_DIR/v2-compose-ps.txt"
   docker_compose logs --tail=200 cvg-his-v2-api > "$BACKUP_DIR/v2-api.logs.txt" 2>&1 || true
-  docker_compose logs --tail=200 cvg-his-v2-web > "$BACKUP_DIR/v2-web.logs.txt" 2>&1 || true
   docker_compose logs --tail=200 cvg-his-v2-worker > "$BACKUP_DIR/v2-worker.logs.txt" 2>&1 || true
   docker_compose logs --tail=200 cvg-his-v2-spa > "$BACKUP_DIR/v2-spa.logs.txt" 2>&1 || true
 }
@@ -289,12 +280,11 @@ Compose:
 Env file:
   $ENV_FILE
 
-Validated endpoints:
-  curl http://127.0.0.1:3003/health
-  curl http://127.0.0.1:3003/ready
-  curl http://127.0.0.1:3003/metrics
-  curl -I http://127.0.0.1:3004/
-  curl -I http://127.0.0.1:3002/
+  Validated endpoints:
+    curl http://127.0.0.1:3003/health
+    curl http://127.0.0.1:3003/ready
+    curl http://127.0.0.1:3003/metrics
+    curl -I http://127.0.0.1:3002/
 
 Worker:
   validated via docker compose ps and logs

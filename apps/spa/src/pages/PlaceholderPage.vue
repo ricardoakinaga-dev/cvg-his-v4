@@ -3,11 +3,11 @@
     <EmptyState
       :icon="icon"
       :title="title"
-      description="Este módulo está sendo migrado para a nova interface. Acesse a versão atual pelo sistema legado."
+      description="Este módulo ainda nao foi disponibilizado no SPA oficial. Volte ao painel para seguir com os fluxos premium ja liberados."
     >
       <template #action>
-        <DsButton tag="a" :href="legacyUrl" variant="secondary" target="_blank">
-          Abrir no sistema legado →
+        <DsButton tag="a" href="/" variant="secondary">
+          Voltar ao dashboard →
         </DsButton>
       </template>
     </EmptyState>
@@ -23,8 +23,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 const route = useRoute();
 
 const icon = computed(() => (route.meta.icon as string) || '📄');
-const title = computed(() => (route.meta.title as string) || 'Página');
-const legacyUrl = computed(() => (route.path.startsWith('/') ? route.path : '/'));
+const title = computed(() => (route.meta.title as string) || 'Pagina em construcao');
 </script>
 
 <style scoped>

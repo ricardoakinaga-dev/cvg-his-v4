@@ -8,6 +8,16 @@
       </template>
     </AppPageHeader>
 
+    <section class="summary-grid">
+      <DsCard v-for="card in summaryCards" :key="card.label" variant="elevated" class="summary-card">
+        <div class="summary-card__icon">{{ card.icon }}</div>
+        <div class="summary-card__body">
+          <span class="summary-card__value">{{ card.value }}</span>
+          <span class="summary-card__label">{{ card.label }}</span>
+        </div>
+      </DsCard>
+    </section>
+
     <div class="api-keys-grid">
       <DsCard title="Nova API Key" class="api-keys-card">
         <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
@@ -140,6 +150,14 @@
           </template>
         </DataTable>
       </DsCard>
+
+      <DsCard title="Guia de uso" class="api-keys-card api-keys-card--aside">
+        <ul class="api-keys-hints">
+          <li>Use permissões mínimas por integração.</li>
+          <li>Copie o segredo imediatamente após a criação da chave.</li>
+          <li>Controle validade e rate limit para reduzir risco operacional.</li>
+        </ul>
+      </DsCard>
     </div>
   </div>
 </template>
@@ -207,6 +225,23 @@ const columns = [
   { key: 'lastUsedAt', label: 'Último uso' },
   { key: 'actions', label: 'Chave' }
 ];
+
+const summaryCards = computed(() => {
+  const activeKeys = apiKeys.value.filter((key) => key.isActive).length;
+  const totalPermissions = apiKeys.value.reduce((count, key) => count + key.permissions.length, 0);
+  const expiringSoon = apiKeys.value.filter((key) => {
+    if (!key.expiresAt) return false;
+    const expiresAt = new Date(key.expiresAt).getTime();
+    return Number.isFinite(expiresAt) && expiresAt - Date.now() < 1000 * 60 * 60 * 24 * 30;
+  }).length;
+
+  return [
+    { icon: '🔐', label: 'Chaves ativas', value: String(activeKeys) },
+    { icon: '🧩', label: 'Permissões totais', value: String(totalPermissions) },
+    { icon: '⏳', label: 'Expiram em 30d', value: String(expiringSoon) },
+    { icon: '🛡️', label: 'Catálogo OK', value: permissions.value.length > 0 ? 'Sim' : 'Não' }
+  ];
+});
 
 const permissionGroups = computed(() => {
   const items = [...permissions.value].sort((a, b) => {
@@ -323,16 +358,71 @@ onMounted(async () => {
   gap: 24px;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.summary-card__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 22px;
+}
+
+.summary-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-card__value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  line-height: 1;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 4px;
+}
+
 .api-keys-grid {
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 20px;
+  align-items: start;
 }
 
 .api-keys-card {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+}
+
+.api-keys-card--aside {
+  grid-column: 1 / -1;
+}
+
+.api-keys-hints {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  color: var(--color-text-secondary, #475569);
 }
 
 .api-keys-form {

@@ -1,11 +1,45 @@
 <template>
   <div class="billing-list-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">💰 Faturamento</h1>
-        <p class="page-header__subtitle">Controle de cobrança e faturamento de atendimentos</p>
-      </div>
-    </div>
+    <AppPageHeader title="💰 Faturamento" subtitle="Controle de cobrança e faturamento">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
+      </template>
+    </AppPageHeader>
+
+    <section class="billing-list-page__overview">
+      <DsCard title="Resumo financeiro">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ items.length }}</span>
+            <span class="overview-metric__label">Registros</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ openCount }}</span>
+            <span class="overview-metric__label">Em aberto</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ settledCount }}</span>
+            <span class="overview-metric__label">Quitados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ totalAmountFormatted }}</span>
+            <span class="overview-metric__label">Subtotal acumulado</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="billing-list-page__story">
+      <DsCard title="Leitura rápida">
+        <div class="story-grid">
+          <div v-for="card in storyCards" :key="card.label" class="story-card">
+            <span class="story-card__label">{{ card.label }}</span>
+            <strong class="story-card__value">{{ card.value }}</strong>
+            <span class="story-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -75,9 +109,12 @@ import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
+import { computed } from 'vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
@@ -130,7 +167,21 @@ function ownerName(id: string): string {
   return ownerNames.value[id] || `Tutor ${id.slice(0, 8)}...`;
 }
 
-const { items, loading, error } = useListData<BillingRecordSummary>({
+const openCount = computed(() => items.value.filter((record) => record.status === 'open').length);
+const settledCount = computed(() => items.value.filter((record) => record.status === 'settled').length);
+const totalAmountFormatted = computed(() => formatCurrency(items.value.reduce((sum, record) => sum + record.subtotalAmount, 0)));
+const openRate = computed(() => {
+  if (!items.value.length) return '0%';
+  return `${Math.round((openCount.value / items.value.length) * 100)}%`;
+});
+const storyCards = computed(() => [
+  { label: 'Abertos', value: openCount.value.toString(), hint: 'Cobranças em andamento' },
+  { label: 'Quitados', value: settledCount.value.toString(), hint: 'Itens já fechados' },
+  { label: 'Taxa aberta', value: openRate.value, hint: 'Proporção pendente' },
+  { label: 'Subtotal', value: totalAmountFormatted.value, hint: 'Volume acumulado' }
+]);
+
+const { items, loading, error, load } = useListData<BillingRecordSummary>({
   fetchFn: async () => {
     const records = await billingService.list();
     const patientIds = [...new Set(records.map((r) => r.patientId))];
@@ -147,9 +198,93 @@ const { items, loading, error } = useListData<BillingRecordSummary>({
   },
   entityLabel: 'faturamentos'
 });
+
+function reload() {
+  void load();
+}
 </script>
 
 <style scoped>
+.billing-list-page__overview {
+  margin-bottom: 16px;
+}
+
+.billing-list-page__story {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.story-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.story-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.story-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.encounter-link {
+  color: var(--color-primary-600, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.encounter-link:hover {
+  text-decoration: underline;
+}
 .encounter-link {
   color: var(--color-primary-600, #2563eb);
   text-decoration: none;

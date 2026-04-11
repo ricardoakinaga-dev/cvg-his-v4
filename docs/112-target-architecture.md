@@ -2,13 +2,15 @@
 
 ## Estrutura alvo do repositorio
 
-- `apps/web`
 - `apps/api`
 - `apps/worker`
+- `apps/spa`
 - `packages/modules/*`
 - `packages/shared/*`
 - `infra/*`
 - `tools/*`
+
+`apps/web` permanece apenas como legado de transicao durante a migracao para `apps/spa`.
 
 ## Principios arquiteturais
 

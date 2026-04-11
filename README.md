@@ -11,7 +11,6 @@ Para instalacao e publicacao da stack real, use apenas:
 - `docker-compose.v2.yml`
 - `.env.v2` gerado a partir de `.env.v2.example`
 - `apps/api/Dockerfile`
-- `apps/web/Dockerfile`
 - `apps/worker/Dockerfile`
 - `apps/spa/Dockerfile`
 - `packages/db/src/migrate.ts`
@@ -28,7 +27,8 @@ Para bootstrap local de infraestrutura, use apenas:
 Nao use:
 
 - qualquer trilha `apps/his-*`
-- qualquer imagem `cvg-his-api`, `cvg-his-web`, `cvg-his-worker`
+- qualquer imagem `cvg-his-api`, `cvg-his-web`, `cvg-his-worker` como runtime oficial
+- qualquer dependencia operacional de `apps/web` como frontend canonico
 - qualquer compose antigo para publicar API, Web, Worker ou SPA
 - `packages/shared/database/src/migrations/*.sql` como trilha principal de deploy
 - `npm install` isolado dentro de subpastas para publicacao da stack
@@ -42,14 +42,15 @@ Os servicos definidos hoje em [`docker-compose.v2.yml`](/root/.openclaw/workspac
 - `postgres`
 - `redis`
 - `cvg-his-v2-api`
-- `cvg-his-v2-web`
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
+
+`cvg-his-v2-web` permanece apenas como servico legado no compose, fora do fluxo canonico.
 
 Portas externas atuais:
 
 - API: `127.0.0.1:3003 -> 3001`
-- Web: `127.0.0.1:3004 -> 3000`
+- Web: `127.0.0.1:3004 -> 3000` (legado; fora do fluxo canonico)
 - SPA: `127.0.0.1:3002 -> 3002`
 - Postgres: `127.0.0.1:5432 -> 5432`
 - Redis: `127.0.0.1:6380 -> 6379`
@@ -96,13 +97,13 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
 ### 4. Reconstruir imagens corretas
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 Se o objetivo tambem for atualizar as imagens base, prefira:
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --pull --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --pull --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ### 5. Subir dependencias primeiro
@@ -134,7 +135,7 @@ Regra importante: nao aplique ao mesmo tempo o fluxo de `packages/db` e os SQLs 
 ### 7. Subir a aplicacao
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ### 8. Validar o stack
@@ -142,11 +143,9 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api 
 ```bash
 curl http://127.0.0.1:3003/health
 curl http://127.0.0.1:3003/ready
-curl -I http://127.0.0.1:3004/
 curl -I http://127.0.0.1:3002/
 docker compose --env-file .env.v2 -f docker-compose.v2.yml ps
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-api
-docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-web
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-worker
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-spa
 ```
@@ -161,7 +160,7 @@ Quando houver nova versao do codigo:
 4. reconstrua as imagens com `build --no-cache` ou `build --pull --no-cache`
 5. suba `postgres` e `redis`
 6. rode `packages/db/src/migrate.ts`
-7. suba `api`, `web`, `worker` e `spa`
+7. suba `api`, `worker` e `spa`
 8. valide health, ready, logs e rotas basicas
 
 Nao faca:
@@ -186,7 +185,7 @@ Exemplo seguro para o script:
 API_HEALTH_URL=http://127.0.0.1:3003/health \
 API_READY_URL=http://127.0.0.1:3003/ready \
 API_METRICS_URL=http://127.0.0.1:3003/metrics \
-WEB_URL=http://127.0.0.1:3004/ \
+SPA_URL=http://127.0.0.1:3002/ \
 infra/scripts/cutover-v2.sh
 ```
 

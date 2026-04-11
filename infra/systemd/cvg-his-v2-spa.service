@@ -1,16 +1,12 @@
 [Unit]
-Description=CVG HIS V2 Web
+Description=CVG HIS V2 SPA
 After=network.target cvg-his-v2-api.service
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/cvg-his-v2
 EnvironmentFile=/opt/cvg-his-v2/.env.production
-Environment=NODE_ENV=production
-Environment=HOST=0.0.0.0
-Environment=PORT=3000
-Environment=APP_NAME=cvg-his-v2-web
-ExecStart=/usr/bin/node /opt/cvg-his-v2/apps/web/dist/index.js
+ExecStart=/usr/bin/env nginx -g 'daemon off;' -c /opt/cvg-his-v2/infra/systemd/cvg-his-v2-spa.nginx.conf
 Restart=always
 RestartSec=5
 RestartPreventExitStatus=1 2 3 4
@@ -18,7 +14,7 @@ TimeoutStartSec=30
 TimeoutStopSec=15
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=cvg-his-v2-web
+SyslogIdentifier=cvg-his-v2-spa
 
 [Install]
 WantedBy=multi-user.target

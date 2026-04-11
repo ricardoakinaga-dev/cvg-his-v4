@@ -31,6 +31,16 @@
         </template>
       </AppPageHeader>
 
+      <section class="summary-grid">
+        <DsCard v-for="item in summaryCards" :key="item.label" variant="elevated" class="summary-card">
+          <div class="summary-card__icon">{{ item.icon }}</div>
+          <div class="summary-card__body">
+            <span class="summary-card__value">{{ item.value }}</span>
+            <span class="summary-card__label">{{ item.label }}</span>
+          </div>
+        </DsCard>
+      </section>
+
       <div class="webhook-detail-page__grid">
         <AppDetailSection title="Configuração">
           <div class="detail-row">
@@ -88,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { webhookService } from '@/services/webhook';
 import type { WebhookSummary, WebhookDelivery } from '@/types/webhook';
@@ -97,6 +107,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
@@ -119,6 +130,13 @@ const deliveryColumns: DataTableColumn[] = [
   { key: 'responseStatus', label: 'HTTP' },
   { key: 'lastAttemptAt', label: 'Última Tentativa' }
 ];
+
+const summaryCards = computed(() => [
+  { icon: '🔗', label: 'URL', value: webhook.value?.url ?? '—' },
+  { icon: '📦', label: 'Eventos', value: String(webhook.value?.events.length ?? 0) },
+  { icon: '📨', label: 'Deliveries', value: String(deliveries.value.length) },
+  { icon: '⚡', label: 'Status', value: webhook.value?.isActive ? 'Ativo' : 'Inativo' }
+]);
 
 function deliveryStatusLabel(status: WebhookDelivery['status']): string {
   return { pending: 'Pendente', delivered: 'Entregue', failed: 'Falhou' }[status];
@@ -164,6 +182,49 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.summary-card__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 22px;
+}
+
+.summary-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-card__value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 4px;
+}
+
 .webhook-detail-page__grid {
   display: grid;
   gap: 16px;

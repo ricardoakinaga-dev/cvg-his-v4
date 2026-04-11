@@ -5,7 +5,7 @@
       <DsButton variant="secondary" tag="a" href="/appointments">Voltar à agenda</DsButton>
     </div>
     <template v-else>
-      <AppPageHeader>
+      <AppPageHeader :subtitle="detailSubtitle">
         <template #title>📅 Agendamento</template>
         <template #subtitle>
           <StatusBadge
@@ -14,6 +14,9 @@
           />
         </template>
         <template #actions>
+          <DsButton tag="a" :to="`/patients/${appointment.patientId}`" variant="secondary">
+            Abrir paciente
+          </DsButton>
           <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
           </DsButton>
@@ -21,7 +24,38 @@
         </template>
       </AppPageHeader>
 
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+
       <div class="appointment-detail-page__grid">
+        <DsCard title="Visão rápida">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-item__label">Data/Hora</span>
+              <strong>{{ formatDateTime(appointment.scheduledAt) }}</strong>
+            </div>
+            <div class="summary-item">
+              <span class="summary-item__label">Tipo</span>
+              <strong>{{ visitTypeLabel(appointment.visitType) }}</strong>
+            </div>
+            <div class="summary-item">
+              <span class="summary-item__label">Paciente</span>
+              <strong>{{ patientName || 'Carregando...' }}</strong>
+            </div>
+            <div class="summary-item">
+              <span class="summary-item__label">Tutor</span>
+              <strong>{{ ownerName || 'Carregando...' }}</strong>
+            </div>
+          </div>
+        </DsCard>
+
         <AppDetailSection title="Informações">
           <div class="detail-row">
             <span class="detail-row__label">Data/Hora</span>
@@ -65,6 +99,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const route = useRoute();
 const appointment = ref<AppointmentSummary | null>(null);
@@ -94,6 +129,21 @@ const canCancel = computed(() => {
     appointment.value &&
     (appointment.value.status === 'scheduled' || appointment.value.status === 'checked_in')
   );
+});
+
+const detailSubtitle = computed(() => {
+  if (!appointment.value) return '';
+  return `${appointment.value.id} • ${patientName.value || 'Paciente em carregamento'}`;
+});
+
+const summaryCards = computed(() => {
+  if (!appointment.value) return [];
+  return [
+    { label: 'Data/Hora', value: formatDateTime(appointment.value.scheduledAt), hint: 'Momento agendado' },
+    { label: 'Tipo', value: visitTypeLabel(appointment.value.visitType), hint: 'Natureza da visita' },
+    { label: 'Paciente', value: patientName.value || '—', hint: 'Atendimento vinculado' },
+    { label: 'Tutor', value: ownerName.value || '—', hint: 'Responsável principal' }
+  ];
 });
 
 async function handleCancel() {
@@ -132,5 +182,64 @@ onMounted(async () => {
 .appointment-detail-page__grid {
   display: grid;
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.summary-item {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.summary-item__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 </style>

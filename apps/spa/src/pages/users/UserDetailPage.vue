@@ -25,6 +25,16 @@
         </template>
       </AppPageHeader>
 
+      <section class="summary-grid">
+        <DsCard v-for="item in summaryCards" :key="item.label" variant="elevated" class="summary-card">
+          <div class="summary-card__icon">{{ item.icon }}</div>
+          <div class="summary-card__body">
+            <span class="summary-card__value">{{ item.value }}</span>
+            <span class="summary-card__label">{{ item.label }}</span>
+          </div>
+        </DsCard>
+      </section>
+
       <AppDetailSection title="Informações do Usuário">
         <div class="detail-grid">
           <div class="detail-item">
@@ -121,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { userService } from '@/services/user';
 import { mfaService } from '@/services/mfa';
@@ -162,6 +172,13 @@ const roleLabelMap: Record<string, string> = {
 function roleLabel(code: string) {
   return roleLabelMap[code] || code;
 }
+
+const summaryCards = computed(() => [
+  { icon: '🧭', label: 'Perfil', value: roleLabel(user.value?.roleCode ?? '') || '—' },
+  { icon: '🏢', label: 'Setor', value: user.value?.department || 'Não informado' },
+  { icon: '🔐', label: 'MFA', value: mfaStatus.value.isActive ? 'Ativo' : 'Inativo' },
+  { icon: '⚡', label: 'Status', value: user.value?.status === 'active' ? 'Ativo' : 'Inativo' }
+]);
 
 async function loadMfaStatus() {
   mfaLoading.value = true;
@@ -244,6 +261,48 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.summary-card__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 22px;
+}
+
+.summary-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-card__value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  line-height: 1;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted, #94a3b8);
+  margin-top: 4px;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -345,6 +404,12 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
+}
+
+@media (max-width: 960px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .code-item {

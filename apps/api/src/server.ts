@@ -311,7 +311,14 @@ export function createApiServer(options: ApiServerOptions) {
         if (request.url === '/openapi.json' && request.method === 'GET') {
           try {
             const specPath = new URL('./openapi.yaml', import.meta.url);
-            const specContent = readFileSync(specPath, 'utf8');
+            let specContent: string;
+            try {
+              specContent = readFileSync(specPath, 'utf8');
+            } catch {
+              // Fallback: try source dir if not in dist
+              const srcPath = new URL('../src/openapi.yaml', import.meta.url);
+              specContent = readFileSync(srcPath, 'utf8');
+            }
             const openApiSpec = parseYaml(specContent);
             response.setHeader('content-type', 'application/json');
             response.statusCode = 200;

@@ -27,6 +27,18 @@
         </template>
       </AppPageHeader>
 
+      <div class="owner-detail-page__hero">
+        <DsCard title="Ficha resumida">
+          <div class="summary-grid">
+            <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+              <span class="summary-card__label">{{ card.label }}</span>
+              <strong class="summary-card__value">{{ card.value }}</strong>
+              <span class="summary-card__hint">{{ card.hint }}</span>
+            </div>
+          </div>
+        </DsCard>
+      </div>
+
       <div class="owner-detail-page__grid">
         <AppDetailSection title="Documento">
           <p v-if="owner.documentId">
@@ -66,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import type { OwnerSummary } from '@/types/owner';
@@ -75,6 +87,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
@@ -82,6 +95,36 @@ const route = useRoute();
 const owner = ref<OwnerSummary | null>(null);
 const loading = ref(true);
 const error = ref('');
+
+const summaryCards = computed(() => {
+  if (!owner.value) return [];
+
+  return [
+    {
+      label: 'Documento',
+      value: owner.value.documentId || 'Não informado',
+      hint: 'Identificação fiscal'
+    },
+    {
+      label: 'Contatos',
+      value: owner.value.contacts.length.toString(),
+      hint: 'Canais cadastrados'
+    },
+    {
+      label: 'Principal',
+      value:
+        owner.value.contacts.find((contact) => contact.primary)?.label ||
+        owner.value.contacts[0]?.label ||
+        '—',
+      hint: 'Contato de referência'
+    },
+    {
+      label: 'Financeiro',
+      value: owner.value.financialResponsible ? 'Sim' : 'Não',
+      hint: 'Responsável financeiro'
+    }
+  ];
+});
 
 onMounted(async () => {
   const id = route.params.id as string;
@@ -99,6 +142,11 @@ onMounted(async () => {
 .owner-detail-page__grid {
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.owner-detail-page__hero {
+  margin-bottom: 16px;
 }
 
 .contacts-list {
@@ -116,5 +164,42 @@ onMounted(async () => {
 
 .contact-item__primary {
   color: var(--color-warning-500, #f59e0b);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 </style>

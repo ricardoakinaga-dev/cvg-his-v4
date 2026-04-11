@@ -129,6 +129,20 @@ export const useAuthStore = defineStore('auth', {
       this.user = userFromToken(accessToken);
     },
 
+    clearSession() {
+      this.accessToken = null;
+      this.refreshToken = null;
+      this.mfaRequired = false;
+      this.mfaSetupRequired = false;
+      this.pendingMfaUserId = null;
+      this.user = emptyUser();
+      removeFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
+      removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
+      removeFromStorage(STORAGE_KEYS.MFA_REQUIRED);
+      removeFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED);
+      removeFromStorage(STORAGE_KEYS.MFA_USER_ID);
+    },
+
     setMfaRequired(required: boolean) {
       this.mfaRequired = required;
       if (required) {
@@ -162,17 +176,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout() {
-      this.accessToken = null;
-      this.refreshToken = null;
-      this.mfaRequired = false;
-      this.mfaSetupRequired = false;
-      this.pendingMfaUserId = null;
-      this.user = emptyUser();
-      removeFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
-      removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
-      removeFromStorage(STORAGE_KEYS.MFA_REQUIRED);
-      removeFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED);
-      removeFromStorage(STORAGE_KEYS.MFA_USER_ID);
+      this.clearSession();
     }
   }
 });

@@ -6,6 +6,29 @@
       </template>
     </AppPageHeader>
 
+    <section class="cash-page__overview">
+      <DsCard title="Liquidação operacional">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ quotes.length }}</span>
+            <span class="overview-metric__label">Orçamentos disponíveis</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ preparedAmountFormatted }}</span>
+            <span class="overview-metric__label">Valor preparado</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ lastIntent?.status || '—' }}</span>
+            <span class="overview-metric__label">Status PIX recente</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ lastIntent ? '1' : '0' }}</span>
+            <span class="overview-metric__label">Entradas nesta sessão</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
@@ -71,6 +94,7 @@ import { useListData } from '@/composables/useListData';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import { pixService, type PixPaymentIntentResponse } from '@/services/pix';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import { computed } from 'vue';
 
 const columns: DataTableColumn[] = [
   { key: 'number', label: 'Número' },
@@ -94,6 +118,8 @@ const { items: quotes, loading, load: loadQuotes } = useListData<QuoteSummary>({
   fetchFn: (search) => quoteService.list(search),
   entityLabel: 'orçamentos'
 });
+
+const preparedAmountFormatted = computed(() => formatCurrency(chargeForm.value.amount || 0));
 
 function prepareCharge(quote: QuoteSummary) {
   chargeForm.value = {

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { routes } from './routes';
 import { useAuthStore } from '@/stores/auth';
+import { useAppStore } from '@/stores/app';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -27,5 +28,26 @@ router.beforeEach((to) => {
       path: '/login',
       query: { next: to.fullPath }
     };
+  }
+});
+
+router.afterEach((to) => {
+  const app = useAppStore();
+  const title = typeof to.meta.title === 'string' && to.meta.title.trim().length > 0
+    ? to.meta.title
+    : 'CVG HIS SPA';
+
+  app.setPageTitle(title);
+
+  if (typeof to.meta.breadcrumb === 'string') {
+    app.addRecentRoute({
+      path: to.path,
+      label: to.meta.breadcrumb,
+      icon: typeof to.meta.icon === 'string' ? to.meta.icon : undefined
+    });
+  }
+
+  if (typeof document !== 'undefined') {
+    document.title = `${title} · CVG HIS SPA`;
   }
 });

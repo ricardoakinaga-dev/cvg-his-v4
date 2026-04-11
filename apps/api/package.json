@@ -52,7 +52,7 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp src/openapi.yaml dist/",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/health.test.js dist/payment-gateway.test.js dist/runtime.test.js dist/server.test.js",

@@ -1,3 +1,19 @@
+# docker-compose.v2.yml — CVG-HIS V2 canonical stack
+#
+# FRONTEND CANONICO: cvg-his-v2-spa (apps/spa)
+#   his.centroveterinarioguarapiranga.com -> cvg-his-v2-spa:3002
+#
+# REGRA OPERACIONAL:
+#   O dominio principal serve cvg-his-v2-spa, NAO cvg-his-v2-web.
+#   cvg-his-v2-web e um frontend legado na porta 3004, isolado em profile legacy.
+#   Ele nao sobe por padrao e nao entra no fluxo canonico.
+#
+# Portas:
+#   SPA:     3002:3002  — frontend canonico (apps/spa)
+#   API:     3003:3001  — API do sistema
+#   Web:     3004:3000  — portal legado (apps/web) — fora do fluxo canonico
+#   Worker:  sem porta publicada
+#
 services:
   postgres:
     image: postgres:16-alpine
@@ -34,6 +50,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    image: cvg-his-v2-cvg-his-v2-api:035e555
     restart: unless-stopped
     environment:
       NODE_ENV: homolog
@@ -60,6 +77,9 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    image: cvg-his-v2-cvg-his-v2-web:035e555
+    profiles: ['legacy']
+    # Nao usar como runtime padrao; mantido apenas para fallback historico.
     restart: unless-stopped
     environment:
       NODE_ENV: homolog
@@ -77,6 +97,7 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
+    image: cvg-his-v2-cvg-his-v2-worker:035e555
     restart: unless-stopped
     environment:
       NODE_ENV: homolog
@@ -95,6 +116,7 @@ services:
     build:
       context: .
       dockerfile: apps/spa/Dockerfile
+    image: cvg-his-v2-cvg-his-v2-spa:035e555
     restart: unless-stopped
     environment:
       NODE_ENV: homolog

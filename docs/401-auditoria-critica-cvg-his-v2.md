@@ -3,6 +3,8 @@
 **Data:** 05 de Abril de 2026
 **Objetivo:** Levantar defeitos arquiteturais, anti-padrões de codificação e riscos técnicos incorporados na construção V2 até a presente data, conforme solicitados.
 
+**Nota de leitura atual:** este texto registra o estado da auditoria na epoca em que `apps/web` ainda era tratado como GUI canônico. A trilha oficial atual do frontend foi deslocada para `apps/spa`.
+
 Apesar de o projeto ter excelentes fundações técnicas baseadas em Monorepo/Turborepo e uma separação de domínio louvável em `packages/modules`, uma investigação aprofundada na base de código revelou dívidas técnicas crônicas que representam riscos reais para a escalabilidade, manutenção e evolução do time.
 
 ---
@@ -42,7 +44,7 @@ accountId: 'acc_cvg_demo' as AccountId, // TODO: Add accountId to schema
 ## 4. Frontend Arquiteturalmente Estagnado vs Requisitos Premium
 
 ### 🟡 Dívida de Oportunidade (Severidade Média)
-A arquitetura documentada para o GUI canônico (`docs/114-frontend-architecture.md`) decreta o modelo operante de `apps/web`: *Roteamento Server-Side com Server Render e HTML/JS inlines injetados*.
+A arquitetura documentada para o GUI canônico naquele momento (`docs/114-frontend-architecture.md`) decretava o modelo operante de `apps/web`: *Roteamento Server-Side com Server Render e HTML/JS inlines injetados*.
 
 - **Análise Crítica:** Construir sistemas de gestão hospitalar ricos (onde profissionais da saúde usam visualizações dinâmicas, mapas interativos, abas concomitantes, filas sendo atualizadas em tempo real e odontogramas) com injeção procedural server-side Node.js e vanilla client é viável apenas numa "versão alpha/MVP". 
 - **O Risco:** Assim que o volume operacional aumentar e as áreas médicas pedirem UX reativo e fluidos assíncronos (Micro-animações, estados e off-line/local-first), essa base frontend irá desmoronar para um acoplamento macarrônico semelhante a velhos projetos jQuery da década passada.

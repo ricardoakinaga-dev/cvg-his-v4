@@ -4,6 +4,9 @@
       <template #title>
         {{ isEdit ? 'Editar Webhook' : 'Novo Webhook' }}
       </template>
+      <template #subtitle>
+        <span class="muted">Integração por evento com validação de endpoint e contrato de entrega.</span>
+      </template>
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
       </template>
@@ -16,47 +19,57 @@
       {{ successMessage }}
     </DsAlert>
 
-    <form class="webhook-form" @submit.prevent="onSubmit">
-      <DsCard title="Configuração do Webhook">
-        <DsInput
-          id="url"
-          v-model="form.url"
-          label="URL do Endpoint *"
-          placeholder="https://seu-sistema.com/webhook"
-          :error="errors.url"
-          required
-        />
-        <div class="form-field">
-          <label class="form-field__label">Eventos *</label>
-          <div class="events-checkbox-grid">
-            <label v-for="event in AVAILABLE_EVENTS" :key="event" class="event-checkbox">
-              <input type="checkbox" :value="event" v-model="form.events" />
-              <span>{{ event }}</span>
-            </label>
+    <div class="webhook-form__layout">
+      <form class="webhook-form" @submit.prevent="onSubmit">
+        <DsCard title="Configuração do Webhook">
+          <DsInput
+            id="url"
+            v-model="form.url"
+            label="URL do Endpoint *"
+            placeholder="https://seu-sistema.com/webhook"
+            :error="errors.url"
+            required
+          />
+          <div class="form-field">
+            <label class="form-field__label">Eventos *</label>
+            <div class="events-checkbox-grid">
+              <label v-for="event in AVAILABLE_EVENTS" :key="event" class="event-checkbox">
+                <input type="checkbox" :value="event" v-model="form.events" />
+                <span>{{ event }}</span>
+              </label>
+            </div>
+            <span v-if="errors.events" class="form-field__error">{{ errors.events }}</span>
           </div>
-          <span v-if="errors.events" class="form-field__error">{{ errors.events }}</span>
-        </div>
-        <DsInput
-          v-if="!isEdit"
-          id="secret"
-          v-model="form.secret"
-          label="Secret (opcional)"
-          placeholder="Chave secreta para verificação"
-          type="password"
-        />
-        <DsAlert v-if="!isEdit" variant="info" size="sm">
-          Após criar o webhook, você receberá notificações HTTP em sua URL para cada evento
-          selecionado.
-        </DsAlert>
-      </DsCard>
+          <DsInput
+            v-if="!isEdit"
+            id="secret"
+            v-model="form.secret"
+            label="Secret (opcional)"
+            placeholder="Chave secreta para verificação"
+            type="password"
+          />
+          <DsAlert v-if="!isEdit" variant="info" size="sm">
+            Após criar o webhook, você receberá notificações HTTP em sua URL para cada evento
+            selecionado.
+          </DsAlert>
+        </DsCard>
 
-      <div class="form-actions">
-        <DsButton type="submit" variant="primary" :loading="submitting">
-          {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Cadastrar Webhook' }}
-        </DsButton>
-        <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
-      </div>
-    </form>
+        <div class="form-actions">
+          <DsButton type="submit" variant="primary" :loading="submitting">
+            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Cadastrar Webhook' }}
+          </DsButton>
+          <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
+        </div>
+      </form>
+
+      <DsCard title="Boas práticas" class="webhook-form__aside">
+        <ul class="webhook-form__hints">
+          <li>Use URLs públicas e estáveis com TLS válido.</li>
+          <li>Selecione somente eventos realmente consumidos.</li>
+          <li>Defina secret para validar a origem das entregas.</li>
+        </ul>
+      </DsCard>
+    </div>
   </div>
 </template>
 
@@ -158,11 +171,16 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.webhook-form__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
 .webhook-form {
-  max-width: 640px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  gap: 16px;
 }
 
 .form-field {
@@ -210,5 +228,23 @@ onMounted(async () => {
 .form-actions {
   display: flex;
   gap: 12px;
+}
+
+.webhook-form__aside {
+  min-width: 0;
+}
+
+.webhook-form__hints {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  color: var(--color-text-secondary, #475569);
+}
+
+@media (max-width: 960px) {
+  .webhook-form__layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

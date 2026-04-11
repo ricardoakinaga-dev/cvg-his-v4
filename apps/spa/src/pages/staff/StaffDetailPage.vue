@@ -19,23 +19,37 @@
       {{ error }}
     </DsAlert>
 
-    <div v-if="staffMember" class="detail-grid">
-      <DsCard title="Dados do Membro">
-        <div class="detail-list">
-          <div><strong>Nome:</strong> {{ staffMember.fullName }}</div>
-          <div><strong>Código:</strong> {{ staffMember.employeeCode }}</div>
-          <div><strong>Departamento:</strong> {{ staffMember.department || '—' }}</div>
-          <div><strong>Cargo:</strong> {{ staffMember.jobTitle || '—' }}</div>
-          <div>
-            <strong>Status:</strong>
-            <span :class="['status-badge', staffMember.status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
-              {{ staffMember.status === 'active' ? 'Ativo' : 'Inativo' }}
-            </span>
+    <div v-if="staffMember" class="detail-layout">
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
           </div>
-          <div><strong>Criado em:</strong> {{ formatDateTime(staffMember.createdAt) }}</div>
-          <div><strong>Atualizado em:</strong> {{ formatDateTime(staffMember.updatedAt) }}</div>
         </div>
       </DsCard>
+
+      <div class="detail-grid">
+        <DsCard title="Dados do Membro">
+          <div class="detail-list">
+            <div><strong>Nome:</strong> {{ staffMember.fullName }}</div>
+            <div><strong>Código:</strong> {{ staffMember.employeeCode }}</div>
+            <div><strong>Departamento:</strong> {{ staffMember.department || '—' }}</div>
+            <div><strong>Cargo:</strong> {{ staffMember.jobTitle || '—' }}</div>
+            <div>
+              <strong>Status:</strong>
+              <span
+                :class="['status-badge', staffMember.status === 'active' ? 'status-badge--active' : 'status-badge--inactive']"
+              >
+                {{ staffMember.status === 'active' ? 'Ativo' : 'Inativo' }}
+              </span>
+            </div>
+            <div><strong>Criado em:</strong> {{ formatDateTime(staffMember.createdAt) }}</div>
+            <div><strong>Atualizado em:</strong> {{ formatDateTime(staffMember.updatedAt) }}</div>
+          </div>
+        </DsCard>
+      </div>
     </div>
 
     <div v-else-if="loading" class="loading">Carregando...</div>
@@ -60,6 +74,20 @@ const staffMember = ref<StaffSummary | null>(null);
 const loading = ref(false);
 const toggleLoading = ref(false);
 const error = ref('');
+
+const summaryCards = computed(() => {
+  if (!staffMember.value) return [];
+  return [
+    { label: 'Código', value: staffMember.value.employeeCode, hint: 'Identificador interno' },
+    { label: 'Departamento', value: staffMember.value.department || '—', hint: 'Área operacional' },
+    { label: 'Cargo', value: staffMember.value.jobTitle || '—', hint: 'Função principal' },
+    {
+      label: 'Status',
+      value: staffMember.value.status === 'active' ? 'Ativo' : 'Inativo',
+      hint: 'Situação operacional'
+    }
+  ];
+});
 
 async function loadStaff() {
   loading.value = true;
@@ -91,6 +119,12 @@ onMounted(loadStaff);
 
 <style scoped>
 .detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-layout {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -132,6 +166,43 @@ onMounted(loadStaff);
 }
 
 .loading {
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
 </style>

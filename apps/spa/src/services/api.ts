@@ -19,6 +19,8 @@ export class ApiError extends Error {
   }
 }
 
+const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Faça login novamente.';
+
 function generateCorrelationId(): string {
   return `spa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -65,6 +67,29 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
+async function getCurrentRouteFullPath(): Promise<string> {
+  const { router } = await import('@/router');
+  const currentRoute = router.currentRoute.value.fullPath;
+  if (currentRoute) {
+    return currentRoute;
+  }
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  }
+
+  return '/';
+}
+
+async function redirectToLogin(): Promise<void> {
+  const { router } = await import('@/router');
+  const next = await getCurrentRouteFullPath();
+  router.replace({
+    path: '/login',
+    query: next && next !== '/login' ? { next } : undefined
+  });
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   options: ApiRequestOptions = {}
@@ -103,6 +128,14 @@ export async function apiRequest<T = unknown>(
     } catch {
       body = null;
     }
+
+    if (!skipAuth && response.status === 401) {
+      const authStore = useAuthStore();
+      authStore.clearSession();
+      await redirectToLogin();
+      throw new ApiError(SESSION_EXPIRED_MESSAGE, response.status, response.statusText, body);
+    }
+
     throw new ApiError(
       `HTTP ${response.status}: ${response.statusText}`,
       response.status,

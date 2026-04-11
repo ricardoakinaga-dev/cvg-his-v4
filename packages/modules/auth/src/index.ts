@@ -489,3 +489,17 @@ function toEpochSeconds(isoDate: string): number {
 export type { SessionRepository } from './repositories/session.repository.js';
 export { DatabaseSessionRepository } from './repositories/database-session.repository.js';
 export { BruteForceProtection } from './brute-force.js';
+
+// OIDC/SSO
+export {
+  type OIDCConfig,
+  type PKCEPair,
+  type OIDCAuthorizationRequest,
+  type OIDCTokenResponse,
+  type OIDCUserInfo,
+  generatePKCE,
+  buildAuthorizationUrl,
+  exchangeCodeForTokens,
+  fetchUserInfo,
+  validateOIDCConfig
+} from './oidc.js';

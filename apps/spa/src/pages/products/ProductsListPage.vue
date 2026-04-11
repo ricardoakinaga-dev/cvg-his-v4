@@ -2,10 +2,45 @@
   <div class="list-page">
     <AppPageHeader title="Produtos" subtitle="Catálogo de produtos cadastrados no sistema">
       <template #actions>
-        <DsButton variant="primary" @click="router.push('/products/new')">Novo Produto</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
+        <DsButton variant="primary" @click="router.push('/products/new')">Novo Produto</DsButton>
       </template>
     </AppPageHeader>
+
+    <section class="list-page__overview">
+      <DsCard title="Resumo do catálogo">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ products.length }}</span>
+            <span class="overview-metric__label">Produtos carregados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ activeCount }}</span>
+            <span class="overview-metric__label">Ativos</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ inactiveCount }}</span>
+            <span class="overview-metric__label">Inativos</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ filteredCount }}</span>
+            <span class="overview-metric__label">Resultados atuais</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="list-page__story">
+      <DsCard title="Leitura rápida">
+        <div class="story-grid">
+          <div v-for="card in storyCards" :key="card.label" class="story-card">
+            <span class="story-card__label">{{ card.label }}</span>
+            <strong class="story-card__value">{{ card.value }}</strong>
+            <span class="story-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -60,8 +95,10 @@ import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { productsService, type ProductSummary } from '@/services/products';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import { computed } from 'vue';
 
 const router = useRouter();
 const products = ref<any[]>([]);
@@ -76,6 +113,27 @@ const columns: DataTableColumn[] = [
   { key: 'active', label: 'Status' },
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
+
+const activeCount = computed(() => products.value.filter((product) => product.active).length);
+const inactiveCount = computed(() => products.value.filter((product) => !product.active).length);
+const filteredCount = computed(
+  () =>
+    products.value.filter((product) => {
+      const q = searchQuery.value.toLowerCase();
+      if (!q) return true;
+      return product.name.toLowerCase().includes(q) || (product.code ?? '').toLowerCase().includes(q);
+    }).length
+);
+const activeRate = computed(() => {
+  if (!products.value.length) return '0%';
+  return `${Math.round((activeCount.value / products.value.length) * 100)}%`;
+});
+const storyCards = computed(() => [
+  { label: 'Ativos', value: activeCount.value.toString(), hint: 'Prontos para uso' },
+  { label: 'Inativos', value: inactiveCount.value.toString(), hint: 'Fora da operação' },
+  { label: 'Taxa ativa', value: activeRate.value, hint: 'Percentual operacional' },
+  { label: 'Filtrados', value: filteredCount.value.toString(), hint: 'Resultados da busca' }
+]);
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -107,6 +165,77 @@ onMounted(loadData);
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.list-page__overview {
+  margin-bottom: 4px;
+}
+
+.list-page__story {
+  margin-bottom: 4px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.story-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.story-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.story-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .search-bar {

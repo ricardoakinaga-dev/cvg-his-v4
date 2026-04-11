@@ -1,12 +1,38 @@
 <template>
   <div class="notifications-page">
-    <AppPageHeader title="Notificações" subtitle="Painel operacional de filas e jobs internos">
+  <AppPageHeader title="Notificações" subtitle="Painel operacional de filas e jobs internos">
       <template #actions>
+        <DsButton variant="secondary" :loading="notificationLoading || jobLoading" @click="reload">
+          Atualizar
+        </DsButton>
         <DsButton variant="secondary" :loading="processing" @click="processPending">
           Processar pendentes
         </DsButton>
       </template>
     </AppPageHeader>
+
+    <section class="notifications-overview">
+      <DsCard title="Resumo operacional">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ notificationItems.length }}</span>
+            <span class="overview-metric__label">Notificações visíveis</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ queuedCount }}</span>
+            <span class="overview-metric__label">Pendentes</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ processedJobsCount }}</span>
+            <span class="overview-metric__label">Jobs processados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ failedJobsCount }}</span>
+            <span class="overview-metric__label">Jobs falhos</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
@@ -162,10 +188,19 @@ const {
 });
 
 const queuedJobs = computed(() => jobItems.value.filter((job) => job.status === 'queued'));
+const queuedCount = computed(() => notificationItems.value.filter((item) => item.status === 'queued').length);
+const processedJobsCount = computed(
+  () => jobItems.value.filter((job) => job.status === 'processed').length
+);
+const failedJobsCount = computed(() => jobItems.value.filter((job) => job.status === 'failed').length);
 
 watch(currentStatus, () => {
   void loadNotifications();
 });
+
+function reload() {
+  void Promise.all([loadNotifications(), loadJobs()]);
+}
 
 async function processPending() {
   processing.value = true;
@@ -243,6 +278,36 @@ function formatDate(value: string | null): string {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.notifications-overview {
+  margin-bottom: 4px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .status-filters,

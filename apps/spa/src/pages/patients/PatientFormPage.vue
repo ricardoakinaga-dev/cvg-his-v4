@@ -1,119 +1,159 @@
 <template>
   <div class="patient-form-page">
-    <AppPageHeader>
+    <AppPageHeader
+      title="Cadastro de paciente"
+      :subtitle="
+        isEdit
+          ? 'Atualize a ficha clínica e o vínculo com o tutor'
+          : 'Novo cadastro clínico com vínculo ao tutor'
+      "
+    >
       <template #title>
         {{ isEdit ? 'Editar Paciente' : 'Novo Paciente' }}
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/patients">Cancelar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/patients">Cancelar</DsButton>
       </template>
     </AppPageHeader>
+
+    <DsAlert variant="info">
+      Preencha primeiro a identificação do animal, depois o vínculo com o tutor e, por fim, os
+      dados clínicos que ajudam a operação assistencial.
+    </DsAlert>
 
     <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
     <DsAlert v-if="successMessage" variant="success">{{ successMessage }}</DsAlert>
 
-    <form class="patient-form" @submit.prevent="onSubmit">
-      <DsCard>
-        <template #title>🐾 Identificação</template>
-        <div class="form-row">
-          <DsInput
-            id="name"
-            v-model="form.name"
-            label="Nome do Paciente"
-            placeholder="Nome do animal"
-            :error="errors.name"
-            required
-          />
-          <DsInput
-            id="species"
-            v-model="form.species"
-            type="select"
-            label="Espécie"
-            :error="errors.species"
-            required
-          >
-            <option value="">Selecione...</option>
-            <option value="canine">🐕 Canino</option>
-            <option value="feline">🐈 Felino</option>
-            <option value="avian">🐦 Aves</option>
-            <option value="rodent">🐹 Roedor</option>
-            <option value="reptile">🦎 Réptil</option>
-            <option value="other">🐾 Outro</option>
-          </DsInput>
-        </div>
-        <div class="form-row form-row--3">
-          <DsInput
-            id="breed"
-            v-model="form.breed"
-            label="Raça"
-            placeholder="Ex: Golden Retriever"
-          />
-          <DsInput
-            id="sex"
-            v-model="form.sex"
-            type="select"
-            label="Sexo"
-            :error="errors.sex"
-            required
-          >
-            <option value="">Selecione...</option>
-            <option value="male">♂ Macho</option>
-            <option value="female">♀ Fêmea</option>
-            <option value="unknown">❓ Desconhecido</option>
-          </DsInput>
-          <DsInput id="size" v-model="form.size" type="select" label="Tamanho">
-            <option value="">Não informado</option>
-            <option value="small">Pequeno</option>
-            <option value="medium">Médio</option>
-            <option value="large">Grande</option>
-          </DsInput>
-        </div>
-      </DsCard>
+    <div class="patient-form-page__layout">
+      <form class="patient-form" @submit.prevent="onSubmit">
+        <DsCard>
+          <template #title>🐾 Identificação</template>
+          <div class="form-row">
+            <DsInput
+              id="name"
+              v-model="form.name"
+              label="Nome do Paciente"
+              placeholder="Nome do animal"
+              :error="errors.name"
+              required
+            />
+            <DsInput
+              id="species"
+              v-model="form.species"
+              type="select"
+              label="Espécie"
+              :error="errors.species"
+              required
+            >
+              <option value="">Selecione...</option>
+              <option value="canine">🐕 Canino</option>
+              <option value="feline">🐈 Felino</option>
+              <option value="avian">🐦 Aves</option>
+              <option value="rodent">🐹 Roedor</option>
+              <option value="reptile">🦎 Réptil</option>
+              <option value="other">🐾 Outro</option>
+            </DsInput>
+          </div>
+          <div class="form-row form-row--3">
+            <DsInput
+              id="breed"
+              v-model="form.breed"
+              label="Raça"
+              placeholder="Ex: Golden Retriever"
+            />
+            <DsInput
+              id="sex"
+              v-model="form.sex"
+              type="select"
+              label="Sexo"
+              :error="errors.sex"
+              required
+            >
+              <option value="">Selecione...</option>
+              <option value="male">♂ Macho</option>
+              <option value="female">♀ Fêmea</option>
+              <option value="unknown">❓ Desconhecido</option>
+            </DsInput>
+            <DsInput id="size" v-model="form.size" type="select" label="Tamanho">
+              <option value="">Não informado</option>
+              <option value="small">Pequeno</option>
+              <option value="medium">Médio</option>
+              <option value="large">Grande</option>
+            </DsInput>
+          </div>
+        </DsCard>
 
-      <DsCard>
-        <template #title>👤 Tutor Responsável *</template>
-        <div class="form-field">
-          <label for="primaryOwnerId" class="form-field__label">Selecione o tutor</label>
-          <SearchSelect
-            id="primaryOwnerId"
-            v-model="form.primaryOwnerId"
-            :options="ownerOptions"
-            :loading="ownersLoading"
-            placeholder="Buscar tutor por nome..."
-          />
-          <span v-if="errors.primaryOwnerId" class="form-field__error">{{
-            errors.primaryOwnerId
-          }}</span>
-        </div>
-      </DsCard>
+        <DsCard>
+          <template #title>👤 Tutor Responsável *</template>
+          <div class="form-field">
+            <label for="primaryOwnerId" class="form-field__label">Selecione o tutor</label>
+            <SearchSelect
+              id="primaryOwnerId"
+              v-model="form.primaryOwnerId"
+              :options="ownerOptions"
+              :loading="ownersLoading"
+              placeholder="Buscar tutor por nome..."
+            />
+            <span v-if="errors.primaryOwnerId" class="form-field__error">{{
+              errors.primaryOwnerId
+            }}</span>
+          </div>
+        </DsCard>
 
-      <DsCard>
-        <template #title>🩺 Dados Clínicos</template>
-        <div class="form-row form-row--3">
-          <DsInput
-            id="baseWeightKg"
-            v-model.number="form.baseWeightKg"
-            type="number"
-            step="0.1"
-            min="0"
-            label="Peso (kg)"
-            placeholder="0.0"
-          />
-          <DsInput id="status" v-model="form.status" type="select" label="Status">
-            <option value="active">✅ Ativo</option>
-            <option value="inactive">⏸ Inativo</option>
-            <option value="deceased">✝ Falecido</option>
-          </DsInput>
-        </div>
-      </DsCard>
+        <DsCard>
+          <template #title>🩺 Dados Clínicos</template>
+          <div class="form-row form-row--3">
+            <DsInput
+              id="baseWeightKg"
+              v-model.number="form.baseWeightKg"
+              type="number"
+              step="0.1"
+              min="0"
+              label="Peso (kg)"
+              placeholder="0.0"
+            />
+            <DsInput
+              id="birthDateApproximate"
+              v-model="form.birthDateApproximate"
+              type="date"
+              label="Data de nascimento aproximada"
+            />
+            <DsInput id="status" v-model="form.status" type="select" label="Status">
+              <option value="active">✅ Ativo</option>
+              <option value="inactive">⏸ Inativo</option>
+              <option value="deceased">✝ Falecido</option>
+            </DsInput>
+          </div>
+        </DsCard>
 
-      <div class="form-actions">
-        <DsButton type="submit" variant="primary" :disabled="submitting">
-          {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Paciente' }}
-        </DsButton>
-        <DsButton variant="secondary" tag="a" href="/patients">Cancelar</DsButton>
-      </div>
-    </form>
+        <div class="form-actions">
+          <DsButton type="submit" variant="primary" :disabled="submitting">
+            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Paciente' }}
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/patients">Cancelar</DsButton>
+        </div>
+      </form>
+
+      <aside class="patient-form-page__aside">
+        <DsCard title="Resumo em tempo real">
+          <div class="summary-grid">
+            <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+              <span class="summary-card__label">{{ card.label }}</span>
+              <strong class="summary-card__value">{{ card.value }}</strong>
+              <span class="summary-card__hint">{{ card.hint }}</span>
+            </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Boas práticas">
+          <ul class="guide-list">
+            <li>Nome e espécie são essenciais para identificar o paciente rapidamente.</li>
+            <li>Escolha o tutor correto antes de salvar para manter o vínculo clínico íntegro.</li>
+            <li>Peso e data aproximada ajudam no acompanhamento ao longo do tempo.</li>
+          </ul>
+        </DsCard>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -154,6 +194,20 @@ const owners = ref<OwnerSummary[]>([]);
 const ownersLoading = ref(false);
 
 const ownerOptions = computed(() => owners.value.map((o) => ({ label: o.fullName, value: o.id })));
+const selectedOwnerName = computed(
+  () => owners.value.find((owner) => owner.id === form.primaryOwnerId)?.fullName || '—'
+);
+const summaryCards = computed(() => [
+  { label: 'Paciente', value: form.name.trim() || '—', hint: 'Nome em cadastro' },
+  { label: 'Espécie', value: form.species || '—', hint: 'Classificação clínica' },
+  { label: 'Tutor', value: selectedOwnerName.value, hint: 'Responsável vinculado' },
+  {
+    label: 'Status',
+    value:
+      form.status === 'active' ? 'Ativo' : form.status === 'inactive' ? 'Inativo' : 'Falecido',
+    hint: 'Situação operacional'
+  }
+]);
 
 const validation = useFormValidation({
   rules: {
@@ -253,13 +307,86 @@ onMounted(async () => {
   font-weight: 700;
   color: var(--color-text, #0f172a);
 }
+
+.patient-form-page__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .patient-form {
-  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patient-form-page__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 24px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .patient-form-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-form-page__aside {
+    position: static;
+  }
 }
 .form-row--3 {
   grid-template-columns: 1fr 1fr 1fr;
-}
-.patient-form .ds-card {
-  margin-bottom: 16px;
 }
 </style>

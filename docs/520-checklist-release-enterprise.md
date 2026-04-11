@@ -37,7 +37,7 @@
 - [ ] `pnpm --filter @cvg-his-v2/module-staff test` — verde
 - [ ] `pnpm --filter @cvg-his-v2/module-users test` — verde
 - [ ] `pnpm --filter @cvg-his-v2/module-scheduling test` — verde
-- [ ] `pnpm --filter @cvg-his-v2/web test` — verde
+- [ ] `pnpm --filter @cvg-his-v2/spa test` — verde
 - [ ] `pnpm test:critical` — verde com banco de teste preparado
   - Pre-requisito: `pnpm test:db:start` (PostgreSQL 16 na porta 5433)
   - Execucao: `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm test:critical`
@@ -68,7 +68,7 @@ Tests       162 passed (162)
 - [ ] `repositoryCount` >= 17
 - [ ] `workerReady` = `true`
 
-### Web — Disponibilidade
+### SPA — Disponibilidade
 
 - [ ] `GET /` retorna 200 (homepage carrega)
 - [ ] `GET /login` retorna 200 (pagina de login acessivel)
@@ -111,23 +111,23 @@ Tests       162 passed (162)
 ### Docker Compose
 
 - [ ] `docker compose -f docker-compose.v2.yml config` valida sem erro
-- [ ] Todos os servicos sobem na stack atual: postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+- [ ] Todos os servicos sobem na stack atual: postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-worker`, `cvg-his-v2-spa`
 - [ ] Healthchecks passam: postgres (pg_isready), redis (redis-cli ping), api (/health)
 - [ ] Nenhum container legado `cvg-his-api`, `cvg-his-web`, `cvg-his-worker` e reutilizado como runtime oficial
 
 ### Proxy Reverso (Caddy)
 
 - [ ] `Caddyfile.v2` aponta para portas corretas:
-  - `his.domain.com` → `127.0.0.1:3001` (Web)
-  - `his-api.domain.com` → `127.0.0.1:3000` (API)
+  - `his.domain.com` → `127.0.0.1:3002` (SPA)
+  - `his-api.domain.com` → `127.0.0.1:3003` (API)
 - [ ] `caddy validate --config Caddyfile.v2` passa
 - [ ] HTTPS funciona (certificados TLS validos)
 
 ### Systemd (deploy bare-metal)
 
 - [ ] `cvg-his-v2-api.service` ativo e healthy
-- [ ] `cvg-his-v2-web.service` ativo e healthy
 - [ ] `cvg-his-v2-worker.service` ativo e healthy
+- [ ] `cvg-his-v2-spa.service` ativo e healthy
 - [ ] Restart policies configuradas (`Restart=always`)
 
 ---
@@ -161,9 +161,9 @@ O worker e considerado pronto quando:
 3. `notificationRepository` disponivel (DatabaseNotificationRepository injetado)
 4. Loop de ticks executa sem erro por pelo menos 5 minutos
 
-### Criterios de "Web Pronto"
+### Criterios de "SPA Pronta"
 
-O web e considerado pronto quando:
+A SPA e considerada pronta quando:
 
 1. Servidor HTTP responde na porta configurada
 2. Homepage (`/`) retorna 200
@@ -190,8 +190,8 @@ O web e considerado pronto quando:
 - [ ] Stack V2 sobe via compose
 - [ ] Subida manual, quando usada, segue a trilha limpa:
   - `docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans`
-  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker`
-  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker`
+  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa`
+  - `docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa`
 - [ ] Healthchecks passam em todos os servicos
 - [ ] Proxy reverso atualizado (se ENABLE_CADDY_SWITCH=true)
 

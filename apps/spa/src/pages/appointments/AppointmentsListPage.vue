@@ -5,34 +5,73 @@
       subtitle="Gestão operacional de agendamentos e fluxo do hospital"
     >
       <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="loadAppointments">
+          Atualizar
+        </DsButton>
         <DsButton tag="a" to="/appointments/new" variant="primary">+ Novo Agendamento</DsButton>
       </template>
     </AppPageHeader>
 
+    <section class="appointments-list-page__overview">
+      <DsCard title="Painel da agenda">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ appointments.length }}</span>
+            <span class="overview-metric__label">Agendamentos carregados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ scheduledCount }}</span>
+            <span class="overview-metric__label">Programados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ activeCount }}</span>
+            <span class="overview-metric__label">Em andamento</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ closedCount }}</span>
+            <span class="overview-metric__label">Concluídos / cancelados</span>
+          </div>
+        </div>
+      </DsCard>
+
+      <DsCard title="Filtros e busca">
+        <div class="appointments-list-page__filters">
+          <DsInput
+            v-model="statusFilter"
+            type="select"
+            placeholder="Todos status"
+            @change="applyFilters"
+          >
+            <option value="scheduled">📅 Agendado</option>
+            <option value="checked_in">🔄 Em atendimento</option>
+            <option value="completed">✔ Concluído</option>
+            <option value="cancelled">✕ Cancelado</option>
+          </DsInput>
+          <DsInput
+            v-model="search"
+            type="search"
+            placeholder="Buscar paciente ou tutor..."
+            @keyup.enter="applyFilters"
+          />
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="appointments-list-page__story">
+      <DsCard title="Leitura rápida">
+        <div class="story-grid">
+          <div v-for="card in storyCards" :key="card.label" class="story-card">
+            <span class="story-card__label">{{ card.label }}</span>
+            <strong class="story-card__value">{{ card.value }}</strong>
+            <span class="story-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
-
-    <!-- Status filter -->
-    <div class="appointments-list-page__filters">
-      <DsInput
-        v-model="statusFilter"
-        type="select"
-        placeholder="Todos status"
-        @change="applyFilters"
-      >
-        <option value="scheduled">📅 Agendado</option>
-        <option value="checked_in">🔄 Em atendimento</option>
-        <option value="completed">✔ Concluído</option>
-        <option value="cancelled">✕ Cancelado</option>
-      </DsInput>
-      <DsInput
-        v-model="search"
-        type="search"
-        placeholder="Buscar paciente ou tutor..."
-        @keyup.enter="applyFilters"
-      />
-    </div>
 
     <div v-if="loading" class="page-loading">
       <DsSpinner size="md" />
@@ -87,6 +126,7 @@ import { visitTypeLabel, formatTime, truncate } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
@@ -137,6 +177,38 @@ const statusColorMap: Record<string, string> = {
   cancelled: '#ef4444'
 };
 
+const scheduledCount = computed(
+  () => filteredAppointments.value.filter((a) => a.status === 'scheduled').length
+);
+const activeCount = computed(
+  () => filteredAppointments.value.filter((a) => a.status === 'checked_in').length
+);
+const closedCount = computed(
+  () =>
+    filteredAppointments.value.filter(
+      (a) => a.status === 'completed' || a.status === 'cancelled'
+    ).length
+);
+const pendingCount = computed(() => filteredAppointments.value.filter((a) => a.status === 'scheduled').length);
+const completionRate = computed(() => {
+  if (!filteredAppointments.value.length) return '0%';
+  return `${Math.round((closedCount.value / filteredAppointments.value.length) * 100)}%`;
+});
+const nextAppointment = computed(() => {
+  const upcoming = [...filteredAppointments.value]
+    .filter((appt) => new Date(appt.scheduledAt).getTime() >= Date.now())
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+  if (!upcoming) return '—';
+  return `${formatTime(upcoming.scheduledAt)} • ${patientName(upcoming.patientId)}`;
+});
+const storyCards = computed(() => [
+  { label: 'Pendentes', value: pendingCount.value.toString(), hint: 'Ainda programados' },
+  { label: 'Ativos', value: activeCount.value.toString(), hint: 'Em atendimento agora' },
+  { label: 'Fechados', value: closedCount.value.toString(), hint: 'Concluídos ou cancelados' },
+  { label: 'Próximo', value: nextAppointment.value, hint: 'Próxima ocorrência na fila' },
+  { label: 'Fechamento', value: completionRate.value, hint: 'Percentual já encerrado' }
+]);
+
 function statusColor(s: string) {
   return statusColorMap[s] || '#ccc';
 }
@@ -186,6 +258,81 @@ onMounted(loadAppointments);
 </script>
 
 <style scoped>
+.appointments-list-page__overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.appointments-list-page__story {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.story-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.story-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.story-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
 .appointments-list-page__filters {
   display: flex;
   gap: 8px;

@@ -25,62 +25,74 @@
         </template>
       </AppPageHeader>
 
-      <AppDetailSection title="Informações do Item">
-        <div class="detail-row">
-          <span class="detail-row__label">Nome:</span>
-          <span class="detail-row__value"
-            ><strong>{{ item.name }}</strong></span
-          >
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
         </div>
-        <div class="detail-row">
-          <span class="detail-row__label">SKU:</span>
-          <span class="detail-row__value"
-            ><code>{{ item.sku }}</code></span
-          >
-        </div>
-        <div class="detail-row">
-          <span class="detail-row__label">Unidade:</span>
-          <span class="detail-row__value">{{ item.unit }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-row__label">Custo Unitário:</span>
-          <span class="detail-row__value">{{ formatCurrency(item.unitCostAmount) }}</span>
-        </div>
-      </AppDetailSection>
+      </DsCard>
 
-      <AppDetailSection title="Controle de Estoque">
-        <div class="detail-row">
-          <span class="detail-row__label">Quantidade em Estoque:</span>
-          <span class="detail-row__value">
-            <DsBadge :variant="stockBadgeVariant" size="md">
-              {{ item.onHandQuantity }} {{ item.unit }}
-            </DsBadge>
-          </span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-row__label">Ponto de Reposição:</span>
-          <span class="detail-row__value">{{ item.reorderLevel }} {{ item.unit }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-row__label">Status:</span>
-          <span class="detail-row__value">
-            <DsBadge :variant="isLowStock ? 'danger' : 'success'" size="sm">
-              {{ isLowStock ? 'Estoque Baixo' : 'Estoque Normal' }}
-            </DsBadge>
-          </span>
-        </div>
-      </AppDetailSection>
+      <div class="detail-grid">
+        <AppDetailSection title="Informações do Item">
+          <div class="detail-row">
+            <span class="detail-row__label">Nome:</span>
+            <span class="detail-row__value"
+              ><strong>{{ item.name }}</strong></span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">SKU:</span>
+            <span class="detail-row__value"
+              ><code>{{ item.sku }}</code></span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">Unidade:</span>
+            <span class="detail-row__value">{{ item.unit }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">Custo Unitário:</span>
+            <span class="detail-row__value">{{ formatCurrency(item.unitCostAmount) }}</span>
+          </div>
+        </AppDetailSection>
 
-      <AppDetailSection title="Informações Administrativas">
-        <div class="detail-row">
-          <span class="detail-row__label">Criado em:</span>
-          <span class="detail-row__value">{{ formatDate(item.createdAt) }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-row__label">Atualizado em:</span>
-          <span class="detail-row__value">{{ formatDate(item.updatedAt) }}</span>
-        </div>
-      </AppDetailSection>
+        <AppDetailSection title="Controle de Estoque">
+          <div class="detail-row">
+            <span class="detail-row__label">Quantidade em Estoque:</span>
+            <span class="detail-row__value">
+              <DsBadge :variant="stockBadgeVariant" size="md">
+                {{ item.onHandQuantity }} {{ item.unit }}
+              </DsBadge>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">Ponto de Reposição:</span>
+            <span class="detail-row__value">{{ item.reorderLevel }} {{ item.unit }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">Status:</span>
+            <span class="detail-row__value">
+              <DsBadge :variant="isLowStock ? 'danger' : 'success'" size="sm">
+                {{ isLowStock ? 'Estoque Baixo' : 'Estoque Normal' }}
+              </DsBadge>
+            </span>
+          </div>
+        </AppDetailSection>
+
+        <AppDetailSection title="Informações Administrativas">
+          <div class="detail-row">
+            <span class="detail-row__label">Criado em:</span>
+            <span class="detail-row__value">{{ formatDate(item.createdAt) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row__label">Atualizado em:</span>
+            <span class="detail-row__value">{{ formatDate(item.updatedAt) }}</span>
+          </div>
+        </AppDetailSection>
+      </div>
     </template>
   </div>
 </template>
@@ -93,6 +105,7 @@ import type { InventoryItemSummary } from '@/types/inventory';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
@@ -112,6 +125,16 @@ const stockBadgeVariant = computed(() => {
   if (item.value.onHandQuantity <= 0) return 'danger';
   if (item.value.onHandQuantity <= item.value.reorderLevel) return 'warning';
   return 'success';
+});
+
+const summaryCards = computed(() => {
+  if (!item.value) return [];
+  return [
+    { label: 'SKU', value: item.value.sku, hint: 'Código único do item' },
+    { label: 'Unidade', value: item.value.unit, hint: 'Unidade de controle' },
+    { label: 'Estoque', value: `${item.value.onHandQuantity} ${item.value.unit}`, hint: 'Quantidade disponível' },
+    { label: 'Valor', value: formatCurrency(item.value.onHandQuantity * item.value.unitCostAmount), hint: 'Valor estimado em estoque' }
+  ];
 });
 
 function formatCurrency(value: number): string {
@@ -153,9 +176,53 @@ onMounted(async () => {
   padding: 48px 0;
 }
 
+.detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .inventory-sku {
   font-size: 14px;
   color: var(--color-text-muted, #64748b);
   font-weight: 400;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 </style>

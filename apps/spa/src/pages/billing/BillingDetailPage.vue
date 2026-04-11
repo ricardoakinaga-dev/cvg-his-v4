@@ -53,6 +53,16 @@
         </template>
       </AppPageHeader>
 
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+
       <div class="billing-detail-page__grid">
         <AppDetailSection title="Informações">
           <div class="detail-row">
@@ -222,6 +232,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 
@@ -283,6 +294,16 @@ const itemTypeMap: Record<BillingItemType, string> = {
   daily_rate: 'Diária',
   other: 'Outro'
 };
+
+const summaryCards = computed(() => {
+  if (!record.value) return [];
+  return [
+    { label: 'Paciente', value: patientName.value || '—', hint: 'Atendimento vinculado' },
+    { label: 'Tutor', value: ownerName.value || '—', hint: 'Responsável principal' },
+    { label: 'Status', value: billingStatusLabel(record.value.status), hint: 'Situação do faturamento' },
+    { label: 'Subtotal', value: formatCurrency(record.value.subtotalAmount), hint: 'Total acumulado' }
+  ];
+});
 
 function billingStatusLabel(s: BillingStatus) {
   return statusLabelMap[s] || s;
@@ -413,6 +434,43 @@ onMounted(async () => {
 .billing-detail-page__grid {
   display: grid;
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .billing-amount {

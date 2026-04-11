@@ -1,15 +1,47 @@
 <template>
   <div class="inpatient-list-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">🛏️ Internação</h1>
-        <p class="page-header__subtitle">Gestão de internações e leitos</p>
-      </div>
-      <div class="page-header__actions">
+    <AppPageHeader title="🛏️ Internação" subtitle="Gestão de internações e leitos">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
         <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>
-        <DsButton tag="a" to="/encounters" variant="secondary">+ Admitir Paciente</DsButton>
-      </div>
-    </div>
+        <DsButton tag="a" to="/encounters" variant="primary">+ Admitir Paciente</DsButton>
+      </template>
+    </AppPageHeader>
+
+    <section class="inpatient-list-page__overview">
+      <DsCard title="Resumo da ocupação">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ items.length }}</span>
+            <span class="overview-metric__label">Internações ativas</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ admittedCount }}</span>
+            <span class="overview-metric__label">Admitidos</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ stableCount }}</span>
+            <span class="overview-metric__label">Estáveis</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ dischargedCount }}</span>
+            <span class="overview-metric__label">Altas / transferências</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="inpatient-list-page__story">
+      <DsCard title="Leitura rápida">
+        <div class="story-grid">
+          <div v-for="card in storyCards" :key="card.label" class="story-card">
+            <span class="story-card__label">{{ card.label }}</span>
+            <strong class="story-card__value">{{ card.value }}</strong>
+            <span class="story-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -64,10 +96,13 @@ import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
+import { computed } from 'vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
@@ -107,6 +142,22 @@ function patientName(id: string): string {
   return patientNames.value[id] || `Paciente ${id.slice(0, 8)}...`;
 }
 
+const admittedCount = computed(() => items.value.filter((stay) => stay.status === 'admitted').length);
+const stableCount = computed(() => items.value.filter((stay) => stay.status === 'stable').length);
+const dischargedCount = computed(
+  () => items.value.filter((stay) => stay.status === 'transferred' || stay.status === 'discharged').length
+);
+const occupancyRate = computed(() => {
+  if (!items.value.length) return '0%';
+  return `${Math.round((admittedCount.value / items.value.length) * 100)}%`;
+});
+const storyCards = computed(() => [
+  { label: 'Internados', value: admittedCount.value.toString(), hint: 'Leitos em uso agora' },
+  { label: 'Estáveis', value: stableCount.value.toString(), hint: 'Pacientes monitorados' },
+  { label: 'Altas', value: dischargedCount.value.toString(), hint: 'Fluxo concluído' },
+  { label: 'Ocupação', value: occupancyRate.value, hint: 'Proporção de admissões' }
+]);
+
 const { items, loading, error, load } = useListData<InpatientStaySummary>({
   fetchFn: async () => {
     const stays = await inpatientService.list();
@@ -120,4 +171,81 @@ const { items, loading, error, load } = useListData<InpatientStaySummary>({
   },
   entityLabel: 'internações'
 });
+
+function reload() {
+  void load();
+}
 </script>
+
+<style scoped>
+.inpatient-list-page__overview {
+  margin-bottom: 16px;
+}
+
+.inpatient-list-page__story {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.story-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.story-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.story-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.story-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+</style>

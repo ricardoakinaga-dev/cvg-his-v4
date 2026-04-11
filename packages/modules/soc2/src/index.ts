@@ -18,3 +18,12 @@ export {
   type IncidentRecord,
   type SecurityScore
 } from './controls.service.js';
+
+// Evidence collection
+export {
+  collectEvidence,
+  type EvidencePackage,
+  type EvidenceSummary,
+  type EvidenceForTrustCriterion,
+  type EvidenceControl
+} from './evidence-collector.js';

@@ -377,6 +377,26 @@ Ações de encerramento:
   - Consumer registry tests: 8/8 PASS (7 anteriores + 1 novo integracao)
 - **Docs:** tracker atualizado (E3-14), `0117-EVENT-BUS.md` secao 4.1 Onboarding adicionada
 
+#### E3-15 — Correcao operacional: SPA como frontend canonico do dominio principal
+- **Gargalo identificado:** dominio `his.centroveterinarioguarapiranga.com` estava servindo `cvg-his-v2-web` (apps/web, porta 3004) em vez de `cvg-his-v2-spa` (apps/spa, porta 3002); todas as imagens estavam com tag `035e555` correta, mas o proxy apontava para o servico errado
+- **Solucao implementada:**
+  - `infra/docker/Caddyfile.v2` atualizado com comentario operacional claro: SPA e o frontend canonico, regra NUNCA usar apps/web como dominio principal, checklist anti-regressao com `ApiKeysPage*.js`
+  - `docker-compose.v2.yml` atualizado com comentario de topo marcando `cvg-his-v2-spa` como frontend canonico e `cvg-his-v2-web` como portal alternativo (3004)
+  - `docs/130-instalacao-publicacao-cvg-his-v2-real.md` reescrito: escopo agora inclui `apps/spa`, port table corrigida (SPA=3002, API=3003, Web alt=3004), Caddy agora aponta para 3002, validacao anti-regressao `ApiKeysPage*.js` documentada
+  - `OPENCLAW_DEPLOY_DIRETRIZES.md` secao 10 reescrita: regra SPA como frontend canonico, validacao anti-regressao, Caddyfile.v2 alinhado
+  - `docs/INSTALL-REPORT-2026-04-10.md` secao 7 atualizada: Caddyfile.v2 corrigido, regra de dominio principal para SPA, validacao anti-regressao
+- **Arquivos modificados:**
+  - `infra/docker/Caddyfile.v2` — comentario operacional + regra canonica + checklist anti-regressao
+  - `docker-compose.v2.yml` — comentario de topo com frontend canonico
+  - `docs/130-instalacao-publicacao-cvg-his-v2-real.md` — escopo, stack, portas, Caddy, validacoes completamente alinhados
+  - `OPENCLAW_DEPLOY_DIRETRIZES.md` — secao 10 reescrita com regra canonica e anti-regressao
+  - `docs/INSTALL-REPORT-2026-04-10.md` — secao 7 atualizada
+- **Validacao:**
+  - SPA container: `cvg-his-v2-cvg-his-v2-spa:035e555` healthy ✅
+  - Dominio: `https://his.centroveterinarioguarapiranga.com/assets/ApiKeysPage-TzPYVOgg.js` retorna 200 ✅
+  - `curl https://his.centroveterinarioguarapiranga.com` → `<title>CVG HIS V2` + bundle novo ✅
+- **Docs:** tracker atualizado (E3-15)
+
 #### E3-02 — Integracao PIX / Pagamentos
 - **Modulo criado:** `packages/modules/pix`
 - **Estrutura:** `PixProvider` interface, `PixService`, `MockPixAdapter`, `PagarMePixAdapter` (stub)
@@ -718,6 +738,8 @@ Plano 0136 executado: ponto cego de observabilidade identificado (falta de inspe
 | 10/04/2026 | SYSTEM   | PLANO 0142 executado: E3-11 consumo assincrono explicito — BillingEventHandlers criado em handlers/billing.consumer.ts; WebhooksEventHandlers ja presente em consumers/webhooks.consumer.ts; ambos registrados via eventBus.subscribe(); 8 chamadas sincronas webhooks.dispatch removidas das callbacks de dominio (elimina duplicacao); processPending() logs endurecidos com contagem de handlers e eventType por evento; API/worker build/typecheck PASS; event-bus 14/14, webhooks 12/12, pix 8/8, billing 5/5, worker 15/15 PASS | docs 0142, 0117-EVENT-BUS.md |
 | 10/04/2026 | SYSTEM   | PLANO 0147 executado: E3-12 consumer registry criado em consumers/index.ts — DomainConsumer interface, createConsumerRegistry(), registerAllConsumers(); runtime.ts simplificado de 6 linhas manuais para 2 linhas via registry; stale handlers/ removido; API/worker build/typecheck PASS; event-bus 14/14, webhooks 12/12, pix 8/8, billing 5/5 PASS; pnpm typecheck global PASS | docs 0147, 0100-TRACKER.md |
 | 10/04/2026 | SYSTEM   | PLANO 0149 executado: E3-13 consumer registry endurecido — ConsumerRegistry classe reemplaca funcoes soltas; add() com validacao de duplicatas; name property em todos consumers para diagnostico; 7 testes de registry em consumer-registry.test.ts; runtime.ts usa new ConsumerRegistry() com add() + registerAll(); API/worker build/typecheck PASS; event-bus 14/14, webhooks 12/12, pix 8/8, billing 5/5 PASS; pnpm typecheck global PASS | docs 0149, 0100-TRACKER.md |
+| 10/04/2026 | SYSTEM   | PLANO 0151 executado: E3-14 consumer registry endurecido — DomainConsumer JSDoc ampliado com contrato de erro e exemplos; createEventConsumer() factory helper adicionada; EventConsumerClass interface; consumer-registry.test.ts expandido com teste de integracao dos 3 consumers reais juntos; 0117-EVENT-BUS.md secao 4.1 Onboarding adicionada; API/worker build/typecheck PASS; event-bus 14/14, webhooks 12/12, pix 8/8, billing 5/5 PASS; consumer registry 8/8 PASS | docs 0151, 0100-TRACKER.md |
+| 10/04/2026 | SYSTEM   | PLANO 0152 executado: E3-15 correcao operacional SPA canonica — dominio estava servindo cvg-his-v2-web (3004) em vez de cvg-his-v2-spa (3002); Caddyfile.v2, docker-compose.v2.yml, 130-instalacao-publicacao-cvg-his-v2-real.md, OPENCLAW_DEPLOY_DIRETRIZES.md, INSTALL-REPORT-2026-04-10.md atualizados para tornar apps/spa o frontend canonico; regra NUNCA servir apps/web como dominio principal; validacao anti-regressao com ApiKeysPage*.js documentada; dominio agora serve SPA correta em 3002 | docs 0152, 0100-TRACKER.md |
 
 ---
 

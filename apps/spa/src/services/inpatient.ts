@@ -66,10 +66,33 @@ export const inpatientService = {
     return res.items;
   },
 
+  async createSector(payload: {
+    code: string;
+    name: string;
+    kind: string;
+  }): Promise<SectorSummary> {
+    return apiRequest<SectorSummary>('/sectors', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
   async listBeds(sectorId?: string): Promise<BedSummary[]> {
     const params = sectorId ? `?sectorId=${encodeURIComponent(sectorId)}` : '';
     const res = await apiRequest<{ items: BedSummary[] }>(`/beds${params}`);
     return res.items;
+  },
+
+  async createBed(payload: {
+    sectorId: string;
+    code: string;
+    name: string;
+    supportsSpecies?: string;
+  }): Promise<BedSummary> {
+    return apiRequest<BedSummary>('/beds', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   },
 
   async getBedMap(): Promise<BedMapResponse> {

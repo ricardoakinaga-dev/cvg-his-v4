@@ -36,8 +36,10 @@ A trilha `packages/shared/database/src/migrations/001-016` e classificada como *
 O deploy oficial do projeto atual deve usar exclusivamente:
 
 - `docker-compose.v2.yml`
-- `apps/api`, `apps/web`, `apps/worker`
-- servicos `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+- `apps/api`, `apps/worker`, `apps/spa`
+- servicos `cvg-his-v2-api`, `cvg-his-v2-worker`, `cvg-his-v2-spa`
+
+`apps/web` e o servico `cvg-his-v2-web` seguem apenas como legado de transicao, fora da trilha canonica de runtime.
 
 Nao usar como runtime oficial:
 
@@ -51,8 +53,8 @@ Nao usar como runtime oficial:
 
 ```bash
 docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 Essa e a sequencia recomendada para evitar reaproveitamento acidental de imagem antiga ou container residual do legado.

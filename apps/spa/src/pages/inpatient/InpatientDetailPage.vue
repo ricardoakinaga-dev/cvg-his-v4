@@ -1,20 +1,30 @@
 <template>
   <div class="inpatient-detail-page">
-    <AppPageHeader title="🛏️ Detalhes da Internação">
+      <AppPageHeader title="🛏️ Detalhes da Internação">
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/inpatient">Lista de Internações</DsButton>
       </template>
-    </AppPageHeader>
+      </AppPageHeader>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
+      <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+        {{ error }}
+      </DsAlert>
 
     <div v-if="loading" class="page-loading">
       <SkeletonLoader variant="card" width="100%" height="200px" />
     </div>
 
     <template v-else-if="stay">
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+
       <AppDetailSection title="Informações da Internação">
         <div class="detail-grid">
           <div class="detail-item">
@@ -168,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { inpatientService } from '@/services/inpatient';
 import type { InpatientStaySummary, InpatientProgressSummary } from '@/types/inpatient';
@@ -183,6 +193,7 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const route = useRoute();
 const entityCache = useEntityCache();
@@ -207,6 +218,16 @@ const newProgressNote = ref('');
 const progressError = ref('');
 const progressSubmitting = ref(false);
 const authorNames = ref<Record<string, string>>({});
+
+const summaryCards = computed(() => {
+  if (!stay.value) return [];
+  return [
+    { label: 'Paciente', value: patientNameCache.value || '—', hint: 'Animal internado' },
+    { label: 'Status', value: statusLabel(stay.value.status), hint: 'Situação operacional' },
+    { label: 'Leito', value: `${stay.value.unit} / ${stay.value.ward} / ${stay.value.bed}`, hint: 'Localização atual' },
+    { label: 'Evoluções', value: progressNotes.value.length.toString(), hint: 'Registros clínicos' }
+  ];
+});
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   admitted: ['stable', 'transferred', 'discharged'],
@@ -364,6 +385,43 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 .detail-item {
   display: flex;

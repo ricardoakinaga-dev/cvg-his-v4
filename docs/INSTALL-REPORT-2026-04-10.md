@@ -208,21 +208,20 @@ migration 0011 não será automaticamente aplicada pelo fluxo canônico.
 
 ## 7. REGRA DE CUTOVER E PROXY
 
-⚠️ **Atenção:** Os arquivos `infra/scripts/cutover-v2.sh` e `infra/docker/Caddyfile.v2`
-ainda possuem portas hardcoded (`3000` e `3001`) que não correspondem ao compose atual.
+**FRONTEND CANONICO:** O dominio `his.centroveterinarioguarapiranga.com` serve `cvg-his-v2-spa` (porta 3002, apps/spa).
+NUNCA servir `cvg-his-v2-web` como dominio principal.
 
-Mappings reais do compose:
-- API: `3003` (não `3000` nem `3001`)
-- Web: `3004` (não `3000`)
-- SPA: `3002` (não `3002` para worker — worker não expõe porta)
+`infra/docker/Caddyfile.v2` esta configurado com `reverse_proxy 127.0.0.1:3002` (SPA — frontend canonico).
 
-Antes de usar o cutover-v2.sh:
+Mappings de portas do compose:
+- `3002` — SPA (frontend canonico, apps/spa)
+- `3003` — API
+- `3004` — Web (portal alternativo, apps/web — NAO o frontend principal)
+
+Validacao anti-regressao obrigatoria apos qualquer deploy:
 ```bash
-API_HEALTH_URL=http://127.0.0.1:3003/health \
-API_READY_URL=http://127.0.0.1:3003/ready \
-API_METRICS_URL=http://127.0.0.1:3003/metrics \
-WEB_URL=http://127.0.0.1:3004/ \
-  infra/scripts/cutover-v2.sh
+curl -s https://his.centroveterinarioguarapiranga.com/assets/ApiKeysPage*.js | head -c 100
+# Se falhar: dominio esta servindo apps/web (erro de roteamento)
 ```
 
 ---
@@ -269,8 +268,8 @@ respondendo nas portas canônicas. Nenhum artefato legado foi usado.
    o estado real do banco.
 3. **Médio prazo:** Padronizar o processo de deployment para que migrations sejam
    sempre aplicadas via `packages/db/src/migrate.ts` e rastreadas pelo journal Drizzle.
-4. **Cutover de proxy:** Quando o proxy Caddy for ativado, usar as portas corretas
-   (3003 para API, 3004 para Web) conforme `Caddyfile.v2` ajustado.
+4. **Cutover de proxy:** O proxy Caddy ja aponta para `3002` (SPA) como dominio principal.
+   Nao redirecionar para `3004` (apps/web). Validar sempre com `ApiKeysPage*.js`. 3003 para API.
 
 ---
 

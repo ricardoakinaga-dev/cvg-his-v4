@@ -13,6 +13,29 @@
       {{ successMessage }}
     </DsAlert>
 
+    <section class="clinical-overview">
+      <DsCard title="Resumo diagnóstico">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ encounters.length }}</span>
+            <span class="overview-metric__label">Atendimentos carregados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ diagnosticRequests.length }}</span>
+            <span class="overview-metric__label">Solicitações</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ attachments.length }}</span>
+            <span class="overview-metric__label">Anexos</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ diagnosticTimeline.length }}</span>
+            <span class="overview-metric__label">Eventos na timeline</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
     <div class="clinical-grid clinical-grid--two">
       <DsCard title="Atendimento selecionado">
         <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" @change="refreshContext">
@@ -309,6 +332,36 @@ onMounted(loadData);
 
 .clinical-grid--three {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.clinical-overview {
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .form-grid {

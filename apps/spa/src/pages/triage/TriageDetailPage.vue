@@ -12,12 +12,38 @@
     </template>
 
     <template v-else-if="record">
-      <div class="page-header">
-        <h1>Triagem</h1>
-        <div class="page-header__actions">
-          <DsButton variant="secondary" size="sm" @click="showEdit = true"> Editar </DsButton>
+      <AppPageHeader :subtitle="detailSubtitle">
+        <template #title>🧭 Triagem</template>
+        <template #actions>
+          <DsButton variant="secondary" size="sm" @click="showEdit = true">Editar</DsButton>
+          <DsButton variant="secondary" size="sm" tag="a" to="/triage">Voltar</DsButton>
+        </template>
+      </AppPageHeader>
+
+      <DsCard title="Resumo da triagem">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-item__label">Paciente</span>
+            <strong>{{ record.patientId }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="summary-item__label">Prioridade</span>
+            <DsBadge :variant="priorityVariant(record.priority)">
+              {{ priorityLabel(record.priority) }}
+            </DsBadge>
+          </div>
+          <div class="summary-item">
+            <span class="summary-item__label">Destino</span>
+            <DsBadge :variant="destinationVariant(record.destination)">
+              {{ destinationLabel(record.destination) }}
+            </DsBadge>
+          </div>
+          <div class="summary-item">
+            <span class="summary-item__label">Queixa</span>
+            <strong>{{ record.chiefComplaint }}</strong>
+          </div>
         </div>
-      </div>
+      </DsCard>
 
       <div class="detail-section">
         <h2 class="detail-section__title">Informações da Triagem</h2>
@@ -87,8 +113,6 @@
           </div>
         </div>
       </div>
-
-      <DsButton variant="secondary" tag="a" to="/triage">Voltar para Triagem</DsButton>
     </template>
 
     <DsModal
@@ -135,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { listTriageRecords, updateTriage, getTriageHistory } from '@/services/triage';
 import type {
@@ -150,6 +174,8 @@ import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 import { formatDate } from '@/utils/labels';
 
 const route = useRoute();
@@ -166,6 +192,11 @@ const editForm = ref({
   destination: 'in_care' as TriageDestination,
   chiefComplaint: '',
   initialNotes: ''
+});
+
+const detailSubtitle = computed(() => {
+  if (!record.value) return '';
+  return `${record.value.id} • ${formatDate(record.value.createdAt)}`;
 });
 
 onMounted(async () => {
@@ -247,6 +278,31 @@ function destinationLabel(d: string): string {
   return d === 'in_care' ? 'Em Atendimento' : 'Observação';
 }
 </script>
+
+<style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.summary-item__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+</style>
 
 <style scoped>
 .triage-detail-page {

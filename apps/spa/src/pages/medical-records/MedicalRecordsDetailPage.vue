@@ -27,6 +27,16 @@
         </template>
       </AppPageHeader>
 
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+
       <div class="medical-records-detail-page__grid">
         <!-- Clinical Entries -->
         <AppDetailSection title="Entradas Clínicas">
@@ -237,6 +247,22 @@ const entryForm = ref({
 });
 
 const activeEntries = computed(() => entries.value.filter((e) => !e.deletedAt));
+const archivedEntries = computed(() => entries.value.filter((e) => !!e.deletedAt).length);
+const timelineCount = computed(() => timeline.value.length);
+const summaryCards = computed(() => {
+  if (!record.value) return [];
+  return [
+    { label: 'Paciente', value: patientName.value || '—', hint: 'Identificação clínica' },
+    {
+      label: 'Status',
+      value: record.value.status === 'open' ? 'Aberto' : 'Concluído',
+      hint: 'Situação operacional'
+    },
+    { label: 'Entradas', value: activeEntries.value.length.toString(), hint: 'Entradas ativas' },
+    { label: 'Arquivadas', value: archivedEntries.value.toString(), hint: 'Entradas retiradas' },
+    { label: 'Timeline', value: timelineCount.value.toString(), hint: 'Eventos rastreados' }
+  ];
+});
 
 const isEntryFormValid = computed(() => {
   return entryForm.value.title.trim() && entryForm.value.content.trim();
@@ -402,6 +428,43 @@ onMounted(async () => {
 .medical-records-detail-page__grid {
   display: grid;
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .entries-list {

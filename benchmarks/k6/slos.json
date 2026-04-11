@@ -1,0 +1,107 @@
+{
+  "name": "CVG-HIS-V2 SLOs",
+  "version": "1.0",
+  "description": "Service Level Objectives for CVG-HIS-V2 API and SPA",
+  "lastUpdated": "2026-04-11",
+  "objectives": [
+    {
+      "id": "api-latency-p95",
+      "name": "API P95 Latency",
+      "description": "95th percentile response time for all API endpoints",
+      "target": 200,
+      "unit": "ms",
+      "window": "5m",
+      "alertThreshold": 250,
+      "criticalThreshold": 300,
+      "category": "performance"
+    },
+    {
+      "id": "api-latency-p99",
+      "name": "API P99 Latency",
+      "description": "99th percentile response time for all API endpoints",
+      "target": 500,
+      "unit": "ms",
+      "window": "5m",
+      "alertThreshold": 600,
+      "criticalThreshold": 800,
+      "category": "performance"
+    },
+    {
+      "id": "api-availability",
+      "name": "API Availability",
+      "description": "Percentage of successful API requests",
+      "target": 99.5,
+      "unit": "percent",
+      "window": "1h",
+      "alertThreshold": 99.0,
+      "criticalThreshold": 98.0,
+      "category": "availability"
+    },
+    {
+      "id": "api-error-rate",
+      "name": "API Error Rate",
+      "description": "Percentage of HTTP 5xx responses",
+      "target": 0.1,
+      "unit": "percent",
+      "window": "5m",
+      "alertThreshold": 0.5,
+      "criticalThreshold": 1.0,
+      "category": "reliability"
+    },
+    {
+      "id": "auth-latency-p95",
+      "name": "Auth P95 Latency",
+      "description": "95th percentile latency for authentication endpoints",
+      "target": 300,
+      "unit": "ms",
+      "window": "5m",
+      "alertThreshold": 400,
+      "criticalThreshold": 500,
+      "category": "performance"
+    },
+    {
+      "id": "query-latency-p95",
+      "name": "Database Query P95",
+      "description": "95th percentile database query latency",
+      "target": 150,
+      "unit": "ms",
+      "window": "5m",
+      "alertThreshold": 200,
+      "criticalThreshold": 300,
+      "category": "performance"
+    },
+    {
+      "id": "spa-lcp",
+      "name": "SPA LCP (Largest Contentful Paint)",
+      "description": "Time to render largest content element",
+      "target": 1500,
+      "unit": "ms",
+      "window": "page load",
+      "alertThreshold": 2500,
+      "criticalThreshold": 4000,
+      "category": "performance"
+    },
+    {
+      "id": "spa-fid",
+      "name": "SPA FID (First Input Delay)",
+      "description": "Time between user interaction and browser response",
+      "target": 100,
+      "unit": "ms",
+      "window": "page load",
+      "alertThreshold": 200,
+      "criticalThreshold": 300,
+      "category": "performance"
+    },
+    {
+      "id": "spa-cls",
+      "name": "SPA CLS (Cumulative Layout Shift)",
+      "description": "Visual stability score",
+      "target": 0.1,
+      "unit": "score",
+      "window": "page load",
+      "alertThreshold": 0.15,
+      "criticalThreshold": 0.25,
+      "category": "performance"
+    }
+  ]
+}

@@ -1,39 +1,34 @@
-import type { StorybookConfig } from '@storybook/vue3-vite';
-import { resolve } from 'node:path';
-import vue from '@vitejs/plugin-vue';
+import type { StorybookConfig } from '@storybook/vue-vite';
 
 const config: StorybookConfig = {
-  stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+  stories: ['../stories/**/*.stories.@(js|jsx|ts|tsx|vue)'],
   addons: [
-    '@storybook/addon-docs',
-    '@storybook/addon-controls',
+    '@storybook/addon-essentials',
+    '@storybook/addon-a11y',
     '@storybook/addon-actions',
-    '@storybook/addon-backgrounds',
-    '@storybook/addon-toolbars',
-    '@storybook/addon-links',
-    '@storybook/addon-a11y'
+    '@storybook/addon-controls',
+    '@storybook/addon-docs'
   ],
   framework: {
-    name: '@storybook/vue3-vite',
+    name: '@storybook/vue-vite',
     options: {}
   },
   docs: {
     autodocs: 'tag'
   },
   staticDirs: ['../public'],
-  viteFinal: async (config) => {
-    return {
-      ...config,
-      plugins: [...(config.plugins ?? []), vue()],
-      resolve: {
-        ...config.resolve,
-        alias: {
-          ...config.resolve?.alias,
-          '@': resolve(import.meta.dirname, '../src')
-        }
+  viteFinal: async (config) => ({
+    ...config,
+    resolve: {
+      ...config.resolve,
+      alias: {
+        ...config.resolve?.alias,
+        '@': '/src',
+        '@cvg-his-v2/design-system/vue': '/src/vue',
+        '@cvg-his-v2/design-system/src/vue': '/src/vue'
       }
-    };
-  }
+    }
+  })
 };
 
 export default config;

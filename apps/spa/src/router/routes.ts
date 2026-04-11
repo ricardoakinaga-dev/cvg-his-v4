@@ -237,6 +237,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'surgery',
         name: 'Surgery',
+        alias: ['/surgeries'],
         component: () => import('@/pages/clinical/SurgeryPage.vue'),
         meta: {
           title: 'Cirurgias',
@@ -259,6 +260,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inpatient/board',
         name: 'BedBoard',
+        alias: ['/bed-map'],
         component: () => import('@/pages/inpatient/BedBoardPage.vue'),
         meta: {
           title: 'Mapa de Leitos',
@@ -275,6 +277,28 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Internação',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Internação',
+          icon: '🛏️'
+        }
+      },
+      {
+        path: 'sectors',
+        name: 'Sectors',
+        component: () => import('@/pages/inpatient/SectorsPage.vue'),
+        meta: {
+          title: 'Setores',
+          breadcrumb: 'Setores',
+          breadcrumbParent: 'Dashboard',
+          icon: '🏢'
+        }
+      },
+      {
+        path: 'beds',
+        name: 'Beds',
+        component: () => import('@/pages/inpatient/BedsPage.vue'),
+        meta: {
+          title: 'Leitos',
+          breadcrumb: 'Leitos',
+          breadcrumbParent: 'Dashboard',
           icon: '🛏️'
         }
       },
@@ -378,6 +402,61 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'access-control',
+        name: 'AccessControl',
+        component: () => import('@/pages/access-control/AccessControlPage.vue'),
+        meta: {
+          title: 'Governança de Acesso',
+          breadcrumb: 'Acesso',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔐'
+        }
+      },
+      {
+        path: 'audit',
+        name: 'Audit',
+        component: () => import('@/pages/audit/AuditPage.vue'),
+        meta: {
+          title: 'Auditoria',
+          breadcrumb: 'Auditoria',
+          breadcrumbParent: 'Dashboard',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'master-search',
+        name: 'MasterSearch',
+        component: () => import('@/pages/master-search/MasterSearchPage.vue'),
+        meta: {
+          title: 'Busca mestre',
+          breadcrumb: 'Busca mestre',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔎'
+        }
+      },
+      {
+        path: 'commercial-reports',
+        name: 'CommercialReports',
+        component: () => import('@/pages/commercial-reports/CommercialReportsPage.vue'),
+        meta: {
+          title: 'Relatórios Comerciais',
+          breadcrumb: 'Relatórios Comerciais',
+          breadcrumbParent: 'Dashboard',
+          icon: '📊'
+        }
+      },
+      {
+        path: 'api-client',
+        name: 'ApiClient',
+        component: () => import('@/pages/api-client/ApiClientPage.vue'),
+        meta: {
+          title: 'Cliente API',
+          breadcrumb: 'Cliente API',
+          breadcrumbParent: 'Dashboard',
+          icon: '🛠️'
+        }
+      },
+      {
         path: 'api-keys',
         name: 'ApiKeys',
         component: () => import('@/pages/api-keys/ApiKeysPage.vue'),
@@ -424,6 +503,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'cash',
         name: 'Cash',
+        alias: ['/cash-register'],
         component: () => import('@/pages/finance/CashPage.vue'),
         meta: {
           title: 'Caixa',

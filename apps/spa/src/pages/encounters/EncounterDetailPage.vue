@@ -12,17 +12,15 @@
       {{ error }}
     </DsAlert>
     <template v-else-if="encounter">
-      <div class="page-header">
-        <div>
-          <h1 class="page-header__title">🩺 Atendimento</h1>
-          <p class="page-header__subtitle">
-            <StatusBadge
-              :label="encounterStatusLabel(encounter.status)"
-              :variant="encounterStatusVariant(encounter.status)"
-            />
-          </p>
-        </div>
-        <div class="page-header__actions">
+      <AppPageHeader>
+        <template #title>🩺 Atendimento</template>
+        <template #subtitle>
+          <StatusBadge
+            :label="encounterStatusLabel(encounter.status)"
+            :variant="encounterStatusVariant(encounter.status)"
+          />
+        </template>
+        <template #actions>
           <DsButton v-if="canTransition" variant="secondary" @click="showTransitionModal = true">
             Transicionar Status
           </DsButton>
@@ -30,8 +28,18 @@
             Fechar Atendimento
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/encounters">Voltar</DsButton>
-        </div>
-      </div>
+        </template>
+      </AppPageHeader>
+
+      <section class="summary-grid">
+        <DsCard v-for="item in summaryCards" :key="item.label" variant="elevated" class="summary-card">
+          <div class="summary-card__icon">{{ item.icon }}</div>
+          <div class="summary-card__body">
+            <span class="summary-card__value">{{ item.value }}</span>
+            <span class="summary-card__label">{{ item.label }}</span>
+          </div>
+        </DsCard>
+      </section>
 
       <div class="encounter-detail-page__grid">
         <DsCard title="Informações">
@@ -165,6 +173,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const route = useRoute();
 const encounter = ref<EncounterSummary | null>(null);
@@ -184,6 +193,13 @@ const newAttachment = ref({ fileName: '', mimeType: 'application/pdf', checksum:
 
 const patientName = ref('');
 const ownerName = ref('');
+
+const summaryCards = computed(() => [
+  { icon: '🐾', label: 'Paciente', value: patientName.value || 'Carregando...' },
+  { icon: '👤', label: 'Tutor', value: ownerName.value || 'Carregando...' },
+  { icon: '🧭', label: 'Tipo', value: encounter.value ? visitTypeLabel(encounter.value.visitType) : '—' },
+  { icon: '⚡', label: 'Status', value: encounter.value ? encounterStatusLabel(encounter.value.status) : '—' }
+]);
 
 function encounterStatusVariant(s: string) {
   const map: Record<string, string> = {
@@ -305,6 +321,48 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.summary-card__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 22px;
+}
+
+.summary-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-card__value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  line-height: 1.15;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted, #94a3b8);
+  margin-top: 4px;
+}
+
 .encounter-detail-page__grid {
   display: grid;
   gap: 16px;
@@ -403,5 +461,11 @@ onMounted(async () => {
   grid-template-columns: 1fr 1fr 1fr auto;
   gap: 8px;
   align-items: end;
+}
+
+@media (max-width: 960px) {
+  .attachment-upload {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

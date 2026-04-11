@@ -1,10 +1,48 @@
 <template>
   <div class="patients-list-page">
-    <AppPageHeader title="Pacientes" subtitle="Cadastro clínico de animais atendidos">
+    <AppPageHeader
+      title="Pacientes"
+      subtitle="Cadastro clínico de animais atendidos e vinculados ao tutor"
+    >
       <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
         <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
       </template>
     </AppPageHeader>
+
+    <section class="patients-list-page__overview">
+      <DsCard title="Resumo operacional">
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ totalPatients }}</span>
+            <span class="overview-metric__label">Pacientes cadastrados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ activePatients }}</span>
+            <span class="overview-metric__label">Ativos na operação</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ weightedPatients }}</span>
+            <span class="overview-metric__label">Com peso informado</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ withBreedPatients }}</span>
+            <span class="overview-metric__label">Com raça definida</span>
+          </div>
+        </div>
+      </DsCard>
+
+      <DsCard title="Atalhos">
+        <div class="quick-actions">
+          <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
+          <DsButton tag="a" to="/owners" variant="secondary">Ver tutores</DsButton>
+        </div>
+        <p class="overview-note">
+          A lista abaixo prioriza busca rápida e acesso direto ao cadastro, mantendo o vínculo
+          paciente-tutor visível na operação.
+        </p>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -74,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { patientService } from '@/services/patient';
 import type { PatientSummary } from '@/types/patient';
 import { speciesLabel, sexLabel, patientStatusLabel } from '@/utils/labels';
@@ -86,6 +124,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const entityCache = useEntityCache();
 const ownerNames = ref<Record<string, string>>({});
@@ -109,6 +148,17 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
 
+const totalPatients = computed(() => items.value.length);
+const activePatients = computed(
+  () => items.value.filter((patient) => patient.status === 'active').length
+);
+const weightedPatients = computed(
+  () => items.value.filter((patient) => typeof patient.baseWeightKg === 'number').length
+);
+const withBreedPatients = computed(
+  () => items.value.filter((patient) => Boolean(patient.breed?.trim())).length
+);
+
 const { items, loading, error, search, load } = useListData<PatientSummary>({
   fetchFn: async (q) => {
     const patients = await patientService.list(q);
@@ -124,3 +174,53 @@ const { items, loading, error, search, load } = useListData<PatientSummary>({
   withSearch: true
 });
 </script>
+
+<style scoped>
+.patients-list-page__overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-metric {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-metric__value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.overview-metric__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.overview-note {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.5;
+}
+</style>

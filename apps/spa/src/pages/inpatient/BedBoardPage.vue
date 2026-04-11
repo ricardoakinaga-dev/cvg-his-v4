@@ -1,18 +1,20 @@
 <template>
   <div class="bed-board-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-header__title">🗺️ Mapa de Leitos</h1>
-        <p class="page-header__subtitle">Visão geral de ocupação por setor</p>
-      </div>
-      <div class="page-header__actions">
-        <span class="board-stats">
+    <AppPageHeader title="🗺️ Mapa de Leitos" subtitle="Visão geral de ocupação por setor">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" @click="loadBoard">Atualizar</DsButton>
+      </template>
+    </AppPageHeader>
+
+    <section class="bed-board-page__overview">
+      <DsCard title="Ocupação geral">
+        <div class="board-stats">
           <span class="stat stat--total">Total: {{ stats.totalBeds }}</span>
           <span class="stat stat--occupied">Ocupados: {{ stats.occupiedBeds }}</span>
           <span class="stat stat--available">Disponíveis: {{ stats.availableBeds }}</span>
-        </span>
-      </div>
-    </div>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -76,6 +78,9 @@ import { formatDate, speciesLabel } from '@/utils/labels';
 import EmptyState from '@/components/EmptyState.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const board = ref<BedMapResponse>({ items: [], totalBeds: 0, occupiedBeds: 0, availableBeds: 0 });
 const loading = ref(false);
@@ -100,6 +105,10 @@ function patientName(id: string): string {
 }
 
 onMounted(async () => {
+  await loadBoard();
+});
+
+async function loadBoard() {
   loading.value = true;
   error.value = '';
   try {
@@ -127,14 +136,19 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-});
+}
 </script>
 
 <style scoped>
+.bed-board-page__overview {
+  margin-bottom: 16px;
+}
+
 .board-stats {
   display: flex;
   gap: 16px;
   align-items: center;
+  flex-wrap: wrap;
 }
 .stat {
   font-size: 14px;

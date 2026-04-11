@@ -11,23 +11,37 @@
       {{ error }}
     </DsAlert>
 
-    <div v-if="service" class="detail-grid">
-      <DsCard title="Dados do Serviço">
-        <div class="detail-list">
-          <div><strong>Nome:</strong> {{ service.name }}</div>
-          <div><strong>Código:</strong> {{ service.code ?? '—' }}</div>
-          <div><strong>Descrição:</strong> {{ service.description ?? '—' }}</div>
-          <div><strong>Preço Base:</strong> {{ formatCurrency(service.basePrice) }}</div>
-          <div>
-            <strong>Status:</strong>
-            <span :class="['status-badge', service.active ? 'status-badge--active' : 'status-badge--inactive']">
-              {{ service.active ? 'Ativo' : 'Inativo' }}
-            </span>
+    <div v-if="service" class="detail-layout">
+      <DsCard title="Ficha resumida">
+        <div class="summary-grid">
+          <div v-for="card in summaryCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
           </div>
-          <div><strong>Criado em:</strong> {{ formatDateTime(service.createdAt) }}</div>
-          <div><strong>Atualizado em:</strong> {{ formatDateTime(service.updatedAt) }}</div>
         </div>
       </DsCard>
+
+      <div class="detail-grid">
+        <DsCard title="Dados do Serviço">
+          <div class="detail-list">
+            <div><strong>Nome:</strong> {{ service.name }}</div>
+            <div><strong>Código:</strong> {{ service.code ?? '—' }}</div>
+            <div><strong>Descrição:</strong> {{ service.description ?? '—' }}</div>
+            <div><strong>Preço Base:</strong> {{ formatCurrency(service.basePrice) }}</div>
+            <div>
+              <strong>Status:</strong>
+              <span
+                :class="['status-badge', service.active ? 'status-badge--active' : 'status-badge--inactive']"
+              >
+                {{ service.active ? 'Ativo' : 'Inativo' }}
+              </span>
+            </div>
+            <div><strong>Criado em:</strong> {{ formatDateTime(service.createdAt) }}</div>
+            <div><strong>Atualizado em:</strong> {{ formatDateTime(service.updatedAt) }}</div>
+          </div>
+        </DsCard>
+      </div>
     </div>
 
     <div v-else-if="loading" class="loading">Carregando...</div>
@@ -51,6 +65,16 @@ const service = ref<ServiceSummary | null>(null);
 const loading = ref(false);
 const error = ref('');
 
+const summaryCards = computed(() => {
+  if (!service.value) return [];
+  return [
+    { label: 'Código', value: service.value.code || '—', hint: 'Identificador comercial' },
+    { label: 'Preço', value: formatCurrency(service.value.basePrice), hint: 'Valor base de catálogo' },
+    { label: 'Status', value: service.value.active ? 'Ativo' : 'Inativo', hint: 'Situação operacional' },
+    { label: 'Atualizado', value: formatDateTime(service.value.updatedAt), hint: 'Última alteração' }
+  ];
+});
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
@@ -72,6 +96,12 @@ onMounted(loadService);
 
 <style scoped>
 .detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-layout {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -113,6 +143,43 @@ onMounted(loadService);
 }
 
 .loading {
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
 </style>

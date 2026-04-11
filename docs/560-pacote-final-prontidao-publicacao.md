@@ -24,7 +24,7 @@
 | **Alta**           | discharges                                      | Operacional            |
 | **Prescricao**     | prescription-executions                         | Operacional            |
 
-**Total:** 25 modulos de dominio, 3 apps (api, web, worker), 1 monorepo pnpm.
+**Total:** 25 modulos de dominio, 3 apps (api, worker, spa), 1 monorepo pnpm.
 
 ### Persistencia
 
@@ -63,7 +63,7 @@
 | API `/ready`        | ✅ Endpoint funcional | Retorna 200 com `readiness.ready: true` quando DB saudavel |
 | API `/live`         | ✅ Endpoint funcional | Retorna 200 com `liveness.live: true`                      |
 | Worker bootstrap    | ✅ Graceful           | Conecta ao DB, processa notifications                      |
-| Web disponibilidade | ✅ Build estatico     | Serve assets e paginas                                     |
+| SPA disponibilidade | ✅ Build estatico     | Serve assets e paginas                                     |
 
 ---
 
@@ -72,24 +72,24 @@
 ### Docker Compose
 
 - **Arquivo:** `docker-compose.v2.yml`
-- **Servicos:** postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
-- **Portas:** API externa 3000 (interna 3001), Web externa 3001 (interna 3000)
+- **Servicos:** postgres, redis, `cvg-his-v2-api`, `cvg-his-v2-worker`, `cvg-his-v2-spa`
+- **Portas:** API externa 3003 (interna 3001), SPA externa 3002 (interna 3002)
 - **Healthchecks:** postgres (pg_isready), redis (redis-cli ping), api (/health)
 - **Volumes:** postgres_data, redis_data, storage
-- **Dependencias:** api espera postgres+redis; web espera api; worker espera postgres+api
+- **Dependencias:** api espera postgres+redis; spa espera api; worker espera postgres+api
 - **Regra operacional:** nao reutilizar imagens/containers legados `cvg-his-api`, `cvg-his-web`, `cvg-his-worker`
 
 ### Proxy Reverso
 
 - **Arquivo:** `infra/docker/Caddyfile.v2`
-- **Dominios:** `his.centroveterinarioguarapiranga.com` → Web (3001), `his-api.centroveterinarioguarapiranga.com` → API (3000)
+- **Dominios:** `his.centroveterinarioguarapiranga.com` → SPA (3002), `his-api.centroveterinarioguarapiranga.com` → API (3003)
 - **TLS:** Caddy gerencia automaticamente
 
 ### Systemd (bare-metal)
 
-- **Servicos:** `cvg-his-v2-api.service`, `cvg-his-v2-web.service`, `cvg-his-v2-worker.service`
+- **Servicos:** `cvg-his-v2-api.service`, `cvg-his-v2-spa.service`, `cvg-his-v2-worker.service`
 - **Hardening:** EnvironmentFile, RestartPreventExitStatus, TimeoutStartSec, journal logging
-- **Dependencias:** api apos postgresql+redis; web e worker apos api
+- **Dependencias:** api apos postgresql+redis; spa e worker apos api
 
 ### Cutover
 
@@ -133,7 +133,7 @@
 
 | #   | Risco                                   | Impacto                             | Mitigacao                           |
 | --- | --------------------------------------- | ----------------------------------- | ----------------------------------- |
-| R1  | Web ainda sem regressao visual profunda | Quebras visuais sutis podem escapar | Expandir regressao guiada/e2e focal |
+| R1  | SPA ainda sem regressao visual profunda | Quebras visuais sutis podem escapar | Expandir regressao guiada/e2e focal |
 
 ### Medio
 
@@ -142,7 +142,7 @@
 | R3  | Scheduling sem validacao de conflito | Agendas ainda podem colidir                   | Endurecer regra operacional |
 | R4  | Triage sem versionamento dedicado    | Update existe, mas sem diff clinico explicito | Evoluir trilha clinica      |
 | R5  | PDF server-side ainda em HTML inline | Exportacao abaixo do ideal enterprise         | Fechar geracao PDF dedicada |
-| R6  | Web com regressao guiada minima      | Regressao visual profunda ainda pode escapar  | Expandir regressao guiada   |
+| R6  | SPA com regressao guiada minima      | Regressao visual profunda ainda pode escapar  | Expandir regressao guiada   |
 
 ### Baixo
 
@@ -198,8 +198,8 @@ pnpm test:db:stop
 # 3. Deploy
 # Via compose:
 docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 
 # Via cutover script:
 ENV_FILE=/opt/cvg-his-v2/.env.v2 infra/scripts/cutover-v2.sh

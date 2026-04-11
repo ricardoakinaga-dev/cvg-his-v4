@@ -2,16 +2,16 @@
 
 **Status:** vivo
 **Data de validacao:** 2026-03-31
-**Fonte principal de evidencia:** `apps/web/src/index.ts`, `apps/web/src/pages/*`
+**Fonte principal de evidencia:** `apps/spa/src/*`
 
 ## Papel do frontend
 
-`apps/web` e o frontend canonico do CVG-HIS V2.
+`apps/spa` e o frontend canonico do CVG-HIS V2.
 
 Ele entrega hoje:
 
-- server-side routing por pathname
-- HTML inline com JS client-side leve
+- navegacao por dominio com shell premium
+- layout responsivo com componentes Vue
 - autenticacao baseada na API V2
 - navegacao assistencial, administrativa e operacional
 
@@ -19,9 +19,9 @@ Ele entrega hoje:
 
 ### Stack
 
-- app: `apps/web`
-- runtime: Node.js HTTP server
-- renderizacao: HTML server-side com scripts client-side
+- app: `apps/spa`
+- runtime: Nginx servindo build estatico da SPA
+- renderizacao: cliente com fallback de SPA
 - roteamento: path routing, nao hash routing
 
 ### Rotas de pagina existentes
@@ -68,6 +68,7 @@ Ele entrega hoje:
 - usuarios, equipe e permissoes
 - notificacoes, auditoria e busca global
 - altas
+- shell enterprise com menu por dominio, contexto, favoritos, recentes e command palette
 
 ## Responsabilidades
 
@@ -85,12 +86,13 @@ Ele entrega hoje:
 ## Lacunas ainda abertas
 
 - suite E2E ainda nao cobre toda a superficie de tela
-- frontend ainda usa HTML inline; isso e aceitavel no curto prazo, mas exige disciplina de manutencao
+- ainda existe frontend legado `apps/web` durante a janela de transicao
 - falta consolidar documentacao de UX por dominio para os modulos mais novos
 
 ## Direcao para a proxima fase
 
-- manter `apps/web` como frontend oficial
+- manter `apps/spa` como frontend oficial
 - expandir cobertura E2E dos fluxos enterprise
 - documentar UX e contratos de cada modulo novo apenas quando eles estiverem operacionais de ponta a ponta
 - evitar criar trilhas paralelas de frontend
+- remover `apps/web` somente apos o corte por dominio estar completo

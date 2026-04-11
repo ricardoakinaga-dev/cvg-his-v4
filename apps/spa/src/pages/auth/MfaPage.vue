@@ -1,9 +1,35 @@
 <template>
   <div class="mfa-page">
-    <DsCard tag="div" title="Confirmação MFA" class="mfa-card">
-      <p class="mfa-card__subtitle">
-        Informe o código TOTP para concluir a autenticação.
+    <section class="mfa-hero">
+      <div class="mfa-hero__eyebrow">Camada de segurança</div>
+      <h1 class="mfa-hero__title">Confirmação MFA</h1>
+      <p class="mfa-hero__subtitle">
+        Validação extra para manter o acesso premium seguro, com proteção por contexto e trilha de
+        autenticação coerente com a arquitetura do SPA oficial.
       </p>
+      <div class="mfa-hero__chips">
+        <span class="mfa-chip">🔐 TOTP</span>
+        <span class="mfa-chip">🛡️ Zero trust</span>
+        <span class="mfa-chip">🏥 Operação segura</span>
+      </div>
+      <div class="mfa-hero__stack">
+        <div class="mfa-hero__stat">
+          <strong>Usuário</strong>
+          <span>Exibido na sessão pendente</span>
+        </div>
+        <div class="mfa-hero__stat">
+          <strong>Tempo</strong>
+          <span>Código de uso único e janela curta</span>
+        </div>
+        <div class="mfa-hero__stat">
+          <strong>Fluxo</strong>
+          <span>Redirecionamento automático após validação</span>
+        </div>
+      </div>
+    </section>
+
+    <DsCard tag="div" title="Confirmação MFA" class="mfa-card">
+      <p class="mfa-card__subtitle">Informe o código TOTP para concluir a autenticação.</p>
 
       <DsAlert v-if="!pendingUserId" variant="warning">
         Nenhuma tentativa de MFA ativa foi encontrada. Volte ao login e autentique novamente.
@@ -114,18 +140,98 @@ onMounted(() => {
 
 <style scoped>
 .mfa-page {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
   align-items: center;
-  justify-content: center;
+  gap: 28px;
   min-height: 100vh;
-  background: var(--color-bg, #f0f4f8);
-  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(13, 148, 136, 0.14), transparent 26%),
+    var(--color-bg, #f0f4f8);
+  padding: 32px;
+}
+
+.mfa-hero {
+  display: grid;
+  gap: 18px;
+  max-width: 720px;
+  color: var(--color-text, #0f172a);
+}
+
+.mfa-hero__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary-600, #2563eb);
+}
+
+.mfa-hero__title {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 64px);
+  line-height: 0.98;
+}
+
+.mfa-hero__subtitle {
+  margin: 0;
+  max-width: 56ch;
+  font-size: 16px;
+  color: var(--color-text-secondary, #475569);
+}
+
+.mfa-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mfa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  color: var(--color-text-secondary, #475569);
+}
+
+.mfa-hero__stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.mfa-hero__stat {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.mfa-hero__stat strong {
+  font-size: 14px;
+}
+
+.mfa-hero__stat span {
+  font-size: 13px;
+  color: var(--color-text-secondary, #475569);
 }
 
 .mfa-card {
   width: 100%;
-  max-width: 440px;
-  padding: 40px 32px;
+  max-width: 480px;
+  justify-self: end;
+  padding: 40px 34px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
 }
 
 .mfa-card__subtitle,
@@ -143,5 +249,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .mfa-page {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .mfa-card {
+    justify-self: stretch;
+  }
 }
 </style>

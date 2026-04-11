@@ -1,18 +1,29 @@
 # CVG-HIS V2 — Caddyfile
-# his.domain.com -> Web (porta externa 3004)
-# his-api.domain.com -> API (porta externa 3003)
 #
-# Compose mapping atual:
-#   API: 3003:3001  (externa:interna)
-#   Web: 3004:3000  (externa:interna)
+# FRONTEND CANONICO: apps/spa (SPA Vue/Pinia) — servico cvg-his-v2-spa
+# his.domain.com -> SPA (porta 3002)
+# his-api.domain.com -> API (porta 3003)
 #
-# Observacao:
-# - este arquivo publica o frontend de apps/web
-# - a SPA exposta em 3002 nao esta roteada aqui por padrao
+# REGRA OPERACIONAL:
+#   O dominio principal his.centroveterinarioguarapiranga.com DEVE servir cvg-his-v2-spa.
+#   NUNCA apontar para cvg-his-v2-web (apps/web) — este e um frontend legado.
+#
+# Mapeamento de portas (docker-compose.v2.yml):
+#   SPA:  3002:3002  — frontend canonico (apps/spa)
+#   API:  3003:3001  — API do sistema
+#   Web:  3004:3000  — portal legado (apps/web) — fora da trilha oficial
+#
+# Para atualizar a SPA apos mudancas de codigo:
+#   1. Rebuild: docker compose build --no-cache cvg-his-v2-spa
+#   2. Recriar: docker compose up -d --force-recreate cvg-his-v2-spa
+#   3. Remover volume se necessario para evitar cache estatico stale:
+#      docker rm -f cvg-his-v2-spa && docker volume rm cvg_his_v2_spa_static
+#      docker compose up -d cvg-his-v2-spa
+#   4. Validar: curl https://his.centroveterinarioguarapiranga.com/ e conferir a SPA
 
 his.centroveterinarioguarapiranga.com {
   encode gzip
-  reverse_proxy 127.0.0.1:3004
+  reverse_proxy 127.0.0.1:3002
 }
 
 his-api.centroveterinarioguarapiranga.com {

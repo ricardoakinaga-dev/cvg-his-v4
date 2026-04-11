@@ -6,6 +6,16 @@
       </template>
     </AppPageHeader>
 
+    <section class="summary-grid">
+      <DsCard v-for="card in summaryCards" :key="card.label" variant="elevated" class="summary-card">
+        <div class="summary-card__icon">{{ card.icon }}</div>
+        <div class="summary-card__body">
+          <span class="summary-card__value">{{ card.value }}</span>
+          <span class="summary-card__label">{{ card.label }}</span>
+        </div>
+      </DsCard>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
@@ -65,12 +75,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { ownerService } from '@/services/owner';
 import type { OwnerSummary, OwnerContact } from '@/types/owner';
 import { ownerStatusLabel } from '@/utils/labels';
 import { useListData } from '@/composables/useListData';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
@@ -80,6 +92,20 @@ const { items, loading, error, search, load } = useListData<OwnerSummary>({
   fetchFn: (q) => ownerService.list(q),
   entityLabel: 'tutores',
   withSearch: true
+});
+
+const summaryCards = computed(() => {
+  const total = items.value.length;
+  const active = items.value.filter((owner) => owner.status === 'active').length;
+  const financial = items.value.filter((owner) => owner.financialResponsible).length;
+  const withContacts = items.value.filter((owner) => owner.contacts.length > 0).length;
+
+  return [
+    { icon: '👥', label: 'Total de tutores', value: String(total) },
+    { icon: '✅', label: 'Ativos', value: String(active) },
+    { icon: '💰', label: 'Resp. financeiros', value: String(financial) },
+    { icon: '☎️', label: 'Com contato', value: String(withContacts) }
+  ];
 });
 
 const columns: DataTableColumn[] = [
@@ -95,3 +121,47 @@ function primaryContact(owner: OwnerSummary): string {
   return contact ? contact.value : '—';
 }
 </script>
+
+<style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.summary-card__icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 22px;
+}
+
+.summary-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-card__value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  line-height: 1;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted, #94a3b8);
+  margin-top: 4px;
+}
+</style>

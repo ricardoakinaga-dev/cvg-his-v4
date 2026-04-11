@@ -18,8 +18,10 @@ Levar o repositorio a uma base documental que sustente:
 Para deploy e cutover do projeto atual, a trilha canonica e exclusivamente a do V2:
 
 - compose oficial: `docker-compose.v2.yml`
-- apps oficiais: `apps/api`, `apps/web`, `apps/worker`
-- servicos oficiais: `cvg-his-v2-api`, `cvg-his-v2-web`, `cvg-his-v2-worker`
+- apps oficiais: `apps/api`, `apps/worker`, `apps/spa`
+- servicos oficiais: `cvg-his-v2-api`, `cvg-his-v2-worker`, `cvg-his-v2-spa`
+
+`apps/web` e o servico `cvg-his-v2-web` permanecem apenas como legado de transicao e nao devem ser usados como frontend canonico.
 
 Documentos historicos em `docs/docs2/` ou referencias antigas a `apps/his-*`, `cvg-his-api`, `cvg-his-web` e `cvg-his-worker` nao devem ser usados como instrucao operacional do deploy atual.
 
@@ -45,6 +47,18 @@ Documentos historicos em `docs/docs2/` ou referencias antigas a `apps/his-*`, `c
 18. `131-checklist-cutover-servidor.md`
 19. `580-plano-modulos-comerciais-enterprise.md`
 20. `581-backlog-modulos-comerciais.md`
+
+## Trilha Premium Vetus-like
+
+Quando a discussão for comparacao com o Vetus-like, roadmap premium, backlog, sprints e corte do legado, a porta de entrada oficial passa a ser:
+
+1. `Enterprise/0171-INDICE-EXECUTIVO-TRILHA-PREMIUM-CVG-HIS-V2.md`
+2. `Enterprise/0163-RELATORIO-COMPARATIVO-VETUS-LIKE-CVG-HIS-V2.md`
+3. `Enterprise/0164-ROADMAP-CONSTRUCAO-PREMIUM-CVG-HIS-V2.md`
+4. `Enterprise/0165-BACKLOG-CONSTRUCAO-PREMIUM-CVG-HIS-V2.md`
+5. `Enterprise/0166-PLANO-EXECUCAO-POR-SPRINTS-CVG-HIS-V2.md`
+6. `Enterprise/0168-MATRIZ-CORTE-WEB-PARA-SPA-POR-DOMINIO.md`
+7. `Enterprise/0170-MATRIZ-ACEITE-ROLLBACK-CORTE-WEB.md`
 
 ## Trilha viva
 
