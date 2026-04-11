@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3002",
-    "build": "sudo rm -rf dist && vue-tsc --noEmit && vite build",
-    "build:pwa": "sudo rm -rf dist && vue-tsc --noEmit && vite build",
+    "build": "node ./scripts/prebuild-clean.cjs && vue-tsc --noEmit && vite build",
+    "build:pwa": "node ./scripts/prebuild-clean.cjs && vue-tsc --noEmit && vite build",
     "preview": "vite preview --port 3002",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
