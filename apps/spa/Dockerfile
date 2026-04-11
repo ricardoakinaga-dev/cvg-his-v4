@@ -4,6 +4,9 @@ RUN npm install -g pnpm@10.33.0
 
 WORKDIR /app
 
+ARG VITE_DISABLE_PWA=1
+ENV VITE_DISABLE_PWA=${VITE_DISABLE_PWA}
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages

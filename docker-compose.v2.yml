@@ -127,8 +127,6 @@ services:
         condition: service_healthy
     ports:
       - '3002:3002'
-    volumes:
-      - cvg_his_v2_spa_static:/usr/share/nginx/html
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3002/ || exit 1']
       interval: 10s
@@ -140,7 +138,6 @@ volumes:
   cvg_his_v2_postgres_data:
   cvg_his_v2_redis_data:
   cvg_his_v2_storage:
-  cvg_his_v2_spa_static:
 
 networks:
   default:

@@ -11,8 +11,30 @@ export interface PWAMessage {
 }
 
 const messages = ref<PWAMessage[]>([]);
+const disablePwa =
+  import.meta.env.VITE_DISABLE_PWA === '1' ||
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 export function usePWA() {
+  if (disablePwa) {
+    const offlineReady = ref(false);
+    const needRefresh = ref(false);
+    const updateServiceWorker = async () => {};
+    return {
+      needRefresh,
+      offlineReady,
+      updateServiceWorker,
+      messages,
+      dismissMessage: () => {
+        messages.value = [];
+      },
+      dismissAndUpdate: () => {
+        messages.value = [];
+      },
+      regist: async () => undefined
+    };
+  }
+
   const {
     needRefresh,
     updateServiceWorker,
