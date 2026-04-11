@@ -2,6 +2,16 @@
 -- Created: 2026-03-25
 
 -- Sessions table for authentication
+CREATE TABLE IF NOT EXISTS accounts (
+  id VARCHAR(255) PRIMARY KEY,
+  code VARCHAR(100) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+-- Sessions table for authentication
 CREATE TABLE IF NOT EXISTS sessions (
   id VARCHAR(255) PRIMARY KEY,
   account_id VARCHAR(255) NOT NULL,
@@ -18,14 +28,21 @@ CREATE TABLE IF NOT EXISTS audit_events (
   id VARCHAR(255) PRIMARY KEY,
   account_id VARCHAR(255) NOT NULL,
   actor_user_id VARCHAR(255),
+  actor_role VARCHAR(64),
+  actor_roles JSONB NOT NULL DEFAULT '[]'::jsonb,
   action VARCHAR(100) NOT NULL,
   entity_type VARCHAR(100),
   entity_id VARCHAR(255),
   metadata JSONB,
   correlation_id VARCHAR(255),
+  before_json JSONB,
+  after_json JSONB,
+  reason TEXT,
+  request_id VARCHAR(128),
   ip_address VARCHAR(50),
   user_agent VARCHAR(500),
-  occurred_at TIMESTAMP NOT NULL
+  occurred_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL
 );
 
 -- Owners table for master registry

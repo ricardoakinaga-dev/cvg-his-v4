@@ -57,7 +57,7 @@ END $$;
 -- FK discharges → encounters (já em 010, reforçar)
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'discharges_account_fk') THEN
-    ALTER TABLE discharges ADD CONSTRAINT discharges_account_fk FOREIGN KEY (account_id) REFERENCES owners(account_id) DEFERRABLE INITIALLY DEFERRED;
+    ALTER TABLE discharges ADD CONSTRAINT discharges_account_fk FOREIGN KEY (account_id) REFERENCES accounts(id) DEFERRABLE INITIALLY DEFERRED;
   END IF;
 END $$;
 
