@@ -1,17 +1,9 @@
-#!/bin/bash
-# Pre-build cleanup: ensure dist directory is writable
-# Removes root-owned files that block vite build
+const { rmSync, existsSync } = require('node:fs');
 
-if [ -d "dist" ]; then
-  # Try to remove root-owned files first
-  find dist -user root -exec chmod 644 {} \; 2>/dev/null || true
-  # Then remove the directory
-  rm -rf dist 2>/dev/null || true
-fi
+for (const dir of ['dist', 'dev-dist']) {
+  if (existsSync(dir)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
 
-# Ensure dist doesn't exist
-if [ -d "dist" ]; then
-  echo "WARNING: Could not fully clean dist/. Build may fail." >&2
-else
-  echo "dist/ cleaned successfully."
-fi
+console.log('Cleaned dist/ and dev-dist/ successfully.');
