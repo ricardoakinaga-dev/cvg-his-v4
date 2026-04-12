@@ -1,34 +1,5 @@
 <template>
   <div class="login-page">
-    <section class="login-hero">
-      <div class="login-hero__eyebrow">Frontend oficial · SPA</div>
-      <h1 class="login-hero__title">CVG HIS V2</h1>
-      <p class="login-hero__subtitle">
-        Operação veterinária premium com navegação por domínio, contexto persistente, busca global
-        e módulos prontos para escala de longo prazo.
-      </p>
-      <div class="login-hero__chips">
-        <span class="login-chip">⌘K Busca global</span>
-        <span class="login-chip">🧭 Menu por domínio</span>
-        <span class="login-chip">🔐 MFA obrigatório</span>
-        <span class="login-chip">⚡ SPA oficial</span>
-      </div>
-      <div class="login-hero__stack">
-        <div class="login-hero__stat">
-          <strong>Shell</strong>
-          <span>Contexto, favoritos e recentes</span>
-        </div>
-        <div class="login-hero__stat">
-          <strong>Módulos</strong>
-          <span>Operação, clínico, comercial e governança</span>
-        </div>
-        <div class="login-hero__stat">
-          <strong>Execução</strong>
-          <span>Base pensada para evolução contínua</span>
-        </div>
-      </div>
-    </section>
-
     <DsCard tag="div" title="Acesso ao sistema" class="login-card">
       <p class="login-card__subtitle">Entre com suas credenciais para continuar na operação.</p>
       <form class="login-form" @submit.prevent="handleLogin">
@@ -57,11 +28,6 @@
           {{ loading ? 'Entrando...' : 'Entrar' }}
         </DsButton>
       </form>
-      <p class="login-card__footer">
-        <a href="/api/docs">Documentação da API</a>
-        <span>·</span>
-        <a href="/api/health">Status da API</a>
-      </p>
     </DsCard>
   </div>
 </template>
@@ -127,10 +93,9 @@ async function handleLogin() {
 
 <style scoped>
 .login-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  display: flex;
   align-items: center;
-  gap: 28px;
+  justify-content: center;
   min-height: 100vh;
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 30%),
@@ -139,81 +104,9 @@ async function handleLogin() {
   padding: 32px;
 }
 
-.login-hero {
-  display: grid;
-  gap: 18px;
-  max-width: 720px;
-  color: var(--color-text, #0f172a);
-}
-
-.login-hero__eyebrow {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-primary-600, #2563eb);
-}
-
-.login-hero__title {
-  margin: 0;
-  font-size: clamp(40px, 6vw, 76px);
-  line-height: 0.95;
-}
-
-.login-hero__subtitle {
-  margin: 0;
-  max-width: 56ch;
-  font-size: 17px;
-  color: var(--color-text-secondary, #475569);
-}
-
-.login-hero__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.login-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  color: var(--color-text-secondary, #475569);
-}
-
-.login-hero__stack {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.login-hero__stat {
-  display: grid;
-  gap: 4px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  backdrop-filter: blur(12px);
-}
-
-.login-hero__stat strong {
-  font-size: 14px;
-}
-
-.login-hero__stat span {
-  font-size: 13px;
-  color: var(--color-text-secondary, #475569);
-}
-
 .login-card {
   width: 100%;
   max-width: 440px;
-  justify-self: end;
   padding: 40px 34px;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.88);
@@ -233,30 +126,13 @@ async function handleLogin() {
   gap: 20px;
 }
 
-.login-card__footer {
-  margin-top: 24px;
-  text-align: center;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--color-text-muted, #64748b);
-}
-
-.login-card__footer a {
-  color: var(--color-text-link, #2563eb);
-  text-decoration: none;
-}
-
 @media (max-width: 960px) {
   .login-page {
-    grid-template-columns: 1fr;
     padding: 20px;
   }
 
   .login-card {
-    justify-self: stretch;
+    max-width: none;
   }
 }
 </style>
