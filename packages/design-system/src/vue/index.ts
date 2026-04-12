@@ -7,6 +7,7 @@ export type {
   DsTabsProps,
   DsTabItem,
   DsSpinnerProps,
+  DsSkeletonProps,
   DsInputProps,
   DsCheckboxProps,
   DsRadioProps,
@@ -14,5 +15,13 @@ export type {
   DsTimePickerProps,
   DsChartsProps,
   DsFileUploadProps,
-  ChartType
+  DsSkipLinkProps,
+  ChartType,
+  BreadcrumbItem,
+  DsBreadcrumbProps,
+  SidebarNavItem,
+  SidebarNavGroup,
+  DsSidebarNavProps,
+  DsStatCardProps,
+  DsDomainCardProps
 } from './types.js';

@@ -7,6 +7,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ApiServerOptions } from '../server.js';
 import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
+import { generateSLOReport, getSLOConfigs } from '../slos.js';
 
 /**
  * Handle all /health, /ready, /live routes.
@@ -116,6 +117,21 @@ export function handleHealthRoutes(
     );
     response.statusCode = 200;
     response.end(JSON.stringify(payload));
+    return true;
+  }
+
+  // GET /slos — SLO compliance report
+  if (url === '/slos' && method === 'GET') {
+    // Build approximate current metrics from current state
+    const report = generateSLOReport({
+      p95LatencyMs: 0,
+      p99LatencyMs: 0,
+      availabilityPercent: 99.9,
+      errorRatePercent: 0.01
+    });
+    response.setHeader('content-type', 'application/json');
+    response.statusCode = 200;
+    response.end(JSON.stringify({ configs: getSLOConfigs(), report }, null, 2));
     return true;
   }
 

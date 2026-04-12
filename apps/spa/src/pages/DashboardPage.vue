@@ -21,16 +21,52 @@
       <span v-if="accountId" class="dashboard-context__chip">🏢 {{ accountId }}</span>
       <span class="dashboard-context__chip">🏥 SPA oficial</span>
       <span class="dashboard-context__chip">⌘K Busca global</span>
+      <button
+        class="dashboard-context__chip dashboard-context__chip--btn"
+        type="button"
+        @click="showWidgetMenu = !showWidgetMenu"
+        :aria-expanded="showWidgetMenu"
+        aria-controls="widget-menu"
+      >
+        ⚙️ Widgets
+      </button>
     </div>
 
-    <section class="dashboard-grid">
-      <DsCard v-for="stat in stats" :key="stat.label" variant="elevated" class="metric-card">
-        <div class="metric-card__icon">{{ stat.icon }}</div>
-        <div class="metric-card__body">
-          <span class="metric-card__value">{{ stat.value }}</span>
-          <span class="metric-card__label">{{ stat.label }}</span>
-        </div>
-      </DsCard>
+    <div v-if="showWidgetMenu" id="widget-menu" class="widget-menu">
+      <div class="widget-menu__header">
+        <span>Personalizar widgets</span>
+        <button type="button" class="widget-menu__reset" @click="resetWidgets">Resetar</button>
+      </div>
+      <div class="widget-menu__list">
+        <label
+          v-for="widget in widgetStore.widgets"
+          :key="widget.id"
+          class="widget-toggle"
+        >
+          <input
+            type="checkbox"
+            :checked="widget.visible"
+            @change="widgetStore.toggleWidget(widget.id)"
+          />
+          <span class="widget-toggle__icon">{{ widget.icon }}</span>
+          <span class="widget-toggle__label">{{ widget.label }}</span>
+        </label>
+      </div>
+    </div>
+
+    <section class="dashboard-grid" aria-label="KPIs operacionais">
+      <DsStatCard
+        v-for="stat in stats"
+        :key="stat.label"
+        :label="stat.label"
+        :value="stat.value"
+        :icon="stat.icon"
+        :trend="stat.trend as 'up' | 'down' | 'neutral'"
+        :trendValue="stat.trendValue"
+        :loading="stat.loading"
+        :error="stat.error"
+        class="metric-card"
+      />
     </section>
 
     <section class="dashboard-panels">
@@ -41,19 +77,16 @@
             <h2 class="panel-card__title">Domínios prioritários</h2>
           </div>
         </div>
-        <div class="quick-actions">
-          <DsButton tag="a" to="/owners" variant="secondary">Tutores</DsButton>
-          <DsButton tag="a" to="/patients" variant="secondary">Pacientes</DsButton>
-          <DsButton tag="a" to="/appointments" variant="secondary">Agendamentos</DsButton>
-          <DsButton tag="a" to="/queue" variant="secondary">Fila</DsButton>
-          <DsButton tag="a" to="/encounters" variant="secondary">Atendimentos</DsButton>
-          <DsButton tag="a" to="/medical-records" variant="secondary">Prontuário</DsButton>
-          <DsButton tag="a" to="/access-control" variant="secondary">Governança</DsButton>
-          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
-          <DsButton tag="a" to="/billing" variant="secondary">Billing</DsButton>
-          <DsButton tag="a" to="/cash" variant="secondary">Caixa</DsButton>
-          <DsButton tag="a" to="/quotes" variant="secondary">Orçamentos</DsButton>
-          <DsButton tag="a" to="/commercial-reports" variant="secondary">Relatórios</DsButton>
+        <div class="domain-shortcuts">
+          <DsDomainCard
+            v-for="shortcut in domainShortcuts"
+            :key="shortcut.to"
+            :label="shortcut.label"
+            :to="shortcut.to"
+            :icon="shortcut.icon"
+            :badge="shortcut.badge"
+            compact
+          />
         </div>
       </DsCard>
 
@@ -118,27 +151,37 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsDomainCard from '@cvg-his-v2/design-system/vue/DsDomainCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useAppStore } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
+import { useWidgetStore } from '@/stores/widgets';
 import { apiRequest } from '@/services/api';
 
 interface DashboardMetric {
-  icon: string;
   label: string;
   value: string;
+  icon: string;
+  trend?: 'up' | 'down' | 'neutral';
+  trendValue?: string;
+  loading?: boolean;
+  error?: string;
 }
 
 const appStore = useAppStore();
 const authStore = useAuthStore();
+const widgetStore = useWidgetStore();
+
+const showWidgetMenu = ref(false);
 
 const stats = ref<DashboardMetric[]>([
-  { icon: '👤', label: 'Tutores', value: '—' },
-  { icon: '🐾', label: 'Pacientes', value: '—' },
-  { icon: '📅', label: 'Agendamentos', value: '—' },
-  { icon: '🏥', label: 'Fila operacional', value: '—' }
+  { icon: '👤', label: 'Tutores', value: '—', loading: true },
+  { icon: '🐾', label: 'Pacientes', value: '—', loading: true },
+  { icon: '📅', label: 'Agendamentos', value: '—', loading: true },
+  { icon: '🏥', label: 'Fila operacional', value: '—', loading: true }
 ]);
 
 const userName = computed(() => authStore.userName);
@@ -159,25 +202,55 @@ const favoriteRoutes = computed(() =>
     .filter((item) => Boolean(item.path))
 );
 
-async function loadStats() {
-  const [owners, patients, appointments, queue] = await Promise.all([
-    apiRequest<{ items?: unknown[] }>('/owners').catch(() => ({ items: [] })),
-    apiRequest<{ items?: unknown[] }>('/patients').catch(() => ({ items: [] })),
-    apiRequest<{ items?: unknown[] }>('/appointments').catch(() => ({ items: [] })),
-    apiRequest<{ items?: unknown[] }>('/queue').catch(() => ({ items: [] }))
-  ]);
+const domainShortcuts = [
+  { label: 'Tutores', to: '/owners', icon: '👤' },
+  { label: 'Pacientes', to: '/patients', icon: '🐾' },
+  { label: 'Agendamentos', to: '/appointments', icon: '📅' },
+  { label: 'Fila', to: '/queue', icon: '🏥' },
+  { label: 'Atendimentos', to: '/encounters', icon: '🩺' },
+  { label: 'Prontuário', to: '/medical-records', icon: '📋' },
+  { label: 'Governança', to: '/access-control', icon: '🔐' },
+  { label: 'Auditoria', to: '/audit', icon: '📊' },
+  { label: 'Faturamento', to: '/billing', icon: '💳' },
+  { label: 'Caixa', to: '/cash', icon: '💰' }
+];
 
-  stats.value = [
-    { icon: '👤', label: 'Tutores', value: String(owners.items?.length ?? 0) },
-    { icon: '🐾', label: 'Pacientes', value: String(patients.items?.length ?? 0) },
-    { icon: '📅', label: 'Agendamentos', value: String(appointments.items?.length ?? 0) },
-    { icon: '🏥', label: 'Fila operacional', value: String(queue.items?.length ?? 0) }
+async function loadStats() {
+  const endpoints = [
+    { key: 'owners', label: 'Tutores', icon: '👤' },
+    { key: 'patients', label: 'Pacientes', icon: '🐾' },
+    { key: 'appointments', label: 'Agendamentos', icon: '📅' },
+    { key: 'queue', label: 'Fila operacional', icon: '🏥' }
   ];
+
+  const results = await Promise.allSettled(
+    endpoints.map(({ key }) => apiRequest<{ total?: number; items?: unknown[] }>(`/${key}`))
+  );
+
+  stats.value = results.map((result, i) => {
+    const { label, icon } = endpoints[i];
+    if (result.status === 'rejected') {
+      return { label, value: '—', icon, error: 'Falha ao carregar', loading: false };
+    }
+    const data = result.value;
+    const value = data.total ?? data.items?.length ?? 0;
+    return {
+      label,
+      value: typeof value === 'number' ? value.toLocaleString('pt-BR') : String(value),
+      icon,
+      loading: false
+    };
+  });
 }
 
 onMounted(() => {
   void loadStats();
+  widgetStore.initWidgets();
 });
+
+function resetWidgets() {
+  widgetStore.resetWidgets();
+}
 </script>
 
 <style scoped>
@@ -254,47 +327,75 @@ onMounted(() => {
   color: var(--color-text-secondary, #475569);
 }
 
+.dashboard-context__chip--btn {
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.dashboard-context__chip--btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.widget-menu {
+  padding: 16px;
+  background: var(--color-surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.widget-menu__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text, #0f172a);
+}
+
+.widget-menu__reset {
+  background: none;
+  border: none;
+  color: var(--color-primary-600, #2563eb);
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.widget-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.widget-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text, #0f172a);
+}
+
+.widget-toggle input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary-600, #2563eb);
+}
+
+.widget-toggle__icon {
+  font-size: 16px;
+}
+
+.widget-toggle__label {
+  flex: 1;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
-}
-
-.metric-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-}
-
-.metric-card__icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: rgba(37, 99, 235, 0.08);
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.metric-card__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.metric-card__value {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--color-text, #0f172a);
-  line-height: 1;
-}
-
-.metric-card__label {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-text-muted, #94a3b8);
 }
 
 .dashboard-panels {
@@ -321,15 +422,15 @@ onMounted(() => {
   color: var(--color-text, #0f172a);
 }
 
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .link-list {
   display: grid;
   gap: 8px;
+}
+
+.domain-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
 }
 
 .link-list__item {
@@ -373,8 +474,8 @@ onMounted(() => {
     flex-direction: column;
   }
 
-  .quick-actions {
-    grid-template-columns: 1fr;
+  .domain-shortcuts {
+    grid-template-columns: 1fr 1fr;
   }
 
   .link-list__item {

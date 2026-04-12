@@ -99,11 +99,21 @@ function onClick(event: MouseEvent) {
   transition:
     background 0.15s ease,
     opacity 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
   white-space: nowrap;
   user-select: none;
   text-decoration: none;
   line-height: 1;
+}
+
+.ds-btn:hover:not(:disabled):not(.ds-btn--loading) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.ds-btn:active:not(:disabled):not(.ds-btn--loading) {
+  transform: scale(0.97);
 }
 
 .ds-btn:focus-visible {

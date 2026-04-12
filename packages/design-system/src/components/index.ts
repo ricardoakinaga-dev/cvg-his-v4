@@ -17,6 +17,7 @@ export {
   type AlertProps,
   type SpinnerProps
 } from './display.js';
+export { renderSkeleton, type SkeletonProps } from './skeleton.js';
 export { renderDataTable, type DataTableProps, type DataTableColumn } from './data-table.js';
 export { renderModal, renderDialog, type ModalProps, type DialogProps } from './modal.js';
 export { renderToast, renderToastStack, type ToastProps, type ToastStackProps } from './toast.js';
@@ -29,3 +30,11 @@ export {
   type CommandPaletteProps,
   type CommandPaletteItem
 } from './command-palette.js';
+export {
+  renderBreadcrumb,
+  type BreadcrumbProps
+} from './breadcrumb.js';
+export {
+  renderSidebarNav,
+  type SidebarNavProps
+} from './sidebar-nav.js';

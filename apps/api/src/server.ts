@@ -1,9 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
+import { RateLimiter } from '@cvg-his-v2/shared-rate-limiter';
 import type {
   AddInpatientProgressRequest,
   ArchiveClinicalEntryRequest,
@@ -61,7 +63,7 @@ import {
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
-import { runWithTenantContext, type TenantContext } from '@cvg-his-v2/tenant-context';
+import { resolveTenantFromRequest, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import type {
   ApiKeySummary,
   CorrelationId,
@@ -83,8 +85,47 @@ import {
   normalizeRoute,
   updateAppMetrics
 } from './metrics.js';
+import {
+  tracingMiddleware,
+  extractTraceContext,
+  createSpan,
+  endSpan,
+  injectTraceContext,
+  formatTraceParent,
+  type Span
+} from './tracing.js';
+import { generateSLOReport, getSLOConfigs } from './slos.js';
 import type { FileStorage } from '@cvg-his-v2/module-attachments';
 import { getAppState } from './app-state.js';
+import {
+  WebAuthnServiceImpl,
+  InMemoryWebAuthnRepository,
+  type WebAuthnRegistrationOptions,
+  type WebAuthnAssertionOptions
+} from '@cvg-his-v2/module-mfa';
+import {
+  AbacEngine,
+  type ActorAttributes,
+  type ResourceAttributes,
+  type EnvironmentAttributes
+} from '@cvg-his-v2/module-access-control';
+import {
+  type OIDCConfig,
+  type OIDCUserInfo,
+  generatePKCE,
+  buildAuthorizationUrl,
+  exchangeCodeForTokens,
+  fetchUserInfo
+} from '@cvg-his-v2/module-auth';
+import {
+  MfaControlService,
+  VulnerabilityControlService,
+  AccessReviewControlService,
+  DisasterRecoveryControlService,
+  IncidentResponseControlService,
+  collectEvidence,
+  calculateSecurityScore
+} from '@cvg-his-v2/module-soc2';
 
 export interface ApiServerOptions {
   readonly appName: string;
@@ -105,8 +146,8 @@ export function createApiServer(options: ApiServerOptions) {
     staff,
     owners,
     patients,
-    scheduling,
     encounters,
+    scheduling,
     triage,
     medicalRecords,
     attachments,
@@ -140,6 +181,114 @@ export function createApiServer(options: ApiServerOptions) {
   });
   const paymentGateway = new LocalPixPaymentGateway();
 
+  // Rate limiter for auth endpoints (in-memory, per-instance)
+  const authRateLimiter = new RateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 10,          // 10 attempts per window
+    name: 'auth'
+  });
+
+  // ABAC engine — layered on top of RBAC for fine-grained policy enforcement
+  const abacEngine = new AbacEngine();
+
+  /**
+   * Build ABAC actor attributes from the authenticated principal.
+   */
+  function buildActorAttributes(principal: {
+    user: { id: string; accountId: string; status: string; roleCodes: readonly string[] };
+    access: { roleCodes: readonly string[] };
+  }): ActorAttributes {
+    const memberships = accessControl.listMemberships(principal.user.id as never);
+    return {
+      userId: principal.user.id as never,
+      accountId: principal.user.accountId as never,
+      roleCodes: principal.access.roleCodes,
+      department: undefined,
+      jobTitle: undefined,
+      staffId: undefined,
+      teamIds: memberships.teams.map((t) => t.id),
+      sectorIds: memberships.sectors.map((s) => s.id),
+      isActive: principal.user.status === 'active'
+    };
+  }
+
+  /**
+   * Build ABAC environment attributes from the HTTP request.
+   */
+  function buildEnvironmentAttributes(request: IncomingMessage): EnvironmentAttributes {
+    const now = new Date();
+    return {
+      timestamp: now.toISOString(),
+      dayOfWeek: now.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+      hourOfDay: now.getHours(),
+      ipAddress: request.headers['x-forwarded-for']?.toString().split(',')[0].trim()
+        ?? request.socket.remoteAddress,
+      userAgent: request.headers['user-agent']
+    };
+  }
+
+  /**
+   * Enforce ABAC policy for a given action.
+   * Throws ForbiddenError if the policy denies the request.
+   */
+  function enforceAbac(
+    actionCode: string,
+    principal: {
+      user: { id: string; accountId: string; status: string; roleCodes: readonly string[] };
+      access: { roleCodes: readonly string[] };
+    },
+    resource: ResourceAttributes,
+    request: IncomingMessage
+  ): void {
+    const actor = buildActorAttributes(principal);
+    const environment = buildEnvironmentAttributes(request);
+    abacEngine.enforce(actionCode, actor, resource, environment);
+  }
+
+  // WebAuthn service (in-memory repository for dev; replace with DB repo in prod)
+  const webauthnRepository = new InMemoryWebAuthnRepository();
+  const webauthnService = new WebAuthnServiceImpl(webauthnRepository);
+  const webauthnChallenges = new Map<string, string>(); // challenge storage keyed by userId:purpose
+
+  // OIDC state storage (in-memory; use Redis in prod)
+  const oidcStateStore = new Map<string, { codeChallenge: string; codeVerifier: string; redirectUri: string; createdAt: number }>();
+  const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+  // OIDC configuration (configure via environment in production)
+  const oidcConfig: OIDCConfig | null = (() => {
+    const issuer = process.env['OIDC_ISSUER'];
+    const clientId = process.env['OIDC_CLIENT_ID'];
+    const clientSecret = process.env['OIDC_CLIENT_SECRET'];
+    const redirectUri = process.env['OIDC_REDIRECT_URI'];
+    if (!issuer || !clientId || !clientSecret || !redirectUri) {
+      return null;
+    }
+    return {
+      issuer,
+      clientId,
+      clientSecret,
+      redirectUri,
+      scope: 'openid profile email',
+      authorizationEndpoint: `${issuer}/protocol/openid-connect/auth`,
+      tokenEndpoint: `${issuer}/protocol/openid-connect/token`,
+      userinfoEndpoint: `${issuer}/protocol/openid-connect/userinfo`,
+      endSessionEndpoint: `${issuer}/protocol/openid-connect/logout`
+    };
+  })();
+
+  // SOC2 control service instances for evidence collection
+  const soc2MfaControl = new MfaControlService({
+    requiredForRoles: ['admin', 'finance'],
+    requiredForApiKeys: true,
+    failedLoginLockoutAttempts: 5,
+    lockoutDurationMinutes: 15,
+    sessionTimeoutMinutes: 30
+  });
+  const soc2VulnControl = new VulnerabilityControlService();
+  const soc2AccessControl = new AccessReviewControlService();
+  const soc2DrControl = new DisasterRecoveryControlService();
+  const soc2IncidentControl = new IncidentResponseControlService();
+
   const notificationPersistence = notifications as unknown as {
     listFromRepository(
       status?: 'queued' | 'sent' | 'read',
@@ -172,10 +321,17 @@ export function createApiServer(options: ApiServerOptions) {
   });
 
   return createServer((request: IncomingMessage, response: ServerResponse) => {
-    void handleRequest(request, response);
+    // Apply W3C trace context propagation before handling
+    tracingMiddleware(request, response, () => {
+      void handleRequest(request, response);
+    });
   });
 
   async function handleRequest(request: IncomingMessage, response: ServerResponse) {
+    const parentCtx = extractTraceContext(request);
+    const span = createSpan(`HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`, parentCtx ?? null);
+    (request as IncomingMessage & { span?: Span }).span = span;
+
     const startTime = process.hrtime.bigint();
     const correlationIdHeader = request.headers['x-correlation-id'];
     const correlationId =
@@ -204,7 +360,9 @@ export function createApiServer(options: ApiServerOptions) {
       "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
     );
 
-    // Track metrics when response finishes
+    // Inject trace context into response for downstream propagation
+    response.setHeader('tracestate', `cvg-api`);
+    response.setHeader('traceparent', formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags));
     response.on('finish', () => {
       const durationNs = process.hrtime.bigint() - startTime;
       const durationSec = Number(durationNs) / 1e9;
@@ -224,32 +382,8 @@ export function createApiServer(options: ApiServerOptions) {
         httpErrorsTotal.inc({ status_category: category });
       }
 
-      // Log request completion (INFO for success, WARN for 4xx, ERROR for 5xx)
-      if (statusCode >= 500) {
-        logger.error('request completed', {
-          correlationId,
-          method,
-          url: request.url,
-          statusCode,
-          durationMs: Math.round(durationSec * 1000)
-        });
-      } else if (statusCode >= 400) {
-        logger.warn('request completed', {
-          correlationId,
-          method,
-          url: request.url,
-          statusCode,
-          durationMs: Math.round(durationSec * 1000)
-        });
-      } else {
-        logger.debug('request completed', {
-          correlationId,
-          method,
-          url: request.url,
-          statusCode,
-          durationMs: Math.round(durationSec * 1000)
-        });
-      }
+      // End the tracing span
+      endSpan(span, statusCode >= 400 ? 'error' : 'ok');
     });
 
     try {
@@ -270,15 +404,11 @@ export function createApiServer(options: ApiServerOptions) {
         }
       }
 
-      const tenantId =
-        (request.headers['x-tenant-id'] as string) ?? '00000000-0000-0000-0000-000000000001';
-      const tenantCtx: TenantContext = {
-        tenantId,
-        accountId,
-        branchId: (request.headers['x-branch-id'] as string) ?? undefined,
-        userId,
-        correlationId
-      };
+      const tenantCtx = resolveTenantFromRequest(request, {
+        defaultTenantId: '00000000-0000-0000-0000-000000000001',
+        fallbackAccountId: accountId,
+        fallbackUserId: userId
+      });
 
       return await runWithTenantContext(tenantCtx, async () => {
         if (request.method === 'OPTIONS') {
@@ -472,6 +602,23 @@ export function createApiServer(options: ApiServerOptions) {
         const pathname = url.pathname;
 
         if (pathname === '/auth/login' && request.method === 'POST') {
+          const clientIp = request.headers['x-forwarded-for']?.toString().split(',')[0].trim()
+            ?? request.socket.remoteAddress ?? 'unknown';
+          const rateLimitKey = { ip: clientIp, route: '/auth/login' };
+          const rateLimitInfo = authRateLimiter.check(rateLimitKey);
+          response.setHeader('X-RateLimit-Limit', String(authRateLimiter['maxRequests']));
+          response.setHeader('X-RateLimit-Remaining', String(rateLimitInfo.remaining));
+          response.setHeader('X-RateLimit-Reset', String(rateLimitInfo.reset));
+          if (rateLimitInfo.blocked) {
+            response.setHeader('Retry-After', String(Math.ceil(rateLimitInfo.retryAfterMs / 1000)));
+            response.statusCode = 429;
+            response.end(JSON.stringify({
+              code: 'RATE_LIMITED',
+              message: 'Too many requests. Please try again later.',
+              retryAfterMs: rateLimitInfo.retryAfterMs
+            }));
+            return;
+          }
           try {
             const payload = (await readJsonBody(request)) as LoginRequest;
             const session = await auth.login(payload, correlationId);
@@ -511,6 +658,23 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname === '/auth/login/mfa' && request.method === 'POST') {
+          const clientIp = request.headers['x-forwarded-for']?.toString().split(',')[0].trim()
+            ?? request.socket.remoteAddress ?? 'unknown';
+          const rateLimitKey = { ip: clientIp, route: '/auth/login/mfa' };
+          const rateLimitInfo = authRateLimiter.check(rateLimitKey);
+          response.setHeader('X-RateLimit-Limit', String(authRateLimiter['maxRequests']));
+          response.setHeader('X-RateLimit-Remaining', String(rateLimitInfo.remaining));
+          response.setHeader('X-RateLimit-Reset', String(rateLimitInfo.reset));
+          if (rateLimitInfo.blocked) {
+            response.setHeader('Retry-After', String(Math.ceil(rateLimitInfo.retryAfterMs / 1000)));
+            response.statusCode = 429;
+            response.end(JSON.stringify({
+              code: 'RATE_LIMITED',
+              message: 'Too many requests. Please try again later.',
+              retryAfterMs: rateLimitInfo.retryAfterMs
+            }));
+            return;
+          }
           const payload = (await readJsonBody(request)) as { userId: string; token: string };
           const result = await auth.completeMfaLogin(
             { userId: payload.userId, token: payload.token },
@@ -625,6 +789,263 @@ export function createApiServer(options: ApiServerOptions) {
           const codes = await mfaSvc.regenerateRecoveryCodes(principal.user.id);
           response.statusCode = 200;
           response.end(JSON.stringify({ recoveryCodes: codes }));
+          return;
+        }
+
+        // ========================================================================
+        // WebAuthn (FIDO2) Endpoints
+        // ========================================================================
+
+        if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'auth.mfa.manage');
+          if (!webauthnService) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' }));
+            return;
+          }
+          const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+          const { publicKeyOptions, challenge } = await webauthnService.generateRegistrationOptions(
+            principal.user.id,
+            {
+              rpName: 'CVG-HIS-V2',
+              rpId,
+              userId: principal.user.id,
+              userName: principal.user.email
+            }
+          );
+          // Store challenge in memory for verification
+          webauthnChallenges.set(`reg:${principal.user.id}`, challenge);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ publicKeyOptions, challenge }));
+          return;
+        }
+
+        if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'auth.mfa.manage');
+          if (!webauthnService) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' }));
+            return;
+          }
+          const payload = (await readJsonBody(request)) as {
+            credentialId: string;
+            attestationObject: string;
+            clientDataJSON: string;
+          };
+          const storedChallenge = webauthnChallenges.get(`reg:${principal.user.id}`);
+          if (!storedChallenge) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'INVALID_CHALLENGE', message: 'No pending WebAuthn registration' }));
+            return;
+          }
+          webauthnChallenges.delete(`reg:${principal.user.id}`);
+          const result = await webauthnService.verifyRegistration(
+            principal.user.id,
+            {
+              credentialId: payload.credentialId,
+              attestationObject: payload.attestationObject,
+              clientDataJSON: payload.clientDataJSON
+            },
+            storedChallenge
+          );
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'auth',
+            'webauthn_credential_registered',
+            'webauthn',
+            principal.user.id,
+            `WebAuthn credential registered: ${result.credentialId}`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ success: true, credentialId: result.credentialId }));
+          return;
+        }
+
+        if (pathname === '/auth/mfa/webauthn/authenticate' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'auth.mfa.manage');
+          if (!webauthnService) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' }));
+            return;
+          }
+          const payload = (await readJsonBody(request)) as { credentialId?: string };
+          const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+          const { publicKeyOptions, challenge } = await webauthnService.generateAuthenticationOptions(
+            principal.user.id,
+            { rpId, timeout: 60000, userVerification: 'preferred' }
+          );
+          // If credentialId provided, restrict to that credential
+          if (payload.credentialId) {
+            (publicKeyOptions as Record<string, unknown>).allowCredentials = [
+              { id: payload.credentialId, type: 'public-key' }
+            ];
+          }
+          webauthnChallenges.set(`auth:${principal.user.id}`, challenge);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ publicKeyOptions, challenge }));
+          return;
+        }
+
+        if (pathname === '/auth/mfa/webauthn/assert' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'auth.mfa.manage');
+          if (!webauthnService) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' }));
+            return;
+          }
+          const payload = (await readJsonBody(request)) as {
+            credentialId: string;
+            authenticatorData: string;
+            clientDataJSON: string;
+            signature: string;
+            userHandle?: string;
+          };
+          const storedChallenge = webauthnChallenges.get(`auth:${principal.user.id}`);
+          if (!storedChallenge) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'INVALID_CHALLENGE', message: 'No pending WebAuthn assertion' }));
+            return;
+          }
+          webauthnChallenges.delete(`auth:${principal.user.id}`);
+          const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+          const result = await webauthnService.verifyAuthentication(
+            payload.credentialId,
+            {
+              authenticatorData: payload.authenticatorData,
+              clientDataJSON: payload.clientDataJSON,
+              signature: payload.signature,
+              userHandle: payload.userHandle
+            },
+            storedChallenge,
+            rpId
+          );
+          if (!result.success) {
+            response.statusCode = 401;
+            response.end(JSON.stringify({ code: 'AUTHENTICATION_FAILED', message: 'WebAuthn assertion failed' }));
+            return;
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'auth',
+            'webauthn_authenticated',
+            'webauthn',
+            principal.user.id,
+            `WebAuthn authentication successful for credential: ${payload.credentialId}`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ success: true }));
+          return;
+        }
+
+        // ========================================================================
+        // OIDC / SSO Endpoints
+        // ========================================================================
+
+        if (pathname === '/auth/oidc/login' && request.method === 'GET') {
+          if (!oidcConfig) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_CONFIGURED', message: 'OIDC not configured' }));
+            return;
+          }
+          const redirectUri = request.headers['x-oidc-redirect-uri']?.toString()
+            ?? oidcConfig.redirectUri;
+          const pkce = generatePKCE();
+          const state = Buffer.from(randomBytes(16).toString('hex')).toString('base64url');
+          // Store { codeVerifier, codeChallenge, redirectUri } keyed by state
+          oidcStateStore.set(state, {
+            codeChallenge: pkce.codeChallenge,
+            codeVerifier: pkce.codeVerifier,
+            redirectUri,
+            createdAt: Date.now()
+          });
+          const authUrl = buildAuthorizationUrl(oidcConfig, state, pkce);
+          response.statusCode = 302;
+          response.setHeader('Location', authUrl);
+          response.end();
+          return;
+        }
+
+        if (pathname === '/auth/oidc/callback' && request.method === 'GET') {
+          if (!oidcConfig) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_CONFIGURED', message: 'OIDC not configured' }));
+            return;
+          }
+          const url = new URL(request.url ?? '/', 'http://localhost');
+          const code = url.searchParams.get('code');
+          const state = url.searchParams.get('state');
+          const errorParam = url.searchParams.get('error');
+          if (errorParam) {
+            const errorDesc = url.searchParams.get('error_description') ?? errorParam;
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'OIDC_ERROR', message: errorDesc }));
+            return;
+          }
+          if (!code || !state) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'INVALID_CALLBACK', message: 'Missing code or state' }));
+            return;
+          }
+          const storedState = oidcStateStore.get(state);
+          if (!storedState) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'INVALID_STATE', message: 'OIDC state not found or expired' }));
+            return;
+          }
+          if (Date.now() - storedState.createdAt > OIDC_STATE_TTL_MS) {
+            oidcStateStore.delete(state);
+            response.statusCode = 400;
+            response.end(JSON.stringify({ code: 'STATE_EXPIRED', message: 'OIDC state has expired' }));
+            return;
+          }
+          oidcStateStore.delete(state);
+          try {
+            const tokens = await exchangeCodeForTokens(oidcConfig, code, {
+              codeVerifier: storedState.codeVerifier,
+              codeChallenge: storedState.codeChallenge
+            });
+            let userInfo: OIDCUserInfo | null = null;
+            if (tokens.accessToken && oidcConfig.userinfoEndpoint) {
+              try {
+                userInfo = await fetchUserInfo(oidcConfig, tokens.accessToken);
+              } catch {
+                // non-fatal
+              }
+            }
+            response.statusCode = 200;
+            response.end(JSON.stringify({ tokens, userInfo }));
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Token exchange failed';
+            response.statusCode = 502;
+            response.end(JSON.stringify({ code: 'TOKEN_EXCHANGE_FAILED', message }));
+          }
+          return;
+        }
+
+        if (pathname === '/auth/oidc/logout' && request.method === 'POST') {
+          if (!oidcConfig) {
+            response.statusCode = 501;
+            response.end(JSON.stringify({ code: 'NOT_CONFIGURED', message: 'OIDC not configured' }));
+            return;
+          }
+          const payload = (await readJsonBody(request).catch(() => ({}))) as { idTokenHint?: string };
+          const params = new URLSearchParams();
+          if (payload.idTokenHint) params.set('id_token_hint', payload.idTokenHint);
+          if (oidcConfig.endSessionEndpoint) {
+            const logoutUrl = `${oidcConfig.endSessionEndpoint}?${params.toString()}`;
+            response.statusCode = 302;
+            response.setHeader('Location', logoutUrl);
+            response.end();
+          } else {
+            response.statusCode = 200;
+            response.end(JSON.stringify({ success: true, message: 'OIDC not configured for end-session' }));
+          }
           return;
         }
 
@@ -963,6 +1384,103 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
+        // ========================================================================
+        // SOC2 Evidence Endpoints
+        // ========================================================================
+        // SOC2 Evidence Endpoints
+        // ========================================================================
+
+        if (pathname === '/soc2/evidence' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'audit.read');
+          const url = new URL(request.url ?? '/', 'http://localhost');
+          const periodStart = url.searchParams.get('periodStart') ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          const periodEnd = url.searchParams.get('periodEnd') ?? new Date().toISOString();
+
+          try {
+            const evidence = await collectEvidence(periodStart, periodEnd, {
+              mfa: soc2MfaControl,
+              vulnerability: soc2VulnControl,
+              access: soc2AccessControl,
+              dr: soc2DrControl,
+              incident: soc2IncidentControl
+            });
+
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'soc2',
+              'evidence_collected',
+              'audit',
+              principal.session.sessionId,
+              `SOC2 evidence package collected for period ${periodStart} to ${periodEnd}`,
+              'medium',
+              correlationId
+            );
+
+            response.statusCode = 200;
+            response.end(JSON.stringify(evidence));
+          } catch (err) {
+            logger.error('SOC2 evidence collection failed', { correlationId, error: err });
+            response.statusCode = 500;
+            response.end(JSON.stringify({ code: 'EVIDENCE_FAILED', message: 'Failed to collect SOC2 evidence' }));
+          }
+          return;
+        }
+
+        if (pathname === '/soc2/security-score' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'audit.read');
+
+          try {
+            const score = await calculateSecurityScore(
+              soc2MfaControl,
+              soc2VulnControl,
+              soc2AccessControl,
+              soc2DrControl
+            );
+
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'soc2',
+              'security_score_calculated',
+              'audit',
+              principal.session.sessionId,
+              `Security score calculated: ${score.overallScore}/${score.maxScore}`,
+              'medium',
+              correlationId
+            );
+
+            response.statusCode = 200;
+            response.end(JSON.stringify(score));
+          } catch (err) {
+            logger.error('SOC2 security score calculation failed', { correlationId, error: err });
+            response.statusCode = 500;
+            response.end(JSON.stringify({ code: 'SCORE_FAILED', message: 'Failed to calculate security score' }));
+          }
+          return;
+        }
+
+        if (pathname === '/soc2/policies' && request.method === 'GET') {
+          // Public endpoint — no auth required
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            abacPolicies: abacEngine.listPolicies().map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              version: p.version,
+              resourceTypes: p.resourceTypes,
+              actionCodes: p.actionCodes,
+              enabled: p.enabled,
+              combiningAlgorithm: p.combiningAlgorithm,
+              rulesCount: p.rules.length,
+              tags: p.tags
+            })),
+            totalPolicies: abacEngine.listPolicies().length
+          }));
+          return;
+        }
+
         if (pathname === '/auth/session' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'auth.session.read');
           appendAudit(
@@ -1051,6 +1569,19 @@ export function createApiServer(options: ApiServerOptions) {
         if (pathname === '/medical-records/entries' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'medical-records.manage');
           const payload = (await readJsonBody(request)) as CreateClinicalEntryRequest;
+          // ABAC enforcement: only clinical staff can write medical records
+          enforceAbac(
+            'medical-records.manage',
+            principal,
+            {
+              resourceType: 'patient',
+              resourceId: payload.patientId,
+              patientId: payload.patientId as never,
+              encounterId: payload.encounterId as never,
+              accountId: principal.user.accountId as never
+            },
+            request
+          );
           const entry = medicalRecords.addEntry(principal.user.id, payload);
           appendAudit(
             principal.user.id,
@@ -3519,6 +4050,19 @@ export function createApiServer(options: ApiServerOptions) {
         if (pathname === '/billing/estimate' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'billing.manage');
           const payload = (await readJsonBody(request)) as CreateBillingEstimateRequest;
+          // ABAC enforcement: billing write access control
+          enforceAbac(
+            'billing.manage',
+            principal,
+            {
+              resourceType: 'billing_record',
+              resourceId: payload.encounterId,
+              encounterId: payload.encounterId as never,
+              accountId: principal.user.accountId as never,
+              status: 'estimated'
+            },
+            request
+          );
           const record = await billing.createEstimate(payload);
           appendAudit(
             principal.user.id,
@@ -3539,6 +4083,20 @@ export function createApiServer(options: ApiServerOptions) {
         if (pathname === '/billing/items' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'billing.manage');
           const payload = (await readJsonBody(request)) as CreateBillingItemRequest;
+          // ABAC enforcement: billing write access control
+          enforceAbac(
+            'billing.manage',
+            principal,
+            {
+              resourceType: 'billing_item',
+              resourceId: payload.encounterId,
+              encounterId: payload.encounterId as never,
+              accountId: principal.user.accountId as never,
+              createdByUserId: principal.user.id as never,
+              status: 'draft'
+            },
+            request
+          );
           const item = await billing.addItem(principal.user.id as never, payload);
           appendAudit(
             principal.user.id,
@@ -3564,6 +4122,19 @@ export function createApiServer(options: ApiServerOptions) {
           const principal = requirePrincipal(request, 'billing.manage');
           const encounterId = pathname.split('/')[2];
           const payload = (await readJsonBody(request)) as UpdateBillingStatusRequest;
+          // ABAC enforcement: restrict status transitions on settled records
+          enforceAbac(
+            'billing.manage',
+            principal,
+            {
+              resourceType: 'billing_record',
+              resourceId: encounterId,
+              encounterId: encounterId as never,
+              accountId: principal.user.accountId as never,
+              status: payload.status
+            },
+            request
+          );
           const record = await billing.updateStatus(encounterId as never, payload);
           appendAudit(
             principal.user.id,
@@ -3812,6 +4383,17 @@ export function createApiServer(options: ApiServerOptions) {
         if (pathname === '/inventory' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'inventory.manage');
           const payload = (await readJsonBody(request)) as CreateInventoryItemRequest;
+          // ABAC enforcement: inventory write within business hours
+          enforceAbac(
+            'inventory.manage',
+            principal,
+            {
+              resourceType: 'inventory_item',
+              resourceId: 'new',
+              accountId: principal.user.accountId as never
+            },
+            request
+          );
           const item = inventory.createItem(principal.user.accountId, payload);
           appendAudit(
             principal.user.id,
@@ -3864,6 +4446,17 @@ export function createApiServer(options: ApiServerOptions) {
           const itemId = requireNonEmptyString(pathname.split('/')[2], 'inventoryItemId');
           const principal = requirePrincipal(request, 'inventory.manage');
           const payload = (await readJsonBody(request)) as UpdateInventoryItemRequest;
+          // ABAC enforcement: inventory write within business hours
+          enforceAbac(
+            'inventory.manage',
+            principal,
+            {
+              resourceType: 'inventory_item',
+              resourceId: itemId,
+              accountId: principal.user.accountId as never
+            },
+            request
+          );
           try {
             const item = inventory.updateItem(itemId as never, payload);
             appendAudit(
@@ -3906,6 +4499,17 @@ export function createApiServer(options: ApiServerOptions) {
 
         if (pathname === '/api-keys' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'api_keys.manage');
+          // ABAC enforcement: only admin can create API keys
+          enforceAbac(
+            'api_keys.manage',
+            principal,
+            {
+              resourceType: 'api_key',
+              resourceId: 'new',
+              accountId: principal.user.accountId as never
+            },
+            request
+          );
           const body = (await readJsonBody(request)) as Record<string, unknown>;
 
           validateRequestBody(

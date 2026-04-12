@@ -1,7 +1,14 @@
 <template>
   <Teleport to="body" :disabled="!teleport">
-    <div v-if="open" class="ds-modal-overlay" @click.self="onOverlayClick">
+    <div
+      v-if="open"
+      class="ds-modal-overlay"
+      tabindex="-1"
+      @click.self="onOverlayClick"
+      @keydown="handleKeydown"
+    >
       <div
+        :ref="onModalMounted"
         :class="classes"
         role="dialog"
         :aria-modal="true"
@@ -30,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, type ComponentPublicInstance } from 'vue';
 
 export interface DsModalProps {
   open: boolean;
@@ -53,12 +60,42 @@ const emit = defineEmits<{
 }>();
 
 const modalId = computed(() => `ds-modal-${Math.random().toString(36).slice(2, 8)}`);
+const modalRef = ref<HTMLElement | null>(null);
 
 const classes = computed(() => ['ds-modal', `ds-modal--${props.size}`]);
 
 function onOverlayClick() {
   if (props.closable && props.open) {
     emit('close');
+  }
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && props.closable && props.open) {
+    emit('close');
+  }
+  // Focus trap
+  if (event.key === 'Tab' && props.open && modalRef.value) {
+    const focusable = modalRef.value.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+}
+
+function onModalMounted(el: Element | ComponentPublicInstance | null) {
+  if (el && (el as HTMLElement).querySelector) {
+    modalRef.value = el as HTMLElement;
+    const focusable = modalRef.value?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    focusable?.focus();
   }
 }
 </script>

@@ -26,6 +26,7 @@ export interface DsCardProps {
   tag?: 'div' | 'article' | 'section' | 'a';
   title?: string;
   ariaLabel?: string;
+  href?: string;
 }
 
 export interface DsBadgeProps {
@@ -66,6 +67,14 @@ export interface DsTabsProps {
 export interface DsSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   inline?: boolean;
+  ariaLabel?: string;
+}
+
+export interface DsSkeletonProps {
+  variant?: 'text' | 'heading' | 'avatar' | 'button' | 'card' | 'table-row' | 'table-cell';
+  width?: string;
+  height?: string;
+  animate?: boolean;
   ariaLabel?: string;
 }
 
@@ -166,6 +175,8 @@ export interface DsChartsProps {
   options?: Record<string, unknown>;
   height?: number;
   width?: number | string;
+  ariaLabel?: string;
+  ariaDescription?: string;
 }
 
 export interface DsFileUploadProps {
@@ -180,4 +191,58 @@ export interface DsFileUploadProps {
   maxSize?: number;
   maxFiles?: number;
   id?: string;
+}
+
+export interface DsSkipLinkProps {
+  href?: string;
+  label?: string;
+}
+
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+export interface DsBreadcrumbProps {
+  items: BreadcrumbItem[];
+  separator?: string;
+  ariaLabel?: string;
+}
+
+export interface SidebarNavItem {
+  label: string;
+  icon?: string;
+  href?: string;
+  active?: boolean;
+}
+
+export interface SidebarNavGroup {
+  label: string;
+  icon?: string;
+  items: SidebarNavItem[];
+}
+
+export interface DsSidebarNavProps {
+  groups: SidebarNavGroup[];
+  collapsed?: boolean;
+  ariaLabel?: string;
+}
+
+export interface DsStatCardProps {
+  label?: string;
+  value?: string;
+  icon?: string;
+  trend?: 'up' | 'down' | 'neutral';
+  trendValue?: string;
+  loading?: boolean;
+  error?: string;
+}
+
+export interface DsDomainCardProps {
+  label: string;
+  to: string;
+  icon?: string;
+  description?: string;
+  badge?: number;
+  compact?: boolean;
 }
