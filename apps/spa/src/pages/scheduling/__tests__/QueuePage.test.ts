@@ -70,10 +70,9 @@ const mockCallQueueEntryFn = vi.fn().mockResolvedValue({
   status: 'called' as const,
   calledAt: '2026-04-05T10:00:00Z'
 });
-const mockStartCareQueueEntryFn = vi.fn().mockResolvedValue({
-  ...mockQueueEntries[1],
-  status: 'in_care' as const
-});
+const mockEncounterCreateFn = vi.fn().mockResolvedValue({ id: 'enc-new' });
+const mockEncounterTransitionFn = vi.fn().mockResolvedValue({ id: 'enc-new', status: 'in_triage' });
+const mockRouterPush = vi.fn();
 const mockNoShowQueueEntryFn = vi.fn().mockResolvedValue({
   ...mockQueueEntries[0],
   status: 'cancelled' as const
@@ -110,9 +109,21 @@ const mockPatientListFn = vi.fn().mockResolvedValue(mockPatients);
 vi.mock('@/services/scheduling', () => ({
   listQueue: () => mockListQueueFn(),
   callQueueEntry: (id: string) => mockCallQueueEntryFn(id),
-  startCareQueueEntry: (id: string) => mockStartCareQueueEntryFn(id),
   noShowQueueEntry: (id: string) => mockNoShowQueueEntryFn(id),
   checkInQueue: (payload: unknown) => mockCheckInQueueFn(payload)
+}));
+
+vi.mock('@/services/encounter', () => ({
+  encounterService: {
+    create: (payload: unknown) => mockEncounterCreateFn(payload),
+    transition: (...args: unknown[]) => mockEncounterTransitionFn(...args)
+  }
+}));
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: mockRouterPush
+  })
 }));
 
 vi.mock('@/services/patient', () => ({
@@ -142,10 +153,9 @@ describe('QueuePage', () => {
       status: 'called' as const,
       calledAt: '2026-04-05T10:00:00Z'
     });
-    mockStartCareQueueEntryFn.mockResolvedValue({
-      ...mockQueueEntries[1],
-      status: 'in_care' as const
-    });
+    mockEncounterCreateFn.mockResolvedValue({ id: 'enc-new' });
+    mockEncounterTransitionFn.mockResolvedValue({ id: 'enc-new', status: 'in_triage' });
+    mockRouterPush.mockResolvedValue(undefined);
     mockNoShowQueueEntryFn.mockResolvedValue({
       ...mockQueueEntries[0],
       status: 'cancelled' as const
@@ -473,9 +483,9 @@ describe('QueuePage', () => {
     }
   });
 
-  // Sprint 3: Start-care tests
+  // Sprint 3: Encounter flow tests
 
-  it('shows start-care button for called entries', async () => {
+  it('shows encounter action button for called entries', async () => {
     const QueuePage = (await import('../QueuePage.vue')).default;
     const wrapper = mount(QueuePage, {
       global: {
@@ -497,12 +507,12 @@ describe('QueuePage', () => {
 
     const startCareButtons = wrapper
       .findAll('.ds-btn-stub')
-      .filter((b) => b.text().includes('Iniciar Atendimento'));
+      .filter((b) => b.text().includes('Abrir triagem'));
 
     expect(startCareButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('does not show start-care button for waiting entries', async () => {
+  it('does not show encounter action button for waiting entries', async () => {
     const QueuePage = (await import('../QueuePage.vue')).default;
     const wrapper = mount(QueuePage, {
       global: {
@@ -522,23 +532,16 @@ describe('QueuePage', () => {
 
     await flushPromises();
 
-    const allButtons = wrapper.findAll('.ds-btn-stub');
-    const waitingRowButtons = allButtons.filter((b) => b.element.closest('tr'));
-
-    const startCareInWaitingRow = waitingRowButtons.filter((b) =>
-      b.text().includes('Iniciar Atendimento')
-    );
-
     const rows = wrapper.findAll('tbody tr');
     const waitingRow = rows.find((row) => row.text().includes('Aguardando'));
     if (waitingRow) {
       const rowButtons = waitingRow.findAll('.ds-btn-stub');
-      const hasStartCare = rowButtons.some((b) => b.text().includes('Iniciar Atendimento'));
+      const hasStartCare = rowButtons.some((b) => b.text().includes('Abrir triagem'));
       expect(hasStartCare).toBe(false);
     }
   });
 
-  it('calls startCareQueueEntry API when start-care button is clicked', async () => {
+  it('opens encounter flow from a called queue entry', async () => {
     const QueuePage = (await import('../QueuePage.vue')).default;
     const wrapper = mount(QueuePage, {
       global: {
@@ -560,16 +563,27 @@ describe('QueuePage', () => {
 
     const startCareButton = wrapper
       .findAll('.ds-btn-stub')
-      .find((b) => b.text().includes('Iniciar Atendimento'));
+      .find((b) => b.text().includes('Abrir triagem'));
 
     if (startCareButton) {
       await startCareButton.trigger('click');
-      expect(mockStartCareQueueEntryFn).toHaveBeenCalledWith('q-2');
+      await flushPromises();
+      expect(mockEncounterCreateFn).toHaveBeenCalledWith({
+        patientId: 'pat-2',
+        ownerId: 'owner-2',
+        appointmentId: undefined,
+        queueEntryId: 'q-2',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Emergência'
+      });
+      expect(mockEncounterTransitionFn).toHaveBeenCalledWith('enc-new', { nextStatus: 'in_triage' });
+      expect(mockRouterPush).toHaveBeenCalledWith('/encounters/enc-new');
     }
   });
 
-  it('shows error when startCareQueueEntry fails', async () => {
-    mockStartCareQueueEntryFn.mockRejectedValue(new Error('Erro ao iniciar atendimento'));
+  it('shows error when encounter flow fails', async () => {
+    mockEncounterCreateFn.mockRejectedValue(new Error('Erro ao abrir atendimento'));
 
     const QueuePage = (await import('../QueuePage.vue')).default;
     const wrapper = mount(QueuePage, {
@@ -592,12 +606,12 @@ describe('QueuePage', () => {
 
     const startCareButton = wrapper
       .findAll('.ds-btn-stub')
-      .find((b) => b.text().includes('Iniciar Atendimento'));
+      .find((b) => b.text().includes('Abrir triagem'));
 
     if (startCareButton) {
       await startCareButton.trigger('click');
       await flushPromises();
-      expect(wrapper.text()).toContain('Erro ao iniciar atendimento');
+      expect(wrapper.text()).toContain('Erro ao abrir atendimento');
     }
   });
 

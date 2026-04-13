@@ -148,21 +148,21 @@ export class InMemoryNotificationSettingsProvider implements NotificationSetting
 }
 
 export class EnvNotificationSettingsProvider implements NotificationSettingsProvider {
-  readonly #accountId: AccountId;
+  readonly #defaultAccountId?: AccountId;
   readonly #enabled: boolean;
   readonly #providerType: 'twilio' | '360dialog';
   readonly #apiKey: string;
   readonly #fromNumber: string;
 
-  public constructor(accountId: AccountId) {
-    this.#accountId = accountId;
+  public constructor(defaultAccountId?: AccountId) {
+    this.#defaultAccountId = defaultAccountId;
     this.#enabled = process.env['WHATSAPP_ENABLED'] === 'true';
     this.#providerType = (process.env['WHATSAPP_PROVIDER'] as 'twilio' | '360dialog') ?? 'twilio';
     this.#apiKey = process.env['WHATSAPP_API_KEY'] ?? '';
     this.#fromNumber = process.env['WHATSAPP_FROM_NUMBER'] ?? '';
   }
 
-  async getWhatsAppConfig(_accountId: AccountId): Promise<NotificationChannelConfig | null> {
+  async getWhatsAppConfig(accountId: AccountId): Promise<NotificationChannelConfig | null> {
     if (!this.#enabled) {
       return null;
     }
@@ -177,7 +177,7 @@ export class EnvNotificationSettingsProvider implements NotificationSettingsProv
       enabled: true,
       apiKey: this.#apiKey,
       fromNumber: this.#fromNumber,
-      accountId: this.#accountId
+      accountId: accountId || this.#defaultAccountId || ('account_env' as AccountId)
     };
   }
 }

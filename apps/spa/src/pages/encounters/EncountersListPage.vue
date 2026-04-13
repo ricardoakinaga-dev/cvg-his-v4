@@ -1,8 +1,10 @@
 <template>
   <div class="encounters-list-page">
-    <AppPageHeader title="🩺 Atendimentos" subtitle="Abertura e controle do episódio clínico">
+    <AppPageHeader title="🩺 Atendimentos" subtitle="Atendimento > Atendimentos. Abra episódios clínicos vindos da agenda, fila ou triagem e siga para prontuário e internação.">
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="load">🔄 Atualizar</DsButton>
+        <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>
+        <DsButton tag="a" to="/medical-records" variant="ghost">📋 Prontuário</DsButton>
         <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
       </template>
     </AppPageHeader>
@@ -40,11 +42,14 @@
       :loading="loading"
       empty-icon="🩺"
       empty-title="Nenhum atendimento encontrado"
-      empty-description="Abra o primeiro atendimento para começar."
+      empty-description="Abra o primeiro atendimento para iniciar prontuário, evolução clínica e, se necessário, internação."
       variant="hoverable"
     >
       <template #emptyAction>
-        <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
+        <div class="encounters-list-page__empty-actions">
+          <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
+          <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>
+        </div>
       </template>
       <template #cell-patient="{ row }">
         <strong>🐾 {{ patientName((row as EncounterSummary).patientId) }}</strong>
@@ -183,5 +188,11 @@ const { items, loading, error, load } = useListData<EncounterSummary>({
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+}
+
+.encounters-list-page__empty-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>

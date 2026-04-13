@@ -79,3 +79,93 @@ test('InventoryService listConsumptions filters by encounter', async () => {
   assert.equal(service.listConsumptions('encounter_1').length, 1);
   assert.equal(service.listConsumptions('encounter_1')[0].encounterId, 'encounter_1');
 });
+
+test('InventoryService listLots reflects tracked lot balances after consumption', async () => {
+  const service = createService();
+
+  const beforeTotal = service
+    .listLots('acc_cvg_demo' as never)
+    .filter((lot) => lot.inventoryItemId === 'inv_dipyrone')
+    .reduce((sum, lot) => sum + lot.quantity, 0);
+
+  await service.consume('nurse_1' as never, {
+    encounterId: 'encounter_1',
+    inventoryItemId: 'inv_dipyrone',
+    quantity: 3,
+    sourceEntityType: 'encounter',
+    sourceEntityId: 'encounter_1'
+  });
+
+  const afterLots = service
+    .listLots('acc_cvg_demo' as never)
+    .filter((lot) => lot.inventoryItemId === 'inv_dipyrone');
+  const afterTotal = afterLots.reduce((sum, lot) => sum + lot.quantity, 0);
+
+  assert.equal(beforeTotal - afterTotal, 3);
+  assert.equal(afterLots.length >= 1, true);
+});
+
+test('InventoryService hydrateFromDatabase loads persisted consumptions', async () => {
+  const service = new InventoryService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_repo',
+          patientId: 'patient_repo'
+        };
+      }
+    } as never,
+    [],
+    {
+      repository: {
+        async createItem() {},
+        async updateItem() {},
+        async findItemById() {
+          return null;
+        },
+        async findAllItems() {
+          return [
+            {
+              id: 'inv_repo_1' as never,
+              accountId: 'acc_repo' as never,
+              sku: 'REP-001',
+              name: 'Item Repositorio',
+              unit: 'unidade',
+              onHandQuantity: 7,
+              reorderLevel: 2,
+              unitCostAmount: 4.5,
+              createdAt: '2026-04-12T09:00:00.000Z',
+              updatedAt: '2026-04-12T09:00:00.000Z'
+            }
+          ];
+        },
+        async createConsumption() {},
+        async findConsumptions() {
+          return [
+            {
+              id: 'cons_repo_1' as never,
+              accountId: 'acc_repo' as never,
+              inventoryItemId: 'inv_repo_1' as never,
+              encounterId: 'enc_repo_1' as never,
+              patientId: 'patient_repo' as never,
+              quantity: 2,
+              unit: 'unidade',
+              costAmount: 9,
+              sourceEntityType: 'encounter',
+              sourceEntityId: 'enc_repo_1',
+              recordedByUserId: 'nurse_repo' as never,
+              createdAt: '2026-04-12T10:00:00.000Z'
+            }
+          ];
+        }
+      }
+    }
+  );
+
+  await service.hydrateFromDatabase('acc_repo' as never);
+
+  assert.equal(service.listItems('acc_repo' as never).length, 1);
+  assert.equal(service.listConsumptionsByAccount('acc_repo' as never).length, 1);
+  assert.equal(service.listLots('acc_repo' as never)[0].inventoryItemId, 'inv_repo_1');
+});

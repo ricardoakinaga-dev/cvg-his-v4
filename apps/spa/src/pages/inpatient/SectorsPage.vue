@@ -1,8 +1,10 @@
 <template>
   <div class="sectors-page">
-    <AppPageHeader title="Setores" subtitle="Gestão de setores hospitalares da estrutura">
+    <AppPageHeader title="Setores" subtitle="Atendimento > Internação > Setores. Organize a estrutura que sustenta leitos, ocupação e admissões.">
       <template #actions>
         <DsBadge variant="info" size="md">{{ sectors.length }} setores</DsBadge>
+        <DsButton variant="ghost" tag="a" href="/beds">Leitos</DsButton>
+        <DsButton variant="secondary" tag="a" href="/inpatient/board">Mapa de Leitos</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
     </AppPageHeader>
@@ -58,7 +60,7 @@
           :loading="loading"
           empty-icon="🏢"
           empty-title="Nenhum setor cadastrado"
-          empty-description="Cadastre o primeiro setor para liberar mapa de leitos e internação."
+          empty-description="Cadastre o primeiro setor para liberar mapa de leitos, admissões e gestão da internação."
           variant="hoverable"
         >
           <template #cell-active="{ row }">

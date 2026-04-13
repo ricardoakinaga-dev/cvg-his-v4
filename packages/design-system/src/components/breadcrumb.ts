@@ -1,15 +1,15 @@
-import type { BreadcrumbProps } from './index.js';
+import type { DsBreadcrumbProps, BreadcrumbItem } from '../vue/index.js';
 
 // Re-export types for render function signature
-export type { BreadcrumbProps } from './index.js';
+export type { DsBreadcrumbProps as BreadcrumbProps } from '../vue/index.js';
 
-export function renderBreadcrumb(props: BreadcrumbProps): string {
+export function renderBreadcrumb(props: DsBreadcrumbProps): string {
   const items = props.items ?? [];
   const separator = props.separator ?? '/';
   const ariaLabel = props.ariaLabel ?? 'Breadcrumb';
 
   const itemHtml = items
-    .map((item, index) => {
+    .map((item: BreadcrumbItem, index: number) => {
       const isLast = index === items.length - 1;
       if (isLast) {
         return `<span class="ds-breadcrumb__current" aria-current="page">${item.label}</span>`;
@@ -21,7 +21,7 @@ export function renderBreadcrumb(props: BreadcrumbProps): string {
   return `
     <nav class="ds-breadcrumb" aria-label="${ariaLabel}">
       <ol class="ds-breadcrumb__list">
-        ${items.map((item, index) => `
+        ${items.map((item: BreadcrumbItem, index: number) => `
           <li class="ds-breadcrumb__item">
             ${index < items.length - 1
               ? `<a href="${item.href ?? '#'}" class="ds-breadcrumb__link">${item.label}</a>`

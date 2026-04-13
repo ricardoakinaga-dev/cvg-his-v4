@@ -1,19 +1,61 @@
 <template>
   <div class="quotes-page">
-    <AppPageHeader title="Orçamentos" subtitle="Workspace real para criação, itens e conversão em venda">
+    <AppPageHeader title="Orçamentos" subtitle="Pipeline comercial com reflexo em atendimento, caixa e faturamento.">
       <template #actions>
-        <DsButton variant="secondary" :loading="listLoading" @click="loadQuotes">Atualizar</DsButton>
+        <DsButton variant="secondary" :loading="listLoading" @click="loadQuotes">🔄 Atualizar</DsButton>
+        <DsButton tag="a" to="/counter-sales" variant="secondary">🛒 Vendas Assistidas</DsButton>
+        <DsButton tag="a" to="/appointments" variant="ghost">📅 Ver Agenda</DsButton>
       </template>
     </AppPageHeader>
 
+    <!-- Hub: KPI StatCards -->
+    <section class="hub-kpis">
+      <DsStatCard :label="quotes.length + ' orçamento(s)'" value="" icon="🧾" />
+      <DsStatCard :label="approvedCount + ' aprovado(s)'" value="" icon="✅" />
+      <DsStatCard :label="convertedCount + ' convertido(s)'" value="" icon="🛒" />
+      <DsStatCard :label="totalVolumeFormatted" value="" icon="💵" />
+    </section>
+
+    <!-- Hub: Operational Alerts -->
+    <section v-if="quoteAlerts.length > 0" class="hub-alerts">
+      <DsAlert
+        v-for="(alert, i) in quoteAlerts"
+        :key="i"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> — {{ alert.message }}
+      </DsAlert>
+    </section>
+
+    <!-- Hub: Quick Actions -->
+    <section class="hub-actions">
+      <DsCard title="Ações rápidas" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/counter-sales" icon="🛒">
+            Vendas Balcão
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">
+            Ver Caixa
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/billing" icon="💰">
+            Faturamento
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/pix" icon="💸">
+            PIX
+          </DsButton>
+          <DsButton variant="ghost" :loading="listLoading" @click="loadQuotes" icon="🔄">
+            Atualizar
+          </DsButton>
+        </div>
+      </DsCard>
+    </section>
+
     <DsAlert v-if="listError" variant="danger" dismissible @dismiss="listError = ''">
-      {{ listError }}
     </DsAlert>
     <DsAlert v-if="detailError" variant="danger" dismissible @dismiss="detailError = ''">
-      {{ detailError }}
     </DsAlert>
     <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
-      {{ formError }}
     </DsAlert>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
@@ -54,7 +96,7 @@
           </div>
           <DataTable
             :columns="quoteColumns"
-            :rows="quotes"
+            :rows="quoteRows"
             :loading="listLoading"
             empty-icon="📝"
             empty-title="Nenhum orçamento encontrado"
@@ -63,21 +105,21 @@
           >
             <template #cell-status="{ row }">
               <StatusBadge
-                :label="quoteStatusLabel((row as QuoteSummary).status)"
-                :variant="quoteStatusVariant((row as QuoteSummary).status)"
+                :label="quoteStatusLabel(quoteRow(row).status)"
+                :variant="quoteStatusVariant(quoteRow(row).status)"
               />
             </template>
             <template #cell-total="{ row }">
-              {{ formatCurrency((row as QuoteSummary).total) }}
+              {{ formatCurrency(quoteRow(row).total) }}
             </template>
             <template #cell-convertedToSaleId="{ row }">
-              <code v-if="(row as QuoteSummary).convertedToSaleId">{{
-                (row as QuoteSummary).convertedToSaleId
+              <code v-if="quoteRow(row).convertedToSaleId">{{
+                quoteRow(row).convertedToSaleId
               }}</code>
               <span v-else class="muted">—</span>
             </template>
             <template #cell-actions="{ row }">
-              <DsButton size="sm" variant="secondary" @click="selectQuote((row as QuoteSummary).id)">
+              <DsButton size="sm" variant="secondary" @click="selectQuote(quoteRow(row).id)">
                 Abrir
               </DsButton>
             </template>
@@ -116,7 +158,7 @@
             <DsCard title="Itens">
               <DataTable
                 :columns="itemColumns"
-                :rows="selectedItems"
+                :rows="quoteItemRows"
                 :loading="itemsLoading"
                 empty-icon="📦"
                 empty-title="Sem itens"
@@ -125,10 +167,10 @@
                 :compact="true"
               >
                 <template #cell-unitPrice="{ row }">{{
-                  formatCurrency((row as QuoteItemSummary).unitPrice)
+                  formatCurrency(quoteItemRow(row).unitPrice)
                 }}</template>
                 <template #cell-lineTotal="{ row }">{{
-                  formatCurrency((row as QuoteItemSummary).lineTotal)
+                  formatCurrency(quoteItemRow(row).lineTotal)
                 }}</template>
               </DataTable>
             </DsCard>
@@ -178,10 +220,11 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
 import { quoteService, type QuoteItemSummary, type QuoteSummary } from '@/services/quotes';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import { computed } from 'vue';
 
 const quoteColumns: DataTableColumn[] = [
@@ -211,6 +254,8 @@ const successMessage = ref('');
 const creatingQuote = ref(false);
 const actionLoading = ref('');
 const printPreview = ref('');
+const quoteRows = computed(() => quotes.value as unknown as DataTableRow[]);
+const quoteItemRows = computed(() => selectedItems.value as unknown as DataTableRow[]);
 const quoteForm = ref({
   ownerId: '',
   validUntil: '',
@@ -226,16 +271,36 @@ const itemForm = ref({
   notes: ''
 });
 
-const summaryCards = computed(() => {
-  const total = quotes.value.length;
-  const approved = quotes.value.filter((quote) => quote.status === 'approved').length;
-  const converted = quotes.value.filter((quote) => quote.convertedToSaleId).length;
-  const subtotal = quotes.value.reduce((sum, quote) => sum + quote.total, 0);
+const approvedCount = computed(() => quotes.value.filter((q) => q.status === 'approved').length);
+const convertedCount = computed(() => quotes.value.filter((q) => q.convertedToSaleId).length);
+const totalVolumeFormatted = computed(() =>
+  formatCurrency(quotes.value.reduce((sum, q) => sum + q.total, 0))
+);
 
+interface QuoteAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const quoteAlerts = computed<QuoteAlert[]>(() => {
+  const alerts: QuoteAlert[] = [];
+  if (approvedCount.value > 0) {
+    alerts.push({ variant: 'info', title: 'Aguardando conversão', message: `${approvedCount.value} orçamento(s) aprovado(s) e pronto(s) para converter em venda.` });
+  }
+  const expiredOrCancelled = quotes.value.filter((q) => q.status === 'expired' || q.status === 'cancelled' || q.status === 'rejected').length;
+  if (expiredOrCancelled > 0) {
+    alerts.push({ variant: 'warning', title: 'Orçamentos encerrados', message: `${expiredOrCancelled} orçamento(s) expirado(s), rejeitado(s) ou cancelado(s).` });
+  }
+  return alerts;
+});
+
+const summaryCards = computed(() => {
+  const subtotal = quotes.value.reduce((sum, quote) => sum + quote.total, 0);
   return [
-    { label: 'Orçamentos', value: total.toString(), hint: 'Total na fila comercial' },
-    { label: 'Aprovados', value: approved.toString(), hint: 'Prontos para conversão' },
-    { label: 'Convertidos', value: converted.toString(), hint: 'Já viraram venda' },
+    { label: 'Orçamentos', value: quotes.value.length.toString(), hint: 'Total na fila comercial' },
+    { label: 'Aprovados', value: approvedCount.value.toString(), hint: 'Prontos para conversão' },
+    { label: 'Convertidos', value: convertedCount.value.toString(), hint: 'Já viraram venda' },
     { label: 'Volume', value: formatCurrency(subtotal), hint: 'Valor total catalogado' }
   ];
 });
@@ -416,6 +481,14 @@ function formatCurrency(value: number): string {
 onMounted(() => {
   void loadQuotes();
 });
+
+function quoteRow(row: unknown): QuoteSummary {
+  return row as QuoteSummary;
+}
+
+function quoteItemRow(row: unknown): QuoteItemSummary {
+  return row as QuoteItemSummary;
+}
 </script>
 
 <style scoped>
@@ -428,6 +501,28 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.hub-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.hub-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hub-actions {
+  margin-bottom: 0;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .toolbar,

@@ -19,9 +19,11 @@
             :label="record.status === 'open' ? 'Aberto' : 'Concluído'"
             :variant="record.status === 'open' ? 'warning' : 'success'"
           />
-          <span class="muted" style="margin-left: 8px"> Paciente: {{ patientName }} </span>
+          <span class="muted" style="margin-left: 8px">Paciente: {{ patientName }}</span>
         </template>
         <template #actions>
+          <DsButton variant="secondary" tag="a" :to="`/encounters/${record.encounterId}`">Abrir atendimento</DsButton>
+          <DsButton variant="ghost" tag="a" :to="`/patients/${record.patientId}`">Ver paciente</DsButton>
           <DsButton variant="primary" @click="showNewEntryModal = true">+ Nova Entrada</DsButton>
           <DsButton variant="secondary" tag="a" to="/medical-records">Voltar</DsButton>
         </template>
@@ -41,7 +43,7 @@
         <!-- Clinical Entries -->
         <AppDetailSection title="Entradas Clínicas">
           <div v-if="entries.length === 0" class="muted">
-            Nenhuma entrada clínica registrada ainda.
+            Nenhuma entrada clínica registrada ainda. Use este prontuário para documentar triagem, evolução, condutas e anexos do atendimento.
           </div>
 
           <div v-else class="entries-list">
@@ -88,7 +90,7 @@
         <!-- Timeline -->
         <AppDetailSection title="Timeline Clínica">
           <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
-          <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado</div>
+          <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado ainda neste prontuário.</div>
           <div v-else class="timeline-list">
             <div v-for="event in timeline" :key="event.id" class="timeline-event">
               <span class="timeline-event__type">{{

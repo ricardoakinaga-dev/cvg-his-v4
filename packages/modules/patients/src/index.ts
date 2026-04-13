@@ -115,6 +115,28 @@ export class PatientsService {
     }
   }
 
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#patientRepository) {
+      return;
+    }
+
+    const patients = await this.#patientRepository.findByAccountId(accountId);
+    for (const patient of patients) {
+      this.#patients.set(patient.id, patient);
+    }
+
+    if (!this.#ownerPatientLinkRepository) {
+      return;
+    }
+
+    for (const patient of patients) {
+      const links = await this.#ownerPatientLinkRepository.findByPatientId(patient.id, accountId);
+      for (const link of links) {
+        this.#links.set(link.id, link);
+      }
+    }
+  }
+
   public list(search?: string): readonly PatientSummary[] {
     const query = search?.trim().toLowerCase();
     const patients = Array.from(this.#patients.values());

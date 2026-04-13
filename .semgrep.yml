@@ -1,0 +1,174 @@
+version: 1
+global_show_progress: true
+
+rules:
+  # TypeScript / JavaScript security rules
+  - id: typescript.security.detect-non-literal-fs-path
+    pattern: |
+      fs.$METHOD('$STRINGVAR')
+    message: Filename appears to be constructed from a non-literal value. This could allow path traversal attacks.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A05:2021 - Security Misconfiguration"
+
+  - id: typescript.security.detect-sql-injection
+    pattern: |
+      $QUERY.$METHOD($CONCAT(...))
+    message: SQL concatenation detected. Use parameterized queries to prevent SQL injection.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.detect-eval-with-input
+    pattern: |
+      eval($USERINPUT)
+    message: Dynamic code evaluation with user input detected. This is a serious security risk.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-95: Code Injection"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.detect-weak-crypto
+    pattern: |
+      require('crypto').$METHOD('md5')
+    message: MD5 is a weak cryptographic hash. Use SHA-256 or stronger.
+    languages:
+      - typescript
+      - javascript
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327: Use of Weak Cryptographic Algorithm"
+
+  - id: typescript.security.detect-exec-with-input
+    pattern: |
+      child_process.$METHOD($USERINPUT, ...)
+    message: User input passed to command execution. This could allow command injection attacks.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.detect-hardcoded-credentials
+    pattern: |
+      password: '$STRING'
+      secret: '$STRING'
+      api_key: '$STRING'
+      apisecret: '$STRING'
+    message: Hardcoded credential detected. Use environment variables instead.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+
+  - id: typescript.security.detect-insecure-randomness
+    pattern: |
+      Math.random()
+    message: Math.random() is not cryptographically secure. Use crypto.randomBytes() or crypto.randomUUID() instead.
+    languages:
+      - typescript
+      - javascript
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338: Use of Cryptographically Weak PRNG"
+
+  - id: typescript.security.detect-xss-inner-html
+    pattern: |
+      element.innerHTML = $USERINPUT
+    message: Direct assignment to innerHTML can lead to XSS vulnerabilities. Use textContent or sanitized HTML.
+    languages:
+      - typescript
+      - javascript
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79: Cross-site Scripting"
+      owasp: "A03:2021 - Injection"
+
+  - id: typescript.security.detect-promise-rejection
+    pattern: |
+      new Promise((resolve, reject) => { ... })
+    message: Unhandled Promise rejection. Ensure all promises have proper error handling.
+    languages:
+      - typescript
+      - javascript
+    severity: INFO
+
+  - id: typescript.security.detect-disable-certificate-validation
+    pattern: |
+      rejectUnauthorized: false
+      strictSSL: false
+    message: Certificate validation is disabled. This creates a security vulnerability for TLS connections.
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+
+  - id: typescript.security.detect-leaked-buffer
+    pattern: |
+      Buffer.from($USERINPUT)
+    message: Buffer created from user input. Ensure proper validation and encoding.
+    languages:
+      - typescript
+      - javascript
+    severity: INFO
+    metadata:
+      cwe: "CWE-120: Buffer Copy without Checking Size of Input"
+
+  - id: typescript.security.detect-unsafe-redirect
+    pattern: |
+      response.redirect($USERINPUT)
+      res.redirect($USERINPUT)
+    message: Redirect with user-controlled input could allow open redirect attacks.
+    languages:
+      - typescript
+      - javascript
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601: URL Redirection to Untrusted Site"
+      owasp: "A01:2021 - Broken Access Control"
+
+  - id: typescript.security.detect-cookie-no-secure
+    pattern: |
+      cookie: $NAME
+      Set-Cookie: $NAME=...
+    message: Cookie should include the Secure flag to prevent transmission over HTTP.
+    languages:
+      - typescript
+      - javascript
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614: Sensitive Cookie Without Secure Flag"
+      owasp: "A05:2021 - Security Misconfiguration"
+
+  - id: typescript.security.detect-missing-rate-limit
+    patterns:
+      - pattern: |
+          async function $FUNC(..., request, ...) { ... }
+      - pattern-not: |
+          async function $FUNC(..., request, ...) { ... requirePrincipal(...) ... }
+    message: Endpoint may be missing rate limiting. Consider adding RateLimiter middleware.
+    languages:
+      - typescript
+    severity: INFO
+    metadata:
+      cwe: "CWE-307: Excessive Resource Access"
+      owasp: "A04:2021 - Insecure Design"

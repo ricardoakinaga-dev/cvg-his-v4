@@ -1,7 +1,8 @@
 import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import { useAuthStore } from '@/stores/auth';
+import { spaRuntimeConfig } from '@/config/runtime';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_BASE = spaRuntimeConfig.apiBaseUrl;
 
 export interface ApiRequestOptions extends RequestInit {
   skipAuth?: boolean;

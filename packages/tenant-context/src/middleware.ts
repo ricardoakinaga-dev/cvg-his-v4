@@ -3,6 +3,8 @@ import { getTenantContext, type TenantContext } from './context.js';
 
 export interface TenantMiddlewareOptions {
   readonly defaultTenantId?: string;
+  readonly fallbackAccountId?: string;
+  readonly fallbackUserId?: string;
 }
 
 export function resolveTenantFromRequest(
@@ -13,7 +15,8 @@ export function resolveTenantFromRequest(
 
   const tenantId = (request.headers['x-tenant-id'] as string) ?? options.defaultTenantId;
 
-  const accountId = request.headers['x-account-id'] as string | undefined;
+  const accountId =
+    (request.headers['x-account-id'] as string | undefined) ?? options.fallbackAccountId;
 
   if (!tenantId) {
     throw new Error(
@@ -31,7 +34,7 @@ export function resolveTenantFromRequest(
     tenantId,
     accountId,
     branchId: request.headers['x-branch-id'] as string | undefined,
-    userId: request.headers['x-user-id'] as string | undefined,
+    userId: (request.headers['x-user-id'] as string | undefined) ?? options.fallbackUserId,
     correlationId
   };
 }

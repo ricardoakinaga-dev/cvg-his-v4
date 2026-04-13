@@ -1,15 +1,17 @@
 <template>
   <div class="queue-page">
     <AppPageHeader title="🏥 Fila Operacional">
-      <template #subtitle v-if="lastRefresh">
-        <span class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
+      <template #subtitle>
+        <span class="muted">Atendimento &gt; Fila. Pacientes aguardando chamada, triagem ou início do atendimento.</span>
+        <span v-if="lastRefresh" class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
         <DsSpinner v-if="isRefreshing" size="sm" inline label="Atualizando..." />
       </template>
       <template #actions>
         <DsButton variant="secondary" @click="manualRefresh" :loading="isRefreshing">
           🔄 Atualizar
         </DsButton>
-        <DsButton variant="secondary" tag="a" href="/scheduling">Voltar à Agenda</DsButton>
+        <DsButton variant="secondary" tag="a" href="/appointments">📅 Ver Agenda</DsButton>
+        <DsButton variant="secondary" tag="a" href="/triage">🧭 Triagem</DsButton>
         <DsButton variant="success" @click="openCheckInModal">Check-in Rápido</DsButton>
       </template>
     </AppPageHeader>
@@ -30,8 +32,15 @@
       v-else-if="entries.length === 0"
       icon="🏥"
       title="Fila operacional vazia"
-      description="Nenhum paciente aguardando atendimento."
-    />
+      description="Nenhum paciente aguardando. Use a agenda para confirmar presença ou faça um check-in rápido para alimentar a esteira."
+    >
+      <template #action>
+        <div class="queue-page__empty-actions">
+          <DsButton variant="secondary" tag="a" href="/appointments">📅 Ver Agenda</DsButton>
+          <DsButton variant="success" @click="openCheckInModal">Check-in Rápido</DsButton>
+        </div>
+      </template>
+    </EmptyState>
 
     <div v-else class="table-wrapper">
       <table class="data-table">
@@ -81,14 +90,16 @@
                   {{ callingId === entry.id ? 'Chamando...' : 'Chamar' }}
                 </DsButton>
                 <DsButton
-                  v-if="canStartCare(entry.status)"
+                  v-if="canHandleEncounter(entry)"
                   variant="success"
                   size="sm"
                   :loading="startingCareId === entry.id"
                   :disabled="startingCareId === entry.id"
-                  @click="handleStartCare(entry.id)"
+                  @click="handleEncounterFlow(entry)"
                 >
-                  {{ startingCareId === entry.id ? 'Iniciando...' : 'Iniciar Atendimento' }}
+                  {{
+                    startingCareId === entry.id ? 'Processando...' : encounterActionLabel(entry)
+                  }}
                 </DsButton>
                 <DsButton
                   v-if="canNoShow(entry.status)"
@@ -175,14 +186,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   listQueue,
   callQueueEntry,
-  startCareQueueEntry,
   noShowQueueEntry,
   checkInQueue
 } from '@/services/scheduling';
+import { encounterService } from '@/services/encounter';
 import type {
   QueueEntrySummary,
   QueueStatus,
@@ -204,6 +216,7 @@ import SearchSelect from '@/components/SearchSelect.vue';
 import type { SearchSelectOption } from '@/components/SearchSelect.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
+const router = useRouter();
 const entries = ref<QueueEntrySummary[]>([]);
 const loading = ref(true);
 const error = ref('');
@@ -289,12 +302,36 @@ function formatTime(d: string): string {
   }
 }
 
-function canStartCare(status: QueueStatus): boolean {
-  return status === 'called' || status === 'in_triage';
-}
-
 function canNoShow(status: QueueStatus): boolean {
   return ['waiting', 'called', 'in_triage', 'in_care', 'observation'].includes(status);
+}
+
+function canHandleEncounter(entry: QueueEntrySummary): boolean {
+  if (entry.status === 'called') {
+    return true;
+  }
+
+  if (entry.status === 'in_triage') {
+    return Boolean(entry.encounterId);
+  }
+
+  if (entry.status === 'in_care' || entry.status === 'observation') {
+    return Boolean(entry.encounterId);
+  }
+
+  return false;
+}
+
+function encounterActionLabel(entry: QueueEntrySummary): string {
+  if (entry.status === 'called') {
+    return 'Abrir triagem';
+  }
+
+  if (entry.status === 'in_triage') {
+    return 'Entrar em atendimento';
+  }
+
+  return 'Continuar atendimento';
 }
 
 async function handleCall(queueEntryId: string) {
@@ -309,13 +346,38 @@ async function handleCall(queueEntryId: string) {
   }
 }
 
-async function handleStartCare(queueEntryId: string) {
-  startingCareId.value = queueEntryId;
+async function handleEncounterFlow(entry: QueueEntrySummary) {
+  startingCareId.value = entry.id;
   try {
-    await startCareQueueEntry(queueEntryId);
-    await loadQueue();
+    if (!entry.encounterId) {
+      const created = await encounterService.create({
+        patientId: entry.patientId,
+        ownerId: entry.ownerId,
+        appointmentId: entry.appointmentId ?? undefined,
+        queueEntryId: entry.id,
+        visitType: entry.appointmentId ? 'scheduled' : 'walk_in',
+        origin: entry.appointmentId ? 'schedule' : 'reception',
+        reason: entry.reason
+      });
+      await encounterService.transition(created.id, { nextStatus: 'in_triage' });
+      successMessage.value = 'Paciente encaminhado para triagem.';
+      await loadQueue();
+      await router.push(`/encounters/${created.id}`);
+      return;
+    }
+
+    if (entry.status === 'in_triage') {
+      await encounterService.transition(entry.encounterId, { nextStatus: 'in_care' });
+      successMessage.value = 'Atendimento iniciado com sucesso.';
+      await loadQueue();
+      await router.push(`/encounters/${entry.encounterId}`);
+      return;
+    }
+
+    await router.push(`/encounters/${entry.encounterId}`);
+    return;
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao iniciar atendimento';
+    error.value = err instanceof Error ? err.message : 'Erro ao conduzir fluxo de atendimento';
   } finally {
     startingCareId.value = null;
   }
@@ -568,6 +630,12 @@ defineExpose({
 .actions-group {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
+}
+
+.queue-page__empty-actions {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .checkin-form {

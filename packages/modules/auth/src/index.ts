@@ -22,13 +22,12 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
-import type { SessionRepository } from './repositories/session.repository.js';
+import type {
+  PersistedSessionRecord,
+  SessionRepository
+} from './repositories/session.repository.js';
 
-interface SessionRecord extends SessionSummary {
-  readonly roleCodes: readonly string[];
-  readonly refreshNonce: string;
-  readonly revokedAt?: string;
-}
+type SessionRecord = PersistedSessionRecord;
 
 interface TokenPayload {
   readonly typ: 'access' | 'refresh';
@@ -348,6 +347,29 @@ export class AuthService {
     return Array.from(this.#sessions.values());
   }
 
+  public async hydrateFromRepository(userIds?: readonly UserId[]): Promise<void> {
+    if (!this.#sessionRepository) {
+      return;
+    }
+
+    const targetUserIds = userIds ?? this.#users.list().map((user) => user.id);
+
+    for (const userId of targetUserIds) {
+      const user = this.#users.getOrThrow(userId);
+      const persistedSessions = await this.#sessionRepository.findByUserId(userId);
+
+      for (const session of persistedSessions) {
+        const existing = this.#sessions.get(session.sessionId);
+        this.#sessions.set(session.sessionId, {
+          ...(existing ?? session),
+          ...session,
+          roleCodes: user.roleCodes,
+          refreshNonce: session.refreshNonce || existing?.refreshNonce || createCorrelationId('rnonce')
+        });
+      }
+    }
+  }
+
   #createSession(user: UserRecord): SessionRecord {
     const authTime = nowIso();
     const session: SessionRecord = {
@@ -486,7 +508,11 @@ function toEpochSeconds(isoDate: string): number {
   return Math.floor(new Date(isoDate).getTime() / 1000);
 }
 
-export type { SessionRepository } from './repositories/session.repository.js';
+export type {
+  PersistedSessionRecord,
+  SessionRepository,
+  UpdateSessionParams
+} from './repositories/session.repository.js';
 export { DatabaseSessionRepository } from './repositories/database-session.repository.js';
 export { BruteForceProtection } from './brute-force.js';
 

@@ -1,10 +1,43 @@
 <template>
   <div class="pix-page">
-    <AppPageHeader title="PIX" subtitle="Intents PIX reais com a abstração segura do gateway local">
+    <AppPageHeader title="PIX" subtitle="Pagamentos instantâneos, intents e conferência operacional do financeiro">
       <template #actions>
         <DsButton variant="secondary" @click="resetForm">Limpar</DsButton>
       </template>
     </AppPageHeader>
+
+    <section class="pix-overview">
+      <DsCard title="Resumo operacional do PIX">
+        <div class="overview-grid">
+          <div class="overview-card">
+            <span class="overview-card__value">{{ formatCurrency(form.amount || 0) }}</span>
+            <span class="overview-card__label">Valor em edição</span>
+          </div>
+          <div class="overview-card">
+            <span class="overview-card__value">{{ lastIntent ? lastIntent.status : '—' }}</span>
+            <span class="overview-card__label">Último status</span>
+          </div>
+          <div class="overview-card">
+            <span class="overview-card__value">{{ lastIntent ? lastIntent.provider : '—' }}</span>
+            <span class="overview-card__label">Provider</span>
+          </div>
+          <div class="overview-card">
+            <span class="overview-card__value">{{ lastIntent ? '1' : '0' }}</span>
+            <span class="overview-card__label">Intents nesta sessão</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="pix-actions">
+      <DsCard title="Ações rápidas — Meios de pagamento" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/cash" icon="🏦">Caixa</DsButton>
+          <DsButton variant="secondary" tag="a" to="/billing" icon="💰">Faturamento</DsButton>
+          <DsButton variant="secondary" tag="a" to="/api-client" icon="🛠️">Cliente API</DsButton>
+        </div>
+      </DsCard>
+    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
@@ -88,6 +121,43 @@ function formatCurrency(value: number): string {
 </script>
 
 <style scoped>
+.pix-overview,
+.pix-actions {
+  margin-bottom: 0;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.overview-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.overview-card__value {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.overview-card__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .pix-grid {
   display: grid;
   gap: 16px;

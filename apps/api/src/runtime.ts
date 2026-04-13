@@ -10,7 +10,11 @@ import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
 import type { SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
-import { DiagnosticsService } from '@cvg-his-v2/module-diagnostics';
+import {
+  DiagnosticsService,
+  InMemoryLaboratoryCatalogRepository,
+  LaboratoryService
+} from '@cvg-his-v2/module-diagnostics';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   EncounterRepository,
@@ -37,18 +41,21 @@ import {
   NotificationsService,
   type NotificationRepository
 } from '@cvg-his-v2/module-notifications';
-import { OwnersService } from '@cvg-his-v2/module-owners';
+import { OwnersService, createSeedOwners } from '@cvg-his-v2/module-owners';
 import type { OwnerRepository } from '@cvg-his-v2/module-owners';
-import { PatientsService } from '@cvg-his-v2/module-patients';
+import { PatientsService, createSeedLinks, createSeedPatients } from '@cvg-his-v2/module-patients';
 import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/module-patients';
 import { SchedulingService, createSeedAppointments } from '@cvg-his-v2/module-scheduling';
-import { StaffService } from '@cvg-his-v2/module-staff';
+import { StaffService, createSeedStaff } from '@cvg-his-v2/module-staff';
 import type { StaffRepository } from '@cvg-his-v2/module-staff';
 import { SurgeryService } from '@cvg-his-v2/module-surgery';
 import type { SurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { TriageService } from '@cvg-his-v2/module-triage';
 import { UsersService } from '@cvg-his-v2/module-users';
-import type { DiagnosticOrderRepository } from '@cvg-his-v2/module-diagnostics';
+import type {
+  DiagnosticOrderRepository,
+  LaboratoryCatalogRepository
+} from '@cvg-his-v2/module-diagnostics';
 import { DischargesService } from '@cvg-his-v2/module-discharges';
 import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import { QuotesService } from '@cvg-his-v2/module-quotes';
@@ -118,6 +125,7 @@ export interface RuntimeRepositories {
   readonly inpatientProgress?: InpatientProgressRepository;
   readonly surgeryCase?: SurgeryCaseRepository;
   readonly diagnosticOrder?: DiagnosticOrderRepository;
+  readonly laboratoryCatalog?: LaboratoryCatalogRepository;
   readonly discharge?: DischargeRepository;
   readonly prescriptionExecution?: PrescriptionExecutionRepository;
   readonly administrationEvent?: AdministrationEventRepository;
@@ -152,14 +160,39 @@ export interface ApiRuntimeOptions {
   readonly mfaEncryptionKey?: string;
 }
 
+function createRuntimeSeeds<T>(repository: unknown, fallbackSeeds: readonly T[]): readonly T[] {
+  return repository ? [] : fallbackSeeds;
+}
+
+function resolveBootstrapAccountId(
+  ...candidates: Array<AccountId | null | undefined>
+): AccountId | undefined {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate as AccountId;
+    }
+  }
+
+  return undefined;
+}
+
 export function createApiRuntime(options: ApiRuntimeOptions) {
   const repos = options.repositories ?? {};
   const inMemoryRepos = createInMemoryRuntimeRepositories();
 
   const accessControl = new AccessControlService({ repository: repos.accessControl });
-  const users = new UsersService({ repository: repos.users });
-  const staff = new StaffService({ repository: repos.staff });
-  const owners = new OwnersService({ ownerRepository: repos.owner });
+  const users = new UsersService({
+    repository: repos.users,
+    seedUsersEnabled: repos.users === undefined
+  });
+  const staff = new StaffService(
+    { repository: repos.staff },
+    createRuntimeSeeds(repos.staff, createSeedStaff())
+  );
+  const owners = new OwnersService({
+    ownerRepository: repos.owner,
+    seedOwners: createRuntimeSeeds(repos.owner, createSeedOwners())
+  });
   const webhooks = new WebhooksService({ repository: repos.webhook ?? inMemoryRepos.webhook });
   const apiKeys = new ApiKeysService(repos.apiKey ?? inMemoryRepos.apiKey);
   const eventBus = new EventBusService(repos.outbox ?? inMemoryRepos.outbox);
@@ -181,6 +214,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     owners,
     patientRepository: repos.patient,
     ownerPatientLinkRepository: repos.ownerPatientLink,
+    seedPatients: createRuntimeSeeds(repos.patient, createSeedPatients()),
+    seedLinks: createRuntimeSeeds(repos.ownerPatientLink, createSeedLinks()),
     async onPatientCreated(patient) {
       await publishEvent('patients' as ModuleName, 'patient.created', {
         id: patient.id,
@@ -208,35 +243,43 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     new RuntimePatientLookup(patients),
     settingsLookup
   );
-  const scheduling = new SchedulingService(owners, patients, [], {
-    repository: repos.scheduling,
-    async onAppointmentCreated(appointment) {
-      await publishEvent('scheduling' as ModuleName, 'appointment.scheduled', {
-        id: appointment.id,
-        accountId: appointment.accountId,
-        patientId: appointment.patientId,
-        ownerId: appointment.ownerId,
-        scheduledAt: appointment.scheduledAt,
-        visitType: appointment.visitType,
-        reason: appointment.reason,
-        status: appointment.status,
-        createdAt: appointment.createdAt
-      });
-      void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
-    },
-    async onAppointmentStatusChanged(appointment, previousStatus) {
-      await publishEvent('scheduling' as ModuleName, 'appointment.status_changed', {
-        id: appointment.id,
-        accountId: appointment.accountId,
-        patientId: appointment.patientId,
-        ownerId: appointment.ownerId,
-        previousStatus,
-        newStatus: appointment.status,
-        reason: appointment.reason,
-        updatedAt: appointment.updatedAt
-      });
+  const services = new ServicesService({ repository: repos.services });
+  const scheduling = new SchedulingService(
+    owners,
+    patients,
+    createRuntimeSeeds(repos.scheduling, createSeedAppointments()),
+    {
+      repository: repos.scheduling,
+      staff,
+      services,
+      async onAppointmentCreated(appointment) {
+        await publishEvent('scheduling' as ModuleName, 'appointment.scheduled', {
+          id: appointment.id,
+          accountId: appointment.accountId,
+          patientId: appointment.patientId,
+          ownerId: appointment.ownerId,
+          scheduledAt: appointment.scheduledAt,
+          visitType: appointment.visitType,
+          reason: appointment.reason,
+          status: appointment.status,
+          createdAt: appointment.createdAt
+        });
+        void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
+      },
+      async onAppointmentStatusChanged(appointment, previousStatus) {
+        await publishEvent('scheduling' as ModuleName, 'appointment.status_changed', {
+          id: appointment.id,
+          accountId: appointment.accountId,
+          patientId: appointment.patientId,
+          ownerId: appointment.ownerId,
+          previousStatus,
+          newStatus: appointment.status,
+          reason: appointment.reason,
+          updatedAt: appointment.updatedAt
+        });
+      }
     }
-  });
+  );
   const encounters = new EncountersService({
     owners,
     patients,
@@ -288,6 +331,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const diagnostics = new DiagnosticsService(encounters, {
     diagnosticOrderRepository: repos.diagnosticOrder
   });
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: repos.laboratoryCatalog ?? new InMemoryLaboratoryCatalogRepository()
+  });
   const billing = new BillingService(encounters, {
     repository: repos.billing,
     async onRecordCreated(record) {
@@ -324,9 +370,13 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   registry.add('webhooks', new WebhooksEventHandlers({ webhooks }));
   registry.registerAll(eventBus);
 
-  const inventory = new InventoryService(encounters, createSeedItems(), {
-    repository: repos.inventory
-  });
+  const inventory = new InventoryService(
+    encounters,
+    createRuntimeSeeds(repos.inventory, createSeedItems()),
+    {
+      repository: repos.inventory
+    }
+  );
   const notifications = new NotificationsService({
     encounters,
     patients,
@@ -358,7 +408,6 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     eventRepository: repos.administrationEvent
   });
   const products = new ProductsService({ repository: repos.products });
-  const services = new ServicesService({ repository: repos.services });
   const cash = new CashService({ repository: repos.cash });
   const counterSales = new CounterSalesService({
     repository: repos.counterSales,
@@ -419,7 +468,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
 
   let mfa: MfaService | undefined;
   if (options.enableMfa === true) {
-    const encryptionKey = options.mfaEncryptionKey ?? process.env.MFA_SECRET_ENCRYPTION_KEY;
+    const encryptionKey = options.mfaEncryptionKey;
     validateMasterKey(encryptionKey);
     mfa = new MfaService({ repository: repos.mfa, encryptionKey });
   }
@@ -456,6 +505,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     sectorBedService,
     surgery,
     diagnostics,
+    laboratory,
     billing,
     inventory,
     notifications,
@@ -477,19 +527,36 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   return {
     ...serviceMap,
     async initialize(): Promise<void> {
-      await Promise.allSettled([
-        accessControl.hydrateFromDatabase('acc_cvg_demo' as never),
-        billing.hydrateFromDatabase(),
-        inventory.hydrateFromDatabase(),
-        scheduling.hydrateFromDatabase(),
-        triage.hydrateFromDatabase(undefined as never),
-        staff.hydrateFromDatabase(undefined as never),
-        users.hydrateFromDatabase(),
-        products.hydrateFromDatabase('' as never),
-        services.hydrateFromDatabase('' as never),
-        counterSales.hydrateFromDatabase('' as never),
-        quotes.hydrateFromDatabase('' as never)
-      ]);
+      await Promise.allSettled([users.hydrateFromDatabase(), staff.hydrateFromDatabase(undefined)]);
+      await auth.hydrateFromRepository(users.list().map((user) => user.id));
+
+      const bootstrapAccountId = resolveBootstrapAccountId(
+        users.list()[0]?.accountId,
+        staff.list()[0]?.accountId,
+        owners.list()[0]?.accountId,
+        patients.list()[0]?.accountId
+      );
+
+      const scopedHydrations = bootstrapAccountId
+        ? [
+            owners.hydrateFromDatabase(bootstrapAccountId),
+            patients.hydrateFromDatabase(bootstrapAccountId),
+            encounters.hydrateFromDatabase(bootstrapAccountId),
+            accessControl.hydrateFromDatabase(bootstrapAccountId),
+            diagnostics.hydrateFromDatabase(bootstrapAccountId),
+            laboratory.hydrateCatalog(bootstrapAccountId),
+            inventory.hydrateFromDatabase(bootstrapAccountId),
+            scheduling.hydrateFromDatabase(bootstrapAccountId),
+            triage.hydrateFromDatabase(bootstrapAccountId),
+            products.hydrateFromDatabase(bootstrapAccountId),
+            services.hydrateFromDatabase(bootstrapAccountId),
+            counterSales.hydrateFromDatabase(bootstrapAccountId),
+            quotes.hydrateFromDatabase(bootstrapAccountId),
+            cash.hydrateFromDatabase(bootstrapAccountId)
+          ]
+        : [];
+
+      await Promise.allSettled([billing.hydrateFromDatabase(), ...scopedHydrations]);
     }
   };
 }

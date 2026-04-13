@@ -9,6 +9,8 @@ import type {
   AccountId,
   InventoryConsumptionId,
   InventoryConsumptionSummary,
+  InventoryLotId,
+  InventoryLotSummary,
   InventoryItemId,
   InventoryItemSummary,
   UserId
@@ -58,6 +60,150 @@ function createSeedItems(): InventoryItemSummary[] {
   ];
 }
 
+function resolveLotStatus(
+  quantity: number,
+  expiryDate?: string
+): InventoryLotSummary['status'] {
+  if (quantity <= 0) {
+    return 'depleted';
+  }
+
+  if (!expiryDate) {
+    return 'active';
+  }
+
+  const now = Date.now();
+  const expiry = new Date(expiryDate).getTime();
+  if (expiry <= now) {
+    return 'expired';
+  }
+
+  const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+  return diffDays <= 30 ? 'expiring' : 'active';
+}
+
+function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
+  const baseCreatedAt = item.updatedAt || item.createdAt;
+  const makeLot = (
+    suffix: string,
+    quantity: number,
+    lotNumber: string,
+    expiryDate?: string,
+    manufactureDate?: string,
+    location?: string,
+    supplier?: string
+  ): InventoryLotSummary => ({
+    id: `${item.id}-${suffix}` as InventoryLotId,
+    accountId: item.accountId,
+    inventoryItemId: item.id,
+    sku: item.sku,
+    itemName: item.name,
+    lotNumber,
+    quantity,
+    unit: item.unit,
+    location,
+    supplier,
+    manufactureDate,
+    expiryDate,
+    status: resolveLotStatus(quantity, expiryDate),
+    createdAt: baseCreatedAt,
+    updatedAt: baseCreatedAt
+  });
+
+  if (item.onHandQuantity <= 0) {
+    return [
+      makeLot('lot-0', 0, `AUTO-${item.sku}-0`, undefined, undefined, 'Ajuste', 'Sistema')
+    ];
+  }
+
+  if (item.sku === 'MED-001') {
+    const firstQty = Number((item.onHandQuantity * 0.42).toFixed(2));
+    const secondQty = Number((item.onHandQuantity - firstQty).toFixed(2));
+    return [
+      makeLot(
+        'lot-a',
+        firstQty,
+        'DIP-240318-A',
+        '2026-04-18T00:00:00.000Z',
+        '2026-02-15T00:00:00.000Z',
+        'Farmacia fria A1',
+        'PharmaVet'
+      ),
+      makeLot(
+        'lot-b',
+        secondQty,
+        'DIP-240401-B',
+        '2026-07-30T00:00:00.000Z',
+        '2026-03-12T00:00:00.000Z',
+        'Farmacia fria A2',
+        'PharmaVet'
+      )
+    ];
+  }
+
+  if (item.sku === 'MAT-014') {
+    const firstQty = Number((item.onHandQuantity * 0.35).toFixed(2));
+    const secondQty = Number((item.onHandQuantity - firstQty).toFixed(2));
+    return [
+      makeLot(
+        'lot-a',
+        firstQty,
+        'GAZ-240210-A',
+        '2026-06-15T00:00:00.000Z',
+        '2026-01-20T00:00:00.000Z',
+        'Almox central B3',
+        'VetSurgical'
+      ),
+      makeLot(
+        'lot-b',
+        secondQty,
+        'GAZ-240325-B',
+        '2026-10-20T00:00:00.000Z',
+        '2026-03-01T00:00:00.000Z',
+        'Almox central B4',
+        'VetSurgical'
+      )
+    ];
+  }
+
+  if (item.sku === 'MAT-021') {
+    const firstQty = Number((item.onHandQuantity * 0.33).toFixed(2));
+    const secondQty = Number((item.onHandQuantity - firstQty).toFixed(2));
+    return [
+      makeLot(
+        'lot-a',
+        firstQty,
+        'CAT-240105-A',
+        '2026-04-10T00:00:00.000Z',
+        '2025-12-10T00:00:00.000Z',
+        'Procedimentos C1',
+        'CatMed'
+      ),
+      makeLot(
+        'lot-b',
+        secondQty,
+        'CAT-240326-B',
+        '2026-05-05T00:00:00.000Z',
+        '2026-02-28T00:00:00.000Z',
+        'Procedimentos C2',
+        'CatMed'
+      )
+    ];
+  }
+
+  return [
+    makeLot(
+      'lot-a',
+      Number(item.onHandQuantity.toFixed(2)),
+      `AUTO-${item.sku}-A`,
+      '2026-08-31T00:00:00.000Z',
+      '2026-03-01T00:00:00.000Z',
+      'Estoque geral',
+      'Sistema'
+    )
+  ];
+}
+
 import type { InventoryRepository } from './repositories/database-inventory.repository.js';
 
 export interface InventoryServiceOptions {
@@ -69,6 +215,7 @@ export class InventoryService {
   readonly #encounters: EncountersService;
   readonly #items = new Map<InventoryItemId, InventoryItemSummary>();
   readonly #consumptions: InventoryConsumptionSummary[] = [];
+  readonly #lots = new Map<InventoryLotId, InventoryLotSummary>();
 
   public constructor(
     encounters: EncountersService,
@@ -79,6 +226,9 @@ export class InventoryService {
     this.#encounters = encounters;
     for (const item of seedItems) {
       this.#items.set(item.id, item);
+      for (const lot of buildLotsForItem(item)) {
+        this.#lots.set(lot.id, lot);
+      }
     }
   }
 
@@ -86,16 +236,80 @@ export class InventoryService {
     return this.#repository ? 'database' : 'in-memory';
   }
 
-  public async hydrateFromDatabase(): Promise<void> {
-    if (!this.#repository) return;
-    const items = await this.#repository.findAllItems('' as never);
-    for (const item of items) {
-      this.#items.set(item.id, item);
+  private replaceLotsForItem(item: InventoryItemSummary): void {
+    for (const [lotId, lot] of this.#lots.entries()) {
+      if (lot.inventoryItemId === item.id) {
+        this.#lots.delete(lotId);
+      }
+    }
+
+    for (const lot of buildLotsForItem(item)) {
+      this.#lots.set(lot.id, lot);
     }
   }
 
-  public listItems(): readonly InventoryItemSummary[] {
-    return Array.from(this.#items.values());
+  private drainLots(inventoryItemId: InventoryItemId, quantity: number): void {
+    let remaining = quantity;
+    const candidateLots = Array.from(this.#lots.values())
+      .filter((lot) => lot.inventoryItemId === inventoryItemId && lot.quantity > 0)
+      .sort((left, right) => {
+        const leftExpiry = left.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        const rightExpiry = right.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        return leftExpiry.localeCompare(rightExpiry);
+      });
+
+    for (const lot of candidateLots) {
+      if (remaining <= 0) {
+        break;
+      }
+
+      const drained = Math.min(lot.quantity, remaining);
+      const updatedQuantity = Number((lot.quantity - drained).toFixed(2));
+      remaining = Number((remaining - drained).toFixed(2));
+      this.#lots.set(lot.id, {
+        ...lot,
+        quantity: updatedQuantity,
+        status: resolveLotStatus(updatedQuantity, lot.expiryDate),
+        updatedAt: nowIso()
+      });
+    }
+
+    if (remaining > 0) {
+      throw new ConflictError('Inventory lots out of sync with current stock', {
+        inventoryItemId,
+        remainingQuantity: remaining
+      });
+    }
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId = 'acc_cvg_demo' as never): Promise<void> {
+    if (!this.#repository) return;
+    const items = await this.#repository.findAllItems(accountId);
+    const consumptions = await this.#repository.findConsumptions(accountId);
+    for (const item of items) {
+      this.#items.set(item.id, item);
+      this.replaceLotsForItem(item);
+    }
+    this.#consumptions.splice(0, this.#consumptions.length, ...consumptions);
+  }
+
+  public listItems(
+    accountId?: AccountId,
+    filters?: { readonly search?: string }
+  ): readonly InventoryItemSummary[] {
+    let items = Array.from(this.#items.values()).filter(
+      (item) => !accountId || item.accountId === accountId
+    );
+
+    if (filters?.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)
+      );
+    }
+
+    return items;
   }
 
   public getItemOrThrow(inventoryItemId: InventoryItemId): InventoryItemSummary {
@@ -128,6 +342,7 @@ export class InventoryService {
       updatedAt: nowIso()
     };
     this.#items.set(item.id, updatedItem);
+    this.drainLots(item.id, quantity);
 
     if (this.#repository) {
       await this.#repository.updateItem(updatedItem);
@@ -155,6 +370,9 @@ export class InventoryService {
       createdAt: nowIso()
     };
     this.#consumptions.unshift(consumption);
+    if (this.#repository) {
+      await this.#repository.createConsumption(consumption);
+    }
     return consumption;
   }
 
@@ -162,6 +380,27 @@ export class InventoryService {
     return this.#consumptions.filter(
       (consumption) => !encounterId || consumption.encounterId === encounterId
     );
+  }
+
+  public listConsumptionsByAccount(
+    accountId: AccountId,
+    encounterId?: string
+  ): readonly InventoryConsumptionSummary[] {
+    return this.#consumptions.filter(
+      (consumption) =>
+        consumption.accountId === accountId &&
+        (!encounterId || consumption.encounterId === encounterId)
+    );
+  }
+
+  public listLots(accountId?: AccountId): readonly InventoryLotSummary[] {
+    return Array.from(this.#lots.values())
+      .filter((lot) => !accountId || lot.accountId === accountId)
+      .sort((left, right) => {
+        const leftExpiry = left.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        const rightExpiry = right.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        return leftExpiry.localeCompare(rightExpiry);
+      });
   }
 
   public async consumeForSale(
@@ -185,6 +424,7 @@ export class InventoryService {
       updatedAt: nowIso()
     };
     this.#items.set(item.id, updatedItem);
+    this.drainLots(item.id, qty);
 
     if (this.#repository) {
       await this.#repository.updateItem(updatedItem);
@@ -205,6 +445,9 @@ export class InventoryService {
       createdAt: nowIso()
     };
     this.#consumptions.unshift(consumption);
+    if (this.#repository) {
+      await this.#repository.createConsumption(consumption);
+    }
     return consumption;
   }
 
@@ -235,6 +478,7 @@ export class InventoryService {
     };
 
     this.#items.set(item.id, item);
+    this.replaceLotsForItem(item);
 
     if (this.#repository) {
       this.#repository.createItem(item);
@@ -269,6 +513,7 @@ export class InventoryService {
     };
 
     this.#items.set(updatedItem.id, updatedItem);
+    this.replaceLotsForItem(updatedItem);
 
     if (this.#repository) {
       this.#repository.updateItem(updatedItem);

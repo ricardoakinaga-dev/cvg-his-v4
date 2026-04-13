@@ -1,8 +1,28 @@
-import type { NavGroup, NavItem } from '@/types';
+import type { NavItem } from '@/types';
 
-export interface AppNavGroup extends NavGroup {
+export interface AppNavItem extends NavItem {
+  keywords?: string[];
+}
+
+export interface AppNavSection {
   id: string;
+  label: string;
+  items: AppNavItem[];
+}
+
+export interface AppNavGroup {
+  id: string;
+  label: string;
+  icon: string;
   description: string;
+  sections: AppNavSection[];
+}
+
+export interface AppNavLocation {
+  area: 'main' | 'enterprise';
+  group: AppNavGroup;
+  section: AppNavSection;
+  item: AppNavItem;
 }
 
 export const navGroups: AppNavGroup[] = [
@@ -10,119 +30,434 @@ export const navGroups: AppNavGroup[] = [
     id: 'inicio',
     label: 'Início',
     icon: '🏠',
-    description: 'Entrada, visão geral e atalhos principais',
-    items: [
-      { label: 'Dashboard', path: '/', icon: '📊' }
+    description: 'Entrada operacional, visão geral e atalhos do dia',
+    sections: [
+      {
+        id: 'inicio-visao-geral',
+        label: 'Visão geral',
+        items: [
+          { label: 'Dashboard', path: '/', icon: '📊', keywords: ['inicio', 'home', 'painel'] }
+        ]
+      }
     ]
   },
   {
-    id: 'cadastro',
-    label: 'Cadastro',
-    icon: '👤',
-    description: 'Tutores, pacientes e entidades mestre',
-    items: [
-      { label: 'Tutores', path: '/owners', icon: '👤' },
-      { label: 'Pacientes', path: '/patients', icon: '🐾' }
+    id: 'atendimento',
+    label: 'Atendimento',
+    icon: '🩺',
+    description: 'Recepção, jornada clínica, internação e cadastros assistenciais',
+    sections: [
+      {
+        id: 'atendimento-cadastrados',
+        label: 'Cadastrados',
+        items: [
+          { label: 'Pacientes', path: '/patients', icon: '🐾', keywords: ['animais', 'pet', 'cadastro'] },
+          { label: 'Tutores', path: '/owners', icon: '👤', keywords: ['clientes', 'owners', 'responsaveis'] },
+          { label: 'Serviços', path: '/services', icon: '🛠️', keywords: ['catalogo', 'procedimentos'] }
+        ]
+      },
+      {
+        id: 'atendimento-atendimentos',
+        label: 'Atendimentos',
+        items: [
+          { label: 'Agenda', path: '/appointments', icon: '📅', keywords: ['agendamentos', 'calendario'] },
+          {
+            label: 'Fila Operacional',
+            path: '/queue',
+            icon: '🏥',
+            keywords: ['fila', 'esteira', 'recepcao', 'care queue', 'fila operacional']
+          },
+          {
+            label: 'Atendimentos',
+            path: '/encounters',
+            icon: '🩺',
+            keywords: ['consulta', 'encounter', 'atendimento']
+          },
+          {
+            label: 'Triagem',
+            path: '/triage',
+            icon: '🏷️',
+            keywords: ['classificacao', 'acolhimento']
+          },
+          {
+            label: 'Prontuário',
+            path: '/medical-records',
+            icon: '📋',
+            keywords: ['prontuario', 'historico clinico', 'medical record']
+          },
+          {
+            label: 'Cirurgias',
+            path: '/surgery',
+            icon: '🔪',
+            keywords: ['cirurgia', 'bloco cirurgico']
+          }
+        ]
+      },
+      {
+        id: 'atendimento-internacao',
+        label: 'Internação',
+        items: [
+          {
+            label: 'Internação',
+            path: '/inpatient',
+            icon: '🛏️',
+            keywords: ['hospitalizacao', 'stay']
+          },
+          {
+            label: 'Mapa de Leitos',
+            path: '/inpatient/board',
+            icon: '🗺️',
+            keywords: ['bed board', 'ocupacao', 'boxes']
+          },
+          { label: 'Setores', path: '/sectors', icon: '🏢', keywords: ['alas', 'unidades'] },
+          { label: 'Leitos', path: '/beds', icon: '🛌', keywords: ['camas', 'boxes'] },
+          { label: 'Altas', path: '/discharges', icon: '🏠', keywords: ['alta clinica', 'discharge'] }
+        ]
+      }
     ]
   },
   {
-    id: 'operacao',
-    label: 'Operação',
-    icon: '📅',
-    description: 'Agenda, fila e atendimento',
-    items: [
-      { label: 'Agendamentos', path: '/appointments', icon: '📅' },
-      { label: 'Agenda Operacional', path: '/scheduling', icon: '🗓️' },
-      { label: 'Fila', path: '/queue', icon: '🏥' },
-      { label: 'Atendimentos', path: '/encounters', icon: '🩺' },
-      { label: 'Prontuário', path: '/medical-records', icon: '📋' }
-    ]
-  },
-  {
-    id: 'assistencial',
-    label: 'Assistencial',
-    icon: '🧪',
-    description: 'Jornadas clínicas avançadas',
-    items: [
-      { label: 'Triagem', path: '/triage', icon: '🏷️' },
-      { label: 'Diagnósticos', path: '/diagnostics', icon: '🔬' },
-      { label: 'Prescrições', path: '/prescriptions', icon: '💊' },
-      { label: 'Execuções', path: '/prescription-executions', icon: '💉' },
-      { label: 'Internação', path: '/inpatient', icon: '🛏️' },
-      { label: 'Mapa de Leitos', path: '/inpatient/board', icon: '🗺️' },
-      { label: 'Setores', path: '/sectors', icon: '🏢' },
-      { label: 'Leitos', path: '/beds', icon: '🛏️' },
-      { label: 'Cirurgias', path: '/surgery', icon: '🔪' },
-      { label: 'Altas', path: '/discharges', icon: '🏠' }
-    ]
-  },
-  {
-    id: 'comercial',
-    label: 'Comercial',
-    icon: '💰',
-    description: 'Financeiro, balcão e conversão',
-    items: [
-      { label: 'Faturamento', path: '/billing', icon: '💰' },
-      { label: 'Caixa', path: '/cash', icon: '🧾' },
-      { label: 'PIX', path: '/pix', icon: '💸' },
-      { label: 'Vendas', path: '/counter-sales', icon: '🛒' },
-      { label: 'Orçamentos', path: '/quotes', icon: '📝' },
-      { label: 'Relatórios Comerciais', path: '/commercial-reports', icon: '📊' }
+    id: 'laboratorio',
+    label: 'Laboratório',
+    icon: '🔬',
+    description: 'Exames, diagnósticos e rotinas laboratoriais',
+    sections: [
+      {
+        id: 'laboratorio-visao-geral',
+        label: 'Visão geral',
+        items: [
+          {
+            label: 'Laboratório',
+            path: '/laboratory',
+            icon: '🔬',
+            keywords: ['hub', 'laboratorio', 'visao geral', 'painel laboratorial']
+          }
+        ]
+      },
+      {
+        id: 'laboratorio-atendimentos',
+        label: 'Atendimentos',
+        items: [
+          {
+            label: 'Pedidos de Exame',
+            path: '/laboratory/orders',
+            icon: '🧪',
+            keywords: ['pedidos', 'solicitacoes', 'ordens', 'exam orders']
+          },
+          {
+            label: 'Resultados',
+            path: '/laboratory/results',
+            icon: '📋',
+            keywords: ['laudos', 'resultados', 'analises', 'exam results']
+          },
+          {
+            label: 'Central de Diagnósticos',
+            path: '/diagnostics',
+            icon: '🔬',
+            keywords: ['diagnostics', 'exames', 'laudos', 'ponte laboratorial', 'laboratorio']
+          },
+          {
+            label: 'Prescrições',
+            path: '/prescriptions',
+            icon: '💊',
+            keywords: ['prescricao', 'medicacao', 'protocolos']
+          },
+          {
+            label: 'Execuções',
+            path: '/prescription-executions',
+            icon: '💉',
+            keywords: ['execucao', 'administracao', 'aplicacao']
+          }
+        ]
+      },
+      {
+        id: 'laboratorio-cadastrados',
+        label: 'Cadastrados',
+        items: [
+          {
+            label: 'Equipamentos',
+            path: '/laboratory/equipment',
+            icon: '🔧',
+            keywords: ['equipamentos', 'maquinas', 'analisadores']
+          },
+          {
+            label: 'Tipos de Laudo',
+            path: '/laboratory/report-types',
+            icon: '📄',
+            keywords: ['tipos de laudo', 'templates', 'modelos']
+          },
+          {
+            label: 'Valores de Referência',
+            path: '/laboratory/reference-values',
+            icon: '📈',
+            keywords: ['referencia', 'parametros', 'faixas', 'valores']
+          }
+        ]
+      }
     ]
   },
   {
     id: 'estoque',
     label: 'Estoque',
     icon: '📦',
-    description: 'Produtos, serviços e inventário',
-    items: [
-      { label: 'Estoque', path: '/inventory', icon: '📦' },
-      { label: 'Produtos', path: '/products', icon: '🏷️' },
-      { label: 'Serviços', path: '/services', icon: '🛠️' }
+    description: 'Inventário, catálogo de produtos e controles de abastecimento',
+    sections: [
+      {
+        id: 'estoque-controles',
+        label: 'Controles',
+        items: [
+          {
+            label: 'Estoque',
+            path: '/inventory',
+            icon: '📦',
+            keywords: ['inventario', 'consumo', 'reposicao']
+          },
+          {
+            label: 'Movimentações',
+            path: '/inventory/movements',
+            icon: '📥',
+            keywords: ['entradas', 'saidas', 'transferencias', 'movimentacao']
+          },
+          {
+            label: 'Validade e Lotes',
+            path: '/inventory/validity',
+            icon: '📅',
+            keywords: ['validade', 'lotes', 'vencimento']
+          }
+        ]
+      },
+      {
+        id: 'estoque-cadastrados',
+        label: 'Cadastrados',
+        items: [
+          { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['catalogo', 'sku', 'item'] }
+        ]
+      },
+      {
+        id: 'estoque-fiscal',
+        label: 'Fiscal',
+        items: [
+          {
+            label: 'Configuração Fiscal',
+            path: '/fiscal',
+            icon: '📋',
+            keywords: ['fiscal', 'tributario', 'icms', 'nfse']
+          },
+          {
+            label: 'ICMS',
+            path: '/fiscal/icms',
+            icon: '📊',
+            keywords: ['icms', 'tributacao', 'aliquota']
+          },
+          {
+            label: 'NFS-e',
+            path: '/fiscal/nfse',
+            icon: '📄',
+            keywords: ['nfse', 'nota fiscal', 'servicos']
+          }
+        ]
+      }
     ]
   },
   {
-    id: 'plataforma',
-    label: 'Plataforma',
-    icon: '🔗',
-    description: 'Equipe, acesso e integração',
-    items: [
-      { label: 'Usuários', path: '/users', icon: '👥' },
-      { label: 'Equipe', path: '/staff', icon: '👨‍⚕️' },
-      { label: 'Notificações', path: '/notifications', icon: '🔔' },
-      { label: 'WhatsApp', path: '/notifications/whatsapp', icon: '💬' },
-      { label: 'Chaves API', path: '/api-keys', icon: '🔐' },
-      { label: 'Webhooks', path: '/webhooks', icon: '🔗' },
-      { label: 'Cliente API', path: '/api-client', icon: '🛠️' }
+    id: 'financeiro',
+    label: 'Financeiro',
+    icon: '💰',
+    description: 'Faturamento, caixa, PIX e controles de receita',
+    sections: [
+      {
+        id: 'financeiro-gaveta',
+        label: 'Gaveta',
+        items: [
+          { label: 'Caixa', path: '/cash', icon: '🧾', keywords: ['gaveta', 'abertura', 'fechamento'] }
+        ]
+      },
+      {
+        id: 'financeiro-controles',
+        label: 'Controles',
+        items: [
+          {
+            label: 'Faturamento',
+            path: '/billing',
+            icon: '💳',
+            keywords: ['billing', 'comanda', 'cobranca']
+          },
+          { label: 'PIX', path: '/pix', icon: '💸', keywords: ['qrcode', 'pagamento instantaneo'] },
+          {
+            label: 'Orçamentos',
+            path: '/quotes',
+            icon: '📝',
+            keywords: ['orcamento', 'proposta', 'quote']
+          },
+          {
+            label: 'Vendas Assistidas',
+            path: '/counter-sales',
+            icon: '🛒',
+            keywords: ['vendas', 'comanda', 'balcao', 'counter sales']
+          }
+        ]
+      }
     ]
   },
   {
-    id: 'governanca',
-    label: 'Governança',
-    icon: '🧭',
-    description: 'Acesso, auditoria e busca transversal',
-    items: [
-      { label: 'Governança de Acesso', path: '/access-control', icon: '🔐' },
-      { label: 'Auditoria', path: '/audit', icon: '🧾' },
-      { label: 'Busca mestre', path: '/master-search', icon: '🔎' }
+    id: 'marketing',
+    label: 'Marketing',
+    icon: '📣',
+    description: 'Comunicação operacional, campanhas e relacionamento',
+    sections: [
+      {
+        id: 'marketing-envios',
+        label: 'Envios',
+        items: [
+          {
+            label: 'Central de Notificações',
+            path: '/notifications',
+            icon: '🔔',
+            keywords: ['sms', 'email', 'alertas', 'campanhas']
+          },
+          {
+            label: 'WhatsApp Operacional',
+            path: '/notifications/whatsapp',
+            icon: '💬',
+            keywords: ['whatsapp', 'mensagens', 'relacionamento']
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'rh',
+    label: 'RH',
+    icon: '👥',
+    description: 'Usuários, equipe e organização humana',
+    sections: [
+      {
+        id: 'rh-usuarios',
+        label: 'Usuários',
+        items: [
+          { label: 'Usuários', path: '/users', icon: '👤', keywords: ['login', 'acesso', 'usuarios'] },
+          { label: 'Equipe', path: '/staff', icon: '🩺', keywords: ['profissionais', 'staff', 'colaboradores'] }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'relatorios',
+    label: 'Relatórios',
+    icon: '📈',
+    description: 'Análises por domínio e visão gerencial da operação',
+    sections: [
+      {
+        id: 'relatorios-operacao',
+        label: 'Operação',
+        items: [
+          {
+            label: 'Relatórios Comerciais',
+            path: '/commercial-reports',
+            icon: '📊',
+            keywords: ['analytics', 'dashboard comercial', 'producao']
+          }
+        ]
+      }
     ]
   }
 ];
 
-export function flattenNavGroups(groups: AppNavGroup[] = navGroups): NavItem[] {
-  return groups.flatMap((group) => group.items);
+export const enterpriseConsole: AppNavGroup = {
+  id: 'console-enterprise',
+  label: 'Console Enterprise',
+  icon: '🧭',
+  description: 'Governança, conformidade, integrações e superfícies avançadas da plataforma',
+  sections: [
+    {
+      id: 'console-governanca',
+      label: 'Governança',
+      items: [
+        {
+          label: 'Governança de Acesso',
+          path: '/access-control',
+          icon: '🔐',
+          keywords: ['acesso', 'rbac', 'abac', 'perfil']
+        },
+        { label: 'Auditoria', path: '/audit', icon: '🧾', keywords: ['logs', 'rastreamento', 'evidencia'] },
+        { label: 'LGPD', path: '/lgpd', icon: '🔒', keywords: ['consentimento', 'privacidade', 'compliance'] }
+      ]
+    },
+    {
+      id: 'console-integracoes',
+      label: 'Integrações',
+      items: [
+        { label: 'Chaves de API', path: '/api-keys', icon: '🗝️', keywords: ['apikey', 'token', 'integracao'] },
+        { label: 'Webhooks', path: '/webhooks', icon: '🔗', keywords: ['eventos', 'callback', 'webhook'] },
+        { label: 'Cliente de API', path: '/api-client', icon: '🛠️', keywords: ['client', 'request', 'api'] }
+      ]
+    },
+    {
+      id: 'console-utilidades',
+      label: 'Utilidades',
+      items: [
+        { label: 'Busca Mestre', path: '/master-search', icon: '🔎', keywords: ['busca', 'global', 'search'] }
+      ]
+    }
+  ]
+};
+
+function flattenGroupItems(group: AppNavGroup): AppNavItem[] {
+  return group.sections.flatMap((section) => section.items);
 }
 
-export function findNavItem(path: string, groups: AppNavGroup[] = navGroups): NavItem | undefined {
-  const items = flattenNavGroups(groups);
-  return items.find((item) => item.path === path);
+export function flattenNavGroups(groups: AppNavGroup[] = navGroups): AppNavItem[] {
+  return groups.flatMap((group) => flattenGroupItems(group));
+}
+
+export function flattenEnterpriseItems(group: AppNavGroup = enterpriseConsole): AppNavItem[] {
+  return flattenGroupItems(group);
+}
+
+export function flattenAllNavItems(groups: AppNavGroup[] = navGroups): AppNavItem[] {
+  return [...flattenNavGroups(groups), ...flattenEnterpriseItems()];
+}
+
+export function findNavItem(path: string, groups: AppNavGroup[] = navGroups): AppNavItem | undefined {
+  return flattenAllNavItems(groups).find((item) => item.path === path);
+}
+
+export function findMatchingNavLocation(
+  path: string,
+  groups: AppNavGroup[] = navGroups
+): AppNavLocation | undefined {
+  const locations: AppNavLocation[] = [
+    ...groups.flatMap((group) =>
+      group.sections.flatMap((section) =>
+        section.items.map((item) => ({ area: 'main' as const, group, section, item }))
+      )
+    ),
+    ...enterpriseConsole.sections.flatMap((section) =>
+      section.items.map((item) => ({
+        area: 'enterprise' as const,
+        group: enterpriseConsole,
+        section,
+        item
+      }))
+    )
+  ];
+
+  const sorted = [...locations].sort((a, b) => b.item.path.length - a.item.path.length);
+  return sorted.find((location) => path === location.item.path || path.startsWith(`${location.item.path}/`));
 }
 
 export function findMatchingNavItem(
   path: string,
   groups: AppNavGroup[] = navGroups
-): NavItem | undefined {
-  const items = flattenNavGroups(groups);
-  const sorted = [...items].sort((a, b) => b.path.length - a.path.length);
-  return sorted.find((item) => path === item.path || path.startsWith(`${item.path}/`));
+): AppNavItem | undefined {
+  return findMatchingNavLocation(path, groups)?.item;
+}
+
+export function findMatchingNavGroup(
+  path: string,
+  groups: AppNavGroup[] = navGroups
+): AppNavGroup | undefined {
+  const location = findMatchingNavLocation(path, groups);
+  if (!location || location.area !== 'main') return groups[0];
+  return location.group;
 }

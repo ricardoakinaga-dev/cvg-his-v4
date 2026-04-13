@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRegisterSW } from 'virtual:pwa-register/vue';
+import { spaRuntimeConfig } from '@/config/runtime';
 
 export interface PWAMessage {
   type: 'info' | 'success' | 'warning' | 'error';
@@ -12,7 +13,7 @@ export interface PWAMessage {
 
 const messages = ref<PWAMessage[]>([]);
 const disablePwa =
-  import.meta.env.VITE_DISABLE_PWA === '1' ||
+  spaRuntimeConfig.disablePwa ||
   ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 export function usePWA() {

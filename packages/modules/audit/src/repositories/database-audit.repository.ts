@@ -17,16 +17,22 @@ export class DatabaseAuditRepository implements AuditRepository {
   }
 
   public async create(event: AuditEventSummary): Promise<void> {
+    const actorUserId = normalizeUuid(event.actorId);
+    const accountId = normalizeUuid(event.accountId);
+
     await this.#db.insert(auditEvents).values({
       id: event.eventId,
-      accountId: event.accountId,
-      actorUserId: event.actorId,
+      accountId,
+      actorUserId,
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId,
       metadata: {
+        module: event.module,
         payloadSummary: event.payloadSummary,
         riskLevel: event.riskLevel,
+        ...(accountId ? {} : { legacyAccountId: event.accountId }),
+        ...(actorUserId ? {} : { legacyActorId: event.actorId }),
       },
       correlationId: event.correlationId,
       occurredAt: new Date(event.occurredAt),
@@ -35,31 +41,15 @@ export class DatabaseAuditRepository implements AuditRepository {
   }
 
   public async list(accountId?: AccountId, limit = 100): Promise<readonly AuditEventSummary[]> {
-    const query = this.#db
+    const rows = await this.#db
       .select()
       .from(auditEvents)
       .orderBy(desc(auditEvents.occurredAt))
-      .limit(limit);
+      .limit(Math.max(limit * 5, limit));
 
-    if (accountId) {
-      query.where(eq(auditEvents.accountId, accountId));
-    }
-
-    const result = await query;
-
-    return result.map((row) => ({
-      eventId: row.id as AuditEventId,
-      occurredAt: row.occurredAt.toISOString(),
-      actorId: row.actorUserId ?? 'system',
-      accountId: row.accountId as AccountId,
-      module: row.action.split('_')[0] ?? 'unknown',
-      action: row.action,
-      entityType: row.entityType ?? 'unknown',
-      entityId: row.entityId ?? 'unknown',
-      correlationId: row.correlationId ?? '',
-      payloadSummary: (row.metadata as Record<string, unknown>)?.payloadSummary as string ?? '',
-      riskLevel: ((row.metadata as Record<string, unknown>)?.riskLevel as 'low' | 'medium' | 'high') ?? 'low',
-    }));
+    const summaries = rows.map((row) => mapAuditRow(row));
+    const filtered = accountId ? summaries.filter((event) => event.accountId === accountId) : summaries;
+    return filtered.slice(0, limit);
   }
 
   public async findById(id: AuditEventId): Promise<AuditEventSummary | null> {
@@ -73,19 +63,52 @@ export class DatabaseAuditRepository implements AuditRepository {
       return null;
     }
 
-    const row = result[0];
-    return {
-      eventId: row.id as AuditEventId,
-      occurredAt: row.occurredAt.toISOString(),
-      actorId: row.actorUserId ?? 'system',
-      accountId: row.accountId as AccountId,
-      module: row.action.split('_')[0] ?? 'unknown',
-      action: row.action,
-      entityType: row.entityType ?? 'unknown',
-      entityId: row.entityId ?? 'unknown',
-      correlationId: row.correlationId ?? '',
-      payloadSummary: (row.metadata as Record<string, unknown>)?.payloadSummary as string ?? '',
-      riskLevel: ((row.metadata as Record<string, unknown>)?.riskLevel as 'low' | 'medium' | 'high') ?? 'low',
-    };
+    return mapAuditRow(result[0]);
   }
+}
+
+function normalizeUuid(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return isUuid(value) ? value : null;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function mapAuditRow(row: Record<string, unknown>): AuditEventSummary {
+  const metadata = asRecord(row.metadata);
+  const storedAccountId = typeof row.accountId === 'string' ? row.accountId : null;
+  const storedActorId = typeof row.actorUserId === 'string' ? row.actorUserId : null;
+  const legacyAccountId =
+    typeof metadata?.legacyAccountId === 'string' ? metadata.legacyAccountId : null;
+  const legacyActorId = typeof metadata?.legacyActorId === 'string' ? metadata.legacyActorId : null;
+  const module = typeof metadata?.module === 'string' ? metadata.module : null;
+
+  return {
+    eventId: row.id as AuditEventId,
+    occurredAt: new Date(row.occurredAt as string | Date).toISOString(),
+    actorId: storedActorId ?? legacyActorId ?? 'system',
+    accountId: (storedAccountId ?? legacyAccountId ?? 'unknown') as AccountId,
+    module: module ?? (typeof row.action === 'string' ? row.action.split('_')[0] ?? 'unknown' : 'unknown'),
+    action: (row.action as string | null) ?? 'unknown',
+    entityType: (row.entityType as string | null) ?? 'unknown',
+    entityId: (row.entityId as string | null) ?? 'unknown',
+    correlationId: (row.correlationId as string | null) ?? '',
+    payloadSummary: (metadata?.payloadSummary as string | undefined) ?? '',
+    riskLevel: (metadata?.riskLevel as 'low' | 'medium' | 'high' | undefined) ?? 'low'
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return null;
 }

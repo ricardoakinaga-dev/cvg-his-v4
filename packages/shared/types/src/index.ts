@@ -31,6 +31,7 @@ export type BillingRecordId = Brand<string, 'BillingRecordId'>;
 export type BillingItemId = Brand<string, 'BillingItemId'>;
 export type InventoryItemId = Brand<string, 'InventoryItemId'>;
 export type InventoryConsumptionId = Brand<string, 'InventoryConsumptionId'>;
+export type InventoryLotId = Brand<string, 'InventoryLotId'>;
 export type NotificationId = Brand<string, 'NotificationId'>;
 export type NotificationJobId = Brand<string, 'NotificationJobId'>;
 export type SectorId = Brand<string, 'SectorId'>;
@@ -282,11 +283,62 @@ export interface SchedulingAppointmentSummary {
   readonly patientId: PatientId;
   readonly ownerId: OwnerId;
   readonly scheduledAt: string;
+  readonly durationMinutes?: number;
   readonly visitType: 'walk_in' | 'scheduled' | 'return';
   readonly reason: string;
+  readonly practitionerStaffId?: StaffId;
+  readonly serviceId?: string;
+  readonly unit?: string;
+  readonly specialty?: string;
+  readonly resourceLabel?: string;
   readonly status: 'scheduled' | 'checked_in' | 'completed' | 'cancelled';
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface SchedulingAppointmentOperationalSummary {
+  readonly stage:
+    | 'scheduled'
+    | 'checked_in'
+    | 'called'
+    | 'in_triage'
+    | 'in_care'
+    | 'observation'
+    | 'completed'
+    | 'cancelled';
+  readonly label: string;
+  readonly source: 'appointment' | 'queue';
+  readonly queueEntryId?: QueueEntryId;
+  readonly queueStatus?: QueueEntrySummary['status'];
+  readonly encounterId?: EncounterId;
+  readonly updatedAt: string;
+}
+
+export interface SchedulingOperationalBlockSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly title: string;
+  readonly kind: 'lunch_break' | 'team_huddle' | 'resource_block';
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly practitionerStaffId?: StaffId;
+  readonly unit?: string;
+  readonly resourceLabel?: string;
+}
+
+export interface SchedulingConflictSummary {
+  readonly type:
+    | 'patient_overlap'
+    | 'staff_overlap'
+    | 'resource_overlap'
+    | 'operational_block'
+    | 'outside_hours';
+  readonly severity: 'warning' | 'critical';
+  readonly message: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly appointmentId?: AppointmentId;
+  readonly blockId?: string;
 }
 
 export interface QueueEntrySummary {
@@ -538,6 +590,41 @@ export interface DiagnosticOrderSummary {
   readonly updatedAt: string;
 }
 
+export interface LaboratoryEquipmentSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly serialNumber: string;
+  readonly status: 'active' | 'maintenance';
+  readonly lastCalibrationAt: string;
+}
+
+export interface LaboratoryReportTypeSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly code: string;
+  readonly category: string;
+  readonly description: string;
+  readonly active: boolean;
+}
+
+export interface LaboratoryReferenceValueSummary {
+  readonly id: string;
+  readonly parameter: string;
+  readonly examType: string;
+  readonly minValue: number;
+  readonly maxValue: number;
+  readonly unit: string;
+}
+
+export interface LaboratoryDashboardSummary {
+  readonly totalOrders: number;
+  readonly pendingOrders: number;
+  readonly pendingResults: number;
+  readonly releasedResults: number;
+  readonly equipmentActive: number;
+}
+
 export interface ExamCatalogEntry {
   readonly id: string;
   readonly code: string;
@@ -615,6 +702,24 @@ export interface InventoryConsumptionSummary {
   readonly sourceEntityId?: string;
   readonly recordedByUserId: UserId;
   readonly createdAt: string;
+}
+
+export interface InventoryLotSummary {
+  readonly id: InventoryLotId;
+  readonly accountId: AccountId;
+  readonly inventoryItemId: InventoryItemId;
+  readonly sku: string;
+  readonly itemName: string;
+  readonly lotNumber: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly location?: string;
+  readonly supplier?: string;
+  readonly manufactureDate?: string;
+  readonly expiryDate?: string;
+  readonly status: 'active' | 'expiring' | 'expired' | 'depleted';
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface NotificationSummary {

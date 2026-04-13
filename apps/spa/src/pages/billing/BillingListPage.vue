@@ -1,36 +1,56 @@
 <template>
   <div class="billing-list-page">
-    <AppPageHeader title="💰 Faturamento" subtitle="Controle de cobrança e faturamento">
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
-      </template>
-    </AppPageHeader>
+    <AppPageHeader
+      title="💰 Faturamento"
+      subtitle="Contas a receber, cobrança assistencial e leitura executiva do backoffice financeiro"
+      :secondary-actions="headerSecondaryActions"
+    />
 
-    <section class="billing-list-page__overview">
-      <DsCard title="Resumo financeiro">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ items.length }}</span>
-            <span class="overview-metric__label">Registros</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ openCount }}</span>
-            <span class="overview-metric__label">Em aberto</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ settledCount }}</span>
-            <span class="overview-metric__label">Quitados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ totalAmountFormatted }}</span>
-            <span class="overview-metric__label">Subtotal acumulado</span>
-          </div>
+    <!-- Hub: KPI StatCards -->
+    <section class="hub-kpis">
+      <DsStatCard :label="items.length + ' registro(s)'" value="" icon="📋" />
+      <DsStatCard :label="openCount + ' em aberto'" value="" icon="⏳" :error="openCount > 0 ? 'Há cobranças pendentes' : undefined" />
+      <DsStatCard :label="settledCount + ' quitado(s)'" value="" icon="✅" />
+      <DsStatCard :label="totalAmountFormatted" value="" icon="💵" />
+    </section>
+
+    <!-- Hub: Operational Alerts -->
+    <section v-if="billingAlerts.length > 0" class="hub-alerts">
+      <DsAlert
+        v-for="(alert, i) in billingAlerts"
+        :key="i"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> — {{ alert.message }}
+      </DsAlert>
+    </section>
+
+    <!-- Hub: Quick Actions -->
+    <section class="hub-actions">
+      <DsCard title="Ações rápidas — Financeiro" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/billing/new" icon="💰">
+            Novo Faturamento
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">
+            Gaveta / Caixa
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/quotes" icon="🧾">
+            Orçamentos
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/pix" icon="💸">
+            PIX
+          </DsButton>
+          <DsButton variant="ghost" :loading="loading" @click="reload" icon="🔄">
+            Atualizar
+          </DsButton>
         </div>
       </DsCard>
     </section>
 
-    <section class="billing-list-page__story">
-      <DsCard title="Leitura rápida">
+    <section class="billing-story">
+      <DsCard title="Leitura financeira do dia">
         <div class="story-grid">
           <div v-for="card in storyCards" :key="card.label" class="story-card">
             <span class="story-card__label">{{ card.label }}</span>
@@ -47,7 +67,7 @@
 
     <DataTable
       :columns="columns"
-      :rows="items"
+      :rows="billingRows"
       :loading="loading"
       empty-icon="💰"
       empty-title="Nenhum registro de faturamento"
@@ -56,31 +76,31 @@
     >
       <template #cell-encounter="{ row }">
         <router-link
-          :to="`/encounters/${(row as BillingRecordSummary).encounterId}`"
+          :to="`/encounters/${billingRow(row).encounterId}`"
           class="encounter-link"
         >
-          {{ (row as BillingRecordSummary).encounterId.slice(0, 8) }}...
+          {{ billingRow(row).encounterId.slice(0, 8) }}...
         </router-link>
       </template>
       <template #cell-patient="{ row }">
-        {{ patientName((row as BillingRecordSummary).patientId) }}
+        {{ patientName(billingRow(row).patientId) }}
       </template>
       <template #cell-owner="{ row }">
-        {{ ownerName((row as BillingRecordSummary).ownerId) }}
+        {{ ownerName(billingRow(row).ownerId) }}
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
-          :label="billingStatusLabel((row as BillingRecordSummary).status)"
-          :variant="billingStatusVariant((row as BillingRecordSummary).status)"
+          :label="billingStatusLabel(billingRow(row).status)"
+          :variant="billingStatusVariant(billingRow(row).status)"
         />
       </template>
       <template #cell-amount="{ row }">
-        {{ formatCurrency((row as BillingRecordSummary).subtotalAmount) }}
+        {{ formatCurrency(billingRow(row).subtotalAmount) }}
       </template>
       <template #cell-items="{ row }">
         <DsButton
           tag="a"
-          :to="`/billing/${(row as BillingRecordSummary).encounterId}`"
+          :to="`/billing/${billingRow(row).encounterId}`"
           size="sm"
           variant="secondary"
         >
@@ -90,7 +110,7 @@
       <template #cell-actions="{ row }">
         <DsButton
           tag="a"
-          :to="`/billing/${(row as BillingRecordSummary).encounterId}`"
+          :to="`/billing/${billingRow(row).encounterId}`"
           size="sm"
           variant="secondary"
         >
@@ -102,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { billingService } from '@/services/billing';
 import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
 import { useEntityCache } from '@/composables/useEntityCache';
@@ -110,11 +130,11 @@ import { useListData } from '@/composables/useListData';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import { computed } from 'vue';
 
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
@@ -169,16 +189,49 @@ function ownerName(id: string): string {
 
 const openCount = computed(() => items.value.filter((record) => record.status === 'open').length);
 const settledCount = computed(() => items.value.filter((record) => record.status === 'settled').length);
+const billingRows = computed(() => items.value as unknown as DataTableRow[]);
 const totalAmountFormatted = computed(() => formatCurrency(items.value.reduce((sum, record) => sum + record.subtotalAmount, 0)));
 const openRate = computed(() => {
   if (!items.value.length) return '0%';
   return `${Math.round((openCount.value / items.value.length) * 100)}%`;
 });
+const averageTicket = computed(() =>
+  items.value.length
+    ? formatCurrency(items.value.reduce((sum, record) => sum + record.subtotalAmount, 0) / items.value.length)
+    : formatCurrency(0)
+);
 const storyCards = computed(() => [
-  { label: 'Abertos', value: openCount.value.toString(), hint: 'Cobranças em andamento' },
-  { label: 'Quitados', value: settledCount.value.toString(), hint: 'Itens já fechados' },
-  { label: 'Taxa aberta', value: openRate.value, hint: 'Proporção pendente' },
-  { label: 'Subtotal', value: totalAmountFormatted.value, hint: 'Volume acumulado' }
+  { label: 'Cobrança aberta', value: openRate.value, hint: 'Percentual da carteira em aberto' },
+  { label: 'Recebido', value: String(settledCount.value), hint: 'Registros já liquidados' },
+  { label: 'Ticket médio', value: averageTicket.value, hint: 'Valor médio por faturamento' },
+  { label: 'Base ativa', value: String(items.value.length), hint: 'Registros sob acompanhamento' }
+]);
+
+interface BillingAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const billingAlerts = computed<BillingAlert[]>(() => {
+  const alerts: BillingAlert[] = [];
+  if (openCount.value > 0) {
+    alerts.push({ variant: 'warning', title: 'Cobranças em aberto', message: `${openCount.value} registro(s) aguardando quitação.` });
+  }
+  if (openCount.value === 0 && items.value.length > 0) {
+    alerts.push({ variant: 'info', title: 'Tudo quitado', message: 'Todas as cobranças foram liquidadas.' });
+  }
+  return alerts;
+});
+
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-billing',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: () => reload()
+  }
 ]);
 
 const { items, loading, error, load } = useListData<BillingRecordSummary>({
@@ -202,46 +255,48 @@ const { items, loading, error, load } = useListData<BillingRecordSummary>({
 function reload() {
   void load();
 }
+
+function billingRow(row: unknown): BillingRecordSummary {
+  return row as BillingRecordSummary;
+}
 </script>
 
 <style scoped>
-.billing-list-page__overview {
-  margin-bottom: 16px;
+.billing-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.billing-list-page__story {
-  margin-bottom: 16px;
-}
-
-.overview-grid {
+.hub-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
-.overview-metric {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+.hub-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.overview-metric__value {
-  display: block;
-  font-size: 22px;
-  font-weight: 800;
+.hub-actions {
+  margin-bottom: 0;
 }
 
-.overview-metric__label {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-text-muted, #64748b);
+.billing-story {
+  margin-bottom: 0;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .story-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -254,19 +309,18 @@ function reload() {
 
 .story-card__label {
   display: block;
-  margin-bottom: 4px;
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-muted, #64748b);
 }
 
 .story-card__value {
   display: block;
-  font-size: 18px;
+  margin-top: 6px;
+  font-size: 20px;
   font-weight: 800;
-  color: var(--color-text, #0f172a);
 }
 
 .story-card__hint {

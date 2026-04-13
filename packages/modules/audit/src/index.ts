@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
@@ -33,7 +35,7 @@ export class AuditService {
 
   public write(input: AuditWriteInput): AuditEventSummary {
     const event: AuditEventSummary = {
-      eventId: createCorrelationId('audit') as AuditEventId,
+      eventId: randomUUID() as AuditEventId,
       occurredAt: nowIso(),
       actorId: input.actorId,
       accountId: input.accountId,

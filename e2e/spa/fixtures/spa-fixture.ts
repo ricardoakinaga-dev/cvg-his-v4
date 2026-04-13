@@ -32,6 +32,20 @@ type AuthSessionResponse = {
   };
 };
 
+function resolveE2EAdminUsername(): string {
+  const explicitUsername = process.env.E2E_ADMIN_USERNAME?.trim();
+  if (explicitUsername) {
+    return explicitUsername;
+  }
+
+  const email = process.env.E2E_ADMIN_EMAIL?.trim();
+  if (email?.includes('@')) {
+    return email.split('@')[0];
+  }
+
+  return 'admin';
+}
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export type OwnerFormData = {
@@ -135,7 +149,7 @@ export class ApiCall {
 }
 
 async function requestFreshAuthSession(): Promise<AuthSessionResponse> {
-  const username = process.env.E2E_ADMIN_USERNAME || 'admin';
+  const username = resolveE2EAdminUsername();
   const password = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
 
   const response = await fetch(`${API_URL}/auth/login`, {
@@ -214,7 +228,7 @@ export class CleanupTracker {
 // ── Login helpers ──────────────────────────────────────────────────────
 
 async function loginViaUI(page: Page) {
-  const username = process.env.E2E_ADMIN_USERNAME || 'admin';
+  const username = resolveE2EAdminUsername();
   const password = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
 
   await page.goto(`${SPA_URL}/login`);
@@ -232,11 +246,11 @@ async function loginViaUI(page: Page) {
   await page.waitForURL(/^(?!.*\/login)/, { timeout: 15000 });
 }
 
-export async function loginViaToken(page: Page) {
-  const session = await requestFreshAuthSession();
+export async function loginViaToken(page: Page, session?: AuthSessionResponse) {
+  const authSession = session ?? (await requestFreshAuthSession());
   const authState = {
-    accessToken: session.accessToken,
-    refreshToken: session.refreshToken ?? null,
+    accessToken: authSession.accessToken,
+    refreshToken: authSession.refreshToken ?? null,
     accessTokenKey: AUTH_STORAGE_KEYS.accessToken,
     refreshTokenKey: AUTH_STORAGE_KEYS.refreshToken
   };
@@ -278,7 +292,9 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
   await page.goto(`${SPA_URL}/owners/new`);
   await page.waitForLoadState('networkidle');
 
-  await expect(page.getByRole('heading', { name: /Novo Tutor/ })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText('Novo Tutor', {
+    timeout: 10000
+  });
 
   await page.fill('#fullName', data.fullName);
   if (data.documentId) await page.fill('#documentId', data.documentId);
@@ -302,9 +318,10 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
   await page.goto(`${SPA_URL}/patients/new`);
   await page.waitForLoadState('networkidle');
 
-  await expect(page.getByRole('heading', { name: /Novo Paciente/ })).toBeVisible({
-    timeout: 10000
-  });
+  await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
+    'Novo Paciente',
+    { timeout: 10000 }
+  );
 
   await page.fill('#name', data.name);
   await page.selectOption('#species', data.species);
@@ -346,6 +363,7 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
 // ── Extended test ──────────────────────────────────────────────────────
 
 export const test = base.extend<{
+  authSession: AuthSessionResponse;
   spaPage: SpaPage;
   apiCall: ApiCall;
   cleanup: CleanupTracker;
@@ -353,14 +371,17 @@ export const test = base.extend<{
   createOwnerViaUI: (data: OwnerFormData) => Promise<string>;
   createPatientViaUI: (data: PatientFormData) => Promise<string>;
 }>({
-  spaPage: async ({ page }, use) => {
-    await loginViaToken(page);
+  authSession: [async ({}, use) => {
+    await use(await requestFreshAuthSession());
+  }, { scope: 'worker' }],
+
+  spaPage: async ({ page, authSession }, use) => {
+    await loginViaToken(page, authSession);
     await use(new SpaPage(page));
   },
 
-  apiCall: async ({}, use) => {
-    const token = await getE2EAccessToken();
-    await use(new ApiCall(token));
+  apiCall: async ({ authSession }, use) => {
+    await use(new ApiCall(authSession.accessToken));
   },
 
   cleanup: async ({ apiCall }, use) => {

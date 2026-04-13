@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AccessControlService } from './index.js';
+import { AbacEngine } from './abac.js';
 import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
+import type {
+  AccessControlRepository,
+  AccessMembershipRecord,
+  AccessPermissionAssignmentRecord,
+  PermissionRecord,
+  RoleRecord
+} from './repositories/database-access-control.repository.js';
 
 describe('AccessControlService', () => {
   let service: AccessControlService;
@@ -212,6 +220,88 @@ describe('AccessControlService', () => {
     expect(profile.effectivePermissions?.length ?? 0).toBeGreaterThan(0);
   });
 
+  it('preserves session role permissions when hydrated memberships exist without database roles', async () => {
+    const repository: AccessControlRepository = {
+      async createRole(_role: RoleRecord) {},
+      async findRoleById(_id) {
+        return null;
+      },
+      async findRoleByName(_name) {
+        return null;
+      },
+      async findAllRoles() {
+        return [];
+      },
+      async createPermission(_permission: PermissionRecord) {},
+      async findPermissionByKey(_key) {
+        return null;
+      },
+      async findAllPermissions() {
+        return [];
+      },
+      async addPermissionToRole(_roleId, _permissionId) {},
+      async removePermissionFromRole(_roleId, _permissionId) {},
+      async findPermissionsByRole(_roleId) {
+        return [];
+      },
+      async assignRoleToUser(_userId, _roleId) {},
+      async removeRoleFromUser(_userId, _roleId) {},
+      async findRolesByUser(_userId) {
+        return [];
+      },
+      async createTeam(_input) {
+        throw new Error('Not implemented in test');
+      },
+      async updateTeam(_id, _input) {
+        throw new Error('Not implemented in test');
+      },
+      async findAllTeams(_accountId) {
+        return [];
+      },
+      async createSector(_input) {
+        throw new Error('Not implemented in test');
+      },
+      async updateSector(_id, _input) {
+        throw new Error('Not implemented in test');
+      },
+      async findAllSectors(_accountId) {
+        return [];
+      },
+      async replaceUserTeams(_userId, _teamIds) {},
+      async replaceUserSectors(_userId, _sectorIds) {},
+      async findTeamMemberships(_accountId) {
+        return [
+          {
+            userId,
+            subjectType: 'team',
+            subjectId: 'team_1' as any,
+            createdAt: '2026-01-01T00:00:00.000Z'
+          } as AccessMembershipRecord
+        ];
+      },
+      async findSectorMemberships(_accountId) {
+        return [];
+      },
+      async upsertPermissionAssignment(_input) {},
+      async removePermissionAssignment(_input) {},
+      async findPermissionAssignments(_accountId) {
+        return [] satisfies readonly AccessPermissionAssignmentRecord[];
+      }
+    };
+
+    const hydratedService = new AccessControlService({ repository });
+    await hydratedService.hydrateFromDatabase(accountId);
+
+    const profile = hydratedService.createProfile({
+      accountId,
+      userId,
+      roleCodes: ['admin']
+    });
+
+    expect(profile.permissionCodes).toContain('auth.session.read');
+    expect(profile.permissionCodes).toContain('users.manage');
+  });
+
   it('asserts authorization for active user with permission', async () => {
     const actor = makeActor('active');
     const profile = service.createProfile({ roleCodes: ['admin'] });
@@ -288,6 +378,33 @@ describe('AccessControlService', () => {
     const assignments = service.listAssignments();
     expect(assignments.userPermissions.length).toBeGreaterThan(0);
     expect(assignments.teamPermissions.length).toBeGreaterThan(0);
+  });
+
+  it('allows ABAC role checks against actor role arrays for admin', () => {
+    const engine = new AbacEngine();
+
+    expect(() =>
+      engine.enforce(
+        'medical-records.manage',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          teamIds: [],
+          sectorIds: [],
+          isActive: true
+        },
+        {
+          resourceType: 'patient',
+          resourceId: 'patient-1'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          dayOfWeek: 1,
+          hourOfDay: 10
+        }
+      )
+    ).not.toThrow();
   });
 
   it('handles sector deny precedence over team allow', async () => {

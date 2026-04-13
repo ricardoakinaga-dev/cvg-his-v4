@@ -1,7 +1,10 @@
 <template>
   <div class="login-page">
-    <DsCard tag="div" title="Acesso ao sistema" class="login-card">
-      <p class="login-card__subtitle">Entre com suas credenciais para continuar na operação.</p>
+    <DsCard tag="div" class="login-card">
+      <div class="login-card__header">
+        <span class="login-card__brand">CVG HIS V2</span>
+        <h1 class="login-card__title">Entrar</h1>
+      </div>
       <form class="login-form" @submit.prevent="handleLogin">
         <DsInput
           id="email"
@@ -97,42 +100,63 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(13, 148, 136, 0.14), transparent 26%),
-    var(--color-bg, #f0f4f8);
-  padding: 32px;
+  background: var(--color-bg-subtle, #f8fafc);
+  padding: 24px;
 }
 
 .login-card {
   width: 100%;
-  max-width: 440px;
-  padding: 40px 34px;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  max-width: 380px;
+  padding: 32px 28px;
+  border-radius: 20px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
-.login-card__subtitle {
-  margin: 0 0 32px;
-  font-size: 14px;
-  color: var(--color-text-muted, #64748b);
+.login-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.login-card__brand {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--color-primary-50, #eff6ff);
+  color: var(--color-primary-700, #1d4ed8);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-card__title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--color-text, #0f172a);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 @media (max-width: 960px) {
   .login-page {
-    padding: 20px;
+    padding: 16px;
   }
 
   .login-card {
     max-width: none;
+    padding: 28px 20px;
   }
 }
 </style>

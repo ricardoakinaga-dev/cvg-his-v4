@@ -61,6 +61,8 @@ async function createEncounterViaApi(apiCall: ApiCall, patientId: string, ownerI
 
 test.describe('Fluxo de Internação (Inpatient)', () => {
   test('navega para internação, valida lista, Bed Board e detalhe', async ({ page }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
     const token = process.env.E2E_AUTH_TOKEN;
     if (!token) {
       test.skip(true, 'E2E_AUTH_TOKEN not available');
@@ -97,19 +99,19 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       await page.waitForLoadState('networkidle');
 
       // Validate page title using heading role
-      await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
+      await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
         timeout: 15000
       });
       console.log('   ✅ Inpatient list page loaded');
 
       // Verify bed map button
-      await expect(page.getByRole('link', { name: 'Mapa de Leitos' })).toBeVisible({
+      await expect(mainContent.getByRole('link', { name: /Mapa de Leitos/ })).toBeVisible({
         timeout: 10000
       });
       console.log('   ✅ Bed map button visible');
 
       // Verify admit patient button
-      await expect(page.getByRole('link', { name: /Admitir Paciente/ })).toBeVisible({
+      await expect(mainContent.getByRole('link', { name: /Admitir Paciente/ })).toBeVisible({
         timeout: 10000
       });
       console.log('   ✅ Admit patient button visible');
@@ -144,9 +146,9 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
           await page.waitForURL(/\/inpatient\/inp-/, { timeout: 10000 });
 
           // Validate detail page
-          await expect(page.getByRole('heading', { name: /Detalhes da Internacao/ })).toBeVisible({
-            timeout: 15000
-          });
+          await expect(
+            mainContent.getByRole('heading', { name: /Detalhes da Internacao/ })
+          ).toBeVisible({ timeout: 15000 });
           console.log('   ✅ Inpatient detail page loaded');
 
           // Check for action buttons
@@ -165,7 +167,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       console.log('   🔙 Verifying navigation back to list...');
       await page.goto(`${SPA_URL}/inpatient`);
       await page.waitForLoadState('networkidle');
-      await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
+      await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
         timeout: 10000
       });
       console.log('   ✅ Navigation back to list works');
@@ -177,6 +179,8 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
   });
 
   test('valida elementos da lista de internação', async ({ page }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
     const token = process.env.E2E_AUTH_TOKEN;
     if (!token) {
       test.skip(true, 'E2E_AUTH_TOKEN not available');
@@ -191,17 +195,17 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(page.getByRole('heading', { name: /Interna(ção|cao)/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
       timeout: 15000
     });
 
     // Validate bed map button and its link
-    const bedMapBtn = page.getByRole('link', { name: 'Mapa de Leitos' });
+    const bedMapBtn = mainContent.getByRole('link', { name: /Mapa de Leitos/ });
     await expect(bedMapBtn).toBeVisible({ timeout: 10000 });
     await expect(bedMapBtn).toHaveAttribute('href', '/inpatient/board');
 
     // Validate admit patient button and its link
-    const admitBtn = page.getByRole('link', { name: /Admitir Paciente/ });
+    const admitBtn = mainContent.getByRole('link', { name: /Admitir Paciente/ });
     await expect(admitBtn).toBeVisible({ timeout: 10000 });
     await expect(admitBtn).toHaveAttribute('href', '/encounters');
 

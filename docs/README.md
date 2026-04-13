@@ -52,13 +52,23 @@ Documentos historicos em `docs/docs2/` ou referencias antigas a `apps/his-*`, `c
 
 Quando a discussão for comparacao com o Vetus-like, roadmap premium, backlog, sprints e corte do legado, a porta de entrada oficial passa a ser:
 
-1. `Enterprise/0171-INDICE-EXECUTIVO-TRILHA-PREMIUM-CVG-HIS-V2.md`
-2. `Enterprise/0163-RELATORIO-COMPARATIVO-VETUS-LIKE-CVG-HIS-V2.md`
-3. `Enterprise/0164-ROADMAP-CONSTRUCAO-PREMIUM-CVG-HIS-V2.md`
-4. `Enterprise/0165-BACKLOG-CONSTRUCAO-PREMIUM-CVG-HIS-V2.md`
-5. `Enterprise/0166-PLANO-EXECUCAO-POR-SPRINTS-CVG-HIS-V2.md`
-6. `Enterprise/0168-MATRIZ-CORTE-WEB-PARA-SPA-POR-DOMINIO.md`
-7. `Enterprise/0170-MATRIZ-ACEITE-ROLLBACK-CORTE-WEB.md`
+1. `vetus/README.md`
+2. `Enterprise/0190-MASTER-TRILHA-PREMIUM-ENTERPRISE-CVGHISV2.md`
+3. `Enterprise/0191-RELATORIO-EXECUTIVO-AVALIACAO-REAL-2026-04-12.md`
+4. `Enterprise/0192-ROADMAP-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
+5. `Enterprise/0193-BACKLOG-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
+6. `Enterprise/0194-PLANO-DE-SPRINTS-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
+7. `Enterprise/0196-MATRIZ-STATUS-REAL-PROJETO-PREMIUM-ENTERPRISE-2026-04-12.md`
+8. `Enterprise/0197-PLANO-GERAL-REORGANIZACAO-VETUS-ALIGNED-PREMIUM-ENTERPRISE.md`
+
+## Trilha Vetus de referencia
+
+Quando a necessidade for inspecao visual, comparacao de navegacao, inventario de modulos e evidencias do Vetus, a trilha oficial passa a ser:
+
+1. `vetus/README.md`
+2. `vetus/guides/01-overview-relatorio-mestre.md`
+3. `vetus/guides/13-arquitetura-rotas-e-api.md`
+4. `vetus/guides/16-catalogo-de-evidencias.md`
 
 ## Trilha viva
 
@@ -94,14 +104,18 @@ Quando a discussão for comparacao com o Vetus-like, roadmap premium, backlog, s
 ### Qualidade, dados e operacao
 
 - `460-qualidade-testes-e-gates.md`
+- `CI_GATES.md`
 - `470-politica-migracao-e-deploy.md`
 - `130-instalacao-publicacao-cvg-his-v2-real.md`
 - `131-checklist-cutover-servidor.md`
+- `132-superficie-canonica-deploy-e-migracao.md`
+- `521-operational-runbook-enterprise.md`
 
 Leitura obrigatoria para deploy atual:
 
 - `130-instalacao-publicacao-cvg-his-v2-real.md`
 - `131-checklist-cutover-servidor.md`
+- `132-superficie-canonica-deploy-e-migracao.md`
 
 Complemento fora de `docs/`:
 
@@ -118,7 +132,6 @@ Complemento fora de `docs/`:
 - `504-modulo-scheduling.md`
 - `505-modulo-staff.md`
 - `506-modulo-surgery.md`
-- `507-modulo-triage.md`
 - `508-modulo-users.md`
 
 ### Fluxos criticos e gaps
@@ -183,7 +196,6 @@ Complemento fora de `docs/`:
 - `632-fase-paralela-triage-validacao.md`
 - `633-fase-paralela-scheduling-queue-validacao.md`
 - `634-fase-hardening-scheduling-validacao.md`
-- `634-fase-hardening-scheduling-validacao.md`
 
 ### Governanca de acesso enterprise
 
@@ -212,5 +224,7 @@ Complemento fora de `docs/`:
 Os documentos arquivados foram preservados em:
 
 - `docs/docs2/archive-active-reset-2026-03-31/`
+- `docs/docs2/archive-enterprise-2026-04-12/`
+- `docs/docs2/archive-root-sanitization-2026-04-12/`
 
 Esse arquivo deve ser tratado como acervo historico e nao como trilha principal.

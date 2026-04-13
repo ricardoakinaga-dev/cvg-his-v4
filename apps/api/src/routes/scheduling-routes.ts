@@ -1,0 +1,295 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
+import type {
+  AppointmentListResponse,
+  CheckInQueueRequest,
+  CreateAppointmentRequest,
+  QueueListResponse,
+  SchedulingAvailabilityResponse,
+  SchedulingOverviewResponse
+} from '@cvg-his-v2/shared-contracts';
+import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+
+import { appendAudit } from '../helpers/audit-helper.js';
+import { readJsonBody } from '../helpers/common.js';
+
+export interface SchedulingRoutesHandlers {
+  scheduling: SchedulingService;
+  audit: AuditService;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+}
+
+function json(response: ServerResponse, statusCode: number, payload: unknown): true {
+  response.statusCode = statusCode;
+  response.setHeader('content-type', 'application/json');
+  response.end(JSON.stringify(payload));
+  return true;
+}
+
+function parseStatuses(url: URL): Array<'scheduled' | 'checked_in' | 'completed' | 'cancelled'> | undefined {
+  const raw = url.searchParams.get('statuses') ?? url.searchParams.get('status');
+  if (!raw) return undefined;
+
+  const values = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean) as Array<'scheduled' | 'checked_in' | 'completed' | 'cancelled'>;
+
+  return values.length > 0 ? values : undefined;
+}
+
+export async function handleSchedulingRoutes(
+  pathname: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+  correlationId: string,
+  handlers: SchedulingRoutesHandlers
+): Promise<boolean> {
+  const { scheduling, audit, requirePrincipal } = handlers;
+  const method = request.method ?? 'GET';
+  const url = new URL(request.url ?? pathname, 'http://localhost');
+
+  if (pathname === '/appointments' && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const payload: AppointmentListResponse = {
+      items: scheduling.listAppointments(principal.user.accountId, {
+        startAt: url.searchParams.get('startAt') ?? undefined,
+        endAt: url.searchParams.get('endAt') ?? undefined,
+        statuses: parseStatuses(url),
+        practitionerStaffId:
+          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ?? undefined,
+        serviceId: url.searchParams.get('serviceId') ?? undefined,
+        specialty: url.searchParams.get('specialty') ?? undefined,
+        unit: url.searchParams.get('unit') ?? undefined,
+        search: url.searchParams.get('search') ?? undefined
+      })
+    };
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'list_appointments',
+      entityType: 'appointment',
+      entityId: 'all',
+      payloadSummary: 'Appointments listed',
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (pathname === '/appointments' && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
+    const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'create_appointment',
+      entityType: 'appointment',
+      entityId: appointment.id,
+      payloadSummary: `Appointment created for patient ${appointment.patientId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 201, appointment);
+  }
+
+  if (pathname.startsWith('/appointments/') && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'get_appointment',
+      entityType: 'appointment',
+      entityId: appointmentId,
+      payloadSummary: `Appointment ${appointmentId} retrieved`,
+      riskLevel: 'low',
+      correlationId
+    });
+    return json(response, 200, appointment);
+  }
+
+  if (pathname.startsWith('/appointments/') && pathname.endsWith('/cancel') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const body = (await readJsonBody(request).catch(() => ({}))) as Record<string, unknown>;
+    const reason = typeof body.reason === 'string' ? body.reason : undefined;
+    const cancelled = await scheduling.cancelAppointment(appointmentId as never, reason);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'cancel_appointment',
+      entityType: 'appointment',
+      entityId: cancelled.id,
+      payloadSummary: `Appointment cancelled for patient ${cancelled.patientId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, cancelled);
+  }
+
+  if (pathname === '/scheduling/overview' && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const payload: SchedulingOverviewResponse = scheduling.getSchedulingOverview(
+      principal.user.accountId,
+      {
+        viewMode: (url.searchParams.get('viewMode') as 'day' | 'week' | 'month' | null) ?? undefined,
+        referenceDate: url.searchParams.get('referenceDate') ?? undefined,
+        statuses: parseStatuses(url),
+        practitionerStaffId:
+          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ?? undefined,
+        serviceId: url.searchParams.get('serviceId') ?? undefined,
+        specialty: url.searchParams.get('specialty') ?? undefined,
+        unit: url.searchParams.get('unit') ?? undefined,
+        search: url.searchParams.get('search') ?? undefined
+      }
+    );
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'read_overview',
+      entityType: 'scheduling-overview',
+      entityId: payload.viewMode,
+      payloadSummary: `Scheduling overview read in ${payload.viewMode} mode`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (pathname === '/scheduling/availability' && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const scheduledAt = requireNonEmptyString(url.searchParams.get('scheduledAt'), 'scheduledAt');
+    const patientId = requireNonEmptyString(url.searchParams.get('patientId'), 'patientId');
+    const payload: SchedulingAvailabilityResponse = scheduling.getAvailability(
+      principal.user.accountId,
+      {
+        scheduledAt,
+        patientId,
+        practitionerStaffId: url.searchParams.get('practitionerStaffId') ?? undefined,
+        resourceLabel: url.searchParams.get('resourceLabel') ?? undefined,
+        ignoreAppointmentId: url.searchParams.get('ignoreAppointmentId') ?? undefined,
+        durationMinutes: url.searchParams.get('durationMinutes')
+          ? Number(url.searchParams.get('durationMinutes'))
+          : undefined
+      }
+    );
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'read_availability',
+      entityType: 'scheduling-availability',
+      entityId: patientId,
+      payloadSummary: `Scheduling availability checked for patient ${patientId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (pathname === '/queue' && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const payload: QueueListResponse = {
+      items: scheduling.getQueue(principal.user.accountId)
+    };
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'list_queue',
+      entityType: 'queue-entry',
+      entityId: 'all',
+      payloadSummary: 'Operational queue listed',
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (pathname === '/queue/check-in' && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const payload = (await readJsonBody(request)) as CheckInQueueRequest;
+    const entry = await scheduling.checkIn(principal.user.accountId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'check_in',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Patient ${entry.patientId} checked in`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 201, entry);
+  }
+
+  if (pathname.startsWith('/queue/') && pathname.endsWith('/call') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const entry = await scheduling.callQueueEntry(queueEntryId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'call_queue_entry',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Queue entry ${entry.id} called`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, entry);
+  }
+
+  if (pathname.startsWith('/queue/') && pathname.endsWith('/start-care') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const entry = await scheduling.transitionQueueEntry(queueEntryId as never, 'in_care' as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'start_care',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Queue entry ${entry.id} transitioned to in_care`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, entry);
+  }
+
+  if (pathname.startsWith('/queue/') && pathname.endsWith('/no-show') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const entry = await scheduling.transitionQueueEntry(queueEntryId as never, 'cancelled' as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'no_show',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Queue entry ${entry.id} marked as no_show`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, entry);
+  }
+
+  return false;
+}

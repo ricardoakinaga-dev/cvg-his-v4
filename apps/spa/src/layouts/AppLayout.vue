@@ -1,11 +1,18 @@
 <template>
-  <div class="app-layout" :class="{ 'app-layout--collapsed': appStore.sidebarCollapsed }">
-    <aside class="sidebar">
+  <a href="#main-content" class="skip-link">Pular para o conteudo principal</a>
+
+  <div
+    class="app-layout"
+    :class="{ 'app-layout--collapsed': appStore.sidebarCollapsed }"
+    role="application"
+    aria-label="CVG HIS - Sistema de Gestao de Saude"
+  >
+    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
       <div class="sidebar__brand">
         <div class="sidebar__brand-mark">🏥</div>
         <div v-if="!appStore.sidebarCollapsed" class="sidebar__brand-copy">
           <strong>CVG HIS</strong>
-          <span>SPA oficial</span>
+          <span>Estrutura Vetus-aligned</span>
         </div>
         <button
           class="sidebar__toggle"
@@ -17,51 +24,15 @@
         </button>
       </div>
 
-      <div class="sidebar__context">
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar__context-head">
-          <span class="sidebar__eyebrow">Contexto</span>
-          <span class="sidebar__microcopy">Operação premium em tempo real</span>
-        </div>
-        <div class="sidebar__context-chips">
-          <span class="sidebar__chip">👤 {{ authStore.userName }}</span>
-          <span class="sidebar__chip">🎯 {{ primaryRoleLabel }}</span>
-          <span v-if="accountLabel" class="sidebar__chip">🏢 {{ accountLabel }}</span>
-          <span v-if="activeGroupLabel" class="sidebar__chip">📚 {{ activeGroupLabel }}</span>
-        </div>
-      </div>
-
       <div class="sidebar__search">
         <input
           v-model="searchQuery"
           type="search"
           class="sidebar__search-input"
-          placeholder="Buscar módulo, rota ou rotina..."
-          aria-label="Buscar módulo"
+          placeholder="Buscar modulo, rotina ou relatorio..."
+          aria-label="Buscar modulo"
         />
       </div>
-
-      <section v-if="favoriteLinks.length" class="sidebar__panel">
-        <div class="sidebar__panel-head">
-          <span class="sidebar__eyebrow">Favoritos</span>
-          <button class="sidebar__ghost-btn" type="button" @click="appStore.clearRecentRoutes()">
-            Limpar recentes
-          </button>
-        </div>
-        <div class="sidebar__quick-links">
-          <router-link
-            v-for="item in favoriteLinks"
-            :key="item.path"
-            :to="item.path"
-            class="sidebar__quick-link"
-            :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
-          >
-            <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">{{
-              item.label
-            }}</span>
-          </router-link>
-        </div>
-      </section>
 
       <nav class="sidebar__nav" aria-label="Navegação principal">
         <details
@@ -73,34 +44,110 @@
           <summary class="sidebar__group-summary">
             <span class="sidebar__group-summary-text">
               <span class="sidebar__group-icon">{{ group.icon }}</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-label">{{
-                group.label
-              }}</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-label">
+                {{ group.label }}
+              </span>
             </span>
             <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
           </summary>
+
           <div class="sidebar__group-body">
-            <router-link
-              v-for="item in group.items"
-              :key="item.path"
-              :to="item.path"
-              class="sidebar__link"
-              :class="{ 'sidebar__link--active': isActivePath(item.path) }"
-              :title="item.label"
+            <section
+              v-for="section in group.sections"
+              :key="section.id"
+              class="sidebar__section"
             >
-              <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">{{
-                item.label
-              }}</span>
-            </router-link>
+              <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+                {{ section.label }}
+              </p>
+              <router-link
+                v-for="item in section.items"
+                :key="item.path"
+                :to="item.path"
+                class="sidebar__link"
+                :class="{ 'sidebar__link--active': isActivePath(item.path) }"
+                :title="item.label"
+              >
+                <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+                <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                  {{ item.label }}
+                </span>
+              </router-link>
+            </section>
           </div>
         </details>
       </nav>
 
+      <section v-if="filteredEnterpriseSections.length" class="sidebar__panel sidebar__panel--enterprise">
+        <div class="sidebar__panel-head">
+          <span class="sidebar__eyebrow">Console Enterprise</span>
+          <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
+        </div>
+        <div class="sidebar__enterprise-groups">
+          <section
+            v-for="section in filteredEnterpriseSections"
+            :key="section.id"
+            class="sidebar__section"
+          >
+            <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+              {{ section.label }}
+            </p>
+            <router-link
+              v-for="item in section.items"
+              :key="item.path"
+              :to="item.path"
+              class="sidebar__link sidebar__link--utility"
+              :class="{ 'sidebar__link--active': isActivePath(item.path) }"
+              :title="item.label"
+            >
+              <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                {{ item.label }}
+              </span>
+            </router-link>
+          </section>
+        </div>
+      </section>
+
+      <section v-if="favoriteLinks.length" class="sidebar__panel">
+        <div class="sidebar__panel-head">
+          <span class="sidebar__eyebrow">Favoritos</span>
+          <button
+            v-if="!appStore.sidebarCollapsed"
+            class="sidebar__ghost-btn"
+            type="button"
+            @click="toggleCurrentFavoriteRoute()"
+          >
+            {{ isCurrentRouteFavorite ? 'Desfavoritar atual' : 'Favoritar atual' }}
+          </button>
+        </div>
+        <div class="sidebar__quick-links">
+          <router-link
+            v-for="item in favoriteLinks"
+            :key="item.path"
+            :to="item.path"
+            class="sidebar__quick-link"
+            :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
+          >
+            <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
+            <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
+              {{ item.label }}
+            </span>
+          </router-link>
+        </div>
+      </section>
+
       <section v-if="recentLinks.length" class="sidebar__panel sidebar__panel--recent">
         <div class="sidebar__panel-head">
           <span class="sidebar__eyebrow">Recentes</span>
-          <span class="sidebar__microcopy">{{ recentLinks.length }} rotas</span>
+          <button
+            v-if="!appStore.sidebarCollapsed"
+            class="sidebar__ghost-btn"
+            type="button"
+            @click="appStore.clearRecentRoutes()"
+          >
+            Limpar
+          </button>
         </div>
         <div class="sidebar__recent-list">
           <router-link
@@ -111,9 +158,9 @@
             :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
           >
             <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">{{
-              item.label
-            }}</span>
+            <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
+              {{ item.label }}
+            </span>
           </router-link>
         </div>
       </section>
@@ -122,56 +169,37 @@
     <main class="workspace">
       <header class="topbar">
         <div class="topbar__title-block">
-          <div class="topbar__eyebrow">Frontend oficial · SPA</div>
-          <div class="topbar__title-line">
-            <span class="topbar__icon">{{ pageIcon }}</span>
-            <div>
-              <h1 class="topbar__title">{{ pageTitle }}</h1>
-              <p class="topbar__subtitle">{{ pageSubtitle }}</p>
-            </div>
-          </div>
+          <h1 class="topbar__title">{{ currentPageTitle }}</h1>
         </div>
 
-        <div class="topbar__actions">
-          <div class="topbar__breadcrumbs">
-            <router-link to="/" class="topbar__breadcrumb-link">Início</router-link>
-            <template v-for="crumb in breadcrumbs" :key="crumb.label + (crumb.path ?? '')">
-              <span class="topbar__breadcrumb-sep">/</span>
-              <router-link v-if="crumb.path" :to="crumb.path" class="topbar__breadcrumb-link">
-                {{ crumb.label }}
-              </router-link>
-              <span v-else class="topbar__breadcrumb-item topbar__breadcrumb-item--active">
-                {{ crumb.label }}
-              </span>
-            </template>
+        <div class="topbar__action-row">
+          <button class="topbar__action-btn topbar__action-btn--search" type="button" @click="openPalette">
+            <span>Buscar</span>
+            <kbd>Ctrl+K</kbd>
+          </button>
+
+          <button class="topbar__icon-btn" type="button" title="Notificações" @click="navigateTo('/notifications')">
+            🔔
+          </button>
+
+          <button
+            class="topbar__icon-btn"
+            type="button"
+            :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+            @click="themeStore.toggle()"
+          >
+            {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+          </button>
+
+          <div class="topbar__profile">
+            <strong>{{ authStore.userName }}</strong>
           </div>
 
-          <div class="topbar__action-row">
-            <button
-              class="topbar__action-btn"
-              :class="{ 'topbar__action-btn--active': isCurrentFavorite }"
-              type="button"
-              @click="toggleCurrentFavorite"
-              :title="isCurrentFavorite ? 'Remover favorito' : 'Salvar favorito'"
-            >
-              {{ isCurrentFavorite ? '★' : '☆' }}
-            </button>
-            <button class="topbar__action-btn" type="button" @click="themeStore.toggle()">
-              {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
-            </button>
-            <button class="topbar__action-btn topbar__action-btn--search" type="button" @click="openPalette">
-              ⌘K
-            </button>
-            <div class="topbar__user-box">
-              <strong>{{ authStore.userName }}</strong>
-              <span>{{ primaryRoleLabel }}</span>
-            </div>
-            <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
-          </div>
+          <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
         </div>
       </header>
 
-      <section class="workspace__body">
+      <section class="workspace__body" id="main-content" role="main" aria-label="Conteudo principal">
         <router-view />
       </section>
     </main>
@@ -184,34 +212,66 @@
             v-model.trim="commandQuery"
             class="command-palette__input"
             type="search"
-            placeholder="Digite um módulo, rota ou rotina..."
+            placeholder="Digite um módulo, rota ou ação..."
             autocomplete="off"
-            @keydown.enter.prevent="goToFirstCommand"
+            @keydown.enter.prevent="executeSelected"
             @keydown.esc.prevent="closePalette"
+            @keydown.up.prevent="moveSelectionUp"
+            @keydown.down.prevent="moveSelectionDown"
           />
           <p class="command-palette__hint">
-            Atalho: <kbd>Ctrl</kbd> + <kbd>K</kbd> para abrir a busca global.
+            <kbd>↑</kbd><kbd>↓</kbd> navegar &nbsp;·&nbsp; <kbd>Enter</kbd> selecionar
+            &nbsp;·&nbsp; <kbd>Esc</kbd> fechar
           </p>
         </div>
 
-        <div class="command-palette__results">
-          <button
-            v-for="item in filteredCommandItems"
-            :key="item.path"
-            type="button"
-            class="command-palette__item"
-            @click="navigateTo(item.path)"
-          >
-            <span class="command-palette__item-icon">{{ item.icon ?? '•' }}</span>
-            <span class="command-palette__item-text">
-              <strong>{{ item.label }}</strong>
-              <small>{{ item.groupLabel }} · {{ item.path }}</small>
-            </span>
-            <kbd class="command-palette__item-shortcut">{{ item.shortcut }}</kbd>
-          </button>
+        <div class="command-palette__results" role="listbox">
+          <template v-if="filteredActionItems.length">
+            <div class="command-palette__section-label">Ações</div>
+            <button
+              v-for="(item, index) in filteredActionItems"
+              :key="'action-' + item.id"
+              type="button"
+              class="command-palette__item"
+              :class="{ 'command-palette__item--selected': selectedIndex === index }"
+              role="option"
+              :aria-selected="selectedIndex === index"
+              @click="executeAction(item)"
+              @mouseenter="selectedIndex = index"
+            >
+              <span class="command-palette__item-icon">{{ item.icon }}</span>
+              <span class="command-palette__item-text">
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.description }}</small>
+              </span>
+              <kbd v-if="item.shortcut" class="command-palette__item-shortcut">{{ item.shortcut }}</kbd>
+            </button>
+          </template>
 
-          <div v-if="filteredCommandItems.length === 0" class="command-palette__empty">
-            Nenhuma rotina encontrada.
+          <template v-if="filteredRouteItems.length">
+            <div class="command-palette__section-label">Rotas</div>
+            <button
+              v-for="(item, index) in filteredRouteItems"
+              :key="'route-' + item.path"
+              type="button"
+              class="command-palette__item"
+              :class="{ 'command-palette__item--selected': selectedIndex === filteredActionItems.length + index }"
+              role="option"
+              :aria-selected="selectedIndex === filteredActionItems.length + index"
+              @click="navigateTo(item.path)"
+              @mouseenter="selectedIndex = filteredActionItems.length + index"
+            >
+              <span class="command-palette__item-icon">{{ item.icon ?? '•' }}</span>
+              <span class="command-palette__item-text">
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.groupLabel }}</small>
+              </span>
+              <kbd class="command-palette__item-shortcut">{{ item.shortcut }}</kbd>
+            </button>
+          </template>
+
+          <div v-if="filteredActionItems.length === 0 && filteredRouteItems.length === 0" class="command-palette__empty">
+            Nenhum resultado encontrado.
           </div>
         </div>
       </div>
@@ -225,7 +285,16 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { useAppStore } from '@/stores/app';
-import { findMatchingNavItem, findNavItem, navGroups } from '@/navigation';
+import {
+  enterpriseConsole,
+  findMatchingNavGroup,
+  findMatchingNavLocation,
+  findNavItem,
+  navGroups,
+  type AppNavGroup,
+  type AppNavItem,
+  type AppNavSection
+} from '@/navigation';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const route = useRoute();
@@ -238,55 +307,157 @@ const searchQuery = ref('');
 const commandPaletteOpen = ref(false);
 const commandQuery = ref('');
 const commandInputEl = ref<HTMLInputElement | null>(null);
+const selectedIndex = ref(0);
 
-const matchingNavItem = computed(() => findMatchingNavItem(route.path));
-const matchingNavGroup = computed(
-  () => navGroups.find((group) => group.items.some((item) => isActivePath(item.path))) ?? navGroups[0]
-);
+interface CommandAction {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  shortcut?: string;
+  action: () => void;
+}
 
-const pageTitle = computed(() => {
-  const metaTitle = typeof route.meta.title === 'string' ? route.meta.title : '';
-  return metaTitle || matchingNavItem.value?.label || appStore.pageTitle || 'CVG HIS SPA';
+interface CommandRouteItem extends AppNavItem {
+  groupLabel: string;
+  shortcut: string;
+}
+
+const currentLocation = computed(() => findMatchingNavLocation(route.path));
+const matchingNavGroup = computed(() => findMatchingNavGroup(route.path) ?? navGroups[0]!);
+
+const currentAreaLabel = computed(() => {
+  if (currentLocation.value?.area === 'enterprise') {
+    return 'Console Enterprise';
+  }
+  return currentLocation.value?.group.label ?? 'Início';
 });
 
-const pageSubtitle = computed(() => {
-  const breadcrumb = typeof route.meta.breadcrumb === 'string' ? route.meta.breadcrumb : '';
-  return breadcrumb || matchingNavGroup.value?.description || 'Operação hospitalar em tempo real';
+const currentPageTitle = computed(() => {
+  const routeTitle = typeof route.meta.title === 'string' ? route.meta.title : undefined;
+  if (routeTitle) {
+    return routeTitle;
+  }
+
+  return currentLocation.value?.item.label ?? currentAreaLabel.value;
 });
 
-const pageIcon = computed(() => {
-  return (typeof route.meta.icon === 'string' && route.meta.icon) || matchingNavItem.value?.icon || '🏥';
-});
+const favoriteTargetPath = computed(() => currentLocation.value?.item.path ?? route.path);
+const isCurrentRouteFavorite = computed(() => appStore.isFavoriteRoute(favoriteTargetPath.value));
 
-const primaryRoleLabel = computed(() => {
-  if (authStore.user.roles.length === 0) return 'Operador';
-  return authStore.user.roles[0]
-    .replace(/[_-]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-});
+const commandActions = computed<CommandAction[]>(() => [
+  {
+    id: 'toggle-theme',
+    label: 'Alternar tema',
+    description: themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro',
+    icon: themeStore.theme === 'dark' ? '☀️' : '🌙',
+    shortcut: 'T',
+    action: () => themeStore.toggle()
+  },
+  {
+    id: 'toggle-sidebar',
+    label: 'Recolher/Expandir menu',
+    description: appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral',
+    icon: '↔️',
+    shortcut: 'M',
+    action: () => appStore.toggleSidebar()
+  },
+  {
+    id: 'toggle-favorite',
+    label: isCurrentRouteFavorite.value ? 'Remover favorito da rota atual' : 'Favoritar rota atual',
+    description: favoriteTargetPath.value,
+    icon: isCurrentRouteFavorite.value ? '★' : '☆',
+    shortcut: 'F',
+    action: () => toggleCurrentFavoriteRoute()
+  },
+  {
+    id: 'create-patient',
+    label: 'Novo paciente',
+    description: 'Cadastrar um novo paciente no sistema',
+    icon: '➕',
+    shortcut: 'P',
+    action: () => navigateTo('/patients/new')
+  },
+  {
+    id: 'create-appointment',
+    label: 'Novo agendamento',
+    description: 'Criar um novo agendamento',
+    icon: '📅',
+    shortcut: 'A',
+    action: () => navigateTo('/appointments/new')
+  },
+  {
+    id: 'open-support',
+    label: 'Abrir suporte operacional',
+    description: 'Levar para a busca mestre e rotinas de ajuda',
+    icon: '🆘',
+    shortcut: '?',
+    action: () => navigateTo('/master-search')
+  },
+  {
+    id: 'logout',
+    label: 'Sair do sistema',
+    description: 'Encerrar sessão e redirecionar para login',
+    icon: '🚪',
+    shortcut: 'Sair',
+    action: () => handleLogout()
+  }
+]);
 
-const accountLabel = computed(() => authStore.user.accountId ?? '');
+function itemMatchesQuery(item: AppNavItem, query: string, groupLabel: string, sectionLabel: string): boolean {
+  return (
+    item.label.toLowerCase().includes(query) ||
+    item.path.toLowerCase().includes(query) ||
+    item.keywords?.some((keyword) => keyword.toLowerCase().includes(query)) === true ||
+    groupLabel.toLowerCase().includes(query) ||
+    sectionLabel.toLowerCase().includes(query)
+  );
+}
 
-const activeGroupLabel = computed(() => matchingNavGroup.value?.label ?? '');
+function filterGroup(group: AppNavGroup, query: string): AppNavGroup | null {
+  if (!query) return group;
+
+  const groupMatches = group.label.toLowerCase().includes(query) || group.description.toLowerCase().includes(query);
+  const nextSections = group.sections
+    .map((section) => {
+      if (groupMatches || section.label.toLowerCase().includes(query)) {
+        return section;
+      }
+
+      const items = section.items.filter((item) => itemMatchesQuery(item, query, group.label, section.label));
+      return items.length > 0 ? { ...section, items } : null;
+    })
+    .filter((section): section is AppNavSection => Boolean(section));
+
+  if (groupMatches) return group;
+  return nextSections.length > 0 ? { ...group, sections: nextSections } : null;
+}
 
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
+  return navGroups
+    .map((group) => filterGroup(group, query))
+    .filter((group): group is AppNavGroup => Boolean(group));
+});
+
+const filteredEnterpriseSections = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
   if (!query) {
-    return navGroups;
+    return enterpriseConsole.sections;
   }
 
-  return navGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        return (
-          item.label.toLowerCase().includes(query) ||
-          item.path.toLowerCase().includes(query) ||
-          group.label.toLowerCase().includes(query)
-        );
-      })
-    }))
-    .filter((group) => group.items.length > 0);
+  return enterpriseConsole.sections
+    .map((section) => {
+      if (enterpriseConsole.label.toLowerCase().includes(query) || section.label.toLowerCase().includes(query)) {
+        return section;
+      }
+
+      const items = section.items.filter((item) =>
+        itemMatchesQuery(item, query, enterpriseConsole.label, section.label)
+      );
+      return items.length > 0 ? { ...section, items } : null;
+    })
+    .filter((section): section is AppNavSection => Boolean(section));
 });
 
 const favoriteLinks = computed(() =>
@@ -306,17 +477,43 @@ const recentLinks = computed(() =>
     .filter((item) => Boolean(item?.path))
 );
 
-const commandItems = computed(() =>
-  navGroups.flatMap((group) =>
-    group.items.map((item) => ({
-      ...item,
-      groupLabel: group.label,
-      shortcut: item.path === '/' ? 'Home' : item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
-    }))
-  )
-);
+const commandItems = computed<CommandRouteItem[]>(() => {
+  const mainItems = navGroups.flatMap((group) =>
+    group.sections.flatMap((section) =>
+      section.items.map((item) => ({
+        ...item,
+        groupLabel: `${group.label} · ${section.label}`,
+        shortcut:
+          item.path === '/'
+            ? 'Home'
+            : item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
+      }))
+    )
+  );
 
-const filteredCommandItems = computed(() => {
+  const enterpriseItems = enterpriseConsole.sections.flatMap((section) =>
+    section.items.map((item) => ({
+      ...item,
+      groupLabel: `${enterpriseConsole.label} · ${section.label}`,
+      shortcut: item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
+    }))
+  );
+
+  return [...mainItems, ...enterpriseItems];
+});
+
+const filteredActionItems = computed(() => {
+  const query = commandQuery.value.trim().toLowerCase();
+  if (!query) {
+    return commandActions.value.slice(0, 6);
+  }
+
+  return commandActions.value
+    .filter((item) => item.label.toLowerCase().includes(query) || item.description.toLowerCase().includes(query))
+    .slice(0, 6);
+});
+
+const filteredRouteItems = computed(() => {
   const query = commandQuery.value.trim().toLowerCase();
 
   if (!query) {
@@ -328,30 +525,14 @@ const filteredCommandItems = computed(() => {
       return (
         item.label.toLowerCase().includes(query) ||
         item.path.toLowerCase().includes(query) ||
-        item.groupLabel.toLowerCase().includes(query)
+        item.groupLabel.toLowerCase().includes(query) ||
+        item.keywords?.some((keyword) => keyword.toLowerCase().includes(query)) === true
       );
     })
     .slice(0, 12);
 });
 
-const breadcrumbs = computed(() => {
-  const crumbs: { label: string; path?: string }[] = [];
-  const current = route.meta;
-  if (current.breadcrumb) {
-    if (current.breadcrumbParent) {
-      const parentRoute = router
-        .getRoutes()
-        .find((record) => record.name === current.breadcrumbParent);
-      if (parentRoute) {
-        crumbs.push({ label: current.breadcrumbParent as string, path: parentRoute.path });
-      }
-    }
-    crumbs.push({ label: current.breadcrumb as string });
-  }
-  return crumbs;
-});
-
-const isCurrentFavorite = computed(() => appStore.favoriteRoutes.includes(route.path));
+const totalItems = computed(() => filteredActionItems.value.length + filteredRouteItems.value.length);
 
 function isActivePath(path: string): boolean {
   return route.path === path || route.path.startsWith(`${path}/`);
@@ -362,19 +543,16 @@ function shouldOpenGroup(groupId: string): boolean {
   return matchingNavGroup.value?.id === groupId || groupId === 'inicio';
 }
 
-function toggleCurrentFavorite() {
-  if (route.path === '/login') return;
-  appStore.toggleFavoriteRoute(route.path);
-}
-
 function openPalette() {
   commandPaletteOpen.value = true;
   commandQuery.value = '';
+  selectedIndex.value = 0;
 }
 
 function closePalette() {
   commandPaletteOpen.value = false;
   commandQuery.value = '';
+  selectedIndex.value = 0;
 }
 
 function navigateTo(path: string) {
@@ -382,25 +560,96 @@ function navigateTo(path: string) {
   void router.push(path);
 }
 
-function goToFirstCommand() {
-  const first = filteredCommandItems.value[0];
-  if (first) {
-    navigateTo(first.path);
+function executeAction(item: CommandAction) {
+  closePalette();
+  item.action();
+}
+
+function executeSelected() {
+  const actionCount = filteredActionItems.value.length;
+  if (selectedIndex.value < actionCount) {
+    executeAction(filteredActionItems.value[selectedIndex.value]);
+    return;
   }
+
+  const routeIndex = selectedIndex.value - actionCount;
+  const routeItem = filteredRouteItems.value[routeIndex];
+  if (routeItem) {
+    navigateTo(routeItem.path);
+  }
+}
+
+function moveSelectionUp() {
+  const total = totalItems.value;
+  if (total === 0) return;
+  selectedIndex.value = selectedIndex.value <= 0 ? total - 1 : selectedIndex.value - 1;
+}
+
+function moveSelectionDown() {
+  const total = totalItems.value;
+  if (total === 0) return;
+  selectedIndex.value = selectedIndex.value >= total - 1 ? 0 : selectedIndex.value + 1;
+}
+
+function toggleCurrentFavoriteRoute() {
+  appStore.toggleFavoriteRoute(favoriteTargetPath.value);
+}
+
+function openSupportCenter() {
+  navigateTo('/master-search');
 }
 
 function onKeydown(event: KeyboardEvent) {
   const isCommand = event.metaKey || event.ctrlKey;
+
   if (isCommand && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     openPalette();
     return;
   }
 
-  if (event.key === 'Escape' && commandPaletteOpen.value) {
+  if (event.key === '/' && !isInInputField()) {
     event.preventDefault();
-    closePalette();
+    const searchInput = document.querySelector('.sidebar__search-input') as HTMLInputElement | null;
+    searchInput?.focus();
+    return;
   }
+
+  if (event.key === '?' && !isInInputField()) {
+    event.preventDefault();
+    openPalette();
+    commandQuery.value = 'suporte';
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    if (commandPaletteOpen.value) {
+      event.preventDefault();
+      closePalette();
+    } else if (searchQuery.value) {
+      searchQuery.value = '';
+    }
+    return;
+  }
+
+  if (commandPaletteOpen.value) {
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveSelectionUp();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveSelectionDown();
+    }
+  }
+}
+
+function isInInputField(): boolean {
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || active.getAttribute('contenteditable') === 'true';
 }
 
 onMounted(() => {
@@ -417,35 +666,62 @@ watch(commandPaletteOpen, async (open) => {
   commandInputEl.value?.focus();
 });
 
+watch(totalItems, (nextTotal) => {
+  if (nextTotal <= 0) {
+    selectedIndex.value = 0;
+    return;
+  }
+
+  if (selectedIndex.value >= nextTotal) {
+    selectedIndex.value = nextTotal - 1;
+  }
+});
+
 function handleLogout() {
   authStore.logout();
-  router.push('/login');
+  void router.push('/login');
 }
 </script>
 
 <style scoped>
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 9999;
+  padding: 12px 16px;
+  background: var(--color-primary-600, #2563eb);
+  color: var(--color-text-inverse, #ffffff);
+  font-weight: 600;
+  border-radius: var(--radius-md, 6px);
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.4));
+}
+
 .app-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
-    radial-gradient(circle at top right, rgba(13, 148, 136, 0.08), transparent 24%),
-    var(--color-bg, #f0f4f8);
+  grid-template-columns: 340px minmax(0, 1fr);
+  background: var(--color-bg, #f3f6f9);
 }
 
 .app-layout--collapsed {
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 16px 14px;
   border-right: 1px solid var(--color-border, #e2e8f0);
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(16px);
+  background: var(--color-surface, #ffffff);
   min-width: 0;
 }
 
@@ -454,9 +730,9 @@ function handleLogout() {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(13, 148, 136, 0.08));
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: var(--color-bg-subtle, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
 }
 
 .sidebar__brand-mark {
@@ -464,9 +740,9 @@ function handleLogout() {
   height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
-  background: var(--color-surface, #ffffff);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(249, 115, 22, 0.12));
+  border: 1px solid var(--color-border, #e2e8f0);
   font-size: 20px;
 }
 
@@ -498,16 +774,17 @@ function handleLogout() {
   flex-shrink: 0;
 }
 
-.sidebar__context,
 .sidebar__panel {
   padding: 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+  border-radius: 14px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
 }
 
-.sidebar__context-head,
+.sidebar__panel--enterprise {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(37, 99, 235, 0.02));
+}
+
 .sidebar__panel-head {
   display: flex;
   align-items: center;
@@ -529,25 +806,6 @@ function handleLogout() {
   color: var(--color-text-muted, #94a3b8);
 }
 
-.sidebar__context-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.sidebar__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--color-text, #0f172a);
-  border: 1px solid rgba(37, 99, 235, 0.12);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .sidebar__search {
   padding: 0 2px;
 }
@@ -556,9 +814,9 @@ function handleLogout() {
   width: 100%;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
   color: var(--color-text, #0f172a);
   outline: none;
 }
@@ -568,55 +826,6 @@ function handleLogout() {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.sidebar__quick-links,
-.sidebar__recent-list {
-  display: grid;
-  gap: 6px;
-}
-
-.sidebar__quick-link,
-.sidebar__recent-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid transparent;
-  color: var(--color-text-secondary, #475569);
-  text-decoration: none;
-  transition:
-    transform 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.sidebar__quick-link:hover,
-.sidebar__recent-link:hover,
-.sidebar__link:hover {
-  transform: translateX(2px);
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.1);
-  text-decoration: none;
-}
-
-.sidebar__quick-link--active,
-.sidebar__recent-link--active,
-.sidebar__link--active {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(13, 148, 136, 0.08));
-  border-color: rgba(37, 99, 235, 0.18);
-  color: var(--color-primary-700, #1d4ed8);
-  font-weight: 600;
-}
-
-.sidebar__quick-link-icon,
-.sidebar__recent-link-icon,
-.sidebar__link-icon {
-  width: 24px;
-  flex-shrink: 0;
-  text-align: center;
-}
-
 .sidebar__nav {
   display: grid;
   gap: 10px;
@@ -624,14 +833,10 @@ function handleLogout() {
 }
 
 .sidebar__group {
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.64);
+  border-radius: 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
   overflow: hidden;
-}
-
-.sidebar__group[open] {
-  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
 }
 
 .sidebar__group-summary {
@@ -670,12 +875,36 @@ function handleLogout() {
   color: var(--color-text-muted, #94a3b8);
 }
 
-.sidebar__group-body {
+.sidebar__group-body,
+.sidebar__enterprise-groups {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding: 0 8px 10px;
 }
 
+.sidebar__section {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar__section-label {
+  margin: 0;
+  padding: 2px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.sidebar__quick-links,
+.sidebar__recent-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar__quick-link,
+.sidebar__recent-link,
 .sidebar__link {
   display: flex;
   align-items: center;
@@ -683,11 +912,48 @@ function handleLogout() {
   min-height: 42px;
   padding: 10px 10px;
   border-radius: 12px;
+  border: 1px solid transparent;
   color: var(--color-text-secondary, #475569);
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.sidebar__quick-link:hover,
+.sidebar__recent-link:hover,
+.sidebar__link:hover {
+  transform: translateX(2px);
+  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(37, 99, 235, 0.1);
   text-decoration: none;
 }
 
-.sidebar__link-label {
+.sidebar__quick-link--active,
+.sidebar__recent-link--active,
+.sidebar__link--active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(13, 148, 136, 0.08));
+  border-color: rgba(37, 99, 235, 0.18);
+  color: var(--color-primary-700, #1d4ed8);
+  font-weight: 600;
+}
+
+.sidebar__link--utility {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.sidebar__quick-link-icon,
+.sidebar__recent-link-icon,
+.sidebar__link-icon {
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.sidebar__link-label,
+.sidebar__quick-link-label,
+.sidebar__recent-link-label {
   font-size: 13px;
   white-space: nowrap;
 }
@@ -711,143 +977,88 @@ function handleLogout() {
   display: flex;
   gap: 16px;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(16px);
-}
-
-.topbar__title-block {
-  display: grid;
-  gap: 8px;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
   min-width: 0;
 }
 
-.topbar__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-primary-600, #2563eb);
-}
-
-.topbar__title-line {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.topbar__icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(13, 148, 136, 0.08));
-  border: 1px solid rgba(37, 99, 235, 0.14);
-  font-size: 22px;
+.topbar__title-block {
+  min-width: 0;
 }
 
 .topbar__title {
   margin: 0;
   font-size: 24px;
-  line-height: 1.2;
-  color: var(--color-text, #0f172a);
-}
-
-.topbar__subtitle {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: var(--color-text-muted, #94a3b8);
-}
-
-.topbar__actions {
-  display: grid;
-  gap: 10px;
-  justify-items: end;
-}
-
-.topbar__breadcrumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--color-text-muted, #94a3b8);
-  justify-content: flex-end;
-}
-
-.topbar__breadcrumb-link {
-  color: var(--color-text-muted, #94a3b8);
-  text-decoration: none;
-}
-
-.topbar__breadcrumb-link:hover {
-  color: var(--color-primary-600, #2563eb);
-  text-decoration: none;
-}
-
-.topbar__breadcrumb-item--active {
+  line-height: 1.1;
   color: var(--color-text, #0f172a);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar__action-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .topbar__action-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255, 255, 255, 0.9);
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
   color: var(--color-text-secondary, #475569);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
 }
 
 .topbar__action-btn--search {
   font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
-.topbar__action-btn--active {
-  color: var(--color-primary-600, #2563eb);
-  border-color: rgba(37, 99, 235, 0.24);
-  background: rgba(37, 99, 235, 0.08);
+.topbar__action-btn kbd,
+.command-palette__item-shortcut {
+  font-size: 11px;
+  color: var(--color-text-muted, #94a3b8);
 }
 
-.topbar__user-box {
+.topbar__icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-secondary, #475569);
+}
+
+.topbar__profile {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 6px 10px;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(14, 165, 233, 0.04));
 }
 
-.topbar__user-box strong {
+.topbar__profile strong {
   font-size: 13px;
   color: var(--color-text, #0f172a);
-}
-
-.topbar__user-box span {
-  font-size: 12px;
-  color: var(--color-text-muted, #94a3b8);
 }
 
 .topbar__logout-btn {
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(239, 68, 68, 0.24);
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: var(--color-surface, #ffffff);
   color: var(--color-danger-700, #b91c1c);
   font-weight: 600;
 }
@@ -889,6 +1100,15 @@ function handleLogout() {
   color: var(--color-text-muted, #94a3b8);
 }
 
+.command-palette__section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #94a3b8);
+  padding: 4px 0;
+}
+
 .command-palette__results {
   display: grid;
   gap: 8px;
@@ -913,6 +1133,11 @@ function handleLogout() {
   background: rgba(37, 99, 235, 0.06);
 }
 
+.command-palette__item--selected {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.1);
+}
+
 .command-palette__item-icon {
   text-align: center;
 }
@@ -930,11 +1155,6 @@ function handleLogout() {
   color: var(--color-text-muted, #94a3b8);
 }
 
-.command-palette__item-shortcut {
-  font-size: 11px;
-  color: var(--color-text-muted, #94a3b8);
-}
-
 .command-palette__empty {
   padding: 16px;
   border-radius: 14px;
@@ -944,21 +1164,31 @@ function handleLogout() {
 }
 
 @media (max-width: 1200px) {
-  .app-layout {
-    grid-template-columns: 96px minmax(0, 1fr);
-  }
-
+  .app-layout,
   .app-layout--collapsed {
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 104px minmax(0, 1fr);
   }
 
   .sidebar__brand-copy,
-  .sidebar__context-head,
   .sidebar__group-label,
   .sidebar__link-label,
   .sidebar__quick-link-label,
-  .sidebar__recent-link-label {
+  .sidebar__recent-link-label,
+  .sidebar__microcopy,
+  .sidebar__section-label,
+  .sidebar__ghost-btn {
     display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar__action-row {
+    justify-content: flex-start;
   }
 }
 
@@ -972,21 +1202,8 @@ function handleLogout() {
     position: sticky;
     top: 0;
     z-index: 20;
-    max-height: 44vh;
+    max-height: 48vh;
     overflow: auto;
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .topbar__actions {
-    justify-items: stretch;
-  }
-
-  .topbar__breadcrumbs {
-    justify-content: flex-start;
   }
 
   .workspace__body {

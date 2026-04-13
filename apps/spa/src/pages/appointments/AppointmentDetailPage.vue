@@ -5,6 +5,10 @@
       <DsButton variant="secondary" tag="a" href="/appointments">Voltar à agenda</DsButton>
     </div>
     <template v-else>
+      <DsAlert v-if="whatsappNotice" :variant="whatsappNotice.variant" dismissible @dismiss="clearWhatsappNotice">
+        {{ whatsappNotice.message }}
+      </DsAlert>
+
       <AppPageHeader :subtitle="detailSubtitle">
         <template #title>📅 Agendamento</template>
         <template #subtitle>
@@ -12,10 +16,22 @@
             :label="appointmentStatusLabel(appointment.status)"
             :variant="appointmentStatusVariant(appointment.status)"
           />
+          <span class="muted">{{ patientName || 'Paciente em carregamento' }}</span>
         </template>
         <template #actions>
+          <DsButton
+            v-if="canGoToQueue"
+            tag="a"
+            href="/queue"
+            variant="primary"
+          >
+            Ir para fila operacional
+          </DsButton>
           <DsButton tag="a" :to="`/patients/${appointment.patientId}`" variant="secondary">
-            Abrir paciente
+            Ver paciente
+          </DsButton>
+          <DsButton tag="a" :to="`/owners/${appointment.ownerId}`" variant="ghost">
+            Ver tutor
           </DsButton>
           <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
@@ -53,6 +69,14 @@
               <span class="summary-item__label">Tutor</span>
               <strong>{{ ownerName || 'Carregando...' }}</strong>
             </div>
+            <div class="summary-item">
+              <span class="summary-item__label">Profissional</span>
+              <strong>{{ appointment.practitionerStaffId || 'Não alocado' }}</strong>
+            </div>
+            <div class="summary-item">
+              <span class="summary-item__label">Sala/Recurso</span>
+              <strong>{{ appointment.resourceLabel || 'Não informado' }}</strong>
+            </div>
           </div>
         </DsCard>
 
@@ -73,15 +97,60 @@
             <span class="detail-row__label">Tutor</span>
             <span>{{ ownerName }}</span>
           </div>
+          <div v-if="appointment.specialty" class="detail-row">
+            <span class="detail-row__label">Especialidade</span>
+            <span>{{ appointment.specialty }}</span>
+          </div>
+          <div v-if="appointment.unit" class="detail-row">
+            <span class="detail-row__label">Unidade/Setor</span>
+            <span>{{ appointment.unit }}</span>
+          </div>
+          <div v-if="appointment.resourceLabel" class="detail-row">
+            <span class="detail-row__label">Sala/Recurso</span>
+            <span>{{ appointment.resourceLabel }}</span>
+          </div>
         </AppDetailSection>
 
         <AppDetailSection v-if="appointment.reason" title="Motivo">
           <p>{{ appointment.reason }}</p>
         </AppDetailSection>
 
+        <DsCard title="Confirmação por WhatsApp">
+          <div class="whatsapp-card">
+            <p v-if="whatsappContact" class="whatsapp-card__text">
+              Abrir conversa com o tutor e enviar a confirmação pré-preenchida para
+              <strong>{{ ownerName }}</strong>.
+            </p>
+            <p v-else class="whatsapp-card__text">
+              Este tutor ainda não possui contato WhatsApp configurado.
+            </p>
+
+            <div class="whatsapp-card__actions">
+              <DsButton
+                v-if="whatsappUrl"
+                variant="primary"
+                tag="a"
+                :href="whatsappUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Abrir WhatsApp
+              </DsButton>
+              <DsButton
+                variant="secondary"
+                :disabled="!whatsappMessage"
+                @click="copyWhatsAppMessage"
+              >
+                Copiar mensagem
+              </DsButton>
+            </div>
+          </div>
+        </DsCard>
+
         <AppDetailSection title="Informações Administrativas">
           <p class="muted">Criado em: {{ formatDate(appointment.createdAt) }}</p>
           <p class="muted">Atualizado em: {{ formatDate(appointment.updatedAt) }}</p>
+          <p class="muted">Use este agendamento como ponte entre recepção, fila e atendimento.</p>
         </AppDetailSection>
       </div>
     </template>
@@ -93,9 +162,12 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
+import { ownerService } from '@/services/owner';
+import type { OwnerSummary } from '@/types/owner';
 import { visitTypeLabel, appointmentStatusLabel, formatDateTime, formatDate } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
 import StatusBadge from '@/components/StatusBadge.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -105,9 +177,11 @@ const route = useRoute();
 const appointment = ref<AppointmentSummary | null>(null);
 const cancelling = ref(false);
 const entityCache = useEntityCache();
+const owner = ref<OwnerSummary | null>(null);
 
 const patientName = ref('');
 const ownerName = ref('');
+const whatsappNotice = ref<{ variant: 'success' | 'danger'; message: string } | null>(null);
 
 function appointmentStatusVariant(s: string) {
   const map: Record<string, string> = {
@@ -121,7 +195,13 @@ function appointmentStatusVariant(s: string) {
 
 async function loadEntityNames(appt: AppointmentSummary) {
   patientName.value = await entityCache.getPatientName(appt.patientId);
-  ownerName.value = await entityCache.getOwnerName(appt.ownerId);
+  try {
+    owner.value = await ownerService.getById(appt.ownerId);
+    ownerName.value = owner.value.fullName;
+  } catch {
+    owner.value = null;
+    ownerName.value = await entityCache.getOwnerName(appt.ownerId);
+  }
 }
 
 const canCancel = computed(() => {
@@ -130,10 +210,35 @@ const canCancel = computed(() => {
     (appointment.value.status === 'scheduled' || appointment.value.status === 'checked_in')
   );
 });
+const canGoToQueue = computed(() => appointment.value?.status === 'checked_in');
+
+const whatsappContact = computed(() => {
+  return owner.value?.contacts.find((contact) => contact.type === 'whatsapp' && contact.value.trim()) ?? null;
+});
+
+const whatsappMessage = computed(() => {
+  if (!appointment.value || !patientName.value || !ownerName.value) return '';
+
+  const scheduledAt = formatDateTime(appointment.value.scheduledAt);
+  const reason = appointment.value.reason?.trim() || 'consulta agendada';
+
+  return [
+    `Olá, ${ownerName.value}.`,
+    `Confirmamos o agendamento de ${patientName.value} para ${scheduledAt}.`,
+    `Motivo: ${reason}.`
+  ].join(' ');
+});
+
+const whatsappUrl = computed(() => {
+  const contact = whatsappContact.value?.value ?? '';
+  const digits = contact.replace(/\D/g, '');
+  if (!digits || !whatsappMessage.value) return '';
+  return `https://wa.me/${digits}?text=${encodeURIComponent(whatsappMessage.value)}`;
+});
 
 const detailSubtitle = computed(() => {
   if (!appointment.value) return '';
-  return `${appointment.value.id} • ${patientName.value || 'Paciente em carregamento'}`;
+  return `Atendimento > Agenda • ${appointment.value.id}`;
 });
 
 const summaryCards = computed(() => {
@@ -142,7 +247,17 @@ const summaryCards = computed(() => {
     { label: 'Data/Hora', value: formatDateTime(appointment.value.scheduledAt), hint: 'Momento agendado' },
     { label: 'Tipo', value: visitTypeLabel(appointment.value.visitType), hint: 'Natureza da visita' },
     { label: 'Paciente', value: patientName.value || '—', hint: 'Atendimento vinculado' },
-    { label: 'Tutor', value: ownerName.value || '—', hint: 'Responsável principal' }
+    { label: 'Tutor', value: ownerName.value || '—', hint: 'Responsável principal' },
+    {
+      label: 'Duração',
+      value: `${appointment.value.durationMinutes || 30} min`,
+      hint: 'Janela reservada'
+    },
+    {
+      label: 'Sala',
+      value: appointment.value.resourceLabel || '—',
+      hint: 'Alocação operacional'
+    }
   ];
 });
 
@@ -158,6 +273,26 @@ async function handleCancel() {
   } finally {
     cancelling.value = false;
   }
+}
+
+async function copyWhatsAppMessage() {
+  if (!whatsappMessage.value) return;
+  try {
+    await navigator.clipboard.writeText(whatsappMessage.value);
+    whatsappNotice.value = {
+      variant: 'success',
+      message: 'Mensagem de confirmação copiada para a área de transferência.'
+    };
+  } catch {
+    whatsappNotice.value = {
+      variant: 'danger',
+      message: 'Não foi possível copiar a mensagem. Use o botão para abrir o WhatsApp.'
+    };
+  }
+}
+
+function clearWhatsappNotice() {
+  whatsappNotice.value = null;
 }
 
 onMounted(async () => {
@@ -241,5 +376,22 @@ onMounted(async () => {
   color: var(--color-text-muted, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.whatsapp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.whatsapp-card__text {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+}
+
+.whatsapp-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

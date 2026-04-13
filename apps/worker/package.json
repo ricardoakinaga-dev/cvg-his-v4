@@ -6,12 +6,21 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@cvg-his-v2/module-billing": "workspace:*",
+    "@cvg-his-v2/module-encounters": "workspace:*",
     "@cvg-his-v2/module-event-bus": "workspace:*",
     "@cvg-his-v2/module-notifications": "workspace:*",
+    "@cvg-his-v2/module-staff": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",
     "@cvg-his-v2/shared-database": "workspace:*",
     "@cvg-his-v2/shared-logging": "workspace:*",
-    "@cvg-his-v2/shared-utils": "workspace:*"
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/resources": "^2.6.1",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0"
   },
   "scripts": {
     "dev": "tsx src/index.ts",

@@ -1,7 +1,13 @@
 <template>
   <div class="inpatient-detail-page">
       <AppPageHeader title="🛏️ Detalhes da Internação">
+      <template #subtitle>
+        <span class="muted">Atendimento &gt; Internação</span>
+        <span v-if="stay" class="muted">{{ patientName(stay.patientId) }}</span>
+      </template>
       <template #actions>
+        <DsButton v-if="stay" variant="secondary" tag="a" :to="`/encounters/${stay.encounterId}`">Ver atendimento</DsButton>
+        <DsButton v-if="stay" variant="ghost" tag="a" :to="`/patients/${stay.patientId}`">Ver paciente</DsButton>
         <DsButton variant="secondary" tag="a" href="/inpatient">Lista de Internações</DsButton>
       </template>
       </AppPageHeader>
@@ -160,7 +166,7 @@
         </div>
 
         <div v-else-if="progressNotes.length === 0" class="progress-empty">
-          <p>Nenhuma evolução registrada.</p>
+          <p>Nenhuma evolução registrada. Documente a permanência do paciente para manter a internação alinhada ao prontuário.</p>
         </div>
 
         <div v-else class="progress-list">

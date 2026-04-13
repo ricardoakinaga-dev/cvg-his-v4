@@ -2,8 +2,12 @@
   <div class="triage-form-page">
     <AppPageHeader
       title="Nova Triagem"
-      subtitle="Registro inicial para priorização e direcionamento do fluxo assistencial"
-    />
+      subtitle="Atendimento > Triagem. Registre prioridade, destino e alertas para orientar o próximo passo do caso."
+    >
+      <template #actions>
+        <DsButton variant="secondary" tag="a" href="/queue">🏥 Ver Fila</DsButton>
+      </template>
+    </AppPageHeader>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -106,8 +110,8 @@
         <DsCard title="Boas práticas">
           <ul class="guide-list">
             <li>Use prioridade crítica apenas quando houver risco imediato.</li>
-            <li>Destino deve refletir o fluxo real do paciente na operação.</li>
-            <li>Alertas precisam ser curtos, objetivos e fáceis de ler na beira-leito.</li>
+            <li>Destino deve refletir o próximo passo real entre atendimento e observação.</li>
+            <li>Alertas precisam ser curtos, objetivos e fáceis de ler na passagem de plantão.</li>
           </ul>
         </DsCard>
       </aside>
@@ -164,6 +168,20 @@ const summaryCards = computed(() => [
   }
 ]);
 
+function applyQueryPrefill() {
+  const params = new URLSearchParams(window.location.search);
+  const encounterId = params.get('encounterId')?.trim();
+  const patientId = params.get('patientId')?.trim();
+
+  if (encounterId) {
+    form.value.encounterId = encounterId;
+  }
+
+  if (patientId) {
+    form.value.patientId = patientId;
+  }
+}
+
 async function handleSubmit() {
   error.value = '';
   saving.value = true;
@@ -188,6 +206,8 @@ async function handleSubmit() {
     saving.value = false;
   }
 }
+
+applyQueryPrefill();
 </script>
 
 <style scoped>

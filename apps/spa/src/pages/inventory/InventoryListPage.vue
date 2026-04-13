@@ -1,43 +1,75 @@
 <template>
   <div class="inventory-list-page">
-    <AppPageHeader title="Estoque" subtitle="Controle de materiais e medicamentos">
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton tag="a" to="/inventory/new" variant="primary">+ Novo Item</DsButton>
-      </template>
-    </AppPageHeader>
+    <AppPageHeader
+      title="Estoque"
+      subtitle="Controle de estoque, movimentações e níveis de reposição"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="headerPrimaryAction"
+    />
 
-    <section class="inventory-list-page__overview">
-      <DsCard title="Resumo do estoque">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ items.length }}</span>
-            <span class="overview-metric__label">Itens cadastrados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ lowStockCount }}</span>
-            <span class="overview-metric__label">Abaixo do ponto</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ totalQuantity }}</span>
-            <span class="overview-metric__label">Unidades em mãos</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ totalValue }}</span>
-            <span class="overview-metric__label">Valor estimado</span>
-          </div>
+    <!-- Hub: KPI StatCards -->
+    <section class="hub-kpis">
+      <DsStatCard :label="items.length + ' item(s)'" value="" icon="📦" />
+      <DsStatCard :label="lowStockCount + ' abaixo do ponto'" value="" icon="⚠️" :error="lowStockCount > 0 ? 'Estoque precisa de atenção' : undefined" />
+      <DsStatCard :label="totalQuantity + ' unidade(s)'" value="" icon="🔢" />
+      <DsStatCard :label="totalValueFormatted" value="" icon="💵" />
+    </section>
+
+    <!-- Hub: Operational Alerts -->
+    <section v-if="inventoryAlerts.length > 0" class="hub-alerts">
+      <DsAlert
+        v-for="(alert, i) in inventoryAlerts"
+        :key="i"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> — {{ alert.message }}
+      </DsAlert>
+    </section>
+
+    <!-- Hub: Quick Actions -->
+    <section class="hub-actions">
+      <DsCard title="Controle de Estoque" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/inventory/new" icon="➕">
+            Novo Item
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/movements" icon="📥">
+            Movimentações
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/validity" icon="📅">
+            Validade / Lotes
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/quotes" icon="🧾">
+            Orçamentos
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/fiscal" icon="📋">
+            Fiscal
+          </DsButton>
+          <DsButton variant="ghost" :loading="loading" @click="load" icon="🔄">
+            Atualizar
+          </DsButton>
         </div>
       </DsCard>
     </section>
 
-    <section class="inventory-list-page__story">
-      <DsCard title="Leitura rápida">
-        <div class="story-grid">
-          <div v-for="card in storyCards" :key="card.label" class="story-card">
-            <span class="story-card__label">{{ card.label }}</span>
-            <strong class="story-card__value">{{ card.value }}</strong>
-            <span class="story-card__hint">{{ card.hint }}</span>
-          </div>
+    <section class="hub-sections">
+      <DsCard title="Controles Operacionais" variant="compact">
+        <div class="hub-links">
+          <DsButton variant="secondary" tag="a" to="/inventory/movements">Entrada, saída e transferência</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/validity">Fila de validade e revisão</DsButton>
+        </div>
+      </DsCard>
+      <DsCard title="Cadastros" variant="compact">
+        <div class="hub-links">
+          <DsButton variant="secondary" tag="a" to="/products">Catálogo de produtos</DsButton>
+          <DsButton variant="secondary" tag="a" to="/quotes">Orçamentos vinculados</DsButton>
+        </div>
+      </DsCard>
+      <DsCard title="Fiscal" variant="compact">
+        <div class="hub-links">
+          <DsButton variant="secondary" tag="a" to="/fiscal">Parâmetros fiscais</DsButton>
+          <DsButton variant="secondary" tag="a" to="/fiscal/cfop">CFOP e operações</DsButton>
         </div>
       </DsCard>
     </section>
@@ -95,17 +127,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryItemSummary } from '@/types/inventory';
 import { useListData } from '@/composables/useListData';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import { computed } from 'vue';
 
 function isLowStock(item: InventoryItemSummary): boolean {
   return item.onHandQuantity <= item.reorderLevel;
@@ -125,19 +158,42 @@ const columns: DataTableColumn[] = [
 
 const lowStockCount = computed(() => items.value.filter((item) => isLowStock(item)).length);
 const totalQuantity = computed(() => items.value.reduce((sum, item) => sum + item.onHandQuantity, 0));
-const totalValue = computed(() =>
+const totalValueFormatted = computed(() =>
   formatCurrency(items.value.reduce((sum, item) => sum + item.onHandQuantity * item.unitCostAmount, 0))
 );
-const lowStockRate = computed(() => {
-  if (!items.value.length) return '0%';
-  return `${Math.round((lowStockCount.value / items.value.length) * 100)}%`;
+interface InventoryAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const inventoryAlerts = computed<InventoryAlert[]>(() => {
+  const alerts: InventoryAlert[] = [];
+  if (lowStockCount.value > 0) {
+    alerts.push({ variant: 'warning', title: 'Estoque baixo', message: `${lowStockCount.value} item(s) estão abaixo do ponto de reposição.` });
+  }
+  if (lowStockCount.value === 0 && items.value.length > 0) {
+    alerts.push({ variant: 'info', title: 'Estoque okay', message: 'Todos os itens estão acima do ponto de reposição.' });
+  }
+  return alerts;
 });
-const storyCards = computed(() => [
-  { label: 'Itens', value: items.value.length.toString(), hint: 'Cadastrados no estoque' },
-  { label: 'Baixo estoque', value: lowStockCount.value.toString(), hint: 'Precisam de atenção' },
-  { label: 'Taxa baixa', value: lowStockRate.value, hint: 'Proporção em risco' },
-  { label: 'Valor', value: totalValue.value, hint: 'Estimativa total atual' }
+
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-inventory',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: () => load()
+  }
 ]);
+
+const headerPrimaryAction = computed(() => ({
+  key: 'new-item',
+  label: '+ Novo Item',
+  variant: 'primary' as const,
+  to: '/inventory/new'
+}));
 
 const { items, loading, error, search, load } = useListData<InventoryItemSummary>({
   fetchFn: (q) => inventoryService.list(q),
@@ -153,75 +209,38 @@ const { items, loading, error, search, load } = useListData<InventoryItemSummary
   gap: 16px;
 }
 
-.inventory-list-page__overview {
-  margin-bottom: 4px;
-}
-
-.inventory-list-page__story {
-  margin-bottom: 4px;
-}
-
-.overview-grid {
+.hub-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
-.overview-metric {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+.hub-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.overview-metric__value {
-  display: block;
-  font-size: 24px;
-  font-weight: 800;
+.hub-actions {
+  margin-bottom: 0;
 }
 
-.overview-metric__label {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-text-muted, #64748b);
-}
-
-.story-grid {
+.hub-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
 
-.story-card {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+.hub-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.story-card__label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted, #64748b);
-}
-
-.story-card__value {
-  display: block;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--color-text, #0f172a);
-}
-
-.story-card__hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .search-bar {
@@ -231,23 +250,5 @@ const { items, loading, error, search, load } = useListData<InventoryItemSummary
 .row-actions {
   display: flex;
   gap: 8px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-badge--active {
-  background: var(--color-success-100, #dcfce7);
-  color: var(--color-success-700, #15803d);
-}
-
-.status-badge--inactive {
-  background: var(--color-neutral-100, #f1f5f9);
-  color: var(--color-neutral-600, #475569);
 }
 </style>

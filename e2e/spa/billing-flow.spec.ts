@@ -31,6 +31,8 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     apiCall,
     cleanup
   }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
     // ── Step 0: Prepare test data ──
     console.log('   📦 Creating test data...');
     const ownerName = `Tutor Billing E2E ${Date.now()}`;
@@ -78,18 +80,18 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate billing page loaded
-    await expect(page.getByRole('heading', { name: /Faturamento/ })).toBeVisible({
+    await expect(pageHeaderTitle).toContainText('Faturamento', {
       timeout: 15000
     });
     console.log('   ✅ Billing page loaded');
 
     // Validate patient and owner info
-    await expect(page.getByText(patientName)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(ownerName)).toBeVisible({ timeout: 10000 });
+    await expect(mainContent.getByText(patientName).first()).toBeVisible({ timeout: 10000 });
+    await expect(mainContent.getByText(ownerName).first()).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Patient and owner info visible');
 
     // Validate initial status (draft)
-    await expect(page.getByText('Rascunho')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Status: Rascunho (draft)');
 
     // ── Step 3: Generate estimate ──
@@ -100,7 +102,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.getByRole('button', { name: 'Gerar Estimativa' }).click();
 
     // Wait for status to change to "Estimado"
-    await expect(page.getByText('Estimado')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel('Estimado')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Estimado (estimated)');
 
     // "Gerar Estimativa" button should no longer be visible
@@ -205,7 +207,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/billing`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Faturamento/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
       timeout: 15000
     });
     console.log('   ✅ Billing list accessible');
@@ -214,6 +216,8 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
   });
 
   test('valida elementos da página de billing e navegação', async ({ page, apiCall, cleanup }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
     // Prepare minimal data
     const owner = await apiCall.post('/owners', {
       fullName: `Tutor BillList ${Date.now()}`,
@@ -251,7 +255,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(page.getByRole('heading', { name: /Faturamento/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
       timeout: 15000
     });
 
@@ -266,12 +270,12 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate detail page elements
-    await expect(page.getByRole('heading', { name: /Faturamento/ })).toBeVisible({
+    await expect(pageHeaderTitle).toContainText('Faturamento', {
       timeout: 15000
     });
 
     // Validate status badge
-    await expect(page.getByText('Rascunho')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
 
     // Validate sections
     await expect(page.getByText('Informa')).toBeVisible({ timeout: 10000 });

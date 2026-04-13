@@ -4,21 +4,22 @@
       title="Cadastro de paciente"
       :subtitle="
         isEdit
-          ? 'Atualize a ficha clínica e o vínculo com o tutor'
-          : 'Novo cadastro clínico com vínculo ao tutor'
+          ? 'Atendimento > Cadastrados. Atualize a ficha clínica e o vínculo com o tutor.'
+          : 'Atendimento > Cadastrados. Cadastre o animal e deixe a jornada pronta para agenda, atendimento e prontuário.'
       "
     >
       <template #title>
         {{ isEdit ? 'Editar Paciente' : 'Novo Paciente' }}
       </template>
       <template #actions>
+        <DsButton variant="secondary" tag="a" to="/owners">Ver tutores</DsButton>
         <DsButton variant="secondary" tag="a" to="/patients">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
     <DsAlert variant="info">
       Preencha primeiro a identificação do animal, depois o vínculo com o tutor e, por fim, os
-      dados clínicos que ajudam a operação assistencial.
+      dados clínicos que sustentam agenda, atendimento, prontuário e internação.
     </DsAlert>
 
     <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
@@ -148,8 +149,8 @@
         <DsCard title="Boas práticas">
           <ul class="guide-list">
             <li>Nome e espécie são essenciais para identificar o paciente rapidamente.</li>
-            <li>Escolha o tutor correto antes de salvar para manter o vínculo clínico íntegro.</li>
-            <li>Peso e data aproximada ajudam no acompanhamento ao longo do tempo.</li>
+            <li>Escolha o tutor correto antes de salvar para manter a jornada assistencial íntegra.</li>
+            <li>Peso e data aproximada ajudam triagem, prescrição e acompanhamento ao longo do tempo.</li>
           </ul>
         </DsCard>
       </aside>
@@ -269,6 +270,10 @@ onMounted(async () => {
   ownersLoading.value = true;
   try {
     owners.value = await ownerService.list();
+    const ownerIdFromQuery = typeof route.query.ownerId === 'string' ? route.query.ownerId : '';
+    if (ownerIdFromQuery) {
+      form.primaryOwnerId = ownerIdFromQuery;
+    }
   } catch {
     formError.value = 'Erro ao carregar lista de tutores';
   } finally {

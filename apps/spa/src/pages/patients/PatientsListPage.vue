@@ -2,13 +2,10 @@
   <div class="patients-list-page">
     <AppPageHeader
       title="Pacientes"
-      subtitle="Cadastro clínico de animais atendidos e vinculados ao tutor"
-    >
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
-      </template>
-    </AppPageHeader>
+      subtitle="Atendimento > Cadastrados > Pacientes. Base clínica dos animais que seguem para agenda, fila, atendimento, prontuário e internação."
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="headerPrimaryAction"
+    />
 
     <section class="patients-list-page__overview">
       <DsCard title="Resumo operacional">
@@ -32,14 +29,15 @@
         </div>
       </DsCard>
 
-      <DsCard title="Atalhos">
+      <DsCard title="Navegação do domínio">
         <div class="quick-actions">
           <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
-          <DsButton tag="a" to="/owners" variant="secondary">Ver tutores</DsButton>
+          <DsButton tag="a" to="/owners" variant="secondary">👤 Ver Tutores</DsButton>
+          <DsButton tag="a" to="/appointments" variant="ghost">📅 Agendamentos</DsButton>
+          <DsButton tag="a" to="/encounters" variant="ghost">🩺 Atendimentos</DsButton>
         </div>
         <p class="overview-note">
-          A lista abaixo prioriza busca rápida e acesso direto ao cadastro, mantendo o vínculo
-          paciente-tutor visível na operação.
+          Pacientes e tutores vivem no mesmo domínio de <strong>Atendimento</strong>. Cadastre o animal aqui e siga para agenda, fila, triagem, atendimento e prontuário sem trocar de contexto.
         </p>
       </DsCard>
     </section>
@@ -64,11 +62,14 @@
       :loading="loading"
       empty-icon="🐾"
       empty-title="Nenhum paciente encontrado"
-      empty-description="Cadastre o primeiro paciente para começar."
+      empty-description="Cadastre o primeiro paciente para abastecer agenda, triagem, atendimento e internação."
       variant="hoverable"
     >
       <template #emptyAction>
-        <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
+        <div class="patients-list-page__empty-actions">
+          <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
+          <DsButton tag="a" to="/owners" variant="secondary">👤 Ver Tutores</DsButton>
+        </div>
       </template>
       <template #cell-name="{ row }">
         <strong>{{ (row as PatientSummary).name }}</strong>
@@ -173,6 +174,35 @@ const { items, loading, error, search, load } = useListData<PatientSummary>({
   entityLabel: 'pacientes',
   withSearch: true
 });
+
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-patients',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: () => load()
+  },
+  {
+    key: 'view-owners',
+    label: 'Ver tutores',
+    variant: 'ghost' as const,
+    to: '/owners'
+  },
+  {
+    key: 'view-agenda',
+    label: 'Agenda',
+    variant: 'ghost' as const,
+    to: '/appointments'
+  }
+]);
+
+const headerPrimaryAction = computed(() => ({
+  key: 'new-patient',
+  label: '+ Novo Paciente',
+  variant: 'primary' as const,
+  to: '/patients/new'
+}));
 </script>
 
 <style scoped>
@@ -222,5 +252,11 @@ const { items, loading, error, search, load } = useListData<PatientSummary>({
   color: var(--color-text-muted, #64748b);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.patients-list-page__empty-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>

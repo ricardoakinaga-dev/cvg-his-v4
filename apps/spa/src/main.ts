@@ -2,11 +2,15 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './app/App.vue';
 import { router } from './router';
+import { bootstrapTheme } from './stores/theme';
+import { spaRuntimeConfig } from './config/runtime';
 import '@cvg-his-v2/design-system/src/tokens/variables.css';
 import './styles/main.css';
 
+bootstrapTheme();
+
 const disablePwa =
-  import.meta.env.VITE_DISABLE_PWA === '1' ||
+  spaRuntimeConfig.disablePwa ||
   ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 if (disablePwa && 'serviceWorker' in navigator) {

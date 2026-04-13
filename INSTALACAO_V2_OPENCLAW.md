@@ -25,7 +25,6 @@ Servicos da stack:
 - `postgres`
 - `redis`
 - `cvg-his-v2-api`
-- `cvg-his-v2-web`
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
 
@@ -71,7 +70,7 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
 ### 4. Reconstruir as imagens corretas
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ### 5. Subir dependencias
@@ -99,7 +98,7 @@ npx tsx packages/db/src/seed.ts
 ### 8. Subir aplicacao
 
 ```bash
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ### 9. Validar
@@ -107,11 +106,11 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api 
 ```bash
 curl http://127.0.0.1:3003/health
 curl http://127.0.0.1:3003/ready
-curl -I http://127.0.0.1:3004/
 curl -I http://127.0.0.1:3002/
 docker compose --env-file .env.v2 -f docker-compose.v2.yml ps
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-api
 docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-worker
+docker compose --env-file .env.v2 -f docker-compose.v2.yml logs --tail=100 cvg-his-v2-spa
 ```
 
 ## Atualizacao de imagens
@@ -129,17 +128,18 @@ Quando houver nova versao:
 
 ## Observacao critica
 
-`infra/scripts/cutover-v2.sh` e `infra/docker/Caddyfile.v2` ainda possuem defaults historicos de portas `3000` e `3001`.
+O `apps/web` ainda existe no compose apenas como perfil legado. Ele nao participa do deploy oficial e nao deve entrar em build, up, proxy ou checklist principal.
 
-Antes de usar esses artefatos:
+Antes de qualquer publicacao:
 
-- alinhe API para `3003`
-- alinhe Web para `3004`
-- nao use `3002` para validar worker, porque `3002` pertence a SPA no compose atual
+- rode `pnpm deploy:check`
+- confirme que o proxy principal aponta para `127.0.0.1:3002`
+- confirme que a migration roda somente por `packages/db/src/migrate.ts`
 
 ## Referencias
 
 - `README.md`
 - `OPENCLAW_DEPLOY_DIRETRIZES.md`
+- `docs/132-superficie-canonica-deploy-e-migracao.md`
 - `docker-compose.v2.yml`
 - `.env.v2.example`

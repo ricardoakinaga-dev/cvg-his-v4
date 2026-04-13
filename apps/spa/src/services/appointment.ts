@@ -2,7 +2,8 @@ import { apiRequest } from './api';
 import type {
   AppointmentSummary,
   CreateAppointmentRequest,
-  AppointmentsListResponse
+  AppointmentsListResponse,
+  SchedulingAvailabilityResponse
 } from '@/types/appointment';
 
 export const appointmentService = {
@@ -20,6 +21,35 @@ export const appointmentService = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  },
+
+  async getAvailability(params: {
+    scheduledAt: string;
+    patientId: string;
+    durationMinutes?: number;
+    practitionerStaffId?: string;
+    resourceLabel?: string;
+    ignoreAppointmentId?: string;
+  }): Promise<SchedulingAvailabilityResponse> {
+    const search = new URLSearchParams({
+      scheduledAt: params.scheduledAt,
+      patientId: params.patientId
+    });
+
+    if (params.durationMinutes !== undefined) {
+      search.set('durationMinutes', String(params.durationMinutes));
+    }
+    if (params.practitionerStaffId) {
+      search.set('practitionerStaffId', params.practitionerStaffId);
+    }
+    if (params.resourceLabel) {
+      search.set('resourceLabel', params.resourceLabel);
+    }
+    if (params.ignoreAppointmentId) {
+      search.set('ignoreAppointmentId', params.ignoreAppointmentId);
+    }
+
+    return apiRequest<SchedulingAvailabilityResponse>(`/scheduling/availability?${search.toString()}`);
   },
 
   async cancel(id: string, reason?: string): Promise<AppointmentSummary> {

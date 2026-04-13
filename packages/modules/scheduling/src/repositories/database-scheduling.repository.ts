@@ -7,7 +7,8 @@ import type {
   PatientId,
   QueueEntryId,
   QueueEntrySummary,
-  SchedulingAppointmentSummary
+  SchedulingAppointmentSummary,
+  StaffId
 } from '@cvg-his-v2/shared-types';
 
 export interface SchedulingRepository {
@@ -25,19 +26,39 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
   async createAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO appointments (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [appointment.id, appointment.accountId, appointment.ownerId, appointment.patientId,
-       new Date(appointment.scheduledAt), null, appointment.visitType, appointment.reason ?? null,
-       appointment.status, new Date(appointment.createdAt), new Date(appointment.updatedAt)]
+      `INSERT INTO appointments
+         (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, practitioner_staff_id, service_id, unit, specialty, resource_label, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      [
+        appointment.id,
+        appointment.accountId,
+        appointment.ownerId,
+        appointment.patientId,
+        new Date(appointment.scheduledAt),
+        appointment.durationMinutes ?? null,
+        appointment.visitType,
+        appointment.reason ?? null,
+        appointment.practitionerStaffId ?? null,
+        appointment.serviceId ?? null,
+        appointment.unit ?? null,
+        appointment.specialty ?? null,
+        appointment.resourceLabel ?? null,
+        appointment.status,
+        new Date(appointment.createdAt),
+        new Date(appointment.updatedAt)
+      ]
     );
   }
 
   async updateAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     const pool = getPool();
     await pool.query(
-      `UPDATE appointments SET status = $2, updated_at = $3 WHERE id = $1`,
-      [appointment.id, appointment.status, new Date(appointment.updatedAt)]
+      `UPDATE appointments
+          SET status = $2,
+              reason = $3,
+              updated_at = $4
+        WHERE id = $1`,
+      [appointment.id, appointment.status, appointment.reason ?? null, new Date(appointment.updatedAt)]
     );
   }
 
@@ -134,8 +155,14 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       patientId: row.patient_id as PatientId,
       ownerId: row.owner_id as OwnerId,
       scheduledAt: new Date(row.scheduled_at as string).toISOString(),
+      durationMinutes: (row.duration as number | null) ?? undefined,
       visitType: row.visit_type as SchedulingAppointmentSummary['visitType'],
       reason: (row.reason as string) ?? undefined,
+      practitionerStaffId: (row.practitioner_staff_id as StaffId | null) ?? undefined,
+      serviceId: (row.service_id as string | null) ?? undefined,
+      unit: (row.unit as string | null) ?? undefined,
+      specialty: (row.specialty as string | null) ?? undefined,
+      resourceLabel: (row.resource_label as string | null) ?? undefined,
       status: row.status as SchedulingAppointmentSummary['status'],
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()

@@ -17,10 +17,31 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
 
-    <!-- Preconnect to API -->
-    <link rel="preconnect" href="http://localhost:3001" />
-
     <title>CVG HIS V2</title>
+    <script>
+      (function () {
+        try {
+          var storageKey = 'cvg-his-v2:theme';
+          var stored = localStorage.getItem(storageKey);
+          var theme =
+            stored === 'dark' || stored === 'light'
+              ? stored
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          var root = document.documentElement;
+          root.setAttribute('data-theme', theme);
+          root.style.colorScheme = theme;
+
+          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#1e40af');
+          }
+        } catch (error) {
+          // Ignore theme bootstrap failures and let the app recover on mount.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

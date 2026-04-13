@@ -2,7 +2,7 @@
   <div class="access-control-page">
     <AppPageHeader
       title="🔐 Governança de Acesso"
-      subtitle="Equipes, setores, usuários e matriz de permissões com leitura premium"
+      subtitle="Usuários, equipes, setores e matriz de permissões — RH e Console Enterprise"
     >
       <template #actions>
         <DsBadge variant="info" size="md">{{ catalog?.permissions.length ?? 0 }} permissões</DsBadge>

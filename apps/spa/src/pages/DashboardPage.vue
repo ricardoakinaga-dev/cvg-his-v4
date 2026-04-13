@@ -1,60 +1,13 @@
 <template>
   <div class="dashboard-page">
-    <section class="dashboard-hero">
-      <div class="dashboard-hero__copy">
-        <div class="dashboard-hero__eyebrow">Centro de operação</div>
-        <h1 class="dashboard-hero__title">Dashboard</h1>
-        <p class="dashboard-hero__subtitle">
-          Visão consolidada do hospital veterinário, com acesso rápido aos fluxos centrais e ao
-          contexto operacional do SPA oficial.
-        </p>
-      </div>
-      <div class="dashboard-hero__actions">
-        <DsButton tag="a" to="/appointments/new" variant="primary">+ Novo Agendamento</DsButton>
-        <DsButton tag="a" to="/patients/new" variant="secondary">+ Novo Paciente</DsButton>
-      </div>
-    </section>
+    <AppPageHeader
+      title="Início"
+      subtitle="Porta operacional do dia — acompanhe a jornada de Atendimento entre agenda, fila, triagem, atendimento, prontuário e internação."
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="headerPrimaryAction"
+    />
 
-    <div class="dashboard-context">
-      <span class="dashboard-context__chip">👤 {{ userName }}</span>
-      <span class="dashboard-context__chip">🎯 {{ primaryRole }}</span>
-      <span v-if="accountId" class="dashboard-context__chip">🏢 {{ accountId }}</span>
-      <span class="dashboard-context__chip">🏥 SPA oficial</span>
-      <span class="dashboard-context__chip">⌘K Busca global</span>
-      <button
-        class="dashboard-context__chip dashboard-context__chip--btn"
-        type="button"
-        @click="showWidgetMenu = !showWidgetMenu"
-        :aria-expanded="showWidgetMenu"
-        aria-controls="widget-menu"
-      >
-        ⚙️ Widgets
-      </button>
-    </div>
-
-    <div v-if="showWidgetMenu" id="widget-menu" class="widget-menu">
-      <div class="widget-menu__header">
-        <span>Personalizar widgets</span>
-        <button type="button" class="widget-menu__reset" @click="resetWidgets">Resetar</button>
-      </div>
-      <div class="widget-menu__list">
-        <label
-          v-for="widget in widgetStore.widgets"
-          :key="widget.id"
-          class="widget-toggle"
-        >
-          <input
-            type="checkbox"
-            :checked="widget.visible"
-            @change="widgetStore.toggleWidget(widget.id)"
-          />
-          <span class="widget-toggle__icon">{{ widget.icon }}</span>
-          <span class="widget-toggle__label">{{ widget.label }}</span>
-        </label>
-      </div>
-    </div>
-
-    <section class="dashboard-grid" aria-label="KPIs operacionais">
+    <section v-if="stats.length > 0" class="dashboard-grid" aria-label="KPIs operacionais">
       <DsStatCard
         v-for="stat in stats"
         :key="stat.label"
@@ -69,17 +22,22 @@
       />
     </section>
 
+    <EmptyState
+      v-else
+      icon="📊"
+      title="Indicadores indisponíveis"
+      description="Os indicadores exibidos acompanham a operação de Atendimento e dependem das permissões da sessão atual."
+      size="sm"
+    />
+
     <section class="dashboard-panels">
       <DsCard class="panel-card">
         <div class="panel-card__head">
-          <div>
-            <div class="panel-card__eyebrow">Acesso rápido</div>
-            <h2 class="panel-card__title">Domínios prioritários</h2>
-          </div>
+          <h2 class="panel-card__title">Acesso rápido</h2>
         </div>
         <div class="domain-shortcuts">
           <DsDomainCard
-            v-for="shortcut in domainShortcuts"
+            v-for="shortcut in visibleDomainShortcuts"
             :key="shortcut.to"
             :label="shortcut.label"
             :to="shortcut.to"
@@ -92,16 +50,13 @@
 
       <DsCard class="panel-card">
         <div class="panel-card__head">
-          <div>
-            <div class="panel-card__eyebrow">Trabalho recente</div>
-            <h2 class="panel-card__title">Rotas acessadas</h2>
-          </div>
+          <h2 class="panel-card__title">Recentes</h2>
         </div>
         <EmptyState
           v-if="recentRoutes.length === 0"
           icon="🧭"
           title="Ainda sem histórico recente"
-          description="Abra rotas no SPA para começar a construir o histórico operacional."
+          description="Abra Agenda, Fila, Triagem, Atendimentos ou Prontuário para construir o histórico operacional do plantão."
           size="sm"
         />
         <div v-else class="link-list">
@@ -120,16 +75,13 @@
 
       <DsCard class="panel-card">
         <div class="panel-card__head">
-          <div>
-            <div class="panel-card__eyebrow">Favoritos</div>
-            <h2 class="panel-card__title">Atalhos fixados</h2>
-          </div>
+          <h2 class="panel-card__title">Favoritos</h2>
         </div>
         <EmptyState
           v-if="favoriteRoutes.length === 0"
           icon="★"
           title="Nenhum favorito fixado"
-          description="Use a estrela no topo para fixar suas rotas mais usadas."
+          description="Fixe rotas críticas como Agenda, Fila, Triagem e Internação para iniciar a operação com menos cliques."
           size="sm"
         />
         <div v-else class="link-list">
@@ -153,11 +105,10 @@
 import { computed, onMounted, ref } from 'vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
-import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsDomainCard from '@cvg-his-v2/design-system/vue/DsDomainCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 import { useAppStore } from '@/stores/app';
-import { useAuthStore } from '@/stores/auth';
 import { useWidgetStore } from '@/stores/widgets';
 import { apiRequest } from '@/services/api';
 
@@ -171,26 +122,25 @@ interface DashboardMetric {
   error?: string;
 }
 
+interface DomainShortcut {
+  label: string;
+  to: string;
+  icon: string;
+  badge?: number;
+  permissionCode?: string;
+}
+
+interface SessionAccessResponse {
+  access?: {
+    permissionCodes?: string[];
+  };
+}
+
 const appStore = useAppStore();
-const authStore = useAuthStore();
 const widgetStore = useWidgetStore();
 
-const showWidgetMenu = ref(false);
-
-const stats = ref<DashboardMetric[]>([
-  { icon: '👤', label: 'Tutores', value: '—', loading: true },
-  { icon: '🐾', label: 'Pacientes', value: '—', loading: true },
-  { icon: '📅', label: 'Agendamentos', value: '—', loading: true },
-  { icon: '🏥', label: 'Fila operacional', value: '—', loading: true }
-]);
-
-const userName = computed(() => authStore.userName);
-const accountId = computed(() => authStore.user.accountId ?? '');
-const primaryRole = computed(() =>
-  authStore.user.roles.length > 0
-    ? authStore.user.roles[0].replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-    : 'Operador'
-);
+const stats = ref<DashboardMetric[]>([]);
+const permissionCodes = ref<string[] | null>(null);
 
 const recentRoutes = computed(() => appStore.recentRoutes);
 const favoriteRoutes = computed(() =>
@@ -202,33 +152,96 @@ const favoriteRoutes = computed(() =>
     .filter((item) => Boolean(item.path))
 );
 
-const domainShortcuts = [
-  { label: 'Tutores', to: '/owners', icon: '👤' },
-  { label: 'Pacientes', to: '/patients', icon: '🐾' },
-  { label: 'Agendamentos', to: '/appointments', icon: '📅' },
-  { label: 'Fila', to: '/queue', icon: '🏥' },
-  { label: 'Atendimentos', to: '/encounters', icon: '🩺' },
-  { label: 'Prontuário', to: '/medical-records', icon: '📋' },
-  { label: 'Governança', to: '/access-control', icon: '🔐' },
-  { label: 'Auditoria', to: '/audit', icon: '📊' },
-  { label: 'Faturamento', to: '/billing', icon: '💳' },
-  { label: 'Caixa', to: '/cash', icon: '💰' }
+// Domain shortcuts organized by Vetus-aligned taxonomy:
+// - "Início" serves as operational gateway with shortcuts to all ERP macroareas
+// - "Atendimento" is the primary operational domain (patients, tutors, agenda, fila, triage, etc.)
+const domainShortcuts: DomainShortcut[] = [
+  // === Atendimento > Cadastrados ===
+  { label: 'Tutores', to: '/owners', icon: '👤', permissionCode: 'owners.read' },
+  { label: 'Pacientes', to: '/patients', icon: '🐾', permissionCode: 'patients.read' },
+  // === Atendimento > Atendimentos ===
+  { label: 'Agenda', to: '/appointments', icon: '📅', permissionCode: 'scheduling.read' },
+  { label: 'Fila', to: '/queue', icon: '🏥', permissionCode: 'scheduling.read' },
+  { label: 'Atendimentos', to: '/encounters', icon: '🩺', permissionCode: 'encounters.read' },
+  { label: 'Triagem', to: '/triage', icon: '🧭', permissionCode: 'triage.read' },
+  // === Atendimento > Prontuário ===
+  { label: 'Prontuário', to: '/medical-records', icon: '📋', permissionCode: 'medical-records.read' },
+  // === Atendimento > Internação ===
+  { label: 'Internação', to: '/inpatient', icon: '🛏️', permissionCode: 'inpatient.read' },
+  { label: 'Mapa de Leitos', to: '/inpatient/board', icon: '🗺️', permissionCode: 'inpatient.read' }
 ];
 
+// Metrics aligned to the core "Atendimento" operational flow:
+// these KPIs reflect the primary journey: agenda -> fila -> atendimento -> prontuario
+const metricDefinitions = [
+  { key: 'appointments', label: 'Agendamentos', icon: '📅', permissionCode: 'scheduling.read' },
+  { key: 'queue', label: 'Fila operacional', icon: '🏥', permissionCode: 'scheduling.read' },
+  { key: 'encounters', label: 'Atendimentos', icon: '🩺', permissionCode: 'encounters.read' },
+  { key: 'patients', label: 'Pacientes', icon: '🐾', permissionCode: 'patients.read' }
+] as const;
+
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-dashboard',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    onClick: () => void loadStats()
+  },
+  {
+    key: 'view-queue',
+    label: 'Ver fila',
+    variant: 'ghost' as const,
+    to: '/queue'
+  }
+]);
+
+const headerPrimaryAction = computed(() => ({
+  key: 'new-appointment',
+  label: '+ Novo Agendamento',
+  variant: 'primary' as const,
+  to: '/appointments/new'
+}));
+
+const visibleDomainShortcuts = computed(() => {
+  if (permissionCodes.value === null) {
+    return domainShortcuts;
+  }
+
+  return domainShortcuts.filter(
+    (shortcut) =>
+      !shortcut.permissionCode || permissionCodes.value?.includes(shortcut.permissionCode)
+  );
+});
+
 async function loadStats() {
-  const endpoints = [
-    { key: 'owners', label: 'Tutores', icon: '👤' },
-    { key: 'patients', label: 'Pacientes', icon: '🐾' },
-    { key: 'appointments', label: 'Agendamentos', icon: '📅' },
-    { key: 'queue', label: 'Fila operacional', icon: '🏥' }
-  ];
+  let grantedPermissions: string[] = [];
+
+  try {
+    const session = await apiRequest<SessionAccessResponse>('/auth/session');
+    grantedPermissions = session.access?.permissionCodes ?? [];
+  } catch {
+    grantedPermissions = [];
+  }
+
+  permissionCodes.value = grantedPermissions;
+
+  const visibleMetrics = metricDefinitions.filter(({ permissionCode }) =>
+    grantedPermissions.includes(permissionCode)
+  );
+
+  stats.value = visibleMetrics.map(({ label, icon }) => ({
+    label,
+    value: '—',
+    icon,
+    loading: true
+  }));
 
   const results = await Promise.allSettled(
-    endpoints.map(({ key }) => apiRequest<{ total?: number; items?: unknown[] }>(`/${key}`))
+    visibleMetrics.map(({ key }) => apiRequest<{ total?: number; items?: unknown[] }>(`/${key}`))
   );
 
   stats.value = results.map((result, i) => {
-    const { label, icon } = endpoints[i];
+    const { label, icon } = visibleMetrics[i];
     if (result.status === 'rejected') {
       return { label, value: '—', icon, error: 'Falha ao carregar', loading: false };
     }
@@ -247,149 +260,13 @@ onMounted(() => {
   void loadStats();
   widgetStore.initWidgets();
 });
-
-function resetWidgets() {
-  widgetStore.resetWidgets();
-}
 </script>
 
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   max-width: 1400px;
-}
-
-.dashboard-hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px;
-  border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(13, 148, 136, 0.08)),
-    rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  backdrop-filter: blur(16px);
-}
-
-.dashboard-hero__copy {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.dashboard-hero__eyebrow,
-.panel-card__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-primary-600, #2563eb);
-}
-
-.dashboard-hero__title {
-  margin: 0;
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1.05;
-  color: var(--color-text, #0f172a);
-}
-
-.dashboard-hero__subtitle {
-  margin: 0;
-  max-width: 760px;
-  font-size: 15px;
-  color: var(--color-text-secondary, #475569);
-}
-
-.dashboard-hero__actions {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.dashboard-context {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.dashboard-context__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  font-size: 13px;
-  color: var(--color-text-secondary, #475569);
-}
-
-.dashboard-context__chip--btn {
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s ease;
-}
-
-.dashboard-context__chip--btn:hover {
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.widget-menu {
-  padding: 16px;
-  background: var(--color-surface, #ffffff);
-  border-radius: 16px;
-  border: 1px solid var(--color-border, #e2e8f0);
-}
-
-.widget-menu__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text, #0f172a);
-}
-
-.widget-menu__reset {
-  background: none;
-  border: none;
-  color: var(--color-primary-600, #2563eb);
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.widget-menu__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.widget-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--color-text, #0f172a);
-}
-
-.widget-toggle input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-primary-600, #2563eb);
-}
-
-.widget-toggle__icon {
-  font-size: 16px;
-}
-
-.widget-toggle__label {
-  flex: 1;
 }
 
 .dashboard-grid {
@@ -410,14 +287,11 @@ function resetWidgets() {
 }
 
 .panel-card__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 16px;
 }
 
 .panel-card__title {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 18px;
   color: var(--color-text, #0f172a);
 }
@@ -469,11 +343,6 @@ function resetWidgets() {
 }
 
 @media (max-width: 720px) {
-  .dashboard-hero {
-    padding: 18px;
-    flex-direction: column;
-  }
-
   .domain-shortcuts {
     grid-template-columns: 1fr 1fr;
   }

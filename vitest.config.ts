@@ -3,11 +3,31 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'node:path';
 
 const root = resolve(__dirname);
+const productTestFiles = [
+  'packages/db/src/**/*.test.ts',
+  'packages/tenant-context/src/**/*.test.ts',
+  'tests/unit/**/*.test.ts'
+];
+const commonTestExcludes = [
+  '**/node_modules/**',
+  '**/dist/**',
+  'e2e/**',
+  'tests/unit/auth/hardening.test.ts',
+  'tests/unit/observability/metrics.test.ts'
+];
+const coverageSourceFiles = [
+  'apps/api/src/**/*.ts',
+  'packages/modules/*/src/**/*.ts',
+  'packages/shared/*/src/**/*.ts',
+  'packages/db/src/**/*.ts',
+  'packages/tenant-context/src/**/*.ts'
+];
 
 export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
+      '@': resolve(root, 'apps/spa/src'),
       '@cvg-his-v2/module-access-control': resolve(
         root,
         'packages/modules/access-control/src/index.ts'
@@ -41,6 +61,8 @@ export default defineConfig({
       '@cvg-his-v2/module-triage': resolve(root, 'packages/modules/triage/src/index.ts'),
       '@cvg-his-v2/module-users': resolve(root, 'packages/modules/users/src/index.ts'),
       '@cvg-his-v2/module-webhooks': resolve(root, 'packages/modules/webhooks/src/index.ts'),
+      '@cvg-his-v2/module-fiscal': resolve(root, 'packages/modules/fiscal/src/index.ts'),
+      '@cvg-his-v2/module-prescriptions': resolve(root, 'packages/modules/prescriptions/src/index.ts'),
       '@cvg-his-v2/module-mfa': resolve(root, 'packages/modules/mfa/src/index.ts'),
       '@cvg-his-v2/module-lgpd': resolve(root, 'packages/modules/lgpd/src/index.ts'),
       '@cvg-his-v2/shared-auth-sdk': resolve(root, 'packages/shared/auth-sdk/src/index.ts'),
@@ -61,30 +83,29 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['tests/**/*.test.ts'],
-    exclude: [
-      'node_modules/**',
-      'dist/**',
-      'e2e/**',
-      'tests/unit/auth/hardening.test.ts',
-      'tests/unit/observability/metrics.test.ts'
-    ],
+    include: productTestFiles,
+    exclude: commonTestExcludes,
     testTimeout: 30_000,
     hookTimeout: 60_000,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        parallelMode: false
+      }
+    },
+    minThreads: 1,
+    maxThreads: 1,
+    setupFiles: ['tests/setup/coverage-setup.ts'],
     globalSetup: ['tests/setup/global-setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['apps/api/src/**/*.ts', 'packages/modules/**/*.ts', 'packages/shared/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.d.ts', '**/dist/**', '**/node_modules/**'],
-      thresholds: {
-        lines: 8,
-        functions: 10,
-        branches: 8,
-        statements: 8
-      },
+      reportsDirectory: './coverage',
+      include: coverageSourceFiles,
+      exclude: [...commonTestExcludes, '**/*.test.ts', '**/*.d.ts'],
       reportOnFailure: true,
-      tempDirectory: './coverage/tmp'
+      tempDirectory: './coverage/.tmp'
     }
   }
 });

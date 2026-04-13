@@ -5,17 +5,33 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
+  AccountId,
   DiagnosticOrderId,
   DiagnosticOrderSummary,
   ExamCatalogEntry
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import { DEFAULT_EXAM_CATALOG } from './catalog.js';
+import {
+  DatabaseLaboratoryCatalogRepository
+} from './repositories/database-laboratory-catalog.repository.js';
 import { DatabaseDiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
 import type { DiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
+import {
+  InMemoryLaboratoryCatalogRepository,
+  LaboratoryService,
+  type LaboratoryCatalogRepository
+} from './laboratory.js';
 
 export type { DiagnosticOrderRepository };
 export { DatabaseDiagnosticOrderRepository };
+export type { LaboratoryCatalogRepository };
+export {
+  DatabaseLaboratoryCatalogRepository,
+  InMemoryLaboratoryCatalogRepository,
+  LaboratoryService
+};
 
 const VALID_DIAGNOSTIC_TRANSITIONS: Record<string, readonly string[]> = {
   requested: ['collected', 'cancelled'],
@@ -23,51 +39,6 @@ const VALID_DIAGNOSTIC_TRANSITIONS: Record<string, readonly string[]> = {
   resulted: [],
   cancelled: []
 };
-
-const DEFAULT_EXAM_CATALOG: readonly ExamCatalogEntry[] = [
-  {
-    id: 'cat_001',
-    code: 'HEM',
-    name: 'Hemograma',
-    category: 'Laboratorial',
-    description: 'Exame de sangue completo'
-  },
-  {
-    id: 'cat_002',
-    code: 'BIO',
-    name: 'Bioquimico',
-    category: 'Laboratorial',
-    description: 'Perfil bioquimico sanguineo'
-  },
-  {
-    id: 'cat_003',
-    code: 'URIN',
-    name: 'Urina',
-    category: 'Laboratorial',
-    description: 'Exame de urina tipo 1'
-  },
-  {
-    id: 'cat_004',
-    code: 'RX',
-    name: 'Radiografia',
-    category: 'Imagen',
-    description: 'Radiografia simples'
-  },
-  {
-    id: 'cat_005',
-    code: 'US',
-    name: 'Ultrassonografia',
-    category: 'Imagen',
-    description: 'Exame ultrassonografico'
-  },
-  {
-    id: 'cat_006',
-    code: 'ECO',
-    name: 'Ecocardiograma',
-    category: 'Imagen',
-    description: 'Ecocardiograma estrutural'
-  }
-];
 
 export interface DiagnosticsServiceOptions {
   readonly diagnosticOrderRepository?: DiagnosticOrderRepository;
@@ -145,6 +116,23 @@ export class DiagnosticsService {
     return Array.from(this.#orders.values()).filter(
       (order) => !encounterId || order.encounterId === encounterId
     );
+  }
+
+  public listByAccount(accountId: AccountId): readonly DiagnosticOrderSummary[] {
+    return Array.from(this.#orders.values())
+      .filter((order) => order.accountId === accountId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#repository) {
+      return;
+    }
+
+    const orders = await this.#repository.findAll(accountId);
+    for (const order of orders) {
+      this.#orders.set(order.id, order);
+    }
   }
 
   public getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary {

@@ -9,11 +9,16 @@ import { UsersService } from '@cvg-his-v2/module-users';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
 import { AuthService } from './index.js';
+import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
+import type { SessionRepository } from './repositories/session.repository.js';
 import { generateCurrentTOTP } from './totp-wrapper.js';
 
 const SEED_PASSWORD = 'seed_admin';
 
-function createAuthService(mfa?: MfaService) {
+function createAuthService(options: {
+  readonly mfa?: MfaService;
+  readonly sessionRepository?: SessionRepository;
+} = {}) {
   const users = new UsersService();
   const staff = new StaffService();
   const accessControl = new AccessControlService();
@@ -27,7 +32,8 @@ function createAuthService(mfa?: MfaService) {
     staff,
     accessControl,
     audit,
-    mfa
+    mfa: options.mfa,
+    sessionRepository: options.sessionRepository
   });
 }
 
@@ -68,7 +74,7 @@ test('AuthService: login with non-existent user throws', async () => {
 
 test('AuthService: login requires MFA for critical role when MFA is enabled', async () => {
   const mfa = new MfaService();
-  const auth = createAuthService(mfa);
+  const auth = createAuthService({ mfa });
 
   const result = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-test-mfa');
 
@@ -80,7 +86,7 @@ test('AuthService: login requires MFA for critical role when MFA is enabled', as
 
 test('AuthService: login does not require MFA for non-critical role', async () => {
   const mfa = new MfaService();
-  const auth = createAuthService(mfa);
+  const auth = createAuthService({ mfa });
 
   const result = await auth.login({ username: 'vet', password: 'seed_vet' }, 'corr-test-noncrit');
 
@@ -91,7 +97,7 @@ test('AuthService: login does not require MFA for non-critical role', async () =
 
 test('AuthService: completeMfaLogin returns session after valid TOTP', async () => {
   const mfa = new MfaService();
-  const auth = createAuthService(mfa);
+  const auth = createAuthService({ mfa });
 
   const loginResult = await auth.login(
     { username: 'admin', password: SEED_PASSWORD },
@@ -124,6 +130,27 @@ test('AuthService: refresh rotates tokens but keeps same session', async () => {
   assert.equal(refreshed.principal.session.sessionId, originalSessionId);
   assert.notEqual(refreshed.refreshToken, originalRefresh);
   assert.ok(refreshed.accessToken);
+});
+
+test('AuthService: hydrateFromRepository restores persisted session cache for access and refresh', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const login = await authA.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-4b');
+  assert.ok('accessToken' in login);
+
+  await authB.hydrateFromRepository(['user_admin' as never]);
+
+  const principal = authB.authenticateAccessToken(login.accessToken);
+  const refreshed = authB.refresh(
+    { refreshToken: login.refreshToken },
+    'corr-test-4b-refresh'
+  );
+
+  assert.equal(principal.user.id, login.principal.user.id);
+  assert.equal(refreshed.principal.session.sessionId, login.principal.session.sessionId);
+  assert.notEqual(refreshed.refreshToken, login.refreshToken);
 });
 
 test('AuthService: revoked session cannot be refreshed', async () => {

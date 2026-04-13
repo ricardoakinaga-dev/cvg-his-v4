@@ -47,6 +47,134 @@ interface PageRenderer {
   (): string;
 }
 
+interface NavLink {
+  path: string;
+  label: string;
+  icon: string;
+  keywords?: string[];
+}
+
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: string;
+  links: NavLink[];
+}
+
+interface CommandPaletteItem extends NavLink {
+  group: string;
+  shortcut?: string;
+  active?: boolean;
+}
+
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getNavGroups(): NavGroup[] {
+  return [
+    {
+      id: 'essencial',
+      label: 'Essencial',
+      icon: '⚡',
+      links: [
+        { path: '/', label: 'Dashboard', icon: '📊', keywords: ['inicio', 'home', 'painel'] },
+        { path: '/owners', label: 'Tutores', icon: '👥', keywords: ['owners', 'responsaveis'] },
+        { path: '/patients', label: 'Pacientes', icon: '🐾', keywords: ['cadastro', 'animais'] },
+        { path: '/encounters', label: 'Atendimentos', icon: '🩺', keywords: ['consultas', 'visitas'] },
+        {
+          path: '/medical-records',
+          label: 'Prontuário',
+          icon: '📋',
+          keywords: ['prontuario', 'historico', 'evolucao']
+        }
+      ]
+    },
+    {
+      id: 'operacao',
+      label: 'Operação',
+      icon: '🔄',
+      links: [
+        { path: '/appointments', label: 'Agenda', icon: '📅', keywords: ['agenda', 'agendamentos'] },
+        { path: '/queue', label: 'Recepção', icon: '🔔', keywords: ['fila', 'triagem inicial'] },
+        { path: '/triage', label: 'Triagem', icon: '🏷️', keywords: ['acolhimento', 'prioridade'] }
+      ]
+    },
+    {
+      id: 'assistencial',
+      label: 'Assistencial',
+      icon: '🏥',
+      links: [
+        { path: '/inpatient', label: 'Internação', icon: '🏨', keywords: ['leitos', 'internado'] },
+        { path: '/prescriptions', label: 'Prescrições', icon: '💊', keywords: ['prescricao', 'medicacoes'] },
+        {
+          path: '/prescription-executions',
+          label: 'Exec. Prescrição',
+          icon: '💉',
+          keywords: ['execucao', 'prescricao']
+        },
+        { path: '/diagnostics', label: 'Exames', icon: '🔬', keywords: ['diagnosticos', 'laboratorio'] },
+        { path: '/surgeries', label: 'Cirurgias', icon: '⚕️', keywords: ['cirurgia', 'bloco'] },
+        { path: '/sectors', label: 'Setores', icon: '🏢', keywords: ['unidades', 'locais'] },
+        { path: '/beds', label: 'Leitos', icon: '🛏️', keywords: ['camas', 'ocupacao'] },
+        { path: '/bed-map', label: 'Mapa de Leitos', icon: '🗺️', keywords: ['mapa', 'ocupacao'] },
+        { path: '/discharges', label: 'Altas', icon: '🏠', keywords: ['saida', 'alta'] }
+      ]
+    },
+    {
+      id: 'administrativo',
+      label: 'Administrativo',
+      icon: '⚙️',
+      links: [
+        { path: '/users', label: 'Usuários', icon: '👤', keywords: ['acessos', 'usuarios'] },
+        { path: '/staff', label: 'Equipe', icon: '👨‍⚕️', keywords: ['profissionais', 'colaboradores'] },
+        { path: '/access-control', label: 'Permissões', icon: '🔐', keywords: ['roles', 'rbac', 'acesso'] }
+      ]
+    },
+    {
+      id: 'backoffice',
+      label: 'Backoffice',
+      icon: '📦',
+      links: [
+        { path: '/billing', label: 'Faturamento', icon: '💰', keywords: ['billing', 'financeiro'] },
+        { path: '/inventory', label: 'Estoque', icon: '📦', keywords: ['inventario', 'materiais'] },
+        { path: '/products', label: 'Produtos', icon: '🏷️', keywords: ['cadastro', 'itens'] },
+        { path: '/services', label: 'Serviços', icon: '🔧', keywords: ['servicos', 'procedimentos'] },
+        { path: '/counter-sales', label: 'Comanda', icon: '🧾', keywords: ['balcao', 'vendas'] },
+        { path: '/quotes', label: 'Orçamentos', icon: '📋', keywords: ['propostas', 'orcamentos'] },
+        { path: '/commercial-reports', label: 'Relatórios', icon: '📊', keywords: ['indicadores', 'reportes'] },
+        { path: '/cash-register', label: 'Caixa', icon: '💵', keywords: ['caixa', 'fluxo'] },
+        { path: '/notifications', label: 'Notificações', icon: '🔔', keywords: ['alertas', 'avisos'] }
+      ]
+    },
+    {
+      id: 'governanca',
+      label: 'Governança',
+      icon: '🛡️',
+      links: [
+        { path: '/audit', label: 'Auditoria', icon: '📝', keywords: ['logs', 'rastreio'] },
+        { path: '/master-search', label: 'Busca Global', icon: '🔍', keywords: ['busca', 'search', 'pesquisa'] }
+      ]
+    }
+  ];
+}
+
+function buildCommandPaletteItems(groups: NavGroup[], activePath: string): CommandPaletteItem[] {
+  return groups.flatMap((group) =>
+    group.links.map((link) => ({
+      ...link,
+      group: group.label,
+      active: link.path === activePath,
+      shortcut: link.path === '/master-search' ? 'Ctrl+K' : undefined
+    }))
+  );
+}
+
 export const routes: Record<string, { render: PageRenderer; title: string; nav: string }> = {
   '/login': { render: renderLogin, title: 'Login', nav: '/login' },
   '/': { render: renderDashboard, title: 'Dashboard', nav: '/' },
@@ -128,83 +256,8 @@ export function buildPage(path: string): string {
     })();
   `;
 
-  const navGroups = showChrome
-    ? [
-        {
-          id: 'essencial',
-          label: 'Essencial',
-          icon: '⚡',
-          links: [
-            { path: '/', label: 'Dashboard', icon: '📊' },
-            { path: '/owners', label: 'Tutores', icon: '👥' },
-            { path: '/patients', label: 'Pacientes', icon: '🐾' },
-            { path: '/encounters', label: 'Atendimentos', icon: '🩺' },
-            { path: '/medical-records', label: 'Prontuário', icon: '📋' }
-          ]
-        },
-        {
-          id: 'operacao',
-          label: 'Operação',
-          icon: '🔄',
-          links: [
-            { path: '/appointments', label: 'Agenda', icon: '📅' },
-            { path: '/queue', label: 'Recepção', icon: '🔔' },
-            { path: '/triage', label: 'Triagem', icon: '🏷️' }
-          ]
-        },
-        {
-          id: 'assistencial',
-          label: 'Assistencial',
-          icon: '🏥',
-          links: [
-            { path: '/inpatient', label: 'Internação', icon: '🏨' },
-            { path: '/prescriptions', label: 'Prescrições', icon: '💊' },
-            { path: '/prescription-executions', label: 'Exec. Prescrição', icon: '💉' },
-            { path: '/diagnostics', label: 'Exames', icon: '🔬' },
-            { path: '/surgeries', label: 'Cirurgias', icon: '⚕️' },
-            { path: '/sectors', label: 'Setores', icon: '🏢' },
-            { path: '/beds', label: 'Leitos', icon: '🛏️' },
-            { path: '/bed-map', label: 'Mapa de Leitos', icon: '🗺️' },
-            { path: '/discharges', label: 'Altas', icon: '🏠' }
-          ]
-        },
-        {
-          id: 'administrativo',
-          label: 'Administrativo',
-          icon: '⚙️',
-          links: [
-            { path: '/users', label: 'Usuários', icon: '👤' },
-            { path: '/staff', label: 'Equipe', icon: '👨‍⚕️' },
-            { path: '/access-control', label: 'Permissões', icon: '🔐' }
-          ]
-        },
-        {
-          id: 'backoffice',
-          label: 'Backoffice',
-          icon: '📦',
-          links: [
-            { path: '/billing', label: 'Faturamento', icon: '💰' },
-            { path: '/inventory', label: 'Estoque', icon: '📦' },
-            { path: '/products', label: 'Produtos', icon: '🏷️' },
-            { path: '/services', label: 'Servicos', icon: '🔧' },
-            { path: '/counter-sales', label: 'Comanda', icon: '🧾' },
-            { path: '/quotes', label: 'Orcamentos', icon: '📋' },
-            { path: '/commercial-reports', label: 'Relatorios', icon: '📊' },
-            { path: '/cash-register', label: 'Caixa', icon: '💵' },
-            { path: '/notifications', label: 'Notificações', icon: '🔔' }
-          ]
-        },
-        {
-          id: 'governanca',
-          label: 'Governança',
-          icon: '🛡️',
-          links: [
-            { path: '/audit', label: 'Auditoria', icon: '📝' },
-            { path: '/master-search', label: 'Busca Global', icon: '🔍' }
-          ]
-        }
-      ]
-    : [];
+  const navGroups = showChrome ? getNavGroups() : [];
+  const commandPaletteItems = showChrome ? buildCommandPaletteItems(navGroups, route.nav) : [];
 
   const navHtml = navGroups
     .map((group) => {
@@ -262,6 +315,77 @@ export function buildPage(path: string): string {
     )
     .join('');
 
+  const commandPaletteItemsHtml = commandPaletteItems
+    .map((item, index) => {
+      const searchTerms = [item.label, item.group, item.path, ...(item.keywords ?? [])]
+        .join(' ')
+        .trim()
+        .toLowerCase();
+      const shortcutHtml = item.shortcut
+        ? `<kbd class="command-palette-item-shortcut">${escapeHtml(item.shortcut)}</kbd>`
+        : '';
+
+      return `
+        <div
+          class="command-palette-item${item.active ? ' is-active' : ''}"
+          role="option"
+          id="command-palette-item-${index}"
+          tabindex="-1"
+          data-command-item
+          data-command-index="${index}"
+          data-command-href="${escapeHtml(item.path)}"
+          data-command-search="${escapeHtml(searchTerms)}"
+          aria-selected="${item.active ? 'true' : 'false'}"
+        >
+          <span class="command-palette-item-icon" aria-hidden="true">${item.icon}</span>
+          <span class="command-palette-item-body">
+            <strong>${escapeHtml(item.label)}</strong>
+            <span>${escapeHtml(item.group)}</span>
+          </span>
+          ${shortcutHtml}
+        </div>`;
+    })
+    .join('');
+
+  const commandPaletteHtml = showChrome
+    ? `
+      <div class="command-palette" id="command-palette" data-command-palette hidden>
+        <button class="command-palette-backdrop" type="button" data-command-palette-close aria-label="Fechar paleta de comandos"></button>
+        <section class="command-palette-panel" role="dialog" aria-modal="true" aria-labelledby="command-palette-title" data-command-palette-panel>
+          <header class="command-palette-header">
+            <div>
+              <p class="command-palette-kicker">Acesso rápido</p>
+              <h2 id="command-palette-title">Paleta de comandos</h2>
+            </div>
+            <button class="command-palette-close-btn secondary small" type="button" data-command-palette-close aria-label="Fechar paleta">Esc</button>
+          </header>
+          <div class="command-palette-search">
+            <span class="command-palette-search-icon" aria-hidden="true">⌘</span>
+            <input
+              type="search"
+              id="command-palette-input"
+              class="command-palette-input"
+              placeholder="Digite um comando, módulo ou destino..."
+              aria-label="Paleta de comandos"
+              aria-controls="command-palette-results"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <kbd class="command-palette-search-hint">Ctrl K</kbd>
+          </div>
+          <div class="command-palette-results" id="command-palette-results" role="listbox" aria-label="Comandos disponíveis">
+            ${commandPaletteItemsHtml}
+          </div>
+          <p class="command-palette-empty" data-command-palette-empty hidden>Nenhum comando encontrado.</p>
+          <footer class="command-palette-footer">
+            <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
+            <span><kbd>Enter</kbd> abrir</span>
+            <span><kbd>Esc</kbd> fechar</span>
+          </footer>
+        </section>
+      </div>`
+    : '';
+
   const chromeHtml = showChrome
     ? `
       <div class="app-shell" data-sidebar-state="expanded">
@@ -295,6 +419,18 @@ export function buildPage(path: string): string {
             </div>
             <div class="topbar-right">
               <span class="topbar-chip">v2.0</span>
+              <button
+                class="topbar-command-btn secondary small"
+                type="button"
+                id="command-palette-trigger"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-controls="command-palette"
+                title="Abrir paleta de comandos (Ctrl+K)"
+              >
+                <span aria-hidden="true">⌘K</span>
+                <span class="topbar-command-label">Comandos</span>
+              </button>
               <nav class="mobile-top-nav" role="navigation" aria-label="Menu móvel">${flatLinksHtml}</nav>
             </div>
           </header>
@@ -334,6 +470,7 @@ export function buildPage(path: string): string {
     ${authBootstrapScript}
   </script>
   ${chromeHtml}
+  ${commandPaletteHtml}
   <script>
     const statusTimeEl = document.getElementById('status-time');
     if (statusTimeEl) {
@@ -377,6 +514,173 @@ export function buildPage(path: string): string {
         '<div><span class="sidebar-user-label">Usuario conectado</span><strong>' + escapeHtml(name) + '</strong></div>' +
         '<button class="small secondary" onclick="(async()=>{const rt=getRefreshToken();await apiRequest(\'/auth/logout\',{method:\'POST\',body:JSON.stringify(rt?{refreshToken:rt}:{})});clearTokens();window.location.assign(\'/login\')})()">Sair</button>' +
         '</div>';
+    })();
+
+    (function setupCommandPalette() {
+      const palette = document.getElementById('command-palette');
+      if (!palette) return;
+
+      const trigger = document.getElementById('command-palette-trigger');
+      const input = document.getElementById('command-palette-input');
+      const emptyState = document.querySelector('[data-command-palette-empty]');
+      const items = Array.from(palette.querySelectorAll('[data-command-item]'));
+
+      let activeItem = items.find(function(item) {
+        return item.getAttribute('aria-selected') === 'true';
+      }) || null;
+      let lastFocusedElement = null;
+
+      function getVisibleItems() {
+        return items.filter(function(item) {
+          return !item.hasAttribute('hidden');
+        });
+      }
+
+      function setActiveItem(nextItem) {
+        items.forEach(function(item) {
+          const isActive = item === nextItem;
+          item.classList.toggle('is-active', isActive);
+          item.setAttribute('aria-selected', String(isActive));
+        });
+
+        activeItem = nextItem;
+        if (input && nextItem) {
+          input.setAttribute('aria-activedescendant', nextItem.id);
+        } else if (input) {
+          input.removeAttribute('aria-activedescendant');
+        }
+      }
+
+      function moveSelection(delta) {
+        const visibleItems = getVisibleItems();
+        if (!visibleItems.length) {
+          setActiveItem(null);
+          return;
+        }
+
+        const currentIndex = activeItem ? visibleItems.indexOf(activeItem) : -1;
+        const startIndex = currentIndex >= 0 ? currentIndex : (delta > 0 ? -1 : 0);
+        const boundedIndex = ((startIndex + delta) % visibleItems.length + visibleItems.length) % visibleItems.length;
+        setActiveItem(visibleItems[boundedIndex]);
+      }
+
+      function filterItems() {
+        const query = (input?.value || '').trim().toLowerCase();
+        let firstVisible = null;
+
+        items.forEach(function(item) {
+          const search = item.getAttribute('data-command-search') || '';
+          const match = !query || search.includes(query);
+          item.toggleAttribute('hidden', !match);
+          if (match && !firstVisible) {
+            firstVisible = item;
+          }
+        });
+
+        const visibleCount = getVisibleItems().length;
+        if (emptyState) {
+          emptyState.toggleAttribute('hidden', visibleCount > 0);
+        }
+
+        const nextActive = activeItem && !activeItem.hasAttribute('hidden') ? activeItem : firstVisible;
+        setActiveItem(nextActive);
+      }
+
+      function openPalette() {
+        lastFocusedElement = document.activeElement;
+        palette.hidden = false;
+        palette.setAttribute('data-open', 'true');
+        document.body.classList.add('command-palette-open');
+        trigger?.setAttribute('aria-expanded', 'true');
+        filterItems();
+        window.setTimeout(function() {
+          if (input) {
+            input.focus();
+            if (!input.value) {
+              input.select();
+            }
+          }
+        }, 0);
+      }
+
+      function closePalette() {
+        palette.hidden = true;
+        palette.removeAttribute('data-open');
+        document.body.classList.remove('command-palette-open');
+        trigger?.setAttribute('aria-expanded', 'false');
+        if (input) {
+          input.value = '';
+        }
+        filterItems();
+        const focusTarget = lastFocusedElement && typeof lastFocusedElement.focus === 'function' ? lastFocusedElement : trigger;
+        focusTarget?.focus();
+      }
+
+      function activateSelectedItem() {
+        const selectedItem = activeItem;
+        if (!selectedItem) return;
+        const href = selectedItem.getAttribute('data-command-href');
+        if (href) {
+          window.location.assign(href);
+        }
+      }
+
+      trigger?.addEventListener('click', openPalette);
+
+      palette.addEventListener('click', function(event) {
+        const target = event.target;
+        const item = target instanceof Element ? target.closest('[data-command-item]') : null;
+        const closeTarget = target instanceof Element ? target.closest('[data-command-palette-close]') : null;
+
+        if (closeTarget) {
+          closePalette();
+          return;
+        }
+
+        if (item) {
+          const href = item.getAttribute('data-command-href');
+          if (href) {
+            window.location.assign(href);
+          }
+        }
+      });
+
+      input?.addEventListener('input', filterItems);
+      input?.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          moveSelection(1);
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          moveSelection(-1);
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          activateSelectedItem();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closePalette();
+        }
+      });
+
+      document.addEventListener('keydown', function(event) {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          if (palette.hidden) {
+            openPalette();
+          } else {
+            closePalette();
+          }
+          return;
+        }
+
+        if (event.key === 'Escape' && !palette.hidden) {
+          event.preventDefault();
+          closePalette();
+        }
+      });
+
+      filterItems();
+      palette.hidden = true;
     })();
 
     (function setupSidebar() {

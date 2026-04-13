@@ -1,16 +1,17 @@
 <template>
   <div class="scheduling-list-page">
     <AppPageHeader>
-      <template #title>📅 Agenda</template>
+      <template #title>📅 Agenda Operacional</template>
       <template #subtitle>
-        <span class="muted">Visão operacional de agendamentos com ações rápidas e leitura executiva.</span>
+        <span class="muted">Atendimento &gt; Agenda. Painel tático para conferir o dia e seguir para fila, triagem e atendimento.</span>
         <span v-if="lastRefresh" class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
         <DsSpinner v-if="loading" size="sm" inline label="Atualizando..." />
       </template>
       <template #actions>
-        <DsButton variant="secondary" @click="loadAppointments" :loading="loading">Atualizar</DsButton>
-        <DsButton variant="primary" tag="a" href="/scheduling/new">Novo Agendamento</DsButton>
-        <DsButton variant="secondary" tag="a" href="/queue">Ver Fila</DsButton>
+        <DsButton variant="secondary" @click="loadAppointments" :loading="loading">🔄 Atualizar</DsButton>
+        <DsButton variant="secondary" tag="a" href="/appointments">Ver quadro da agenda</DsButton>
+        <DsButton variant="primary" tag="a" href="/appointments/new">+ Novo Agendamento</DsButton>
+        <DsButton variant="secondary" tag="a" href="/queue">🏥 Ver Fila</DsButton>
       </template>
     </AppPageHeader>
 
@@ -36,8 +37,12 @@
       v-else-if="appointments.length === 0"
       icon="📅"
       title="Nenhum agendamento encontrado."
-      description="Crie o primeiro agendamento para iniciar a programação operacional do dia."
-    />
+      description="Crie o primeiro agendamento para iniciar a programação operacional do dia e abastecer a recepção."
+    >
+      <template #action>
+        <DsButton variant="primary" tag="a" href="/appointments/new">+ Novo Agendamento</DsButton>
+      </template>
+    </EmptyState>
 
     <div v-else class="table-wrapper">
       <table class="data-table">

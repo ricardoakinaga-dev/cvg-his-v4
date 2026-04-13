@@ -15,6 +15,12 @@
       <AppPageHeader :subtitle="detailSubtitle">
         <template #title>🧭 Triagem</template>
         <template #actions>
+          <DsButton variant="secondary" size="sm" tag="a" :to="`/encounters/${record.encounterId}`">
+            Abrir atendimento
+          </DsButton>
+          <DsButton variant="ghost" size="sm" tag="a" :to="`/medical-records/${record.encounterId}`">
+            Prontuário
+          </DsButton>
           <DsButton variant="secondary" size="sm" @click="showEdit = true">Editar</DsButton>
           <DsButton variant="secondary" size="sm" tag="a" to="/triage">Voltar</DsButton>
         </template>
@@ -24,7 +30,7 @@
         <div class="summary-grid">
           <div class="summary-item">
             <span class="summary-item__label">Paciente</span>
-            <strong>{{ record.patientId }}</strong>
+            <strong>{{ patientName }}</strong>
           </div>
           <div class="summary-item">
             <span class="summary-item__label">Prioridade</span>
@@ -49,11 +55,13 @@
         <h2 class="detail-section__title">Informações da Triagem</h2>
         <div class="detail-row">
           <span class="detail-row__label">Paciente:</span>
-          <span>{{ record.patientId }}</span>
+          <span>{{ patientName }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-row__label">Atendimento:</span>
-          <span>{{ record.encounterId }}</span>
+          <router-link :to="`/encounters/${record.encounterId}`" class="triage-link">
+            {{ record.encounterId.slice(0, 8) }}...
+          </router-link>
         </div>
         <div class="detail-row">
           <span class="detail-row__label">Prioridade:</span>
@@ -85,7 +93,7 @@
         </div>
         <div class="detail-row">
           <span class="detail-row__label">Triado por:</span>
-          <span>{{ record.triagedByUserId }}</span>
+          <span>{{ triagedByName }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-row__label">Criado em:</span>
@@ -108,7 +116,7 @@
             <div class="timeline__event-time">{{ formatDate(v.createdAt) }}</div>
             <div class="timeline__event-content">
               <strong>Campos alterados:</strong> {{ v.changedFields.join(', ') }}
-              <div v-if="v.changedByUserId" class="muted">Por: {{ v.changedByUserId }}</div>
+              <div v-if="v.changedByUserId" class="muted">Por: {{ versionAuthor(v.changedByUserId) }}</div>
             </div>
           </div>
         </div>
@@ -162,6 +170,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { listTriageRecords, updateTriage, getTriageHistory } from '@/services/triage';
+import { useEntityCache } from '@/composables/useEntityCache';
 import type {
   TriageSummary,
   TriageVersionSummary,
@@ -186,6 +195,10 @@ const versions = ref<TriageVersionSummary[]>([]);
 const versionsLoading = ref(false);
 const showEdit = ref(false);
 const updating = ref(false);
+const entityCache = useEntityCache();
+const patientName = ref('');
+const triagedByName = ref('');
+const versionAuthors = ref<Record<string, string>>({});
 
 const editForm = ref({
   priority: 'medium' as TriagePriority,
@@ -196,8 +209,27 @@ const editForm = ref({
 
 const detailSubtitle = computed(() => {
   if (!record.value) return '';
-  return `${record.value.id} • ${formatDate(record.value.createdAt)}`;
+  return `Atendimento > Triagem • ${patientName.value || record.value.patientId} • ${priorityLabel(record.value.priority)}`;
 });
+
+function versionAuthor(id: string): string {
+  return versionAuthors.value[id] || `Usuário ${id.slice(0, 8)}...`;
+}
+
+async function loadEntityContext(currentRecord: TriageSummary, history: TriageVersionSummary[]) {
+  patientName.value = await entityCache.getPatientName(currentRecord.patientId);
+  triagedByName.value = await entityCache.getUserName(currentRecord.triagedByUserId);
+
+  const authorIds = [...new Set(history.map((entry) => entry.changedByUserId).filter(Boolean))] as string[];
+  if (authorIds.length > 0) {
+    await entityCache.preloadUserNames(authorIds);
+    await Promise.all(
+      authorIds.map(async (id) => {
+        versionAuthors.value[id] = await entityCache.getUserName(id);
+      })
+    );
+  }
+}
 
 onMounted(async () => {
   const triageId = route.params.id as string;
@@ -221,6 +253,7 @@ onMounted(async () => {
 
     versionsLoading.value = true;
     versions.value = await getTriageHistory(triageId);
+    await loadEntityContext(record.value, versions.value);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Falha ao carregar triagem';
     error.value = message;
@@ -240,6 +273,7 @@ async function handleUpdate() {
     record.value = updated;
     if (updated) {
       versions.value = await getTriageHistory(updated.id);
+      await loadEntityContext(updated, versions.value);
     }
     showEdit.value = false;
   } catch (err: unknown) {
@@ -337,5 +371,15 @@ function destinationLabel(d: string): string {
   gap: 8px;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.triage-link {
+  color: var(--color-primary-600, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.triage-link:hover {
+  text-decoration: underline;
 }
 </style>

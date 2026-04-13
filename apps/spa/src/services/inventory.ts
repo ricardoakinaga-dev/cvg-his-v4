@@ -1,5 +1,12 @@
 import { apiRequest } from './api';
-import type { InventoryItemSummary, InventoryItemsListResponse } from '@/types/inventory';
+import type {
+  InventoryConsumptionSummary,
+  InventoryConsumptionsListResponse,
+  InventoryItemSummary,
+  InventoryItemsListResponse,
+  InventoryLotSummary,
+  InventoryLotsListResponse
+} from '@/types/inventory';
 
 export interface CreateInventoryItemPayload {
   sku: string;
@@ -27,6 +34,19 @@ export const inventoryService = {
 
   async getById(id: string): Promise<InventoryItemSummary> {
     return apiRequest<InventoryItemSummary>(`/inventory/${id}`);
+  },
+
+  async listConsumptions(encounterId?: string): Promise<InventoryConsumptionSummary[]> {
+    const params = encounterId ? `?encounterId=${encodeURIComponent(encounterId)}` : '';
+    const response = await apiRequest<InventoryConsumptionsListResponse>(
+      `/inventory/consumptions${params}`
+    );
+    return response.items ?? [];
+  },
+
+  async listLots(): Promise<InventoryLotSummary[]> {
+    const response = await apiRequest<InventoryLotsListResponse>('/inventory/lots');
+    return response.items ?? [];
   },
 
   async create(payload: CreateInventoryItemPayload): Promise<InventoryItemSummary> {

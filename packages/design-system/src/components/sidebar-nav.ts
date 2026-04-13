@@ -1,18 +1,18 @@
-import type { SidebarNavProps } from '../vue/index.js';
+import type { DsSidebarNavProps, SidebarNavGroup, SidebarNavItem } from '../vue/index.js';
 
 // Re-export types for render function signature
-export type { SidebarNavProps } from '../vue/index.js';
+export type { DsSidebarNavProps as SidebarNavProps } from '../vue/index.js';
 
-export function renderSidebarNav(props: SidebarNavProps): string {
+export function renderSidebarNav(props: DsSidebarNavProps): string {
   const collapsed = props.collapsed ?? false;
   const groups = props.groups ?? [];
   const ariaLabel = props.ariaLabel ?? 'Navegação principal';
 
   const groupsHtml = groups
-    .map((group) => {
+    .map((group: SidebarNavGroup) => {
       const itemsHtml = group.items
         .map(
-          (item) => `
+          (item: SidebarNavItem) => `
           <li>
             <${item.href ? 'a' : 'span'} href="${item.href ?? '#'}" class="ds-sidebar-nav__item ${item.active ? 'ds-sidebar-nav__item--active' : ''}" ${item.active ? 'aria-current="page"' : ''}>
               <span class="ds-sidebar-nav__item-icon">${item.icon ?? '•'}</span>

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,11 +8,6 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '../..');
 const composeFile = resolve(rootDir, 'docker-compose.dev.yml');
-const schemaFile = resolve(
-  rootDir,
-  'packages/shared/database/src/migrations/001_initial_schema.sql'
-);
-const migrationsDir = resolve(rootDir, 'packages/shared/database/src/migrations');
 const databaseUrl =
   process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
 const skipSetup = process.env.SKIP_DB_SETUP === 'true';
@@ -90,6 +84,25 @@ async function canConnect(connectionString) {
   }
 }
 
+async function waitForStableConnections(connectionString, requiredSuccesses = 3) {
+  let consecutiveSuccesses = 0;
+
+  for (let attempt = 1; attempt <= requiredSuccesses * 5; attempt += 1) {
+    if (await canConnect(connectionString)) {
+      consecutiveSuccesses += 1;
+      if (consecutiveSuccesses >= requiredSuccesses) {
+        return true;
+      }
+    } else {
+      consecutiveSuccesses = 0;
+    }
+
+    await sleep(1000);
+  }
+
+  return false;
+}
+
 async function ensureDatabaseExists() {
   const targetDatabase = getDatabaseName(databaseUrl);
   const adminClient = new Client({ connectionString: getAdminDatabaseUrl(databaseUrl) });
@@ -101,24 +114,81 @@ async function ensureDatabaseExists() {
     ]);
 
     if (result.rowCount === 0) {
-      await adminClient.query(`CREATE DATABASE "${targetDatabase}"`);
-      console.log(`Created database ${targetDatabase}.`);
+      try {
+        await adminClient.query(`CREATE DATABASE "${targetDatabase}"`);
+        console.log(`Created database ${targetDatabase}.`);
+      } catch (error) {
+        const code =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String(error.code)
+            : undefined;
+
+        // PostgreSQL can finish materializing POSTGRES_DB moments after the server
+        // accepts admin connections. Treat duplicate-database as ready state.
+        if (code !== '42P04') {
+          throw error;
+        }
+      }
     }
   } finally {
     await adminClient.end();
   }
 }
 
-async function ensurePostgresRunning() {
+async function resetDatabase() {
+  const targetDatabase = getDatabaseName(databaseUrl);
+  const adminClient = new Client({ connectionString: getAdminDatabaseUrl(databaseUrl) });
+
+  await adminClient.connect();
   try {
-    if (await canConnect(databaseUrl)) {
-      console.log('Using existing PostgreSQL instance.');
-      return;
+    await adminClient.query(
+      `
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = $1
+          AND pid <> pg_backend_pid()
+      `,
+      [targetDatabase]
+    );
+    await adminClient.query(`DROP DATABASE IF EXISTS "${targetDatabase}"`);
+    await adminClient.query(`CREATE DATABASE "${targetDatabase}"`);
+    console.log(`Reset database ${targetDatabase}.`);
+  } finally {
+    await adminClient.end();
+  }
+}
+
+async function ensurePostgresRunning() {
+  const adminDatabaseUrl = getAdminDatabaseUrl(databaseUrl);
+
+  // In E2E/release gates the database may already be provisioned, but the
+  // published host port can take a few extra seconds to accept connections
+  // even after the container healthcheck turns green.
+  for (let attempt = 1; attempt <= 15; attempt += 1) {
+    try {
+      if (await waitForStableConnections(databaseUrl)) {
+        console.log('Using existing PostgreSQL instance.');
+        return;
+      }
+
+      if (await canConnect(adminDatabaseUrl)) {
+        await ensureDatabaseExists();
+        if (await waitForStableConnections(databaseUrl)) {
+          console.log('Using existing PostgreSQL server with newly prepared database.');
+          return;
+        }
+      }
+    } catch {
+      // Keep retrying before falling back to Docker bootstrap.
     }
 
-    if (await canConnect(getAdminDatabaseUrl(databaseUrl))) {
+    await sleep(1000);
+  }
+
+  try {
+    if (await canConnect(adminDatabaseUrl)) {
       await ensureDatabaseExists();
-      if (await canConnect(databaseUrl)) {
+      if (await waitForStableConnections(databaseUrl)) {
         console.log('Using existing PostgreSQL server with newly prepared database.');
         return;
       }
@@ -135,14 +205,14 @@ async function ensurePostgresRunning() {
     // If the port is already bound, try the existing local postgres one more time.
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('address already in use')) {
-      if (await canConnect(databaseUrl)) {
+      if (await waitForStableConnections(databaseUrl)) {
         console.log('Using existing PostgreSQL instance bound on configured port.');
         return;
       }
 
-      if (await canConnect(getAdminDatabaseUrl(databaseUrl))) {
+      if (await canConnect(adminDatabaseUrl)) {
         await ensureDatabaseExists();
-        if (await canConnect(databaseUrl)) {
+        if (await waitForStableConnections(databaseUrl)) {
           console.log('Using existing PostgreSQL server with newly prepared database.');
           return;
         }
@@ -155,7 +225,7 @@ async function ensurePostgresRunning() {
   }
 
   for (let attempt = 1; attempt <= 30; attempt += 1) {
-    if (await canConnect(databaseUrl)) {
+    if (await waitForStableConnections(databaseUrl)) {
       return;
     }
 
@@ -168,7 +238,7 @@ async function ensurePostgresRunning() {
 
       if (stdout.includes('healthy')) {
         await ensureDatabaseExists().catch(() => {});
-        if (await canConnect(databaseUrl)) {
+        if (await waitForStableConnections(databaseUrl)) {
           return;
         }
       }
@@ -183,39 +253,20 @@ async function ensurePostgresRunning() {
 }
 
 async function applySchema() {
-  const schemaSql = readFileSync(schemaFile, 'utf8');
-  const migrationSql = readdirSync(migrationsDir)
-    .filter((file) => file.endsWith('.sql') && file !== '001_initial_schema.sql')
-    .sort()
-    .map((file) => readFileSync(resolve(migrationsDir, file), 'utf8'))
-    .join('\n');
-  const reconcileSql = `
-ALTER TABLE clinical_entries ADD COLUMN IF NOT EXISTS account_id VARCHAR(255);
-ALTER TABLE clinical_timeline ADD COLUMN IF NOT EXISTS account_id VARCHAR(255);
-ALTER TABLE clinical_timeline ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMP;
-ALTER TABLE notification_jobs ADD COLUMN IF NOT EXISTS account_id VARCHAR(255);
-`;
-
-  const sql = `
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
-${schemaSql}
-${reconcileSql}
-${migrationSql}
-`;
-
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    await client.query(sql);
-  } finally {
-    await client.end();
-  }
+  await runCommand('npx', ['tsx', 'packages/db/src/migrate.ts'], {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DATABASE_URL: databaseUrl
+    }
+  });
 }
 
 async function main() {
   console.log('Preparing PostgreSQL for db-persistence tests...');
   await ensurePostgresRunning();
+  await resetDatabase();
   await applySchema();
   console.log('Database ready for db-persistence tests.');
 }

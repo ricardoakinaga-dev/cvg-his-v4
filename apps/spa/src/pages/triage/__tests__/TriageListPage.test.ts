@@ -33,6 +33,9 @@ const mockRecords = [
 ];
 
 const mockListFn = vi.fn().mockResolvedValue(mockRecords);
+const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
+const mockGetUserName = vi.fn().mockResolvedValue('Dra. Julia');
+const mockPreloadUserNames = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/services/triage', () => ({
   listTriageRecords: () => mockListFn(),
@@ -41,10 +44,21 @@ vi.mock('@/services/triage', () => ({
   getTriageHistory: vi.fn()
 }));
 
+vi.mock('@/composables/useEntityCache', () => ({
+  useEntityCache: () => ({
+    getPatientName: mockGetPatientName,
+    getUserName: mockGetUserName,
+    preloadUserNames: mockPreloadUserNames,
+    loading: new Set()
+  })
+}));
+
 describe('TriageListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue(mockRecords);
+    mockGetPatientName.mockResolvedValue('Rex');
+    mockGetUserName.mockResolvedValue('Dra. Julia');
   });
 
   it('renders the page title', async () => {
@@ -129,5 +143,27 @@ describe('TriageListPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Nova Triagem');
+  });
+
+  it('loads patient and user names through entity cache', async () => {
+    const TriageListPage = (await import('../TriageListPage.vue')).default;
+    mount(TriageListPage, {
+      global: {
+        stubs: {
+          DataTable: {
+            template: '<div class="data-table-stub"></div>',
+            props: ['columns', 'rows', 'loading', 'variant', 'caption']
+          },
+          DsButton: { template: '<button><slot /></button>' },
+          DsBadge: { template: '<span><slot /></span>' },
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+    expect(mockGetPatientName).toHaveBeenCalledWith('p1');
+    expect(mockPreloadUserNames).toHaveBeenCalledWith(['u1', 'u2']);
+    expect(mockGetUserName).toHaveBeenCalledWith('u1');
   });
 });

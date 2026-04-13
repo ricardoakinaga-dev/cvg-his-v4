@@ -89,6 +89,23 @@ export class EncountersService {
     return Array.from(this.#encounters.values());
   }
 
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#encounterRepository) {
+      return;
+    }
+
+    const persistedEncounters = await this.#encounterRepository.findAll(accountId);
+
+    for (const encounter of persistedEncounters) {
+      this.#encounters.set(encounter.id, encounter);
+
+      if (this.#encounterTimelineRepository) {
+        const timeline = await this.#encounterTimelineRepository.findByEncounterId(encounter.id);
+        this.#timeline.set(encounter.id, [...timeline]);
+      }
+    }
+  }
+
   public getOrThrow(encounterId: EncounterId): EncounterSummary {
     const encounter = this.#encounters.get(encounterId);
     if (!encounter) {
@@ -235,6 +252,35 @@ export class EncountersService {
   public listTimeline(encounterId: EncounterId): readonly EncounterTimelineEventSummary[] {
     this.getOrThrow(encounterId);
     return [...(this.#timeline.get(encounterId) ?? [])];
+  }
+
+  public async listTimelineAsync(
+    encounterId: EncounterId
+  ): Promise<readonly EncounterTimelineEventSummary[]> {
+    const cachedEncounter = this.#encounters.get(encounterId);
+
+    if (!cachedEncounter && this.#encounterRepository) {
+      const persistedEncounter = await this.#encounterRepository.findById(encounterId);
+      if (!persistedEncounter) {
+        throw new NotFoundError('Encounter not found', { encounterId });
+      }
+      this.#encounters.set(encounterId, persistedEncounter);
+    } else if (!cachedEncounter) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+
+    const cachedTimeline = this.#timeline.get(encounterId);
+    if (cachedTimeline) {
+      return [...cachedTimeline];
+    }
+
+    if (!this.#encounterTimelineRepository) {
+      return [];
+    }
+
+    const persistedTimeline = await this.#encounterTimelineRepository.findByEncounterId(encounterId);
+    this.#timeline.set(encounterId, [...persistedTimeline]);
+    return [...persistedTimeline];
   }
 
   public appendTimeline(

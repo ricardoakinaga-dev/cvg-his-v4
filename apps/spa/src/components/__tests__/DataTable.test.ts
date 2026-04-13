@@ -40,6 +40,7 @@ describe('DataTable', () => {
       props: { columns, rows, loading: true }
     });
     expect(wrapper.find('.data-table-loading').exists()).toBe(true);
+    expect(wrapper.findAll('.data-table-loading .ds-skeleton').length).toBeGreaterThan(0);
     expect(wrapper.find('table').exists()).toBe(false);
   });
 

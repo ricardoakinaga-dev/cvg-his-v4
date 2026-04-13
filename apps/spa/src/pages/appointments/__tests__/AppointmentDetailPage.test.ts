@@ -18,6 +18,18 @@ const mockGetByIdFn = vi.fn().mockResolvedValue(mockAppointment);
 const mockCancelFn = vi.fn().mockResolvedValue(mockAppointment);
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetOwnerName = vi.fn().mockResolvedValue('Joao Silva');
+const mockGetOwnerById = vi.fn().mockResolvedValue({
+  id: 'owner-1',
+  accountId: 'acc-1',
+  fullName: 'Joao Silva',
+  contacts: [
+    { label: 'WhatsApp', value: '(11) 98888-2222', type: 'whatsapp' as const, primary: true }
+  ],
+  financialResponsible: true,
+  status: 'active' as const,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z'
+});
 const mockRouterPush = vi.fn();
 
 vi.mock('@/services/appointment', () => ({
@@ -27,6 +39,14 @@ vi.mock('@/services/appointment', () => ({
     },
     get cancel() {
       return mockCancelFn;
+    }
+  }
+}));
+
+vi.mock('@/services/owner', () => ({
+  ownerService: {
+    get getById() {
+      return mockGetOwnerById;
     }
   }
 }));
@@ -58,6 +78,18 @@ describe('AppointmentDetailPage', () => {
     mockCancelFn.mockResolvedValue(mockAppointment);
     mockGetPatientName.mockResolvedValue('Rex');
     mockGetOwnerName.mockResolvedValue('Joao Silva');
+    mockGetOwnerById.mockResolvedValue({
+      id: 'owner-1',
+      accountId: 'acc-1',
+      fullName: 'Joao Silva',
+      contacts: [
+        { label: 'WhatsApp', value: '(11) 98888-2222', type: 'whatsapp', primary: true }
+      ],
+      financialResponsible: true,
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    });
     mockRouterPush.mockResolvedValue(undefined);
     history.replaceState({}, '', '/');
   });
@@ -204,6 +236,29 @@ describe('AppointmentDetailPage', () => {
     const backLink = wrapper.findAll('a').find((a) => a.text() === 'Voltar');
     expect(backLink).toBeTruthy();
     expect(backLink!.attributes('href')).toBe('/appointments');
+  });
+
+  it('shows a WhatsApp confirmation link when the tutor has a WhatsApp contact', async () => {
+    const AppointmentDetailPage = (await import('../AppointmentDetailPage.vue')).default;
+    const wrapper = mount(AppointmentDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    const whatsappLink = wrapper
+      .findAll('a')
+      .find((a) => a.text().includes('Abrir WhatsApp'));
+    expect(whatsappLink).toBeTruthy();
+    const href = whatsappLink!.attributes('href') ?? '';
+    expect(href).toContain('wa.me/11988882222');
+    expect(decodeURIComponent(href)).toContain('Confirmamos o agendamento de Rex');
   });
 
   it('shows administrative info (created/updated dates)', async () => {

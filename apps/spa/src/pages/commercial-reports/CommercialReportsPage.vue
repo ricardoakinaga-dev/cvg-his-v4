@@ -2,34 +2,66 @@
   <div class="commercial-reports-page">
     <AppPageHeader
       title="Relatórios Comerciais"
-      subtitle="Visão executiva sobre faturamento, vendas e orçamentos"
+      subtitle="Hub analítico de faturamento, conversão comercial e receita operacional"
     >
       <template #actions>
-        <DsBadge variant="info" size="md">{{ summary.totalInvoices }} faturas</DsBadge>
-        <DsBadge variant="info" size="md">{{ summary.totalQuotes }} orçamentos</DsBadge>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
     </AppPageHeader>
 
-    <section class="commercial-reports-page__overview">
-      <div class="overview-grid">
-        <div class="overview-card">
-          <span class="overview-card__value">{{ summary.totalInvoices }}</span>
-          <span class="overview-card__label">Faturas</span>
+    <!-- Hub: KPI StatCards -->
+    <section class="hub-kpis">
+      <DsStatCard :label="summary.totalInvoices + ' fatura(s)'" value="" icon="💰" />
+      <DsStatCard :label="formatCurrency(summary.grossRevenue)" value="" icon="📈" />
+      <DsStatCard :label="summary.approvedQuotes + ' aprovado(s)'" value="" icon="✅" />
+      <DsStatCard :label="formatCurrency(summary.quotePipeline)" value="" icon="🧾" />
+    </section>
+
+    <!-- Hub: Operational Alerts -->
+    <section v-if="reportAlerts.length > 0" class="hub-alerts">
+      <DsAlert
+        v-for="(alert, i) in reportAlerts"
+        :key="i"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> — {{ alert.message }}
+      </DsAlert>
+    </section>
+
+    <!-- Hub: Quick Actions -->
+    <section class="hub-actions">
+      <DsCard title="Ações rápidas" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/quotes" icon="🧾">
+            Criar Orçamento
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/billing" icon="💰">
+            Faturamento
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">
+            Ver Caixa
+          </DsButton>
+          <DsButton variant="secondary" tag="a" to="/counter-sales" icon="🛒">
+            Vendas Balcão
+          </DsButton>
+          <DsButton variant="ghost" :loading="loading" @click="reload" icon="🔄">
+            Atualizar
+          </DsButton>
         </div>
-        <div class="overview-card">
-          <span class="overview-card__value">{{ formatCurrency(summary.grossRevenue) }}</span>
-          <span class="overview-card__label">Receita bruta</span>
+      </DsCard>
+    </section>
+
+    <section class="reports-story">
+      <DsCard title="Leitura executiva da carteira">
+        <div class="summary-grid">
+          <div v-for="card in storyCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
         </div>
-        <div class="overview-card">
-          <span class="overview-card__value">{{ formatCurrency(summary.quotePipeline) }}</span>
-          <span class="overview-card__label">Pipeline de orçamentos</span>
-        </div>
-        <div class="overview-card">
-          <span class="overview-card__value">{{ summary.approvedQuotes }}</span>
-          <span class="overview-card__label">Orçamentos aprovados</span>
-        </div>
-      </div>
+      </DsCard>
     </section>
 
     <section class="filters">
@@ -51,7 +83,7 @@
       <DsCard title="Faturamento" class="panel">
         <DataTable
           :columns="billingColumns"
-          :rows="filteredBilling"
+          :rows="billingRows"
           :loading="loading"
           empty-icon="💰"
           empty-title="Sem faturamento no período"
@@ -59,10 +91,10 @@
           variant="hoverable"
         >
           <template #cell-status="{ row }">
-            <StatusBadge :label="billingStatusLabel((row as BillingRecordSummary).status)" :variant="billingStatusVariant((row as BillingRecordSummary).status)" />
+            <StatusBadge :label="billingStatusLabel(billingRow(row).status)" :variant="billingStatusVariant(billingRow(row).status)" />
           </template>
           <template #cell-subtotalAmount="{ row }">
-            {{ formatCurrency((row as BillingRecordSummary).subtotalAmount) }}
+            {{ formatCurrency(billingRow(row).subtotalAmount) }}
           </template>
         </DataTable>
       </DsCard>
@@ -70,7 +102,7 @@
       <DsCard title="Orçamentos" class="panel">
         <DataTable
           :columns="quoteColumns"
-          :rows="filteredQuotes"
+          :rows="quoteRows"
           :loading="loading"
           empty-icon="📝"
           empty-title="Sem orçamentos"
@@ -78,14 +110,14 @@
           variant="hoverable"
         >
           <template #cell-status="{ row }">
-            <StatusBadge :label="quoteStatusLabel((row as QuoteSummary).status)" :variant="quoteStatusVariant((row as QuoteSummary).status)" />
+            <StatusBadge :label="quoteStatusLabel(quoteRow(row).status)" :variant="quoteStatusVariant(quoteRow(row).status)" />
           </template>
           <template #cell-total="{ row }">
-            {{ formatCurrency((row as QuoteSummary).total) }}
+            {{ formatCurrency(quoteRow(row).total) }}
           </template>
           <template #cell-convertedToSaleId="{ row }">
-            <DsBadge :variant="(row as QuoteSummary).convertedToSaleId ? 'success' : 'neutral'" size="sm">
-              {{ (row as QuoteSummary).convertedToSaleId ? 'Convertido' : 'Pendente' }}
+            <DsBadge :variant="quoteRow(row).convertedToSaleId ? 'success' : 'neutral'" size="sm">
+              {{ quoteRow(row).convertedToSaleId ? 'Convertido' : 'Pendente' }}
             </DsBadge>
           </template>
         </DataTable>
@@ -104,10 +136,11 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { billingService } from '@/services/billing';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
 const loading = ref(true);
 const error = ref('');
@@ -140,6 +173,42 @@ const summary = computed(() => ({
     .filter((item) => ['draft', 'approved'].includes(item.status))
     .reduce((sum, item) => sum + (item.total ?? 0), 0)
 }));
+const storyCards = computed(() => {
+  const convertedQuotes = quotes.value.filter((item) => item.convertedToSaleId).length;
+  const conversionRate = quotes.value.length
+    ? `${Math.round((convertedQuotes / quotes.value.length) * 100)}%`
+    : '0%';
+  const settledBilling = billing.value.filter((item) => item.status === 'settled').length;
+  const settlementRate = billing.value.length
+    ? `${Math.round((settledBilling / billing.value.length) * 100)}%`
+    : '0%';
+
+  return [
+    { label: 'Conversão', value: conversionRate, hint: 'Orçamentos transformados em venda' },
+    { label: 'Liquidação', value: settlementRate, hint: 'Faturamentos já quitados' },
+    { label: 'Pipeline', value: formatCurrency(summary.value.quotePipeline), hint: 'Volume comercial em andamento' },
+    { label: 'Receita', value: formatCurrency(summary.value.grossRevenue), hint: 'Receita consolidada do período' }
+  ];
+});
+
+interface ReportAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const reportAlerts = computed<ReportAlert[]>(() => {
+  const alerts: ReportAlert[] = [];
+  const openBilling = billing.value.filter((b) => b.status === 'open').length;
+  if (openBilling > 0) {
+    alerts.push({ variant: 'warning', title: 'Cobranças em aberto', message: `${openBilling} fatura(s) aguardando quitação.` });
+  }
+  const approvedQuotesCount = quotes.value.filter((q) => q.status === 'approved').length;
+  if (approvedQuotesCount > 0) {
+    alerts.push({ variant: 'info', title: 'Orçamentos prontos', message: `${approvedQuotesCount} orçamento(s) aprovado(s) e aguardando conversão.` });
+  }
+  return alerts;
+});
 
 const filteredBilling = computed(() => {
   const needle = query.value.trim().toLowerCase();
@@ -166,6 +235,9 @@ const filteredQuotes = computed(() => {
     return matchesQuery && matchesStatus;
   });
 });
+
+const billingRows = computed(() => filteredBilling.value as unknown as DataTableRow[]);
+const quoteRows = computed(() => filteredQuotes.value as unknown as DataTableRow[]);
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -235,6 +307,14 @@ function reload() {
 }
 
 onMounted(loadData);
+
+function billingRow(row: unknown): BillingRecordSummary {
+  return row as BillingRecordSummary;
+}
+
+function quoteRow(row: unknown): QuoteSummary {
+  return row as QuoteSummary;
+}
 </script>
 
 <style scoped>
@@ -244,29 +324,30 @@ onMounted(loadData);
   gap: 16px;
 }
 
-.overview-grid {
+.hub-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
-.overview-card {
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+.hub-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.overview-card__value {
-  display: block;
-  font-size: 24px;
-  font-weight: 800;
+.hub-actions {
+  margin-bottom: 0;
 }
 
-.overview-card__label {
-  display: block;
-  margin-top: 4px;
-  color: var(--color-text-muted, #64748b);
+.reports-story {
+  margin-bottom: 0;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .filters {
@@ -280,6 +361,42 @@ onMounted(loadData);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.summary-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.summary-card__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.summary-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .panel {

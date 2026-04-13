@@ -2,6 +2,9 @@
   <div class="encounter-form-page">
     <AppPageHeader>
       <template #title>🩺 Abrir Atendimento</template>
+      <template #subtitle>
+        Atendimento > Atendimentos. Abra o episódio clínico a partir da recepção, agenda ou fila e prepare o prontuário.
+      </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/encounters">Cancelar</DsButton>
       </template>
@@ -76,8 +79,8 @@
         <DsCard title="Boas práticas">
           <ul class="guide-list">
             <li>Abra o atendimento apenas depois de confirmar o paciente correto.</li>
-            <li>Tipo e origem devem refletir a entrada real no fluxo assistencial.</li>
-            <li>Queixa objetiva ajuda a triagem, pronto atendimento e prontuário.</li>
+            <li>Tipo e origem devem refletir a entrada real na agenda, fila ou recepção.</li>
+            <li>Queixa objetiva ajuda triagem, prontuário e decisão de internação.</li>
           </ul>
         </DsCard>
       </aside>
@@ -179,6 +182,41 @@ function onPatientChange(option: { label: string; value: string } | null) {
   }
 }
 
+function readQueryPrefill() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    patientId: params.get('patientId')?.trim() || '',
+    ownerId: params.get('ownerId')?.trim() || ''
+  };
+}
+
+async function applyPrefill() {
+  const { patientId, ownerId } = readQueryPrefill();
+
+  if (ownerId) {
+    form.ownerId = ownerId;
+    try {
+      ownerName.value = await entityCache.getOwnerName(ownerId);
+    } catch {
+      ownerName.value = '';
+    }
+  }
+
+  if (!patientId) return;
+
+  const patient = patients.value.find((item) => item.id === patientId);
+  if (!patient) return;
+
+  form.patientId = patient.id;
+  form.ownerId = patient.primaryOwnerId;
+  patientName.value = patient.name;
+  try {
+    ownerName.value = await entityCache.getOwnerName(patient.primaryOwnerId);
+  } catch {
+    ownerName.value = '';
+  }
+}
+
 async function onSubmit() {
   if (!validate(getValues())) return;
 
@@ -208,6 +246,7 @@ onMounted(async () => {
   patientsLoading.value = true;
   try {
     patients.value = await patientService.list();
+    await applyPrefill();
   } catch {
     formError.value = 'Erro ao carregar lista de pacientes';
   } finally {

@@ -8,6 +8,7 @@ class MockRequest extends Readable {
   public readonly method: string;
   public readonly url: string;
   public readonly headers: Record<string, string>;
+  public readonly socket: { remoteAddress: string; encrypted: boolean };
   readonly #body: Buffer;
   #sent = false;
 
@@ -21,6 +22,10 @@ class MockRequest extends Readable {
     this.method = input.method;
     this.url = input.url;
     this.headers = input.headers ?? {};
+    this.socket = {
+      remoteAddress: '127.0.0.1',
+      encrypted: this.headers['x-forwarded-proto'] === 'https'
+    };
     this.#body = Buffer.from(input.body ?? '', 'utf8');
   }
 
@@ -109,14 +114,15 @@ class MockResponse extends Writable {
   }
 }
 
-function createServerUnderTest() {
+function createServerUnderTest(overrides: Partial<Parameters<typeof createApiServer>[0]> = {}) {
   return createApiServer({
     appName: 'api-test',
     environment: 'test',
     version: '0.1.0',
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
-    refreshTokenTtlSeconds: 604800
+    refreshTokenTtlSeconds: 604800,
+    ...overrides
   });
 }
 
@@ -162,6 +168,94 @@ async function login(
   assert.equal(response.statusCode, 200);
   return response.bodyJson<{ accessToken: string }>().accessToken;
 }
+
+test('CORS preflight reflects an allowed origin', async () => {
+  const server = createServerUnderTest({
+    corsAllowedOrigins: ['https://app.example.com']
+  });
+
+  const response = await performRequest(server, {
+    method: 'OPTIONS',
+    url: '/health',
+    headers: {
+      origin: 'https://app.example.com',
+      'access-control-request-method': 'GET',
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.getHeader('access-control-allow-origin'), 'https://app.example.com');
+  assert.match(response.getHeader('access-control-allow-methods') ?? '', /OPTIONS/);
+});
+
+test('CORS rejects an origin outside the allowlist', async () => {
+  const server = createServerUnderTest({
+    corsAllowedOrigins: ['https://app.example.com']
+  });
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/health',
+    headers: {
+      origin: 'https://evil.example.com',
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'CORS_ORIGIN_DENIED');
+});
+
+test('HSTS is emitted only for secure production-like requests', async () => {
+  const server = createServerUnderTest({
+    environment: 'production',
+    corsAllowedOrigins: ['https://app.example.com']
+  });
+
+  const secureResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/health',
+    headers: {
+      origin: 'https://app.example.com',
+      'x-forwarded-proto': 'https',
+      host: 'localhost'
+    }
+  });
+  assert.equal(
+    secureResponse.getHeader('strict-transport-security'),
+    'max-age=31536000; includeSubDomains; preload'
+  );
+
+  const insecureResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/health',
+    headers: {
+      origin: 'https://app.example.com',
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(insecureResponse.getHeader('strict-transport-security'), undefined);
+});
+
+test('observability contract exposes request and trace correlation headers', async () => {
+  const server = createServerUnderTest();
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/health',
+    headers: {
+      'x-correlation-id': 'corr-obs-123',
+      host: 'localhost'
+    }
+  });
+
+  const traceparent = response.getHeader('traceparent');
+  assert.ok(traceparent);
+  assert.equal(response.getHeader('x-correlation-id'), 'corr-obs-123');
+  assert.equal(response.getHeader('x-request-id'), 'corr-obs-123');
+  assert.equal(response.getHeader('x-trace-id'), traceparent?.split('-')[1]);
+});
 
 test('queue endpoints support check-in, list and call lifecycle over HTTP semantics', async () => {
   const server = createServerUnderTest();
@@ -402,6 +496,188 @@ test('quotes expose dedicated PDF generation over HTTP semantics', async () => {
   assert.equal(pdfResponse.getHeader('content-type'), 'application/pdf');
   assert.ok(pdfResponse.getHeader('content-disposition')?.includes('.pdf'));
   assert.ok(pdfResponse.bodyText().startsWith('%PDF-1.4'));
+});
+
+test('medical records expose revision history and archive semantics over HTTP', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'HTTP medical record contract'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string; patientId: string }>();
+
+  const createEntryResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/medical-records/entries',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      entryType: 'progress_note',
+      title: 'Admissao',
+      content: 'Paciente admitido para observacao.'
+    }
+  });
+  assert.equal(createEntryResponse.statusCode, 201);
+  const entry = createEntryResponse.bodyJson<{ id: string }>();
+
+  const updateEntryResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/medical-records/entries/${entry.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      title: 'Admissao atualizada',
+      content: 'Paciente admitido e monitorado.'
+    }
+  });
+  assert.equal(updateEntryResponse.statusCode, 200);
+
+  const revisionsResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/medical-records/entries/${entry.id}/revisions`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(revisionsResponse.statusCode, 200);
+  const revisions = revisionsResponse.bodyJson<{
+    items: Array<{ version: number; content: string }>;
+  }>();
+  assert.equal(revisions.items.length, 1);
+  assert.equal(revisions.items[0]?.version, 1);
+  assert.equal(revisions.items[0]?.content, 'Paciente admitido para observacao.');
+
+  const archiveResponse = await performRequest(server, {
+    method: 'DELETE',
+    url: `/medical-records/entries/${entry.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      reason: 'Lancamento duplicado'
+    }
+  });
+  assert.equal(archiveResponse.statusCode, 200);
+  const archived = archiveResponse.bodyJson<{ deletedAt?: string; deleteReason?: string }>();
+  assert.ok(archived.deletedAt);
+  assert.equal(archived.deleteReason, 'Lancamento duplicado');
+
+  const listEntriesResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/medical-records/entries?encounterId=${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(listEntriesResponse.statusCode, 200);
+  const entries = listEntriesResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(entries.items.length, 0);
+});
+
+test('catalog endpoints respect frontend search filters over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const createProductResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/products',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Filtro Produto Integrado',
+      code: 'PROD-FILTRO-001',
+      description: 'Produto para validar busca HTTP',
+      basePrice: 45.5
+    }
+  });
+  assert.equal(createProductResponse.statusCode, 201);
+
+  const createServiceResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/services',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Filtro Servico Integrado',
+      code: 'SRV-FILTRO-001',
+      description: 'Servico para validar busca HTTP',
+      basePrice: 90
+    }
+  });
+  assert.equal(createServiceResponse.statusCode, 201);
+
+  const productsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/products?search=FILTRO-001',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(productsResponse.statusCode, 200);
+  const products = productsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(products.items.length, 1);
+  assert.equal(products.items[0]?.code, 'PROD-FILTRO-001');
+
+  const servicesResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/services?search=SRV-FILTRO-001',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(servicesResponse.statusCode, 200);
+  const services = servicesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(services.items.length, 1);
+  assert.equal(services.items[0]?.code, 'SRV-FILTRO-001');
+
+  const inventoryResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/inventory?search=MED-001',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(inventoryResponse.statusCode, 200);
+  const inventory = inventoryResponse.bodyJson<{ items: Array<{ sku: string; name: string }> }>();
+  assert.equal(inventory.items.length, 1);
+  assert.equal(inventory.items[0]?.sku, 'MED-001');
+  assert.equal(inventory.items[0]?.name, 'Dipirona Injetavel');
 });
 
 test('API keys unlock integration catalog and PIX intent creation over HTTP semantics', async () => {

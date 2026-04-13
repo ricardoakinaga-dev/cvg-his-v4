@@ -118,6 +118,9 @@
 
   --color-focus-ring: rgba(37, 99, 235, 0.4);
 
+  --color-skeleton: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  --color-skeleton-highlight: #f1f5f9;
+
   /* ==========================================================================
      SPACING — 4px base grid
      ========================================================================== */
@@ -249,6 +252,9 @@
 
     --color-focus-ring: rgba(96, 165, 250, 0.4);
 
+    --color-skeleton: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+    --color-skeleton-highlight: #475569;
+
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
@@ -282,6 +288,9 @@
 
   --color-focus-ring: rgba(96, 165, 250, 0.4);
 
+  --color-skeleton: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+  --color-skeleton-highlight: #475569;
+
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
@@ -312,6 +321,9 @@
 
     --color-focus-ring: rgba(96, 165, 250, 0.4);
 
+    --color-skeleton: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+    --color-skeleton-highlight: #475569;
+
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
@@ -341,6 +353,9 @@
   --color-text-link: #2563eb;
 
   --color-focus-ring: rgba(37, 99, 235, 0.4);
+
+  --color-skeleton: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  --color-skeleton-highlight: #f1f5f9;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);

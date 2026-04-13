@@ -1,12 +1,33 @@
 # MASTER TRAIL - CVG-HIS V2 Premium Enterprise
 
 **Status:** EM EXECUCAO
-**Data de validacao:** 2026-04-11
-**Objetivo:** Entregar o CVG-HIS V2 como produto Premium Enterprise, consolidando `apps/spa` como frontend unico e elevando o produto de 42/100 para 90/100 no scorecard enterprise.
+**Data de validacao:** 2026-04-12
+**Objetivo:** Entregar o CVG-HIS V2 como produto Premium Enterprise, consolidando `apps/spa` como frontend unico e elevando o produto da baseline real de `69/100` para `90/100` no scorecard enterprise.
 
 ---
 
 ## 1. Contexto Consolidado
+
+### Snapshot Executivo Real (`0191` + `0194`)
+
+| Eixo | Status real em `2026-04-12` |
+|------|------------------------------|
+| Baseline tecnica | `69/100` |
+| Release A | `BLOCKED` |
+| Release B | `DONE` |
+| Release C | `IN PROGRESS` |
+| Release D | `TODO` |
+| Release E | `TODO` |
+| Sprint 3 | `DONE` |
+| Sprint 4 | `DONE` |
+| Sprint 5 | `DONE` |
+| Sprint 6 | `TODO` |
+
+**Leitura executiva:**
+- a trilha de hardening (`R2` e `R3`) avancou antes do fechamento da recuperacao do executavel (`R0`) e da entrada em `80/100` (`R1`)
+- config baseline, security baseline e observabilidade base foram entregues
+- o principal gap atual nao esta mais em configuracao ou tracing, e sim no fundamento ainda aberto de build, coverage, `release:check` e modularizacao inicial
+- a fonte operacional de verdade para sprints e backlog passa a ser `0193` + `0194`
 
 ### Scorecard Atual (0174)
 
@@ -36,7 +57,7 @@ O `apps/spa` ja e consolidado como frontend oficial com:
 - Dashboard com KPIs e atalhos
 - Todos os dominios implementados (owners, patients, scheduling, encounters, medical-records, triage, inpatient, billing, cash, products, services, counter-sales, quotes, inventory, access-control, users, staff, audit, notifications, api-keys, webhooks)
 - Multi-tenancy com RLS
-- RBAC/ABAC com 57 permissoes
+- RBAC/ABAC com catalogo enterprise de permissoes
 - Prometheus metrics
 - Health endpoints
 
@@ -50,8 +71,33 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 - MFA TOTP para perfis criticos
 - Dashboards Grafana completos
 - Tracing distribuido
+- OpenTelemetry com exportacao OTLP e correlacao entre traces, logs e metrics
+- Validacao estrita de configuracao com schema fail-fast
+- Hardening de seguranca operacional (CORS restritivo, secrets fora de `.env`, rotacao e scan)
+- Quality gates reais com thresholds progressivos de coverage e release sem excecao manual
+- Backup e restore automatizados com teste periodico
+- Rate limiting distribuido em Redis
+- Feature flags com governanca
+- Runtime enterprise com Helm charts e trilha Kubernetes
+- Secrets management dedicado (Vault ou equivalente)
+- Event-driven architecture com contratos e DLQ governados
 - Consent management LGPD
 - Multi-tenancy com tenant_id em todas as tabelas criticas
+
+### Estado real da trilha de implementacao
+
+O programa nao esta seguindo mais a sequencia linear original do master. Hoje, o estado correto e:
+
+- `R0 / Release A` ainda aberto: build, typecheck, coverage minima e `release:check` continuam pendentes
+- `R2 / Release B` concluido: config e security baseline entregues
+- `R3 / Release C` parcialmente concluido: Sprint 5 fechada, Sprint 6 ainda nao iniciada
+- `R4` e `R5` ainda nao iniciados
+
+Isso significa que o master precisa ser lido como trilha estrategica, enquanto a execucao real de curto prazo esta governada por:
+
+- [0192 - Roadmap de Implementacao](./0192-ROADMAP-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
+- [0193 - Backlog de Implementacao](./0193-BACKLOG-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
+- [0194 - Plano de Sprints de Implementacao](./0194-PLANO-DE-SPRINTS-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
 
 ---
 
@@ -143,6 +189,22 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 
 ---
 
+### H6 - Hardening Premium Enterprise (transversal, iniciar agora)
+
+**Foco:** fechar o gap entre produto funcional e operacao enterprise auditavel
+
+| Dominio | Entregas |
+|---------|----------|
+| Configuracao | schema Zod, fail-fast de ambiente e inventario de vars obrigatorias |
+| Observabilidade | OpenTelemetry, OTLP exporter, correlacao trace-log-metric |
+| Security | CORS restritivo, secrets manager, secret scanning, politica de rotacao |
+| Runtime | rate limiter Redis, backup/restore automatizado, feature flags, Helm charts |
+| Arquitetura | avaliacao Fastify, maturacao event-driven e runbooks de plataforma |
+
+**Squad:** Platform (2) + Security (1) + Backend (2) + SRE (1)
+
+---
+
 ## 4. Backlog Unificado (Epics)
 
 ### EPIC P01 - Design System Premium
@@ -208,7 +270,7 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 
 | ID | Prioridade | Entrega | Dependencias |
 |----|------------|---------|--------------|
-| P07-01 | ~~P0~~ **DONE** | Access-control | P02-02 | COMPLETO - catalogo de 57 permissoes, matriz RBAC/ABAC por usuario/equipe/setor, heranca e grants explicitos, criaacao de equipes e setores | 2026-04-11 |
+| P07-01 | ~~P0~~ **DONE** | Access-control | P02-02 | COMPLETO - catalogo enterprise de permissoes, matriz RBAC/ABAC por usuario/equipe/setor, heranca e grants explicitos, criaacao de equipes e setores | 2026-04-11 |
 | P07-02 | ~~P0~~ **DONE** | Users com membership | P07-01 | COMPLETO - UsersListPage com KPIs operacionais, filtros por perfil/status, badges de role, ver/editar links | 2026-04-11 |
 | P07-03 | ~~P0~~ **DONE** | Auditoria | P02-02 | COMPLETO - AuditPage com overview (total/riscos/modulos/atores), DataTable com filtros por risco/query, formatacao de datas, badges de risco | 2026-04-11 |
 | P07-04 | ~~P1~~ **DONE** | Staff | P07-01 | COMPLETO - StaffListPage com KPIs (total/ativos/departamentos/cargos/cobertura), story-cards executivos, DataTable com status badges | 2026-04-11 |
@@ -264,9 +326,43 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 | P12-04 | ~~P1~~ **DONE** | Checklist desligamento | P12-03 | COMPLETO - roteiro operacional consolidado e verificacao automatica de cutover | 2026-04-12 |
 | P12-05 | ~~P2~~ **DONE** | Limpeza residual | P12-04 | COMPLETO - docs vivas do legado residual reclassificadas e `apps/web` marcado como congelado | 2026-04-12 |
 
+### EPIC P13 - Platform Hardening Premium Enterprise
+
+| ID | Prioridade | Entrega | Dependencias | Status | Detalhes |
+|----|------------|---------|--------------|--------|----------|
+| P13-01 | ~~P0~~ **DONE** | Validacao rigorosa de config com Zod | nenhum | COMPLETO - schema Zod central, inventario de env vars e fail-fast em API, worker e SPA | 2026-04-12 |
+| P13-02 | ~~P0~~ **DONE** | OpenTelemetry com OTLP exporter | P10-03 | COMPLETO - SDK OTel, exporter OTLP e bootstrap observavel em API e worker | 2026-04-12 |
+| P13-03 | ~~P0~~ **DONE** | Security hardening de runtime (CORS, headers, scans, secrets hygiene) | P13-01 | COMPLETO - allowlist CORS, headers endurecidos, secret scanning e politica de rotacao | 2026-04-12 |
+| P13-04 | P0 | Quality gates progressivos de coverage e release gate imutavel | nenhum | TODO | bloqueado pelo fechamento de `R0` e `R1` |
+| P13-05 | P1 | Backup/restore automatizado com teste de restauracao | P13-01 | TODO | alvo da Sprint 6 |
+| P13-06 | P1 | Rate limiter distribuido em Redis | P13-01 | TODO | alvo de runtime premium |
+| P13-07 | P1 | Feature flags com Unleash | P13-01 | TODO | alvo de runtime premium |
+| P13-08 | P1 | Avaliacao arquitetural de Fastify com decisao ADR | P13-01 | TODO | longo prazo |
+| P13-09 | P2 | Helm charts e trilha Kubernetes | P13-05 | TODO | longo prazo |
+| P13-10 | P2 | Secrets management dedicado (Vault ou equivalente) | P13-03 | TODO | longo prazo |
+| P13-11 | P2 | Event-driven architecture com contratos e DLQ governados | P13-06 | TODO | longo prazo |
+
 ---
 
 ## 5. Sprints de Execucao
+
+### Semaforo executivo da execucao real (`0194`)
+
+| Bloco | Status | Observacao |
+|--------|--------|------------|
+| Sprint 1 | TODO | build, typecheck e alinhamento documental do executavel ainda nao fechados |
+| Sprint 2 | TODO | coverage minima, `release:check` e recorte inicial de `server.ts` ainda nao fechados |
+| Sprint 3 | DONE | config baseline implementada |
+| Sprint 4 | DONE | security baseline implementada |
+| Sprint 5 | DONE | OpenTelemetry, OTLP, spans HTTP/DB/worker e correlacao log-trace entregues |
+| Sprint 6 | TODO | operacao auditavel, backup, restore e evidencia SOC2 ainda pendentes |
+| Release A | BLOCKED | depende do fechamento das Sprints 1-2 |
+| Release B | DONE | config e security baseline entregues |
+| Release C | IN PROGRESS | observabilidade base entregue; operacao auditavel ainda pendente |
+| Release D | TODO | runtime premium e quality gates intermediarios ainda nao iniciados |
+| Release E | TODO | plataforma enterprise de longo prazo ainda nao iniciada |
+
+### Historico de sprints do programa
 
 | Sprint | Foco | Itens | Saida |
 |--------|------|-------|-------|
@@ -276,6 +372,8 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 | Sprint 4 | Governance | P07-01 a P07-07 | Access-control e audit |
 | Sprint 5 | Comercial | P08-01 a P08-07 | Billing e comercial | ~~EM EXECUCAO~~ **COMPLETO** - 2026-04-11 |
 | Sprint 6 | Plataforma | P09-01 a P09-03, P10-01 a P10-03, P11-01 a P11-03 | ~~EM EXECUCAO~~ **COMPLETO** - 2026-04-12 (P12 pendente) |
+| Sprint 7 | Hardening Enterprise | P13-01 a P13-07 | Config, OTel, security, quality gates, backup e runtime premium |
+| Sprint 8 | Plataforma Premium de Longo Prazo | P13-08 a P13-11 | ADRs estruturais, k8s, Vault e arquitetura orientada a eventos |
 
 ---
 
@@ -334,6 +432,18 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 - `ISS-071` - Observabilidade
 - `ISS-072` - LGPD
 
+### Hardening Enterprise
+- `ISS-090` - Config validation com Zod
+- `ISS-091` - OpenTelemetry + OTLP
+- `ISS-092` - CORS/secrets/security hardening
+- `ISS-093` - Coverage thresholds e release gate
+- `ISS-094` - Backup/restore automatizado
+- `ISS-095` - Redis rate limiter
+- `ISS-096` - Feature flags / Unleash
+- `ISS-097` - ADR Fastify
+- `ISS-098` - Helm charts / Kubernetes
+- `ISS-099` - Vault + event-driven governance
+
 ### Corte
 - `ISS-080` - Bloquear web
 - `ISS-081` - Docs alinhadas
@@ -388,31 +498,40 @@ O produto tem base solida, mas ainda nao e **Premium Enterprise**. Falta:
 - SPA validado em uso real
 - Web sem novas entregas
 
+### Gate G - Premium Enterprise
+- Config fail-fast validada em runtime e CI
+- OpenTelemetry exportando traces reais
+- CORS e secrets fora de modo permissivo
+- Coverage gate evoluindo por fases sem threshold zerado
+- Backup/restore testado
+- Redis rate limiter e feature flags governados
+- ADR de runtime e trilha Kubernetes documentados
+
 ---
 
 ## 9. Primeiro Passo Imediato
 
 O programa e grande demais para comecar tudo de uma vez. O primeiro passo e:
 
-### P01-01: Deploy Storybook do Design System
+### Fechar Release A ou replanejar formalmente a ordem da trilha
 
 **Por que comecar por aqui:**
-- Design System tem a maior lacuna (-85 pontos)
-- Todos os outros epicos dependem dele
-- Sem DS documentado, nao ha referencia para consistencia
-- Storybook e a prova visivel de qualidade
+- o master agora reconhece que `R2` e `R3` avancaram antes de `R0` e `R1`
+- o repositorio ainda nao fecha todos os gates basicos prometidos na entrada em `80/100`
+- seguir para runtime premium sem resolver isso aumenta o risco de inflacao documental
+- a proxima decisao de governanca precisa escolher entre estabilizar o executavel ou rebaselinear oficialmente a sequencia do plano
 
 **Entrega:**
-- 13 componentes existentes documentados
-- Dark/light mode funcional
-- Toggle de tema operacional
+- `Release A` formalmente fechada com build, typecheck, coverage minima e `release:check`
+- ou roadmap explicitamente replanejado assumindo execucao fora de ordem
+- backlog e semaforo da trilha sincronizados entre master, roadmap e backlog
 
-**Dependencias:** Nenhuma
+**Dependencias:** baseline real confirmada em `0191`
 
 **Aceite:**
-- Storybook visivel em ambiente
-- Componentes interativos
-- Tokens consistentes entre temas
+- sem ambiguidade entre plano estrategico e execucao real
+- governanca clara sobre o que esta concluido, bloqueado e pendente
+- proximo bloco escolhido com criterio explicito
 
 ---
 
@@ -432,12 +551,16 @@ O programa e grande demais para comecar tudo de uma vez. O primeiro passo e:
 - [0178 - Plano de Sprints Premium](./0178-PLANO-EXECUCAO-POR-SPRINTS-PREMIUM-CVG-HIS-V2.md)
 - [0179 - Issues por Modulo Premium](./0179-ISSUES-POR-MODULO-PREMIUM-CVG-HIS-V2.md)
 - [0180 - WBS e Resource Plan](./0180-WBS-AND-RESOURCE-PLAN-PREMIUM-CVG-HIS-V2.md)
+- [0191 - Avaliacao Real](./0191-RELATORIO-EXECUTIVO-AVALIACAO-REAL-2026-04-12.md)
+- [0192 - Roadmap de Implementacao](./0192-ROADMAP-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
+- [0193 - Backlog de Implementacao](./0193-BACKLOG-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
+- [0194 - Plano de Sprints de Implementacao](./0194-PLANO-DE-SPRINTS-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
 
 ---
 
 ## 11. Regra de Execucao
 
-1. **P01-01 primeiro** - Storybook e a base de tudo
+1. **R0 primeiro** - recuperar build, typecheck, regressao e coverage minima antes de escalar a narrativa premium
 2. **Nenhuma issue nova para `apps/web`**
 3. **Corte por dominio** - So desliga quando o dominio estiver verde no SPA
 4. **Docs atualizadas** - Cada fase fecha com documentacao sincronizada

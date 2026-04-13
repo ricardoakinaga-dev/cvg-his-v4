@@ -48,6 +48,8 @@ export interface DsChartsProps {
   options?: Record<string, unknown>;
   height?: number;
   width?: number | string;
+  ariaLabel?: string;
+  ariaDescription?: string;
 }
 
 const props = withDefaults(defineProps<DsChartsProps>(), {
@@ -70,6 +72,14 @@ const chartComponent = computed(() => {
   }
 });
 
+const accessibleDescription = computed(() => {
+  if (props.ariaDescription) return props.ariaDescription;
+  const labels = props.data.labels;
+  const values = props.data.datasets[0]?.data;
+  if (!labels || !values) return '';
+  return labels.map((label, i) => `${label}: ${values[i]}`).join(', ');
+});
+
 const defaultOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -77,20 +87,20 @@ const defaultOptions = {
     legend: {
       position: 'top' as const,
       labels: {
-        color: '#334155',
+        color: 'var(--color-text-secondary, #475569)',
         font: {
-          family: 'Inter, system-ui, sans-serif',
+          family: 'var(--font-sans, Inter, system-ui, sans-serif)',
           size: 12
         }
       }
     },
     tooltip: {
-      backgroundColor: '#1e293b',
+      backgroundColor: 'var(--color-neutral-800, #1e293b)',
       titleFont: {
-        family: 'Inter, system-ui, sans-serif'
+        family: 'var(--font-sans, Inter, system-ui, sans-serif)'
       },
       bodyFont: {
-        family: 'Inter, system-ui, sans-serif'
+        family: 'var(--font-sans, Inter, system-ui, sans-serif)'
       },
       padding: 12,
       cornerRadius: 8
@@ -99,23 +109,23 @@ const defaultOptions = {
   scales: props.type === 'bar' || props.type === 'line' ? {
     x: {
       grid: {
-        color: '#e2e8f0'
+        color: 'var(--color-border, #e2e8f0)'
       },
       ticks: {
-        color: '#64748b',
+        color: 'var(--color-text-muted, #64748b)',
         font: {
-          family: 'Inter, system-ui, sans-serif'
+          family: 'var(--font-sans, Inter, system-ui, sans-serif)'
         }
       }
     },
     y: {
       grid: {
-        color: '#e2e8f0'
+        color: 'var(--color-border, #e2e8f0)'
       },
       ticks: {
-        color: '#64748b',
+        color: 'var(--color-text-muted, #64748b)',
         font: {
-          family: 'Inter, system-ui, sans-serif'
+          family: 'var(--font-sans, Inter, system-ui, sans-serif)'
         }
       }
     }
@@ -129,14 +139,21 @@ const mergedOptions = computed(() => ({
 </script>
 
 <template>
-  <div class="ds-charts" :style="{ height: `${height}px`, width: typeof width === 'number' ? `${width}px` : width }">
+  <figure
+    class="ds-charts"
+    role="img"
+    :aria-label="ariaLabel || 'Gráfico'"
+    :aria-describedby="accessibleDescription ? 'ds-charts-desc' : undefined"
+    :style="{ height: `${height}px`, width: typeof width === 'number' ? `${width}px` : width }"
+  >
     <component
       :is="chartComponent"
       ref="chartRef"
       :data="data"
       :options="mergedOptions"
     />
-  </div>
+    <span id="ds-charts-desc" class="sr-only">{{ accessibleDescription }}</span>
+  </figure>
 </template>
 
 <style scoped>
@@ -147,5 +164,17 @@ const mergedOptions = computed(() => ({
 
 .ds-charts canvas {
   max-width: 100%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

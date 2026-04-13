@@ -1,7 +1,7 @@
 # 131 - Checklist de Cutover no Servidor
 
 **Status:** vivo
-**Data de validacao:** 2026-03-31
+**Data de validacao:** 2026-04-12
 
 ## Pre-cutover
 
@@ -16,7 +16,7 @@
 ## Banco
 
 - confirmar `DATABASE_URL` do ambiente
-- aplicar migration Drizzle `0000_` via `tsx packages/db/src/migrate.ts`
+- aplicar toda a cadeia Drizzle via `tsx packages/db/src/migrate.ts`
 - executar seed Drizzle via `tsx packages/db/src/seed.ts` (com ADMIN_EMAIL/ADMIN_PASSWORD)
 - validar tabelas e constraints essenciais
 - confirmar que nao ha divergencia de schema entre o ambiente e a politica oficial
@@ -24,13 +24,13 @@
 ## Aplicacao
 
 - subir `apps/api`
-- subir `apps/web`
 - subir `apps/worker`
+- subir `apps/spa`
 - confirmar que a stack ativa usa `docker-compose.v2.yml`
-- confirmar que os servicos ativos sao `cvg-his-v2-api`, `cvg-his-v2-web` e `cvg-his-v2-worker`
+- confirmar que os servicos ativos sao `cvg-his-v2-api`, `cvg-his-v2-worker` e `cvg-his-v2-spa`
 - confirmar que nao existe reutilizacao operacional de `cvg-his-api`, `cvg-his-web`, `cvg-his-worker` ou qualquer trilha `apps/his-*`
 - verificar healthchecks da API
-- verificar homepage do Web
+- verificar homepage da SPA
 - verificar logs iniciais do worker
 
 ## Validacao funcional minima
@@ -50,8 +50,8 @@
 - confirmar destino do dominio tecnico da API, se existir
 - validar portas externas reais antes do reload do proxy
 - validar portas publicadas do V2:
-  - API externa `3000` -> interna `3001`
-  - Web externa `3001` -> interna `3000`
+  - API externa `3003` -> interna `3001`
+  - SPA externa `3002` -> interna `3002`
 
 ## Rollback
 
@@ -64,8 +64,11 @@
 
 ```bash
 docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
-docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
-docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis cvg-his-v2-api cvg-his-v2-web cvg-his-v2-worker
+pnpm deploy:check
+docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
+DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB npx tsx packages/db/src/migrate.ts
+docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 
 ## Encerramento da janela

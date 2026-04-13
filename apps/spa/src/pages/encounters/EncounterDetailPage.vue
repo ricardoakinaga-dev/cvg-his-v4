@@ -19,8 +19,15 @@
             :label="encounterStatusLabel(encounter.status)"
             :variant="encounterStatusVariant(encounter.status)"
           />
+          <span class="muted">{{ patientName || 'Paciente em carregamento' }}</span>
         </template>
         <template #actions>
+          <DsButton variant="secondary" tag="a" :to="`/medical-records/${encounter.id}`">
+            Ver prontuário
+          </DsButton>
+          <DsButton variant="ghost" tag="a" :to="`/patients/${encounter.patientId}`">
+            Ver paciente
+          </DsButton>
           <DsButton v-if="canTransition" variant="secondary" @click="showTransitionModal = true">
             Transicionar Status
           </DsButton>
@@ -42,7 +49,7 @@
       </section>
 
       <div class="encounter-detail-page__grid">
-        <DsCard title="Informações">
+        <DsCard title="Contexto assistencial">
           <div class="detail-row">
             <span class="detail-row__label">Tipo</span>
             <span>{{ visitTypeLabel(encounter.visitType) }}</span>
@@ -67,7 +74,7 @@
 
         <DsCard title="Timeline">
           <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
-          <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado</div>
+          <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado ainda neste atendimento.</div>
           <div v-else class="timeline-list">
             <div v-for="event in timeline" :key="event.id" class="timeline-event">
               <span class="timeline-event__type">{{
@@ -85,7 +92,7 @@
 
         <DsCard title="Anexos">
           <div v-if="attachmentsLoading" class="muted">Carregando anexos...</div>
-          <div v-else-if="attachments.length === 0" class="muted">Nenhum anexo registrado</div>
+          <div v-else-if="attachments.length === 0" class="muted">Nenhum anexo registrado. Use este espaço para complementar o caso clínico.</div>
           <div v-else class="attachments-list">
             <div v-for="att in attachments" :key="att.id" class="attachment-item">
               <span class="attachment-item__icon">📎</span>

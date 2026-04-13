@@ -1,6 +1,6 @@
 <template>
   <div class="api-keys-page">
-    <AppPageHeader title="Chaves de API" subtitle="Chaves para integrações externas e acesso premium">
+    <AppPageHeader title="🔑 Chaves de API" subtitle="Gerenciamento de chaves para integrações externas — Console Enterprise">
       <template #actions>
         <DsBadge variant="info" size="md" :aria-label="`${apiKeys.length} chaves cadastradas`">
           {{ apiKeys.length }} chaves
@@ -16,6 +16,39 @@
           <span class="summary-card__label">{{ card.label }}</span>
         </div>
       </DsCard>
+    </section>
+
+    <section class="api-keys-actions">
+      <DsCard title="Ações rápidas — integrações" variant="compact">
+        <div class="quick-actions">
+          <DsButton tag="a" to="/webhooks" variant="primary">Webhooks</DsButton>
+          <DsButton tag="a" to="/api-client" variant="secondary">Cliente API</DsButton>
+          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="api-keys-intelligence">
+      <DsCard title="Leitura de governança das credenciais">
+        <div class="insights-grid">
+          <div v-for="card in governanceCards" :key="card.label" class="insight-card">
+            <span class="insight-card__label">{{ card.label }}</span>
+            <strong class="insight-card__value">{{ card.value }}</strong>
+            <span class="insight-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section v-if="watchAlerts.length > 0" class="api-keys-watch">
+      <DsAlert
+        v-for="alert in watchAlerts"
+        :key="alert.title"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> - {{ alert.message }}
+      </DsAlert>
     </section>
 
     <div class="api-keys-grid">
@@ -124,7 +157,7 @@
 
         <DataTable
           :columns="columns"
-          :rows="apiKeys"
+          :rows="apiKeyRows"
           :loading="listLoading"
           empty-icon="🔐"
           empty-title="Nenhuma API key encontrada"
@@ -133,20 +166,20 @@
         >
           <template #cell-permissions="{ row }">
             <span class="permissions-count">
-              {{ (row as ApiKeySummary).permissions.length }} permissões
+              {{ apiKeyRow(row).permissions.length }} permissões
             </span>
           </template>
           <template #cell-isActive="{ row }">
             <StatusBadge
-              :label="(row as ApiKeySummary).isActive ? 'Ativa' : 'Inativa'"
-              :variant="(row as ApiKeySummary).isActive ? 'success' : 'danger'"
+              :label="apiKeyRow(row).isActive ? 'Ativa' : 'Inativa'"
+              :variant="apiKeyRow(row).isActive ? 'success' : 'danger'"
             />
           </template>
           <template #cell-lastUsedAt="{ row }">
-            {{ formatDate((row as ApiKeySummary).lastUsedAt) }}
+            {{ formatDate(apiKeyRow(row).lastUsedAt) }}
           </template>
           <template #cell-actions="{ row }">
-            <code class="api-key-prefix">{{ (row as ApiKeySummary).keyPrefix }}</code>
+            <code class="api-key-prefix">{{ apiKeyRow(row).keyPrefix }}</code>
           </template>
         </DataTable>
       </DsCard>
@@ -177,6 +210,7 @@ import { accessControlService } from '@/services/accessControl';
 import { apiKeysService } from '@/services/apiKeys';
 import type { ApiKeySummary } from '@cvg-his-v2/shared-types';
 import type { PermissionDefinition } from '@cvg-his-v2/shared-types';
+import type { DataTableRow } from '@/components/DataTable.vue';
 
 const FALLBACK_PERMISSIONS: PermissionDefinition[] = [
   { id: 'perm-1' as never, code: 'api_keys.manage', module: 'integrations', description: 'Gerenciar chaves de API' },
@@ -241,6 +275,86 @@ const summaryCards = computed(() => {
     { icon: '⏳', label: 'Expiram em 30d', value: String(expiringSoon) },
     { icon: '🛡️', label: 'Catálogo OK', value: permissions.value.length > 0 ? 'Sim' : 'Não' }
   ];
+});
+const apiKeyRows = computed(() => apiKeys.value as unknown as DataTableRow[]);
+const staleKeysCount = computed(
+  () =>
+    apiKeys.value.filter((key) => {
+      if (!key.lastUsedAt) return true;
+      return Date.now() - new Date(key.lastUsedAt).getTime() > 1000 * 60 * 60 * 24 * 30;
+    }).length
+);
+const highScopeKeysCount = computed(
+  () => apiKeys.value.filter((key) => key.permissions.length >= 4).length
+);
+const moduleCoverageCount = computed(() => {
+  const modules = new Set<string>();
+  for (const key of apiKeys.value) {
+    for (const permission of key.permissions) {
+      modules.add(permission.split('.')[0] ?? permission);
+    }
+  }
+  return modules.size;
+});
+const lastUsedKeyLabel = computed(() => {
+  const keys = apiKeys.value
+    .filter((key) => key.lastUsedAt)
+    .sort((a, b) => new Date(b.lastUsedAt as string).getTime() - new Date(a.lastUsedAt as string).getTime());
+  return keys[0]?.name ?? 'Sem uso';
+});
+const governanceCards = computed(() => [
+  {
+    label: 'Chaves sem uso recente',
+    value: String(staleKeysCount.value),
+    hint: 'Nunca usadas ou sem atividade nos últimos 30 dias'
+  },
+  {
+    label: 'Escopo amplo',
+    value: String(highScopeKeysCount.value),
+    hint: 'Credenciais com 4 permissões ou mais'
+  },
+  {
+    label: 'Módulos cobertos',
+    value: String(moduleCoverageCount.value),
+    hint: 'Famílias de permissão presentes nas chaves'
+  },
+  {
+    label: 'Última chave utilizada',
+    value: lastUsedKeyLabel.value,
+    hint: 'Credencial mais recentemente ativa'
+  }
+]);
+
+interface ApiKeyWatchAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const watchAlerts = computed<ApiKeyWatchAlert[]>(() => {
+  const alerts: ApiKeyWatchAlert[] = [];
+  if (staleKeysCount.value > 0) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Rotação recomendada',
+      message: `${staleKeysCount.value} chave(s) estão sem uso recente ou nunca foram utilizadas.`
+    });
+  }
+  if (highScopeKeysCount.value > 0) {
+    alerts.push({
+      variant: 'danger',
+      title: 'Escopo sensível',
+      message: `${highScopeKeysCount.value} chave(s) concentram permissões amplas e merecem revisão.`
+    });
+  }
+  if (!permissions.value.length) {
+    alerts.push({
+      variant: 'info',
+      title: 'Catálogo reduzido',
+      message: 'A página está operando sem catálogo completo de permissões e usa a lista de fallback.'
+    });
+  }
+  return alerts;
 });
 
 const permissionGroups = computed(() => {
@@ -349,6 +463,10 @@ function togglePermission(code: string, checked: boolean): void {
 onMounted(async () => {
   await Promise.all([loadKeys(), loadPermissions()]);
 });
+
+function apiKeyRow(row: unknown): ApiKeySummary {
+  return row as ApiKeySummary;
+}
 </script>
 
 <style scoped>
@@ -362,6 +480,15 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
+}
+
+.api-keys-actions {
+  margin-bottom: 0;
+}
+
+.api-keys-intelligence,
+.api-keys-watch {
+  margin-bottom: 0;
 }
 
 .summary-card {
@@ -397,6 +524,49 @@ onMounted(async () => {
   font-size: 13px;
   color: var(--color-text-muted, #64748b);
   margin-top: 4px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.insight-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.insight-card__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.insight-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .api-keys-grid {

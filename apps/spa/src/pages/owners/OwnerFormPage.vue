@@ -5,8 +5,7 @@
         {{ isEdit ? 'Editar Tutor' : 'Novo Tutor' }}
       </template>
       <template #subtitle>
-        Cadastro central de tutores e responsáveis. Mantenha contato principal, status e
-        responsabilidade financeira consistentes para reduzir retrabalho operacional.
+        Atendimento > Cadastrados. Mantenha contato principal, status e responsabilidade financeira consistentes para reduzir retrabalho na agenda, recepção e atendimento.
       </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
@@ -130,7 +129,7 @@
           <ul class="guide-list">
             <li>Defina sempre um contato principal para evitar ambiguidade operacional.</li>
             <li>Marque responsabilidade financeira apenas quando houver validação real.</li>
-            <li>Use observações para regras administrativas, não para histórico clínico.</li>
+            <li>Use observações para regras administrativas, não para histórico clínico do atendimento.</li>
             <li>Mantenha o documento preenchido quando houver CPF/CNPJ disponível.</li>
           </ul>
         </DsCard>

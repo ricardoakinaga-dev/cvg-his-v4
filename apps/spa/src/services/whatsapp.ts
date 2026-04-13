@@ -1,3 +1,5 @@
+import { spaRuntimeConfig } from '@/config/runtime';
+
 export interface WhatsAppInboundPayload {
   MessageSid: string;
   From: string;
@@ -6,7 +8,7 @@ export interface WhatsAppInboundPayload {
   AppointmentId?: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_BASE = spaRuntimeConfig.apiBaseUrl;
 
 export const whatsappService = {
   async sendInbound(payload: WhatsAppInboundPayload): Promise<string> {

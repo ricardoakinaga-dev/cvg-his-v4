@@ -10,14 +10,11 @@ import type {
   AddInpatientProgressRequest,
   ArchiveClinicalEntryRequest,
   AssignBedRequest,
-  CheckInQueueRequest,
   CloseEncounterRequest,
-  CreateAppointmentRequest,
   CreateAttachmentRequest,
   CreateBillingEstimateRequest,
   CreateBillingItemRequest,
   CreateClinicalEntryRequest,
-  CreateDiagnosticOrderRequest,
   CreateDischargeRequest,
   CreateEncounterRequest,
   CreateInpatientAdmissionRequest,
@@ -40,7 +37,6 @@ import type {
   LogAdministrationEventRequest,
   ProcessNotificationsRequest,
   RefreshSessionRequest,
-  RecordDiagnosticResultRequest,
   SuspendPrescriptionRequest,
   TransitionEncounterRequest,
   UpdateBillingStatusRequest,
@@ -66,14 +62,20 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { resolveTenantFromRequest, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import type {
   ApiKeySummary,
+  AuthenticatedPrincipal,
   CorrelationId,
   ModuleName,
   SchedulingAppointmentSummary
 } from '@cvg-his-v2/shared-types';
 
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
+import { handleAuthRoutes } from './routes/auth-routes.js';
+import { handleFiscalRoutes } from './routes/fiscal-routes.js';
 import { handleHealthRoutes } from './routes/health-routes.js';
+import { handleLaboratoryRoutes } from './routes/laboratory-routes.js';
 import { handlePaymentsRoutes } from './routes/payments-routes.js';
+import { handleSchedulingRoutes } from './routes/scheduling-routes.js';
+import { handleSoc2Routes } from './routes/soc2-routes.js';
 import { handleWebhooksRoutes } from './routes/webhooks-routes.js';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { LocalPixPaymentGateway } from './payment-gateway.js';
@@ -90,6 +92,7 @@ import {
   extractTraceContext,
   createSpan,
   endSpan,
+  withSpanContext,
   injectTraceContext,
   formatTraceParent,
   type Span
@@ -122,24 +125,178 @@ import {
   VulnerabilityControlService,
   AccessReviewControlService,
   DisasterRecoveryControlService,
-  IncidentResponseControlService,
-  collectEvidence,
-  calculateSecurityScore
+  IncidentResponseControlService
 } from '@cvg-his-v2/module-soc2';
+import { FiscalService } from '@cvg-his-v2/module-fiscal';
 
 export interface ApiServerOptions {
   readonly appName: string;
   readonly environment: string;
   readonly version: string;
+  readonly corsAllowedOrigins?: readonly string[];
   readonly authSecret: string;
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
+  readonly authRateLimitMaxRequests?: number;
+  readonly authRateLimitWindowMs?: number;
+  readonly enableMfa?: boolean;
+  readonly mfaEncryptionKey?: string;
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
 }
 
-export function createApiServer(options: ApiServerOptions) {
+export type ApiServer = ReturnType<typeof createServer> & {
+  readonly ready: Promise<void>;
+};
+
+const DEFAULT_CORS_ALLOWED_ORIGINS = [
+  'http://127.0.0.1:3000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3002',
+  'http://localhost:3002',
+  'http://127.0.0.1:3102',
+  'http://localhost:3102',
+  'http://127.0.0.1:3112',
+  'http://localhost:3112',
+  'http://127.0.0.1:4173',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5173'
+] as const;
+const DEFAULT_CORS_ALLOW_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
+const DEFAULT_CORS_ALLOW_HEADERS =
+  'accept, authorization, content-type, x-correlation-id, x-request-id';
+const DEFAULT_CORS_EXPOSE_HEADERS =
+  'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
+
+function isProductionLikeEnvironment(environment: string): boolean {
+  return (
+    environment === 'production'
+    || environment === 'staging'
+    || environment === 'prod'
+    || environment === 'stage'
+  );
+}
+
+function isSecureRequest(request: IncomingMessage): boolean {
+  if ((request.socket as { encrypted?: boolean }).encrypted) {
+    return true;
+  }
+
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  const headerValue = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  return headerValue?.split(',')[0].trim().toLowerCase() === 'https';
+}
+
+function appendVaryHeader(response: ServerResponse, headerName: string): void {
+  const current = response.getHeader('vary');
+  const values = new Set<string>();
+  const rawValues = Array.isArray(current)
+    ? current
+    : typeof current === 'string'
+      ? current.split(',')
+      : [];
+
+  for (const value of rawValues) {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      values.add(trimmed);
+    }
+  }
+
+  values.add(headerName);
+  response.setHeader('vary', Array.from(values).join(', '));
+}
+
+function normalizeRequestOrigin(request: IncomingMessage): string | undefined {
+  const originHeader = request.headers.origin;
+  const rawOrigin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
+
+  if (!rawOrigin) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(rawOrigin);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return undefined;
+    }
+
+    return parsed.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function applySecurityHeaders(
+  request: IncomingMessage,
+  response: ServerResponse,
+  environment: string
+): void {
+  response.setHeader('x-content-type-options', 'nosniff');
+  response.setHeader('x-frame-options', 'DENY');
+  response.setHeader('x-xss-protection', '0');
+  response.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
+  response.setHeader('x-permitted-cross-domain-policies', 'none');
+  response.setHeader('cross-origin-opener-policy', 'same-origin');
+  response.setHeader('cross-origin-resource-policy', 'same-origin');
+  response.setHeader(
+    'permissions-policy',
+    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
+  );
+  response.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
+  response.setHeader(
+    'content-security-policy',
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+  );
+
+  if (isProductionLikeEnvironment(environment) && isSecureRequest(request)) {
+    response.setHeader(
+      'strict-transport-security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+  }
+}
+
+function applyCorsPolicy(
+  request: IncomingMessage,
+  response: ServerResponse,
+  allowedOrigins: readonly string[]
+): { allowed: boolean; message?: string } {
+  appendVaryHeader(response, 'Origin');
+  appendVaryHeader(response, 'Access-Control-Request-Headers');
+  response.setHeader('access-control-allow-headers', DEFAULT_CORS_ALLOW_HEADERS);
+  response.setHeader('access-control-allow-methods', DEFAULT_CORS_ALLOW_METHODS);
+  response.setHeader('access-control-expose-headers', DEFAULT_CORS_EXPOSE_HEADERS);
+  response.setHeader('access-control-max-age', '600');
+
+  const originHeader = request.headers.origin;
+  if (!originHeader) {
+    return { allowed: true };
+  }
+
+  const normalizedOrigin = normalizeRequestOrigin(request);
+  if (!normalizedOrigin) {
+    return {
+      allowed: false,
+      message: 'Origin header is invalid. Only http(s) origins are accepted.'
+    };
+  }
+
+  if (!allowedOrigins.includes(normalizedOrigin)) {
+    return {
+      allowed: false,
+      message: `Origin ${normalizedOrigin} is not allowed by CORS policy.`
+    };
+  }
+
+  response.setHeader('access-control-allow-origin', normalizedOrigin);
+  return { allowed: true };
+}
+
+export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
+  const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
   const {
     accessControl,
     users,
@@ -155,6 +312,7 @@ export function createApiServer(options: ApiServerOptions) {
     sectorBedService,
     surgery,
     diagnostics,
+    laboratory,
     billing,
     inventory,
     notifications,
@@ -176,15 +334,18 @@ export function createApiServer(options: ApiServerOptions) {
     authSecret: options.authSecret,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
+    enableMfa: options.enableMfa,
+    mfaEncryptionKey: options.mfaEncryptionKey,
     repositories: options.repositories,
     fileStorage: options.fileStorage
   });
   const paymentGateway = new LocalPixPaymentGateway();
+  const fiscal = new FiscalService();
 
   // Rate limiter for auth endpoints (in-memory, per-instance)
   const authRateLimiter = new RateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 10,          // 10 attempts per window
+    windowMs: options.authRateLimitWindowMs ?? 15 * 60 * 1000,
+    maxRequests: options.authRateLimitMaxRequests ?? 10,
     name: 'auth'
   });
 
@@ -194,10 +355,7 @@ export function createApiServer(options: ApiServerOptions) {
   /**
    * Build ABAC actor attributes from the authenticated principal.
    */
-  function buildActorAttributes(principal: {
-    user: { id: string; accountId: string; status: string; roleCodes: readonly string[] };
-    access: { roleCodes: readonly string[] };
-  }): ActorAttributes {
+  function buildActorAttributes(principal: AuthenticatedPrincipal): ActorAttributes {
     const memberships = accessControl.listMemberships(principal.user.id as never);
     return {
       userId: principal.user.id as never,
@@ -233,10 +391,7 @@ export function createApiServer(options: ApiServerOptions) {
    */
   function enforceAbac(
     actionCode: string,
-    principal: {
-      user: { id: string; accountId: string; status: string; roleCodes: readonly string[] };
-      access: { roleCodes: readonly string[] };
-    },
+    principal: AuthenticatedPrincipal,
     resource: ResourceAttributes,
     request: IncomingMessage
   ): void {
@@ -314,18 +469,21 @@ export function createApiServer(options: ApiServerOptions) {
     ): Promise<unknown>;
   };
 
-  void initialize().catch((err) => {
+  const ready = initialize().catch((err) => {
     logger.error('Failed to initialize services from database', {
       error: err instanceof Error ? err.message : String(err)
     });
+    throw err;
   });
 
-  return createServer((request: IncomingMessage, response: ServerResponse) => {
+  const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     // Apply W3C trace context propagation before handling
     tracingMiddleware(request, response, () => {
       void handleRequest(request, response);
     });
   });
+
+  return Object.assign(server, { ready });
 
   async function handleRequest(request: IncomingMessage, response: ServerResponse) {
     const parentCtx = extractTraceContext(request);
@@ -340,25 +498,9 @@ export function createApiServer(options: ApiServerOptions) {
     response.setHeader('content-type', 'application/json; charset=utf-8');
     response.setHeader('x-correlation-id', correlationId);
     response.setHeader('x-request-id', correlationId);
-    response.setHeader('access-control-allow-origin', '*');
-    response.setHeader(
-      'access-control-allow-headers',
-      'content-type, authorization, x-correlation-id, x-request-id'
-    );
-    response.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS');
-
-    // Security headers (Helmet-like)
-    response.setHeader('x-content-type-options', 'nosniff');
-    response.setHeader('x-frame-options', 'DENY');
-    response.setHeader('x-xss-protection', '1; mode=block');
-    response.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
-    response.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
-    response.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
-    // CSP: restrictive default-src, no inline/eval, allow self for API routes only
-    response.setHeader(
-      'content-security-policy',
-      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
-    );
+    response.setHeader('x-trace-id', span.context.traceId);
+    applySecurityHeaders(request, response, options.environment);
+    const corsDecision = applyCorsPolicy(request, response, corsAllowedOrigins);
 
     // Inject trace context into response for downstream propagation
     response.setHeader('tracestate', `cvg-api`);
@@ -382,11 +524,143 @@ export function createApiServer(options: ApiServerOptions) {
         httpErrorsTotal.inc({ status_category: category });
       }
 
+      span.attributes['http.method'] = method;
+      span.attributes['http.route'] = route;
+      span.attributes['http.target'] = request.url ?? '/';
+      span.attributes['http.status_code'] = statusCode;
+      span.attributes['http.duration_ms'] = Math.round(durationSec * 1000);
+      span.attributes['request.correlation_id'] = correlationId;
+
       // End the tracing span
       endSpan(span, statusCode >= 400 ? 'error' : 'ok');
     });
 
+    if (!corsDecision.allowed) {
+      response.statusCode = 403;
+      response.end(
+        JSON.stringify({
+          code: 'CORS_ORIGIN_DENIED',
+          message: corsDecision.message
+        })
+      );
+      return;
+    }
+
     try {
+      span.attributes['http.method'] = request.method ?? 'UNKNOWN';
+      span.attributes['http.target'] = request.url ?? '/';
+      span.attributes['request.correlation_id'] = correlationId;
+      const url = new URL(request.url ?? '/', 'http://localhost');
+      const pathname = url.pathname;
+
+      if (request.method === 'OPTIONS') {
+        response.statusCode = 204;
+        response.end();
+        return;
+      }
+
+      // Public operational endpoints must work without tenant or auth headers.
+      if (handleHealthRoutes(request, response, options)) {
+        return;
+      }
+
+      if (request.url === '/metrics' && request.method === 'GET') {
+        const appState = getAppState();
+        updateAppMetrics({
+          uptime: Math.round(process.uptime()),
+          activeRequests: 0,
+          dbHealthy: appState.databaseHealthy,
+          persistenceMode: appState.persistenceMode
+        });
+
+        const metricsText = await getMetricsText();
+        response.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
+        response.statusCode = 200;
+        response.end(metricsText);
+        return;
+      }
+
+      if (request.url === '/openapi.json' && request.method === 'GET') {
+        try {
+          const specPath = new URL('./openapi.yaml', import.meta.url);
+          let specContent: string;
+          try {
+            specContent = readFileSync(specPath, 'utf8');
+          } catch {
+            const srcPath = new URL('../src/openapi.yaml', import.meta.url);
+            specContent = readFileSync(srcPath, 'utf8');
+          }
+          const openApiSpec = parseYaml(specContent);
+          response.setHeader('content-type', 'application/json');
+          response.statusCode = 200;
+          response.end(JSON.stringify(openApiSpec));
+        } catch {
+          const openApiSpec = {
+            openapi: '3.0.3',
+            info: {
+              title: 'CVG HIS API',
+              version: '1.0.0',
+              description: 'CVG Hospital Information System REST API'
+            },
+            servers: [{ url: '/', description: 'Local development' }],
+            paths: {}
+          };
+          response.setHeader('content-type', 'application/json');
+          response.statusCode = 200;
+          response.end(JSON.stringify(openApiSpec));
+        }
+        return;
+      }
+
+      if (request.url === '/openapi.yaml' && request.method === 'GET') {
+        try {
+          const specPath = new URL('./openapi.yaml', import.meta.url);
+          const specContent = readFileSync(specPath, 'utf8');
+          response.setHeader('content-type', 'text/yaml');
+          response.statusCode = 200;
+          response.end(specContent);
+        } catch {
+          response.statusCode = 500;
+          response.end('OpenAPI spec not available');
+        }
+        return;
+      }
+
+      if (request.url === '/api-docs' && request.method === 'GET') {
+        const docsResponse = {
+          title: 'CVG HIS API',
+          version: '1.0.0',
+          description: 'CVG Hospital Information System REST API',
+          endpoints: {
+            health: { url: '/health', method: 'GET', description: 'Health check' },
+            ready: { url: '/ready', method: 'GET', description: 'Readiness check' },
+            metrics: { url: '/metrics', method: 'GET', description: 'Prometheus metrics' },
+            openapi: {
+              url: '/openapi.json',
+              method: 'GET',
+              description: 'OpenAPI 3.0 specification'
+            }
+          },
+          documentation: {
+            swagger_ui: 'Use /openapi.json with external Swagger UI tools',
+            postman: 'Import /openapi.json into Postman or Insomnia'
+          },
+          rate_limits: {
+            header_prefix: 'X-RateLimit',
+            headers: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset']
+          },
+          authentication: {
+            type: 'Bearer Token',
+            header: 'Authorization: Bearer <access_token>',
+            alternative: 'X-API-Key header for API keys'
+          }
+        };
+        response.setHeader('content-type', 'application/json');
+        response.statusCode = 200;
+        response.end(JSON.stringify(docsResponse));
+        return;
+      }
+
       // Extract accountId from Authorization header if present
       let accountId: string | undefined = undefined;
       let userId: string | undefined;
@@ -404,13 +678,56 @@ export function createApiServer(options: ApiServerOptions) {
         }
       }
 
-      const tenantCtx = resolveTenantFromRequest(request, {
-        defaultTenantId: '00000000-0000-0000-0000-000000000001',
-        fallbackAccountId: accountId,
-        fallbackUserId: userId
-      });
+      // API key requests also need tenant context before route-level auth runs.
+      if (!accountId) {
+        const apiKeyValue = readHeader(request, 'x-api-key') ?? readHeader(request, 'X-API-Key');
+        if (apiKeyValue) {
+          try {
+            const apiKey = await apiKeys.validate(apiKeyValue);
+            if (apiKey) {
+              accountId = apiKey.accountId;
+            }
+          } catch {
+            // Invalid API keys are rejected later at route level.
+          }
+        }
+      }
 
-      return await runWithTenantContext(tenantCtx, async () => {
+      const isPublicTenantlessRoute =
+        pathname.startsWith('/auth/')
+        || pathname === '/webhooks/whatsapp/inbound';
+
+      const tenantCtx = isPublicTenantlessRoute
+        ? {
+            tenantId: '00000000-0000-0000-0000-000000000001',
+            accountId,
+            branchId: request.headers['x-branch-id'] as string | undefined,
+            userId,
+            correlationId
+          }
+        : resolveTenantFromRequest(request, {
+            defaultTenantId: '00000000-0000-0000-0000-000000000001',
+            fallbackAccountId: accountId,
+            fallbackUserId: userId
+          });
+
+      span.attributes['tenant.id'] = tenantCtx.tenantId;
+      if (tenantCtx.accountId) {
+        span.attributes['account.id'] = tenantCtx.accountId;
+      }
+      if (tenantCtx.userId) {
+        span.attributes['user.id'] = tenantCtx.userId;
+      }
+      const originHeader = request.headers.origin;
+      if (typeof originHeader === 'string' && originHeader.length > 0) {
+        span.attributes['http.origin'] = originHeader;
+      }
+      const userAgent = request.headers['user-agent'];
+      if (typeof userAgent === 'string' && userAgent.length > 0) {
+        span.attributes['http.user_agent'] = userAgent;
+      }
+
+      return await withSpanContext(span, async () => runWithTenantContext(tenantCtx, async () => {
         if (request.method === 'OPTIONS') {
           response.statusCode = 204;
           response.end();
@@ -598,15 +915,12 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        const url = new URL(request.url ?? '/', 'http://localhost');
-        const pathname = url.pathname;
-
         if (pathname === '/auth/login' && request.method === 'POST') {
           const clientIp = request.headers['x-forwarded-for']?.toString().split(',')[0].trim()
             ?? request.socket.remoteAddress ?? 'unknown';
           const rateLimitKey = { ip: clientIp, route: '/auth/login' };
           const rateLimitInfo = authRateLimiter.check(rateLimitKey);
-          response.setHeader('X-RateLimit-Limit', String(authRateLimiter['maxRequests']));
+          response.setHeader('X-RateLimit-Limit', String(rateLimitInfo.limit));
           response.setHeader('X-RateLimit-Remaining', String(rateLimitInfo.remaining));
           response.setHeader('X-RateLimit-Reset', String(rateLimitInfo.reset));
           if (rateLimitInfo.blocked) {
@@ -662,7 +976,7 @@ export function createApiServer(options: ApiServerOptions) {
             ?? request.socket.remoteAddress ?? 'unknown';
           const rateLimitKey = { ip: clientIp, route: '/auth/login/mfa' };
           const rateLimitInfo = authRateLimiter.check(rateLimitKey);
-          response.setHeader('X-RateLimit-Limit', String(authRateLimiter['maxRequests']));
+          response.setHeader('X-RateLimit-Limit', String(rateLimitInfo.limit));
           response.setHeader('X-RateLimit-Remaining', String(rateLimitInfo.remaining));
           response.setHeader('X-RateLimit-Reset', String(rateLimitInfo.reset));
           if (rateLimitInfo.blocked) {
@@ -1384,124 +1698,83 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        // ========================================================================
-        // SOC2 Evidence Endpoints
-        // ========================================================================
-        // SOC2 Evidence Endpoints
-        // ========================================================================
-
-        if (pathname === '/soc2/evidence' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'audit.read');
-          const url = new URL(request.url ?? '/', 'http://localhost');
-          const periodStart = url.searchParams.get('periodStart') ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-          const periodEnd = url.searchParams.get('periodEnd') ?? new Date().toISOString();
-
-          try {
-            const evidence = await collectEvidence(periodStart, periodEnd, {
-              mfa: soc2MfaControl,
-              vulnerability: soc2VulnControl,
-              access: soc2AccessControl,
-              dr: soc2DrControl,
-              incident: soc2IncidentControl
-            });
-
-            appendAudit(
-              principal.user.id,
-              principal.user.accountId,
-              'soc2',
-              'evidence_collected',
-              'audit',
-              principal.session.sessionId,
-              `SOC2 evidence package collected for period ${periodStart} to ${periodEnd}`,
-              'medium',
-              correlationId
-            );
-
-            response.statusCode = 200;
-            response.end(JSON.stringify(evidence));
-          } catch (err) {
-            logger.error('SOC2 evidence collection failed', { correlationId, error: err });
-            response.statusCode = 500;
-            response.end(JSON.stringify({ code: 'EVIDENCE_FAILED', message: 'Failed to collect SOC2 evidence' }));
-          }
+        if (
+          await handleSoc2Routes(pathname, request, response, correlationId, {
+            requirePrincipal,
+            appendAudit,
+            logError: (message, context) => logger.error(message, context),
+            abacEngine,
+            mfaControl: soc2MfaControl,
+            vulnerabilityControl: soc2VulnControl,
+            accessControl: soc2AccessControl,
+            drControl: soc2DrControl,
+            incidentControl: soc2IncidentControl
+          })
+        ) {
           return;
         }
 
-        if (pathname === '/soc2/security-score' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'audit.read');
-
-          try {
-            const score = await calculateSecurityScore(
-              soc2MfaControl,
-              soc2VulnControl,
-              soc2AccessControl,
-              soc2DrControl
-            );
-
-            appendAudit(
-              principal.user.id,
-              principal.user.accountId,
-              'soc2',
-              'security_score_calculated',
-              'audit',
-              principal.session.sessionId,
-              `Security score calculated: ${score.overallScore}/${score.maxScore}`,
-              'medium',
-              correlationId
-            );
-
-            response.statusCode = 200;
-            response.end(JSON.stringify(score));
-          } catch (err) {
-            logger.error('SOC2 security score calculation failed', { correlationId, error: err });
-            response.statusCode = 500;
-            response.end(JSON.stringify({ code: 'SCORE_FAILED', message: 'Failed to calculate security score' }));
-          }
+        if (
+          handleAuthRoutes(pathname, request, response, correlationId, {
+            requirePrincipal,
+            appendAudit
+          })
+        ) {
           return;
         }
 
-        if (pathname === '/soc2/policies' && request.method === 'GET') {
-          // Public endpoint — no auth required
-          response.statusCode = 200;
-          response.end(JSON.stringify({
-            abacPolicies: abacEngine.listPolicies().map((p) => ({
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              version: p.version,
-              resourceTypes: p.resourceTypes,
-              actionCodes: p.actionCodes,
-              enabled: p.enabled,
-              combiningAlgorithm: p.combiningAlgorithm,
-              rulesCount: p.rules.length,
-              tags: p.tags
-            })),
-            totalPolicies: abacEngine.listPolicies().length
-          }));
+        if (
+          await handleLaboratoryRoutes(pathname, request, response, correlationId, {
+            laboratory,
+            audit,
+            requirePrincipal,
+            onOrderCreated: (order, principalUserId) => {
+              medicalRecords.appendAdvancedCareEvent(
+                order.encounterId as never,
+                principalUserId as never,
+                'diagnostic_requested',
+                `Diagnostic order requested: ${order.examType}`
+              );
+            },
+            onOrderStatusChanged: (order, payload, principalUserId) => {
+              if (payload.status === 'collected') {
+                medicalRecords.appendAdvancedCareEvent(
+                  order.encounterId as never,
+                  principalUserId as never,
+                  'diagnostic_collected',
+                  `Diagnostic order collected by ${payload.collectedByUserId ?? principalUserId}`
+                );
+              } else if (payload.status === 'resulted') {
+                medicalRecords.appendAdvancedCareEvent(
+                  order.encounterId as never,
+                  principalUserId as never,
+                  'diagnostic_resulted',
+                  `Diagnostic result registered: ${payload.resultSummary ?? order.examType}`
+                );
+              }
+            }
+          })
+        ) {
           return;
         }
 
-        if (pathname === '/auth/session' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'auth.session.read');
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'auth',
-            'session_read',
-            'session',
-            principal.session.sessionId,
-            'Current session inspected',
-            'low',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(
-            JSON.stringify({
-              session: principal.session,
-              access: principal.access,
-              principal
-            })
-          );
+        if (
+          handleFiscalRoutes(pathname, request, response, correlationId, {
+            fiscal,
+            audit,
+            requirePrincipal
+          })
+        ) {
+          return;
+        }
+
+        if (
+          await handleSchedulingRoutes(pathname, request, response, correlationId, {
+            scheduling,
+            audit,
+            requirePrincipal
+          })
+        ) {
           return;
         }
 
@@ -1600,10 +1873,35 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/medical-records/entries/')) {
-          const entryId = requireNonEmptyString(pathname.split('/')[3], 'entryId');
+          const medicalRecordEntryParts = pathname.split('/');
+          const entryId = requireNonEmptyString(medicalRecordEntryParts[3], 'entryId');
+
+          if (
+            request.method === 'GET'
+            && medicalRecordEntryParts.length === 5
+            && medicalRecordEntryParts[4] === 'revisions'
+          ) {
+            const principal = requirePrincipal(request, 'medical-records.read');
+            const revisions = await medicalRecords.getEntryRevisionsAsync(entryId as never);
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'medical-records',
+              'read_revisions',
+              'clinical-entry',
+              entryId,
+              `Clinical entry ${entryId} revision history inspected`,
+              'medium',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify({ items: revisions }));
+            return;
+          }
+
           const principal = requirePrincipal(request, 'medical-records.manage');
 
-          if (request.method === 'PATCH') {
+          if (request.method === 'PATCH' && medicalRecordEntryParts.length === 4) {
             const payload = (await readJsonBody(request)) as UpdateClinicalEntryRequest;
             const entry = medicalRecords.updateEntry(principal.user.id, entryId as never, payload);
             appendAudit(
@@ -1622,7 +1920,7 @@ export function createApiServer(options: ApiServerOptions) {
             return;
           }
 
-          if (request.method === 'DELETE') {
+          if (request.method === 'DELETE' && medicalRecordEntryParts.length === 4) {
             const payload = (await readJsonBody(request).catch(
               () => ({}) as ArchiveClinicalEntryRequest
             )) as ArchiveClinicalEntryRequest;
@@ -1868,210 +2166,6 @@ export function createApiServer(options: ApiServerOptions) {
           return;
         }
 
-        if (pathname === '/appointments' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'scheduling.read');
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'list_appointments',
-            'appointment',
-            'all',
-            'Appointments listed',
-            'medium',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(
-            JSON.stringify({ items: scopedScheduling.listAppointments(principal.user.accountId) })
-          );
-          return;
-        }
-
-        if (pathname === '/appointments' && request.method === 'POST') {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
-          const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'create_appointment',
-            'appointment',
-            appointment.id,
-            `Appointment created for patient ${appointment.patientId}`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 201;
-          response.end(JSON.stringify(appointment));
-          return;
-        }
-
-        if (pathname.startsWith('/appointments/') && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'scheduling.read');
-          const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
-          const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'get_appointment',
-            'appointment',
-            appointmentId,
-            `Appointment ${appointmentId} retrieved`,
-            'low',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(appointment));
-          return;
-        }
-
-        if (
-          pathname.startsWith('/appointments/') &&
-          pathname.endsWith('/cancel') &&
-          request.method === 'POST'
-        ) {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
-          const body = (await readJsonBody(request)) as Record<string, unknown> | undefined;
-          const reason = (body?.reason as string) ?? undefined;
-          const cancelled = await scheduling.cancelAppointment(appointmentId as never, reason);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'cancel_appointment',
-            'appointment',
-            cancelled.id,
-            `Appointment cancelled for patient ${cancelled.patientId}`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(cancelled));
-          return;
-        }
-
-        if (pathname === '/queue' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'scheduling.read');
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'list_queue',
-            'queue-entry',
-            'all',
-            'Operational queue listed',
-            'medium',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(
-            JSON.stringify({ items: scopedScheduling.getQueue(principal.user.accountId) })
-          );
-          return;
-        }
-
-        if (pathname === '/queue/check-in' && request.method === 'POST') {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const payload = (await readJsonBody(request)) as CheckInQueueRequest;
-          const entry = await scheduling.checkIn(principal.user.accountId, payload);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'check_in',
-            'queue-entry',
-            entry.id,
-            `Patient ${entry.patientId} checked in`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 201;
-          response.end(JSON.stringify(entry));
-          return;
-        }
-
-        if (
-          pathname.startsWith('/queue/') &&
-          pathname.endsWith('/call') &&
-          request.method === 'POST'
-        ) {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-          const entry = await scheduling.callQueueEntry(queueEntryId as never);
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'call_queue_entry',
-            'queue-entry',
-            entry.id,
-            `Queue entry ${entry.id} called`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(entry));
-          return;
-        }
-
-        if (
-          pathname.startsWith('/queue/') &&
-          pathname.endsWith('/start-care') &&
-          request.method === 'POST'
-        ) {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-          const entry = await scheduling.transitionQueueEntry(
-            queueEntryId as never,
-            'in_care' as never
-          );
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'start_care',
-            'queue-entry',
-            entry.id,
-            `Queue entry ${entry.id} transitioned to in_care`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(entry));
-          return;
-        }
-
-        if (
-          pathname.startsWith('/queue/') &&
-          pathname.endsWith('/no-show') &&
-          request.method === 'POST'
-        ) {
-          const principal = requirePrincipal(request, 'scheduling.manage');
-          const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-          const entry = await scheduling.transitionQueueEntry(
-            queueEntryId as never,
-            'cancelled' as never
-          );
-          appendAudit(
-            principal.user.id,
-            principal.user.accountId,
-            'scheduling',
-            'no_show',
-            'queue-entry',
-            entry.id,
-            `Queue entry ${entry.id} marked as no_show (cancelled)`,
-            'high',
-            correlationId
-          );
-          response.statusCode = 200;
-          response.end(JSON.stringify(entry));
-          return;
-        }
-
         if (pathname === '/encounters' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'encounters.read');
           appendAudit(
@@ -2153,7 +2247,9 @@ export function createApiServer(options: ApiServerOptions) {
             correlationId
           );
           response.statusCode = 200;
-          response.end(JSON.stringify({ items: encounters.listTimeline(encounterId as never) }));
+          response.end(
+            JSON.stringify({ items: await encounters.listTimelineAsync(encounterId as never) })
+          );
           return;
         }
 
@@ -3099,14 +3195,15 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname === '/products' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'products.read');
+          const principal = requirePrincipal(request, 'product.read');
+          const search = url.searchParams.get('search') ?? undefined;
           appendAudit(
             principal.user.id,
             principal.user.accountId,
             'products',
             'list',
             'product',
-            'all',
+            search ?? 'all',
             'Products catalog inspected',
             'medium',
             correlationId
@@ -3114,14 +3211,14 @@ export function createApiServer(options: ApiServerOptions) {
           response.statusCode = 200;
           response.end(
             JSON.stringify({
-              items: products.list(principal.user.accountId as never)
+              items: products.list(principal.user.accountId as never, { search })
             })
           );
           return;
         }
 
         if (pathname === '/products' && request.method === 'POST') {
-          const principal = requirePrincipal(request, 'products.manage');
+          const principal = requirePrincipal(request, 'product.write');
           const payload = (await readJsonBody(request)) as {
             name: string;
             code?: string | null;
@@ -3153,7 +3250,7 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/products/') && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'products.read');
+          const principal = requirePrincipal(request, 'product.read');
           const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
           const product = products.getOrThrow(productId);
           if (product.accountId !== principal.user.accountId) {
@@ -3176,7 +3273,7 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/products/') && request.method === 'PATCH') {
-          const principal = requirePrincipal(request, 'products.manage');
+          const principal = requirePrincipal(request, 'product.write');
           const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
           const existingProduct = products.getOrThrow(productId);
           if (existingProduct.accountId !== principal.user.accountId) {
@@ -3213,14 +3310,15 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname === '/services' && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'services.read');
+          const principal = requirePrincipal(request, 'service.read');
+          const search = url.searchParams.get('search') ?? undefined;
           appendAudit(
             principal.user.id,
             principal.user.accountId,
             'services',
             'list',
             'service',
-            'all',
+            search ?? 'all',
             'Services catalog inspected',
             'medium',
             correlationId
@@ -3228,14 +3326,14 @@ export function createApiServer(options: ApiServerOptions) {
           response.statusCode = 200;
           response.end(
             JSON.stringify({
-              items: services.list(principal.user.accountId as never)
+              items: services.list(principal.user.accountId as never, { search })
             })
           );
           return;
         }
 
         if (pathname === '/services' && request.method === 'POST') {
-          const principal = requirePrincipal(request, 'services.manage');
+          const principal = requirePrincipal(request, 'service.write');
           const payload = (await readJsonBody(request)) as {
             name: string;
             code?: string | null;
@@ -3267,7 +3365,7 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/services/') && request.method === 'GET') {
-          const principal = requirePrincipal(request, 'services.read');
+          const principal = requirePrincipal(request, 'service.read');
           const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
           const service = services.getOrThrow(serviceId);
           if (service.accountId !== principal.user.accountId) {
@@ -3290,7 +3388,7 @@ export function createApiServer(options: ApiServerOptions) {
         }
 
         if (pathname.startsWith('/services/') && request.method === 'PATCH') {
-          const principal = requirePrincipal(request, 'services.manage');
+          const principal = requirePrincipal(request, 'service.write');
           const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
           const existingService = services.getOrThrow(serviceId);
           if (existingService.accountId !== principal.user.accountId) {
@@ -4361,16 +4459,90 @@ export function createApiServer(options: ApiServerOptions) {
 
         // ── Inventory Items ──
 
+        if (pathname === '/inventory/consumptions' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'inventory.read');
+          const encounterId = url.searchParams.get('encounterId') ?? undefined;
+          const items = inventory.listConsumptionsByAccount(
+            principal.user.accountId as never,
+            encounterId
+          );
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'inventory',
+            'list_consumptions',
+            'inventory-consumption',
+            encounterId ?? 'all',
+            'Inventory consumptions listed',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/inventory/consumptions' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'inventory.manage');
+          const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
+          enforceAbac(
+            'inventory.manage',
+            principal,
+            {
+              resourceType: 'inventory_item',
+              resourceId: payload.inventoryItemId,
+              encounterId: payload.encounterId as never,
+              accountId: principal.user.accountId as never
+            },
+            request
+          );
+          const consumption = await inventory.consume(principal.user.id as never, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'inventory',
+            'consume',
+            'inventory-consumption',
+            consumption.id,
+            `Inventory consumption recorded for item ${consumption.inventoryItemId}`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(consumption));
+          return;
+        }
+
+        if (pathname === '/inventory/lots' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'inventory.read');
+          const items = inventory.listLots(principal.user.accountId as never);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'inventory',
+            'list_lots',
+            'inventory-lot',
+            'all',
+            'Inventory lots listed',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
         if (pathname === '/inventory' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'inventory.read');
-          const items = inventory.listItems();
+          const search = url.searchParams.get('search') ?? undefined;
+          const items = inventory.listItems(principal.user.accountId as never, { search });
           appendAudit(
             principal.user.id,
             principal.user.accountId,
             'inventory',
             'list',
             'inventory-item',
-            'all',
+            search ?? 'all',
             'Inventory items listed',
             'medium',
             correlationId
@@ -5014,8 +5186,10 @@ export function createApiServer(options: ApiServerOptions) {
         response.end(
           JSON.stringify({ code: 'NOT_FOUND', message: 'Route not found', correlationId })
         );
-      });
+      }));
     } catch (error) {
+      span.attributes['error.type'] =
+        error instanceof Error ? error.constructor.name : typeof error;
       logger.error('request failed', { correlationId, error });
       const errorResponse = toErrorResponse(error, correlationId);
       response.statusCode = errorResponse.statusCode;

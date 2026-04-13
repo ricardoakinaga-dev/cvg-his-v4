@@ -50,6 +50,29 @@ describe('AppPageHeader', () => {
     expect(wrapper.find('.app-page-header__actions').exists()).toBe(false);
   });
 
+  it('renders standardized CTA props when no actions slot is provided', () => {
+    const wrapper = mount(AppPageHeader, {
+      props: {
+        title: 'Title',
+        primaryAction: {
+          label: 'Novo',
+          to: '/new'
+        },
+        secondaryActions: [
+          {
+            label: 'Atualizar',
+            variant: 'secondary'
+          }
+        ]
+      }
+    });
+
+    expect(wrapper.find('.app-page-header__actions').exists()).toBe(true);
+    expect(wrapper.findAll('.ds-btn').length).toBe(2);
+    expect(wrapper.text()).toContain('Novo');
+    expect(wrapper.text()).toContain('Atualizar');
+  });
+
   it('applies correct container class', () => {
     const wrapper = mount(AppPageHeader, {
       props: { title: 'Title' }

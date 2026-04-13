@@ -6,12 +6,15 @@
 
 ## OBJETIVO
 
-Implementar excel365ncia operacional com foco em:
+Implementar excelencia operacional com foco em:
 - Chaos Engineering
 - Performance Benchmarks
 - SOC2 Compliance
 - Coverage de testes >80%
 - Zero vulnerabilidades críticas
+- Configuração rigorosa e fail-fast
+- Observabilidade enterprise com OpenTelemetry
+- Runtime premium com backups, Redis, feature flags e secrets management
 
 **Meta de Score:** 55 → 90
 
@@ -137,20 +140,21 @@ docs/SOC2/
 
 ### Descrição
 
-Aumentar coverage de testes para >80%:
-- Modules sem testes: prescriptions, products, services
-- Integration tests para APIs críticas
-- E2E tests para fluxos principais
+Aumentar coverage de testes para >80%, partindo do baseline executavel atual:
+- modules sem testes: `prescriptions`, `fiscal`
+- expansion da suite da SPA em fluxos centrais
+- integration tests para APIs críticas
+- E2E tests para jornadas principais
 
 ### Plano de Ação
 
-| Módulo | Coverage Atual | Target | Gap |
+| Escopo | Coverage Atual | Target | Gap |
 |--------|---------------|--------|-----|
+| global lines/statements | 4.44% | 15% imediato | +10.56 |
+| global lines/statements | 15% | 40% intermediario | +25 |
+| global lines/statements | 40% | 80% premium | +40 |
 | prescriptions | 0% | 80% | +80 |
-| products | ~40% | 80% | +40 |
-| services | ~30% | 80% | +50 |
-| scheduling | ~50% | 80% | +30 |
-| **TOTAL** | ~60% | 80% | +20 |
+| fiscal | 0% | 80% | +80 |
 
 ### Comandos
 
@@ -200,6 +204,126 @@ packages/security/
 
 ---
 
+## TAREFA F4-06: Config Validation Fail-Fast (ALTA PRIORIDADE)
+
+### Descrição
+
+Eliminar configuração implícita ou inválida em runtime:
+- schema Zod central para variáveis de ambiente
+- bootstrap aborta quando configuração está ausente ou inconsistente
+- validação compartilhada entre API, worker e SPA
+
+### Critérios
+
+- `apps/api`, `apps/worker` e `apps/spa` usam schema explícito
+- `.env.example` e docs de ambiente ficam alinhados
+- CI valida configuração mínima por app
+
+---
+
+## TAREFA F4-07: OpenTelemetry Enterprise (ALTA PRIORIDADE)
+
+### Descrição
+
+Evoluir de tracing local para observabilidade enterprise:
+- OpenTelemetry SDK
+- OTLP exporter
+- correlação entre trace id, request id e logs estruturados
+
+### Critérios
+
+- traces exportados para collector compatível
+- middleware HTTP, DB e worker instrumentados
+- dashboard e runbook de RCA usando traces reais
+
+---
+
+## TAREFA F4-08: Security Hardening de Runtime (ALTA PRIORIDADE)
+
+### Descrição
+
+Fechar lacunas operacionais de segurança:
+- CORS por allowlist
+- headers de segurança
+- secret scanning
+- rotação e higiene de segredos
+
+### Critérios
+
+- CORS permissivo removido de ambientes não-locais
+- pipeline detecta secrets com falha obrigatória
+- plano de migração de `.env` para manager dedicado aprovado
+
+---
+
+## TAREFA F4-09: Backup e Restore Automatizados (MÉDIA PRIORIDADE)
+
+### Descrição
+
+Transformar backup em capacidade operacional verificável:
+- backup agendado
+- retenção definida
+- restore drill com evidência
+
+### Critérios
+
+- backup automatizado para banco e artefatos críticos
+- restore testado em ambiente isolado
+- RPO/RTO documentados
+
+---
+
+## TAREFA F4-10: Runtime Distribuído (MÉDIA PRIORIDADE)
+
+### Descrição
+
+Preparar a plataforma para escala horizontal:
+- rate limiter em Redis
+- Unleash para feature flags
+- contratos de fallback explícitos
+
+### Critérios
+
+- limiter sem dependência de memória local
+- flags com ambientes e auditoria básica
+- rollback funcional por feature flag
+
+---
+
+## TAREFA F4-11: Estrutura Kubernetes / Helm (LONGO PRAZO)
+
+### Descrição
+
+Criar trilha de operação enterprise multiambiente:
+- Helm charts para API, worker e SPA
+- valores por ambiente
+- padrões de probes, secrets e autoscaling
+
+### Critérios
+
+- chart mínimo implantável
+- valores `dev`, `staging` e `prod`
+- runbook de deploy e rollback
+
+---
+
+## TAREFA F4-12: Decisões Estruturais de Plataforma (LONGO PRAZO)
+
+### Descrição
+
+Fechar decisões de base para a próxima fase:
+- avaliar migração para Fastify
+- planejar Vault/secrets manager
+- desenhar roadmap event-driven
+
+### Critérios
+
+- ADR de Fastify com decisão explícita
+- ADR de secrets management
+- roadmap de eventos por domínio com contratos, retries e DLQ
+
+---
+
 ## DEPENDÊNCIAS
 
 ```
@@ -212,6 +336,20 @@ F4-03 (SOC2 Gap Analysis)
 F4-04 (Coverage > 80%)
     ↓
 F4-05 (Zero Critical Vulns)
+    ↓
+F4-06 (Config Validation)
+    ↓
+F4-07 (OpenTelemetry)
+    ↓
+F4-08 (Security Hardening)
+    ↓
+F4-09 (Backup/Restore)
+    ↓
+F4-10 (Runtime Distribuído)
+    ↓
+F4-11 (Helm / Kubernetes)
+    ↓
+F4-12 (Decisões Estruturais)
 ```
 
 ---
@@ -224,6 +362,13 @@ F4-05 (Zero Critical Vulns)
 4. [ ] Implementar F4-03: SOC2 Gap Analysis
 5. [ ] Implementar F4-04: Coverage > 80%
 6. [ ] Implementar F4-05: Zero Critical Vulns
+7. [ ] Implementar F4-06: Config Validation Fail-Fast
+8. [ ] Implementar F4-07: OpenTelemetry Enterprise
+9. [ ] Implementar F4-08: Security Hardening de Runtime
+10. [ ] Implementar F4-09: Backup e Restore Automatizados
+11. [ ] Implementar F4-10: Runtime Distribuído
+12. [ ] Implementar F4-11: Estrutura Kubernetes / Helm
+13. [ ] Implementar F4-12: Decisões Estruturais de Plataforma
 
 ---
 

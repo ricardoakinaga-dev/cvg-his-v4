@@ -104,6 +104,17 @@ export class OwnersService {
     }
   }
 
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#ownerRepository) {
+      return;
+    }
+
+    const owners = await this.#ownerRepository.findByAccountId(accountId);
+    for (const owner of owners) {
+      this.#owners.set(owner.id, owner);
+    }
+  }
+
   public list(search?: string): readonly OwnerSummary[] {
     const query = search?.trim().toLowerCase();
     const owners = Array.from(this.#owners.values());

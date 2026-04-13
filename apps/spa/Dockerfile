@@ -5,7 +5,11 @@ RUN npm install -g pnpm@10.33.0
 WORKDIR /app
 
 ARG VITE_DISABLE_PWA=1
+ARG VITE_API_BASE_URL=
+ARG VITE_APP_NAME="CVG HIS V2"
 ENV VITE_DISABLE_PWA=${VITE_DISABLE_PWA}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_APP_NAME=${VITE_APP_NAME}
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps

@@ -1,8 +1,10 @@
 <template>
   <div class="medical-records-list-page">
-    <AppPageHeader title="📋 Prontuário Clínico" subtitle="Registro clínico por atendimento">
+    <AppPageHeader title="📋 Prontuário Clínico" subtitle="Atendimento > Prontuário. Documentação clínica aberta nos atendimentos ativos e concluídos.">
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="load">🔄 Atualizar</DsButton>
+        <DsButton tag="a" to="/encounters" variant="secondary">🩺 Ver Atendimentos</DsButton>
+        <DsButton tag="a" to="/patients" variant="ghost">🐾 Pacientes</DsButton>
       </template>
     </AppPageHeader>
 
@@ -41,15 +43,22 @@
       </DsCard>
     </section>
 
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
+
     <DataTable
       :columns="columns"
       :rows="items"
       :loading="loading"
       empty-icon="📋"
       empty-title="Nenhum prontuário encontrado"
-      empty-description="Os prontuários são criados automaticamente quando atendimentos são abertos."
+      empty-description="Os prontuários nascem quando um atendimento é aberto e acompanham o caso até a alta."
       variant="hoverable"
     >
+      <template #emptyAction>
+        <DsButton tag="a" to="/encounters/new" variant="primary">+ Abrir Atendimento</DsButton>
+      </template>
       <template #cell-encounter="{ row }">
         <router-link
           :to="`/encounters/${(row as MedicalRecordListSummary).record.encounterId}`"
@@ -98,6 +107,7 @@ import type { MedicalRecordListSummary } from '@/types/medicalRecords';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';

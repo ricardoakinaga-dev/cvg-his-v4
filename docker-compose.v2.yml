@@ -53,10 +53,11 @@ services:
     image: cvg-his-v2-cvg-his-v2-api:035e555
     restart: unless-stopped
     environment:
-      NODE_ENV: homolog
+      NODE_ENV: ${NODE_ENV:-production}
       HOST: 0.0.0.0
       PORT: 3001
       APP_NAME: cvg-his-v2-api
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3002,http://127.0.0.1:3002,http://localhost:5173,http://127.0.0.1:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
@@ -82,7 +83,7 @@ services:
     # Nao usar como runtime padrao; mantido apenas para fallback historico.
     restart: unless-stopped
     environment:
-      NODE_ENV: homolog
+      NODE_ENV: ${NODE_ENV:-production}
       HOST: 0.0.0.0
       PORT: 3000
       APP_NAME: cvg-his-v2-web
@@ -100,7 +101,7 @@ services:
     image: cvg-his-v2-cvg-his-v2-worker:035e555
     restart: unless-stopped
     environment:
-      NODE_ENV: homolog
+      NODE_ENV: ${NODE_ENV:-production}
       APP_NAME: cvg-his-v2-worker
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
       WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
@@ -116,12 +117,14 @@ services:
     build:
       context: .
       dockerfile: apps/spa/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_APP_NAME: ${VITE_APP_NAME:-CVG HIS V2}
+        VITE_DISABLE_PWA: ${VITE_DISABLE_PWA:-1}
     image: cvg-his-v2-cvg-his-v2-spa:035e555
     restart: unless-stopped
     environment:
-      NODE_ENV: homolog
-      VITE_API_BASE_URL: http://localhost:3000/api
-      VITE_APP_NAME: CVG HIS V2
+      NODE_ENV: ${NODE_ENV:-production}
     depends_on:
       cvg-his-v2-api:
         condition: service_healthy

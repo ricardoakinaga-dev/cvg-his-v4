@@ -23,6 +23,9 @@ const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
   test('CRUD completo: criar, editar e desativar webhook', async ({ page, apiCall, cleanup }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
+
     // ── Step 1: Login ──
     console.log('   🔐 Logging in...');
     await loginViaToken(page);
@@ -36,7 +39,9 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     console.log('   🔗 Navigating to webhooks list...');
     await page.goto(`${SPA_URL}/webhooks`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Webhooks/ })).toBeVisible({ timeout: 15000 });
+    await expect(pageHeaderTitle).toHaveText('Webhooks', {
+      timeout: 15000
+    });
     console.log('   ✅ Webhooks list page loaded');
 
     // ── Step 3: Create webhook via UI ──
@@ -44,7 +49,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     await page.getByRole('link', { name: /Novo Webhook/i }).first().click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /Novo Webhook/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('Novo Webhook', {
       timeout: 10000
     });
 
@@ -84,7 +89,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     const webhookRow = page.locator('tr', { hasText: webhookUrl });
     await webhookRow.getByRole('link', { name: /Ver/i }).click();
     await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
-    await expect(page.getByRole('heading', { name: /^Webhook$/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('Webhook', {
       timeout: 10000
     });
     await expect(page.locator('.detail-value', { hasText: webhookUrl })).toBeVisible({
@@ -100,7 +105,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     console.log('   ✏️  Editing webhook...');
     await page.getByRole('link', { name: /Editar/ }).click();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Editar Webhook/ })).toBeVisible({
+    await expect(pageHeaderTitle).toHaveText('Editar Webhook', {
       timeout: 10000
     });
 
@@ -140,13 +145,18 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 9: Verify in list ──
     console.log('   📋 Verifying webhook in list after deactivation...');
-    await expect(page.getByRole('heading', { name: /Webhooks/ })).toBeVisible({ timeout: 10000 });
+    await expect(pageHeaderTitle).toHaveText('Webhooks', {
+      timeout: 10000
+    });
     console.log('   ✅ Webhook list still accessible');
 
     console.log('   🎉 Webhook CRUD flow completed successfully!');
   });
 
   test('valida elementos da página de lista de webhooks', async ({ page }) => {
+    const mainContent = page.getByRole('main');
+    const pageHeaderTitle = mainContent.locator('.app-page-header__title');
+
     // Login
     await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -156,7 +166,9 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(page.getByRole('heading', { name: /Webhooks/ })).toBeVisible({ timeout: 15000 });
+    await expect(pageHeaderTitle).toHaveText('Webhooks', {
+      timeout: 15000
+    });
 
     // Validate "Novo Webhook" button
     await expect(page.getByRole('link', { name: /Novo Webhook/i }).first()).toBeVisible({

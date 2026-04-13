@@ -1,8 +1,13 @@
 <template>
   <div class="owners-list-page">
-    <AppPageHeader title="Tutores" subtitle="Cadastro mestre de responsáveis por pacientes">
+    <AppPageHeader
+      title="Tutores"
+      subtitle="Atendimento > Cadastrados > Tutores. Responsáveis pelos pacientes que seguem para agenda, atendimento e prontuário."
+    >
       <template #actions>
         <DsButton tag="a" to="/owners/new" variant="primary">+ Novo Tutor</DsButton>
+        <DsButton tag="a" to="/patients" variant="secondary">🐾 Ver Pacientes</DsButton>
+        <DsButton tag="a" to="/appointments" variant="ghost">📅 Agenda</DsButton>
       </template>
     </AppPageHeader>
 
@@ -36,7 +41,7 @@
       :loading="loading"
       empty-icon="👥"
       empty-title="Nenhum tutor encontrado"
-      empty-description="Cadastre o primeiro tutor para começar."
+      empty-description="Cadastre o primeiro tutor para vincular pacientes e sustentar agenda, atendimento e prontuário."
       variant="hoverable"
     >
       <template #emptyAction>

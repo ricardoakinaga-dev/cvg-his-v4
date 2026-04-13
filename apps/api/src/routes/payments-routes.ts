@@ -130,6 +130,8 @@ async function handlePixIntentCreate(
       currency: intent.currency,
       provider: intent.provider,
       status: intent.status,
+      qrCodePayload: intent.qrCodePayload,
+      qrCodeBase64: intent.qrCodeBase64,
       expiresAt: intent.expiresAt,
       eventId: event.id,
       eventCorrelationId: event.correlationId

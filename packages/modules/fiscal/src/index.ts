@@ -43,3 +43,14 @@ export {
   type NfseCustomer,
   type NfseDocument
 } from './nfse-emitter.js';
+
+// Fiscal API service
+export {
+  FiscalService,
+  type FiscalCfopFilters,
+  type FiscalIcmsRuleFilters,
+  type FiscalIcmsMatrixFilters,
+  type FiscalNcmEntryFilters,
+  type FiscalNfseLayoutFilters,
+  type FiscalPisCofinsRuleFilters
+} from './service.js';

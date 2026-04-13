@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",
+    "@cvg-his-v2/shared-config": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",
     "pinia": "^2.3.0",

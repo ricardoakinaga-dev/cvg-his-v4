@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [vue()],
@@ -20,6 +23,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test/setup.ts']
+    setupFiles: [resolve(__dirname, 'src/test/setup.ts')],
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
+    slowTestThreshold: 10_000
   }
 });

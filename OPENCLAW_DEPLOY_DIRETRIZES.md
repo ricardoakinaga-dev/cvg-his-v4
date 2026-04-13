@@ -15,6 +15,7 @@ O OpenClaw deve considerar como canonico, para deploy da stack atual:
 - `packages/db/src/seed.ts`
 - `README.md`
 - `INSTALACAO_V2_OPENCLAW.md`
+- `docs/132-superficie-canonica-deploy-e-migracao.md`
 
 Para bootstrap local de dependencia:
 
@@ -238,7 +239,7 @@ API_HEALTH_URL=http://127.0.0.1:3003/health \
 API_READY_URL=http://127.0.0.1:3003/ready \
 API_METRICS_URL=http://127.0.0.1:3003/metrics \
 SPA_URL=http://127.0.0.1:3002/ \
-infra/scripts/cutover-v2.sh
+pnpm deploy:cutover:v2
 ```
 
 **Validacao anti-regressao obrigatoria apos qualquer deploy:**
@@ -258,6 +259,8 @@ O OpenClaw deve interromper o deploy se encontrar:
 - `AUTH_SECRET` inseguro
 - compose invalido
 - banco indisponivel
+- `NODE_ENV=development` em `.env.v2` para ambiente de publicacao
+- comando ou checklist vivo exigindo `cvg-his-v2-web` como parte do runtime oficial
 - Redis indisponivel
 - migrations falhando
 - tentativa de usar SQL legado em paralelo ao fluxo `packages/db`

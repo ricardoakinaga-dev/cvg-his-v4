@@ -1,7 +1,7 @@
 # 114 - Frontend Architecture
 
 **Status:** vivo
-**Data de validacao:** 2026-03-31
+**Data de validacao:** 2026-04-12
 **Fonte principal de evidencia:** `apps/spa/src/*`
 
 ## Papel do frontend
@@ -83,10 +83,15 @@ Ele entrega hoje:
 - substituir validacoes de backend
 - manter regras clinicas apenas no cliente
 
+## Estado do legado
+
+- `apps/web` foi congelado como frontend legado
+- o deploy, o proxy e a trilha documental oficial apontam para `apps/spa`
+- o legado nao recebe novas features e ficou fora do fluxo canonico
+
 ## Lacunas ainda abertas
 
 - suite E2E ainda nao cobre toda a superficie de tela
-- ainda existe frontend legado `apps/web` durante a janela de transicao
 - falta consolidar documentacao de UX por dominio para os modulos mais novos
 
 ## Direcao para a proxima fase
@@ -95,4 +100,4 @@ Ele entrega hoje:
 - expandir cobertura E2E dos fluxos enterprise
 - documentar UX e contratos de cada modulo novo apenas quando eles estiverem operacionais de ponta a ponta
 - evitar criar trilhas paralelas de frontend
-- remover `apps/web` somente apos o corte por dominio estar completo
+- manter `apps/web` apenas como referencia historica enquanto a trilha de desligamento residual permanecer arquivada

@@ -13,6 +13,7 @@ export interface DiagnosticOrderRepository {
   create(order: DiagnosticOrderSummary): Promise<void>;
   update(order: DiagnosticOrderSummary): Promise<void>;
   findById(id: DiagnosticOrderId): Promise<DiagnosticOrderSummary | null>;
+  findAll(accountId: AccountId): Promise<readonly DiagnosticOrderSummary[]>;
   findByEncounterId(encounterId: EncounterId): Promise<readonly DiagnosticOrderSummary[]>;
 }
 
@@ -77,6 +78,15 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       .select()
       .from(diagnosticOrders)
       .where(eq(diagnosticOrders.encounterId, encounterId));
+
+    return result.map((row) => this.mapRowToDiagnosticOrder(row));
+  }
+
+  public async findAll(accountId: AccountId): Promise<readonly DiagnosticOrderSummary[]> {
+    const result = await this.#db
+      .select()
+      .from(diagnosticOrders)
+      .where(eq(diagnosticOrders.accountId, accountId));
 
     return result.map((row) => this.mapRowToDiagnosticOrder(row));
   }

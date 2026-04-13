@@ -82,7 +82,9 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     console.log('   🔗 Verifying owner-patient relationship...');
     await page.goto(`${SPA_URL}/patients/${patientId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(ownerName)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('main').getByText(ownerName).first()).toBeVisible({
+      timeout: 10000
+    });
     console.log('   ✅ Patient detail shows correct owner');
 
     console.log('   🎉 Login + Owner + Patient UI flow completed!');

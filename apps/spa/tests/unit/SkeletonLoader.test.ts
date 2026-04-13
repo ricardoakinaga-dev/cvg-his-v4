@@ -5,16 +5,16 @@ import SkeletonLoader from '@/components/SkeletonLoader.vue';
 describe('SkeletonLoader', () => {
   it('renders with default props', () => {
     const wrapper = mount(SkeletonLoader);
-    expect(wrapper.classes()).toContain('skeleton-loader');
-    expect(wrapper.classes()).toContain('skeleton-loader--text');
-    expect(wrapper.classes()).toContain('skeleton-loader--animate');
+    expect(wrapper.classes()).toContain('ds-skeleton');
+    expect(wrapper.classes()).toContain('ds-skeleton--text');
+    expect(wrapper.classes()).toContain('ds-skeleton--animate');
     expect(wrapper.attributes('role')).toBe('status');
     expect(wrapper.attributes('aria-label')).toBe('Carregando...');
   });
 
   it('applies variant class', () => {
     const wrapper = mount(SkeletonLoader, { props: { variant: 'heading' } });
-    expect(wrapper.classes()).toContain('skeleton-loader--heading');
+    expect(wrapper.classes()).toContain('ds-skeleton--heading');
   });
 
   it('applies custom width and height', () => {
@@ -25,7 +25,7 @@ describe('SkeletonLoader', () => {
 
   it('disables animation', () => {
     const wrapper = mount(SkeletonLoader, { props: { animate: false } });
-    expect(wrapper.classes()).not.toContain('skeleton-loader--animate');
+    expect(wrapper.classes()).not.toContain('ds-skeleton--animate');
   });
 
   it('renders slot content', () => {
@@ -37,6 +37,6 @@ describe('SkeletonLoader', () => {
 
   it('applies avatar border radius', () => {
     const wrapper = mount(SkeletonLoader, { props: { variant: 'avatar' } });
-    expect(wrapper.classes()).toContain('skeleton-loader--avatar');
+    expect(wrapper.classes()).toContain('ds-skeleton--avatar');
   });
 });

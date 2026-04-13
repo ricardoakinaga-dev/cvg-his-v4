@@ -6,8 +6,12 @@ import {
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
-import { DatabaseSessionRepository } from '@cvg-his-v2/module-auth';
-import type { SessionRepository } from '@cvg-his-v2/module-auth';
+import {
+  DatabaseSessionRepository,
+  type PersistedSessionRecord,
+  type SessionRepository,
+  type UpdateSessionParams
+} from '@cvg-his-v2/module-auth';
 import { DatabaseAuditRepository } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
 import { DatabaseApiKeyRepository } from '@cvg-his-v2/module-api-keys';
@@ -59,8 +63,10 @@ import {
 } from '@cvg-his-v2/module-surgery';
 import {
   DatabaseDiagnosticOrderRepository,
+  DatabaseLaboratoryCatalogRepository,
   type DiagnosticOrderRepository
 } from '@cvg-his-v2/module-diagnostics';
+import type { LaboratoryCatalogRepository } from '@cvg-his-v2/module-diagnostics';
 import {
   DatabaseDischargeRepository,
   type DischargeRepository
@@ -125,6 +131,7 @@ import type { RuntimeRepositories } from './runtime.js';
 
 export interface BootstrapOptions {
   databaseUrl?: string;
+  fileStoragePath?: string;
   skipDatabase?: boolean;
   maxRetries?: number;
   retryDelayMs?: number;
@@ -133,6 +140,7 @@ export interface BootstrapOptions {
 export interface BootstrapResult {
   databaseHealthy: boolean;
   databaseDetail: string;
+  repositoriesUseDatabase: boolean;
   repositories: RuntimeRepositories;
   fileStorage: FileStorage;
 }
@@ -210,19 +218,25 @@ export async function validateDependencies(): Promise<readonly DependencyCheckRe
 
 // InMemory Repository implementations
 class InMemorySessionRepository {
-  readonly #sessions = new Map<SessionId, SessionSummary>();
-  async create(session: SessionSummary): Promise<void> {
+  readonly #sessions = new Map<SessionId, PersistedSessionRecord>();
+  async create(session: PersistedSessionRecord): Promise<void> {
     this.#sessions.set(session.sessionId, session);
   }
-  async update(session: SessionSummary | { sessionId: SessionId }): Promise<void> {
+  async update(session: PersistedSessionRecord | UpdateSessionParams): Promise<void> {
     const existing = this.#sessions.get(session.sessionId);
-    if (existing)
-      this.#sessions.set(session.sessionId, { ...existing, ...session } as SessionSummary);
+    if (!existing) {
+      return;
+    }
+    if ('active' in session && session.active === false) {
+      this.#sessions.delete(session.sessionId);
+      return;
+    }
+    this.#sessions.set(session.sessionId, { ...existing, ...session } as PersistedSessionRecord);
   }
-  async findById(id: SessionId): Promise<SessionSummary | null> {
+  async findById(id: SessionId): Promise<PersistedSessionRecord | null> {
     return this.#sessions.get(id) ?? null;
   }
-  async findByUserId(userId: string): Promise<readonly SessionSummary[]> {
+  async findByUserId(userId: string): Promise<readonly PersistedSessionRecord[]> {
     return Array.from(this.#sessions.values()).filter((s) => s.userId === userId);
   }
   async delete(id: SessionId): Promise<void> {
@@ -617,6 +631,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   const results: BootstrapResult = {
     databaseHealthy: false,
     databaseDetail: 'Not initialized',
+    repositoriesUseDatabase: false,
     repositories: {},
     fileStorage: createMemoryFileStorage()
   };
@@ -668,6 +683,15 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         detail: health.detail
       });
 
+      if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
+        results.databaseDetail =
+          'Database healthy, but runtime remains in-memory because legacy text IDs are incompatible with the canonical UUID schema for E2E/runtime flows';
+        logger.warn('Database runtime repositories disabled by compatibility guard', {
+          detail: results.databaseDetail
+        });
+        return results;
+      }
+
       // Get the database client and create real repositories
       const db = getDatabaseClient();
 
@@ -678,7 +702,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         patient: new DatabasePatientRepository(db),
         ownerPatientLink: new DatabaseOwnerPatientLinkRepository(db),
         encounter: new DatabaseEncounterRepository(db),
-        encounterTimeline: new InMemoryEncounterTimelineRepository(),
+        encounterTimeline: new DatabaseEncounterTimelineRepository(db),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
         clinicalEntry: new DatabaseClinicalEntryRepository(db),
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),
@@ -689,6 +713,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         inpatientProgress: new DatabaseInpatientProgressRepository(db),
         surgeryCase: new DatabaseSurgeryCaseRepository(db),
         diagnosticOrder: new DatabaseDiagnosticOrderRepository(db),
+        laboratoryCatalog: new DatabaseLaboratoryCatalogRepository(db) as LaboratoryCatalogRepository,
         discharge: new DatabaseDischargeRepository(),
         prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
         administrationEvent: new DatabaseAdministrationEventRepository(),
@@ -706,8 +731,14 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         apiKey: new DatabaseApiKeyRepository(),
         outbox: new DatabaseOutboxRepository()
       };
+      results.repositoriesUseDatabase = true;
       results.fileStorage = new LocalFileStorage({
-        basePath: process.env.FILE_STORAGE_PATH ?? '/tmp/cvg-his-v2-attachments'
+        basePath: options.fileStoragePath ?? '/tmp/cvg-his-v2-attachments'
+      });
+      logger.info('Database repositories initialized for critical auth/encounter runtime', {
+        auditPersistence: 'database',
+        sessionPersistence: 'database',
+        encounterTimelinePersistence: 'database'
       });
     } else {
       logger.error('Database connection failed after retries, using in-memory repositories', {
@@ -733,12 +764,4 @@ export async function shutdownServices(): Promise<void> {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Error closing database', { error: message });
   }
-}
-
-export function isDatabaseConfigured(): boolean {
-  return !!process.env.DATABASE_URL;
-}
-
-export function getDatabaseUrl(): string | undefined {
-  return process.env.DATABASE_URL;
 }

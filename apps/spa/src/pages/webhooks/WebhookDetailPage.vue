@@ -41,6 +41,18 @@
         </DsCard>
       </section>
 
+      <section class="webhook-detail-page__intelligence">
+        <DsCard title="Leitura de entregas">
+          <div class="insights-grid">
+            <div v-for="card in deliveryInsightCards" :key="card.label" class="insight-card">
+              <span class="insight-card__label">{{ card.label }}</span>
+              <strong class="insight-card__value">{{ card.value }}</strong>
+              <span class="insight-card__hint">{{ card.hint }}</span>
+            </div>
+          </div>
+        </DsCard>
+      </section>
+
       <div class="webhook-detail-page__grid">
         <AppDetailSection title="Configuração">
           <div class="detail-row">
@@ -68,7 +80,7 @@
           <DataTable
             v-else
             :columns="deliveryColumns"
-            :rows="deliveries"
+            :rows="deliveryRows"
             :loading="deliveriesLoading"
             empty-icon="📦"
             empty-title="Nenhum delivery ainda"
@@ -77,16 +89,16 @@
           >
             <template #cell-status="{ row }">
               <StatusBadge
-                :label="deliveryStatusLabel((row as WebhookDelivery).status)"
-                :variant="deliveryStatusVariant((row as WebhookDelivery).status)"
+                :label="deliveryStatusLabel(deliveryRow(row).status)"
+                :variant="deliveryStatusVariant(deliveryRow(row).status)"
               />
             </template>
             <template #cell-event="{ row }">
-              <code class="delivery-event">{{ (row as WebhookDelivery).event }}</code>
+              <code class="delivery-event">{{ deliveryRow(row).event }}</code>
             </template>
             <template #cell-responseStatus="{ row }">
-              <span v-if="(row as WebhookDelivery).responseStatus">
-                {{ (row as WebhookDelivery).responseStatus }}
+              <span v-if="deliveryRow(row).responseStatus">
+                {{ deliveryRow(row).responseStatus }}
               </span>
               <span v-else class="muted">—</span>
             </template>
@@ -111,7 +123,7 @@ import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -136,6 +148,49 @@ const summaryCards = computed(() => [
   { icon: '📦', label: 'Eventos', value: String(webhook.value?.events.length ?? 0) },
   { icon: '📨', label: 'Deliveries', value: String(deliveries.value.length) },
   { icon: '⚡', label: 'Status', value: webhook.value?.isActive ? 'Ativo' : 'Inativo' }
+]);
+const deliveryRows = computed(() => deliveries.value as unknown as DataTableRow[]);
+const deliveredCount = computed(() => deliveries.value.filter((item) => item.status === 'delivered').length);
+const failedCount = computed(() => deliveries.value.filter((item) => item.status === 'failed').length);
+const pendingCount = computed(() => deliveries.value.filter((item) => item.status === 'pending').length);
+const successRate = computed(() => {
+  if (!deliveries.value.length) return '0%';
+  return `${Math.round((deliveredCount.value / deliveries.value.length) * 100)}%`;
+});
+const retryBacklog = computed(() => deliveries.value.filter((item) => item.nextRetryAt).length);
+const lastDeliveryLabel = computed(() => {
+  if (!deliveries.value.length) return '—';
+  const latest = [...deliveries.value].sort(
+    (a, b) => new Date(b.lastAttemptAt).getTime() - new Date(a.lastAttemptAt).getTime()
+  )[0];
+  return formatDate(latest.lastAttemptAt);
+});
+const deliveryInsightCards = computed(() => [
+  {
+    label: 'Sucesso',
+    value: successRate.value,
+    hint: 'Percentual de deliveries entregues'
+  },
+  {
+    label: 'Falhas',
+    value: String(failedCount.value),
+    hint: 'Eventos com retorno não concluído'
+  },
+  {
+    label: 'Pendentes',
+    value: String(pendingCount.value),
+    hint: 'Eventos aguardando nova tentativa'
+  },
+  {
+    label: 'Retry backlog',
+    value: String(retryBacklog.value),
+    hint: 'Deliveries com nova tentativa programada'
+  },
+  {
+    label: 'Última tentativa',
+    value: lastDeliveryLabel.value,
+    hint: 'Recência da fila deste endpoint'
+  }
 ]);
 
 function deliveryStatusLabel(status: WebhookDelivery['status']): string {
@@ -179,6 +234,10 @@ onMounted(async () => {
     deliveriesLoading.value = false;
   }
 });
+
+function deliveryRow(row: unknown): WebhookDelivery {
+  return row as WebhookDelivery;
+}
 </script>
 
 <style scoped>
@@ -230,6 +289,10 @@ onMounted(async () => {
   gap: 16px;
 }
 
+.webhook-detail-page__intelligence {
+  margin-bottom: 16px;
+}
+
 .detail-row {
   display: flex;
   gap: 12px;
@@ -253,6 +316,43 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.insight-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.insight-card__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.insight-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .event-tag {

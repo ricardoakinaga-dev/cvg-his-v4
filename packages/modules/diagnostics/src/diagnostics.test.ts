@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
-import { DiagnosticsService } from './index.js';
+import {
+  DiagnosticsService,
+  InMemoryLaboratoryCatalogRepository,
+  LaboratoryService
+} from './index.js';
 
 function createService() {
   const encounter = {
@@ -161,4 +165,74 @@ test('DiagnosticsService createOrder links catalog entry', () => {
   assert.equal(order.examCatalogId, 'cat_001');
   const catalogEntry = service.getCatalogEntry('cat_001');
   assert.equal(catalogEntry?.name, 'Hemograma');
+});
+
+test('DiagnosticsService hydrateFromDatabase loads persisted orders by account', async () => {
+  const { encounter } = createService();
+  const service = new DiagnosticsService(
+    {
+      getOrThrow(encounterId: string) {
+        assert.equal(encounterId, encounter.id);
+        return encounter;
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {},
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [
+            {
+              id: 'diag_repo_1' as never,
+              accountId: 'acc_test' as never,
+              encounterId: encounter.id as never,
+              patientId: encounter.patientId as never,
+              examType: 'ultrasound',
+              reason: 'Persisted order',
+              status: 'requested',
+              createdAt: '2026-04-12T10:00:00.000Z',
+              updatedAt: '2026-04-12T10:00:00.000Z'
+            }
+          ];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+
+  await service.hydrateFromDatabase('acc_test' as never);
+
+  assert.equal(service.listByAccount('acc_test' as never).length, 1);
+  assert.equal(service.listByAccount('acc_test' as never)[0].id, 'diag_repo_1');
+});
+
+test('LaboratoryService serves backend-first catalog and dashboard summary', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: new InMemoryLaboratoryCatalogRepository()
+  });
+
+  diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    examCatalogId: 'cat_001',
+    reason: 'Check-up'
+  });
+
+  const [reportTypes, equipment, summary] = await Promise.all([
+    laboratory.listReportTypes('acc_test' as never),
+    laboratory.listEquipment('acc_test' as never),
+    laboratory.getDashboardSummary('acc_test' as never)
+  ]);
+
+  assert.ok(reportTypes.length >= 6);
+  assert.ok(equipment.length >= 4);
+  assert.equal(summary.totalOrders, 1);
+  assert.ok(summary.equipmentActive >= 1);
 });

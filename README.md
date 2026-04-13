@@ -45,7 +45,7 @@ Os servicos definidos hoje em [`docker-compose.v2.yml`](/root/.openclaw/workspac
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
 
-`cvg-his-v2-web` permanece apenas como servico legado no compose, fora do fluxo canonico.
+`cvg-his-v2-web` permanece apenas como servico legado congelado no compose, fora do fluxo canonico.
 
 Portas externas atuais:
 
@@ -169,24 +169,28 @@ Nao faca:
 - `npm install` em app isolado para publicar a stack
 - execucao de migrations por caminho diferente do padrao atual
 
-## Observacao importante sobre cutover e proxy
+## Cutover e proxy
 
-Os arquivos [`infra/scripts/cutover-v2.sh`](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/cutover-v2.sh) e [`infra/docker/Caddyfile.v2`](/root/.openclaw/workspace/cvg-his-v2/infra/docker/Caddyfile.v2) ainda carregam defaults historicos de portas `3000` e `3001` que nao batem com o `docker-compose.v2.yml` atual.
+Os artefatos vivos de cutover e proxy agora seguem a mesma topologia do compose atual:
 
-Portanto:
+- SPA em `127.0.0.1:3002`
+- API em `127.0.0.1:3003`
+- `apps/web` isolado em `profile legacy`
 
-- nao use esses defaults cegamente
-- se usar `cutover-v2.sh`, sobrescreva as URLs para os ports reais do compose atual
-- se usar `Caddyfile.v2`, alinhe os `reverse_proxy` para as portas externas corretas antes de publicar trafego
+Antes de publicar trafego, rode o guardrail documental e operacional:
 
-Exemplo seguro para o script:
+```bash
+pnpm deploy:check
+```
+
+Exemplo seguro para o cutover:
 
 ```bash
 API_HEALTH_URL=http://127.0.0.1:3003/health \
 API_READY_URL=http://127.0.0.1:3003/ready \
 API_METRICS_URL=http://127.0.0.1:3003/metrics \
 SPA_URL=http://127.0.0.1:3002/ \
-infra/scripts/cutover-v2.sh
+pnpm deploy:cutover:v2
 ```
 
 ## Desenvolvimento local
@@ -210,13 +214,23 @@ pnpm dev
 pnpm build
 pnpm typecheck
 pnpm test
+pnpm guardrail:legacy-web
+pnpm deploy:check
 ```
+
+Guardrails de corte do legado:
+
+- `pnpm guardrail:legacy-web` falha se houver mudanca funcional em `apps/web`
+- `pnpm deploy:check` valida se compose, proxy, env example e docs vivas continuam alinhados a `apps/spa` e ao runner canonico de migrations
+- `pnpm dev:legacy-web` existe apenas para suporte residual ou investigacao historica, nunca para novas features
 
 ## Documentacao operacional
 
 - [OPENCLAW_DEPLOY_DIRETRIZES.md](/root/.openclaw/workspace/cvg-his-v2/OPENCLAW_DEPLOY_DIRETRIZES.md)
 - [INSTALACAO_V2_OPENCLAW.md](/root/.openclaw/workspace/cvg-his-v2/INSTALACAO_V2_OPENCLAW.md)
+- [docs/132-superficie-canonica-deploy-e-migracao.md](/root/.openclaw/workspace/cvg-his-v2/docs/132-superficie-canonica-deploy-e-migracao.md)
 - [docker-compose.v2.yml](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml)
 - [.env.v2.example](/root/.openclaw/workspace/cvg-his-v2/.env.v2.example)
 - [infra/scripts/cutover-v2.sh](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/cutover-v2.sh)
+- [infra/scripts/check-cutover-readiness.mjs](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/check-cutover-readiness.mjs)
 - [infra/docker/Caddyfile.v2](/root/.openclaw/workspace/cvg-his-v2/infra/docker/Caddyfile.v2)

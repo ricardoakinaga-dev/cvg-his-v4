@@ -16,7 +16,8 @@ A trilha oficial de persistencia e migracao do CVG-HIS V2 e:
 - **Runner:** `tsx packages/db/src/migrate.ts`
 - **Config:** `packages/db/drizzle.config.ts`
 
-A migration atual e `0000_vengeful_pet_avengers.sql` — uma unica migration que contem o schema completo: 46 tabelas, 28 ENUM types, 126 foreign keys.
+A cadeia oficial vai de `0000_vengeful_pet_avengers.sql` ate `0012_audit_events_alignment.sql`.
+O runner `packages/db/src/migrate.ts` e a unica fonte de verdade para aplicar essa sequencia.
 
 ### Trilha legacy: SQL incremental (deprecada)
 
@@ -26,7 +27,7 @@ A trilha `packages/shared/database/src/migrations/001-016` e classificada como *
 
 ### Deploy de producao
 
-1. Aplicar migration Drizzle `0000_` em banco limpo
+1. Aplicar a cadeia Drizzle completa via `packages/db/src/migrate.ts`
 2. Executar seed Drizzle (`packages/db/src/seed.ts`)
 3. Subir stack oficial do V2 via `docker-compose.v2.yml`
 4. Validar health/readiness/liveness
@@ -84,3 +85,4 @@ Essa e a sequencia recomendada para evitar reaproveitamento acidental de imagem 
 - [x] proxy sabe para onde o trafego esta indo de fato
 - [x] validacoes pos-deploy usam as portas e endpoints corretos
 - [x] CI pipeline valida typecheck, build e testes com PostgreSQL
+- [x] `prepare-test-db.mjs` deve usar a mesma trilha canônica de migrations do deploy

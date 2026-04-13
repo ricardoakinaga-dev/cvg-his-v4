@@ -58,7 +58,9 @@ describe('NotificationsPage', () => {
     expect(wrapper.text()).toContain('Cobrança pendente');
     expect(wrapper.text()).toContain('1 jobs em fila');
 
-    await wrapper.find('button').trigger('click');
+    // Click the "Processar pendentes" button (2nd button)
+    const buttons = wrapper.findAll('button');
+    await buttons[1].trigger('click');
     await flushPromises();
 
     expect(mockProcessPending).toHaveBeenCalledWith(10);

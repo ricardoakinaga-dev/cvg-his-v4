@@ -15,6 +15,10 @@ import type {
   InpatientStaySummary,
   InventoryConsumptionSummary,
   InventoryItemSummary,
+  InventoryLotSummary,
+  LaboratoryEquipmentSummary,
+  LaboratoryReferenceValueSummary,
+  LaboratoryReportTypeSummary,
   AuditEventSummary,
   NotificationJobSummary,
   NotificationSummary,
@@ -25,6 +29,9 @@ import type {
   OwnerPatientLinkSummary,
   OwnerSummary,
   QueueEntrySummary,
+  SchedulingConflictSummary,
+  SchedulingOperationalBlockSummary,
+  SchedulingAppointmentOperationalSummary,
   SchedulingAppointmentSummary,
   SurgeryCaseSummary,
   PatientSummary,
@@ -191,12 +198,80 @@ export interface CreateAppointmentRequest {
   readonly patientId: string;
   readonly ownerId: string;
   readonly scheduledAt: string;
+  readonly durationMinutes?: number;
   readonly visitType: 'walk_in' | 'scheduled' | 'return';
   readonly reason: string;
+  readonly practitionerStaffId?: string;
+  readonly serviceId?: string;
+  readonly unit?: string;
+  readonly specialty?: string;
+  readonly resourceLabel?: string;
 }
 
 export interface AppointmentListResponse {
   readonly items: readonly SchedulingAppointmentSummary[];
+}
+
+export type SchedulingViewMode = 'day' | 'week' | 'month';
+
+export interface SchedulingProfessionalSummary {
+  readonly id: string;
+  readonly fullName: string;
+  readonly department: string;
+  readonly jobTitle: string;
+  readonly specialty?: string;
+  readonly unit?: string;
+  readonly status: 'active' | 'inactive';
+}
+
+export interface SchedulingFilterOptions {
+  readonly units: readonly string[];
+  readonly specialties: readonly string[];
+  readonly statuses: readonly SchedulingAppointmentSummary['status'][];
+}
+
+export interface SchedulingCockpitAppointmentSummary extends SchedulingAppointmentSummary {
+  readonly endsAt: string;
+  readonly practitionerName?: string;
+  readonly serviceName?: string;
+  readonly conflicts: readonly SchedulingConflictSummary[];
+  readonly operational: SchedulingAppointmentOperationalSummary;
+}
+
+export interface SchedulingOverviewResponse {
+  readonly viewMode: SchedulingViewMode;
+  readonly windowStart: string;
+  readonly windowEnd: string;
+  readonly stats: {
+    readonly total: number;
+    readonly scheduled: number;
+    readonly checkedIn: number;
+    readonly completed: number;
+    readonly cancelled: number;
+    readonly conflicts: number;
+    readonly unassigned: number;
+  };
+  readonly professionals: readonly SchedulingProfessionalSummary[];
+  readonly blocks: readonly SchedulingOperationalBlockSummary[];
+  readonly filterOptions: SchedulingFilterOptions;
+  readonly items: readonly SchedulingCockpitAppointmentSummary[];
+}
+
+export interface SchedulingAvailabilityResponse {
+  readonly available: boolean;
+  readonly requestedSlot: {
+    readonly startsAt: string;
+    readonly endsAt: string;
+    readonly durationMinutes: number;
+  };
+  readonly conflicts: readonly SchedulingConflictSummary[];
+  readonly blocks: readonly SchedulingOperationalBlockSummary[];
+  readonly suggestions: readonly {
+    readonly startsAt: string;
+    readonly endsAt: string;
+    readonly available: boolean;
+    readonly reason: string;
+  }[];
 }
 
 export interface CheckInQueueRequest {
@@ -209,6 +284,125 @@ export interface CheckInQueueRequest {
 
 export interface QueueListResponse {
   readonly items: readonly QueueEntrySummary[];
+}
+
+export type FiscalTaxRegime = 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
+
+export interface FiscalDashboardAlert {
+  readonly variant: 'info' | 'warning';
+  readonly title: string;
+  readonly message: string;
+}
+
+export interface FiscalDashboardSummary {
+  readonly activeTaxes: number;
+  readonly cfopCount: number;
+  readonly nfseLayouts: number;
+  readonly icmsRules: number;
+  readonly pisCofinsRules: number;
+  readonly ncmEntries: number;
+  readonly readOnly: boolean;
+  readonly backendScope: string;
+  readonly pendingScopes: readonly string[];
+  readonly alerts: readonly FiscalDashboardAlert[];
+}
+
+export interface FiscalIcmsRuleSummary {
+  readonly id: string;
+  readonly ufOrigin: string;
+  readonly ufDestination: string;
+  readonly ncm: string;
+  readonly rate: number;
+  readonly cst: string;
+  readonly operationType: 'interna' | 'interestadual';
+}
+
+export interface FiscalPisCofinsRuleSummary {
+  readonly id: string;
+  readonly regime: FiscalTaxRegime;
+  readonly appliesTo: 'mercadoria' | 'servico' | 'ambos';
+  readonly pisRate: number;
+  readonly cofinsRate: number;
+  readonly notes: string;
+}
+
+export interface FiscalCfopSummary {
+  readonly code: string;
+  readonly description: string;
+  readonly section: 'entrada' | 'saida';
+  readonly category: string;
+  readonly applicableTo: readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[];
+  readonly icmsRelevant: boolean;
+  readonly pisCofinsRelevant: boolean;
+  readonly ipiRelevant: boolean;
+  readonly documentTypesLabel: string;
+}
+
+export interface FiscalNcmEntrySummary {
+  readonly id: string;
+  readonly ncm: string;
+  readonly category: string;
+  readonly ipiRate: number;
+  readonly source: string;
+  readonly notes: string;
+}
+
+export interface FiscalIcmsMatrixRowSummary {
+  readonly id: string;
+  readonly ufOrigin: string;
+  readonly ufDestination: string;
+  readonly rate: number;
+  readonly operationType: 'interna' | 'interestadual';
+}
+
+export interface FiscalNfseLayoutSummary {
+  readonly id: string;
+  readonly city: string;
+  readonly state: string;
+  readonly municipalityCode: string;
+  readonly provider: string;
+  readonly version: string;
+  readonly active: boolean;
+  readonly environment: 'producao' | 'homologacao';
+  readonly serviceCode: string;
+  readonly serviceFocus: string;
+}
+
+export interface FiscalTaxPreview {
+  readonly mercadoria: {
+    readonly baseValue: number;
+    readonly totalTaxValue: number;
+    readonly totalWithTax: number;
+  };
+  readonly servico: {
+    readonly baseValue: number;
+    readonly totalTaxValue: number;
+    readonly totalWithTax: number;
+  };
+}
+
+export interface FiscalIcmsRuleListResponse {
+  readonly items: readonly FiscalIcmsRuleSummary[];
+}
+
+export interface FiscalPisCofinsRuleListResponse {
+  readonly items: readonly FiscalPisCofinsRuleSummary[];
+}
+
+export interface FiscalCfopListResponse {
+  readonly items: readonly FiscalCfopSummary[];
+}
+
+export interface FiscalNcmEntryListResponse {
+  readonly items: readonly FiscalNcmEntrySummary[];
+}
+
+export interface FiscalIcmsMatrixListResponse {
+  readonly items: readonly FiscalIcmsMatrixRowSummary[];
+}
+
+export interface FiscalNfseLayoutListResponse {
+  readonly items: readonly FiscalNfseLayoutSummary[];
 }
 
 export interface CreateEncounterRequest {
@@ -383,6 +577,18 @@ export interface DiagnosticOrderListResponse {
   readonly items: readonly DiagnosticOrderSummary[];
 }
 
+export interface LaboratoryEquipmentListResponse {
+  readonly items: readonly LaboratoryEquipmentSummary[];
+}
+
+export interface LaboratoryReportTypeListResponse {
+  readonly items: readonly LaboratoryReportTypeSummary[];
+}
+
+export interface LaboratoryReferenceValueListResponse {
+  readonly items: readonly LaboratoryReferenceValueSummary[];
+}
+
 export interface RecordDiagnosticResultRequest {
   readonly status: 'collected' | 'resulted' | 'cancelled';
   readonly resultSummary?: string;
@@ -460,6 +666,10 @@ export interface UpdateInventoryItemRequest {
 
 export interface InventoryConsumptionListResponse {
   readonly items: readonly InventoryConsumptionSummary[];
+}
+
+export interface InventoryLotListResponse {
+  readonly items: readonly InventoryLotSummary[];
 }
 
 export interface CreateNotificationRequest {

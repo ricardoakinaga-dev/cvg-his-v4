@@ -1,6 +1,6 @@
 <template>
   <div class="webhooks-list-page">
-    <AppPageHeader title="Webhooks" subtitle="Integrações via webhooks">
+    <AppPageHeader title="Webhooks" subtitle="Entrega de eventos, integrações e saúde operacional do ecossistema externo">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
         <DsButton tag="a" to="/webhooks/new" variant="primary">+ Novo Webhook</DsButton>
@@ -40,13 +40,46 @@
       </DsCard>
     </section>
 
+    <section class="webhooks-list-page__actions">
+      <DsCard title="Ações rápidas — integrações" variant="compact">
+        <div class="quick-actions">
+          <DsButton tag="a" to="/api-keys" variant="primary">Chaves de API</DsButton>
+          <DsButton tag="a" to="/api-client" variant="secondary">Cliente API</DsButton>
+          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="webhooks-list-page__intelligence">
+      <DsCard title="Cobertura e saúde do ecossistema">
+        <div class="insights-grid">
+          <div v-for="card in insightCards" :key="card.label" class="insight-card">
+            <span class="insight-card__label">{{ card.label }}</span>
+            <strong class="insight-card__value">{{ card.value }}</strong>
+            <span class="insight-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section v-if="webhookAlerts.length > 0" class="webhooks-list-page__watch">
+      <DsAlert
+        v-for="alert in webhookAlerts"
+        :key="alert.title"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> - {{ alert.message }}
+      </DsAlert>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
     <DataTable
       :columns="columns"
-      :rows="items"
+      :rows="webhookRows"
       :loading="loading"
       empty-icon="🔗"
       empty-title="Nenhum webhook encontrado"
@@ -57,31 +90,31 @@
         <DsButton tag="a" to="/webhooks/new" variant="primary">+ Novo Webhook</DsButton>
       </template>
       <template #cell-url="{ row }">
-        <code class="webhook-url">{{ (row as WebhookSummary).url }}</code>
+        <code class="webhook-url">{{ webhookRow(row).url }}</code>
       </template>
       <template #cell-events="{ row }">
         <div class="events-tags">
           <span
-            v-for="event in (row as WebhookSummary).events.slice(0, 3)"
+            v-for="event in webhookRow(row).events.slice(0, 3)"
             :key="event"
             class="event-tag"
             >{{ event }}</span
           >
-          <span v-if="(row as WebhookSummary).events.length > 3" class="event-tag event-tag--more">
-            +{{ (row as WebhookSummary).events.length - 3 }}
+          <span v-if="webhookRow(row).events.length > 3" class="event-tag event-tag--more">
+            +{{ webhookRow(row).events.length - 3 }}
           </span>
         </div>
       </template>
       <template #cell-isActive="{ row }">
         <StatusBadge
-          :label="(row as WebhookSummary).isActive ? 'Ativo' : 'Inativo'"
-          :variant="(row as WebhookSummary).isActive ? 'success' : 'danger'"
+          :label="webhookRow(row).isActive ? 'Ativo' : 'Inativo'"
+          :variant="webhookRow(row).isActive ? 'success' : 'danger'"
         />
       </template>
       <template #cell-actions="{ row }">
         <DsButton
           tag="a"
-          :to="`/webhooks/${(row as WebhookSummary).id}`"
+          :to="`/webhooks/${webhookRow(row).id}`"
           size="sm"
           variant="secondary"
         >
@@ -95,11 +128,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { webhookService } from '@/services/webhook';
-import type { WebhookSummary } from '@/types/webhook';
+import { AVAILABLE_EVENTS, type WebhookSummary } from '@/types/webhook';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -118,9 +151,69 @@ const columns: DataTableColumn[] = [
 
 const activeCount = computed(() => items.value.filter((webhook) => webhook.isActive).length);
 const inactiveCount = computed(() => items.value.filter((webhook) => !webhook.isActive).length);
+const webhookRows = computed(() => items.value as unknown as DataTableRow[]);
 const totalEventTypes = computed(
   () => new Set(items.value.flatMap((webhook) => webhook.events)).size
 );
+const missingEvents = computed(() => {
+  const covered = new Set(items.value.flatMap((webhook) => webhook.events));
+  return AVAILABLE_EVENTS.filter((event) => !covered.has(event));
+});
+const duplicatedTargets = computed(() => new Set(items.value.map((webhook) => webhook.url)).size !== items.value.length);
+const insightCards = computed(() => [
+  {
+    label: 'Cobertura do catálogo',
+    value: `${AVAILABLE_EVENTS.length - missingEvents.value.length}/${AVAILABLE_EVENTS.length}`,
+    hint: 'Eventos padrão já cobertos por ao menos um endpoint'
+  },
+  {
+    label: 'Eventos sem rota',
+    value: String(missingEvents.value.length),
+    hint: 'Eventos disponíveis ainda sem consumidor cadastrado'
+  },
+  {
+    label: 'Ativação',
+    value: items.value.length ? `${Math.round((activeCount.value / items.value.length) * 100)}%` : '0%',
+    hint: 'Percentual de webhooks ativos'
+  },
+  {
+    label: 'URLs únicas',
+    value: String(new Set(items.value.map((webhook) => webhook.url)).size),
+    hint: 'Destinos distintos no ecossistema'
+  }
+]);
+
+interface WebhookWatchAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const webhookAlerts = computed<WebhookWatchAlert[]>(() => {
+  const alerts: WebhookWatchAlert[] = [];
+  if (inactiveCount.value > 0) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Endpoints inativos',
+      message: `${inactiveCount.value} webhook(s) estão desativados e podem interromper integrações esperadas.`
+    });
+  }
+  if (missingEvents.value.length > 0) {
+    alerts.push({
+      variant: 'info',
+      title: 'Cobertura incompleta',
+      message: `${missingEvents.value.length} evento(s) do catálogo padrão ainda não possuem webhook cadastrado.`
+    });
+  }
+  if (duplicatedTargets.value) {
+    alerts.push({
+      variant: 'danger',
+      title: 'Destino duplicado',
+      message: 'Há URLs repetidas na malha de webhooks; valide se isso é redundância intencional ou sobreposição.'
+    });
+  }
+  return alerts;
+});
 
 const summaryCards = computed(() => [
   { icon: '🔗', label: 'Webhooks ativos', value: String(activeCount.value) },
@@ -142,6 +235,10 @@ async function load() {
 }
 
 onMounted(load);
+
+function webhookRow(row: unknown): WebhookSummary {
+  return row as WebhookSummary;
+}
 </script>
 
 <style scoped>
@@ -196,10 +293,56 @@ onMounted(load);
   margin-bottom: 4px;
 }
 
+.webhooks-list-page__actions {
+  margin-bottom: 4px;
+}
+
+.webhooks-list-page__intelligence,
+.webhooks-list-page__watch {
+  margin-bottom: 4px;
+}
+
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.insight-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.insight-card__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.insight-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .overview-metric {
@@ -220,6 +363,12 @@ onMounted(load);
   margin-top: 4px;
   font-size: 13px;
   color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .webhook-url {

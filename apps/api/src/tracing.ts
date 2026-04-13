@@ -8,6 +8,9 @@
  * Spec: https://www.w3.org/TR/trace-context/
  */
 
+import { ROOT_CONTEXT, SpanStatusCode, context as otelContext, trace as otelTrace, type Span as OtelSpan } from '@opentelemetry/api';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
 export interface TraceContext {
   traceId: string;
   spanId: string;
@@ -22,6 +25,7 @@ export interface Span {
   status: 'ok' | 'error';
   errorMessage?: string;
   attributes: Record<string, string | number>;
+  otelSpan?: OtelSpan;
 }
 
 /** Format: version-traceId-spanId-traceFlags (all hex, 2+16+16+2 = 36 chars + 3 dashes) */
@@ -62,19 +66,39 @@ export function injectTraceContext(headers: Record<string, string>, ctx: TraceCo
 }
 
 export function createSpan(name: string, parent?: TraceContext | null): Span {
-  const traceId = parent?.traceId ?? generateTraceId();
-  const spanId = generateSpanId();
+  const fallbackTraceId = parent?.traceId ?? generateTraceId();
+  const fallbackSpanId = generateSpanId();
+  const parentContext = parent
+    ? otelTrace.setSpanContext(ROOT_CONTEXT, {
+        traceId: parent.traceId,
+        spanId: parent.spanId,
+        traceFlags: parent.traceFlags,
+        isRemote: true
+      })
+    : ROOT_CONTEXT;
+  const otelSpan = otelTrace
+    .getTracer('cvg-his-v2.api.manual-tracing')
+    .startSpan(name, undefined, parentContext);
+  const otelSpanContext = otelSpan.spanContext();
+  const spanContext = otelTrace.isSpanContextValid(otelSpanContext)
+    ? {
+        traceId: otelSpanContext.traceId,
+        spanId: otelSpanContext.spanId,
+        traceFlags: otelSpanContext.traceFlags
+      }
+    : {
+        traceId: fallbackTraceId,
+        spanId: fallbackSpanId,
+        traceFlags: 0
+      };
 
   return {
-    context: {
-      traceId,
-      spanId,
-      traceFlags: 0
-    },
+    context: spanContext,
     startTime: process.hrtime.bigint(),
     name,
     status: 'ok',
-    attributes: {}
+    attributes: {},
+    otelSpan
   };
 }
 
@@ -82,6 +106,28 @@ export function endSpan(span: Span, status: 'ok' | 'error', errorMessage?: strin
   span.endTime = process.hrtime.bigint();
   span.status = status;
   if (errorMessage) span.errorMessage = errorMessage;
+
+  if (span.otelSpan) {
+    for (const [key, value] of Object.entries(span.attributes)) {
+      span.otelSpan.setAttribute(key, value);
+    }
+
+    span.otelSpan.setStatus(
+      status === 'error'
+        ? { code: SpanStatusCode.ERROR, message: errorMessage }
+        : { code: SpanStatusCode.OK }
+    );
+    span.otelSpan.end();
+  }
+}
+
+export async function withSpanContext<T>(span: Span, fn: () => Promise<T>): Promise<T> {
+  if (!span.otelSpan) {
+    return await fn();
+  }
+
+  const activeContext = otelTrace.setSpan(ROOT_CONTEXT, span.otelSpan);
+  return await otelContext.with(activeContext, fn);
 }
 
 export function getSpanDurationMs(span: Span): number {
@@ -101,20 +147,12 @@ export function spanToObject(span: Span): Record<string, unknown> {
   };
 }
 
-import type { IncomingMessage } from 'node:http';
-import type { ServerResponse } from 'node:http';
-
 /** HTTP middleware: attaches trace context to each request */
 export function tracingMiddleware(
-  request: IncomingMessage,
+  _request: IncomingMessage,
   _response: ServerResponse,
   next: () => void
 ): void {
-  const parent = extractTraceContext(request);
-  const span = createSpan(`HTTP ${request.method} ${request.url ?? '/'}`, parent ?? null);
-
-  (request as IncomingMessage & { span?: Span }).span = span;
-
   next();
 }
 

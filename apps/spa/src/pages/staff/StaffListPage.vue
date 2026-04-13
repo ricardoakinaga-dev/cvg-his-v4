@@ -1,6 +1,6 @@
 <template>
   <div class="list-page">
-    <AppPageHeader title="Equipe" subtitle="Membros da equipe cadastrados no sistema">
+    <AppPageHeader title="Equipe" subtitle="Profissionais, departamentos, cargos e capacidade operacional do quadro de RH">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
         <DsButton variant="primary" @click="router.push('/staff/new')">Novo Membro</DsButton>
@@ -46,13 +46,23 @@
       </DsCard>
     </section>
 
+    <section class="list-page__actions">
+      <DsCard title="Ações rápidas — RH" variant="compact">
+        <div class="quick-actions">
+          <DsButton tag="a" to="/users" variant="primary">Usuários</DsButton>
+          <DsButton tag="a" to="/access-control" variant="secondary">Governança de Acesso</DsButton>
+          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
     <DataTable
       :columns="columns"
-      :rows="staff"
+      :rows="staffRows"
       :loading="loading"
       empty-icon="👨‍⚕️"
       empty-title="Nenhum membro encontrado"
@@ -60,28 +70,28 @@
       variant="hoverable"
     >
       <template #cell-fullName="{ row }">
-        {{ (row as StaffSummary).fullName }}
+        {{ staffRow(row).fullName }}
       </template>
       <template #cell-employeeCode="{ row }">
-        {{ (row as StaffSummary).employeeCode }}
+        {{ staffRow(row).employeeCode }}
       </template>
       <template #cell-department="{ row }">
-        {{ (row as StaffSummary).department || '—' }}
+        {{ staffRow(row).department || '—' }}
       </template>
       <template #cell-jobTitle="{ row }">
-        {{ (row as StaffSummary).jobTitle || '—' }}
+        {{ staffRow(row).jobTitle || '—' }}
       </template>
       <template #cell-status="{ row }">
-        <span :class="['status-badge', (row as StaffSummary).status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
-          {{ (row as StaffSummary).status === 'active' ? 'Ativo' : 'Inativo' }}
+        <span :class="['status-badge', staffRow(row).status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
+          {{ staffRow(row).status === 'active' ? 'Ativo' : 'Inativo' }}
         </span>
       </template>
       <template #cell-actions="{ row }">
         <div class="row-actions">
-          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${(row as StaffSummary).id}`)">
+          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}`)">
             Ver
           </DsButton>
-          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${(row as StaffSummary).id}/edit`)">
+          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}/edit`)">
             Editar
           </DsButton>
         </div>
@@ -100,10 +110,10 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { staffService } from '@/services/staff';
 import type { StaffSummary } from '@cvg-his-v2/shared-types';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
 const router = useRouter();
-const staff = ref<any[]>([]);
+const staff = ref<StaffSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
 
@@ -117,6 +127,7 @@ const columns: DataTableColumn[] = [
 ];
 
 const activeStaff = computed(() => staff.value.filter((member) => member.status === 'active').length);
+const staffRows = computed(() => staff.value as unknown as DataTableRow[]);
 const departmentsCount = computed(
   () => new Set(staff.value.map((member) => member.department).filter(Boolean)).size
 );
@@ -162,6 +173,10 @@ async function loadData() {
 }
 
 onMounted(loadData);
+
+function staffRow(row: unknown): StaffSummary {
+  return row as StaffSummary;
+}
 </script>
 
 <style scoped>
@@ -176,6 +191,10 @@ onMounted(loadData);
 }
 
 .list-page__story {
+  margin-bottom: 4px;
+}
+
+.list-page__actions {
   margin-bottom: 4px;
 }
 
@@ -240,6 +259,12 @@ onMounted(loadData);
   margin-top: 4px;
   font-size: 12px;
   color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .row-actions {

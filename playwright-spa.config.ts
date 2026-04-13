@@ -2,6 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 const E2E_API_URL = 'http://127.0.0.1:3111';
 const E2E_SPA_URL = 'http://127.0.0.1:3112';
+const E2E_DATABASE_URL =
+  process.env.E2E_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  'postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test';
+const E2E_REDIS_URL =
+  process.env.E2E_REDIS_URL || process.env.REDIS_URL || 'redis://127.0.0.1:6381';
 
 process.env.API_URL = process.env.API_URL || E2E_API_URL;
 process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
@@ -61,7 +67,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'env -u DATABASE_URL -u DATABASE_URL_TEST DATABASE_URL="postgres://postgres:postgres@localhost:5433/cvg_his_v2_test" DATABASE_URL_TEST="postgres://postgres:postgres@localhost:5433/cvg_his_v2_test" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js',
+        `env -u DATABASE_URL -u DATABASE_URL_TEST API_DISABLE_INCOMPATIBLE_DB_REPOS=1 NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
       url: `${process.env.API_URL || E2E_API_URL}/health`,
       reuseExistingServer: true,
       timeout: 90_000,

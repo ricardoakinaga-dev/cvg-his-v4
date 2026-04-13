@@ -184,6 +184,11 @@ export const appointments = pgTable('appointments', {
   duration: integer('duration'),
   visitType: varchar('visit_type', { length: 50 }).notNull(),
   reason: varchar('reason', { length: 500 }),
+  practitionerStaffId: varchar('practitioner_staff_id', { length: 255 }),
+  serviceId: varchar('service_id', { length: 255 }),
+  unit: varchar('unit', { length: 120 }),
+  specialty: varchar('specialty', { length: 120 }),
+  resourceLabel: varchar('resource_label', { length: 120 }),
   status: varchar('status', { length: 50 }).notNull(),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
@@ -336,6 +341,42 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
   resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const laboratoryEquipment = pgTable('laboratory_equipment', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: varchar('type', { length: 100 }).notNull(),
+  serialNumber: varchar('serial_number', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  lastCalibrationAt: timestamp('last_calibration_at').notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const laboratoryReportTypes = pgTable('laboratory_report_types', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  category: varchar('category', { length: 100 }).notNull(),
+  description: varchar('description', { length: 1000 }).notNull(),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+export const laboratoryReferenceValues = pgTable('laboratory_reference_values', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  parameter: varchar('parameter', { length: 255 }).notNull(),
+  examType: varchar('exam_type', { length: 50 }).notNull(),
+  minValue: numeric('min_value', { precision: 12, scale: 3 }).notNull(),
+  maxValue: numeric('max_value', { precision: 12, scale: 3 }).notNull(),
+  unit: varchar('unit', { length: 100 }).notNull(),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

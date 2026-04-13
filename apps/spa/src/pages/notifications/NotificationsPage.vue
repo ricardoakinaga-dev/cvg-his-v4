@@ -1,6 +1,6 @@
 <template>
   <div class="notifications-page">
-  <AppPageHeader title="Notificações" subtitle="Painel operacional de filas e jobs internos">
+  <AppPageHeader title="Notificações e Campanhas" subtitle="Centro de relacionamento, campanhas e filas de comunicação do Marketing">
       <template #actions>
         <DsButton variant="secondary" :loading="notificationLoading || jobLoading" @click="reload">
           Atualizar
@@ -12,26 +12,59 @@
     </AppPageHeader>
 
     <section class="notifications-overview">
-      <DsCard title="Resumo operacional">
+      <DsCard title="Resumo operacional — Marketing e Relacionamento">
         <div class="overview-grid">
           <div class="overview-metric">
             <span class="overview-metric__value">{{ notificationItems.length }}</span>
-            <span class="overview-metric__label">Notificações visíveis</span>
+            <span class="overview-metric__label">Notificações totais</span>
           </div>
           <div class="overview-metric">
             <span class="overview-metric__value">{{ queuedCount }}</span>
-            <span class="overview-metric__label">Pendentes</span>
+            <span class="overview-metric__label">Campanhas pendentes</span>
           </div>
           <div class="overview-metric">
             <span class="overview-metric__value">{{ processedJobsCount }}</span>
-            <span class="overview-metric__label">Jobs processados</span>
+            <span class="overview-metric__label">Enviadas com sucesso</span>
           </div>
           <div class="overview-metric">
             <span class="overview-metric__value">{{ failedJobsCount }}</span>
-            <span class="overview-metric__label">Jobs falhos</span>
+            <span class="overview-metric__label">Falhas de envio</span>
           </div>
         </div>
       </DsCard>
+    </section>
+
+    <section class="notifications-story">
+      <DsCard title="Ações rápidas — Marketing" variant="compact">
+        <div class="quick-actions">
+          <DsButton variant="primary" tag="a" to="/notifications/whatsapp">WhatsApp</DsButton>
+          <DsButton variant="secondary" tag="a" to="/commercial-reports">Relatórios</DsButton>
+          <DsButton variant="secondary" tag="a" to="/master-search">Busca Mestre</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="notifications-intelligence">
+      <DsCard title="Leitura de campanhas e fila">
+        <div class="insights-grid">
+          <div v-for="card in insightCards" :key="card.label" class="insight-card">
+            <span class="insight-card__label">{{ card.label }}</span>
+            <strong class="insight-card__value">{{ card.value }}</strong>
+            <span class="insight-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section v-if="watchAlerts.length > 0" class="notifications-watch">
+      <DsAlert
+        v-for="alert in watchAlerts"
+        :key="alert.title"
+        :variant="alert.variant"
+        dismissible
+      >
+        <strong>{{ alert.title }}</strong> - {{ alert.message }}
+      </DsAlert>
     </section>
 
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
@@ -193,6 +226,99 @@ const processedJobsCount = computed(
   () => jobItems.value.filter((job) => job.status === 'processed').length
 );
 const failedJobsCount = computed(() => jobItems.value.filter((job) => job.status === 'failed').length);
+const averageAttempts = computed(() => {
+  if (!jobItems.value.length) return '0,0';
+  const totalAttempts = jobItems.value.reduce((sum, job) => sum + job.attempts, 0);
+  return (totalAttempts / jobItems.value.length).toFixed(1).replace('.', ',');
+});
+const processingRate = computed(() => {
+  if (!jobItems.value.length) return '0%';
+  return `${Math.round((processedJobsCount.value / jobItems.value.length) * 100)}%`;
+});
+const latestActivityLabel = computed(() => {
+  const timestamps = [
+    ...notificationItems.value.map((item) => item.sentAt ?? item.createdAt),
+    ...jobItems.value.map((job) => job.processedAt ?? job.scheduledAt)
+  ].filter(Boolean);
+  if (!timestamps.length) return '—';
+  const latest = [...timestamps].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+  return formatDate(latest);
+});
+const categoryBreakdown = computed(() => ({
+  billing: notificationItems.value.filter((item) => item.category === 'billing').length,
+  inventory: notificationItems.value.filter((item) => item.category === 'inventory').length,
+  operations: notificationItems.value.filter((item) => item.category === 'operations').length,
+  system: notificationItems.value.filter((item) => item.category === 'system').length
+}));
+const severityBreakdown = computed(() => ({
+  high: notificationItems.value.filter((item) => item.severity === 'high').length,
+  medium: notificationItems.value.filter((item) => item.severity === 'medium').length,
+  low: notificationItems.value.filter((item) => item.severity === 'low').length
+}));
+const insightCards = computed(() => [
+  {
+    label: 'Eficiência da fila',
+    value: processingRate.value,
+    hint: 'Percentual de jobs já processados'
+  },
+  {
+    label: 'Tentativas médias',
+    value: averageAttempts.value,
+    hint: 'Média de tentativas por job'
+  },
+  {
+    label: 'Categoria líder',
+    value: leadingCategoryLabel(),
+    hint: 'Família com maior volume visível'
+  },
+  {
+    label: 'Última atividade',
+    value: latestActivityLabel.value,
+    hint: 'Último envio ou processamento identificado'
+  },
+  {
+    label: 'Alta severidade',
+    value: String(severityBreakdown.value.high),
+    hint: 'Itens que exigem conferência prioritária'
+  },
+  {
+    label: 'Operações',
+    value: String(categoryBreakdown.value.operations),
+    hint: 'Itens ligados à operação assistencial'
+  }
+]);
+
+interface NotificationsWatchAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
+const watchAlerts = computed<NotificationsWatchAlert[]>(() => {
+  const alerts: NotificationsWatchAlert[] = [];
+  if (failedJobsCount.value > 0) {
+    alerts.push({
+      variant: 'danger',
+      title: 'Falhas no pipeline',
+      message: `${failedJobsCount.value} job(s) falharam e precisam de revisão do canal ou da regra de disparo.`
+    });
+  }
+  if (queuedJobs.value.length > processedJobsCount.value && queuedJobs.value.length > 0) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Fila pressionada',
+      message: `${queuedJobs.value.length} job(s) seguem pendentes, acima do volume já processado nesta visão.`
+    });
+  }
+  if (categoryBreakdown.value.system > 0 && severityBreakdown.value.high > 0) {
+    alerts.push({
+      variant: 'info',
+      title: 'Notificações críticas de sistema',
+      message: 'Há sinais combinados de severidade alta e categoria sistêmica, úteis para cruzar com auditoria.'
+    });
+  }
+  return alerts;
+});
 
 watch(currentStatus, () => {
   void loadNotifications();
@@ -271,6 +397,19 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+function leadingCategoryLabel(): string {
+  const entries = Object.entries(categoryBreakdown.value) as Array<[keyof typeof categoryBreakdown.value, number]>;
+  const [winner, count] = entries.sort((a, b) => b[1] - a[1])[0] ?? ['operations', 0];
+  if (count === 0) return 'Sem volume';
+  const labels: Record<keyof typeof categoryBreakdown.value, string> = {
+    billing: 'Billing',
+    inventory: 'Estoque',
+    operations: 'Operações',
+    system: 'Sistema'
+  };
+  return labels[winner];
+}
+
 </script>
 
 <style scoped>
@@ -281,6 +420,15 @@ function formatDate(value: string | null): string {
 }
 
 .notifications-overview {
+  margin-bottom: 4px;
+}
+
+.notifications-story {
+  margin-bottom: 4px;
+}
+
+.notifications-intelligence,
+.notifications-watch {
   margin-bottom: 4px;
 }
 
@@ -307,6 +455,48 @@ function formatDate(value: string | null): string {
   display: block;
   margin-top: 4px;
   font-size: 13px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.insight-card__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.insight-card__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.insight-card__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
 

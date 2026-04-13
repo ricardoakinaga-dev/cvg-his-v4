@@ -78,7 +78,7 @@ export const test = base.extend<CVGHTestFixture>({
 
   apiContext: async ({ playwright, testUser }, use) => {
     const context = await playwright.request.newContext({
-      baseURL: process.env.API_URL || 'http://localhost:3000',
+      baseURL: process.env.API_URL || 'http://localhost:3001',
       extraHTTPHeaders: testUser.token
         ? {
             Authorization: `Bearer ${testUser.token}`

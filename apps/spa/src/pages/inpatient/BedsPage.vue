@@ -1,8 +1,10 @@
 <template>
   <div class="beds-page">
-    <AppPageHeader title="Leitos" subtitle="Gestão de leitos hospitalares por setor">
+    <AppPageHeader title="Leitos" subtitle="Atendimento > Internação > Leitos. Gestão de disponibilidade assistencial por setor.">
       <template #actions>
         <DsBadge variant="info" size="md">{{ beds.length }} leitos</DsBadge>
+        <DsButton variant="ghost" tag="a" href="/sectors">Setores</DsButton>
+        <DsButton variant="secondary" tag="a" href="/inpatient/board">Mapa de Leitos</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
     </AppPageHeader>
@@ -52,7 +54,7 @@
           :loading="loading"
           empty-icon="🛏️"
           empty-title="Nenhum leito cadastrado"
-          empty-description="Cadastre setores e leitos para liberar o mapa de ocupação."
+          empty-description="Cadastre setores e leitos para liberar o mapa de ocupação e preparar admissões na internação."
           variant="hoverable"
         >
           <template #cell-status="{ row }">

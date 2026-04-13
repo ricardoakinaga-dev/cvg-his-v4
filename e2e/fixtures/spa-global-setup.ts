@@ -12,8 +12,22 @@ import { chromium, type FullConfig } from '@playwright/test';
  * the token directly into localStorage before navigating.
  */
 
-const API_URL = process.env.API_URL || 'http://127.0.0.1:3101';
-const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';
+const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
+
+function resolveE2EAdminUsername(): string {
+  const explicitUsername = process.env.E2E_ADMIN_USERNAME?.trim();
+  if (explicitUsername) {
+    return explicitUsername;
+  }
+
+  const email = process.env.E2E_ADMIN_EMAIL?.trim();
+  if (email?.includes('@')) {
+    return email.split('@')[0];
+  }
+
+  return 'admin';
+}
 
 async function globalSetup(config: FullConfig) {
   console.log('\n🔧 SPA E2E Global Setup');
@@ -50,11 +64,12 @@ async function globalSetup(config: FullConfig) {
   let accountId: string | null = null;
 
   try {
+    const username = resolveE2EAdminUsername();
     const loginRes = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: process.env.E2E_ADMIN_USERNAME || 'admin',
+        username,
         password: process.env.E2E_ADMIN_PASSWORD || 'seed_admin'
       })
     });
@@ -66,25 +81,10 @@ async function globalSetup(config: FullConfig) {
       accountId = data.actor?.accountId || data.user?.accountId;
       console.log('   ✅ Authenticated via API login');
     } else {
-      console.log(`   ⚠️  API login failed (${loginRes.status}), trying dev login...`);
-      const devRes = await fetch(`${API_URL}/auth/dev-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accountId: '00000000-0000-0000-0000-000000000001',
-          role: 'admin'
-        })
-      });
-      if (devRes.ok) {
-        const data = await devRes.json();
-        token = data.accessToken;
-        userId = data.user?.id || 'dev-user';
-        accountId = '00000000-0000-0000-0000-000000000001';
-        console.log('   ✅ Authenticated via dev login');
-      }
+      throw new Error(`API login failed (${loginRes.status}): ${await loginRes.text()}`);
     }
   } catch (err) {
-    console.log('   ⚠️  Auth error:', err);
+    throw new Error(`SPA global auth setup failed: ${String(err)}`);
   }
 
   if (token) {
@@ -93,7 +93,7 @@ async function globalSetup(config: FullConfig) {
     process.env.E2E_ACCOUNT_ID = accountId || '';
     console.log(`   ℹ️  Token obtained (length: ${token.length})`);
   } else {
-    console.log('   ⚠️  No token obtained — tests requiring auth may fail');
+    throw new Error('SPA global auth setup failed: no token obtained');
   }
 
   // 3. Check SPA health

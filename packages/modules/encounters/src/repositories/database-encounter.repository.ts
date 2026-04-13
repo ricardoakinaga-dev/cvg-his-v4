@@ -1,4 +1,4 @@
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, desc } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { encounters, encounterTimeline } from '@cvg-his-v2/shared-database';
 import type {
@@ -164,7 +164,8 @@ export class DatabaseEncounterTimelineRepository implements EncounterTimelineRep
     const result = await this.#db
       .select()
       .from(encounterTimeline)
-      .where(eq(encounterTimeline.encounterId, encounterId));
+      .where(eq(encounterTimeline.encounterId, encounterId))
+      .orderBy(desc(encounterTimeline.occurredAt));
 
     return result.map((row) => ({
       id: row.id as EncounterTimelineEventId,

@@ -82,6 +82,25 @@ test('runtime exposes API keys and event bus persistence for integrations', asyn
   assert.equal(fetched?.eventType, 'payment.pix.intent.created');
 });
 
+test('runtime does not preload demo seeds when repository-backed services are configured', () => {
+  const runtime = createTestRuntime({
+    owner: {} as never,
+    patient: {} as never,
+    ownerPatientLink: {} as never,
+    scheduling: {} as never,
+    inventory: {} as never,
+    users: {} as never,
+    staff: {} as never
+  });
+
+  assert.equal(runtime.owners.list().length, 0);
+  assert.equal(runtime.patients.list().length, 0);
+  assert.equal(runtime.scheduling.listAppointments().length, 0);
+  assert.equal(runtime.inventory.listItems().length, 0);
+  assert.equal(runtime.users.list().length, 0);
+  assert.equal(runtime.staff.list().length, 0);
+});
+
 test('backend enforcement denies audit access to a role without permission', async () => {
   const runtime = createTestRuntime();
   const login = await runtime.auth.login(
@@ -866,6 +885,59 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
   // 1. Repositories are the persistence boundary (not service internal Maps)
   // 2. Data survives runtime re-instantiation
   // 3. Multiple runtime instances can share the same repository
+});
+
+test('runtime initialize rehydrates session cache and encounter timeline from shared repositories', async () => {
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repositories = bootstrap.repositories;
+
+  const runtimeA = createTestRuntime(repositories);
+  const login = await runtimeA.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_runtime_hydration'
+  ) as AuthSessionResponse;
+  const principal = runtimeA.auth.authenticateAccessToken(login.accessToken);
+  const owner = runtimeA.owners.create(principal.user.accountId, {
+    fullName: 'Owner Runtime Hydration',
+    contacts: [
+      {
+        label: 'Celular',
+        value: '+55 11 99999-0000',
+        type: 'whatsapp',
+        primary: true
+      }
+    ],
+    financialResponsible: true
+  });
+  const patient = runtimeA.patients.create(principal.user.accountId, {
+    name: 'Paciente Hydration',
+    species: 'canine',
+    breed: 'SRD',
+    sex: 'female',
+    size: 'medium',
+    primaryOwnerId: owner.id
+  });
+  const encounter = runtimeA.encounters.openEncounter(
+    principal.user.accountId,
+    principal.user.id,
+    {
+      patientId: patient.id,
+      ownerId: owner.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Hydration runtime restart'
+    }
+  );
+
+  const runtimeB = createTestRuntime(repositories);
+  await runtimeB.initialize();
+
+  const rehydratedPrincipal = runtimeB.auth.authenticateAccessToken(login.accessToken);
+  const timeline = await runtimeB.encounters.listTimelineAsync(encounter.id);
+
+  assert.equal(rehydratedPrincipal.user.id, principal.user.id);
+  assert.ok(timeline.length > 0);
+  assert.equal(timeline.some((event) => event.eventType === 'encounter_opened'), true);
 });
 
 test('AUD-005-01: medical records, entries and timeline persist across runtime re-instantiation', async () => {

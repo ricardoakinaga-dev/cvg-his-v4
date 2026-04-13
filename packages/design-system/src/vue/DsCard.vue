@@ -1,5 +1,14 @@
 <template>
-  <component :is="tag" :class="classes" :aria-label="ariaLabel">
+  <component
+    :is="resolvedTag"
+    :class="classes"
+    :href="resolvedTag === 'a' ? href : undefined"
+    :aria-label="ariaLabel"
+    :tabindex="interactive ? 0 : undefined"
+    @click="interactive ? $emit('click') : undefined"
+    @keydown.enter="interactive ? $emit('click') : undefined"
+    @keydown.space.prevent="interactive ? $emit('click') : undefined"
+  >
     <div v-if="$slots.header || title" class="ds-card__header">
       <slot name="header">
         <h3 v-if="title" class="ds-card__title">{{ title }}</h3>
@@ -23,6 +32,7 @@ export interface DsCardProps {
   tag?: 'div' | 'article' | 'section' | 'a';
   title?: string;
   ariaLabel?: string;
+  href?: string;
 }
 
 const props = withDefaults(defineProps<DsCardProps>(), {
@@ -30,7 +40,17 @@ const props = withDefaults(defineProps<DsCardProps>(), {
   interactive: false,
   tag: 'div',
   title: undefined,
-  ariaLabel: undefined
+  ariaLabel: undefined,
+  href: undefined
+});
+
+defineEmits<{
+  click: [];
+}>();
+
+const resolvedTag = computed(() => {
+  if (props.interactive && props.tag === 'div') return 'button';
+  return props.tag;
 });
 
 const classes = computed(() => [
@@ -71,6 +91,12 @@ const classes = computed(() => [
 .ds-card--interactive:hover {
   box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
   border-color: var(--color-primary-300, #93c5fd);
+}
+
+.ds-card--interactive:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.4));
+  border-color: var(--color-primary-400, #60a5fa);
 }
 
 .ds-card__header {

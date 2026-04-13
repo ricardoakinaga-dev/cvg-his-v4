@@ -16,7 +16,39 @@
  */
 
 import { apiRequest } from './api';
+import type {
+  SchedulingOverviewResponse
+} from '@/types/appointment';
 import type { QueueEntrySummary, QueueListResponse, CheckInQueueRequest } from '@/types/scheduling';
+
+export interface SchedulingOverviewParams {
+  viewMode?: 'day' | 'week' | 'month';
+  referenceDate?: string;
+  statuses?: string[];
+  practitionerStaffId?: string;
+  serviceId?: string;
+  specialty?: string;
+  unit?: string;
+  search?: string;
+}
+
+export async function getSchedulingOverview(
+  params: SchedulingOverviewParams = {}
+): Promise<SchedulingOverviewResponse> {
+  const search = new URLSearchParams();
+
+  if (params.viewMode) search.set('viewMode', params.viewMode);
+  if (params.referenceDate) search.set('referenceDate', params.referenceDate);
+  if (params.statuses?.length) search.set('statuses', params.statuses.join(','));
+  if (params.practitionerStaffId) search.set('practitionerStaffId', params.practitionerStaffId);
+  if (params.serviceId) search.set('serviceId', params.serviceId);
+  if (params.specialty) search.set('specialty', params.specialty);
+  if (params.unit) search.set('unit', params.unit);
+  if (params.search) search.set('search', params.search);
+
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest<SchedulingOverviewResponse>(`/scheduling/overview${suffix}`);
+}
 
 /**
  * Lista todas as entradas da fila operacional da conta atual.

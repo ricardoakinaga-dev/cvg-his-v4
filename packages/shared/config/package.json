@@ -12,7 +12,8 @@
     }
   },
   "dependencies": {
-    "@cvg-his-v2/shared-validation": "workspace:*"
+    "@cvg-his-v2/shared-validation": "workspace:*",
+    "zod": "^3.23.8"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

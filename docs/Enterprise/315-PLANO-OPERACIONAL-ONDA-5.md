@@ -39,6 +39,9 @@ Mês 17: Chaos Engineering + Performance
 ├── Performance audit + optimizations
 ├── Query optimization (EXPLAIN ANALYZE)
 ├── CDN + PgBouncer configuration
+├── OpenTelemetry + OTLP exporter
+├── Zod config validation fail-fast
+├── CORS/security hardening baseline
 └── Load testing (10K users)
 
 Mês 18: Documentation + SOC2 + Quality Gates
@@ -47,7 +50,14 @@ Mês 18: Documentation + SOC2 + Quality Gates
 ├── Runbooks por domínio
 ├── Developer + User guides
 ├── SOC2 gap analysis
-├── Quality gates finais
+├── Coverage gate progressivo 15→40→60→80
+├── Backup + restore automatizado
+├── Redis rate limiter
+├── Unleash feature flags
+├── Helm charts base para k8s
+├── Vault / secrets manager plan
+├── ADR Fastify
+├── Event-driven architecture roadmap
 └── Disaster recovery test
 ```
 
@@ -71,13 +81,32 @@ Mês 18: Documentation + SOC2 + Quality Gates
 - [ ] Read replicas configuradas
 - [ ] Métricas: LCP < 1.5s, API P95 < 200ms
 
+### 4.2B Platform Hardening (Mês 17-18)
+- [x] Config central validada com schema Zod
+- [x] Bootstrap falha ao detectar variáveis inválidas/ausentes
+- [x] CORS com allowlist por ambiente
+- [x] Secret scanning no CI
+- [x] Plano de rotação de segredos documentado
+- [x] OpenTelemetry exportando traces reais via OTLP
+- [x] Logs e traces correlacionáveis por request/correlation id
+
+### 4.2C Runtime Enterprise (Mês 18)
+- [x] Backup automatizado com retenção definida
+- [x] Restore test executado com evidência
+- [ ] Rate limiter migrado para Redis
+- [ ] Feature flags com Unleash
+- [ ] Helm charts mínimos de API, worker e SPA
+- [ ] ADR de adoção ou rejeição de Fastify
+- [ ] Plano progressivo de Vault/secrets manager
+- [ ] Roadmap event-driven com contratos e DLQ governados
+
 ### 4.3 Documentation Premium (Mês 17-18)
 - [ ] OpenAPI 3.1 spec 100% documentada
 - [ ] ADRs para decisões-chave
 - [ ] Runbooks por domínio
 - [ ] Developer guide completo
 - [ ] User guide por persona
-- [ ] Deployment guide
+- [x] Deployment guide
 
 ### 4.4 SOC2 Path (Mês 18)
 - [ ] Gap analysis SOC2 Type I
@@ -87,7 +116,7 @@ Mês 18: Documentation + SOC2 + Quality Gates
 - [ ] Timeline: SOC2 Type I (M24), Type II (M30)
 
 ### 4.5 Quality Gates Finais (Mês 18)
-- [ ] Coverage > 80%
+- [ ] Coverage progression: 15% → 40% → 60% → 80%
 - [ ] Zero critical/high vulnerabilities
 - [ ] WCAG 2.1 AA validation
 - [ ] LGPD compliance audit
@@ -121,12 +150,15 @@ Mês 18: Documentation + SOC2 + Quality Gates
 
 | Gate | Critério | Status |
 |------|----------|--------|
-| Coverage | > 80% | Current: ~35% |
+| Coverage | 15% imediato, 40% intermediário, 80% target | Current executável em 2026-04-12: 4.44% lines/statements |
 | Vulnerabilities | 0 Critical/High | Current: needs scan |
 | Performance | LCP < 1.5s, API P95 < 200ms | Current: unknown |
 | Accessibility | WCAG 2.1 AA | Current: not tested |
 | LGPD | Compliance audit passed | Current: partial |
-| DR | RTO < 4h, RPO < 1h | Current: not tested |
+| DR | RTO < 4h, RPO < 1h | Current: restore drill local executado em 2026-04-12 com `pnpm ops:restore:drill:v2`; restore de DB + storage validado em runtime descartável |
+| Config | Fail-fast + schema strict | Current: baseline entregue em 2026-04-12 |
+| Observability | OTel + OTLP + correlation | Current: OTel + OTLP + spans HTTP/DB/worker entregues; logs estruturados correlacionados por `requestId`/`correlationId` e `traceId` |
+| Secrets | Vault/manager + scan + rotation | Current: scan + politica de rotacao entregues; manager dedicado pendente |
 
 ---
 

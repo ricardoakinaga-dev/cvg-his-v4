@@ -1,7 +1,10 @@
 <template>
   <div class="bed-board-page">
-    <AppPageHeader title="🗺️ Mapa de Leitos" subtitle="Visão geral de ocupação por setor">
+    <AppPageHeader title="🗺️ Mapa de Leitos" subtitle="Atendimento > Internação > Mapa de Leitos. Visão geral da ocupação por setor e disponibilidade assistencial.">
       <template #actions>
+        <DsButton variant="secondary" tag="a" href="/inpatient">🛏️ Internações</DsButton>
+        <DsButton variant="ghost" tag="a" href="/sectors">🏢 Setores</DsButton>
+        <DsButton variant="ghost" tag="a" href="/beds">Leitos</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="loadBoard">Atualizar</DsButton>
       </template>
     </AppPageHeader>
@@ -28,7 +31,7 @@
       v-else-if="board.items.length === 0"
       icon="🗺️"
       title="Nenhum setor configurado"
-      description="Configure setores e leitos para visualizar o mapa de ocupação."
+      description="Configure setores e leitos para visualizar a ocupação e preparar admissões na internação."
     />
 
     <div v-else class="board">

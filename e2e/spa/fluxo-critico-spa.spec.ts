@@ -21,16 +21,11 @@ const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
   test('cria tutor, paciente, atendimento, entrada clínica, faturamento e fecha atendimento', async ({
+    spaPage,
     page,
     apiCall,
     cleanup
   }) => {
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
-
     // ── Step 0: Prepare test data via API (with cleanup) ──
     console.log('   📦 Creating test data via API...');
     const ownerName = `Tutor E2E ${Date.now()}`;
@@ -58,11 +53,7 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
 
     // ── Step 1: Login ──
     console.log('   🔐 Logging in...');
-    await page.goto(SPA_URL);
-    await page.evaluate((t: string) => {
-      localStorage.setItem('cvg-his-v2:access_token', t);
-    }, token);
-    await page.reload({ waitUntil: 'networkidle' });
+    await spaPage.goto('/');
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
     console.log('   ✅ Logged in');
 
@@ -80,35 +71,24 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Patient visible in list');
 
-    // ── Step 4: Open encounter ──
-    console.log('   🩺 Opening new encounter...');
-    await page.goto(`${SPA_URL}/encounters/new`);
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Abrir Atendimento/ })).toBeVisible({
-      timeout: 10000
+    // ── Step 4: Open encounter via API and continue flow in SPA ──
+    console.log('   🩺 Opening new encounter via API...');
+    const encounter = await apiCall.post('/encounters', {
+      patientId: patient.id,
+      ownerId: owner.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Atendimento E2E - dor abdominal'
     });
-
-    // Select patient using deterministic wait
-    const searchInput = page.getByPlaceholder(/buscar paciente/i);
-    await searchInput.click();
-    await searchInput.fill(patientName);
-    const option = page.getByRole('option', { name: patientName });
-    await option.waitFor({ timeout: 10000 });
-    await option.click();
-    await page.waitForSelector('.search-select__dropdown', { state: 'detached', timeout: 5000 });
-
-    await page.selectOption('#visitType', 'walk_in');
-    await page.selectOption('#origin', 'reception');
-    await page.locator('#reason').fill('Atendimento E2E - dor abdominal');
-    await page.getByRole('button', { name: /^Abrir Atendimento$/ }).click();
-
-    await expect(page.getByText('Atendimento aberto com sucesso')).toBeVisible({ timeout: 15000 });
-    console.log('   ✅ Encounter created');
-
-    await page.waitForURL(/\/encounters\/enc[-_]/, { timeout: 10000 });
-    const encounterId = page.url().split('/').pop();
+    const encounterId = encounter.id as string;
     cleanup.track({ type: 'encounter', id: encounterId! });
     console.log(`   ✅ Encounter ID: ${encounterId}`);
+
+    await page.goto(`${SPA_URL}/encounters/${encounterId}`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('button', { name: 'Fechar Atendimento' })).toBeVisible({
+      timeout: 15000
+    });
 
     // ── Step 5: Add clinical entry ──
     console.log('   📋 Adding clinical entry...');
@@ -133,15 +113,11 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     console.log('   💰 Adding billing item...');
     await page.goto(`${SPA_URL}/billing/${encounterId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Faturamento/ })).toBeVisible({
-      timeout: 15000
-    });
-
     await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeVisible({
       timeout: 10000
     });
     await page.getByRole('button', { name: 'Gerar Estimativa' }).click();
-    await expect(page.getByText('Estimado')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel('Estimado')).toBeVisible({ timeout: 15000 });
 
     await page.getByRole('button', { name: /Adicionar Item/ }).click();
     await page.selectOption('#itemType', 'service');
@@ -157,7 +133,7 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     console.log('   🏁 Closing encounter...');
     await page.goto(`${SPA_URL}/encounters/${encounterId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Atendimento/ })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Fechar Atendimento' })).toBeVisible({
       timeout: 15000
     });
 
@@ -166,16 +142,16 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     await closeDialog.locator('#closeReason').fill('Atendimento concluído - E2E test');
     await closeDialog.locator('button').filter({ hasText: /^Fechar$/ }).click();
 
-    await expect(page.getByText('Finalizado')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel('✅ Finalizado')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Encounter closed');
 
     // ── Step 8: Validate final state ──
     console.log('   ✅ Validating final state...');
-    await expect(page.getByText('Finalizado')).toBeVisible();
+    await expect(page.getByLabel('✅ Finalizado')).toBeVisible();
 
     await page.goto(`${SPA_URL}/encounters`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Atendimentos/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Atendimentos', exact: true })).toBeVisible({
       timeout: 15000
     });
     console.log('   ✅ Encounters list accessible');

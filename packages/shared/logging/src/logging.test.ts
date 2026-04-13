@@ -1,7 +1,31 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
+import { trace } from '@opentelemetry/api';
 
 import { createLogger, createChildLogger, type Logger, type LogContext } from './index.js';
+
+function captureStdout(run: () => void): string {
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  let output = '';
+
+  process.stdout.write = ((chunk: string | Uint8Array, encoding?: BufferEncoding | ((error?: Error | null) => void), callback?: (error?: Error | null) => void) => {
+    output += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
+    if (typeof encoding === 'function') {
+      encoding();
+    } else {
+      callback?.();
+    }
+    return true;
+  }) as typeof process.stdout.write;
+
+  try {
+    run();
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  return output;
+}
 
 test('createLogger creates logger with service name', () => {
   const logger = createLogger('test-service');
@@ -106,4 +130,38 @@ test('createChildLogger handles Logger without child method', () => {
 
   const child = createChildLogger(simpleLogger, { correlationId: 'test' });
   assert.ok(child);
+});
+
+test('logger normalizes correlationId and requestId in structured logs', () => {
+  const logger = createLogger('test');
+  const output = captureStdout(() => {
+    logger.info('hello', { correlationId: 'corr-123' });
+  });
+
+  const payload = JSON.parse(output.trim()) as Record<string, unknown>;
+  assert.equal(payload.correlationId, 'corr-123');
+  assert.equal(payload.requestId, 'corr-123');
+});
+
+test('logger emits trace context from active span together with request correlation', () => {
+  const logger = createLogger('test');
+  const fakeSpan = {
+    spanContext: () => ({
+      traceId: '1234567890abcdef1234567890abcdef',
+      spanId: '1234567890abcdef',
+      traceFlags: 1
+    })
+  } as never;
+  const getActiveSpanMock = mock.method(trace, 'getActiveSpan', () => fakeSpan);
+
+  const output = captureStdout(() => {
+    logger.info('observability contract', { requestId: 'req-123' });
+  });
+  getActiveSpanMock.mock.restore();
+
+  const payload = JSON.parse(output.trim()) as Record<string, unknown>;
+  assert.equal(payload.requestId, 'req-123');
+  assert.equal(payload.correlationId, 'req-123');
+  assert.equal(payload.traceId, '1234567890abcdef1234567890abcdef');
+  assert.equal(payload.spanId, '1234567890abcdef');
 });

@@ -3,7 +3,7 @@
     <AppPageHeader>
       <template #title>📅 Novo Agendamento</template>
       <template #subtitle>
-        <span class="muted">Criar um compromisso operacional com contexto de paciente e tipo de visita.</span>
+        <span class="muted">Atendimento &gt; Agenda. Registre o compromisso e prepare a recepção para seguir para fila, triagem e atendimento.</span>
       </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/scheduling">Cancelar</DsButton>
@@ -81,13 +81,12 @@
 
       <DsCard title="Resumo do compromisso" class="scheduling-form__aside">
         <p class="scheduling-form__aside-text">
-          Use esta tela para registrar o compromisso com contexto suficiente para a operação da
-          recepção e da fila.
+          Use esta tela para registrar o compromisso com contexto suficiente para recepção, fila e atendimento clínico.
         </p>
         <ul class="scheduling-form__facts">
-          <li>Paciente associado com busca direta.</li>
-          <li>Owner preenchido automaticamente após seleção.</li>
-          <li>Horário sugerido já inicia com a data atual.</li>
+          <li>Paciente vinculado direto ao cadastro clínico.</li>
+          <li>Tutor preenchido automaticamente após a seleção do animal.</li>
+          <li>Motivo e tipo ajudam a equipe a priorizar a próxima etapa do fluxo.</li>
         </ul>
       </DsCard>
     </div>

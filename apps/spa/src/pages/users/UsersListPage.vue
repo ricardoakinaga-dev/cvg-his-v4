@@ -1,11 +1,11 @@
 <template>
   <div class="users-list-page">
-    <AppPageHeader title="👤 Usuários" subtitle="Gestão de acesso e perfis do sistema">
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="fetchData">Atualizar</DsButton>
-        <DsButton tag="a" to="/users/new" variant="primary">+ Novo Usuário</DsButton>
-      </template>
-    </AppPageHeader>
+    <AppPageHeader
+      title="👤 Usuários"
+      subtitle="Gestão de pessoas, acessos e perfís do quadro de RH"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="headerPrimaryAction"
+    />
 
     <section class="users-list-page__overview">
       <DsCard title="Resumo de acesso">
@@ -26,6 +26,16 @@
             <span class="overview-metric__value">{{ filteredUsers.length }}</span>
             <span class="overview-metric__label">Resultados atuais</span>
           </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="users-list-page__actions">
+      <DsCard title="Ações rápidas — RH e governança" variant="compact">
+        <div class="quick-actions">
+          <DsButton tag="a" to="/staff" variant="primary">Equipe</DsButton>
+          <DsButton tag="a" to="/access-control" variant="secondary">Governança de Acesso</DsButton>
+          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
         </div>
       </DsCard>
     </section>
@@ -65,7 +75,7 @@
 
     <DataTable
       :columns="columns"
-      :rows="filteredUsers"
+      :rows="userRows"
       :loading="loading"
       :empty-text="emptyText"
       variant="hoverable"
@@ -73,12 +83,12 @@
     >
       <template #cell-status="{ row }">
         <StatusBadge
-          :label="row.status === 'active' ? 'Ativo' : 'Inativo'"
-          :variant="row.status === 'active' ? 'success' : 'neutral'"
+          :label="userRow(row).status === 'active' ? 'Ativo' : 'Inativo'"
+          :variant="userRow(row).status === 'active' ? 'success' : 'neutral'"
         />
       </template>
       <template #cell-roleCode="{ row }">
-        <span class="role-pill">{{ formatRole(row.roleCode) }}</span>
+        <span class="role-pill">{{ formatRole(userRow(row).roleCode) }}</span>
       </template>
       <template #cell-actions="{ row }">
         <DsButton tag="a" :to="`/users/${row.id}`" size="sm" variant="secondary">Ver</DsButton>
@@ -102,6 +112,7 @@ import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { useListData } from '@/composables/useListData';
 import { userService } from '@/services/user';
 import type { UserSummary } from '@/types/user';
+import type { DataTableRow } from '@/components/DataTable.vue';
 
 const search = ref('');
 const roleFilter = ref('');
@@ -148,6 +159,7 @@ const filteredUsers = computed(() => {
 
 const activeUsers = computed(() => users.value.filter((u) => u.status === 'active').length);
 const rolesCount = computed(() => new Set(users.value.map((u) => u.roleCode)).size);
+const userRows = computed(() => filteredUsers.value as unknown as DataTableRow[]);
 
 const emptyText = computed(() => {
   if (search.value || roleFilter.value || statusFilter.value) {
@@ -166,8 +178,29 @@ const roleLabelMap: Record<string, string> = {
   inventory: '📦 Estoque'
 };
 
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-users',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: () => fetchData()
+  }
+]);
+
+const headerPrimaryAction = computed(() => ({
+  key: 'new-user',
+  label: '+ Novo Usuário',
+  variant: 'primary' as const,
+  to: '/users/new'
+}));
+
 function formatRole(code: string) {
   return roleLabelMap[code] || code;
+}
+
+function userRow(row: unknown): UserSummary {
+  return row as UserSummary;
 }
 
 onMounted(fetchData);
@@ -187,6 +220,10 @@ onMounted(fetchData);
 }
 
 .users-list-page__overview {
+  margin-bottom: 4px;
+}
+
+.users-list-page__actions {
   margin-bottom: 4px;
 }
 
@@ -214,6 +251,12 @@ onMounted(fetchData);
   margin-top: 4px;
   font-size: 13px;
   color: var(--color-text-muted, #64748b);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .role-pill {

@@ -220,6 +220,18 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     description: 'Register assistive consumption and adjust stock usage.'
   },
   {
+    id: 'perm_fiscal_read' as PermissionId,
+    code: 'fiscal.read',
+    module: 'fiscal',
+    description: 'Read fiscal catalogs, tax rules and NFS-e layouts.'
+  },
+  {
+    id: 'perm_fiscal_manage' as PermissionId,
+    code: 'fiscal.manage',
+    module: 'fiscal',
+    description: 'Manage fiscal parametrization and tax rules.'
+  },
+  {
     id: 'perm_notifications_read' as PermissionId,
     code: 'notifications.read',
     module: 'notifications',
@@ -420,6 +432,8 @@ const roleCatalog: readonly RoleDefinition[] = [
       'encounters.read',
       'billing.read',
       'billing.manage',
+      'fiscal.read',
+      'fiscal.manage',
       'product.read',
       'service.read',
       'counter_sale.read',
@@ -441,6 +455,7 @@ const roleCatalog: readonly RoleDefinition[] = [
       'encounters.read',
       'inventory.read',
       'inventory.manage',
+      'fiscal.read',
       'product.read',
       'service.read',
       'counter_sale.read',
@@ -458,6 +473,7 @@ const roleCatalog: readonly RoleDefinition[] = [
       'auth.session.read',
       'audit.read',
       'access.read',
+      'fiscal.read',
       'owners.read',
       'patients.read',
       'scheduling.read',
@@ -552,10 +568,12 @@ export class AccessControlService {
     ]);
     for (const userId of userIds) {
       const rolesByUser = await this.#repository.findRolesByUser(userId);
-      this.#userRoleCodes.set(
-        userId,
-        rolesByUser.map((role) => role.code)
-      );
+      if (rolesByUser.length > 0) {
+        this.#userRoleCodes.set(
+          userId,
+          rolesByUser.map((role) => role.code)
+        );
+      }
     }
 
     this.#teamMembershipsByUser.clear();
@@ -1027,3 +1045,20 @@ export {
   type PermissionRecord,
   type AccessPermissionAssignmentRecord
 } from './repositories/database-access-control.repository.js';
+
+export {
+  AbacEngine,
+  DEFAULT_ABAC_POLICIES,
+  resolveAttribute,
+  type AbacEngineOptions,
+  type AbacPolicy,
+  type PolicyRule,
+  type PolicyCondition,
+  type ConditionOperator,
+  type PolicyCombiningAlgorithm,
+  type ActorAttributes,
+  type ResourceAttributes,
+  type EnvironmentAttributes,
+  type ResourceType,
+  type PolicyEvaluationResult
+} from './abac.js';

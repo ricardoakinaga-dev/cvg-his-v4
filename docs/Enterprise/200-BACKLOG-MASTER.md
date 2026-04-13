@@ -47,5 +47,9 @@
 | E5-03 | Documentação premium | 13 | P0 |
 | E5-04 | SOC2 preparation | 8 | P1 |
 | E5-05 | Quality gates finais | 8 | P0 |
+| E5-06 | Platform hardening (config, CORS, secrets, backup) | 21 | P0 |
+| E5-07 | Observabilidade enterprise (OpenTelemetry + OTLP) | 13 | P0 |
+| E5-08 | Runtime premium (Redis rate limiter, Unleash, Helm, Vault) | 21 | P1 |
+| E5-09 | Decisões estruturais de plataforma (Fastify, event-driven) | 13 | P1 |
 
-## Total: 30 épicos, ~450 story points, ~18 meses
+## Total: 34 épicos, ~518 story points, ~18-20 meses

@@ -4,13 +4,17 @@
       v-for="(tab, index) in tabs"
       :key="tab.key || index"
       role="tab"
-      :class="['ds-tab', { 'ds-tab--active': modelValue === (tab.key ?? index) }]"
+      :data-key="tab.key ?? index"
+      :class="['ds-tab', { 'ds-tab--active': modelValue === (tab.key ?? index), 'ds-tab--disabled': tab.disabled }]"
       :aria-selected="modelValue === (tab.key ?? index)"
+      :aria-disabled="tab.disabled"
       :tabindex="modelValue === (tab.key ?? index) ? 0 : -1"
-      @click="$emit('update:modelValue', tab.key ?? index)"
+      :disabled="tab.disabled"
+      @click="!tab.disabled && $emit('update:modelValue', tab.key ?? index)"
+      @keydown="handleKeydown($event, index)"
     >
       {{ tab.label }}
-      <span v-if="tab.count !== undefined" class="ds-tab__count">{{ tab.count }}</span>
+      <span v-if="tab.count !== undefined" class="ds-tab__count" :aria-label="`${tab.count} itens`">{{ tab.count }}</span>
     </button>
   </div>
 </template>
@@ -33,9 +37,45 @@ withDefaults(defineProps<DsTabsProps>(), {
   ariaLabel: undefined
 });
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: string | number];
 }>();
+
+function handleKeydown(event: KeyboardEvent, index: number) {
+  const tabs = (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLElement>('button[role="tab"]');
+  if (!tabs) return;
+
+  let nextIndex = index;
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    nextIndex = index + 1;
+    if (nextIndex >= tabs.length) nextIndex = 0;
+    // Skip disabled tabs
+    while (nextIndex !== index && tabs[nextIndex]?.getAttribute('aria-disabled') === 'true') {
+      nextIndex = (nextIndex + 1) % tabs.length;
+    }
+    emit('update:modelValue', (event.currentTarget as HTMLElement).closest('.ds-tabs')?.querySelectorAll<HTMLElement>('button[role="tab"]')[nextIndex]?.getAttribute('data-key') ?? nextIndex);
+    tabs[nextIndex]?.focus();
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    nextIndex = index - 1;
+    if (nextIndex < 0) nextIndex = tabs.length - 1;
+    while (nextIndex !== index && tabs[nextIndex]?.getAttribute('aria-disabled') === 'true') {
+      nextIndex = (nextIndex - 1 + tabs.length) % tabs.length;
+    }
+    emit('update:modelValue', (event.currentTarget as HTMLElement).closest('.ds-tabs')?.querySelectorAll<HTMLElement>('button[role="tab"]')[nextIndex]?.getAttribute('data-key') ?? nextIndex);
+    tabs[nextIndex]?.focus();
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    emit('update:modelValue', 0);
+    tabs[0]?.focus();
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    emit('update:modelValue', tabs.length - 1);
+    tabs[tabs.length - 1]?.focus();
+  }
+}
 </script>
 
 <style scoped>

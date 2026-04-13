@@ -62,7 +62,9 @@ describe('apps/web smoke automation', () => {
       environment: 'test',
       host: '127.0.0.1',
       port: 0,
-      apiBaseUrl: 'http://127.0.0.1:3999'
+      apiBaseUrl: 'http://127.0.0.1:3999',
+      proxyApiTarget: 'http://127.0.0.1:3999',
+      disablePwa: true
     });
 
     expect(server).toBeDefined();

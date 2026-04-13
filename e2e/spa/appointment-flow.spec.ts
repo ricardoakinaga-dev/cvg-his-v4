@@ -7,16 +7,15 @@ import { test, expect, loginViaToken } from './fixtures/spa-fixture';
  * 1. Login na SPA
  * 2. Criar tutor + paciente via API (com cleanup)
  * 3. Criar agendamento pela UI (form completo)
- * 4. Validar agendamento na agenda Kanban
+ * 4. Validar agendamento no cockpit operacional da agenda
  * 5. Abrir detalhe do agendamento
  * 6. Cancelar agendamento
- * 7. Validar que agendamento aparece na coluna "Cancelados"
+ * 7. Validar que o status cancelado volta a aparecer na agenda
  *
- * Nota sobre check-in/encounter:
- *   A SPA atual NÃO possui botão de check-in nos cards do Kanban
- *   nem criação de encounter a partir de appointment.
- *   O detalhe do appointment oferece apenas visualização + cancelamento.
- *   Este teste cobre o máximo realista disponível na UI atual.
+ * Nota sobre a agenda:
+ *   A página deixou de ser um Kanban fixo de 4 colunas e hoje opera
+ *   como cockpit multiprofissional com filtros laterais, timeline e
+ *   ações rápidas. O teste precisa refletir o estado real do produto.
  *
  * Execução:
  *   npx playwright test --config playwright-spa.config.ts -g "Agendamento"
@@ -26,7 +25,7 @@ const API_URL = process.env.API_URL || 'http://localhost:3101';
 const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
 test.describe('Fluxo de Agendamento (Appointment)', () => {
-  test('cria agendamento pela UI, valida no Kanban e cancela', async ({
+  test('cria agendamento pela UI, valida no cockpit e cancela', async ({
     page,
     apiCall,
     cleanup
@@ -67,7 +66,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments/new`);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /Novo Agendamento/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Novo Agendamento/ }).first()).toBeVisible({
       timeout: 10000
     });
 
@@ -96,46 +95,41 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     // Submit
     await page.getByRole('button', { name: 'Salvar Agendamento' }).click();
 
-    // Wait for success
-    await expect(page.getByText('Agendamento criado com sucesso')).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
     console.log('   ✅ Appointment created');
 
-    // Wait for redirect to detail page
-    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
     const appointmentUrl = page.url();
     const appointmentId = appointmentUrl.split('/').pop();
     console.log(`   ✅ Appointment ID: ${appointmentId}`);
 
-    // ── Step 3: Verify appointment in Kanban ──
-    console.log('   📋 Verifying appointment in Kanban...');
+    const referenceDate = tomorrow.toISOString().slice(0, 10);
+
+    // ── Step 3: Verify appointment in the operational cockpit ──
+    console.log('   📋 Verifying appointment in the operational cockpit...');
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    // Wait for Kanban view to load
-    await expect(page.getByRole('heading', { name: /Agenda/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
+      timeout: 15000
+    });
 
-    // Verify the Kanban columns exist
-    const kanbanColumns = page.locator('.kanban-column');
-    await expect(kanbanColumns).toHaveCount(4, { timeout: 10000 });
-    console.log('   ✅ Kanban columns visible (4)');
+    await page.locator('#referenceDate').fill(referenceDate);
+    await page.getByRole('button', { name: 'Aplicar' }).click();
+    await page.waitForLoadState('networkidle');
 
-    // Verify the patient name appears in the Kanban
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
-    console.log(`   ✅ Patient "${patientName}" visible in Kanban`);
+    console.log(`   ✅ Patient "${patientName}" visible in operational cockpit`);
 
-    // Verify the appointment is in the "Agendados" column
-    const scheduledColumn = kanbanColumns.first();
-    await expect(scheduledColumn.getByText('Agendados')).toBeVisible({ timeout: 10000 });
-    await expect(scheduledColumn.getByText(patientName)).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Appointment in "Agendados" column');
+    const appointmentCard = page.locator('.timeline-item').filter({ hasText: patientName }).first();
+    await expect(appointmentCard).toContainText('Agendado', { timeout: 10000 });
+    console.log('   ✅ Appointment visible with scheduled operational state');
 
     // ── Step 4: Open appointment detail ──
     console.log('   🔍 Opening appointment detail...');
-    const appointmentCard = page.locator('.kanban-card').first();
     await appointmentCard.click();
 
     await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
-    await expect(page.getByRole('heading', { name: /Agendamento/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Agendamento/ }).first()).toBeVisible({
       timeout: 15000
     });
     console.log('   ✅ Appointment detail page loaded');
@@ -155,30 +149,35 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await expect(page.getByText('Cancelado')).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Appointment cancelled');
 
-    // ── Step 6: Verify cancelled appointment in Kanban ──
-    console.log('   📋 Verifying cancelled appointment in Kanban...');
+    // ── Step 6: Verify cancelled appointment in cockpit ──
+    console.log('   📋 Verifying cancelled appointment in cockpit...');
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    // Filter by cancelled status
-    await page.selectOption('select', 'cancelled');
-    await page.waitForTimeout(500);
+    await page.locator('#referenceDate').fill(referenceDate);
+    await page.getByRole('button', { name: 'Cancelado' }).click();
+    await page.getByRole('button', { name: 'Aplicar' }).click();
+    await page.waitForLoadState('networkidle');
 
-    // Verify patient appears in cancelled column
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Cancelled appointment visible in "Cancelados" column');
+    await expect(
+      page.locator('.timeline-item').filter({ hasText: patientName }).first()
+    ).toContainText('Cancelado', { timeout: 10000 });
+    console.log('   ✅ Cancelled appointment visible in cockpit');
 
     // ── Step 7: Verify back navigation ──
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Agenda/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
+      timeout: 10000
+    });
     console.log('   ✅ Appointments list accessible');
 
     console.log('   🎉 Appointment flow completed successfully!');
   });
 
-  test('valida elementos da página de agendamento (Kanban)', async ({ page }) => {
+  test('valida elementos da página de agendamento (cockpit)', async ({ page }) => {
     // Login
     await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -187,28 +186,28 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    // Validate page title
-    await expect(page.getByRole('heading', { name: /Agenda/ })).toBeVisible({ timeout: 15000 });
-
-    // Validate Kanban columns
-    const columns = page.locator('.kanban-column');
-    await expect(columns).toHaveCount(4, { timeout: 10000 });
-
-    // Validate column headers
-    await expect(columns.nth(0).getByText('Agendados')).toBeVisible({ timeout: 10000 });
-    await expect(columns.nth(1).getByText('Em Atendimento')).toBeVisible({ timeout: 10000 });
-    await expect(columns.nth(2).getByText(/Conclu/)).toBeVisible({ timeout: 10000 });
-    await expect(columns.nth(3).getByText('Cancelados')).toBeVisible({ timeout: 10000 });
-
-    // Validate "Novo Agendamento" button
-    await expect(page.getByRole('link', { name: /Novo Agendamento/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
       timeout: 10000
     });
 
-    // Validate status filter
-    const statusFilter = page.locator('select');
-    await expect(statusFilter).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Cockpit multiprofissional/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Atualizar' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('link', { name: /Fila operacional/ })).toBeVisible({
+      timeout: 10000
+    });
+    await expect(page.getByRole('button', { name: /\+ Agendamento rápido/ }).first()).toBeVisible({
+      timeout: 10000
+    });
+    await expect(page.getByText('Filtro operacional')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#referenceDate')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('tablist', { name: /Modo da agenda/ })).toBeVisible({
+      timeout: 10000
+    });
+    await expect(page.getByRole('button', { name: 'Hoje' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('link', { name: /Abrir formulário completo/ })).toBeVisible({
+      timeout: 10000
+    });
 
-    console.log('   ✅ Appointments Kanban page elements validated');
+    console.log('   ✅ Appointments cockpit page elements validated');
   });
 });

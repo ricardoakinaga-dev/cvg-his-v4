@@ -12,3 +12,10 @@
 | R-08 | Design system não é adotado pelo time | Média | Médio | 2 | Storybook como gate de PR |
 | R-09 | SOC2 falha na primeira tentativa | Baixa | Médio | 5 | Pre-qualification com auditor |
 | R-10 | WhatsApp API tem limitações de negócio | Média | Médio | 3 | Email/SMS como fallback |
+| R-11 | Configuração inválida entra em produção por falta de validação fail-fast | Alta | Alto | 5 | Zod schema central, CI de env example e bootstrap abortando em erro |
+| R-12 | CORS permissivo ou headers frágeis expõem superfície indevida | Média | Crítico | 5 | Allowlist por ambiente, testes de segurança e revisão de defaults |
+| R-13 | Secrets em `.env` local ou pipeline causam vazamento operacional | Alta | Crítico | 5 | Secret scanning, rotação e migração para Vault/secret manager |
+| R-14 | Falha operacional sem backup testado amplia perda de dados | Média | Crítico | 5 | Backup automatizado, restore drill e evidência trimestral |
+| R-15 | Observabilidade parcial sem OTel dificulta RCA e auditoria | Alta | Alto | 5 | OpenTelemetry com OTLP exporter e runbooks de tracing |
+| R-16 | Rate limiter local não escala horizontalmente | Média | Alto | 5 | Redis central para limiter, testes de concorrência e fallback seguro |
+| R-17 | Ausência de estratégia Kubernetes/Helm trava operação enterprise multiambiente | Média | Médio | 5 | Helm charts mínimos, ADR de runtime e plano progressivo de adoção |

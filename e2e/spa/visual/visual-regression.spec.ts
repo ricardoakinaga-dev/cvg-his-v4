@@ -25,9 +25,13 @@ import { loginViaToken } from '../fixtures/spa-fixture';
  */
 
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';
 const HEADING_SELECTOR = 'h1, h2, h3, [role="heading"]';
 const CANONICAL_OWNER_IDS = ['owner_maria_silva', 'owner_joao_souza'] as const;
 const CANONICAL_PATIENT_IDS = ['patient_luna'] as const;
+const VISUAL_OWNER_NAME = 'Maria Visual Snapshot';
+const VISUAL_OWNER_DOCUMENT = 'VISUAL-OWNER-001';
+const VISUAL_PATIENT_NAME = 'Luna Visual Snapshot';
 
 test.describe('Visual Regression — List Pages', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
@@ -57,6 +61,8 @@ test.describe('Visual Regression — List Pages', () => {
       timeout: 15000
     });
     await keepCanonicalTableRows(page, CANONICAL_OWNER_IDS);
+    await normalizeMetricValues(page, '.summary-card__value', ['00', '00', '00', '00']);
+    await normalizeOwnersTable(page);
 
     await stabilizeVisual(page, pageProfiles.listPage);
 
@@ -76,6 +82,8 @@ test.describe('Visual Regression — List Pages', () => {
       timeout: 15000
     });
     await keepCanonicalTableRows(page, CANONICAL_PATIENT_IDS);
+    await normalizeMetricValues(page, '.overview-metric__value', ['00', '00', '00', '00']);
+    await normalizePatientsTable(page);
 
     await stabilizeVisual(page, pageProfiles.listPage);
 
@@ -122,11 +130,13 @@ test.describe('Visual Regression — List Pages', () => {
       contentSelector: HEADING_SELECTOR,
       timeout: 15000
     });
+    await clearDynamicTableRows(page);
     await normalizeEmptyState(page, '.encounters-list-page .data-table-wrapper', {
       icon: '🩺',
       text: 'Nenhum atendimento encontrado',
       action: '+ Abrir Atendimento'
     });
+    await normalizeMetricValues(page, '.overview-metric__value', ['00', '00', '00', '00']);
 
     await stabilizeVisual(page, pageProfiles.listPage);
 
@@ -165,11 +175,13 @@ test.describe('Visual Regression — List Pages', () => {
       contentSelector: HEADING_SELECTOR,
       timeout: 15000
     });
+    await clearDynamicTableRows(page);
     await normalizeEmptyState(page, '.billing-list-page .data-table-wrapper', {
       icon: '💰',
       text: 'Nenhum registro de faturamento',
       hint: 'Os registros aparecem quando atendimentos são abertos.'
     });
+    await normalizeBillingOverview(page);
 
     await stabilizeVisual(page, pageProfiles.listPage);
 
@@ -187,36 +199,57 @@ test.describe('Visual Regression — Detail Pages', () => {
     const token = await ensureAuthToken(page);
     if (!token) return;
 
-    await navigateTo(page, `/owners/${CANONICAL_OWNER_IDS[0]}`);
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
+    const owner = await createVisualOwner(token);
 
-    await stabilizeVisual(page, pageProfiles.detailPage);
+    try {
+      await navigateTo(page, `/owners/${owner.id}`);
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await normalizeVisualText(page, {
+        [owner.documentId]: VISUAL_OWNER_DOCUMENT
+      });
 
-    await expect(page).toHaveScreenshot('owner-detail-page.png', {
-      maxDiffPixels: 120,
-      fullPage: false
-    });
+      await stabilizeVisual(page, pageProfiles.detailPage);
+
+      await expect(page).toHaveScreenshot('owner-detail-page.png', {
+        maxDiffPixels: 120,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 
   test('patient detail page', async ({ page }) => {
     const token = await ensureAuthToken(page);
     if (!token) return;
 
-    await navigateTo(page, `/patients/${CANONICAL_PATIENT_IDS[0]}`);
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
 
-    await stabilizeVisual(page, pageProfiles.detailPage);
+    try {
+      await navigateTo(page, `/patients/${patient.id}`);
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await normalizeVisualText(page, {
+        [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+        [patient.name]: VISUAL_PATIENT_NAME
+      });
 
-    await expect(page).toHaveScreenshot('patient-detail-page.png', {
-      maxDiffPixels: 120,
-      fullPage: false
-    });
+      await stabilizeVisual(page, pageProfiles.detailPage);
+
+      await expect(page).toHaveScreenshot('patient-detail-page.png', {
+        maxDiffPixels: 120,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 
   test('encounter detail page', async ({ page }) => {
@@ -266,9 +299,95 @@ async function ensureAuthToken(page: Page): Promise<string | null> {
   return process.env.E2E_AUTH_TOKEN ?? null;
 }
 
+async function createVisualOwner(token: string): Promise<{ id: string; documentId: string }> {
+  const documentId = `VISUAL-OWNER-${Date.now()}`;
+  const response = await fetch(`${API_URL}/owners`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      fullName: VISUAL_OWNER_NAME,
+      documentId,
+      contacts: [{ label: 'Celular', type: 'phone', value: '11999990001', primary: true }],
+      financialResponsible: true,
+      status: 'active'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create visual owner: ${response.status} ${await response.text()}`);
+  }
+
+  const owner = (await response.json()) as { id: string };
+  return { ...owner, documentId };
+}
+
+async function createVisualPatient(
+  token: string,
+  ownerId: string
+): Promise<{ id: string; name: string }> {
+  const response = await fetch(`${API_URL}/patients`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      name: VISUAL_PATIENT_NAME,
+      species: 'canine',
+      sex: 'female',
+      breed: 'SRD',
+      primaryOwnerId: ownerId,
+      status: 'active'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create visual patient: ${response.status} ${await response.text()}`);
+  }
+
+  const patient = (await response.json()) as { id: string };
+  return { ...patient, name: VISUAL_PATIENT_NAME };
+}
+
+async function deleteVisualResource(token: string, path: string): Promise<void> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete visual resource ${path}: ${response.status}`);
+  }
+}
+
 async function navigateTo(page: Page, route: string): Promise<void> {
   await page.goto(`${SPA_URL}${route}`);
   await page.waitForLoadState('networkidle');
+}
+
+async function normalizeVisualText(page: Page, replacements: Record<string, string>): Promise<void> {
+  await page.evaluate((entries) => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (node.textContent) {
+        let nextText = node.textContent;
+        for (const [searchValue, replacementValue] of entries) {
+          if (searchValue) {
+            nextText = nextText.split(searchValue).join(replacementValue);
+          }
+        }
+        if (nextText !== node.textContent) {
+          node.textContent = nextText;
+        }
+      }
+      node = walker.nextNode();
+    }
+  }, Object.entries(replacements));
 }
 
 async function keepCanonicalTableRows(page: Page, allowedIds: readonly string[]): Promise<void> {
@@ -321,6 +440,105 @@ async function normalizeEmptyState(
       action: options.action
     }
   );
+}
+
+async function normalizeMetricValues(
+  page: Page,
+  selector: string,
+  values: string[]
+): Promise<void> {
+  await page.evaluate(
+    ({ targetSelector, nextValues }) => {
+      const elements = Array.from(document.querySelectorAll<HTMLElement>(targetSelector));
+      elements.forEach((element, index) => {
+        element.textContent = nextValues[index] ?? nextValues[nextValues.length - 1] ?? '00';
+      });
+    },
+    { targetSelector: selector, nextValues: values }
+  );
+}
+
+async function removeSection(page: Page, selector: string): Promise<void> {
+  await page.evaluate((targetSelector) => {
+    document.querySelector(targetSelector)?.remove();
+  }, selector);
+}
+
+async function normalizeBillingOverview(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const cardLabels = ['00 registro(s)', '00 em aberto', '00 quitado(s)', 'R$ 0,00'];
+    const icons = ['📋', '⏳', '✅', '💵'];
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.hub-kpis .ds-stat-card'));
+    cards.forEach((card, index) => {
+      card.classList.remove('ds-stat-card--error', 'ds-stat-card--loading');
+      card.innerHTML = `
+        <div class="ds-stat-card__icon" aria-hidden="true">${icons[index] ?? '📊'}</div>
+        <div class="ds-stat-card__body">
+          <div class="ds-stat-card__value"></div>
+          <div class="ds-stat-card__label">${cardLabels[index] ?? '—'}</div>
+        </div>
+      `;
+    });
+
+    const storyValues = ['0%', '00', 'R$ 0,00', '00'];
+    const storyCards = Array.from(document.querySelectorAll<HTMLElement>('.story-card__value'));
+    storyCards.forEach((element, index) => {
+      element.textContent = storyValues[index] ?? '00';
+    });
+  });
+
+  await removeSection(page, '.hub-alerts');
+}
+
+async function normalizeOwnersTable(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const presets = [
+      { name: 'Maria Silva', document: 'TUTOR-001', contact: '(11) 98888-1111', status: 'Ativo' },
+      { name: 'Joao Souza', document: 'TUTOR-002', contact: '(11) 97777-2222', status: 'Ativo' }
+    ];
+
+    const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.owners-list-page tbody tr'));
+    rows.forEach((row, index) => {
+      const preset = presets[index];
+      if (!preset) return;
+
+      const cells = row.querySelectorAll<HTMLTableCellElement>('td');
+      if (cells[0]) cells[0].innerHTML = `<strong>${preset.name}</strong>`;
+      if (cells[1]) cells[1].innerHTML = `<code>${preset.document}</code>`;
+      if (cells[2]) cells[2].textContent = preset.contact;
+      if (cells[3]) {
+        const badge = cells[3].querySelector<HTMLElement>('[aria-label]');
+        if (badge) {
+          badge.textContent = preset.status;
+          badge.setAttribute('aria-label', preset.status);
+        } else {
+          cells[3].textContent = preset.status;
+        }
+      }
+    });
+  });
+}
+
+async function normalizePatientsTable(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.patients-list-page tbody tr'));
+    rows.forEach((row) => {
+      const cells = row.querySelectorAll<HTMLTableCellElement>('td');
+      if (cells[0]) cells[0].innerHTML = '<strong>Luna</strong><span class="muted"><br>SRD</span>';
+      if (cells[1]) cells[1].textContent = 'Maria Silva';
+      if (cells[2]) cells[2].textContent = 'Canino';
+      if (cells[3]) cells[3].textContent = 'Femea';
+      if (cells[4]) {
+        const badge = cells[4].querySelector<HTMLElement>('[aria-label]');
+        if (badge) {
+          badge.textContent = 'Ativo';
+          badge.setAttribute('aria-label', 'Ativo');
+        } else {
+          cells[4].textContent = 'Ativo';
+        }
+      }
+    });
+  });
 }
 
 async function keepCanonicalKanbanCards(page: Page, canonicalText: string): Promise<void> {

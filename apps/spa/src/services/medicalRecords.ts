@@ -55,7 +55,7 @@ export const medicalRecordsService = {
     entryId: string,
     payload: ArchiveClinicalEntryRequest
   ): Promise<ClinicalEntrySummary> {
-    return apiRequest<ClinicalEntrySummary>(`/medical-records/entries/${entryId}/archive`, {
+    return apiRequest<ClinicalEntrySummary>(`/medical-records/entries/${entryId}`, {
       method: 'DELETE',
       body: JSON.stringify(payload)
     });

@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
@@ -5,6 +6,7 @@ export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 export interface LogContext {
   readonly service?: string;
   readonly correlationId?: string;
+  readonly requestId?: string;
   readonly tenantId?: string;
   readonly accountId?: string;
   readonly userId?: string;
@@ -85,7 +87,34 @@ function sanitizeContext(context?: LogContext): Record<string, unknown> {
       sanitized[key] = value;
     }
   }
+
+  const correlationId =
+    typeof sanitized.correlationId === 'string' ? sanitized.correlationId : undefined;
+  const requestId = typeof sanitized.requestId === 'string' ? sanitized.requestId : undefined;
+
+  if (correlationId && !requestId) {
+    sanitized.requestId = correlationId;
+  }
+
+  if (requestId && !correlationId) {
+    sanitized.correlationId = requestId;
+  }
+
   return sanitized;
+}
+
+function getTraceLogContext(): Record<string, unknown> {
+  const activeSpan = trace.getActiveSpan();
+  if (!activeSpan) {
+    return {};
+  }
+
+  const spanContext = activeSpan.spanContext();
+  return {
+    traceId: spanContext.traceId,
+    spanId: spanContext.spanId,
+    traceFlags: spanContext.traceFlags
+  };
 }
 
 function write(level: LogLevel, message: string, context?: LogContext): void {
@@ -97,6 +126,7 @@ function write(level: LogLevel, message: string, context?: LogContext): void {
     message,
     timestamp: nowIso(),
     pid: process.pid,
+    ...getTraceLogContext(),
     ...sanitized
   };
 

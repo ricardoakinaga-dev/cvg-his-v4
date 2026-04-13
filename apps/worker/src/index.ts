@@ -4,11 +4,13 @@ import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
 import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
+import { startWorkerObservability, withWorkerSpan } from './observability.js';
 import { createWorkerNotifications, createWorkerEventBus } from './runner.js';
 import { runWorkerTick, runEventBusTick } from './runner.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
+let workerObservabilityShutdown: (() => Promise<void>) | null = null;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -22,8 +24,33 @@ const workerState = {
 };
 
 async function main() {
+  const observability = await startWorkerObservability({
+    enabled: config.otelEnabled,
+    serviceName: config.otelServiceName,
+    environment: config.environment,
+    serviceVersion: '0.1.0',
+    otlpProtocol: config.otlpProtocol,
+    otlpTracesEndpoint: config.otlpTracesEndpoint,
+    otlpHeaders: config.otlpHeaders
+  });
+  workerObservabilityShutdown = observability.shutdown;
+
+  const shutdownObservability = () =>
+    observability.shutdown().catch((error) => {
+      logger.error('failed to shutdown worker observability', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    });
+
+  process.once('SIGTERM', () => {
+    void shutdownObservability().finally(() => process.exit(0));
+  });
+  process.once('SIGINT', () => {
+    void shutdownObservability().finally(() => process.exit(0));
+  });
+
   const bootstrap = await bootstrapWorkerServices({
-    databaseUrl: process.env.DATABASE_URL
+    databaseUrl: config.databaseUrl
   });
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
@@ -33,6 +60,11 @@ async function main() {
     databaseHealthy: bootstrap.databaseHealthy,
     databaseDetail: bootstrap.databaseDetail,
     persistenceMode: workerState.persistenceMode
+  });
+  logger.info('worker observability state', {
+    enabled: observability.enabled,
+    exporter: observability.exporter,
+    endpoint: observability.endpoint
   });
 
   const notifications = createWorkerNotifications({
@@ -81,39 +113,45 @@ async function main() {
     }
   });
 
-  const healthPort = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10);
-  healthServer.listen(healthPort, () => {
-    logger.info('worker health endpoint listening', { port: healthPort });
+  healthServer.listen(config.healthPort, () => {
+    logger.info('worker health endpoint listening', { port: config.healthPort });
   });
 
   while (true) {
     const correlationId = createCorrelationId('worker');
     const tickStart = Date.now();
     try {
-      await runWorkerTick(
-        logger,
+      const tickContext = {
+        service: config.appName,
+        environment: config.environment,
+        correlationId,
+        persistenceMode: workerState.persistenceMode,
+        databaseHealthy: workerState.databaseHealthy,
+        databaseDetail: 'connected'
+      };
+
+      await withWorkerSpan(
+        'worker.notifications.tick',
         {
-          service: config.appName,
-          environment: config.environment,
-          correlationId,
-          persistenceMode: workerState.persistenceMode,
-          databaseHealthy: workerState.databaseHealthy,
-          databaseDetail: 'connected'
+          'worker.correlation_id': correlationId,
+          'worker.persistence_mode': workerState.persistenceMode,
+          'worker.database_healthy': workerState.databaseHealthy
         },
-        notifications
+        async () => {
+          await runWorkerTick(logger, tickContext, notifications);
+        }
       );
 
-      await runEventBusTick(
-        logger,
+      await withWorkerSpan(
+        'worker.event_bus.tick',
         {
-          service: config.appName,
-          environment: config.environment,
-          correlationId,
-          persistenceMode: workerState.persistenceMode,
-          databaseHealthy: workerState.databaseHealthy,
-          databaseDetail: 'connected'
+          'worker.correlation_id': correlationId,
+          'worker.persistence_mode': workerState.persistenceMode,
+          'worker.database_healthy': workerState.databaseHealthy
         },
-        eventBus
+        async () => {
+          await runEventBusTick(logger, tickContext, eventBus);
+        }
       );
 
       workerState.ticksCompleted++;
@@ -138,5 +176,8 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
+    if (workerObservabilityShutdown) {
+      await workerObservabilityShutdown();
+    }
     await shutdownWorkerServices();
   });

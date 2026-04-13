@@ -73,12 +73,59 @@ class InMemorySchedulingRepository implements SchedulingRepository {
 describe('SchedulingService', () => {
   let owners: OwnersService;
   let patients: PatientsService;
+  let staff: {
+    list: () => Array<{
+      id: string;
+      accountId: AccountId;
+      fullName: string;
+      department: string;
+      jobTitle: string;
+      status: 'active' | 'inactive';
+    }>;
+    getOrThrow: () => {
+      id: string;
+      accountId: AccountId;
+      fullName: string;
+      department: string;
+      jobTitle: string;
+      status: 'active' | 'inactive';
+    };
+  };
+  let services: {
+    getOrThrow: (id: string) => { id: string; name: string };
+  };
   let service: SchedulingService;
 
   beforeEach(() => {
     owners = new OwnersService();
     patients = new PatientsService({ owners });
-    service = new SchedulingService(owners, patients, []);
+    staff = {
+      list: () => [
+        {
+          id: 'staff_vet',
+          accountId: 'acc_cvg_demo' as AccountId,
+          fullName: 'Veterinário Responsável',
+          department: 'Clinica',
+          jobTitle: 'Médico Veterinário',
+          status: 'active'
+        }
+      ],
+      getOrThrow: () => ({
+        id: 'staff_vet',
+        accountId: 'acc_cvg_demo' as AccountId,
+        fullName: 'Veterinário Responsável',
+        department: 'Clinica',
+        jobTitle: 'Médico Veterinário',
+        status: 'active'
+      })
+    };
+    services = {
+      getOrThrow: (id: string) => ({ id, name: 'Consulta' })
+    };
+    service = new SchedulingService(owners, patients, [], {
+      staff: staff as never,
+      services: services as never
+    });
   });
 
   it('creates appointments and returns them ordered by scheduledAt', async () => {
@@ -307,15 +354,41 @@ describe('SchedulingService', () => {
 
     await service.cancelAppointment(appointment.id);
 
+    await expect(
+      service.checkIn(accountId, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        appointmentId: appointment.id,
+        reason: 'Re-check-in apos cancelamento'
+      })
+    ).rejects.toThrow('Appointment cannot be checked in from its current state');
+  });
+
+  it('rejects duplicate active queue entries for the same appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Duplicidade de fila'
+    });
+
     await service.checkIn(accountId, {
       patientId: 'patient_luna',
       ownerId: 'owner_maria_silva',
       appointmentId: appointment.id,
-      reason: 'Re-check-in apos cancelamento'
+      reason: 'Primeiro check-in'
     });
 
-    const checkedInAppt = service.getAppointmentOrThrow(appointment.id);
-    expect(checkedInAppt.status).toBe('checked_in');
+    await expect(
+      service.checkIn(accountId, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        appointmentId: appointment.id,
+        reason: 'Segundo check-in'
+      })
+    ).rejects.toThrow('Appointment already has an active queue entry');
   });
 
   it('allows valid queue transitions: waiting -> called -> in_triage -> in_care -> observation -> completed', async () => {
@@ -466,6 +539,48 @@ describe('SchedulingService', () => {
     await persistent.transitionQueueEntry(queueEntry.id, 'cancelled');
 
     expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('cancelled');
+  });
+
+  it('syncs linked appointment status from queue cancellation and completion', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const cancelledAppointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T13:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Cancelar via fila'
+    });
+
+    const cancelledQueueEntry = await service.checkIn(accountId, {
+      patientId: cancelledAppointment.patientId,
+      ownerId: cancelledAppointment.ownerId,
+      appointmentId: cancelledAppointment.id,
+      reason: 'Fluxo cancelado'
+    });
+    await service.transitionQueueEntry(cancelledQueueEntry.id, 'cancelled');
+
+    expect(service.getAppointmentOrThrow(cancelledAppointment.id).status).toBe('cancelled');
+
+    const completedAppointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T14:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Completar via fila'
+    });
+    const completedQueueEntry = await service.checkIn(accountId, {
+      patientId: completedAppointment.patientId,
+      ownerId: completedAppointment.ownerId,
+      appointmentId: completedAppointment.id,
+      reason: 'Fluxo concluido'
+    });
+
+    await service.callQueueEntry(completedQueueEntry.id);
+    await service.attachEncounter(completedQueueEntry.id, 'enc_complete' as EncounterId);
+    await service.transitionQueueForEncounter(completedQueueEntry.id, 'in_care');
+    await service.completeQueueEntry(completedQueueEntry.id);
+
+    expect(service.getAppointmentOrThrow(completedAppointment.id).status).toBe('completed');
   });
 
   it('checks in patient, updates linked appointment and keeps queue ordered by priority', async () => {
@@ -711,5 +826,86 @@ describe('SchedulingService', () => {
 
     expect(callbackInvoked).toBe(true);
     expect(capturedPreviousStatus).toBe('scheduled');
+  });
+
+  it('returns availability conflicts for overlapping professional allocation', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-14T09:00:00.000Z',
+      durationMinutes: 30,
+      practitionerStaffId: 'staff_vet',
+      visitType: 'scheduled',
+      reason: 'Consulta original'
+    });
+
+    const availability = service.getAvailability(accountId, {
+      scheduledAt: '2026-04-14T09:15:00.000Z',
+      durationMinutes: 30,
+      patientId: 'patient_luna',
+      practitionerStaffId: 'staff_vet'
+    });
+
+    expect(availability.available).toBe(false);
+    expect(availability.conflicts.some((conflict) => conflict.type === 'staff_overlap')).toBe(true);
+    expect(availability.conflicts.some((conflict) => conflict.type === 'patient_overlap')).toBe(true);
+  });
+
+  it('returns operational blocks in overview for scheduling professionals', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-15T10:00:00.000Z',
+      durationMinutes: 30,
+      practitionerStaffId: 'staff_vet',
+      unit: 'Clinica',
+      specialty: 'Clinico geral',
+      visitType: 'scheduled',
+      reason: 'Consulta com overview'
+    });
+
+    const overview = service.getSchedulingOverview(accountId, {
+      viewMode: 'day',
+      referenceDate: '2026-04-15T00:00:00.000Z'
+    });
+
+    expect(overview.professionals.some((professional) => professional.id === 'staff_vet')).toBe(true);
+    expect(overview.items.some((item) => item.id === appointment.id)).toBe(true);
+    expect(overview.blocks.some((block) => block.practitionerStaffId === 'staff_vet')).toBe(true);
+  });
+
+  it('returns aggregated operational stage for appointments already in queue', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-16T10:00:00.000Z',
+      durationMinutes: 30,
+      practitionerStaffId: 'staff_vet',
+      visitType: 'scheduled',
+      reason: 'Jornada operacional'
+    });
+
+    const queueEntry = await service.checkIn(accountId, {
+      patientId: appointment.patientId,
+      ownerId: appointment.ownerId,
+      appointmentId: appointment.id,
+      reason: 'Check-in operacional'
+    });
+    await service.callQueueEntry(queueEntry.id);
+    await service.attachEncounter(queueEntry.id, 'enc_operational' as EncounterId);
+
+    const overview = service.getSchedulingOverview(accountId, {
+      viewMode: 'day',
+      referenceDate: '2026-04-16T00:00:00.000Z'
+    });
+    const item = overview.items.find((candidate) => candidate.id === appointment.id);
+
+    expect(item?.operational.stage).toBe('in_triage');
+    expect(item?.operational.queueEntryId).toBe(queueEntry.id);
+    expect(item?.operational.encounterId).toBe('enc_operational');
+    expect(item?.operational.source).toBe('queue');
   });
 });

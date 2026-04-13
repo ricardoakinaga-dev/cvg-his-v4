@@ -14,7 +14,7 @@ async function main() {
   const config = loadWorkerConfig(process.env);
   const logger = createLogger(config.appName);
   const bootstrap = await bootstrapWorkerServices({
-    databaseUrl: process.env.DATABASE_URL
+    databaseUrl: config.databaseUrl
   });
 
   if (!bootstrap.notificationRepository) {

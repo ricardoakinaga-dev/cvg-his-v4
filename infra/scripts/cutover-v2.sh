@@ -59,9 +59,24 @@ ensure_prereqs() {
   require_cmd awk
   require_cmd date
   require_cmd tee
+  require_cmd node
   load_env_file
+  node "$ROOT_DIR/infra/scripts/check-cutover-readiness.mjs"
   require_env POSTGRES_PASSWORD
   require_env AUTH_SECRET
+  require_env NODE_ENV
+  if [[ "${NODE_ENV}" != "production" && "${NODE_ENV}" != "staging" && "${NODE_ENV}" != "prod" && "${NODE_ENV}" != "stage" ]]; then
+    if [[ "${ALLOW_NON_PRODUCTION_CUTOVER:-false}" != "true" ]]; then
+      die "NODE_ENV must be production-like for cutover. Current: ${NODE_ENV}. Set ALLOW_NON_PRODUCTION_CUTOVER=true only for exceptional rehearsals."
+    fi
+    log "ALLOW_NON_PRODUCTION_CUTOVER=true; proceeding with non-production NODE_ENV=${NODE_ENV}"
+  fi
+  if [[ "${POSTGRES_PASSWORD}" == "troque-esta-senha" ]]; then
+    die "POSTGRES_PASSWORD is still using the placeholder value"
+  fi
+  if [[ "${AUTH_SECRET}" == "troque-por-um-segredo-forte-com-32-ou-mais-caracteres" ]]; then
+    die "AUTH_SECRET is still using the placeholder value"
+  fi
 }
 
 validate_compose() {

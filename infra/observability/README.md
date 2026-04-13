@@ -1,64 +1,213 @@
-# Observability Bootstrap
+# Observability Runbook — CVG-HIS V2
 
-## Fundacao atual
+**Stack**: Prometheus metrics + OpenTelemetry tracing + Grafana dashboards
+**Services**: API (`cvg-api`), Worker (`cvg-worker`)
+**Environment**: See `docker-compose.v2.yml` for service endpoints
 
-- logs estruturados via `@cvg-his-v2/shared-logging`
-- `correlation_id` nos skeletons de apps
-- separacao conceitual entre log tecnico e auditoria de negocio
-- metricas Prometheus expostas em `/metrics`
-- health endpoints: `/health`, `/ready`, `/live`
+---
 
-## Arquivos operacionais
+## 1. Arquitetura de Observabilidade
 
-| Arquivo                 | Descricao                            |
-| ----------------------- | ------------------------------------ |
-| `prometheus.yml`        | Configuracao de scrape do Prometheus |
-| `prometheus-alerts.yml` | Regras de alertas Prometheus         |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Grafana                                  │
+│  Dashboard: infra/observability/grafana/                    │
+│  cvg-his-v2-api-dashboard.json                              │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ Prometheus scraping
+┌─────────────────────▼───────────────────────────────────────┐
+│  Prometheus         │ Scrapes /metrics from API + Worker      │
+│  prometheus.yml     │                                        │
+│  prometheus-alerts.yml│ Alerts: API Down, HighError,         │
+│                      │ HighLatency, DB Unhealthy, etc.        │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│  OTEL Exporter      │ Exports traces to OTLP endpoint        │
+│  (API + Worker)     │ Configurable via OTLP_TRACES_ENDPOINT  │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ OTLP HTTP
+┌─────────────────────▼───────────────────────────────────────┐
+│  Collector (external)│ Receives traces from API/Worker       │
+│  Not included in    │ Configure via OTEL_EXPORTER_OTLP_ENDPOINT │
+│  this repo          │                                       │
+└─────────────────────┬───────────────────────────────────────┘
+```
 
-## Como usar
+---
 
-### Prometheus Scrape Config
+## 2. Métricas Disponíveis
 
-O `prometheus.yml` configura o Prometheus para coletar metricas da API:
+### 2.1 API Metrics (`/metrics`)
+
+| Métrica | Tipo | Labels | Descrição |
+|---------|------|--------|-----------|
+| `http_requests_total` | Counter | `method`, `route`, `status_code` | Total de requisições HTTP |
+| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Duração de requisições (buckets: 5ms-10s) |
+| `http_errors_total` | Counter | `status_category` | Erros HTTP por categoria (4xx, 5xx) |
+| `app_uptime_seconds` | Gauge | — | Uptime da aplicação |
+| `app_active_requests` | Gauge | — | Requisições em processamento |
+| `app_database_healthy` | Gauge | — | Saúde do banco (1=ok, 0=fail) |
+| `app_persistence_mode` | Gauge | `mode` | Modo de persistência (database/in-memory) |
+
+### 2.2 Default Metrics (Node.js)
+
+CPU, memory, event loop, GC, handles, requests in flight, etc.
+
+---
+
+## 3. SLOs Definidos
+
+| SLO | Target | Window | Alert | Critical |
+|-----|--------|--------|-------|----------|
+| P95 Latency | 200ms | 5min | 250ms | 300ms |
+| P99 Latency | 500ms | 5min | 600ms | 800ms |
+| Availability | 99.5% | 1h | 99.0% | 98.0% |
+| Error Rate | 0.1% | 5min | 0.5% | 1.0% |
+
+Ref: `apps/api/src/slos.ts`
+
+---
+
+## 4. Tracing (OpenTelemetry)
+
+### 4.1 O que existe
+
+- SDK OpenTelemetry bootstrapado em API (`apps/api/src/observability.ts`) e Worker
+- Exporter OTLP HTTP configurável via `OTLP_TRACES_ENDPOINT`
+- Span creation via `createSpan()` / `withSpan()` em `apps/api/src/tracing.ts`
+- W3C Trace Context propagation (traceparent/tracestate headers)
+- Middleware de tracing no handler HTTP (spans por request)
+- Spans de DB no `shared-database`
+- Spans de worker jobs
+- `x-trace-id` exposto no response header
+
+### 4.2 Variáveis de ambiente
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `OTEL_ENABLED` | Habilita OTel SDK | `true` |
+| `OTEL_SERVICE_NAME` | Nome do serviço | `cvg-api` |
+| `OTEL_ENVIRONMENT` | Ambiente | `production` |
+| `OTLP_TRACES_ENDPOINT` | Endpoint OTLP | `http://collector:4318/v1/traces` |
+| `OTLP_PROTOCOL` | Protocolo | `http/protobuf` |
+| `OTLP_HEADERS` | Headers auth | `Authorization=Bearer xxx` |
+
+### 4.3 Como adicionar tracing a uma função
+
+```typescript
+import { withSpan } from './tracing.js';
+
+const result = await withSpan('my-operation', async () => {
+  return doSomething();
+});
+```
+
+---
+
+## 5. Prometheus Scrape Config
+
+Arquivo: `infra/observability/prometheus.yml`
 
 ```yaml
 scrape_configs:
-  - job_name: 'cvg-his-v2-api'
+  - job_name: 'cvg-api'
     metrics_path: '/metrics'
     static_configs:
       - targets: ['host.docker.internal:3001']
+        labels:
+          service: 'api'
+          environment: 'development'
+
+  - job_name: 'cvg-worker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:3002']
+        labels:
+          service: 'worker'
+          environment: 'development'
 ```
 
-### Alert Rules
+Para localhost em desenvolvimento, adicione `host.docker.internal` ao `/etc/hosts`.
 
-O `prometheus-alerts.yml` contem 7 alertas operacionais:
+---
 
-| Alerta                          | Severidade | Condicao               |
-| ------------------------------- | ---------- | ---------------------- |
-| CVG_HIS_API_Down                | Critical   | Nenhum request em 5min |
-| CVG_HIS_API_HighErrorRate       | Critical   | >5% erros 5xx          |
-| CVG_HIS_DB_Unhealthy            | Critical   | DB unreachable         |
-| CVG_HIS_API_Liveness_Failing    | Critical   | Probe failing          |
-| CVG_HIS_API_HighLatency         | Warning    | P95 > 1s               |
-| CVG_HIS_API_InMemoryMode        | Warning    | In-memory > 5min       |
-| CVG_HIS_API_HighClientErrorRate | Warning    | >10% erros 4xx         |
+## 6. Grafana Dashboard
 
-### Integracao com AlertManager
+Arquivo: `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
 
-Para usar com AlertManager, adicione ao `prometheus.yml`:
+### Painéis
 
-```yaml
-rule_files:
-  - 'prometheus-alerts.yml'
+| Painel | Tipo | Query |
+|--------|------|-------|
+| API P95 Latency | Stat | P95 latency em ms |
+| API Error Rate | Stat | Taxa de 5xx |
+| API Availability | Stat | Disponibilidade 1h |
+| Latency Distribution | Timeseries | P50/P95/P99 (5m) |
+| Request Rate by Status | Timeseries | req/s por status code |
+| Latency P95 by Endpoint | Timeseries | Por rota normalizada |
+| Error Budget Remaining | Stat | Budget 30d |
+| Error Budget Burn Rate | Stat | Taxa de consumo |
 
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ['alertmanager:9093']
+### Importar dashboard
+
+1. Abrir Grafana → Dashboards → Import
+2. Carregar JSON de `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
+3. Selecionar datasource Prometheus
+
+---
+
+## 7. Alerts Prometheus
+
+Arquivo: `infra/observability/prometheus-alerts.yml`
+
+| Alerta | Severidade | Condição |
+|--------|------------|----------|
+| `CVG_HIS_API_Down` | Critical | Nenhum request em 5min |
+| `CVG_HIS_API_HighErrorRate` | Critical | >5% erros 5xx em 5min |
+| `CVG_HIS_DB_Unhealthy` | Critical | DB unreachable |
+| `CVG_HIS_API_Liveness_Failing` | Critical | Probe failing |
+| `CVG_HIS_API_HighLatency` | Warning | P95 > 1s |
+| `CVG_HIS_API_InMemoryMode` | Warning | In-memory > 5min |
+| `CVG_HIS_API_HighClientErrorRate` | Warning | >10% erros 4xx |
+
+---
+
+## 8. health e readiness endpoints
+
+| Endpoint | Descrição |
+|----------|-----------|
+| `GET /health` | Liveness probe |
+| `GET /ready` | Readiness probe |
+| `GET /live` | Alias para health |
+| `GET /metrics` | Prometheus metrics |
+| `GET /slos` | Relatório SLO (error budget, burn rate) |
+
+---
+
+## 9. Operações
+
+### 9.1 Verificar se API está expondo métricas
+
+```bash
+curl -s http://localhost:3001/metrics | head -50
 ```
 
-## Limites atuais
+### 9.2 Verificar traces estão sendo exportados
 
-- Sem tracing distribuido (OpenTelemetry pendente)
-- Sem Prometheus/Grafana real em producao
-- Sem AlertManager configurado de fato
+Verificar logs da API procurando por `span` exportado ou erros de conexão OTLP.
+
+### 9.3 Validar SLOs
+
+```bash
+curl -s http://localhost:3001/slos | jq .
+```
+
+---
+
+## 10. Limitações atuais
+
+- Sem collector OTLP incluído no docker-compose (precisa de collector externo)
+- Sem retenção configurada de traces (depende do collector)
+- Sem sampling configurado (100% das requests são traceadas)
+- Dashboard espera `job="cvg-api"` label no Prometheus

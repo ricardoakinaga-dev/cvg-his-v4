@@ -195,10 +195,76 @@ export const routes: RouteRecordRaw[] = [
         name: 'Diagnostics',
         component: () => import('@/pages/clinical/DiagnosticsPage.vue'),
         meta: {
-          title: 'Diagnósticos',
-          breadcrumb: 'Diagnósticos',
-          breadcrumbParent: 'Dashboard',
+          title: 'Central Diagnóstica',
+          breadcrumb: 'Central Diagnóstica',
+          breadcrumbParent: 'Laboratório',
           icon: '🧪'
+        }
+      },
+      {
+        path: 'laboratory',
+        name: 'Laboratory',
+        component: () => import('@/pages/laboratory/LaboratoryHubPage.vue'),
+        meta: {
+          title: 'Laboratório',
+          breadcrumb: 'Laboratório',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔬'
+        }
+      },
+      {
+        path: 'laboratory/orders',
+        name: 'LaboratoryOrders',
+        component: () => import('@/pages/laboratory/LaboratoryOrdersPage.vue'),
+        meta: {
+          title: 'Pedidos de Exame',
+          breadcrumb: 'Pedidos de Exame',
+          breadcrumbParent: 'Laboratório',
+          icon: '🧪'
+        }
+      },
+      {
+        path: 'laboratory/results',
+        name: 'LaboratoryResults',
+        component: () => import('@/pages/laboratory/LaboratoryResultsPage.vue'),
+        meta: {
+          title: 'Resultados',
+          breadcrumb: 'Resultados',
+          breadcrumbParent: 'Laboratório',
+          icon: '📋'
+        }
+      },
+      {
+        path: 'laboratory/equipment',
+        name: 'LaboratoryEquipment',
+        component: () => import('@/pages/laboratory/LaboratoryEquipmentPage.vue'),
+        meta: {
+          title: 'Equipamentos',
+          breadcrumb: 'Equipamentos',
+          breadcrumbParent: 'Laboratório',
+          icon: '🔧'
+        }
+      },
+      {
+        path: 'laboratory/report-types',
+        name: 'LaboratoryReportTypes',
+        component: () => import('@/pages/laboratory/LaboratoryReportTypesPage.vue'),
+        meta: {
+          title: 'Tipos de Laudo',
+          breadcrumb: 'Tipos de Laudo',
+          breadcrumbParent: 'Laboratório',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'laboratory/reference-values',
+        name: 'LaboratoryReferenceValues',
+        component: () => import('@/pages/laboratory/LaboratoryReferenceValuesPage.vue'),
+        meta: {
+          title: 'Valores de Referência',
+          breadcrumb: 'Valores de Referência',
+          breadcrumbParent: 'Laboratório',
+          icon: '📈'
         }
       },
       {
@@ -407,7 +473,7 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/access-control/AccessControlPage.vue'),
         meta: {
           title: 'Governança de Acesso',
-          breadcrumb: 'Acesso',
+          breadcrumb: 'Governança de Acesso',
           breadcrumbParent: 'Dashboard',
           icon: '🔐'
         }
@@ -421,6 +487,17 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Auditoria',
           breadcrumbParent: 'Dashboard',
           icon: '🧾'
+        }
+      },
+      {
+        path: 'lgpd',
+        name: 'Lgpd',
+        component: () => import('@/pages/lgpd/LgpdHubPage.vue'),
+        meta: {
+          title: 'LGPD',
+          breadcrumb: 'LGPD',
+          breadcrumbParent: 'Dashboard',
+          icon: '🔒'
         }
       },
       {
@@ -472,8 +549,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'Notifications',
         component: () => import('@/pages/notifications/NotificationsPage.vue'),
         meta: {
-          title: 'Notificações',
-          breadcrumb: 'Notificações',
+          title: 'Central de Notificações',
+          breadcrumb: 'Central de Notificações',
           breadcrumbParent: 'Dashboard',
           icon: '🔔'
         }
@@ -518,7 +595,7 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/sales/CounterSalesPage.vue'),
         meta: {
           title: 'Vendas Assistidas',
-          breadcrumb: 'Vendas',
+          breadcrumb: 'Vendas Assistidas',
           breadcrumbParent: 'Dashboard',
           icon: '🛒'
         }
@@ -526,6 +603,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'quotes',
         name: 'Quotes',
+        alias: ['/sales/quotes'],
         component: () => import('@/pages/sales/QuotesPage.vue'),
         meta: {
           title: 'Orçamentos',
@@ -536,21 +614,29 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'scheduling',
+        redirect: '/appointments'
+      },
+      {
+        path: 'scheduling/legacy',
         name: 'Scheduling',
         component: () => import('@/pages/scheduling/SchedulingListPage.vue'),
         meta: {
-          title: 'Agenda Operacional',
+          title: 'Agenda Operacional (Legado)',
           breadcrumb: 'Agenda Operacional',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Agenda',
           icon: '📅'
         }
       },
       {
         path: 'scheduling/new',
+        redirect: '/appointments/new'
+      },
+      {
+        path: 'scheduling/legacy/new',
         name: 'SchedulingNew',
         component: () => import('@/pages/scheduling/SchedulingFormPage.vue'),
         meta: {
-          title: 'Novo Agendamento',
+          title: 'Novo Agendamento (Legado)',
           breadcrumb: 'Novo Agendamento',
           breadcrumbParent: 'Agenda Operacional',
           icon: '📅'
@@ -563,7 +649,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Fila Operacional',
           breadcrumb: 'Fila Operacional',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Agenda',
           icon: '🏥'
         }
       },
@@ -609,6 +695,105 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Estoque',
           icon: '📦'
+        }
+      },
+      {
+        path: 'inventory/movements',
+        name: 'InventoryMovements',
+        component: () => import('@/pages/inventory/InventoryMovementsPage.vue'),
+        meta: {
+          title: 'Movimentações',
+          breadcrumb: 'Movimentações',
+          breadcrumbParent: 'Estoque',
+          icon: '📥'
+        }
+      },
+      {
+        path: 'inventory/validity',
+        name: 'InventoryValidity',
+        component: () => import('@/pages/inventory/InventoryValidityPage.vue'),
+        meta: {
+          title: 'Validade e Lotes',
+          breadcrumb: 'Validade e Lotes',
+          breadcrumbParent: 'Estoque',
+          icon: '📅'
+        }
+      },
+      {
+        path: 'fiscal',
+        name: 'Fiscal',
+        component: () => import('@/pages/fiscal/FiscalConfigPage.vue'),
+        meta: {
+          title: 'Fiscal',
+          breadcrumb: 'Fiscal',
+          breadcrumbParent: 'Estoque',
+          icon: '📋'
+        }
+      },
+      {
+        path: 'fiscal/icms',
+        name: 'FiscalICMS',
+        component: () => import('@/pages/fiscal/FiscalICMSPage.vue'),
+        meta: {
+          title: 'ICMS',
+          breadcrumb: 'ICMS',
+          breadcrumbParent: 'Fiscal',
+          icon: '📊'
+        }
+      },
+      {
+        path: 'fiscal/pis-cofins',
+        name: 'FiscalPisCofins',
+        component: () => import('@/pages/fiscal/FiscalPisCofinsPage.vue'),
+        meta: {
+          title: 'PIS / COFINS',
+          breadcrumb: 'PIS / COFINS',
+          breadcrumbParent: 'Fiscal',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'fiscal/cfop',
+        name: 'FiscalCfop',
+        component: () => import('@/pages/fiscal/FiscalCfopPage.vue'),
+        meta: {
+          title: 'CFOP',
+          breadcrumb: 'CFOP',
+          breadcrumbParent: 'Fiscal',
+          icon: '🔢'
+        }
+      },
+      {
+        path: 'fiscal/nfse',
+        name: 'FiscalNFSELayout',
+        component: () => import('@/pages/fiscal/FiscalNFSELayoutPage.vue'),
+        meta: {
+          title: 'NFS-e',
+          breadcrumb: 'NFS-e',
+          breadcrumbParent: 'Fiscal',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'fiscal/ncm',
+        name: 'FiscalNcm',
+        component: () => import('@/pages/fiscal/FiscalNcmPage.vue'),
+        meta: {
+          title: 'IBPT / NCM',
+          breadcrumb: 'IBPT / NCM',
+          breadcrumbParent: 'Fiscal',
+          icon: '🏷️'
+        }
+      },
+      {
+        path: 'fiscal/icms-matrix',
+        name: 'FiscalICMSMatrix',
+        component: () => import('@/pages/fiscal/FiscalICMSMatrixPage.vue'),
+        meta: {
+          title: 'Matriz ICMS',
+          breadcrumb: 'Matriz ICMS',
+          breadcrumbParent: 'Fiscal',
+          icon: '📊'
         }
       },
       {

@@ -110,8 +110,13 @@ async function serveFile(filePath, res) {
     });
     const stream = createReadStream(filePath);
     stream.on('error', (error) => {
-      if (!res.destroyed) {
+      if (!res.destroyed && !res.headersSent) {
         writeJson(res, 500, { error: 'Static stream failure', filePath, detail: String(error) });
+        return;
+      }
+
+      if (!res.destroyed) {
+        res.end();
       }
     });
     stream.pipe(res);

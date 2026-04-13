@@ -1,9 +1,11 @@
 <template>
   <div class="inpatient-list-page">
-    <AppPageHeader title="🛏️ Internação" subtitle="Gestão de internações e leitos">
+    <AppPageHeader title="🛏️ Internação" subtitle="Atendimento > Internação. Acompanhe admissões, leitos e evolução dos pacientes internados.">
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="reload">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>
+        <DsButton tag="a" to="/sectors" variant="ghost">🏢 Setores</DsButton>
+        <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>
         <DsButton tag="a" to="/encounters" variant="primary">+ Admitir Paciente</DsButton>
       </template>
     </AppPageHeader>
@@ -53,9 +55,12 @@
       :loading="loading"
       empty-icon="🛏️"
       empty-title="Nenhuma internação ativa"
-      empty-description="As internações aparecem quando pacientes são admitidos."
+      empty-description="As internações aparecem quando um atendimento evolui para admissão ou observação prolongada."
       variant="hoverable"
     >
+      <template #emptyAction>
+        <DsButton tag="a" to="/encounters" variant="primary">+ Abrir Atendimento</DsButton>
+      </template>
       <template #cell-patient="{ row }">
         {{ patientName((row as InpatientStaySummary).patientId) }}
       </template>
