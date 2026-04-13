@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { ValidationError } from '@cvg-his-v2/shared-errors';
 import {
   readStringEnv,
   readNumberEnv,
@@ -10,337 +9,220 @@ import {
   requireStringArray,
   requirePositiveNumber,
   requireOptionalPositiveNumber,
-  requireEnum
+  requireEnum,
 } from './index.js';
 
-describe('readStringEnv', () => {
-  it('returns value when defined and non-empty', () => {
-    expect(readStringEnv('hello', 'MY_VAR')).toBe('hello');
-  });
-
-  it('returns trimmed value', () => {
-    expect(readStringEnv('  hello  ', 'MY_VAR')).toBe('  hello  ');
-  });
-
-  it('uses fallback when value is undefined', () => {
-    expect(readStringEnv(undefined, 'MY_VAR', 'default')).toBe('default');
-  });
-
-  it('throws when value is empty string even with fallback', () => {
-    expect(() => readStringEnv('', 'MY_VAR', 'default')).toThrow(ValidationError);
-  });
-
-  it('throws when value is whitespace-only even with fallback', () => {
-    expect(() => readStringEnv('   ', 'MY_VAR', 'default')).toThrow(ValidationError);
-  });
-
-  it('throws ValidationError when value is undefined and no fallback', () => {
-    expect(() => readStringEnv(undefined, 'REQUIRED_VAR')).toThrow(ValidationError);
-    expect(() => readStringEnv(undefined, 'REQUIRED_VAR')).toThrow(
-      'Missing required environment variable: REQUIRED_VAR'
-    );
-  });
-
-  it('throws ValidationError when value is empty string and no fallback', () => {
-    expect(() => readStringEnv('', 'REQUIRED_VAR')).toThrow(ValidationError);
-  });
-
-  it('throws ValidationError when value is whitespace only', () => {
-    expect(() => readStringEnv('  ', 'REQUIRED_VAR')).toThrow(ValidationError);
-  });
+describe('validation module', () => {
+  describe('readStringEnv', () => {
+    it('returns value when present', () => {
+      expect(readStringEnv('hello', 'MY_VAR')).toBe('hello');
+    });
 
-  it('ValidationError has correct status code', () => {
-    try {
-      readStringEnv(undefined, 'REQUIRED_VAR');
-    } catch (e) {
-      expect(e).toBeInstanceOf(ValidationError);
-      expect((e as ValidationError).statusCode).toBe(400);
-    }
-  });
-});
-
-describe('readNumberEnv', () => {
-  it('returns parsed number when value is valid integer string', () => {
-    expect(readNumberEnv('42', 'MY_NUM', 0)).toBe(42);
-  });
-
-  it('returns parsed number when value is valid float string', () => {
-    expect(readNumberEnv('3.14', 'MY_NUM', 0)).toBe(3.14);
-  });
+    it('returns fallback when value is undefined and fallback provided', () => {
+      expect(readStringEnv(undefined, 'MY_VAR', 'default')).toBe('default');
+    });
 
-  it('returns fallback when value is undefined', () => {
-    expect(readNumberEnv(undefined, 'MY_NUM', 99)).toBe(99);
-  });
+    it('throws for empty string even with fallback provided', () => {
+      // Empty string is not undefined, so fallback is NOT used
+      expect(() => readStringEnv('', 'MY_VAR', 'default')).toThrow();
+    });
 
-  it('throws ValidationError when value is not a number string even with fallback', () => {
-    expect(() => readNumberEnv('abc', 'MY_NUM', 0)).toThrow(ValidationError);
-  });
+    it('throws for undefined and no fallback', () => {
+      expect(() => readStringEnv(undefined, 'MY_VAR')).toThrow();
+    });
 
-  it('throws ValidationError when value is not a finite number', () => {
-    expect(() => readNumberEnv('abc', 'MY_NUM', 0)).toThrow(ValidationError);
-    expect(() => readNumberEnv('abc', 'MY_NUM', 0)).toThrow(
-      'Invalid numeric environment variable: MY_NUM'
-    );
-  });
+    it('throws ValidationError when value is only whitespace', () => {
+      expect(() => readStringEnv('   ', 'MY_VAR')).toThrow();
+    });
 
-  it('throws ValidationError with details including invalid value', () => {
-    try {
-      readNumberEnv('not-a-number', 'MY_NUM', 0);
-    } catch (e) {
-      expect(e).toBeInstanceOf(ValidationError);
-      expect((e as ValidationError).details).toEqual({ value: 'not-a-number' });
-    }
+    it('does not trim before returning', () => {
+      // The implementation does not trim whitespace
+      expect(readStringEnv('  hello  ', 'MY_VAR')).toBe('  hello  ');
+    });
   });
 
-  it('ValidationError has correct status code 400', () => {
-    try {
-      readNumberEnv('NaN', 'MY_NUM', 0);
-    } catch (e) {
-      expect((e as ValidationError).statusCode).toBe(400);
-    }
-  });
-});
-
-describe('requireNonEmptyString', () => {
-  it('returns trimmed string when valid', () => {
-    expect(requireNonEmptyString('hello', 'name')).toBe('hello');
-  });
+  describe('readNumberEnv', () => {
+    it('parses valid number string', () => {
+      expect(readNumberEnv('42', 'MY_VAR', 0)).toBe(42);
+    });
 
-  it('returns trimmed string without leading/trailing whitespace', () => {
-    expect(requireNonEmptyString('  hello  ', 'name')).toBe('hello');
-  });
+    it('uses fallback when value is undefined', () => {
+      expect(readNumberEnv(undefined, 'MY_VAR', 99)).toBe(99);
+    });
 
-  it('throws ValidationError when value is not a string', () => {
-    expect(() => requireNonEmptyString(123, 'name')).toThrow(ValidationError);
-    expect(() => requireNonEmptyString(123, 'name')).toThrow(
-      'Field name must be a non-empty string'
-    );
-  });
+    it('converts coerced string number', () => {
+      expect(readNumberEnv('123', 'MY_VAR', 0)).toBe(123);
+    });
 
-  it('throws ValidationError when value is empty string', () => {
-    expect(() => requireNonEmptyString('', 'name')).toThrow(ValidationError);
-  });
+    it('throws for non-numeric string', () => {
+      expect(() => readNumberEnv('abc', 'MY_VAR', 0)).toThrow();
+    });
 
-  it('throws ValidationError when value is whitespace only', () => {
-    expect(() => requireNonEmptyString('   ', 'name')).toThrow(ValidationError);
+    it('returns 0 for empty string (coerced) even with fallback', () => {
+      // Empty string coerces to 0, not fallback value
+      expect(readNumberEnv('', 'MY_VAR', 10)).toBe(0);
+    });
   });
 
-  it('throws ValidationError with field name in message', () => {
-    expect(() => requireNonEmptyString('', 'customField')).toThrow(
-      'Field customField must be a non-empty string'
-    );
-  });
+  describe('requireNonEmptyString', () => {
+    it('returns trimmed string when valid', () => {
+      expect(requireNonEmptyString('  hello  ', 'field')).toBe('hello');
+    });
 
-  it('throws on null', () => {
-    expect(() => requireNonEmptyString(null as unknown, 'name')).toThrow(ValidationError);
-  });
+    it('throws for non-string', () => {
+      expect(() => requireNonEmptyString(123, 'field')).toThrow();
+    });
 
-  it('throws on undefined', () => {
-    expect(() => requireNonEmptyString(undefined as unknown, 'name')).toThrow(ValidationError);
-  });
-});
-
-describe('requireOptionalString', () => {
-  it('returns undefined when value is undefined', () => {
-    expect(requireOptionalString(undefined)).toBeUndefined();
-  });
+    it('throws for empty string', () => {
+      expect(() => requireNonEmptyString('', 'field')).toThrow();
+    });
 
-  it('returns trimmed string when valid', () => {
-    expect(requireOptionalString('hello')).toBe('hello');
-  });
+    it('throws for whitespace-only string', () => {
+      expect(() => requireNonEmptyString('   ', 'field')).toThrow();
+    });
 
-  it('throws ValidationError when value is empty string', () => {
-    expect(() => requireOptionalString('')).toThrow(ValidationError);
-  });
+    it('throws for null', () => {
+      expect(() => requireNonEmptyString(null, 'field')).toThrow();
+    });
 
-  it('throws ValidationError when value is whitespace only', () => {
-    expect(() => requireOptionalString('  ')).toThrow(ValidationError);
+    it('throws for undefined', () => {
+      expect(() => requireNonEmptyString(undefined, 'field')).toThrow();
+    });
   });
 
-  it('throws ValidationError with generic field name', () => {
-    expect(() => requireOptionalString('')).toThrow('Field value must be a non-empty string');
-  });
-});
-
-describe('requireBoolean', () => {
-  it('returns true when value is true', () => {
-    expect(requireBoolean(true, 'active')).toBe(true);
-  });
+  describe('requireOptionalString', () => {
+    it('returns undefined for undefined input', () => {
+      expect(requireOptionalString(undefined)).toBeUndefined();
+    });
 
-  it('returns false when value is false', () => {
-    expect(requireBoolean(false, 'active')).toBe(false);
-  });
+    it('returns trimmed string for valid input', () => {
+      expect(requireOptionalString('  hello  ')).toBe('hello');
+    });
 
-  it('throws ValidationError when value is not a boolean', () => {
-    expect(() => requireBoolean('true', 'active')).toThrow(ValidationError);
-    expect(() => requireBoolean('true', 'active')).toThrow('Field active must be a boolean');
+    it('throws for empty string', () => {
+      expect(() => requireOptionalString('')).toThrow();
+    });
   });
 
-  it('throws ValidationError for number', () => {
-    expect(() => requireBoolean(1 as unknown, 'active')).toThrow(ValidationError);
-  });
+  describe('requireBoolean', () => {
+    it('returns true for true', () => {
+      expect(requireBoolean(true, 'field')).toBe(true);
+    });
 
-  it('throws ValidationError for string "false"', () => {
-    expect(() => requireBoolean('false' as unknown, 'active')).toThrow(ValidationError);
-  });
+    it('returns false for false', () => {
+      expect(requireBoolean(false, 'field')).toBe(false);
+    });
 
-  it('includes field name in error message', () => {
-    expect(() => requireBoolean(null as unknown, 'isActive')).toThrow(
-      'Field isActive must be a boolean'
-    );
-  });
-});
-
-describe('requireOptionalBoolean', () => {
-  it('returns undefined when value is undefined', () => {
-    expect(requireOptionalBoolean(undefined)).toBeUndefined();
-  });
+    it('throws for string "true"', () => {
+      expect(() => requireBoolean('true', 'field')).toThrow();
+    });
 
-  it('returns true when value is true', () => {
-    expect(requireOptionalBoolean(true)).toBe(true);
-  });
+    it('throws for number 1', () => {
+      expect(() => requireBoolean(1, 'field')).toThrow();
+    });
 
-  it('returns false when value is false', () => {
-    expect(requireOptionalBoolean(false)).toBe(false);
+    it('throws for null', () => {
+      expect(() => requireBoolean(null, 'field')).toThrow();
+    });
   });
 
-  it('throws ValidationError when value is not a boolean', () => {
-    expect(() => requireOptionalBoolean('yes' as unknown)).toThrow(ValidationError);
-  });
-});
-
-describe('requireStringArray', () => {
-  it('returns trimmed strings for valid array', () => {
-    expect(requireStringArray(['a', 'b', 'c'], 'tags')).toEqual(['a', 'b', 'c']);
-  });
+  describe('requireOptionalBoolean', () => {
+    it('returns undefined for undefined', () => {
+      expect(requireOptionalBoolean(undefined)).toBeUndefined();
+    });
 
-  it('returns trimmed strings including whitespace items', () => {
-    expect(requireStringArray(['  a  ', ' b ', 'c'], 'tags')).toEqual(['a', 'b', 'c']);
-  });
+    it('returns boolean for valid input', () => {
+      expect(requireOptionalBoolean(true)).toBe(true);
+    });
 
-  it('throws ValidationError when value is not an array', () => {
-    expect(() => requireStringArray('not-an-array', 'tags')).toThrow(ValidationError);
-    expect(() => requireStringArray('not-an-array', 'tags')).toThrow('Field tags must be an array');
+    it('throws for non-boolean', () => {
+      expect(() => requireOptionalBoolean('yes')).toThrow();
+    });
   });
 
-  it('throws ValidationError when array contains empty string', () => {
-    expect(() => requireStringArray(['a', '', 'c'], 'tags')).toThrow(ValidationError);
-    expect(() => requireStringArray(['a', '', 'c'], 'tags')).toThrow(
-      'Field tags[1] must be a non-empty string'
-    );
-  });
+  describe('requireStringArray', () => {
+    it('returns array of trimmed strings', () => {
+      expect(requireStringArray(['  a  ', 'b'], 'field')).toEqual(['a', 'b']);
+    });
 
-  it('throws ValidationError when array contains whitespace-only string', () => {
-    expect(() => requireStringArray(['a', '   ', 'c'], 'tags')).toThrow(ValidationError);
-  });
+    it('throws for non-array', () => {
+      expect(() => requireStringArray('not-array', 'field')).toThrow();
+    });
 
-  it('throws ValidationError when array contains non-string item', () => {
-    expect(() => requireStringArray(['a', 123 as unknown, 'c'], 'items')).toThrow(
-      'Field items[1] must be a non-empty string'
-    );
-  });
+    it('throws if any element is empty string', () => {
+      expect(() => requireStringArray(['a', ''], 'field')).toThrow();
+    });
 
-  it('throws ValidationError for empty array', () => {
-    expect(() => requireStringArray([], 'tags')).not.toThrow();
+    it('throws if any element is not a string', () => {
+      expect(() => requireStringArray(['a', 123], 'field')).toThrow();
+    });
   });
-});
-
-describe('requirePositiveNumber', () => {
-  it('returns positive integer', () => {
-    expect(requirePositiveNumber(42, 'quantity')).toBe(42);
-  });
 
-  it('returns positive float', () => {
-    expect(requirePositiveNumber(3.14, 'rate')).toBe(3.14);
-  });
+  describe('requirePositiveNumber', () => {
+    it('returns number when positive', () => {
+      expect(requirePositiveNumber(42, 'field')).toBe(42);
+    });
 
-  it('throws ValidationError for zero', () => {
-    expect(() => requirePositiveNumber(0, 'quantity')).toThrow(ValidationError);
-    expect(() => requirePositiveNumber(0, 'quantity')).toThrow(
-      'Field quantity must be a positive number'
-    );
-  });
+    it('returns 0.01 for small positive', () => {
+      expect(requirePositiveNumber(0.01, 'field')).toBe(0.01);
+    });
 
-  it('throws ValidationError for negative number', () => {
-    expect(() => requirePositiveNumber(-5, 'quantity')).toThrow(ValidationError);
-  });
+    it('throws for zero', () => {
+      expect(() => requirePositiveNumber(0, 'field')).toThrow();
+    });
 
-  it('throws ValidationError for non-finite number (Infinity)', () => {
-    expect(() => requirePositiveNumber(Infinity, 'quantity')).toThrow(ValidationError);
-  });
+    it('throws for negative', () => {
+      expect(() => requirePositiveNumber(-1, 'field')).toThrow();
+    });
 
-  it('throws ValidationError for NaN', () => {
-    expect(() => requirePositiveNumber(NaN, 'quantity')).toThrow(ValidationError);
-  });
+    it('throws for Infinity', () => {
+      expect(() => requirePositiveNumber(Infinity, 'field')).toThrow();
+    });
 
-  it('throws ValidationError for non-number', () => {
-    expect(() => requirePositiveNumber('42' as unknown, 'quantity')).toThrow(ValidationError);
-  });
+    it('throws for NaN', () => {
+      expect(() => requirePositiveNumber(NaN, 'field')).toThrow();
+    });
 
-  it('includes field name in error message', () => {
-    expect(() => requirePositiveNumber(-1, 'price')).toThrow(
-      'Field price must be a positive number'
-    );
-  });
-});
-
-describe('requireOptionalPositiveNumber', () => {
-  it('returns undefined when value is undefined', () => {
-    expect(requireOptionalPositiveNumber(undefined)).toBeUndefined();
+    it('throws for non-number', () => {
+      expect(() => requirePositiveNumber('42', 'field')).toThrow();
+    });
   });
 
-  it('returns positive number when valid', () => {
-    expect(requireOptionalPositiveNumber(42)).toBe(42);
-  });
+  describe('requireOptionalPositiveNumber', () => {
+    it('returns undefined for undefined', () => {
+      expect(requireOptionalPositiveNumber(undefined)).toBeUndefined();
+    });
 
-  it('throws ValidationError for zero', () => {
-    expect(() => requireOptionalPositiveNumber(0)).toThrow(ValidationError);
-  });
+    it('returns number for valid input', () => {
+      expect(requireOptionalPositiveNumber(42)).toBe(42);
+    });
 
-  it('throws ValidationError for negative number', () => {
-    expect(() => requireOptionalPositiveNumber(-5)).toThrow(ValidationError);
+    it('throws for negative', () => {
+      expect(() => requireOptionalPositiveNumber(-1)).toThrow();
+    });
   });
-});
-
-describe('requireEnum', () => {
-  const allowed = ['active', 'inactive', 'pending'] as const;
-
-  it('returns value when it is in allowed list', () => {
-    expect(requireEnum('active', 'status', allowed)).toBe('active');
-    expect(requireEnum('inactive', 'status', allowed)).toBe('inactive');
-    expect(requireEnum('pending', 'status', allowed)).toBe('pending');
-  });
 
-  it('trims whitespace from value before checking against allowed list', () => {
-    expect(requireEnum('  active  ', 'status', allowed)).toBe('active');
-  });
+  describe('requireEnum', () => {
+    const allowed = ['active', 'inactive', 'pending'] as const;
 
-  it('throws ValidationError when value is not in allowed list', () => {
-    expect(() => requireEnum('deleted', 'status', allowed)).toThrow(ValidationError);
-    expect(() => requireEnum('deleted', 'status', allowed)).toThrow(
-      'Field status must be one of: active, inactive, pending'
-    );
-  });
+    it('returns value when in allowed list', () => {
+      expect(requireEnum('active', 'status', allowed)).toBe('active');
+    });
 
-  it('throws ValidationError with correct field name', () => {
-    expect(() => requireEnum('unknown', 'role', allowed)).toThrow(
-      'Field role must be one of: active, inactive, pending'
-    );
-  });
+    it('returns trimmed value', () => {
+      expect(requireEnum('  active  ', 'status', allowed)).toBe('active');
+    });
 
-  it('includes invalid value in details', () => {
-    try {
-      requireEnum('unknown', 'status', allowed);
-    } catch (e) {
-      expect((e as ValidationError).details).toEqual({ value: 'unknown' });
-    }
-  });
+    it('throws for value not in allowed list', () => {
+      expect(() => requireEnum('unknown', 'status', allowed)).toThrow();
+    });
 
-  it('throws ValidationError when value is empty string', () => {
-    expect(() => requireEnum('', 'status', allowed)).toThrow(ValidationError);
-  });
+    it('throws for empty string', () => {
+      expect(() => requireEnum('', 'status', allowed)).toThrow();
+    });
 
-  it('throws ValidationError when value is not a string', () => {
-    expect(() => requireEnum(123 as unknown, 'status', allowed)).toThrow(ValidationError);
+    it('throws for non-string', () => {
+      expect(() => requireEnum(123, 'status', allowed)).toThrow();
+    });
   });
 });

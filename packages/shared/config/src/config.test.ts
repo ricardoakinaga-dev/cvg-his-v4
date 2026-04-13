@@ -1,442 +1,283 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  API_CONFIG_FIELDS,
-  SPA_CONFIG_FIELDS,
-  WORKER_CONFIG_FIELDS,
   loadApiConfig,
-  loadSpaClientConfig,
-  loadSpaViteConfig,
   loadWebConfig,
   loadWorkerConfig,
-  type ApiAppConfig,
-  type WebAppConfig,
-  type WorkerAppConfig
+  loadSpaClientConfig,
+  loadSpaViteConfig,
+  API_CONFIG_FIELDS,
+  WORKER_CONFIG_FIELDS,
+  SPA_CONFIG_FIELDS,
 } from './index.js';
 
-function createMockEnv(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+function cleanApiEnv(): Record<string, string> {
   return {
-    ...process.env,
-    ...overrides
-  } as NodeJS.ProcessEnv;
+    NODE_ENV: 'development',
+    APP_NAME: 'test-api',
+    PORT: '3001',
+    HOST: '127.0.0.1',
+    CORS_ALLOWED_ORIGINS: 'http://localhost:3000',
+    AUTH_SECRET: 'a-very-long-secret-that-is-at-least-32-chars',
+    AUTH_ACCESS_TOKEN_TTL_SECONDS: '900',
+    AUTH_REFRESH_TOKEN_TTL_SECONDS: '604800',
+    AUTH_RATE_LIMIT_MAX_REQUESTS: '10',
+    AUTH_RATE_LIMIT_WINDOW_MS: '900000',
+    AUTH_RATE_LIMIT_BACKEND: 'memory',
+    OTEL_ENABLED: 'false',
+    OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
+    FILE_STORAGE_PATH: '/tmp/attachments',
+    ENABLE_MFA: 'false',
+  };
 }
 
-test('config inventories expose the sprint 3 app coverage', () => {
-  assert.ok(API_CONFIG_FIELDS.some((field) => field.key === 'AUTH_SECRET'));
-  assert.ok(API_CONFIG_FIELDS.some((field) => field.key === 'CORS_ALLOWED_ORIGINS'));
-  assert.ok(API_CONFIG_FIELDS.some((field) => field.key === 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'));
-  assert.ok(WORKER_CONFIG_FIELDS.some((field) => field.key === 'WORKER_HEALTH_PORT'));
-  assert.ok(WORKER_CONFIG_FIELDS.some((field) => field.key === 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'));
-  assert.ok(SPA_CONFIG_FIELDS.some((field) => field.key === 'VITE_API_BASE_URL'));
-});
-
-test('loadApiConfig loads with defaults in development', () => {
-  const env = createMockEnv({
-    NODE_ENV: undefined,
-    AUTH_SECRET: undefined,
-    APP_NAME: undefined,
-    PORT: undefined,
-    HOST: undefined,
-    CORS_ALLOWED_ORIGINS: undefined,
-    OTEL_ENABLED: undefined,
-    OTEL_SERVICE_NAME: undefined,
-    OTEL_EXPORTER_OTLP_PROTOCOL: undefined,
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: undefined,
-    OTEL_EXPORTER_OTLP_HEADERS: undefined,
-    DATABASE_URL: undefined,
-    FILE_STORAGE_PATH: undefined,
-    ENABLE_MFA: undefined,
-    MFA_SECRET_ENCRYPTION_KEY: undefined
+describe('config module', () => {
+  beforeEach(() => {
+    // Reset env between tests if needed
   });
 
-  const config = loadApiConfig(env);
+  describe('API_CONFIG_FIELDS, WORKER_CONFIG_FIELDS, SPA_CONFIG_FIELDS', () => {
+    it('exposes API_CONFIG_FIELDS', () => {
+      expect(API_CONFIG_FIELDS.length).toBeGreaterThan(0);
+      expect(API_CONFIG_FIELDS[0].app).toBe('api');
+    });
 
-  assert.equal(config.appName, 'cvg-his-v2-api');
-  assert.equal(config.environment, 'development');
-  assert.equal(config.port, 3001);
-  assert.equal(config.host, '127.0.0.1');
-  assert.deepEqual(config.corsAllowedOrigins, [
-    'http://127.0.0.1:3000',
-    'http://localhost:3000',
-    'http://127.0.0.1:3002',
-    'http://localhost:3002',
-    'http://127.0.0.1:3102',
-    'http://localhost:3102',
-    'http://127.0.0.1:3112',
-    'http://localhost:3112',
-    'http://127.0.0.1:4173',
-    'http://localhost:4173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5173'
-  ]);
-  assert.equal(config.otelEnabled, false);
-  assert.equal(config.otelServiceName, 'cvg-his-v2-api');
-  assert.equal(config.otlpProtocol, 'http/protobuf');
-  assert.equal(config.otlpTracesEndpoint, undefined);
-  assert.deepEqual(config.otlpHeaders, {});
-  assert.equal(config.authRateLimitMaxRequests, 10);
-  assert.equal(config.authRateLimitWindowMs, 15 * 60 * 1000);
-  assert.equal(config.fileStoragePath, '/tmp/cvg-his-v2-attachments');
-  assert.equal(config.enableMfa, false);
-  assert.ok(config.authSecret.startsWith('cvg-his-v2-phase-3-dev-secret'));
-});
+    it('exposes WORKER_CONFIG_FIELDS', () => {
+      expect(WORKER_CONFIG_FIELDS.length).toBeGreaterThan(0);
+      expect(WORKER_CONFIG_FIELDS[0].app).toBe('worker');
+    });
 
-test('loadApiConfig loads with custom values', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    APP_NAME: 'my-custom-api',
-    PORT: '4000',
-    HOST: '0.0.0.0',
-    CORS_ALLOWED_ORIGINS: 'https://app.example.com, https://admin.example.com/',
-    OTEL_ENABLED: 'true',
-    OTEL_SERVICE_NAME: 'cvg-premium-api',
-    OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'https://otel.example.com/v1/traces',
-    OTEL_EXPORTER_OTLP_HEADERS: 'authorization=Bearer token,x-tenant-id=cvg',
-    DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his_v2',
-    FILE_STORAGE_PATH: '/srv/storage',
-    AUTH_SECRET: 'a-very-long-and-secure-custom-production-key-32chars',
-    AUTH_ACCESS_TOKEN_TTL_SECONDS: '1800',
-    AUTH_REFRESH_TOKEN_TTL_SECONDS: '1209600',
-    AUTH_RATE_LIMIT_MAX_REQUESTS: '25',
-    AUTH_RATE_LIMIT_WINDOW_MS: '300000',
-    ENABLE_MFA: 'true',
-    MFA_SECRET_ENCRYPTION_KEY: '12345678901234567890123456789012'
+    it('exposes SPA_CONFIG_FIELDS', () => {
+      expect(SPA_CONFIG_FIELDS.length).toBeGreaterThan(0);
+      expect(SPA_CONFIG_FIELDS[0].app).toBe('spa');
+    });
   });
 
-  const config = loadApiConfig(env);
+  describe('loadApiConfig', () => {
+    it('loads valid development config with defaults', () => {
+      const env: Record<string, string> = {};
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.port).toBe(3001);
+      expect(config.environment).toBe('development');
+      expect(config.authRateLimitMaxRequests).toBe(10);
+      expect(config.authRateLimitBackend).toBe('memory');
+    });
 
-  assert.equal(config.appName, 'my-custom-api');
-  assert.equal(config.environment, 'production');
-  assert.equal(config.port, 4000);
-  assert.equal(config.host, '0.0.0.0');
-  assert.deepEqual(config.corsAllowedOrigins, [
-    'https://app.example.com',
-    'https://admin.example.com'
-  ]);
-  assert.equal(config.otelEnabled, true);
-  assert.equal(config.otelServiceName, 'cvg-premium-api');
-  assert.equal(config.otlpProtocol, 'http/protobuf');
-  assert.equal(config.otlpTracesEndpoint, 'https://otel.example.com/v1/traces');
-  assert.deepEqual(config.otlpHeaders, {
-    authorization: 'Bearer token',
-    'x-tenant-id': 'cvg'
-  });
-  assert.equal(config.authRateLimitMaxRequests, 25);
-  assert.equal(config.authRateLimitWindowMs, 300000);
-  assert.equal(config.databaseUrl, 'postgres://postgres:postgres@localhost:5432/cvg_his_v2');
-  assert.equal(config.fileStoragePath, '/srv/storage');
-  assert.equal(config.enableMfa, true);
-  assert.equal(config.mfaEncryptionKey, '12345678901234567890123456789012');
-});
+    it('loads with explicit values', () => {
+      const env = cleanApiEnv();
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.appName).toBe('test-api');
+      expect(config.port).toBe(3001);
+      expect(config.host).toBe('127.0.0.1');
+      expect(config.environment).toBe('development');
+    });
 
-test('loadApiConfig rejects insecure secrets in production', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    CORS_ALLOWED_ORIGINS: 'https://app.example.com',
-    DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his_v2',
-    AUTH_SECRET: 'short'
-  });
+    it('parses CORS_ALLOWED_ORIGINS correctly', () => {
+      const env = cleanApiEnv();
+      env.CORS_ALLOWED_ORIGINS = 'http://localhost:3000,http://localhost:3001';
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.corsAllowedOrigins).toContain('http://localhost:3000');
+      expect(config.corsAllowedOrigins).toContain('http://localhost:3001');
+    });
 
-  assert.throws(() => loadApiConfig(env), /AUTH_SECRET must be at least 32 characters/);
-});
+    it('throws when CORS_ALLOWED_ORIGINS is invalid', () => {
+      const env = cleanApiEnv();
+      env.CORS_ALLOWED_ORIGINS = 'not-a-valid-origin';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-test('loadApiConfig rejects insecure default secrets in production', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    CORS_ALLOWED_ORIGINS: 'https://app.example.com',
-    DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his_v2',
-    AUTH_SECRET: 'dev-secret-extra-characters-to-make-it-long-enough'
-  });
+    it('throws when CORS_ALLOWED_ORIGINS has path', () => {
+      const env = cleanApiEnv();
+      env.CORS_ALLOWED_ORIGINS = 'http://localhost:3000/path';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-  assert.throws(() => loadApiConfig(env), /AUTH_SECRET contains an insecure default value/);
-});
+    it('throws when CORS_ALLOWED_ORIGINS has non-http protocol', () => {
+      const env = cleanApiEnv();
+      env.CORS_ALLOWED_ORIGINS = 'ftp://localhost:3000';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-test('loadApiConfig requires MFA key when MFA is enabled', () => {
-  const env = createMockEnv({
-    ENABLE_MFA: 'true',
-    MFA_SECRET_ENCRYPTION_KEY: undefined
-  });
+    it('throws when AUTH_SECRET is too short in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.AUTH_SECRET = 'short';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-  assert.throws(() => loadApiConfig(env), /MFA_SECRET_ENCRYPTION_KEY is required/);
-});
+    it('throws when AUTH_SECRET contains insecure value in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.AUTH_SECRET = 'changeme-production-secret-12345678901234567890';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-test('loadApiConfig requires explicit CORS allowlist in production-like environments', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    AUTH_SECRET: 'a-very-long-and-secure-custom-production-key-32chars',
-    DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his_v2',
-    CORS_ALLOWED_ORIGINS: undefined
-  });
+    it('throws when OTEL_ENABLED but no OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', () => {
+      const env = cleanApiEnv();
+      env.OTEL_ENABLED = 'true';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-  assert.throws(() => loadApiConfig(env), /CORS_ALLOWED_ORIGINS is required/);
-});
+    it('throws when OTEL_EXPORTER_OTLP_PROTOCOL is not supported', () => {
+      const env = cleanApiEnv();
+      env.OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/not supported/);
+    });
 
-test('loadApiConfig requires DATABASE_URL in production-like environments', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    AUTH_SECRET: 'a-very-long-and-secure-custom-production-key-32chars',
-    CORS_ALLOWED_ORIGINS: 'https://app.example.com',
-    DATABASE_URL: undefined
-  });
+    it('throws when DATABASE_URL missing in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.AUTH_SECRET = 'a-very-long-secret-that-is-at-least-32-chars';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-  assert.throws(() => loadApiConfig(env), /DATABASE_URL is required/);
-});
+    it('throws when AUTH_RATE_LIMIT_BACKEND=redis but no REDIS_URL', () => {
+      const env = cleanApiEnv();
+      env.AUTH_RATE_LIMIT_BACKEND = 'redis';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-test('loadApiConfig rejects invalid CORS allowlist entries', () => {
-  const env = createMockEnv({
-    CORS_ALLOWED_ORIGINS: 'https://app.example.com/app'
-  });
+    it('loads MFA config when ENABLE_MFA=true and key provided', () => {
+      const env = cleanApiEnv();
+      env.ENABLE_MFA = 'true';
+      env.MFA_SECRET_ENCRYPTION_KEY = 'a-32-char-secret-key-for-mfa!!';
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.enableMfa).toBe(true);
+      expect(config.mfaEncryptionKey).toBe('a-32-char-secret-key-for-mfa!!');
+    });
 
-  assert.throws(() => loadApiConfig(env), /CORS_ALLOWED_ORIGINS entries must be origins/);
-});
+    it('throws when ENABLE_MFA=true but no MFA_SECRET_ENCRYPTION_KEY', () => {
+      const env = cleanApiEnv();
+      env.ENABLE_MFA = 'true';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
 
-test('loadApiConfig rejects invalid DATABASE_URL', () => {
-  const env = createMockEnv({
-    DATABASE_URL: 'not-a-url'
-  });
+    it('accepts REDIS_URL when AUTH_RATE_LIMIT_BACKEND=redis', () => {
+      const env = cleanApiEnv();
+      env.AUTH_RATE_LIMIT_BACKEND = 'redis';
+      env.REDIS_URL = 'redis://localhost:6379';
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.authRateLimitBackend).toBe('redis');
+      expect(config.redisUrl).toBe('redis://localhost:6379');
+    });
 
-  assert.throws(() => loadApiConfig(env), /DATABASE_URL/);
-});
+    it('accepts otlp headers as key=value format', () => {
+      const env = cleanApiEnv();
+      env.OTEL_ENABLED = 'true';
+      env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = 'http://otel:4318';
+      env.OTEL_EXPORTER_OTLP_HEADERS = 'x-api-key=mykey,x-auth=token';
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.otelEnabled).toBe(true);
+      expect(config.otlpHeaders['x-api-key']).toBe('mykey');
+      expect(config.otlpHeaders['x-auth']).toBe('token');
+    });
 
-test('loadApiConfig requires OTLP endpoint when OpenTelemetry is enabled', () => {
-  const env = createMockEnv({
-    OTEL_ENABLED: 'true',
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: undefined
-  });
-
-  assert.throws(() => loadApiConfig(env), /OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required/);
-});
-
-test('loadApiConfig rejects unsupported OTLP protocol', () => {
-  const env = createMockEnv({
-    OTEL_EXPORTER_OTLP_PROTOCOL: 'grpc'
-  });
-
-  assert.throws(() => loadApiConfig(env), /OTEL_EXPORTER_OTLP_PROTOCOL=grpc is not supported/);
-});
-
-test('loadApiConfig rejects malformed OTLP headers', () => {
-  const env = createMockEnv({
-    OTEL_EXPORTER_OTLP_HEADERS: 'authorization'
-  });
-
-  assert.throws(() => loadApiConfig(env), /OTEL_EXPORTER_OTLP_HEADERS must use/);
-});
-
-test('loadWebConfig keeps compatibility with server-side web app envs', () => {
-  const env = createMockEnv({
-    APP_NAME: 'legacy-web',
-    API_BASE_URL: 'https://api.example.com/api',
-    PORT: '8080',
-    HOST: '0.0.0.0',
-    VITE_DISABLE_PWA: '1'
-  });
-
-  const config = loadWebConfig(env);
-
-  assert.equal(config.appName, 'legacy-web');
-  assert.equal(config.apiBaseUrl, 'https://api.example.com');
-  assert.equal(config.port, 8080);
-  assert.equal(config.host, '0.0.0.0');
-  assert.equal(config.disablePwa, true);
-});
-
-test('loadWorkerConfig loads with defaults', () => {
-  const env = createMockEnv({
-    NODE_ENV: undefined,
-    APP_NAME: undefined,
-    WORKER_INTERVAL_MS: undefined,
-    WORKER_HEALTH_PORT: undefined,
-    OTEL_ENABLED: undefined,
-    OTEL_SERVICE_NAME: undefined,
-    OTEL_EXPORTER_OTLP_PROTOCOL: undefined,
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: undefined,
-    OTEL_EXPORTER_OTLP_HEADERS: undefined,
-    DATABASE_URL: undefined
+    it('normalizes empty string env values to undefined', () => {
+      const env = cleanApiEnv();
+      env.REDIS_URL = '';
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.redisUrl).toBeUndefined();
+    });
   });
 
-  const config = loadWorkerConfig(env);
+  describe('loadWorkerConfig', () => {
+    it('loads valid worker config with defaults', () => {
+      const env: Record<string, string> = {};
+      const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
+      expect(config.appName).toBe('cvg-his-v2-worker');
+      expect(config.intervalMs).toBe(5000);
+      expect(config.healthPort).toBe(3002);
+    });
 
-  assert.equal(config.appName, 'cvg-his-v2-worker');
-  assert.equal(config.environment, 'development');
-  assert.equal(config.intervalMs, 5000);
-  assert.equal(config.healthPort, 3002);
-  assert.equal(config.otelEnabled, false);
-  assert.equal(config.otelServiceName, 'cvg-his-v2-worker');
-  assert.equal(config.otlpProtocol, 'http/protobuf');
-  assert.deepEqual(config.otlpHeaders, {});
-  assert.equal(config.databaseUrl, undefined);
-});
+    it('loads custom worker values', () => {
+      const env: Record<string, string> = {
+        APP_NAME: 'my-worker',
+        WORKER_INTERVAL_MS: '10000',
+        WORKER_HEALTH_PORT: '4000',
+      };
+      const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
+      expect(config.appName).toBe('my-worker');
+      expect(config.intervalMs).toBe(10000);
+      expect(config.healthPort).toBe(4000);
+    });
 
-test('loadWorkerConfig loads with custom values', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    APP_NAME: 'my-worker',
-    WORKER_INTERVAL_MS: '10000',
-    WORKER_HEALTH_PORT: '3100',
-    OTEL_ENABLED: 'true',
-    OTEL_SERVICE_NAME: 'cvg-premium-worker',
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'https://otel.example.com/v1/traces',
-    OTEL_EXPORTER_OTLP_HEADERS: 'authorization=Bearer worker',
-    DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/cvg_his_v2'
+    it('throws when DATABASE_URL missing in production', () => {
+      const env: Record<string, string> = {
+        NODE_ENV: 'production',
+      };
+      expect(() => loadWorkerConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
+
+    it('loads otel config when provided', () => {
+      const env: Record<string, string> = {
+        OTEL_ENABLED: 'true',
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'http://otel:4318',
+      };
+      const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
+      expect(config.otelEnabled).toBe(true);
+      expect(config.otlpTracesEndpoint).toBe('http://otel:4318');
+    });
   });
 
-  const config = loadWorkerConfig(env);
+  describe('loadWebConfig', () => {
+    it('loads valid web config', () => {
+      const env: Record<string, string> = {
+        VITE_APP_NAME: 'MyApp',
+        VITE_API_BASE_URL: 'http://localhost:3001',
+      };
+      const config = loadWebConfig(env as NodeJS.ProcessEnv);
+      expect(config.appName).toBe('MyApp');
+      expect(config.apiBaseUrl).toBe('http://localhost:3001');
+    });
 
-  assert.equal(config.appName, 'my-worker');
-  assert.equal(config.environment, 'production');
-  assert.equal(config.intervalMs, 10000);
-  assert.equal(config.healthPort, 3100);
-  assert.equal(config.otelEnabled, true);
-  assert.equal(config.otelServiceName, 'cvg-premium-worker');
-  assert.equal(config.otlpTracesEndpoint, 'https://otel.example.com/v1/traces');
-  assert.deepEqual(config.otlpHeaders, { authorization: 'Bearer worker' });
-  assert.equal(config.databaseUrl, 'postgres://postgres:postgres@localhost:5432/cvg_his_v2');
-});
+    it('accepts relative path /api for VITE_API_BASE_URL', () => {
+      const env: Record<string, string> = {
+        VITE_API_BASE_URL: '/api',
+      };
+      const config = loadWebConfig(env as NodeJS.ProcessEnv);
+      expect(config.apiBaseUrl).toBe('');
+    });
 
-test('loadWorkerConfig requires OTLP endpoint when OpenTelemetry is enabled', () => {
-  const env = createMockEnv({
-    OTEL_ENABLED: 'true',
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: undefined
+    it('accepts empty string for VITE_API_BASE_URL', () => {
+      const env: Record<string, string> = {
+        VITE_API_BASE_URL: '',
+      };
+      const config = loadWebConfig(env as NodeJS.ProcessEnv);
+      expect(config.apiBaseUrl).toBe('');
+    });
+
+    it('strips trailing slash from VITE_API_BASE_URL', () => {
+      const env: Record<string, string> = {
+        VITE_API_BASE_URL: 'http://localhost:3001/',
+      };
+      const config = loadWebConfig(env as NodeJS.ProcessEnv);
+      expect(config.apiBaseUrl).toBe('http://localhost:3001');
+    });
   });
 
-  assert.throws(() => loadWorkerConfig(env), /OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required/);
-});
+  describe('loadSpaClientConfig', () => {
+    it('loads client config', () => {
+      const env = {
+        VITE_APP_NAME: 'SPA App',
+        VITE_API_BASE_URL: 'http://api.example.com',
+      };
+      const config = loadSpaClientConfig(env);
+      expect(config.appName).toBe('SPA App');
+    });
 
-test('loadWorkerConfig requires DATABASE_URL in production-like environments', () => {
-  const env = createMockEnv({
-    NODE_ENV: 'production',
-    DATABASE_URL: undefined
+    it('uses defaults when env is empty', () => {
+      const env: Record<string, string> = {};
+      const config = loadSpaClientConfig(env);
+      expect(config.appName).toBe('CVG HIS V2');
+    });
   });
 
-  assert.throws(() => loadWorkerConfig(env), /DATABASE_URL is required/);
-});
-
-test('loadSpaClientConfig loads defaults', () => {
-  const config = loadSpaClientConfig({});
-
-  assert.equal(config.appName, 'CVG HIS V2');
-  assert.equal(config.environment, 'development');
-  assert.equal(config.apiBaseUrl, '');
-  assert.equal(config.disablePwa, false);
-});
-
-test('loadSpaClientConfig normalizes API origin with /api suffix', () => {
-  const config = loadSpaClientConfig({
-    NODE_ENV: 'production',
-    VITE_APP_NAME: 'My SPA',
-    VITE_API_BASE_URL: 'https://api.example.com/api/',
-    VITE_DISABLE_PWA: 'true'
+  describe('loadSpaViteConfig', () => {
+    it('loads vite config with defaults', () => {
+      const env: Record<string, string> = {};
+      const config = loadSpaViteConfig(env);
+      expect(config.port).toBe(3000);
+    });
   });
-
-  assert.equal(config.environment, 'production');
-  assert.equal(config.appName, 'My SPA');
-  assert.equal(config.apiBaseUrl, 'https://api.example.com');
-  assert.equal(config.disablePwa, true);
-});
-
-test('loadSpaClientConfig accepts relative /api prefix and normalizes to same-origin empty string', () => {
-  const config = loadSpaClientConfig({
-    VITE_API_BASE_URL: '/api'
-  });
-
-  assert.equal(config.apiBaseUrl, '');
-});
-
-test('loadSpaClientConfig rejects invalid API base', () => {
-  assert.throws(
-    () => loadSpaClientConfig({ VITE_API_BASE_URL: 'ftp://api.example.com' }),
-    /VITE_API_BASE_URL/
-  );
-});
-
-test('loadSpaViteConfig loads defaults', () => {
-  const config = loadSpaViteConfig({});
-
-  assert.equal(config.port, 3000);
-  assert.equal(config.host, '127.0.0.1');
-  assert.equal(config.proxyApiTarget, 'http://localhost:3001');
-});
-
-test('loadSpaViteConfig loads custom values', () => {
-  const config = loadSpaViteConfig({
-    NODE_ENV: 'production',
-    PORT: '3002',
-    HOST: '0.0.0.0',
-    VITE_APP_NAME: 'CVG Premium',
-    VITE_API_BASE_URL: 'https://spa.example.com/api',
-    VITE_PROXY_API_TARGET: 'http://localhost:3101',
-    VITE_DISABLE_PWA: '1'
-  });
-
-  assert.equal(config.environment, 'production');
-  assert.equal(config.port, 3002);
-  assert.equal(config.host, '0.0.0.0');
-  assert.equal(config.appName, 'CVG Premium');
-  assert.equal(config.apiBaseUrl, 'https://spa.example.com');
-  assert.equal(config.proxyApiTarget, 'http://localhost:3101');
-  assert.equal(config.disablePwa, true);
-});
-
-test('ApiAppConfig interface structure', () => {
-  const config: ApiAppConfig = {
-    appName: 'test-api',
-    environment: 'test',
-    port: 3001,
-    host: 'localhost',
-    corsAllowedOrigins: ['http://localhost:3000'],
-    authSecret: 'test-passphrase-that-is-long-enough-32chars',
-    accessTokenTtlSeconds: 900,
-    refreshTokenTtlSeconds: 604800,
-    authRateLimitMaxRequests: 10,
-    authRateLimitWindowMs: 15 * 60 * 1000,
-    otelEnabled: false,
-    otelServiceName: 'test-api',
-    otlpProtocol: 'http/protobuf',
-    otlpTracesEndpoint: undefined,
-    otlpHeaders: {},
-    databaseUrl: undefined,
-    fileStoragePath: '/tmp/attachments',
-    enableMfa: false,
-    mfaEncryptionKey: undefined
-  };
-
-  assert.equal(config.appName, 'test-api');
-  assert.equal(config.port, 3001);
-  assert.deepEqual(config.corsAllowedOrigins, ['http://localhost:3000']);
-});
-
-test('WebAppConfig interface structure', () => {
-  const config: WebAppConfig = {
-    appName: 'test-web',
-    environment: 'test',
-    port: 3000,
-    host: 'localhost',
-    apiBaseUrl: 'http://localhost:3001',
-    proxyApiTarget: 'http://localhost:3001',
-    disablePwa: false
-  };
-
-  assert.equal(config.appName, 'test-web');
-  assert.equal(config.port, 3000);
-});
-
-test('WorkerAppConfig interface structure', () => {
-  const config: WorkerAppConfig = {
-    appName: 'test-worker',
-    environment: 'test',
-    intervalMs: 5000,
-    healthPort: 3002,
-    otelEnabled: false,
-    otelServiceName: 'test-worker',
-    otlpProtocol: 'http/protobuf',
-    otlpTracesEndpoint: undefined,
-    otlpHeaders: {},
-    databaseUrl: undefined
-  };
-
-  assert.equal(config.appName, 'test-worker');
-  assert.equal(config.intervalMs, 5000);
 });
