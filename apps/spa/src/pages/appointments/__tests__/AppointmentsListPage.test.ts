@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 const mockApiRequest = vi.fn();
@@ -56,6 +56,19 @@ vi.mock('vue-router', () => ({
 vi.mock('@/components/appointments/AppointmentQuickCreateForm.vue', () => ({
   default: {
     template: '<div class="quick-create-stub">quick create</div>'
+  }
+}));
+
+vi.mock('@/components/appointments/AppointmentClientSelectorModal.vue', () => ({
+  default: {
+    template: `
+      <div v-if="open" class="client-selector-stub">
+        <button class="select-client" @click="$emit('selected', { id: 'owner-1', fullName: 'Maria Silva', documentId: '111', contacts: [{ label: 'WhatsApp', value: '1199999', type: 'whatsapp', primary: true }], financialResponsible: true, status: 'active', accountId: 'acc-1', createdAt: '', updatedAt: '' })">
+          select client
+        </button>
+      </div>
+    `,
+    props: ['open']
   }
 }));
 
@@ -183,6 +196,8 @@ describe('AppointmentsListPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-12T09:00:00.000Z'));
     mockApiRequest.mockResolvedValue({
       access: { permissionCodes: ['scheduling.read', 'scheduling.manage'] }
     });
@@ -194,29 +209,55 @@ describe('AppointmentsListPage', () => {
     mockCancelAppointment.mockResolvedValue({});
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the premium cockpit summary and professional column', async () => {
     const wrapper = await mountPage();
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Agenda Premium');
+    expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Veterinário Responsável');
     expect(wrapper.text()).toContain('Conflitos');
     expect(wrapper.text()).toContain('Intervalo operacional');
     expect(wrapper.text()).toContain('Em triagem');
+    expect(wrapper.text()).toContain('Cliente/Tutor');
+    expect(wrapper.text()).toContain('Legenda operacional');
   });
 
-  it('opens the quick create modal from the cockpit', async () => {
+  it('reloads the overview when switching to week view', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const weekToggle = wrapper.findAll('button').find((button) => button.text().trim() === 'Semana');
+    expect(weekToggle).toBeDefined();
+
+    await weekToggle!.trigger('click');
+    await flushPromises();
+
+    const lastCall = mockGetSchedulingOverview.mock.calls.at(-1)?.[0];
+    expect(lastCall?.viewMode).toBe('week');
+  });
+
+  it('opens the client selector first and then the quick create modal', async () => {
     const wrapper = await mountPage();
 
     await flushPromises();
 
     const quickCreateButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Agendamento rápido')
+      button.text().includes('Criar agendamento')
     );
     expect(quickCreateButton).toBeDefined();
 
     await quickCreateButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.client-selector-stub').exists()).toBe(true);
+
+    await wrapper.find('.select-client').trigger('click');
     await flushPromises();
 
     expect(wrapper.text()).toContain('quick create');

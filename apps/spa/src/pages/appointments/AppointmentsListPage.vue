@@ -1,15 +1,21 @@
 <template>
   <div class="appointments-cockpit">
     <AppPageHeader>
-      <template #title>📅 Agenda Premium</template>
+      <template #title>📅 Agenda</template>
       <template #subtitle>
-        Atendimento &gt; Agenda. Cockpit multiprofissional com filtros laterais, leitura por período e ações rápidas para recepção, fila e atendimento.
+        Atendimento &gt; Agenda. Cockpit multiprofissional com mini calendário lateral, filtros
+        operacionais e visões de mês, semana e dia alinhadas ao fluxo ambulatorial.
       </template>
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadOverview">Atualizar</DsButton>
         <DsButton variant="secondary" tag="a" href="/queue">Fila operacional</DsButton>
-        <DsButton v-if="canManageScheduling" variant="primary" @click="showQuickCreate = true">
-          + Agendamento rápido
+        <DsButton
+          v-if="canManageScheduling"
+          variant="primary"
+          class="agenda-cta"
+          @click="openCreateFlow"
+        >
+          + Criar agendamento
         </DsButton>
       </template>
     </AppPageHeader>
@@ -36,8 +42,37 @@
 
       <div class="appointments-cockpit__layout">
         <aside class="appointments-cockpit__sidebar">
-          <DsCard title="Filtro operacional">
+          <DsCard title="Filtro e contexto" class="sidebar-card">
             <div class="sidebar-stack">
+              <section class="mini-calendar">
+                <div class="mini-calendar__header">
+                  <DsButton variant="ghost" size="sm" @click="shiftMiniCalendar(-1)">◀</DsButton>
+                  <strong>{{ miniCalendarLabel }}</strong>
+                  <DsButton variant="ghost" size="sm" @click="shiftMiniCalendar(1)">▶</DsButton>
+                </div>
+
+                <div class="mini-calendar__weekdays">
+                  <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
+                </div>
+
+                <div class="mini-calendar__grid">
+                  <button
+                    v-for="day in miniCalendarDays"
+                    :key="day.date"
+                    type="button"
+                    class="mini-calendar__day"
+                    :class="{
+                      'mini-calendar__day--muted': !day.inCurrentMonth,
+                      'mini-calendar__day--today': day.isToday,
+                      'mini-calendar__day--selected': day.date === referenceDate
+                    }"
+                    @click="selectDate(day.date)"
+                  >
+                    {{ day.dayNumber }}
+                  </button>
+                </div>
+              </section>
+
               <DsInput
                 id="referenceDate"
                 v-model="referenceDate"
@@ -46,18 +81,13 @@
                 @change="loadOverview"
               />
 
-              <div class="view-toggle" role="tablist" aria-label="Modo da agenda">
-                <button
-                  v-for="mode in viewOptions"
-                  :key="mode.value"
-                  type="button"
-                  class="view-toggle__button"
-                  :class="{ 'view-toggle__button--active': viewMode === mode.value }"
-                  @click="setViewMode(mode.value)"
-                >
-                  {{ mode.label }}
-                </button>
-              </div>
+              <DsInput
+                id="clientFilter"
+                v-model="localFilters.clientSearch"
+                type="search"
+                label="Cliente/Tutor"
+                placeholder="Pesquisar tutor ou paciente"
+              />
 
               <DsInput
                 id="practitionerFilter"
@@ -124,10 +154,22 @@
                 id="search"
                 v-model="filters.search"
                 type="search"
-                label="Busca"
+                label="Busca geral"
                 placeholder="Tutor, paciente, sala, motivo..."
                 @keyup.enter="loadOverview"
               />
+
+              <DsInput
+                id="markerFilter"
+                v-model="localFilters.marker"
+                type="select"
+                label="Marcador"
+              >
+                <option value="">Todos</option>
+                <option v-for="marker in markerOptions" :key="marker" :value="marker">
+                  {{ marker }}
+                </option>
+              </DsInput>
 
               <div class="status-chips">
                 <button
@@ -144,7 +186,7 @@
 
               <div class="sidebar-actions">
                 <DsButton variant="primary" @click="loadOverview">Aplicar</DsButton>
-                <DsButton variant="secondary" @click="resetFilters">Limpar</DsButton>
+                <DsButton variant="secondary" @click="resetFilters">Limpar filtros</DsButton>
               </div>
             </div>
           </DsCard>
@@ -157,9 +199,23 @@
               <strong>{{ periodLabel }}</strong>
               <DsButton variant="secondary" @click="shiftReferenceDate(1)">▶</DsButton>
             </div>
-            <div class="board-toolbar__group">
+            <div class="board-toolbar__group board-toolbar__group--right">
               <DsButton variant="secondary" @click="jumpToToday">Hoje</DsButton>
-              <DsButton variant="ghost" tag="a" href="/appointments/new">Abrir formulário completo</DsButton>
+              <div class="view-toggle" role="tablist" aria-label="Modo da agenda">
+                <button
+                  v-for="mode in viewOptions"
+                  :key="mode.value"
+                  type="button"
+                  class="view-toggle__button"
+                  :class="{ 'view-toggle__button--active': viewMode === mode.value }"
+                  @click="setViewMode(mode.value)"
+                >
+                  {{ mode.label }}
+                </button>
+              </div>
+              <DsButton variant="ghost" tag="a" href="/appointments/new">
+                Abrir formulário completo
+              </DsButton>
             </div>
           </DsCard>
 
@@ -168,148 +224,287 @@
           </div>
 
           <EmptyState
-            v-else-if="!overview || overview.items.length === 0"
+            v-else-if="!overview || filteredItems.length === 0"
             icon="📅"
             title="Nenhum agendamento no período"
-            description="Ajuste filtros, troque a visão ou use o fluxo rápido para abrir o primeiro compromisso."
+            description="Ajuste filtros, troque a visão ou abra o fluxo de criação para registrar o primeiro compromisso."
           >
             <template v-if="canManageScheduling" #action>
-              <DsButton variant="primary" @click="showQuickCreate = true">+ Agendamento rápido</DsButton>
+              <DsButton variant="primary" @click="openCreateFlow">+ Criar agendamento</DsButton>
             </template>
           </EmptyState>
 
           <template v-else-if="viewMode === 'month'">
-            <div class="month-grid">
-              <DsCard v-for="day in calendarDays" :key="day.date" class="month-cell">
-                <div class="month-cell__header">
-                  <strong>{{ day.label }}</strong>
-                  <span>{{ appointmentsByDay(day.date).length }}</span>
-                </div>
-                <div class="month-cell__body">
-                  <button
-                    v-for="item in appointmentsByDay(day.date).slice(0, 4)"
-                    :key="item.id"
-                    type="button"
-                    class="month-item"
-                    @click="goToDetail(item.id)"
-                  >
-                    <span>{{ timeLabel(item.scheduledAt) }}</span>
-                    <strong>{{ patientName(item.patientId) }}</strong>
-                    <small>{{ operationalLabel(item) }}</small>
-                    <small>{{ item.practitionerName || 'Sem profissional' }}</small>
-                  </button>
-                  <span v-if="appointmentsByDay(day.date).length > 4" class="month-item__more">
-                    +{{ appointmentsByDay(day.date).length - 4 }} compromissos
-                  </span>
-                </div>
-              </DsCard>
-            </div>
-          </template>
-
-          <template v-else>
-            <section v-for="day in visibleDays" :key="day.date" class="day-board">
-              <div class="day-board__header">
-                <strong>{{ day.label }}</strong>
-                <span>{{ appointmentsByDay(day.date).length }} agendamentos</span>
+            <section class="month-board">
+              <div class="month-board__weekdays">
+                <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
               </div>
-
-              <div class="timeline-grid" :style="{ gridTemplateColumns: `repeat(${columnCount}, minmax(220px, 1fr))` }">
-                <DsCard v-for="column in professionalColumns" :key="`${day.date}-${column.id}`" class="timeline-column">
-                  <template #title>
-                    <div class="timeline-column__title">
-                      <strong>{{ column.label }}</strong>
-                      <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
-                    </div>
-                  </template>
-
-                  <div v-if="blocksByColumn(day.date, column.id).length" class="timeline-blocks">
-                    <div
-                      v-for="block in blocksByColumn(day.date, column.id)"
-                      :key="block.id"
-                      class="timeline-block"
-                    >
-                      {{ block.title }} · {{ timeLabel(block.startsAt) }}-{{ timeLabel(block.endsAt) }}
-                    </div>
-                  </div>
-
-                  <div class="timeline-items">
+              <div class="month-grid">
+                <DsCard
+                  v-for="day in monthCalendarDays"
+                  :key="day.date"
+                  class="month-cell"
+                  :class="{
+                    'month-cell--muted': !day.inCurrentMonth,
+                    'month-cell--selected': day.date === referenceDate
+                  }"
+                >
+                  <button type="button" class="month-cell__header" @click="selectDate(day.date)">
+                    <strong>{{ day.dayNumber }}</strong>
+                    <span>{{ appointmentsByDay(day.date).length }}</span>
+                  </button>
+                  <div class="month-cell__body">
                     <button
-                      v-for="item in appointmentsByColumn(day.date, column.id)"
+                      v-for="item in appointmentsByDay(day.date).slice(0, 5)"
                       :key="item.id"
                       type="button"
-                      class="timeline-item"
-                      :class="`timeline-item--${item.operational.stage}`"
+                      class="month-item"
                       @click="goToDetail(item.id)"
                     >
-                      <div class="timeline-item__head">
-                        <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
-                        <span class="status-pill" :class="`status-pill--${item.operational.stage}`">
-                          {{ operationalLabel(item) }}
-                        </span>
-                      </div>
+                      <span>{{ timeLabel(item.scheduledAt) }}</span>
                       <strong>{{ patientName(item.patientId) }}</strong>
-                      <span>{{ ownerName(item.ownerId) }}</span>
-                      <small>{{ item.serviceName || item.specialty || item.reason }}</small>
-                      <small class="timeline-item__meta">
-                        Agenda: {{ statusLabel(item.status) }} · Atualizado {{ timeLabel(item.operational.updatedAt) }}
-                      </small>
-
-                      <div v-if="item.conflicts.length" class="timeline-item__conflicts">
-                        <span v-for="conflict in item.conflicts.slice(0, 2)" :key="`${item.id}-${conflict.type}-${conflict.startsAt}`">
-                          {{ conflict.message }}
-                        </span>
-                      </div>
-
-                      <div class="timeline-item__actions" @click.stop>
-                        <DsButton variant="ghost" size="sm" @click="goToDetail(item.id)">Ver</DsButton>
-                        <DsButton
-                          v-if="canCheckIn(item)"
-                          variant="success"
-                          size="sm"
-                          :loading="actionLoadingId === item.id && actionKind === 'checkin'"
-                          @click="checkIn(item)"
-                        >
-                          Check-in
-                        </DsButton>
-                        <DsButton
-                          v-if="canMarkNoShow(item)"
-                          variant="danger"
-                          size="sm"
-                          :loading="actionLoadingId === item.id && actionKind === 'noshow'"
-                          @click="markNoShow(item)"
-                        >
-                          No-show
-                        </DsButton>
-                        <DsButton
-                          v-if="shouldShowQueueAction(item)"
-                          variant="secondary"
-                          size="sm"
-                          tag="a"
-                          href="/queue"
-                        >
-                          Ver fila
-                        </DsButton>
-                        <DsButton
-                          v-if="shouldShowEncounterAction(item)"
-                          variant="secondary"
-                          size="sm"
-                          @click="openEncounter(item)"
-                        >
-                          {{ encounterActionLabel(item) }}
-                        </DsButton>
-                      </div>
+                      <small>{{ item.practitionerName || 'Sem profissional' }}</small>
+                      <small>{{ operationalLabel(item) }}</small>
                     </button>
+                    <span v-if="appointmentsByDay(day.date).length > 5" class="month-item__more">
+                      +{{ appointmentsByDay(day.date).length - 5 }} compromissos
+                    </span>
                   </div>
                 </DsCard>
               </div>
             </section>
           </template>
+
+          <template v-else-if="viewMode === 'week'">
+            <section class="week-board">
+              <div
+                class="time-matrix"
+                :style="{ gridTemplateColumns: `88px repeat(${visibleDays.length}, minmax(180px, 1fr))` }"
+              >
+                <div class="time-matrix__corner">Horário</div>
+                <div
+                  v-for="day in visibleDays"
+                  :key="`${day.date}-header`"
+                  class="time-matrix__column-title time-matrix__column-title--day"
+                >
+                  <strong>{{ day.label }}</strong>
+                  <span>{{ appointmentsByDay(day.date).length }}</span>
+                </div>
+
+                <template v-for="hour in timelineHours" :key="`week-${hour}`">
+                  <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
+
+                  <div
+                    v-for="day in visibleDays"
+                    :key="`${day.date}-${hour}`"
+                    class="time-matrix__slot"
+                  >
+                    <div v-if="weekBlocksBySlot(day.date, hour).length" class="timeline-blocks">
+                      <div
+                        v-for="block in weekBlocksBySlot(day.date, hour)"
+                        :key="block.id"
+                        class="timeline-block"
+                      >
+                        {{ block.title }}
+                      </div>
+                    </div>
+
+                    <div v-if="appointmentsByWeekSlot(day.date, hour).length" class="timeline-items">
+                      <button
+                        v-for="item in appointmentsByWeekSlot(day.date, hour)"
+                        :key="item.id"
+                        type="button"
+                        class="timeline-item"
+                        :class="`timeline-item--${item.operational.stage}`"
+                        @click="goToDetail(item.id)"
+                      >
+                        <div class="timeline-item__head">
+                          <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
+                          <span class="status-pill" :class="`status-pill--${item.operational.stage}`">
+                            {{ operationalLabel(item) }}
+                          </span>
+                        </div>
+                        <strong>{{ patientName(item.patientId) }}</strong>
+                        <span>{{ ownerName(item.ownerId) }}</span>
+                        <small>{{ item.serviceName || item.specialty || item.reason }}</small>
+                      </button>
+                    </div>
+
+                    <span v-else class="time-matrix__empty">Disponível</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+          </template>
+
+          <template v-else>
+            <section v-for="day in visibleDays" :key="day.date" class="day-board">
+              <div class="day-board__header">
+                <div>
+                  <strong>{{ day.label }}</strong>
+                  <p>{{ appointmentsByDay(day.date).length }} agendamentos no período</p>
+                </div>
+                <DsButton
+                  v-if="canManageScheduling"
+                  variant="ghost"
+                  size="sm"
+                  @click="selectDate(day.date)"
+                >
+                  Fixar data
+                </DsButton>
+              </div>
+
+              <div
+                class="time-matrix"
+                :style="{ gridTemplateColumns: `88px repeat(${columnCount}, minmax(220px, 1fr))` }"
+              >
+                <div class="time-matrix__corner">Horário</div>
+                <div
+                  v-for="column in professionalColumns"
+                  :key="`${day.date}-${column.id}-header`"
+                  class="time-matrix__column-title"
+                >
+                  <strong>{{ column.label }}</strong>
+                  <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
+                </div>
+
+                <template v-for="hour in timelineHours" :key="`${day.date}-${hour}`">
+                  <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
+
+                  <div
+                    v-for="column in professionalColumns"
+                    :key="`${day.date}-${column.id}-${hour}`"
+                    class="time-matrix__slot"
+                  >
+                    <div v-if="blocksBySlot(day.date, column.id, hour).length" class="timeline-blocks">
+                      <div
+                        v-for="block in blocksBySlot(day.date, column.id, hour)"
+                        :key="block.id"
+                        class="timeline-block"
+                      >
+                        {{ block.title }}
+                      </div>
+                    </div>
+
+                    <div v-if="appointmentsBySlot(day.date, column.id, hour).length" class="timeline-items">
+                      <button
+                        v-for="item in appointmentsBySlot(day.date, column.id, hour)"
+                        :key="item.id"
+                        type="button"
+                        class="timeline-item"
+                        :class="`timeline-item--${item.operational.stage}`"
+                        @click="goToDetail(item.id)"
+                      >
+                        <div class="timeline-item__head">
+                          <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
+                          <span class="status-pill" :class="`status-pill--${item.operational.stage}`">
+                            {{ operationalLabel(item) }}
+                          </span>
+                        </div>
+                        <strong>{{ patientName(item.patientId) }}</strong>
+                        <span>{{ ownerName(item.ownerId) }}</span>
+                        <small>{{ item.serviceName || item.specialty || item.reason }}</small>
+                        <small class="timeline-item__meta">
+                          Agenda: {{ statusLabel(item.status) }} · {{ item.practitionerName || 'Sem profissional' }}
+                        </small>
+
+                        <div v-if="item.conflicts.length" class="timeline-item__conflicts">
+                          <span
+                            v-for="conflict in item.conflicts.slice(0, 2)"
+                            :key="`${item.id}-${conflict.type}-${conflict.startsAt}`"
+                          >
+                            {{ conflict.message }}
+                          </span>
+                        </div>
+
+                        <div class="timeline-item__actions" @click.stop>
+                          <DsButton variant="ghost" size="sm" @click="goToDetail(item.id)">Ver</DsButton>
+                          <DsButton
+                            v-if="canCheckIn(item)"
+                            variant="success"
+                            size="sm"
+                            :loading="actionLoadingId === item.id && actionKind === 'checkin'"
+                            @click="checkIn(item)"
+                          >
+                            Check-in
+                          </DsButton>
+                          <DsButton
+                            v-if="canMarkNoShow(item)"
+                            variant="danger"
+                            size="sm"
+                            :loading="actionLoadingId === item.id && actionKind === 'noshow'"
+                            @click="markNoShow(item)"
+                          >
+                            No-show
+                          </DsButton>
+                          <DsButton
+                            v-if="shouldShowQueueAction(item)"
+                            variant="secondary"
+                            size="sm"
+                            tag="a"
+                            href="/queue"
+                          >
+                            Ver fila
+                          </DsButton>
+                          <DsButton
+                            v-if="shouldShowEncounterAction(item)"
+                            variant="secondary"
+                            size="sm"
+                            @click="openEncounter(item)"
+                          >
+                            {{ encounterActionLabel(item) }}
+                          </DsButton>
+                        </div>
+                      </button>
+                    </div>
+
+                    <span v-else class="time-matrix__empty">Disponível</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+          </template>
+
+          <section v-if="legendItems.length > 0" class="appointments-legend">
+            <strong>Legenda operacional</strong>
+            <div class="appointments-legend__items">
+              <span
+                v-for="item in legendItems"
+                :key="item.label"
+                class="appointments-legend__pill"
+                :class="item.kind === 'status' ? `appointments-legend__pill--${item.tone}` : 'appointments-legend__pill--marker'"
+              >
+                {{ item.label }}
+              </span>
+            </div>
+          </section>
         </section>
       </div>
     </template>
 
-    <DsModal :open="showQuickCreate" title="Agendamento rápido" size="lg" @close="showQuickCreate = false">
-      <AppointmentQuickCreateForm compact submit-label="Salvar e voltar ao cockpit" @created="handleCreated" @cancel="showQuickCreate = false" />
+    <AppointmentClientSelectorModal
+      :open="showClientSelector"
+      @close="showClientSelector = false"
+      @selected="handleClientSelected"
+    />
+
+    <DsModal
+      :open="showQuickCreate"
+      title="Criar agendamento"
+      size="lg"
+      @close="closeQuickCreate"
+    >
+      <AppointmentQuickCreateForm
+        v-if="showQuickCreate"
+        submit-label="Salvar e voltar ao cockpit"
+        :preset-owner-id="selectedClient?.id ?? ''"
+        :hide-owner-selection="Boolean(selectedClient)"
+        :lock-owner-selection="Boolean(selectedClient)"
+        :restrict-patients-to-owner="Boolean(selectedClient)"
+        :owner-snapshot="selectedClient"
+        @created="handleCreated"
+        @cancel="closeQuickCreate"
+      />
     </DsModal>
   </div>
 </template>
@@ -325,6 +520,7 @@ import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppointmentClientSelectorModal from '@/components/appointments/AppointmentClientSelectorModal.vue';
 import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
 import { apiRequest, ApiError } from '@/services/api';
 import { appointmentService } from '@/services/appointment';
@@ -338,11 +534,19 @@ import type {
   SchedulingCockpitAppointmentSummary,
   SchedulingOverviewResponse
 } from '@/types/appointment';
+import type { OwnerSummary } from '@/types/owner';
 
 interface SessionAccessResponse {
   access?: {
     permissionCodes?: string[];
   };
+}
+
+interface CalendarDayCell {
+  date: string;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  isToday: boolean;
 }
 
 const router = useRouter();
@@ -351,7 +555,9 @@ const error = ref('');
 const permissionCodes = ref<string[] | null>(null);
 const overview = ref<SchedulingOverviewResponse | null>(null);
 const services = ref<ServiceSummary[]>([]);
+const showClientSelector = ref(false);
 const showQuickCreate = ref(false);
+const selectedClient = ref<OwnerSummary | null>(null);
 const actionLoadingId = ref('');
 const actionKind = ref<'checkin' | 'noshow' | ''>('');
 
@@ -364,15 +570,22 @@ const filters = ref({
   specialty: '',
   search: ''
 });
+const localFilters = ref({
+  clientSearch: '',
+  marker: ''
+});
 const selectedStatuses = ref<AppointmentStatus[]>([]);
 const ownerCache = ref<Record<string, string>>({});
 const patientCache = ref<Record<string, string>>({});
 
 const viewOptions = [
-  { value: 'day' as const, label: 'Dia' },
+  { value: 'month' as const, label: 'Mês' },
   { value: 'week' as const, label: 'Semana' },
-  { value: 'month' as const, label: 'Mês' }
+  { value: 'day' as const, label: 'Dia' }
 ];
+
+const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const timelineHours = Array.from({ length: 13 }, (_, index) => 7 + index);
 
 const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
 const canManageScheduling = computed(() => permissionCodes.value?.includes('scheduling.manage') ?? false);
@@ -384,10 +597,30 @@ const professionalColumns = computed(() => [
   }))
 ]);
 const columnCount = computed(() => professionalColumns.value.length);
+const filteredItems = computed(() => {
+  const clientSearch = normalizeText(localFilters.value.clientSearch);
+  const marker = localFilters.value.marker;
+
+  return (overview.value?.items ?? []).filter((item) => {
+    if (clientSearch) {
+      const haystack = normalizeText(
+        `${ownerName(item.ownerId)} ${patientName(item.patientId)} ${item.reason} ${item.practitionerName ?? ''}`
+      );
+      if (!haystack.includes(clientSearch)) {
+        return false;
+      }
+    }
+
+    if (marker && !deriveMarkers(item).includes(marker)) {
+      return false;
+    }
+
+    return true;
+  });
+});
 const summaryCards = computed(() => {
-  const stats = overview.value?.stats;
-  const items = overview.value?.items ?? [];
-  if (!stats) return [];
+  const items = filteredItems.value;
+  if (!overview.value) return [];
 
   const queueCount = items.filter((item) =>
     ['checked_in', 'called'].includes(item.operational.stage)
@@ -398,31 +631,86 @@ const summaryCards = computed(() => {
   ).length;
 
   return [
-    { label: 'Total', value: String(stats.total), hint: 'No período visível' },
+    { label: 'Total', value: String(items.length), hint: 'Carga no período visível' },
     { label: 'Fila', value: String(queueCount), hint: 'Check-in e chamada ativas' },
-    { label: 'Triagem', value: String(triageCount), hint: 'Em avaliação inicial' },
-    { label: 'Atendimento', value: String(inCareCount), hint: 'Em consulta ou observação' },
-    { label: 'Conflitos', value: String(stats.conflicts), hint: 'Ajustes pendentes' },
-    { label: 'Sem profissional', value: String(stats.unassigned), hint: 'Demandam alocação' }
+    { label: 'Triagem', value: String(triageCount), hint: 'Aguardando decisão clínica' },
+    { label: 'Atendimento', value: String(inCareCount), hint: 'Consulta ou observação em curso' },
+    {
+      label: 'Conflitos',
+      value: String(items.filter((item) => item.conflicts.length > 0).length),
+      hint: 'Demandam ajuste operacional'
+    },
+    {
+      label: 'Sem profissional',
+      value: String(items.filter((item) => !item.practitionerStaffId).length),
+      hint: 'Precisam de alocação'
+    }
   ];
 });
+const normalizedReferenceDate = computed(() =>
+  viewMode.value === 'month' ? startOfMonth(referenceDate.value) : referenceDate.value
+);
 const periodLabel = computed(() => {
-  const base = new Date(`${referenceDate.value}T00:00:00`);
+  const base = new Date(`${normalizedReferenceDate.value}T00:00:00`);
   if (viewMode.value === 'day') {
     return base.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
   }
   if (viewMode.value === 'week') {
     const end = new Date(base);
     end.setDate(end.getDate() + 6);
-    return `${base.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+    return `${base.toLocaleDateString('pt-BR', { day: '2-digit' })} - ${end.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'long',
+      year: '2-digit'
+    })}`;
   }
   return base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 });
 const visibleDays = computed(() => buildVisibleDays(viewMode.value, referenceDate.value));
-const calendarDays = computed(() => buildVisibleDays('month', referenceDate.value));
+const miniCalendarLabel = computed(() =>
+  new Date(`${startOfMonth(referenceDate.value)}T00:00:00`).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric'
+  })
+);
+const miniCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
+const monthCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
+const markerOptions = computed(() =>
+  [...new Set((overview.value?.items ?? []).flatMap((item) => deriveMarkers(item)))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR')
+  )
+);
+const legendItems = computed(() => {
+  const statusLegend = selectedStatuses.value.length
+    ? selectedStatuses.value
+    : (overview.value?.filterOptions.statuses ?? []);
+  const markerLegend = localFilters.value.marker
+    ? [localFilters.value.marker]
+    : markerOptions.value.slice(0, 6);
+
+  return [
+    ...statusLegend.map((status) => ({
+      label: statusLabel(status),
+      kind: 'status' as const,
+      tone: status
+    })),
+    ...markerLegend.map((marker) => ({
+      label: marker,
+      kind: 'marker' as const,
+      tone: 'marker'
+    }))
+  ];
+});
+
+function startOfMonth(dateString: string) {
+  const date = new Date(`${dateString}T00:00:00`);
+  date.setDate(1);
+  return date.toISOString().slice(0, 10);
+}
 
 function buildVisibleDays(mode: 'day' | 'week' | 'month', baseDate: string) {
-  const start = new Date(`${baseDate}T00:00:00`);
+  const normalizedBase = mode === 'month' ? startOfMonth(baseDate) : baseDate;
+  const start = new Date(`${normalizedBase}T00:00:00`);
   const count = mode === 'day' ? 1 : mode === 'week' ? 7 : 31;
 
   return Array.from({ length: count }).map((_, index) => {
@@ -432,10 +720,30 @@ function buildVisibleDays(mode: 'day' | 'week' | 'month', baseDate: string) {
     return {
       date,
       label: current.toLocaleDateString('pt-BR', {
-        weekday: mode === 'month' ? undefined : 'short',
+        weekday: mode === 'month' ? undefined : 'long',
         day: '2-digit',
         month: '2-digit'
       })
+    };
+  });
+}
+
+function buildMonthCalendar(baseDate: string): CalendarDayCell[] {
+  const monthStart = new Date(`${startOfMonth(baseDate)}T00:00:00`);
+  const firstVisible = new Date(monthStart);
+  firstVisible.setDate(monthStart.getDate() - monthStart.getDay());
+
+  return Array.from({ length: 42 }).map((_, index) => {
+    const current = new Date(firstVisible);
+    current.setDate(firstVisible.getDate() + index);
+    const currentDate = current.toISOString().slice(0, 10);
+    const now = new Date().toISOString().slice(0, 10);
+
+    return {
+      date: currentDate,
+      dayNumber: current.getDate(),
+      inCurrentMonth: current.getMonth() === monthStart.getMonth(),
+      isToday: currentDate === now
     };
   });
 }
@@ -448,8 +756,20 @@ function patientName(patientId: string) {
   return patientCache.value[patientId] || `Paciente ${patientId.slice(0, 6)}`;
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
+
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatHour(hour: number) {
+  return `${String(hour).padStart(2, '0')}:00`;
 }
 
 function statusLabel(status: AppointmentStatus) {
@@ -466,7 +786,7 @@ function operationalLabel(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function appointmentsByDay(date: string) {
-  return (overview.value?.items ?? []).filter((item) => item.scheduledAt.slice(0, 10) === date);
+  return filteredItems.value.filter((item) => item.scheduledAt.slice(0, 10) === date);
 }
 
 function appointmentsByColumn(date: string, columnId: string) {
@@ -478,6 +798,12 @@ function appointmentsByColumn(date: string, columnId: string) {
     .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
 }
 
+function appointmentsBySlot(date: string, columnId: string, hour: number) {
+  return appointmentsByColumn(date, columnId).filter(
+    (item) => new Date(item.scheduledAt).getHours() === hour
+  );
+}
+
 function blocksByColumn(date: string, columnId: string) {
   return (overview.value?.blocks ?? []).filter((block) => {
     if (block.startsAt.slice(0, 10) !== date) return false;
@@ -486,16 +812,73 @@ function blocksByColumn(date: string, columnId: string) {
   });
 }
 
+function blocksBySlot(date: string, columnId: string, hour: number) {
+  return blocksByColumn(date, columnId).filter(
+    (block) => new Date(block.startsAt).getHours() === hour
+  );
+}
+
+function weekBlocksBySlot(date: string, hour: number) {
+  return (overview.value?.blocks ?? []).filter(
+    (block) => block.startsAt.slice(0, 10) === date && new Date(block.startsAt).getHours() === hour
+  );
+}
+
+function appointmentsByWeekSlot(date: string, hour: number) {
+  return appointmentsByDay(date)
+    .filter((item) => new Date(item.scheduledAt).getHours() === hour)
+    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+}
+
+function deriveMarkers(item: SchedulingCockpitAppointmentSummary) {
+  const haystack = normalizeText(
+    `${item.reason} ${item.serviceName ?? ''} ${item.specialty ?? ''} ${item.resourceLabel ?? ''}`
+  );
+  const markers: string[] = [];
+
+  if (item.visitType === 'return') markers.push('Retorno');
+  if (haystack.includes('vacin')) markers.push('Vacina');
+  if (haystack.includes('verm')) markers.push('Vermífugo');
+  if (item.conflicts.length > 0) markers.push('Ajuste operacional');
+  if (!item.practitionerStaffId) markers.push('Sem profissional');
+
+  return markers;
+}
+
 function setViewMode(mode: 'day' | 'week' | 'month') {
   viewMode.value = mode;
+  if (mode === 'month') {
+    referenceDate.value = startOfMonth(referenceDate.value);
+  }
   void loadOverview();
 }
 
 function shiftReferenceDate(direction: -1 | 1) {
   const current = new Date(`${referenceDate.value}T00:00:00`);
-  const delta = viewMode.value === 'month' ? 31 : viewMode.value === 'week' ? 7 : 1;
-  current.setDate(current.getDate() + direction * delta);
+  if (viewMode.value === 'month') {
+    current.setMonth(current.getMonth() + direction);
+    current.setDate(1);
+  } else if (viewMode.value === 'week') {
+    current.setDate(current.getDate() + direction * 7);
+  } else {
+    current.setDate(current.getDate() + direction);
+  }
   referenceDate.value = current.toISOString().slice(0, 10);
+  void loadOverview();
+}
+
+function shiftMiniCalendar(direction: -1 | 1) {
+  const current = new Date(`${startOfMonth(referenceDate.value)}T00:00:00`);
+  current.setMonth(current.getMonth() + direction);
+  referenceDate.value = current.toISOString().slice(0, 10);
+  void loadOverview();
+}
+
+function selectDate(date: string) {
+  referenceDate.value = date;
+  if (viewMode.value === 'month') {
+    viewMode.value = 'day';
+  }
   void loadOverview();
 }
 
@@ -520,6 +903,10 @@ function resetFilters() {
     unit: '',
     specialty: '',
     search: ''
+  };
+  localFilters.value = {
+    clientSearch: '',
+    marker: ''
   };
   selectedStatuses.value = [];
   void loadOverview();
@@ -565,7 +952,7 @@ async function loadOverview() {
     const [overviewResponse, servicesResponse] = await Promise.all([
       getSchedulingOverview({
         viewMode: viewMode.value,
-        referenceDate: `${referenceDate.value}T00:00:00.000Z`,
+        referenceDate: `${normalizedReferenceDate.value}T00:00:00.000Z`,
         statuses: selectedStatuses.value,
         practitionerStaffId: filters.value.practitionerStaffId || undefined,
         serviceId: filters.value.serviceId || undefined,
@@ -615,9 +1002,7 @@ function encounterActionLabel(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function openEncounter(item: SchedulingCockpitAppointmentSummary) {
-  if (!item.operational.encounterId) {
-    return;
-  }
+  if (!item.operational.encounterId) return;
   router.push(`/encounters/${item.operational.encounterId}`);
 }
 
@@ -659,8 +1044,24 @@ async function markNoShow(item: SchedulingCockpitAppointmentSummary) {
   }
 }
 
-function handleCreated(appointment: AppointmentSummary) {
+function openCreateFlow() {
+  selectedClient.value = null;
+  showClientSelector.value = true;
+}
+
+function handleClientSelected(owner: OwnerSummary) {
+  selectedClient.value = owner;
+  showClientSelector.value = false;
+  showQuickCreate.value = true;
+}
+
+function closeQuickCreate() {
   showQuickCreate.value = false;
+  selectedClient.value = null;
+}
+
+function handleCreated(appointment: AppointmentSummary) {
+  closeQuickCreate();
   void loadOverview();
   router.push(`/appointments/${appointment.id}`);
 }
@@ -681,7 +1082,7 @@ onMounted(async () => {
 
 <style scoped>
 .appointments-cockpit {
-  max-width: 1480px;
+  max-width: 1560px;
 }
 
 .appointments-cockpit__summary {
@@ -724,13 +1125,84 @@ onMounted(async () => {
   top: 24px;
 }
 
+.sidebar-card {
+  overflow: hidden;
+}
+
 .sidebar-stack {
   display: grid;
   gap: 14px;
 }
 
-.view-toggle {
+.mini-calendar {
   display: grid;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.mini-calendar__header,
+.mini-calendar__weekdays,
+.board-toolbar,
+.board-toolbar__group,
+.day-board__header,
+.timeline-item__head,
+.timeline-column__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-calendar__header,
+.day-board__header,
+.timeline-column__title {
+  justify-content: space-between;
+}
+
+.mini-calendar__weekdays,
+.month-board__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  text-align: center;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.mini-calendar__grid,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-calendar__day {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.03);
+  color: var(--color-text, #0f172a);
+  cursor: pointer;
+}
+
+.mini-calendar__day--muted {
+  opacity: 0.35;
+}
+
+.mini-calendar__day--today {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.mini-calendar__day--selected {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.35);
+  color: #c2410c;
+  font-weight: 700;
+}
+
+.view-toggle {
+  display: inline-grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
@@ -744,9 +1216,9 @@ onMounted(async () => {
 }
 
 .view-toggle__button--active {
-  border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
+  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(249, 115, 22, 0.08);
+  color: #c2410c;
 }
 
 .status-chips {
@@ -770,17 +1242,80 @@ onMounted(async () => {
   color: #0369a1;
 }
 
-.sidebar-actions,
-.board-toolbar,
-.board-toolbar__group {
+.sidebar-actions {
   display: flex;
   gap: 8px;
-  align-items: center;
 }
 
 .board-toolbar {
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.board-toolbar__group--right {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.week-board {
+  margin-bottom: 20px;
+}
+
+.month-board {
+  display: grid;
+  gap: 10px;
+}
+
+.month-cell {
+  min-height: 180px;
+  display: grid;
+  gap: 10px;
+}
+
+.month-cell--muted {
+  opacity: 0.5;
+}
+
+.month-cell--selected {
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.month-cell__header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.month-cell__body,
+.timeline-items,
+.timeline-blocks {
+  display: grid;
+  gap: 8px;
+}
+
+.month-item,
+.timeline-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-left: 4px solid transparent;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.month-item__more {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
 }
 
 .day-board {
@@ -789,32 +1324,64 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.day-board__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.day-board__header p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
 }
 
-.timeline-grid {
+.time-matrix {
   display: grid;
-  gap: 12px;
-  overflow-x: auto;
+  gap: 1px;
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: 18px;
+  overflow: auto;
 }
 
-.timeline-column {
-  min-width: 0;
+.time-matrix__corner,
+.time-matrix__column-title,
+.time-matrix__hour,
+.time-matrix__slot {
+  background: var(--color-surface, #fff);
+  padding: 12px;
 }
 
-.timeline-column__title {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+.time-matrix__corner,
+.time-matrix__column-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.timeline-blocks,
-.timeline-items {
+.time-matrix__corner {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted, #64748b);
+}
+
+.time-matrix__column-title {
   display: grid;
-  gap: 10px;
+  gap: 4px;
+}
+
+.time-matrix__column-title--day {
+  min-width: 180px;
+}
+
+.time-matrix__hour {
+  color: var(--color-text-muted, #64748b);
+  font-weight: 700;
+}
+
+.time-matrix__slot {
+  min-height: 126px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.time-matrix__empty {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 13px;
 }
 
 .timeline-block {
@@ -825,41 +1392,22 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.timeline-item {
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--color-border, #dbe2ea);
-  border-left: 4px solid transparent;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
-  padding: 14px;
-  cursor: pointer;
-}
-
 .timeline-item--scheduled {
   border-left-color: #2563eb;
 }
 
-.timeline-item--checked_in {
-  border-left-color: #f59e0b;
-}
-
+.timeline-item--checked_in,
 .timeline-item--called {
-  border-left-color: #ea580c;
+  border-left-color: #f59e0b;
 }
 
 .timeline-item--in_triage {
-  border-left-color: #f59e0b;
+  border-left-color: #0ea5e9;
 }
 
-.timeline-item--in_care {
-  border-left-color: #0f766e;
-}
-
+.timeline-item--in_care,
 .timeline-item--observation {
-  border-left-color: #0284c7;
+  border-left-color: #10b981;
 }
 
 .timeline-item--completed {
@@ -867,100 +1415,127 @@ onMounted(async () => {
 }
 
 .timeline-item--cancelled {
-  border-left-color: #ef4444;
-  opacity: 0.72;
-}
-
-.timeline-item__head,
-.timeline-item__actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
+  border-left-color: #94a3b8;
 }
 
 .status-pill {
+  display: inline-flex;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.06);
   padding: 4px 8px;
   font-size: 11px;
-  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.status-pill--scheduled {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
 }
 
 .status-pill--checked_in,
-.status-pill--called,
+.status-pill--called {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
 .status-pill--in_triage {
-  background: rgba(245, 158, 11, 0.14);
-  color: #92400e;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0369a1;
 }
 
 .status-pill--in_care,
-.status-pill--completed {
-  background: rgba(22, 163, 74, 0.12);
-  color: #166534;
+.status-pill--observation {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
 }
 
-.status-pill--observation {
-  background: rgba(2, 132, 199, 0.12);
-  color: #0c4a6e;
+.status-pill--completed {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
 }
 
 .status-pill--cancelled {
-  background: rgba(239, 68, 68, 0.12);
-  color: #991b1b;
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
 }
 
 .timeline-item__meta {
   color: var(--color-text-muted, #64748b);
-  font-size: 12px;
 }
 
 .timeline-item__conflicts {
   display: grid;
   gap: 4px;
-  color: #b45309;
+  color: #b91c1c;
   font-size: 12px;
 }
 
-.month-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.month-cell {
-  min-height: 180px;
-}
-
-.month-cell__header {
+.timeline-item__actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.month-cell__body {
+.appointments-legend {
   display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.appointments-legend__items {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.month-item {
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--color-border, #dbe2ea);
-  border-radius: 12px;
-  background: #fff;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.month-item__more {
-  color: var(--color-text-muted, #64748b);
+.appointments-legend__pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
   font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
 }
 
-@media (max-width: 1120px) {
+.appointments-legend__pill--scheduled {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.18);
+  color: #1d4ed8;
+}
+
+.appointments-legend__pill--checked_in {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.22);
+  color: #b45309;
+}
+
+.appointments-legend__pill--completed {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: #15803d;
+}
+
+.appointments-legend__pill--cancelled {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.18);
+  color: #b91c1c;
+}
+
+.appointments-legend__pill--marker {
+  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.18);
+  color: #c2410c;
+}
+
+.agenda-cta {
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.18);
+}
+
+@media (max-width: 1180px) {
   .appointments-cockpit__layout {
     grid-template-columns: 1fr;
   }
@@ -972,6 +1547,24 @@ onMounted(async () => {
   .board-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .board-toolbar__group--right {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .month-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-calendar__grid {
+    gap: 6px;
+  }
+
+  .sidebar-actions {
+    flex-direction: column;
   }
 }
 </style>
