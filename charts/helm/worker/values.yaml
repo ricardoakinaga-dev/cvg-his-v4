@@ -1,0 +1,91 @@
+# Default values for cvg-his-v2-worker
+replicaCount: 1
+
+image:
+  repository: cvghis/worker
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9464"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
+# Worker has no ClusterIP service (runs as Jobs or DaemonSet style)
+service:
+  enabled: false
+
+resources:
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Worker doesn't have HTTP probes - uses exec check
+startupProbe:
+  enabled: false
+
+livenessProbe:
+  exec:
+    command:
+      - sh
+      - -c
+      - "kill -0 $(pgrep -f 'node.*worker') || exit 1"
+  initialDelaySeconds: 30
+  periodSeconds: 60
+  failureThreshold: 5
+
+readinessProbe:
+  exec:
+    command:
+      - sh
+      - -c
+      - "kill -0 $(pgrep -f 'node.*worker') || exit 1"
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false  # Workers typically run as Jobs or fixed replica count
+
+env:
+  NODE_ENV: "production"
+  # Feature flags
+  FF_RUNTIME_DISTRIBUTED_STATE_ENABLED: "true"
+  # Redis
+  REDIS_URL: "redis://redis:6379"
+  # Database
+  DATABASE_URL: "postgresql://cvghis:@postgres:5432/cvghis"
+  # Queue/Workers
+  WORKER_CONCURRENCY: "5"
+  WORKER_JOB_TIMEOUT_MS: "300000"
+
+volumes: []
+
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations:
+  - key: "worker-only"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+affinity: {}

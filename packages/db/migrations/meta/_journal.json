@@ -92,6 +92,41 @@
       "when": 1744281600000,
       "tag": "0012_audit_events_alignment",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1744281600000,
+      "tag": "0013_pix_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1744281600000,
+      "tag": "0014_pix_transactions_cash_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1744281600000,
+      "tag": "0015_encounter_receivable_payments_external_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1744281600000,
+      "tag": "0016_feature_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1744281600000,
+      "tag": "0017_fiscal_tables",
+      "breakpoints": true
     }
   ]
 }

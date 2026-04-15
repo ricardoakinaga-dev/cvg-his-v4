@@ -34,6 +34,30 @@ const mockOwners = [
 ];
 
 const mockListFn = vi.fn().mockResolvedValue(mockOwners);
+const mockPatientListFn = vi.fn().mockResolvedValue([
+  {
+    id: 'pat-1',
+    accountId: 'acc-1',
+    name: 'Rex',
+    species: 'canine',
+    sex: 'male',
+    primaryOwnerId: 'owner-1',
+    status: 'active',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'pat-2',
+    accountId: 'acc-1',
+    name: 'Mimi',
+    species: 'feline',
+    sex: 'female',
+    primaryOwnerId: 'owner-2',
+    status: 'inactive',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+]);
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
@@ -43,10 +67,42 @@ vi.mock('@/services/owner', () => ({
   }
 }));
 
+vi.mock('@/services/patient', () => ({
+  patientService: {
+    get list() {
+      return mockPatientListFn;
+    }
+  }
+}));
+
 describe('OwnersListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue(mockOwners);
+    mockPatientListFn.mockResolvedValue([
+      {
+        id: 'pat-1',
+        accountId: 'acc-1',
+        name: 'Rex',
+        species: 'canine',
+        sex: 'male',
+        primaryOwnerId: 'owner-1',
+        status: 'active',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: 'pat-2',
+        accountId: 'acc-1',
+        name: 'Mimi',
+        species: 'feline',
+        sex: 'female',
+        primaryOwnerId: 'owner-2',
+        status: 'inactive',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      }
+    ]);
   });
 
   it('renders the page title', async () => {
@@ -54,24 +110,17 @@ describe('OwnersListPage', () => {
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Tutores');
+    expect(wrapper.text()).toContain('Clientes e Tutores');
   });
 
-  it('shows loading state initially', async () => {
-    let resolvePromise: (value: any) => void;
-    const slowPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-    mockListFn.mockImplementation(() => slowPromise);
-
+  it('loads owners and linked patients on mount', async () => {
     const OwnersListPage = (await import('../OwnersListPage.vue')).default;
     const wrapper = mount(OwnersListPage);
 
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('.data-table-loading').exists()).toBe(true);
-
-    resolvePromise!(mockOwners);
     await flushPromises();
+    expect(mockListFn).toHaveBeenCalled();
+    expect(mockPatientListFn).toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Cliente em destaque');
   });
 
   it('shows error state when API fails', async () => {
@@ -94,7 +143,7 @@ describe('OwnersListPage', () => {
     expect(wrapper.text()).toContain('Nenhum tutor encontrado');
   });
 
-  it('renders owner data in the table', async () => {
+  it('renders owner data in cards', async () => {
     const OwnersListPage = (await import('../OwnersListPage.vue')).default;
     const wrapper = mount(OwnersListPage);
 
@@ -139,15 +188,17 @@ describe('OwnersListPage', () => {
     await flushPromises();
     const links = wrapper.findAll('a');
 
-    const detailLinks = links.filter((a) => a.text() === 'Ver');
-    expect(detailLinks).toHaveLength(2);
-    expect(detailLinks[0].attributes('href')).toBe('/owners/owner-1');
-    expect(detailLinks[1].attributes('href')).toBe('/owners/owner-2');
+    const detailLinks = links.filter((a) => a.text() === 'Detalhes');
+    expect(detailLinks.length).toBeGreaterThanOrEqual(2);
+    const detailHrefs = detailLinks.map((a) => a.attributes('href'));
+    expect(detailHrefs).toContain('/owners/owner-1');
+    expect(detailHrefs).toContain('/owners/owner-2');
 
     const editLinks = links.filter((a) => a.text() === 'Editar');
     expect(editLinks).toHaveLength(2);
-    expect(editLinks[0].attributes('href')).toBe('/owners/owner-1/edit');
-    expect(editLinks[1].attributes('href')).toBe('/owners/owner-2/edit');
+    const editHrefs = editLinks.map((a) => a.attributes('href'));
+    expect(editHrefs).toContain('/owners/owner-1/edit');
+    expect(editHrefs).toContain('/owners/owner-2/edit');
   });
 
   it('shows link to create new owner', async () => {
@@ -186,5 +237,15 @@ describe('OwnersListPage', () => {
     await flushPromises();
     const searchBtn = wrapper.findAll('button').find((b) => b.text() === 'Buscar');
     expect(searchBtn).toBeTruthy();
+  });
+
+  it('shows patient pills and operational actions', async () => {
+    const OwnersListPage = (await import('../OwnersListPage.vue')).default;
+    const wrapper = mount(OwnersListPage);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Novo Animal');
+    expect(wrapper.text()).toContain('Agendar');
   });
 });

@@ -72,6 +72,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cvg-his-v2/chaos':
+        specifier: workspace:*
+        version: link:../../packages/chaos
       '@cvg-his-v2/module-access-control':
         specifier: workspace:*
         version: link:../../packages/modules/access-control
@@ -108,6 +111,12 @@ importers:
       '@cvg-his-v2/module-event-bus':
         specifier: workspace:*
         version: link:../../packages/modules/event-bus
+      '@cvg-his-v2/module-feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/modules/feature-flags
+      '@cvg-his-v2/module-financial':
+        specifier: workspace:*
+        version: link:../../packages/modules/financial
       '@cvg-his-v2/module-fiscal':
         specifier: workspace:*
         version: link:../../packages/modules/fiscal
@@ -126,6 +135,9 @@ importers:
       '@cvg-his-v2/module-mfa':
         specifier: workspace:*
         version: link:../../packages/modules/mfa
+      '@cvg-his-v2/module-ml':
+        specifier: workspace:*
+        version: link:../../packages/modules/ml
       '@cvg-his-v2/module-notifications':
         specifier: workspace:*
         version: link:../../packages/modules/notifications
@@ -138,9 +150,15 @@ importers:
       '@cvg-his-v2/module-patients':
         specifier: workspace:*
         version: link:../../packages/modules/patients
+      '@cvg-his-v2/module-pix':
+        specifier: workspace:*
+        version: link:../../packages/modules/pix
       '@cvg-his-v2/module-prescription-executions':
         specifier: workspace:^
         version: link:../../packages/modules/prescription-executions
+      '@cvg-his-v2/module-prescriptions':
+        specifier: workspace:*
+        version: link:../../packages/modules/prescriptions
       '@cvg-his-v2/module-products':
         specifier: workspace:*
         version: link:../../packages/modules/products
@@ -171,6 +189,9 @@ importers:
       '@cvg-his-v2/module-webhooks':
         specifier: workspace:*
         version: link:../../packages/modules/webhooks
+      '@cvg-his-v2/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@cvg-his-v2/shared-auth-sdk':
         specifier: workspace:*
         version: link:../../packages/shared/auth-sdk
@@ -186,6 +207,9 @@ importers:
       '@cvg-his-v2/shared-errors':
         specifier: workspace:*
         version: link:../../packages/shared/errors
+      '@cvg-his-v2/shared-feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/shared/feature-flags
       '@cvg-his-v2/shared-logging':
         specifier: workspace:*
         version: link:../../packages/shared/logging
@@ -340,6 +364,9 @@ importers:
       '@cvg-his-v2/shared-database':
         specifier: workspace:*
         version: link:../../packages/shared/database
+      '@cvg-his-v2/shared-feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/shared/feature-flags
       '@cvg-his-v2/shared-logging':
         specifier: workspace:*
         version: link:../../packages/shared/logging
@@ -349,6 +376,9 @@ importers:
       '@cvg-his-v2/shared-utils':
         specifier: workspace:*
         version: link:../../packages/shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../packages/tenant-context
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -364,12 +394,34 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.40.0
         version: 1.40.0
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
 
   packages/audit:
     dependencies:
       '@cvg-his/db':
         specifier: workspace:*
         version: link:../db
+
+  packages/chaos:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../shared/errors
+      '@cvg-his-v2/shared-logging':
+        specifier: workspace:*
+        version: link:../shared/logging
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../shared/types
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
 
   packages/config: {}
 
@@ -473,6 +525,9 @@ importers:
       '@cvg-his-v2/shared-types':
         specifier: workspace:*
         version: link:../../shared/types
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
     devDependencies:
       vitest:
         specifier: ^3.2.4
@@ -495,6 +550,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -616,6 +674,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/cash:
     dependencies:
@@ -634,6 +695,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/counter-sales:
     dependencies:
@@ -652,6 +716,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/diagnostics:
     dependencies:
@@ -700,6 +767,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/encounters:
     dependencies:
@@ -727,6 +797,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
@@ -748,6 +821,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -756,11 +832,68 @@ importers:
         specifier: ^5.7.0
         version: 5.7.3
 
+  packages/modules/feature-flags:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:^
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-feature-flags':
+        specifier: workspace:*
+        version: link:../../shared/feature-flags
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
+
+  packages/modules/financial:
+    dependencies:
+      '@cvg-his-v2/module-billing':
+        specifier: workspace:*
+        version: link:../billing
+      '@cvg-his-v2/module-encounters':
+        specifier: workspace:*
+        version: link:../encounters
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../owners
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../patients
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
+
   packages/modules/fiscal:
     dependencies:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../shared/contracts
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his/db':
+        specifier: workspace:*
+        version: link:../../db
 
   packages/modules/inpatient:
     dependencies:
@@ -812,6 +945,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/lgpd:
     dependencies:
@@ -951,6 +1087,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
@@ -978,6 +1117,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
@@ -1015,6 +1157,27 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
+
+  packages/modules/prescriptions:
+    dependencies:
+      '@cvg-his-v2/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
 
   packages/modules/products:
     dependencies:
@@ -1033,6 +1196,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/quotes:
     dependencies:
@@ -1051,6 +1217,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/scheduling:
     dependencies:
@@ -1084,6 +1253,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/services:
     dependencies:
@@ -1102,6 +1274,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/soc2:
     dependencies:
@@ -1136,6 +1311,9 @@ importers:
       '@cvg-his-v2/shared-utils':
         specifier: workspace:*
         version: link:../../shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/surgery:
     dependencies:
@@ -1187,6 +1365,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/users:
     dependencies:
@@ -1202,6 +1383,9 @@ importers:
       '@cvg-his-v2/shared-utils':
         specifier: workspace:*
         version: link:../../shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/webhooks:
     dependencies:
@@ -1225,6 +1409,31 @@ importers:
         version: 0.36.4(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(@types/react@18.3.28)(pg@8.18.0)(react@18.3.1)
 
   packages/rbac: {}
+
+  packages/secrets:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../shared/errors
+      '@cvg-his-v2/shared-logging':
+        specifier: workspace:*
+        version: link:../shared/logging
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../shared/validation
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.37
+
+  packages/security:
+    dependencies:
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../shared/errors
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../shared/validation
 
   packages/shared/auth-sdk: {}
 
@@ -1267,6 +1476,21 @@ importers:
 
   packages/shared/errors: {}
 
+  packages/shared/feature-flags:
+    dependencies:
+      '@cvg-his-v2/module-audit':
+        specifier: workspace:*
+        version: link:../../modules/audit
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../types
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../validation
+
   packages/shared/logging:
     dependencies:
       '@cvg-his-v2/shared-utils':
@@ -1276,7 +1500,11 @@ importers:
         specifier: ^1.9.1
         version: 1.9.1
 
-  packages/shared/rate-limiter: {}
+  packages/shared/rate-limiter:
+    dependencies:
+      redis:
+        specifier: ^4.7.0
+        version: 4.7.1
 
   packages/shared/types: {}
 
@@ -1290,12 +1518,12 @@ importers:
 
   packages/tenant-context:
     dependencies:
-      '@cvg-his-v2/module-auth':
-        specifier: workspace:*
-        version: link:../modules/auth
       '@cvg-his-v2/shared-auth-sdk':
         specifier: workspace:*
         version: link:../shared/auth-sdk
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../shared/database
     devDependencies:
       vitest:
         specifier: ^3.0.5
@@ -2920,6 +3148,35 @@ packages:
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
 
+  '@redis/bloom@1.2.0':
+    resolution: {integrity: sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
+  '@redis/client@1.6.1':
+    resolution: {integrity: sha512-/KCsg3xSlR+nCK8/8ZYSknYxvXHwubJrU82F3Lm1Fp6789VQ0/3RJKfsmRXjqfaTA++23CvC3hqmqe/2GEt6Kw==}
+    engines: {node: '>=14'}
+
+  '@redis/graph@1.1.1':
+    resolution: {integrity: sha512-FEMTcTHZozZciLRl6GiiIB4zGm5z5F3F6a6FZCyrfxdKOhFlGkiAqlexWMBzCi4DcRoyiOsuLfW+cjlGWyExOw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
+  '@redis/json@1.0.7':
+    resolution: {integrity: sha512-6UyXfjVaTBTJtKNG4/9Z8PSpKE6XgSyEb8iwaqDcy+uKrd/DGYHTWkUdnQDyzm727V7p21WUMhsqz5oy65kPcQ==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
+  '@redis/search@1.2.0':
+    resolution: {integrity: sha512-tYoDBbtqOVigEDMAcTGsRlMycIIjwMCgD8eR2t0NANeQmgK/lvxNAvYyb6bZDD4frHRhIHkJu2TBRvB0ERkOmw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
+  '@redis/time-series@1.1.0':
+    resolution: {integrity: sha512-c1Q99M5ljsIuc4YdaCwfUEXsofakb9c8+Zse2qxTadu8TalLXuAESzLvFAvNVbkmSlvlzIQOLpBCmWI9wTOt+g==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+
   '@rolldown/pluginutils@1.0.0-rc.2':
     resolution: {integrity: sha512-izyXV/v+cHiRfozX62W9htOAvwMo4/bXKDrQ+vom1L1qRuexPock/7VZDAhnpHCLNejd3NJ6hiab+tO0D44Rgw==}
 
@@ -3805,6 +4062,10 @@ packages:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
 
+  cluster-key-slot@1.1.2:
+    resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
+    engines: {node: '>=0.10.0'}
+
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
     engines: {node: '>=7.0.0'}
@@ -4397,6 +4658,10 @@ packages:
   generator-function@2.0.1:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
     engines: {node: '>= 0.4'}
+
+  generic-pool@3.9.0:
+    resolution: {integrity: sha512-hymDOu5B53XvN4QT9dBmZxPX4CWhBPPLguTZ9MMFeFa/Kg0xWVfylOVNlJji/E7yTZWFd/q9GO5TxDLq156D7g==}
+    engines: {node: '>= 4'}
 
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
@@ -5260,6 +5525,9 @@ packages:
   redent@3.0.0:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
     engines: {node: '>=8'}
+
+  redis@4.7.1:
+    resolution: {integrity: sha512-S1bJDnqLftzHXHP8JsT5II/CtHWQrASX5K96REjWjlmWKrviSOLWmM7QnRLstAWsu1VBBV1ffV6DzCvxNP0UJQ==}
 
   reflect.getprototypeof@1.0.10:
     resolution: {integrity: sha512-00o4I+DVrefhv+nX0ulyi3biSHCPDe+yLv5o/p6d/UVlirijB8E16FtfwSAi4g3tcqrQ4lRAqQSoFEZJehYEcw==}
@@ -6211,6 +6479,9 @@ packages:
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
+
+  yallist@4.0.0:
+    resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
   yaml@2.8.3:
     resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
@@ -7707,6 +7978,32 @@ snapshots:
 
   '@protobufjs/utf8@1.1.0': {}
 
+  '@redis/bloom@1.2.0(@redis/client@1.6.1)':
+    dependencies:
+      '@redis/client': 1.6.1
+
+  '@redis/client@1.6.1':
+    dependencies:
+      cluster-key-slot: 1.1.2
+      generic-pool: 3.9.0
+      yallist: 4.0.0
+
+  '@redis/graph@1.1.1(@redis/client@1.6.1)':
+    dependencies:
+      '@redis/client': 1.6.1
+
+  '@redis/json@1.0.7(@redis/client@1.6.1)':
+    dependencies:
+      '@redis/client': 1.6.1
+
+  '@redis/search@1.2.0(@redis/client@1.6.1)':
+    dependencies:
+      '@redis/client': 1.6.1
+
+  '@redis/time-series@1.1.0(@redis/client@1.6.1)':
+    dependencies:
+      '@redis/client': 1.6.1
+
   '@rolldown/pluginutils@1.0.0-rc.2': {}
 
   '@rollup/plugin-babel@5.3.1(@babel/core@7.29.0)(rollup@2.80.0)':
@@ -8711,6 +9008,8 @@ snapshots:
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
 
+  cluster-key-slot@1.1.2: {}
+
   color-convert@2.0.1:
     dependencies:
       color-name: 1.1.4
@@ -9314,6 +9613,8 @@ snapshots:
       - supports-color
 
   generator-function@2.0.1: {}
+
+  generic-pool@3.9.0: {}
 
   gensync@1.0.0-beta.2: {}
 
@@ -10203,6 +10504,15 @@ snapshots:
     dependencies:
       indent-string: 4.0.0
       strip-indent: 3.0.0
+
+  redis@4.7.1:
+    dependencies:
+      '@redis/bloom': 1.2.0(@redis/client@1.6.1)
+      '@redis/client': 1.6.1
+      '@redis/graph': 1.1.1(@redis/client@1.6.1)
+      '@redis/json': 1.0.7(@redis/client@1.6.1)
+      '@redis/search': 1.2.0(@redis/client@1.6.1)
+      '@redis/time-series': 1.1.0(@redis/client@1.6.1)
 
   reflect.getprototypeof@1.0.10:
     dependencies:
@@ -11320,6 +11630,8 @@ snapshots:
   y18n@5.0.8: {}
 
   yallist@3.1.1: {}
+
+  yallist@4.0.0: {}
 
   yaml@2.8.3: {}
 

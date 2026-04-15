@@ -8,9 +8,11 @@
         <SkeletonLoader variant="text" width="70%" />
       </div>
     </div>
+
     <DsAlert v-else-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
+
     <template v-else-if="owner">
       <AppPageHeader>
         <template #title>{{ owner.fullName }}</template>
@@ -21,61 +23,39 @@
           />
           <StatusBadge v-if="owner.financialResponsible" label="Resp. Financeiro" variant="info" />
           <span class="muted">Atendimento &gt; Cadastrados</span>
+          <span class="muted">{{ owner.id }}</span>
         </template>
         <template #actions>
+          <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary">
+            Novo Paciente
+          </DsButton>
           <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="secondary">Editar</DsButton>
-          <DsButton variant="secondary" tag="a" to="/owners">Voltar</DsButton>
+          <DsButton tag="a" to="/owners" variant="ghost">Voltar</DsButton>
         </template>
       </AppPageHeader>
 
-      <!-- Hub: KPI Cards -->
       <section class="hub-kpis">
-        <DsStatCard
-          :label="patients.length + ' paciente(s)'"
-          value=""
-          icon="🐾"
-          :loading="loadingPatients"
-        />
-        <DsStatCard
-          :label="owner.contacts.length + ' contato(s)'"
-          value=""
-          icon="📞"
-        />
-        <DsStatCard
-          :label="owner.financialResponsible ? 'Sim' : 'Não'"
-          value=""
-          icon="💰"
-        />
-        <DsStatCard
-          :label="inactivePatientsCount + ' inativo(s)'"
-          value=""
-          icon="⚠️"
-          :error="inactivePatientsCount > 0 ? 'Há pacientes inativos' : undefined"
-        />
+        <DsStatCard :label="`${patients.length} paciente(s)`" value="" icon="🐾" />
+        <DsStatCard :label="`${upcomingAppointments.length} agendamento(s)`" value="" icon="📅" />
+        <DsStatCard :label="`${activeEncounters.length} atendimento(s) ativo(s)`" value="" icon="🩺" />
+        <DsStatCard :label="primaryContact(owner)" value="" icon="📞" />
       </section>
 
-      <!-- Hub: Alerts -->
       <section v-if="ownerAlerts.length > 0" class="hub-alerts">
         <DsAlert
-          v-for="(alert, i) in ownerAlerts"
-          :key="i"
+          v-for="(alert, index) in ownerAlerts"
+          :key="index"
           :variant="alert.variant"
           dismissible
         >
-          <strong>{{ alert.title }}</strong> — {{ alert.message }}
+          <strong>{{ alert.title }}</strong> - {{ alert.message }}
         </DsAlert>
       </section>
 
-      <!-- Hub: Quick Actions -->
       <section class="hub-actions">
         <DsCard title="Ações rápidas" variant="compact">
           <div class="quick-actions">
-            <DsButton
-              tag="a"
-              :to="`/patients/new?ownerId=${owner.id}`"
-              variant="primary"
-              icon="🐾"
-            >
+            <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary" icon="🐾">
               Novo Paciente
             </DsButton>
             <DsButton
@@ -86,142 +66,541 @@
             >
               Agendar
             </DsButton>
-            <DsButton
-              tag="a"
-              to="/patients"
-              variant="ghost"
-              icon="🐾"
-            >
-              Pacientes
-            </DsButton>
+            <DsButton tag="a" to="/patients" variant="ghost" icon="🧾">Animais</DsButton>
             <DsButton
               v-if="whatsappContact"
               :href="whatsappContact"
               variant="secondary"
               icon="💬"
             >
-              WhatsApp
+              Enviar mensagem
             </DsButton>
           </div>
         </DsCard>
       </section>
 
-      <div class="owner-detail-page__hero">
-        <DsCard title="Ficha resumida">
-          <div class="summary-grid">
-            <div v-for="card in summaryCards" :key="card.label" class="summary-card">
-              <span class="summary-card__label">{{ card.label }}</span>
-              <strong class="summary-card__value">{{ card.value }}</strong>
-              <span class="summary-card__hint">{{ card.hint }}</span>
+      <section class="owner-summary-grid">
+        <DsCard title="Ficha do cliente">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Documento</span>
+              <strong>{{ owner.documentId || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Contato principal</span>
+              <strong>{{ primaryContact(owner) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Cadastro</span>
+              <strong>{{ formatDate(owner.createdAt) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Atualização</span>
+              <strong>{{ formatDate(owner.updatedAt) }}</strong>
             </div>
           </div>
+          <p v-if="owner.administrativeNotes" class="note-box">{{ owner.administrativeNotes }}</p>
         </DsCard>
-      </div>
 
-      <!-- Hub: Associated Patients -->
-      <section v-if="patients.length > 0" class="hub-patients">
-        <DsCard title="Pacientes vinculados">
-          <DataTable
-            :columns="patientColumns"
-            :rows="patients"
-            variant="hoverable"
-          >
-            <template #cell-name="{ row }">
-              <DsButton tag="a" :to="`/patients/${(row as PatientSummary).id}`" variant="ghost" size="sm">
-                {{ (row as PatientSummary).name }}
-              </DsButton>
-            </template>
-            <template #cell-species="{ row }">
-              {{ speciesLabel((row as PatientSummary).species) }}
-            </template>
-            <template #cell-status="{ row }">
-              <StatusBadge
-                :label="patientStatusLabel((row as PatientSummary).status)"
-                :variant="(row as PatientSummary).status === 'active' ? 'success' : 'danger'"
-              />
-            </template>
-            <template #cell-actions="{ row }">
-              <DsButton tag="a" :to="`/patients/${(row as PatientSummary).id}`" size="sm" variant="secondary">
-                Ver
-              </DsButton>
-            </template>
-          </DataTable>
+        <DsCard title="Relacionamento">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Pacientes ativos</span>
+              <strong>{{ activePatientsCount }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Contato(s)</span>
+              <strong>{{ owner.contacts.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Agenda futura</span>
+              <strong>{{ upcomingAppointments.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Atendimentos recentes</span>
+              <strong>{{ recentEncounters.length }}</strong>
+            </div>
+          </div>
         </DsCard>
       </section>
 
-      <div class="owner-detail-page__grid">
-        <AppDetailSection title="Documento">
-          <p v-if="owner.documentId">
-            <code>{{ owner.documentId }}</code>
-          </p>
-          <p v-else class="muted">Não informado</p>
-        </AppDetailSection>
+      <section v-if="relatedWarnings.length > 0" class="hub-alerts">
+        <DsAlert variant="info" dismissible>
+          <strong>Visão parcial</strong> - Alguns blocos enterprise não responderam: {{ relatedWarnings.join(', ') }}.
+        </DsAlert>
+      </section>
 
-        <AppDetailSection title="Contatos">
+      <section v-if="actionError || actionMessage" class="hub-alerts">
+        <DsAlert v-if="actionError" variant="danger" dismissible @dismiss="actionError = ''">
+          {{ actionError }}
+        </DsAlert>
+        <DsAlert v-if="actionMessage" variant="success" dismissible @dismiss="actionMessage = ''">
+          {{ actionMessage }}
+        </DsAlert>
+      </section>
+
+      <section class="owner-detail-page__grid">
+        <DsCard title="CRM financeiro">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Estágio CRM</span>
+              <strong>{{ crmStage.label }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Tier</span>
+              <strong>{{ loyaltyTier.label }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Pontos</span>
+              <strong>{{ loyaltyPoints }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Resgate estimado</span>
+              <strong>{{ formatCurrency(redeemableValue) }}</strong>
+            </div>
+          </div>
+          <p class="note-box note-box--info">
+            {{ crmStage.description }}
+          </p>
+        </DsCard>
+
+        <DsCard title="Financeiro e orçamentos">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Faturamentos</span>
+              <strong>{{ ownerBillingRecords.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Em aberto</span>
+              <strong>{{ formatCurrency(openBillingAmount) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Liquidado</span>
+              <strong>{{ formatCurrency(settledBillingAmount) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Orçamentos ativos</span>
+              <strong>{{ activeQuotes.length }}</strong>
+            </div>
+          </div>
+
+          <div class="quick-actions">
+            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Abrir financeiro</DsButton>
+            <DsButton tag="a" to="/quotes" variant="secondary" size="sm">Abrir orçamentos</DsButton>
+            <DsButton
+              variant="ghost"
+              size="sm"
+              :loading="creatingRelationshipQuote"
+              @click="createRelationshipQuote"
+            >
+              Gerar orçamento-base
+            </DsButton>
+          </div>
+        </DsCard>
+      </section>
+
+      <section class="owner-detail-page__grid">
+        <DsCard title="Contatos">
           <div v-if="owner.contacts.length" class="contacts-list">
-            <div v-for="(contact, i) in owner.contacts" :key="i" class="contact-item">
-              <span v-if="contact.primary" class="contact-item__primary">★</span>
-              <strong>{{ contact.label }}</strong>: {{ contact.value }}
-              <StatusBadge
-                v-if="contact.type === 'whatsapp'"
-                label="WA"
-                variant="success"
-                size="sm"
-              />
+            <div v-for="(contact, index) in owner.contacts" :key="index" class="contact-item">
+              <div>
+                <strong>{{ contact.label }}</strong>
+                <p>{{ contact.value }}</p>
+              </div>
+              <div class="contact-item__badges">
+                <StatusBadge
+                  v-if="contact.primary"
+                  label="Principal"
+                  variant="warning"
+                  size="sm"
+                />
+                <StatusBadge
+                  v-if="contact.type === 'whatsapp'"
+                  label="WhatsApp"
+                  variant="success"
+                  size="sm"
+                />
+              </div>
             </div>
           </div>
           <p v-else class="muted">Nenhum contato cadastrado</p>
-        </AppDetailSection>
+        </DsCard>
 
-        <AppDetailSection v-if="owner.administrativeNotes" title="Observações">
-          <p>{{ owner.administrativeNotes }}</p>
-        </AppDetailSection>
+        <DsCard title="Pacientes vinculados">
+          <div v-if="patients.length" class="patient-list">
+            <div v-for="patient in patients" :key="patient.id" class="patient-list__item">
+              <div>
+                <strong>{{ patient.name }}</strong>
+                <p>
+                  {{ speciesLabel(patient.species) }}
+                  <span v-if="patient.breed">· {{ patient.breed }}</span>
+                </p>
+              </div>
+              <div class="patient-list__actions">
+                <StatusBadge
+                  :label="patientStatusLabel(patient.status)"
+                  :variant="patient.status === 'active' ? 'success' : 'warning'"
+                  size="sm"
+                />
+                <DsButton tag="a" :to="`/patients/${patient.id}`" size="sm" variant="ghost">
+                  Ver
+                </DsButton>
+              </div>
+            </div>
+          </div>
+          <p v-else class="muted">Nenhum paciente vinculado.</p>
+        </DsCard>
+      </section>
 
-        <AppDetailSection title="Informações">
-          <p class="muted">Criado em: {{ formatDate(owner.createdAt) }}</p>
-          <p class="muted">Atualizado em: {{ formatDate(owner.updatedAt) }}</p>
-        </AppDetailSection>
-      </div>
+      <section class="owner-detail-page__grid">
+        <DsCard title="Agenda vinculada">
+          <div v-if="upcomingAppointments.length" class="timeline-list">
+            <div
+              v-for="appointment in upcomingAppointments.slice(0, 4)"
+              :key="appointment.id"
+              class="timeline-list__item"
+            >
+              <div>
+                <strong>{{ patientName(appointment.patientId) }}</strong>
+                <p>{{ appointment.reason }}</p>
+              </div>
+              <span>{{ formatDate(appointment.scheduledAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Nenhum agendamento futuro encontrado.</p>
+        </DsCard>
+
+        <DsCard title="Últimos atendimentos">
+          <div v-if="recentEncounters.length" class="timeline-list">
+            <div
+              v-for="encounter in recentEncounters.slice(0, 4)"
+              :key="encounter.id"
+              class="timeline-list__item"
+            >
+              <div>
+                <strong>{{ patientName(encounter.patientId) }}</strong>
+                <p>{{ encounter.reason }}</p>
+              </div>
+              <span>{{ formatDate(encounter.openedAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Nenhum atendimento encontrado.</p>
+        </DsCard>
+      </section>
+
+      <section class="owner-detail-page__grid">
+        <DsCard title="Pacotes sugeridos">
+          <div v-if="packageRecommendations.length" class="package-list">
+            <div
+              v-for="pkg in packageRecommendations"
+              :key="pkg.id"
+              class="package-list__item"
+            >
+              <div>
+                <strong>{{ pkg.title }}</strong>
+                <p>{{ pkg.description }}</p>
+                <span class="package-list__hint">{{ pkg.reason }}</span>
+              </div>
+              <div class="package-list__actions">
+                <strong>{{ formatCurrency(pkg.referenceValue) }}</strong>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :loading="creatingPackageQuoteId === pkg.id"
+                  @click="createPackageQuote(pkg)"
+                >
+                  Criar orçamento
+                </DsButton>
+              </div>
+            </div>
+          </div>
+          <p v-else class="muted">Ainda não há recomendação de pacote para este relacionamento.</p>
+        </DsCard>
+
+        <DsCard title="Mensageria contextual">
+          <div class="message-list">
+            <div
+              v-for="message in contextualMessages"
+              :key="message.id"
+              class="message-list__item"
+            >
+              <div>
+                <strong>{{ message.title }}</strong>
+                <p>{{ message.preview }}</p>
+              </div>
+              <div class="message-list__actions">
+                <DsButton
+                  v-if="message.href"
+                  :href="message.href"
+                  variant="secondary"
+                  size="sm"
+                >
+                  Enviar
+                </DsButton>
+                <DsButton tag="a" to="/notifications/whatsapp" variant="ghost" size="sm">
+                  Hub WhatsApp
+                </DsButton>
+              </div>
+            </div>
+          </div>
+        </DsCard>
+      </section>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
-import type { OwnerSummary, OwnerContact } from '@/types/owner';
+import { appointmentService } from '@/services/appointment';
+import { encounterService } from '@/services/encounter';
+import { billingService } from '@/services/billing';
+import { quoteService, type QuoteSummary } from '@/services/quotes';
+import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
-import { formatDate, speciesLabel, patientStatusLabel } from '@/utils/labels';
+import type { AppointmentSummary } from '@/types/appointment';
+import type { EncounterSummary } from '@/types/encounter';
+import type { BillingRecordSummary } from '@/types/billing';
+import { formatDate, patientStatusLabel, speciesLabel } from '@/utils/labels';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
-import AppDetailSection from '@/components/AppDetailSection.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
 
 const route = useRoute();
 const owner = ref<OwnerSummary | null>(null);
 const patients = ref<PatientSummary[]>([]);
+const appointments = ref<AppointmentSummary[]>([]);
+const encounters = ref<EncounterSummary[]>([]);
+const billingRecords = ref<BillingRecordSummary[]>([]);
+const quotes = ref<QuoteSummary[]>([]);
+const relatedWarnings = ref<string[]>([]);
+const actionError = ref('');
+const actionMessage = ref('');
+const creatingRelationshipQuote = ref(false);
+const creatingPackageQuoteId = ref('');
 const loading = ref(true);
-const loadingPatients = ref(true);
 const error = ref('');
 
-const inactivePatientsCount = computed(
-  () => patients.value.filter((p) => p.status !== 'active').length
+const activePatientsCount = computed(
+  () => patients.value.filter((patient) => patient.status === 'active').length
 );
+
+const activeEncounters = computed(() =>
+  encounters.value.filter((encounter) => encounter.status !== 'closed')
+);
+
+const recentEncounters = computed(() =>
+  [...encounters.value].sort(
+    (a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime()
+  )
+);
+
+const ownerBillingRecords = computed(() => billingRecords.value.filter((record) => record.ownerId === owner.value?.id));
+const ownerQuotes = computed(() => quotes.value.filter((quote) => quote.ownerId === owner.value?.id));
+const activeQuotes = computed(() =>
+  ownerQuotes.value.filter((quote) => quote.status === 'draft' || quote.status === 'approved')
+);
+const openBillingAmount = computed(() =>
+  ownerBillingRecords.value
+    .filter((record) => record.status !== 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0)
+);
+const settledBillingAmount = computed(() =>
+  ownerBillingRecords.value
+    .filter((record) => record.status === 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0)
+);
+const loyaltyPoints = computed(
+  () =>
+    Math.round(
+      settledBillingAmount.value / 20 +
+        recentEncounters.value.length * 8 +
+        activePatientsCount.value * 12 +
+        activeQuotes.value.length * 15
+    )
+);
+const redeemableValue = computed(() => Math.floor(loyaltyPoints.value / 100) * 25);
+
+const loyaltyTier = computed(() => {
+  if (loyaltyPoints.value >= 300) return { label: 'Platinum', variant: 'success' as const };
+  if (loyaltyPoints.value >= 180) return { label: 'Gold', variant: 'info' as const };
+  if (loyaltyPoints.value >= 90) return { label: 'Silver', variant: 'warning' as const };
+  return { label: 'Start', variant: 'neutral' as const };
+});
+
+const crmStage = computed(() => {
+  if (openBillingAmount.value > 0) {
+    return {
+      label: 'Cobrança ativa',
+      description: 'Há valores em aberto. Priorize mensagens financeiras e negociação assistida.'
+    };
+  }
+
+  if (activeQuotes.value.length > 0) {
+    return {
+      label: 'Negociação',
+      description: 'Há orçamento em andamento. Aproveite a janela comercial para conversão.'
+    };
+  }
+
+  if (upcomingAppointments.value.length > 0) {
+    return {
+      label: 'Assistência programada',
+      description: 'Cliente com agenda futura. Bom momento para lembretes e pacote preventivo.'
+    };
+  }
+
+  return {
+    label: 'Relacionamento',
+    description: 'Base ativa sem pendências críticas. Espaço ideal para fidelização e recompra.'
+  };
+});
+
+const upcomingAppointments = computed(() => {
+  const now = Date.now();
+  return [...appointments.value]
+    .filter((appointment) => new Date(appointment.scheduledAt).getTime() >= now)
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+});
 
 const whatsappContact = computed(() => {
   if (!owner.value) return null;
-  const wa = owner.value.contacts.find((c) => c.type === 'whatsapp');
-  if (!wa) return null;
-  const number = wa.value.replace(/\D/g, '');
+  const whatsapp = owner.value.contacts.find((contact) => contact.type === 'whatsapp');
+  if (!whatsapp) return null;
+  const number = whatsapp.value.replace(/\D/g, '');
   return `https://wa.me/${number}`;
+});
+
+interface SuggestedPackage {
+  id: string;
+  title: string;
+  description: string;
+  reason: string;
+  referenceValue: number;
+}
+
+const packageRecommendations = computed<SuggestedPackage[]>(() => {
+  const caninePatients = patients.value.filter((patient) => patient.species === 'canine').length;
+  const felinePatients = patients.value.filter((patient) => patient.species === 'feline').length;
+  const recommendations: SuggestedPackage[] = [];
+
+  if (patients.value.length > 1) {
+    recommendations.push({
+      id: 'multi-pet',
+      title: 'Pacote Multi Animal',
+      description: 'Agrupa rotina preventiva, agenda recorrente e acompanhamento centralizado.',
+      reason: 'Cliente com mais de um paciente cadastrado.',
+      referenceValue: 590
+    });
+  }
+
+  if (caninePatients > 0) {
+    recommendations.push({
+      id: 'canine-preventive',
+      title: 'Pacote Preventivo Canino',
+      description: 'Consultas de rotina, janela vacinal e follow-up de peso.',
+      reason: 'Há pacientes caninos ativos no relacionamento.',
+      referenceValue: 360
+    });
+  }
+
+  if (felinePatients > 0) {
+    recommendations.push({
+      id: 'feline-care',
+      title: 'Pacote Cuidado Felino',
+      description: 'Retornos estruturados, revisão clínica e lembretes de prevenção.',
+      reason: 'Há pacientes felinos ativos no relacionamento.',
+      referenceValue: 340
+    });
+  }
+
+  if (recentEncounters.value.length >= 3) {
+    recommendations.push({
+      id: 'continuity',
+      title: 'Pacote Continuidade Clínica',
+      description: 'Indicador para pacientes com recorrência de atendimento e monitoramento frequente.',
+      reason: 'Relacionamento com histórico clínico recorrente.',
+      referenceValue: 720
+    });
+  }
+
+  return recommendations.slice(0, 3);
+});
+
+interface ContextualMessage {
+  id: string;
+  title: string;
+  preview: string;
+  href: string | null;
+}
+
+const contextualMessages = computed<ContextualMessage[]>(() => {
+  const contactBase = whatsappContact.value;
+  const firstPatient = patients.value[0];
+  const firstAppointment = upcomingAppointments.value[0];
+  const quote = activeQuotes.value[0];
+
+  const messages: ContextualMessage[] = [];
+
+  if (firstAppointment && firstPatient) {
+    messages.push({
+      id: 'reminder',
+      title: 'Lembrete de agenda',
+      preview: `Olá, ${owner.value?.fullName}. Confirmando o agendamento de ${firstPatient.name} em ${formatDate(firstAppointment.scheduledAt)}.`,
+      href: contactBase
+        ? buildWhatsAppLink(
+            `Olá, ${owner.value?.fullName}. Confirmando o agendamento de ${firstPatient.name} em ${formatDate(firstAppointment.scheduledAt)}.`
+          )
+        : null
+    });
+  }
+
+  if (quote) {
+    messages.push({
+      id: 'quote-followup',
+      title: 'Follow-up comercial',
+      preview: `Seu orçamento ${quote.number} está pronto para continuidade. Posso apoiar na conversão?`,
+      href: contactBase
+        ? buildWhatsAppLink(
+            `Olá, ${owner.value?.fullName}. Seu orçamento ${quote.number} está pronto para continuidade. Posso apoiar na conversão?`
+          )
+        : null
+    });
+  }
+
+  if (openBillingAmount.value > 0) {
+    messages.push({
+      id: 'billing',
+      title: 'Cobrança contextual',
+      preview: `Identificamos pendências financeiras no valor de ${formatCurrency(openBillingAmount.value)}. Podemos alinhar a melhor condição?`,
+      href: contactBase
+        ? buildWhatsAppLink(
+            `Olá, ${owner.value?.fullName}. Identificamos pendências financeiras no valor de ${formatCurrency(openBillingAmount.value)}. Podemos alinhar a melhor condição?`
+          )
+        : null
+    });
+  }
+
+  if (messages.length === 0) {
+    messages.push({
+      id: 'relationship',
+      title: 'Régua de relacionamento',
+      preview: `Relacionamento estável. Envie uma mensagem de acompanhamento e fidelização.`,
+      href: contactBase
+        ? buildWhatsAppLink(
+            `Olá, ${owner.value?.fullName}. Passando para acompanhar como estão os pacientes e se podemos apoiar em algo mais.`
+          )
+        : null
+    });
+  }
+
+  return messages;
 });
 
 interface OwnerAlert {
@@ -232,75 +611,160 @@ interface OwnerAlert {
 
 const ownerAlerts = computed<OwnerAlert[]>(() => {
   if (!owner.value) return [];
+
   const alerts: OwnerAlert[] = [];
+
   if (!owner.value.documentId) {
-    alerts.push({ variant: 'warning', title: 'Documento ausente', message: 'Cadastre o documento de identificação do tutor.' });
+    alerts.push({
+      variant: 'warning',
+      title: 'Documento ausente',
+      message: 'Cadastre CPF/CNPJ para consolidar financeiro e relacionamento.'
+    });
   }
+
   if (owner.value.contacts.length === 0) {
-    alerts.push({ variant: 'warning', title: 'Sem contatos', message: 'Adicione pelo menos um canal de contato.' });
+    alerts.push({
+      variant: 'warning',
+      title: 'Sem contatos',
+      message: 'Inclua ao menos um canal de contato para operação e comunicação.'
+    });
   }
+
   if (owner.value.status === 'inactive') {
-    alerts.push({ variant: 'danger', title: 'Tutor inativo', message: 'Este tutor está marcado como inativo e não aparecerá na operação.' });
+    alerts.push({
+      variant: 'danger',
+      title: 'Tutor inativo',
+      message: 'Este cadastro está fora da operação ativa.'
+    });
   }
-  if (inactivePatientsCount.value > 0) {
-    alerts.push({ variant: 'info', title: 'Pacientes inativos', message: `${inactivePatientsCount.value} paciente(s) vinculado(s) estão inativos.` });
+
+  if (patients.value.length === 0) {
+    alerts.push({
+      variant: 'info',
+      title: 'Sem pacientes vinculados',
+      message: 'Vincule animais para completar a jornada assistencial.'
+    });
   }
+
+  if (openBillingAmount.value > 0) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Financeiro em aberto',
+      message: `Há ${formatCurrency(openBillingAmount.value)} pendente(s) neste relacionamento.`
+    });
+  }
+
+  if (activeQuotes.value.length > 0) {
+    alerts.push({
+      variant: 'info',
+      title: 'Oportunidade comercial ativa',
+      message: `${activeQuotes.value.length} orçamento(s) exigem acompanhamento comercial.`
+    });
+  }
+
   return alerts;
 });
 
-const summaryCards = computed(() => {
-  if (!owner.value) return [];
-  return [
-    {
-      label: 'Documento',
-      value: owner.value.documentId || 'Não informado',
-      hint: 'Identificação fiscal'
-    },
-    {
-      label: 'Contatos',
-      value: owner.value.contacts.length.toString(),
-      hint: 'Canais cadastrados'
-    },
-    {
-      label: 'Principal',
-      value:
-        owner.value.contacts.find((contact: OwnerContact) => contact.primary)?.label ||
-        owner.value.contacts[0]?.label ||
-        '—',
-      hint: 'Contato de referência'
-    },
-    {
-      label: 'Financeiro',
-      value: owner.value.financialResponsible ? 'Sim' : 'Não',
-      hint: 'Responsável financeiro'
-    }
-  ];
-});
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+}
 
-const patientColumns: DataTableColumn[] = [
-  { key: 'name', label: 'Nome' },
-  { key: 'species', label: 'Espécie' },
-  { key: 'status', label: 'Status' },
-  { key: 'actions', label: 'Ações', class: 'table__actions-col' }
-];
+function primaryContact(currentOwner: OwnerSummary): string {
+  return currentOwner.contacts.find((contact) => contact.primary)?.value || currentOwner.contacts[0]?.value || 'Sem contato principal';
+}
 
-async function loadPatients(ownerId: string) {
-  loadingPatients.value = true;
+function patientName(patientId: string): string {
+  return patients.value.find((patient) => patient.id === patientId)?.name || 'Paciente';
+}
+
+function buildWhatsAppLink(message: string): string | null {
+  if (!whatsappContact.value) return null;
+  return `${whatsappContact.value}?text=${encodeURIComponent(message)}`;
+}
+
+async function createRelationshipQuote() {
+  if (!owner.value) return;
+  creatingRelationshipQuote.value = true;
+  actionError.value = '';
+  actionMessage.value = '';
+
   try {
-    const all = await patientService.list();
-    patients.value = all.filter((p) => p.primaryOwnerId === ownerId);
-  } catch {
-    patients.value = [];
+    const quote = await quoteService.create({
+      ownerId: owner.value.id,
+      notes: `Orçamento-base gerado a partir do hub enterprise do cliente ${owner.value.fullName}.`
+    });
+    quotes.value = [quote, ...quotes.value];
+    actionMessage.value = `Orçamento ${quote.number} criado em rascunho para o cliente.`;
+  } catch (err: unknown) {
+    actionError.value = err instanceof Error ? err.message : 'Erro ao criar orçamento-base';
   } finally {
-    loadingPatients.value = false;
+    creatingRelationshipQuote.value = false;
+  }
+}
+
+async function createPackageQuote(pkg: SuggestedPackage) {
+  if (!owner.value) return;
+  creatingPackageQuoteId.value = pkg.id;
+  actionError.value = '';
+  actionMessage.value = '';
+
+  try {
+    const quote = await quoteService.create({
+      ownerId: owner.value.id,
+      notes: `Pacote sugerido: ${pkg.title}. Motivo: ${pkg.reason}. Valor de referência: ${formatCurrency(pkg.referenceValue)}.`
+    });
+    quotes.value = [quote, ...quotes.value];
+    actionMessage.value = `Orçamento ${quote.number} criado para o pacote ${pkg.title}.`;
+  } catch (err: unknown) {
+    actionError.value = err instanceof Error ? err.message : 'Erro ao criar orçamento do pacote';
+  } finally {
+    creatingPackageQuoteId.value = '';
+  }
+}
+
+async function loadOwnerHub(ownerId: string) {
+  const [ownerResponse, patientResponse, appointmentResponse, encounterResponse] = await Promise.all([
+    ownerService.getById(ownerId),
+    patientService.list({ ownerId }),
+    appointmentService.list(),
+    encounterService.list()
+  ]);
+
+  owner.value = ownerResponse;
+  patients.value = patientResponse;
+  appointments.value = appointmentResponse.filter((appointment) => appointment.ownerId === ownerId);
+  encounters.value = encounterResponse.filter((encounter) => encounter.ownerId === ownerId);
+
+  relatedWarnings.value = [];
+
+  const [billingResult, quotesResult] = await Promise.allSettled([
+    billingService.list(),
+    quoteService.list()
+  ]);
+
+  if (billingResult.status === 'fulfilled') {
+    billingRecords.value = billingResult.value;
+  } else {
+    billingRecords.value = [];
+    relatedWarnings.value.push('financeiro');
+  }
+
+  if (quotesResult.status === 'fulfilled') {
+    quotes.value = quotesResult.value;
+  } else {
+    quotes.value = [];
+    relatedWarnings.value.push('orçamentos');
   }
 }
 
 onMounted(async () => {
-  const id = route.params.id as string;
+  const ownerId = route.params.id as string;
+
   try {
-    owner.value = await ownerService.getById(id);
-    await loadPatients(id);
+    await loadOwnerHub(ownerId);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar tutor';
   } finally {
@@ -316,16 +780,6 @@ onMounted(async () => {
   gap: 16px;
 }
 
-.owner-detail-page__grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-.owner-detail-page__hero {
-  margin-bottom: 0;
-}
-
 .hub-kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -338,71 +792,109 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.hub-actions {
-  margin-bottom: 0;
-}
-
-.hub-patients {
-  margin-bottom: 0;
-}
-
-.quick-actions {
+.quick-actions,
+.patient-list__actions,
+.contact-item__badges,
+.message-list__actions,
+.package-list__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.contacts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.contact-item__primary {
-  color: var(--color-warning-500, #f59e0b);
-}
-
-.summary-grid {
+.owner-summary-grid,
+.owner-detail-page__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.summary-card {
+.detail-item {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(180deg, #fff, #f8fafc);
 }
 
-.summary-card__label {
+.detail-item__label {
   display: block;
   margin-bottom: 4px;
   font-size: 12px;
-  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted, #64748b);
 }
 
-.summary-card__value {
-  display: block;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--color-text, #0f172a);
+.note-box {
+  margin: 16px 0 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
-.summary-card__hint {
-  display: block;
-  margin-top: 4px;
+.contacts-list,
+.patient-list,
+.timeline-list,
+.message-list,
+.package-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-item,
+.patient-list__item,
+.timeline-list__item,
+.message-list__item,
+.package-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #fff;
+}
+
+.contact-item p,
+.patient-list__item p,
+.timeline-list__item p,
+.message-list__item p,
+.package-list__item p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
+}
+
+.package-list__hint {
+  display: inline-block;
+  margin-top: 6px;
   font-size: 12px;
   color: var(--color-text-muted, #64748b);
+}
+
+.note-box--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+@media (max-width: 720px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-item,
+  .patient-list__item,
+  .timeline-list__item,
+  .message-list__item,
+  .package-list__item {
+    flex-direction: column;
+  }
 }
 </style>

@@ -1,0 +1,96 @@
+import { loadApiConfig, type ApiAppConfig } from '@cvg-his-v2/shared-config';
+import { createSecretsManager, type SecretDescriptor, type SecretsManager } from '@cvg-his-v2/secrets';
+
+export interface ApiStartupResolution {
+  readonly config: ApiAppConfig;
+  readonly secretsManager: SecretsManager;
+  readonly env: NodeJS.ProcessEnv;
+}
+
+const API_SECRET_PATHS: Readonly<Record<string, string>> = {
+  AUTH_SECRET: 'api',
+  MFA_SECRET_ENCRYPTION_KEY: 'mfa',
+  DATABASE_URL: 'database',
+  REDIS_URL: 'redis',
+  PAGARME_API_KEY: 'pagarme',
+  PAGARME_PIX_KEY: 'pagarme'
+};
+
+function isTruthy(value: string | undefined): boolean {
+  return value === '1' || value === 'true';
+}
+
+function normalizeVaultEnvironment(value: string | undefined): string {
+  switch (value) {
+    case 'prod':
+      return 'production';
+    case 'stage':
+      return 'staging';
+    default:
+      return value?.trim() || 'development';
+  }
+}
+
+function isProductionLikeEnvironment(value: string): boolean {
+  return value === 'production' || value === 'staging';
+}
+
+function hasConfiguredValue(value: string | undefined): value is string {
+  return value !== undefined && value.trim().length > 0;
+}
+
+export function buildApiManagedSecretDescriptors(env: NodeJS.ProcessEnv): SecretDescriptor[] {
+  const environment = normalizeVaultEnvironment(env.NODE_ENV);
+  const productionLike = isProductionLikeEnvironment(environment);
+  const enableMfa = isTruthy(env.ENABLE_MFA);
+
+  return Object.entries(API_SECRET_PATHS).map(([key, pathSuffix]) => ({
+    key,
+    path: `${environment}/${pathSuffix}`,
+    required:
+      (key === 'AUTH_SECRET' || key === 'DATABASE_URL') && productionLike
+      || (key === 'MFA_SECRET_ENCRYPTION_KEY' && enableMfa)
+  }));
+}
+
+export async function resolveApiEnvironmentWithSecrets(
+  env: NodeJS.ProcessEnv,
+  secretsManager: SecretsManager
+): Promise<NodeJS.ProcessEnv> {
+  const resolvedEnv: NodeJS.ProcessEnv = { ...env };
+  const secretsToFetch = buildApiManagedSecretDescriptors(env).filter(
+    (descriptor) => !hasConfiguredValue(resolvedEnv[descriptor.key])
+  );
+
+  if (secretsToFetch.length === 0) {
+    return resolvedEnv;
+  }
+
+  const resolvedSecrets = await secretsManager.getMany(secretsToFetch);
+  for (const descriptor of secretsToFetch) {
+    const value = resolvedSecrets[descriptor.key];
+    if (hasConfiguredValue(value)) {
+      resolvedEnv[descriptor.key] = value;
+    }
+  }
+
+  return resolvedEnv;
+}
+
+export async function resolveApiStartup(env: NodeJS.ProcessEnv = process.env): Promise<ApiStartupResolution> {
+  const secretsManager = await createSecretsManager({
+    vaultEnabled: isTruthy(env.VAULT_ENABLED),
+    vaultUrl: env.VAULT_URL,
+    vaultRoleId: env.VAULT_ROLE_ID,
+    vaultSecretId: env.VAULT_SECRET_ID,
+    vaultNamespace: env.VAULT_NAMESPACE,
+    vaultSecretPathPrefix: env.VAULT_SECRET_PATH_PREFIX
+  });
+  const resolvedEnv = await resolveApiEnvironmentWithSecrets(env, secretsManager);
+
+  return {
+    config: loadApiConfig(resolvedEnv),
+    secretsManager,
+    env: resolvedEnv
+  };
+}

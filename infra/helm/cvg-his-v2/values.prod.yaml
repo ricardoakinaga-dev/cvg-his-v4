@@ -1,0 +1,96 @@
+# values.prod.yaml — Production environment overrides
+api:
+  replicaCount: 3
+  revisionHistoryLimit: 10
+  image:
+    pullPolicy: Always
+    tag: ""   # use git-sha tag from CI
+  probes:
+    enabled: true
+    livenessDelay: 10
+    livenessPeriod: 10
+    livenessFailureThreshold: 3
+    readinessDelay: 5
+    readinessPeriod: 5
+    readinessFailureThreshold: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  env:
+    NODE_ENV: production
+    CORS_ALLOWED_ORIGINS: "https://cvg-his-v2.com"
+    RUNTIME_DISTRIBUTED_STATE_ENABLED: "true"
+    VAULT_ENABLED: "true"
+  auth:
+    existingSecret: cvg-his-v2-prod-api-secrets
+
+worker:
+  replicaCount: 2
+  revisionHistoryLimit: 5
+  image:
+    pullPolicy: Always
+
+spa:
+  replicaCount: 3
+  revisionHistoryLimit: 10
+  image:
+    pullPolicy: Always
+  env:
+    VITE_API_BASE_URL: https://api.cvg-his-v2.com
+
+postgresql:
+  enabled: false   # prod uses RDS / Cloud SQL
+  existingSecret: cvg-his-v2-prod-postgres
+
+redis:
+  enabled: false   # prod uses ElastiCache / Memorystore
+  existingSecret: cvg-his-v2-prod-redis
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "512k"
+  hosts:
+    - host: api.cvg-his-v2.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 3001
+    - host: cvg-his-v2.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: spa
+          port: 3002
+  tls:
+    - hosts:
+        - api.cvg-his-v2.com
+        - cvg-his-v2.com
+      secretName: cvg-his-v2-prod-tls
+
+podDisruptionBudget:
+  api:
+    minAvailable: 2
+  spa:
+    minAvailable: 2
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10000
+  runAsGroup: 10000
+  fsGroup: 10000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

@@ -22,7 +22,6 @@ function cleanApiEnv(): Record<string, string> {
     AUTH_REFRESH_TOKEN_TTL_SECONDS: '604800',
     AUTH_RATE_LIMIT_MAX_REQUESTS: '10',
     AUTH_RATE_LIMIT_WINDOW_MS: '900000',
-    AUTH_RATE_LIMIT_BACKEND: 'memory',
     OTEL_ENABLED: 'false',
     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
     FILE_STORAGE_PATH: '/tmp/attachments',
@@ -59,7 +58,6 @@ describe('config module', () => {
       expect(config.port).toBe(3001);
       expect(config.environment).toBe('development');
       expect(config.authRateLimitMaxRequests).toBe(10);
-      expect(config.authRateLimitBackend).toBe('memory');
     });
 
     it('loads with explicit values', () => {
@@ -132,12 +130,6 @@ describe('config module', () => {
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
     });
 
-    it('throws when AUTH_RATE_LIMIT_BACKEND=redis but no REDIS_URL', () => {
-      const env = cleanApiEnv();
-      env.AUTH_RATE_LIMIT_BACKEND = 'redis';
-      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
-    });
-
     it('loads MFA config when ENABLE_MFA=true and key provided', () => {
       const env = cleanApiEnv();
       env.ENABLE_MFA = 'true';
@@ -153,15 +145,6 @@ describe('config module', () => {
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
     });
 
-    it('accepts REDIS_URL when AUTH_RATE_LIMIT_BACKEND=redis', () => {
-      const env = cleanApiEnv();
-      env.AUTH_RATE_LIMIT_BACKEND = 'redis';
-      env.REDIS_URL = 'redis://localhost:6379';
-      const config = loadApiConfig(env as NodeJS.ProcessEnv);
-      expect(config.authRateLimitBackend).toBe('redis');
-      expect(config.redisUrl).toBe('redis://localhost:6379');
-    });
-
     it('accepts otlp headers as key=value format', () => {
       const env = cleanApiEnv();
       env.OTEL_ENABLED = 'true';
@@ -173,12 +156,6 @@ describe('config module', () => {
       expect(config.otlpHeaders['x-auth']).toBe('token');
     });
 
-    it('normalizes empty string env values to undefined', () => {
-      const env = cleanApiEnv();
-      env.REDIS_URL = '';
-      const config = loadApiConfig(env as NodeJS.ProcessEnv);
-      expect(config.redisUrl).toBeUndefined();
-    });
   });
 
   describe('loadWorkerConfig', () => {

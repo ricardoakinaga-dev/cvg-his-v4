@@ -21,6 +21,18 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
+const OPERATIONAL_MINIMUM_PROFILE = {
+  id: 'operational-minimum-v1',
+  description: 'Perfil minimo para validar latencia e erro em carga sustentada antes de promover staging.',
+  stages: [
+    { duration: '30s', target: 5 },    // Ramp up (light)
+    { duration: '1m', target: 30 },     // Steady load
+    { duration: '30s', target: 60 },    // Stress
+    { duration: '30s', target: 30 },    // Ramp down
+    { duration: '1m', target: 5 },      // Cool down
+  ],
+};
+
 // Custom metrics
 const apiLatency = new Trend('api_latency_ms');
 const errorRate = new Rate('api_errors');
@@ -32,7 +44,7 @@ const inventoryLatency = new Trend('inventory_latency_ms');
 
 // Test configuration
 const BASE_URL = __ENV.TARGET ?? 'http://localhost:3001';
-const ACCOUNT_ID = __ENV.ACCOUNT_ID ?? 'acc_cvg_demo';
+const FALLBACK_ACCOUNT_ID = __ENV.ACCOUNT_ID ?? 'acc_cvg_demo';
 
 // Test credentials — seed users from UsersService
 const TEST_USERS = [
@@ -44,13 +56,8 @@ const TEST_USERS = [
 
 // SLO thresholds from slos.json
 export const options = {
-  stages: [
-    { duration: '30s', target: 5 },    // Ramp up (light)
-    { duration: '1m', target: 30 },     // Steady load
-    { duration: '30s', target: 60 },    // Stress
-    { duration: '30s', target: 30 },    // Ramp down
-    { duration: '1m', target: 5 },      // Cool down
-  ],
+  stages: OPERATIONAL_MINIMUM_PROFILE.stages,
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {
     'api_latency_ms':    ['p(95)<200', 'p(99)<500'],
     'api_errors':       ['rate<0.001'],          // SLO: 0.1% error rate
@@ -77,19 +84,22 @@ export function setup() {
   if (loginRes.status === 200) {
     const body = JSON.parse(loginRes.body);
     authToken = body.accessToken ?? '';
+    const accountId = body.principal?.user?.accountId ?? FALLBACK_ACCOUNT_ID;
+    return { token: authToken, testUser, accountId };
   }
 
-  return { token: authToken, testUser };
+  return { token: authToken, testUser, accountId: FALLBACK_ACCOUNT_ID };
 }
 
 // ========== SCENARIOS ==========
 
 export default function (data) {
   const token = data.token;
+  const accountId = data.accountId ?? FALLBACK_ACCOUNT_ID;
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
-    'x-account-id': ACCOUNT_ID,
+    'x-account-id': accountId,
     'X-Correlation-Id': `k6-${__VU}-${__ITER}`,
   };
 
@@ -331,12 +341,12 @@ export default function (data) {
 export function handleSummary(data) {
   const sloResults = evaluateSLOs(data);
   return {
-    'stdout': textSummary(data, { indent: ' ', enableColors: true }),
-    'stdout': '\n### SLO Results\n' + sloSummaryText(sloResults) + '\n',
+    'stdout': textSummary(data, { indent: ' ', enableColors: true }) + '\n\n### SLO Results\n' + sloSummaryText(sloResults) + '\n',
     'benchmarks/k6/results/performance-report.json': JSON.stringify({
       timestamp: new Date().toISOString(),
       version: '1.0',
       baseUrl: BASE_URL,
+      profile: OPERATIONAL_MINIMUM_PROFILE,
       stages: options.stages,
       metrics: extractMetrics(data),
       slo: sloResults,
@@ -349,11 +359,14 @@ function extractMetrics(data) {
   const metrics = {};
   for (const [key, value] of Object.entries(data.metrics)) {
     if (value.type === 'trend') {
+      const p50 = value.values['p(50)'] ?? value.values.med ?? value.values.avg;
+      const p95 = value.values['p(95)'] ?? value.values['p(90)'] ?? value.values.avg;
+      const p99 = value.values['p(99)'] ?? value.values['p(95)'] ?? value.values['p(90)'] ?? value.values.max;
       metrics[key] = {
         avg: parseFloat(value.values.avg.toFixed(2)),
-        p50: parseFloat(value.values['p(50)'].toFixed(2)),
-        p95: parseFloat(value.values['p(95)'].toFixed(2)),
-        p99: parseFloat(value.values['p(99)'].toFixed(2)),
+        p50: parseFloat(p50.toFixed(2)),
+        p95: parseFloat(p95.toFixed(2)),
+        p99: parseFloat(p99.toFixed(2)),
         max: parseFloat(value.values.max.toFixed(2)),
       };
     } else if (value.type === 'rate') {
@@ -430,11 +443,14 @@ function textSummary(data, opts) {
   const errors = data.metrics['api_errors']?.values;
 
   if (latency) {
+    const p50 = latency['p(50)'] ?? latency.med ?? latency.avg;
+    const p95 = latency['p(95)'] ?? latency['p(90)'] ?? latency.avg;
+    const p99 = latency['p(99)'] ?? latency['p(95)'] ?? latency['p(90)'] ?? latency.max;
     out += `${indent}API Latency:\n`;
     out += `${indent}  avg:  ${latency.avg.toFixed(2)}ms\n`;
-    out += `${indent}  p50:  ${latency['p(50)'].toFixed(2)}ms\n`;
-    out += `${indent}  p95:  ${latency['p(95)'].toFixed(2)}ms  ${latency['p(95)'] < 200 ? '✅' : '❌'}\n`;
-    out += `${indent}  p99:  ${latency['p(99)'].toFixed(2)}ms  ${latency['p(99)'] < 500 ? '✅' : '❌'}\n`;
+    out += `${indent}  p50:  ${p50.toFixed(2)}ms\n`;
+    out += `${indent}  p95:  ${p95.toFixed(2)}ms  ${p95 < 200 ? '✅' : '❌'}\n`;
+    out += `${indent}  p99:  ${p99.toFixed(2)}ms  ${p99 < 500 ? '✅' : '❌'}\n`;
     out += `${indent}  max:  ${latency.max.toFixed(2)}ms\n\n`;
   }
 
@@ -446,12 +462,14 @@ function textSummary(data, opts) {
 
   const auth = data.metrics['auth_latency_ms']?.values;
   if (auth) {
-    out += `${indent}Auth Latency (P95): ${auth['p(95)'].toFixed(2)}ms  ${auth['p(95)'] < 300 ? '✅' : '❌'}\n`;
+    const authP95 = auth['p(95)'] ?? auth['p(90)'] ?? auth.avg;
+    out += `${indent}Auth Latency (P95): ${authP95.toFixed(2)}ms  ${authP95 < 300 ? '✅' : '❌'}\n`;
   }
 
   const query = data.metrics['query_latency_ms']?.values;
   if (query) {
-    out += `${indent}Query Latency (P95): ${query['p(95)'].toFixed(2)}ms  ${query['p(95)'] < 150 ? '✅' : '❌'}\n`;
+    const queryP95 = query['p(95)'] ?? query['p(90)'] ?? query.avg;
+    out += `${indent}Query Latency (P95): ${queryP95.toFixed(2)}ms  ${queryP95 < 150 ? '✅' : '❌'}\n`;
   }
 
   return out;

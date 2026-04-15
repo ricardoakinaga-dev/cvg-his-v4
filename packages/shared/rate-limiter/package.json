@@ -16,5 +16,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/rate-limiter.test.js"
+  },
+  "dependencies": {
+    "redis": "^4.7.0"
   }
 }

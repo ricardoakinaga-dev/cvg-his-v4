@@ -11,6 +11,10 @@ export interface AppState {
   workerDetail: string;
   productionReady: boolean;
   initialized: boolean;
+  secretsManagerProvider?: 'vault' | 'env';
+  /** ML services (GAP-09): AI/ML module wired to runtime */
+  mlReady: boolean;
+  mlDetail: string;
 }
 
 let appState: AppState = {
@@ -23,7 +27,10 @@ let appState: AppState = {
   workerReady: false,
   workerDetail: 'Worker status not initialized',
   productionReady: false,
-  initialized: false
+  initialized: false,
+  secretsManagerProvider: undefined,
+  mlReady: false,
+  mlDetail: 'ML services not initialized'
 };
 
 export function setAppState(state: Partial<AppState>): void {

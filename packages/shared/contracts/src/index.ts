@@ -64,6 +64,15 @@ export interface HealthResponse extends HealthStatus {
       readonly state: 'ready' | 'degraded' | 'not-configured';
       readonly detail: string;
     };
+    readonly secretsManager?: {
+      readonly state: 'configured' | 'not-configured';
+      readonly detail: string;
+    };
+    /** ML services status — populated when AI/ML module is wired to the runtime (GAP-09) */
+    readonly ml?: {
+      readonly state: 'ready' | 'not-configured';
+      readonly detail: string;
+    };
   };
 }
 
@@ -366,6 +375,30 @@ export interface FiscalNfseLayoutSummary {
   readonly environment: 'producao' | 'homologacao';
   readonly serviceCode: string;
   readonly serviceFocus: string;
+}
+
+export interface CreateFiscalNfseLayoutRequest {
+  readonly city: string;
+  readonly state: string;
+  readonly municipalityCode?: string;
+  readonly provider: string;
+  readonly version: string;
+  readonly active?: boolean;
+  readonly environment: 'producao' | 'homologacao';
+  readonly serviceCode?: string;
+  readonly serviceFocus?: string;
+}
+
+export interface UpdateFiscalNfseLayoutRequest {
+  readonly city?: string;
+  readonly state?: string;
+  readonly municipalityCode?: string;
+  readonly provider?: string;
+  readonly version?: string;
+  readonly active?: boolean;
+  readonly environment?: 'producao' | 'homologacao';
+  readonly serviceCode?: string;
+  readonly serviceFocus?: string;
 }
 
 export interface FiscalTaxPreview {

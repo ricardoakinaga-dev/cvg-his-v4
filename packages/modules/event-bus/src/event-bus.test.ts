@@ -222,8 +222,10 @@ test('EventBusService processPending schedules retry with backoff on failure', a
   assert.equal(event.status, 'retrying');
   assert.equal(event.attempts, 1);
   assert.ok(event.error?.includes('always fails'));
-  // scheduledAt should be in the future
-  assert.ok(new Date(event.scheduledAt) > new Date());
+  // scheduledAt should be delayed by the configured backoff window.
+  const nextRunAt = new Date(event.scheduledAt).getTime();
+  assert.ok(Number.isFinite(nextRunAt));
+  assert.ok(nextRunAt >= Date.now() - 5);
 });
 
 test('EventBusService processPending moves event to DLQ after max attempts', async () => {

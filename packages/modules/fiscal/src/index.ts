@@ -54,3 +54,13 @@ export {
   type FiscalNfseLayoutFilters,
   type FiscalPisCofinsRuleFilters
 } from './service.js';
+
+// Database repository (GAP-08)
+export {
+  DatabaseFiscalRepository,
+  type DbCfopFilters,
+  type DbIcmsRuleFilters,
+  type DbNcmEntryFilters,
+  type DbPisCofinsRuleFilters,
+  type DbNfseLayoutFilters
+} from './database-fiscal.repository.js';

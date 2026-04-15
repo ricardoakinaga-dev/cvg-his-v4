@@ -6,8 +6,16 @@
 
     <div class="appointment-quick-create__layout">
       <form class="appointment-quick-create__form" @submit.prevent="submit">
+        <DsCard v-if="ownerSnapshot && lockOwnerSelection" title="Cliente selecionado">
+          <div class="selected-client">
+            <strong>{{ ownerSnapshot.fullName }}</strong>
+            <span>{{ ownerSnapshot.documentId || 'Documento não informado' }}</span>
+            <span>{{ ownerPrimaryContact }}</span>
+          </div>
+        </DsCard>
+
         <DsCard title="Tutor e paciente">
-          <div class="form-field">
+          <div v-if="!hideOwnerSelection" class="form-field">
             <label class="form-field__label" for="ownerId">Tutor</label>
             <SearchSelect
               id="ownerId"
@@ -32,7 +40,9 @@
               v-model="form.patientId"
               :options="patientOptions"
               :loading="patientsLoading"
-              placeholder="Buscar paciente por nome..."
+              :placeholder="
+                form.ownerId ? 'Buscar paciente deste cliente...' : 'Buscar paciente por nome...'
+              "
               @change="handlePatientChange"
             />
             <span v-if="errors.patientId" class="form-field__error">{{ errors.patientId }}</span>
@@ -277,6 +287,10 @@ interface Props {
   presetPatientId?: string;
   presetScheduledAt?: string;
   professionals?: SchedulingProfessionalSummary[];
+  hideOwnerSelection?: boolean;
+  lockOwnerSelection?: boolean;
+  restrictPatientsToOwner?: boolean;
+  ownerSnapshot?: OwnerSummary | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -284,7 +298,11 @@ const props = withDefaults(defineProps<Props>(), {
   submitLabel: 'Salvar agendamento',
   presetOwnerId: '',
   presetPatientId: '',
-  presetScheduledAt: ''
+  presetScheduledAt: '',
+  hideOwnerSelection: false,
+  lockOwnerSelection: false,
+  restrictPatientsToOwner: false,
+  ownerSnapshot: null
 });
 
 const emit = defineEmits<{
@@ -344,7 +362,12 @@ const patientDraft = reactive({
 const professionals = computed(() => props.professionals?.length ? props.professionals : runtimeProfessionals.value);
 const ownerOptions = computed(() => owners.value.map((owner) => ({ label: owner.fullName, value: owner.id })));
 const patientOptions = computed(() => {
-  const ranked = [...patients.value].sort((left, right) => {
+  const scopedPatients =
+    props.restrictPatientsToOwner && form.ownerId
+      ? patients.value.filter((patient) => patient.primaryOwnerId === form.ownerId)
+      : patients.value;
+
+  const ranked = [...scopedPatients].sort((left, right) => {
     const leftRank = left.primaryOwnerId === form.ownerId ? 0 : 1;
     const rightRank = right.primaryOwnerId === form.ownerId ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;
@@ -361,6 +384,12 @@ const selectedProfessionalLabel = computed(() => {
   return professionals.value.find((professional) => professional.id === form.practitionerStaffId)?.fullName || 'Sem profissional';
 });
 const canCheckAvailability = computed(() => Boolean(form.ownerId && form.patientId && form.scheduledAt));
+const ownerPrimaryContact = computed(() => {
+  const owner = props.ownerSnapshot;
+  if (!owner) return 'Sem contato principal';
+  const primary = owner.contacts.find((contact) => contact.primary) ?? owner.contacts[0];
+  return primary ? `${primary.label}: ${primary.value}` : 'Sem contato principal';
+});
 
 let availabilityRequestId = 0;
 let availabilityTimer: ReturnType<typeof setTimeout> | null = null;
@@ -392,8 +421,11 @@ async function loadLookups() {
 
   try {
     const [ownersResponse, patientsResponse, overviewResponse, servicesResponse] = await Promise.allSettled([
-      ownerService.list(),
-      patientService.list(),
+      ownerService.list({ pageSize: 200, status: 'active' }),
+      patientService.list({
+        pageSize: 200,
+        ownerId: props.restrictPatientsToOwner ? form.ownerId || undefined : undefined
+      }),
       getSchedulingOverview({ viewMode: 'day', referenceDate }),
       servicesService.list()
     ]);
@@ -420,6 +452,7 @@ async function loadLookups() {
 }
 
 function handleOwnerChange() {
+  if (props.lockOwnerSelection) return;
   if (!form.patientId) return;
   const patient = patients.value.find((item) => item.id === form.patientId);
   if (patient && form.ownerId && patient.primaryOwnerId !== form.ownerId) {
@@ -430,7 +463,9 @@ function handleOwnerChange() {
 function handlePatientChange() {
   const patient = patients.value.find((item) => item.id === form.patientId);
   if (!patient) return;
-  form.ownerId = patient.primaryOwnerId;
+  if (!props.lockOwnerSelection) {
+    form.ownerId = patient.primaryOwnerId;
+  }
 }
 
 function closeOwnerModal() {
@@ -457,6 +492,10 @@ function closePatientModal() {
 }
 
 async function createInlineOwner() {
+  if (props.lockOwnerSelection) {
+    formError.value = 'O cliente já está travado neste fluxo';
+    return;
+  }
   if (!ownerDraft.fullName.trim()) {
     formError.value = 'Nome do tutor é obrigatório';
     return;
@@ -496,7 +535,7 @@ async function createInlineOwner() {
       financialResponsible: true
     });
 
-    owners.value = await ownerService.list();
+    owners.value = await ownerService.list({ pageSize: 200, status: 'active' });
     form.ownerId = owner.id;
     closeOwnerModal();
   } catch (error) {
@@ -529,7 +568,10 @@ async function createInlinePatient() {
       status: 'active'
     });
 
-    patients.value = await patientService.list();
+    patients.value = await patientService.list({
+      pageSize: 200,
+      ownerId: props.restrictPatientsToOwner ? form.ownerId : undefined
+    });
     form.patientId = patient.id;
     closePatientModal();
   } catch (error) {
@@ -638,6 +680,24 @@ watch(
   }
 );
 
+watch(
+  () => props.presetOwnerId,
+  (ownerId) => {
+    if (ownerId) {
+      form.ownerId = ownerId;
+    }
+  }
+);
+
+watch(
+  () => props.presetPatientId,
+  (patientId) => {
+    if (patientId) {
+      form.patientId = patientId;
+    }
+  }
+);
+
 onMounted(async () => {
   await loadLookups();
   if (canCheckAvailability.value) {
@@ -675,6 +735,12 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.selected-client {
+  display: grid;
+  gap: 4px;
+  color: var(--color-text-secondary, #475569);
 }
 
 .availability-state {

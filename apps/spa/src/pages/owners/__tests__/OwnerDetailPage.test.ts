@@ -31,9 +31,81 @@ const mockPatients = [
     updatedAt: '2024-01-02T00:00:00Z'
   }
 ];
+const mockAppointments = [
+  {
+    id: 'apt-1',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    scheduledAt: '2099-01-01T10:00:00Z',
+    visitType: 'scheduled' as const,
+    reason: 'Vacina',
+    status: 'scheduled' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
+const mockEncounters = [
+  {
+    id: 'enc-1',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    visitType: 'scheduled' as const,
+    origin: 'schedule' as const,
+    reason: 'Retorno',
+    status: 'in_care' as const,
+    openedAt: '2024-01-03T09:00:00Z',
+    createdByUserId: 'user-1',
+    updatedAt: '2024-01-03T09:00:00Z'
+  }
+];
+const mockBillingRecords = [
+  {
+    id: 'bill-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    status: 'open' as const,
+    subtotalAmount: 420,
+    currency: 'BRL',
+    administrativeNotes: 'Parcela pendente',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
+const mockQuotes = [
+  {
+    id: 'quote-1',
+    accountId: 'acc-1',
+    number: 'Q-001',
+    ownerId: 'owner-1',
+    status: 'draft' as const,
+    validUntil: null,
+    subtotal: 320,
+    discountAmount: 0,
+    total: 320,
+    notes: 'Pacote preventivo',
+    createdByUserId: 'user-1',
+    convertedToSaleId: null,
+    convertedAt: null,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
 
 const mockGetOwnerById = vi.fn().mockResolvedValue(mockOwner);
 const mockPatientList = vi.fn().mockResolvedValue(mockPatients);
+const mockAppointmentList = vi.fn().mockResolvedValue(mockAppointments);
+const mockEncounterList = vi.fn().mockResolvedValue(mockEncounters);
+const mockBillingList = vi.fn().mockResolvedValue(mockBillingRecords);
+const mockQuoteList = vi.fn().mockResolvedValue(mockQuotes);
+const mockQuoteCreate = vi.fn().mockResolvedValue({
+  ...mockQuotes[0],
+  id: 'quote-2',
+  number: 'Q-002'
+});
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
@@ -43,7 +115,32 @@ vi.mock('@/services/owner', () => ({
 
 vi.mock('@/services/patient', () => ({
   patientService: {
-    list: () => mockPatientList()
+    list: (...args: unknown[]) => mockPatientList(...args)
+  }
+}));
+
+vi.mock('@/services/appointment', () => ({
+  appointmentService: {
+    list: () => mockAppointmentList()
+  }
+}));
+
+vi.mock('@/services/encounter', () => ({
+  encounterService: {
+    list: () => mockEncounterList()
+  }
+}));
+
+vi.mock('@/services/billing', () => ({
+  billingService: {
+    list: () => mockBillingList()
+  }
+}));
+
+vi.mock('@/services/quotes', () => ({
+  quoteService: {
+    list: () => mockQuoteList(),
+    create: (...args: unknown[]) => mockQuoteCreate(...args)
   }
 }));
 
@@ -58,6 +155,15 @@ describe('OwnerDetailPage', () => {
     vi.clearAllMocks();
     mockGetOwnerById.mockResolvedValue(mockOwner);
     mockPatientList.mockResolvedValue(mockPatients);
+    mockAppointmentList.mockResolvedValue(mockAppointments);
+    mockEncounterList.mockResolvedValue(mockEncounters);
+    mockBillingList.mockResolvedValue(mockBillingRecords);
+    mockQuoteList.mockResolvedValue(mockQuotes);
+    mockQuoteCreate.mockResolvedValue({
+      ...mockQuotes[0],
+      id: 'quote-2',
+      number: 'Q-002'
+    });
   });
 
   it('renders owner context and linked patient actions', async () => {
@@ -81,6 +187,10 @@ describe('OwnerDetailPage', () => {
     expect(wrapper.text()).toContain('Pacientes vinculados');
     expect(wrapper.text()).toContain('Documento ausente');
     expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Agenda vinculada');
+    expect(wrapper.text()).toContain('CRM financeiro');
+    expect(wrapper.text()).toContain('Pacotes sugeridos');
+    expect(wrapper.text()).toContain('Mensageria contextual');
   });
 
   it('shows error state when loading fails', async () => {

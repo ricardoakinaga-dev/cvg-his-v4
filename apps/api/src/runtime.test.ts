@@ -7,13 +7,35 @@ import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { bootstrapServices } from './bootstrap.js';
 
-function createTestRuntime(repositories?: RuntimeRepositories) {
+function createTestRuntime(
+  repositories?: RuntimeRepositories,
+  options?: {
+    readonly notificationsWhatsappRemindersEnabled?: boolean;
+  }
+) {
   return createApiRuntime({
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
-    repositories
+    repositories,
+    notificationsWhatsappRemindersEnabled: options?.notificationsWhatsappRemindersEnabled
   });
+}
+
+async function waitForAuditAction(
+  runtime: ReturnType<typeof createApiRuntime>,
+  action: string,
+  attempts = 20
+): Promise<boolean> {
+  for (let index = 0; index < attempts; index += 1) {
+    if (runtime.audit.list().some((entry) => entry.action === action)) {
+      return true;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  return runtime.audit.list().some((entry) => entry.action === action);
 }
 
 test('login, session refresh and audit trail work end-to-end', async () => {
@@ -80,6 +102,101 @@ test('runtime exposes API keys and event bus persistence for integrations', asyn
   const fetched = await runtime.eventBus.getEvent(event.id);
   assert.equal(fetched?.status, 'pending');
   assert.equal(fetched?.eventType, 'payment.pix.intent.created');
+});
+
+test('runtime reconciles PIX confirmation into administrative financial state', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'seed_reception'
+    },
+    'corr_pix_financial_runtime'
+  ) as AuthSessionResponse;
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Fluxo financeiro administrativo com PIX'
+  });
+
+  const billingRecord = await runtime.billing.createEstimate({
+    encounterId: encounter.id,
+    administrativeNotes: 'Fechamento administrativo via PIX'
+  });
+  await runtime.billing.addItem(reception.user.id, {
+    encounterId: encounter.id,
+    itemType: 'service',
+    description: 'Consulta veterinaria',
+    quantity: 1,
+    unitPriceAmount: 150
+  });
+
+  await runtime.eventBus.publish({
+    correlationId: 'corr_pix_financial_intent' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.pix.intent.created',
+    payload: {
+      accountId: reception.user.accountId,
+      intentId: 'pix_intent_runtime_1',
+      billingRecordId: billingRecord.id,
+      amount: 150,
+      currency: 'BRL',
+      description: 'Consulta veterinaria',
+      provider: 'local-pix',
+      qrCodePayload: 'pix|runtime|150',
+      qrCodeBase64: 'cGl4fHJ1bnRpbWV8MTUw',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString()
+    }
+  });
+  await runtime.eventBus.processPending(10);
+
+  const createdTransaction = await runtime.pixTransactions.findByTransactionId('pix_intent_runtime_1');
+  assert.equal(createdTransaction?.status, 'pending');
+  assert.equal(createdTransaction?.billingSettlementStatus, 'awaiting_payment');
+
+  await runtime.eventBus.publish({
+    correlationId: 'corr_pix_financial_confirm' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.pix.confirmed',
+    payload: {
+      accountId: reception.user.accountId,
+      intentId: 'pix_intent_runtime_1',
+      billingRecordId: billingRecord.id,
+      providerTransactionId: 'provider_runtime_1',
+      providerConfirmationId: 'provider_runtime_1',
+      status: 'completed',
+      completedAt: new Date().toISOString()
+    }
+  });
+  await runtime.eventBus.processPending(10);
+
+  const settledBilling = runtime.billing.getOrThrow(billingRecord.id);
+  assert.equal(settledBilling.status, 'settled');
+
+  const summary = await runtime.encounterFinancial.getSummary(encounter.id);
+  assert.equal(summary.balanceDue, 0);
+  assert.equal(summary.financialStatus, 'paid');
+  assert.equal(
+    summary.payments.some(
+      (payment) =>
+        payment.externalReferenceType === 'pix_transaction'
+        && payment.externalReferenceId === 'pix_intent_runtime_1'
+    ),
+    true
+  );
+
+  const reconciledTransaction = await runtime.pixTransactions.findByTransactionId(
+    'pix_intent_runtime_1'
+  );
+  assert.equal(reconciledTransaction?.status, 'completed');
+  assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
+  assert.equal(reconciledTransaction?.cashReconciliationStatus, 'skipped_no_open_register');
 });
 
 test('runtime does not preload demo seeds when repository-backed services are configured', () => {
@@ -1372,6 +1489,70 @@ test('scheduling hardening: cancel appointment, time conflict, and queue transit
 
   const apptAfterCancel = runtime.scheduling.getAppointmentOrThrow(appointment.id);
   assert.equal(apptAfterCancel.status, 'cancelled');
+});
+
+test('runtime gates automatic WhatsApp reminders behind feature flag state', async () => {
+  const runtimeDisabled = createTestRuntime(undefined, {
+    notificationsWhatsappRemindersEnabled: false
+  });
+  const receptionDisabledLogin = await runtimeDisabled.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_whatsapp_reminder_disabled'
+  ) as AuthSessionResponse;
+  const receptionDisabled = runtimeDisabled.auth.authenticateAccessToken(
+    receptionDisabledLogin.accessToken
+  );
+
+  const disabledAppointment = await runtimeDisabled.scheduling.createAppointment(
+    receptionDisabled.user.accountId,
+    {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-13T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Reminder gated off'
+    }
+  );
+  assert.equal(
+    await waitForAuditAction(runtimeDisabled, 'whatsapp_reminder_skipped_flag_disabled'),
+    true
+  );
+  assert.equal(
+    runtimeDisabled.audit.list().some((entry) => entry.action === 'whatsapp_reminder_scheduled'),
+    false
+  );
+
+  const runtimeEnabled = createTestRuntime(undefined, {
+    notificationsWhatsappRemindersEnabled: true
+  });
+  const receptionEnabledLogin = await runtimeEnabled.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_whatsapp_reminder_enabled'
+  ) as AuthSessionResponse;
+  const receptionEnabled = runtimeEnabled.auth.authenticateAccessToken(
+    receptionEnabledLogin.accessToken
+  );
+
+  const enabledAppointment = await runtimeEnabled.scheduling.createAppointment(
+    receptionEnabled.user.accountId,
+    {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-13T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Reminder gated on'
+    }
+  );
+  assert.equal(
+    await waitForAuditAction(runtimeEnabled, 'whatsapp_reminder_scheduled'),
+    true
+  );
+  assert.equal(enabledAppointment.status, 'scheduled');
+  assert.equal(disabledAppointment.status, 'scheduled');
+  assert.equal(
+    runtimeEnabled.audit.list().some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
+    false
+  );
 });
 
 test('scheduling hardening: rejects double cancellation', async () => {

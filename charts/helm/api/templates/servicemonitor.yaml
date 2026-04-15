@@ -1,0 +1,32 @@
+{{- if .Values.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cvg-his-v2-api.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "cvg-his-v2-api.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: api
+  {{- with .Values.serviceMonitor.labels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "cvg-his-v2-api.fullname" . }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+    {{- if .Values.serviceMonitor.extraEndpoints }}
+    {{- toYaml .Values.serviceMonitor.extraEndpoints | nindent 4 }}
+    {{- end }}
+  {{- with .Values.serviceMonitor.attachMetadata }}
+  attachMetadata:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -90,7 +90,20 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' },
   { app: 'api', key: 'FILE_STORAGE_PATH', required: false, defaultValue: DEFAULT_FILE_STORAGE_PATH, description: 'Base directory for attachment storage.' },
   { app: 'api', key: 'ENABLE_MFA', required: false, defaultValue: 'false', description: 'Enable MFA runtime wiring in the API.' },
-  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY', required: false, sensitive: true, description: 'Encryption key used when MFA is enabled.' }
+  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY', required: false, sensitive: true, description: 'Encryption key used when MFA is enabled.' },
+  { app: 'api', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
+  { app: 'api', key: 'API_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the API. Example: "auth.oidc.enabled,auth.webauthn.enabled".' },
+  { app: 'api', key: 'RUNTIME_DISTRIBUTED_STATE_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables distributed runtime state (Redis-backed session, encounter timeline, etc.).' },
+  { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
+  { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
+  { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
+  { app: 'api', key: 'REDIS_URL', required: false, description: 'Redis connection URL for distributed rate limiting. When set, the auth rate limiter uses Redis backend instead of in-memory.' },
+  { app: 'api', key: 'VAULT_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables HashiCorp Vault AppRole bootstrap for managed secrets.' },
+  { app: 'api', key: 'VAULT_URL', required: false, description: 'Base URL of the Vault server.' },
+  { app: 'api', key: 'VAULT_ROLE_ID', required: false, sensitive: true, description: 'Vault AppRole role_id used by the API bootstrap.' },
+  { app: 'api', key: 'VAULT_SECRET_ID', required: false, sensitive: true, description: 'Vault AppRole secret_id used by the API bootstrap.' },
+  { app: 'api', key: 'VAULT_NAMESPACE', required: false, description: 'Optional Vault Enterprise namespace header.' },
+  { app: 'api', key: 'VAULT_SECRET_PATH_PREFIX', required: false, defaultValue: 'secret/data/cvg-his-v2', description: 'Vault KV-v2 path prefix used for managed application secrets.' }
 ];
 
 export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
@@ -103,7 +116,9 @@ export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'worker', key: 'OTEL_EXPORTER_OTLP_PROTOCOL', required: false, defaultValue: DEFAULT_OTLP_PROTOCOL, description: 'OTLP transport protocol. Current foundation supports http/protobuf.' },
   { app: 'worker', key: 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', required: false, description: 'Trace exporter endpoint for OTLP/HTTP.' },
   { app: 'worker', key: 'OTEL_EXPORTER_OTLP_HEADERS', required: false, sensitive: true, description: 'Comma-separated OTLP headers in key=value format.' },
-  { app: 'worker', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' }
+  { app: 'worker', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' },
+  { app: 'worker', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
+  { app: 'worker', key: 'WORKER_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the worker. Example: "runtime.distributed_state.enabled,notifications.whatsapp.provider_enabled".' }
 ];
 
 export const SPA_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
@@ -135,6 +150,19 @@ export interface ApiAppConfig {
   readonly fileStoragePath: string;
   readonly enableMfa: boolean;
   readonly mfaEncryptionKey?: string;
+  readonly featureFlagsProvider: string;
+  readonly apiFeatureFlags: readonly string[];
+  readonly runtimeDistributedStateEnabled: boolean;
+  readonly pagarmeApiKey?: string;
+  readonly pagarmePixKey?: string;
+  readonly pixMockMode?: boolean;
+  readonly redisUrl?: string;
+  readonly vaultEnabled: boolean;
+  readonly vaultUrl?: string;
+  readonly vaultRoleId?: string;
+  readonly vaultSecretId?: string;
+  readonly vaultNamespace?: string;
+  readonly vaultSecretPathPrefix: string;
 }
 
 export interface WebAppConfig {
@@ -158,6 +186,8 @@ export interface WorkerAppConfig {
   readonly otlpTracesEndpoint?: string;
   readonly otlpHeaders: Readonly<Record<string, string>>;
   readonly databaseUrl?: string;
+  readonly featureFlagsProvider: string;
+  readonly workerFeatureFlags: readonly string[];
 }
 
 function isProductionEnvironment(env: string): boolean {
@@ -264,6 +294,17 @@ function parseOtlpHeaders(value?: string): Readonly<Record<string, string>> {
   }
 
   return headers;
+}
+
+function parseFeatureFlagKeys(value?: string): readonly string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 function validateOtelConfig(input: {
@@ -375,7 +416,20 @@ const apiEnvSchema = z
     DATABASE_URL: optionalUrlSchema,
     FILE_STORAGE_PATH: nonEmptyStringSchema.default(DEFAULT_FILE_STORAGE_PATH),
     ENABLE_MFA: booleanStringSchema.default(false),
-    MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema
+    MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
+    FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
+    API_FEATURE_FLAGS: optionalNonEmptyStringSchema,
+    RUNTIME_DISTRIBUTED_STATE_ENABLED: booleanStringSchema.default(false),
+    PAGARME_API_KEY: optionalNonEmptyStringSchema,
+    PAGARME_PIX_KEY: optionalNonEmptyStringSchema,
+    PIX_MOCK_MODE: booleanStringSchema.default(false),
+    REDIS_URL: optionalUrlSchema,
+    VAULT_ENABLED: booleanStringSchema.default(false),
+    VAULT_URL: optionalUrlSchema,
+    VAULT_ROLE_ID: optionalNonEmptyStringSchema,
+    VAULT_SECRET_ID: optionalNonEmptyStringSchema,
+    VAULT_NAMESPACE: optionalNonEmptyStringSchema,
+    VAULT_SECRET_PATH_PREFIX: optionalNonEmptyStringSchema.default('secret/data/cvg-his-v2')
   })
   .superRefine((value, ctx) => {
     if (value.ENABLE_MFA && !value.MFA_SECRET_ENCRYPTION_KEY) {
@@ -406,7 +460,9 @@ const workerEnvSchema = z
     OTEL_EXPORTER_OTLP_PROTOCOL: nonEmptyStringSchema.default(DEFAULT_OTLP_PROTOCOL),
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: optionalUrlSchema,
     OTEL_EXPORTER_OTLP_HEADERS: optionalNonEmptyStringSchema,
-    DATABASE_URL: optionalUrlSchema
+    DATABASE_URL: optionalUrlSchema,
+    FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
+    WORKER_FEATURE_FLAGS: optionalNonEmptyStringSchema
   })
   .superRefine((value, ctx) => {
     if (isProductionEnvironment(value.NODE_ENV) && !value.DATABASE_URL) {
@@ -470,7 +526,20 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     databaseUrl: parsed.DATABASE_URL,
     fileStoragePath: parsed.FILE_STORAGE_PATH,
     enableMfa: parsed.ENABLE_MFA,
-    mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY
+    mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
+    featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
+    apiFeatureFlags: parseFeatureFlagKeys(parsed.API_FEATURE_FLAGS),
+    runtimeDistributedStateEnabled: parsed.RUNTIME_DISTRIBUTED_STATE_ENABLED,
+    pagarmeApiKey: parsed.PAGARME_API_KEY,
+    pagarmePixKey: parsed.PAGARME_PIX_KEY,
+    pixMockMode: parsed.PIX_MOCK_MODE,
+    redisUrl: parsed.REDIS_URL,
+    vaultEnabled: parsed.VAULT_ENABLED,
+    vaultUrl: parsed.VAULT_URL,
+    vaultRoleId: parsed.VAULT_ROLE_ID,
+    vaultSecretId: parsed.VAULT_SECRET_ID,
+    vaultNamespace: parsed.VAULT_NAMESPACE,
+    vaultSecretPathPrefix: parsed.VAULT_SECRET_PATH_PREFIX
   };
 }
 
@@ -511,7 +580,9 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerAppConfig {
     otlpProtocol: parsed.OTEL_EXPORTER_OTLP_PROTOCOL,
     otlpTracesEndpoint: parsed.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
     otlpHeaders: parseOtlpHeaders(parsed.OTEL_EXPORTER_OTLP_HEADERS),
-    databaseUrl: parsed.DATABASE_URL
+    databaseUrl: parsed.DATABASE_URL,
+    featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
+    workerFeatureFlags: parseFeatureFlagKeys(parsed.WORKER_FEATURE_FLAGS)
   };
 }
 

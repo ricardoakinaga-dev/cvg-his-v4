@@ -1,0 +1,135 @@
+# Default values for cvg-his-v2-api
+replicaCount: 2
+
+image:
+  repository: cvghis/api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: api.cvg-his.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: api-cvg-his-tls
+      hosts:
+        - api.cvg-his.internal
+
+resources:
+  limits:
+    cpu: "2000m"
+    memory: "1Gi"
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+
+startupProbe:
+  httpGet:
+    path: /health/startup
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  NODE_ENV: "production"
+  PORT: "3000"
+  # Feature flags
+  FF_RUNTIME_DISTRIBUTED_STATE_ENABLED: "true"
+  FF_AUTH_RATE_LIMIT_ENABLED: "true"
+  # Auth
+  AUTH_RATE_LIMIT_WINDOW_MS: "900000"
+  AUTH_RATE_LIMIT_MAX_REQUESTS: "100"
+  AUTH_RATE_LIMIT_BLOCK_DURATION_MS: "300000"
+  # Redis
+  REDIS_URL: "redis://redis:6379"
+  # Database
+  DATABASE_URL: "postgresql://cvghis:@postgres:5432/cvghis"
+  # PagarMe (real PIX)
+  PIX_MOCK_MODE: "false"
+
+volumes: []
+
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: cvg-his-v2-api
+          topologyKey: kubernetes.io/hostname
+
+# ServiceMonitor for Prometheus Operator (enable when prometheus-operator is installed)
+serviceMonitor:
+  enabled: false
+  labels: {}
+  extraEndpoints: []
+  attachMetadata: {}

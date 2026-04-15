@@ -3,22 +3,22 @@ import test from 'node:test';
 
 import { FiscalService } from './service.js';
 
-test('FiscalService returns searchable CFOP data from the backend catalog', () => {
+test('FiscalService returns searchable CFOP data from the backend catalog', async () => {
   const service = new FiscalService();
 
-  const rows = service.listCfop({ search: 'serviço', documentType: 'nfse' });
+  const rows = await service.listCfop({ search: 'serviço', documentType: 'nfse' });
 
   assert.ok(rows.length > 0);
   assert.ok(rows.every((row) => row.documentTypesLabel.length > 0));
   assert.ok(rows.some((row) => row.category === 'servico'));
 });
 
-test('FiscalService filters ICMS, PIS/COFINS and NFS-e tables using backend criteria', () => {
+test('FiscalService filters ICMS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
   const service = new FiscalService();
 
-  const icmsRows = service.listIcmsRules({ ufDestination: 'RJ', operationType: 'interestadual' });
-  const pisCofinsRows = service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
-  const nfseLayouts = service.listNfseLayouts({ state: 'SP', active: true });
+  const icmsRows = await service.listIcmsRules({ ufDestination: 'RJ', operationType: 'interestadual' });
+  const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
+  const nfseLayouts = await service.listNfseLayouts({ state: 'SP', active: true });
 
   assert.ok(icmsRows.length > 0);
   assert.ok(icmsRows.every((row) => row.ufDestination === 'RJ'));
@@ -30,17 +30,49 @@ test('FiscalService filters ICMS, PIS/COFINS and NFS-e tables using backend crit
   assert.ok(nfseLayouts.every((row) => row.state === 'SP' && row.active));
 });
 
-test('FiscalService builds dashboard and tax preview from real module data', () => {
+test('FiscalService builds dashboard and tax preview from real module data', async () => {
   const service = new FiscalService();
 
-  const summary = service.getDashboardSummary();
-  const preview = service.getTaxPreview();
+  const summary = await service.getDashboardSummary();
+  const preview = await service.getTaxPreview();
 
   assert.ok(summary.cfopCount > 0);
   assert.ok(summary.icmsRules > 0);
   assert.ok(summary.alerts.length > 0);
-  assert.equal(summary.readOnly, true);
+  assert.equal(summary.readOnly, false);
   assert.ok(summary.pendingScopes.length > 0);
   assert.ok(preview.mercadoria.totalWithTax > preview.mercadoria.baseValue);
   assert.ok(preview.servico.totalWithTax > preview.servico.baseValue);
+});
+
+test('FiscalService creates and updates NFS-e layouts in backoffice mode', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createNfseLayout({
+    city: 'Campinas',
+    state: 'SP',
+    municipalityCode: '3509502',
+    provider: 'ISS Campinas',
+    version: 'v1',
+    active: false,
+    environment: 'homologacao',
+    serviceCode: '0407',
+    serviceFocus: 'Expansão interior'
+  });
+
+  assert.equal(created.city, 'Campinas');
+  assert.equal(created.state, 'SP');
+  assert.equal(created.active, false);
+
+  const updated = await service.updateNfseLayout(created.id, {
+    active: true,
+    environment: 'producao'
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.active, true);
+  assert.equal(updated?.environment, 'producao');
+
+  const filtered = await service.listNfseLayouts({ state: 'SP', active: true });
+  assert.ok(filtered.some((layout) => layout.id === created.id));
 });

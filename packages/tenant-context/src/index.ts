@@ -20,3 +20,8 @@ export {
   tenantFilter,
   type TenantQueryOptions
 } from './query-helpers.js';
+
+export {
+  withTenantQuery,
+  withTenantQueryExplicit
+} from './tenant-db.js';

@@ -326,6 +326,18 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     code: 'payments.manage',
     module: 'billing',
     description: 'Create and manage payment intents and provider access.'
+  },
+  {
+    id: 'perm_flags_read' as PermissionId,
+    code: 'flags.read',
+    module: 'feature-flags',
+    description: 'Read feature flag definitions, overrides and evaluation results.'
+  },
+  {
+    id: 'perm_flags_admin' as PermissionId,
+    code: 'flags.admin',
+    module: 'feature-flags',
+    description: 'Create, update and delete feature flags and overrides. Apply kill switches.'
   }
 ] as const;
 

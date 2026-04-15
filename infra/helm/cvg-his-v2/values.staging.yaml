@@ -1,0 +1,76 @@
+# values.staging.yaml — Staging environment overrides
+api:
+  replicaCount: 2
+  revisionHistoryLimit: 5
+  image:
+    pullPolicy: Always
+    tag: ""   # use git-sha tag from CI
+  probes:
+    enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    NODE_ENV: production
+    CORS_ALLOWED_ORIGINS: "https://staging.cvg-his-v2.com"
+    RUNTIME_DISTRIBUTED_STATE_ENABLED: "true"
+    VAULT_ENABLED: "false"
+  auth:
+    existingSecret: cvg-his-v2-staging-api-secrets
+
+worker:
+  replicaCount: 1
+  revisionHistoryLimit: 3
+  image:
+    pullPolicy: Always
+
+spa:
+  replicaCount: 2
+  revisionHistoryLimit: 5
+  image:
+    pullPolicy: Always
+  env:
+    VITE_API_BASE_URL: https://api.staging.cvg-his-v2.com
+
+postgresql:
+  enabled: false   # staging uses external PostgreSQL
+  existingSecret: cvg-his-v2-staging-postgres
+
+redis:
+  enabled: false   # staging uses external Redis
+  existingSecret: cvg-his-v2-staging-redis
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+  hosts:
+    - host: api.staging.cvg-his-v2.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 3001
+    - host: staging.cvg-his-v2.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: spa
+          port: 3002
+  tls:
+    - hosts:
+        - api.staging.cvg-his-v2.com
+        - staging.cvg-his-v2.com
+      secretName: cvg-his-v2-staging-tls
+
+podDisruptionBudget:
+  api:
+    minAvailable: 1
+  spa:
+    minAvailable: 1

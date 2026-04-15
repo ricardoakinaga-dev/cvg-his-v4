@@ -255,7 +255,35 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 | `CVG_HIS_API_InMemoryMode` | Warning | In-memory > 5min |
 | `CVG_HIS_API_HighClientErrorRate` | Warning | >10% erros 4xx |
 
-### 3.8 Adicionar Tracing a uma Funcao
+### 3.8 Snapshot operacional de chaos e runtime
+
+```bash
+# Estado efetivo do runtime + experimentos ativos
+curl -s http://localhost:3001/chaos/experiments | jq .
+
+# Apenas o resumo operacional efetivo
+curl -s http://localhost:3001/chaos/experiments | jq '.runtimeState'
+```
+
+**O que esperar:**
+- `runtimeState.activeExperimentIds` lista os experimentos ativos naquele processo
+- `runtimeState.persistenceMode` muda para `in-memory` durante `database-failure`
+- `runtimeState.redisHealthy=false` e `runtimeState.rateLimiterMode="in-memory-fallback"` durante `redis-failure`
+- cada experimento retorna `runbook.path`, `indicators` e `runtimeImpact`
+
+### 3.9 Metricas operacionais de fallback real
+
+```bash
+curl -s http://localhost:3001/metrics | grep -E 'app_database_healthy|app_redis_healthy|app_persistence_mode|app_rate_limiter_mode'
+```
+
+**O que procurar:**
+- `app_database_healthy 0` quando o runtime estiver degradado por DB real ou `database-failure`
+- `app_persistence_mode{mode="in-memory"} 1` quando houver fallback operacional
+- `app_redis_healthy 0` quando Redis estiver indisponivel ou o experimento `redis-failure` estiver ativo
+- `app_rate_limiter_mode{mode="in-memory-fallback"} 1` quando o rate limiter distribuido cair para memoria
+
+### 3.10 Adicionar Tracing a uma Funcao
 
 ```typescript
 import { withSpan } from './tracing.js';

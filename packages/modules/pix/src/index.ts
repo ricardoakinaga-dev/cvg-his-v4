@@ -32,3 +32,5 @@ export type {
 } from './pix.service.js';
 
 export type { PixProviderName } from './types.js';
+export { PagarMePixAdapter } from './adapters/pagarme.adapter.js';
+export type { PagarMePixAdapterOptions } from './adapters/pagarme.adapter.js';

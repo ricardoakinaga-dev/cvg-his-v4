@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getPool } from '@cvg-his-v2/shared-database';
+import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type { OutboxEvent, OutboxRepository } from './outbox.interface.js';
@@ -41,82 +42,95 @@ function computeBackoffDelay(attempt: number, opts: BackoffOptions): number {
 
 export class DatabaseOutboxRepository implements OutboxRepository {
   async create(event: OutboxEvent): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO outbox_events (id, correlation_id, module_name, event_type, payload, status, attempts, max_attempts, scheduled_at, processed_at, error, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-      [
-        event.id,
-        event.correlationId,
-        event.moduleName,
-        event.eventType,
-        JSON.stringify(event.payload),
-        event.status,
-        event.attempts,
-        event.maxAttempts,
-        new Date(event.scheduledAt),
-        event.processedAt ? new Date(event.processedAt) : null,
-        event.error,
-        new Date(event.createdAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO outbox_events (id, correlation_id, module_name, event_type, payload, status, attempts, max_attempts, scheduled_at, processed_at, error, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          event.id,
+          event.correlationId,
+          event.moduleName,
+          event.eventType,
+          JSON.stringify(event.payload),
+          event.status,
+          event.attempts,
+          event.maxAttempts,
+          new Date(event.scheduledAt),
+          event.processedAt ? new Date(event.processedAt) : null,
+          event.error,
+          new Date(event.createdAt)
+        ]
+      );
+    });
   }
 
   async update(event: OutboxEvent): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE outbox_events SET status = $2, attempts = $3, processed_at = $4, error = $5 WHERE id = $1`,
-      [
-        event.id,
-        event.status,
-        event.attempts,
-        event.processedAt ? new Date(event.processedAt) : null,
-        event.error
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `UPDATE outbox_events
+         SET status = $2,
+             attempts = $3,
+             scheduled_at = $4,
+             processed_at = $5,
+             error = $6
+         WHERE id = $1`,
+        [
+          event.id,
+          event.status,
+          event.attempts,
+          new Date(event.scheduledAt),
+          event.processedAt ? new Date(event.processedAt) : null,
+          event.error
+        ]
+      );
+    });
   }
 
   async findById(id: string): Promise<OutboxEvent | null> {
-    const pool = getPool();
-    const result = await pool.query('SELECT * FROM outbox_events WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return this.mapRow(result.rows[0]);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM outbox_events WHERE id = $1', [id]);
+      if (result.rows.length === 0) return null;
+      return this.mapRow(result.rows[0]);
+    });
   }
 
   async findPending(limit: number): Promise<readonly OutboxEvent[]> {
-    const pool = getPool();
-    const now = new Date();
-    const result = await pool.query(
-      `SELECT * FROM outbox_events
-       WHERE status IN ('pending', 'retrying')
-         AND attempts < max_attempts
-         AND scheduled_at <= $1
-       ORDER BY scheduled_at ASC
-       LIMIT $2`,
-      [now, limit]
-    );
-    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const now = new Date();
+      const result = await client.query(
+        `SELECT * FROM outbox_events
+         WHERE status IN ('pending', 'retrying')
+           AND attempts < max_attempts
+           AND scheduled_at <= $1
+         ORDER BY scheduled_at ASC
+         LIMIT $2`,
+        [now, limit]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
   }
 
   async findFailed(limit: number): Promise<readonly OutboxEvent[]> {
-    const pool = getPool();
-    const result = await pool.query(
-      `SELECT * FROM outbox_events
-       WHERE status = 'failed'
-       ORDER BY created_at DESC
-       LIMIT $1`,
-      [limit]
-    );
-    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT * FROM outbox_events
+         WHERE status = 'failed'
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [limit]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
   }
 
   async findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
-    const pool = getPool();
-    const result = await pool.query(
-      'SELECT * FROM outbox_events WHERE correlation_id = $1 ORDER BY created_at DESC',
-      [correlationId]
-    );
-    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM outbox_events WHERE correlation_id = $1 ORDER BY created_at DESC',
+        [correlationId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
   }
 
   private mapRow(row: Record<string, unknown>): OutboxEvent {
@@ -304,20 +318,21 @@ export class EventBusService {
    * Useful for operational dashboards without fetching full event lists.
    */
   async countEvents(): Promise<{ pending: number; retrying: number; completed: number; failed: number; total: number }> {
-    const pool = getPool();
-    const countResult = await pool.query(
-      `SELECT status, COUNT(*) as count FROM outbox_events GROUP BY status`
-    );
-    const counts = { pending: 0, retrying: 0, completed: 0, failed: 0, total: 0 };
-    for (const row of countResult.rows as Record<string, unknown>[]) {
-      const status = row.status as string;
-      const cnt = Number(row.count) || 0;
-      if (status === 'pending' || status === 'retrying' || status === 'completed' || status === 'failed') {
-        (counts as Record<string, number>)[status] = cnt;
-        counts.total += cnt;
+    return withTenantQuery(getPool(), async (client) => {
+      const countResult = await client.query(
+        `SELECT status, COUNT(*) as count FROM outbox_events GROUP BY status`
+      );
+      const counts = { pending: 0, retrying: 0, completed: 0, failed: 0, total: 0 };
+      for (const row of countResult.rows as Record<string, unknown>[]) {
+        const status = row.status as string;
+        const cnt = Number(row.count) || 0;
+        if (status === 'pending' || status === 'retrying' || status === 'completed' || status === 'failed') {
+          (counts as Record<string, number>)[status] = cnt;
+          counts.total += cnt;
+        }
       }
-    }
-    return counts;
+      return counts;
+    });
   }
 
   /**

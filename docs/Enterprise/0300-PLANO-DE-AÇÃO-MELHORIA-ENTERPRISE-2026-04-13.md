@@ -109,7 +109,7 @@
 | S3 | Configurar dependency vulnerability scanning (Snyk ou similar) | ❌ Não existe na CI | CI configurada |
 | S4 | Configurar CVE scanning automatizado em PRs | ❌ Não existe | Workflow adicionado |
 | S5 | Adicionar rate limiter distribuído em Redis | ⚠️ Rate limiter in-memory existe | Redis-based |
-| S6 | Adicionar Unleash feature flags | ❌ Não existe | Implementado |
+| S6 | Sistema interno de feature flags com governanca | ❌ Não existe | ✅ Implementado (`@cvg-his-v2/shared-feature-flags` + `DatabaseFeatureFlagRepository` + catalog `GET /flags`) |
 
 **Métricas de sucesso:**
 - `packages/security/` existe e exporta `SecurityModule`
@@ -148,7 +148,7 @@
 | F1 | Adicionar chaos engineering (LitmusChaos ou Chaos Mesh) | ❌ Não existe | Framework implementado |
 | F2 | Criar Helm charts para deploy Kubernetes | ❌ Não existe | Charts funcionais |
 | F3 | Migrar rate limiter para Redis (cluster/distribuído) | ⚠️ In-memory | Redis cluster |
-| F4 | Configurar Unleash feature flags | ❌ Não existe | Unleash rodando |
+| F4 | Sistema interno de feature flags com governanca | ❌ Não existe | ✅ Implementado (sistema proprio em vez de Unleash; `DatabaseFeatureFlagRepository` + catalog `GET /flags`) |
 | F5 | Configurar backup automatizado com verificação | ⚠️ Scripts existem | Cron + verificação |
 | F6 | Configurar health checks para todos os serviços | ⚠️ API tem health | Worker + SPA cobertos |
 
@@ -190,7 +190,7 @@ SPRINT 2  ───────────────────────�
 SPRINT 3  ──────────────────────────────────────────────
 │ T8-T9  Cobertura testes (diagnostics, encounters) ───► ~65%
 │ S5     Rate limiter Redis
-│ F4     Unleash feature flags
+│ F4     ✅ Feature flags implementado (sistema proprio)
 │
 SPRINT 4  ──────────────────────────────────────────────
 │ T10    E2E tests para fluxos críticos ───────────────► ~80%

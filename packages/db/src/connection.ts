@@ -19,8 +19,17 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is required to initialize @cvg-his/db');
 }
 
+const poolMaxConnections = parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '20', 10);
+const poolMinConnections = parseInt(process.env.POSTGRES_POOL_MIN ?? '2', 10);
+const poolIdleTimeoutMs = parseInt(process.env.POSTGRES_IDLE_TIMEOUT_MS ?? '30000', 10);
+const poolConnectionTimeoutMs = parseInt(process.env.POSTGRES_CONNECTION_TIMEOUT_MS ?? '5000', 10);
+
 export const pool = new Pool({
-  connectionString: databaseUrl
+  connectionString: databaseUrl,
+  max: poolMaxConnections,
+  min: poolMinConnections,
+  idleTimeoutMillis: poolIdleTimeoutMs,
+  connectionTimeoutMillis: poolConnectionTimeoutMs
 });
 
 export const db = drizzle(pool, { schema });

@@ -14,7 +14,8 @@
   "dependencies": {
     "@cvg-his-v2/shared-database": "workspace:^",
     "@cvg-his-v2/shared-errors": "workspace:*",
-    "@cvg-his-v2/shared-types": "workspace:*"
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/tenant-context": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

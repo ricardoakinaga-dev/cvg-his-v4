@@ -1,4 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
+import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 export interface CounterSaleRecord {
@@ -98,199 +99,212 @@ export interface CounterSalesRepository {
 
 export class DatabaseCounterSalesRepository implements CounterSalesRepository {
   async create(sale: CounterSaleRecord): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO counter_sales (id, account_id, number, owner_id, status, subtotal, discount_amount, total, paid_amount, balance_due, notes, opened_by_user_id, closed_by_user_id, closed_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-      [
-        sale.id,
-        sale.accountId,
-        sale.number,
-        sale.ownerId,
-        sale.status,
-        sale.subtotal.toString(),
-        sale.discountAmount.toString(),
-        sale.total.toString(),
-        sale.paidAmount.toString(),
-        sale.balanceDue.toString(),
-        sale.notes,
-        sale.openedByUserId,
-        sale.closedByUserId,
-        sale.closedAt ? new Date(sale.closedAt) : null,
-        new Date(sale.createdAt),
-        new Date(sale.updatedAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO counter_sales (id, account_id, number, owner_id, status, subtotal, discount_amount, total, paid_amount, balance_due, notes, opened_by_user_id, closed_by_user_id, closed_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        [
+          sale.id,
+          sale.accountId,
+          sale.number,
+          sale.ownerId,
+          sale.status,
+          sale.subtotal.toString(),
+          sale.discountAmount.toString(),
+          sale.total.toString(),
+          sale.paidAmount.toString(),
+          sale.balanceDue.toString(),
+          sale.notes,
+          sale.openedByUserId,
+          sale.closedByUserId,
+          sale.closedAt ? new Date(sale.closedAt) : null,
+          new Date(sale.createdAt),
+          new Date(sale.updatedAt)
+        ]
+      );
+    });
   }
 
   async update(sale: CounterSaleRecord): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE counter_sales SET status = $2, subtotal = $3, discount_amount = $4, total = $5, paid_amount = $6, balance_due = $7, notes = $8, closed_by_user_id = $9, closed_at = $10, updated_at = $11 WHERE id = $1`,
-      [
-        sale.id,
-        sale.status,
-        sale.subtotal.toString(),
-        sale.discountAmount.toString(),
-        sale.total.toString(),
-        sale.paidAmount.toString(),
-        sale.balanceDue.toString(),
-        sale.notes,
-        sale.closedByUserId,
-        sale.closedAt ? new Date(sale.closedAt) : null,
-        new Date(sale.updatedAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `UPDATE counter_sales SET status = $2, subtotal = $3, discount_amount = $4, total = $5, paid_amount = $6, balance_due = $7, notes = $8, closed_by_user_id = $9, closed_at = $10, updated_at = $11 WHERE id = $1`,
+        [
+          sale.id,
+          sale.status,
+          sale.subtotal.toString(),
+          sale.discountAmount.toString(),
+          sale.total.toString(),
+          sale.paidAmount.toString(),
+          sale.balanceDue.toString(),
+          sale.notes,
+          sale.closedByUserId,
+          sale.closedAt ? new Date(sale.closedAt) : null,
+          new Date(sale.updatedAt)
+        ]
+      );
+    });
   }
 
   async findById(id: string): Promise<CounterSaleRecord | null> {
-    const pool = getPool();
-    const result = await pool.query('SELECT * FROM counter_sales WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return this.mapSale(result.rows[0]);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM counter_sales WHERE id = $1', [id]);
+      if (result.rows.length === 0) return null;
+      return this.mapSale(result.rows[0]);
+    });
   }
 
   async findByAccountId(
     accountId: AccountId,
     filters?: { status?: string; search?: string; ownerId?: string }
   ): Promise<readonly CounterSaleRecord[]> {
-    const pool = getPool();
-    let sql = 'SELECT * FROM counter_sales WHERE account_id = $1';
-    const params: unknown[] = [accountId];
-    let paramIdx = 2;
+    return withTenantQuery(getPool(), async (client) => {
+      let sql = 'SELECT * FROM counter_sales WHERE account_id = $1';
+      const params: unknown[] = [accountId];
+      let paramIdx = 2;
 
-    if (filters?.status) {
-      sql += ` AND status = $${paramIdx}`;
-      params.push(filters.status);
-      paramIdx++;
-    }
-    if (filters?.ownerId) {
-      sql += ` AND owner_id = $${paramIdx}`;
-      params.push(filters.ownerId);
-      paramIdx++;
-    }
-    if (filters?.search) {
-      sql += ` AND (number ILIKE $${paramIdx} OR notes ILIKE $${paramIdx})`;
-      params.push(`%${filters.search}%`);
-      paramIdx++;
-    }
+      if (filters?.status) {
+        sql += ` AND status = $${paramIdx}`;
+        params.push(filters.status);
+        paramIdx++;
+      }
+      if (filters?.ownerId) {
+        sql += ` AND owner_id = $${paramIdx}`;
+        params.push(filters.ownerId);
+        paramIdx++;
+      }
+      if (filters?.search) {
+        sql += ` AND (number ILIKE $${paramIdx} OR notes ILIKE $${paramIdx})`;
+        params.push(`%${filters.search}%`);
+        paramIdx++;
+      }
 
-    sql += ' ORDER BY created_at DESC';
-    const result = await pool.query(sql, params);
-    return result.rows.map((r: Record<string, unknown>) => this.mapSale(r));
+      sql += ' ORDER BY created_at DESC';
+      const result = await client.query(sql, params);
+      return result.rows.map((r: Record<string, unknown>) => this.mapSale(r));
+    });
   }
 
   async createItem(item: CounterSaleItemRecord): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO counter_sale_items (id, counter_sale_id, account_id, item_type, catalog_item_id, name_snapshot, code_snapshot, unit_price, quantity, discount_amount, line_total, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [
-        item.id,
-        item.counterSaleId,
-        item.accountId,
-        item.itemType,
-        item.catalogItemId,
-        item.nameSnapshot,
-        item.codeSnapshot,
-        item.unitPrice.toString(),
-        item.quantity,
-        item.discountAmount.toString(),
-        item.lineTotal.toString(),
-        item.notes,
-        new Date(item.createdAt),
-        new Date(item.updatedAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO counter_sale_items (id, counter_sale_id, account_id, item_type, catalog_item_id, name_snapshot, code_snapshot, unit_price, quantity, discount_amount, line_total, notes, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+        [
+          item.id,
+          item.counterSaleId,
+          item.accountId,
+          item.itemType,
+          item.catalogItemId,
+          item.nameSnapshot,
+          item.codeSnapshot,
+          item.unitPrice.toString(),
+          item.quantity,
+          item.discountAmount.toString(),
+          item.lineTotal.toString(),
+          item.notes,
+          new Date(item.createdAt),
+          new Date(item.updatedAt)
+        ]
+      );
+    });
   }
 
   async updateItem(item: CounterSaleItemRecord): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE counter_sale_items SET quantity = $2, discount_amount = $3, line_total = $4, notes = $5, updated_at = $6 WHERE id = $1`,
-      [
-        item.id,
-        item.quantity,
-        item.discountAmount.toString(),
-        item.lineTotal.toString(),
-        item.notes,
-        new Date(item.updatedAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `UPDATE counter_sale_items SET quantity = $2, discount_amount = $3, line_total = $4, notes = $5, updated_at = $6 WHERE id = $1`,
+        [
+          item.id,
+          item.quantity,
+          item.discountAmount.toString(),
+          item.lineTotal.toString(),
+          item.notes,
+          new Date(item.updatedAt)
+        ]
+      );
+    });
   }
 
   async deleteItem(id: string): Promise<void> {
-    const pool = getPool();
-    await pool.query('DELETE FROM counter_sale_items WHERE id = $1', [id]);
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query('DELETE FROM counter_sale_items WHERE id = $1', [id]);
+    });
   }
 
   async findItemsBySaleId(counterSaleId: string): Promise<readonly CounterSaleItemRecord[]> {
-    const pool = getPool();
-    const result = await pool.query(
-      'SELECT * FROM counter_sale_items WHERE counter_sale_id = $1 ORDER BY created_at',
-      [counterSaleId]
-    );
-    return result.rows.map((r: Record<string, unknown>) => this.mapItem(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM counter_sale_items WHERE counter_sale_id = $1 ORDER BY created_at',
+        [counterSaleId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapItem(r));
+    });
   }
 
   async createPayment(payment: CounterSalePaymentRecord): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO counter_sale_payments (id, counter_sale_id, account_id, method, amount, installments, reference, notes, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        payment.id,
-        payment.counterSaleId,
-        payment.accountId,
-        payment.method,
-        payment.amount.toString(),
-        payment.installments,
-        payment.reference,
-        payment.notes,
-        new Date(payment.createdAt)
-      ]
-    );
+    return withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO counter_sale_payments (id, counter_sale_id, account_id, method, amount, installments, reference, notes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          payment.id,
+          payment.counterSaleId,
+          payment.accountId,
+          payment.method,
+          payment.amount.toString(),
+          payment.installments,
+          payment.reference,
+          payment.notes,
+          new Date(payment.createdAt)
+        ]
+      );
+    });
   }
 
   async findPaymentsBySaleId(counterSaleId: string): Promise<readonly CounterSalePaymentRecord[]> {
-    const pool = getPool();
-    const result = await pool.query(
-      'SELECT * FROM counter_sale_payments WHERE counter_sale_id = $1 ORDER BY created_at',
-      [counterSaleId]
-    );
-    return result.rows.map((r: Record<string, unknown>) => this.mapPayment(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM counter_sale_payments WHERE counter_sale_id = $1 ORDER BY created_at',
+        [counterSaleId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapPayment(r));
+    });
   }
 
   async getOpenSalesCount(accountId: AccountId): Promise<number> {
-    const pool = getPool();
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM counter_sales WHERE account_id = $1 AND status = $2',
-      [accountId, 'open']
-    );
-    return parseInt(result.rows[0].count, 10);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT COUNT(*) FROM counter_sales WHERE account_id = $1 AND status = $2',
+        [accountId, 'open']
+      );
+      return parseInt(result.rows[0].count, 10);
+    });
   }
 
   async getClosedTodayCount(accountId: AccountId): Promise<number> {
-    const pool = getPool();
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM counter_sales WHERE account_id = $1 AND status = $2 AND closed_at::date = CURRENT_DATE',
-      [accountId, 'closed']
-    );
-    return parseInt(result.rows[0].count, 10);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT COUNT(*) FROM counter_sales WHERE account_id = $1 AND status = $2 AND closed_at::date = CURRENT_DATE',
+        [accountId, 'closed']
+      );
+      return parseInt(result.rows[0].count, 10);
+    });
   }
 
   async getRevenueToday(accountId: AccountId): Promise<{ gross: number; net: number }> {
-    const pool = getPool();
-    const result = await pool.query(
-      `SELECT COALESCE(SUM(total), 0) as gross, COALESCE(SUM(paid_amount), 0) as net
-       FROM counter_sales
-       WHERE account_id = $1 AND status = $2 AND closed_at::date = CURRENT_DATE`,
-      [accountId, 'closed']
-    );
-    return {
-      gross: parseFloat(result.rows[0].gross),
-      net: parseFloat(result.rows[0].net)
-    };
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT COALESCE(SUM(total), 0) as gross, COALESCE(SUM(paid_amount), 0) as net
+         FROM counter_sales
+         WHERE account_id = $1 AND status = $2 AND closed_at::date = CURRENT_DATE`,
+        [accountId, 'closed']
+      );
+      return {
+        gross: parseFloat(result.rows[0].gross),
+        net: parseFloat(result.rows[0].net)
+      };
+    });
   }
 
   async getSalesByPaymentMethod(
@@ -298,30 +312,31 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
     dateFrom?: string,
     dateTo?: string
   ): Promise<readonly { method: string; total: number }[]> {
-    const pool = getPool();
-    let sql = `SELECT method, SUM(amount) as total FROM counter_sale_payments csp
-               JOIN counter_sales cs ON cs.id = csp.counter_sale_id
-               WHERE cs.account_id = $1 AND cs.status = 'closed'`;
-    const params: unknown[] = [accountId];
-    let paramIdx = 2;
+    return withTenantQuery(getPool(), async (client) => {
+      let sql = `SELECT method, SUM(amount) as total FROM counter_sale_payments csp
+                 JOIN counter_sales cs ON cs.id = csp.counter_sale_id
+                 WHERE cs.account_id = $1 AND cs.status = 'closed'`;
+      const params: unknown[] = [accountId];
+      let paramIdx = 2;
 
-    if (dateFrom) {
-      sql += ` AND cs.closed_at >= $${paramIdx}`;
-      params.push(dateFrom);
-      paramIdx++;
-    }
-    if (dateTo) {
-      sql += ` AND cs.closed_at <= $${paramIdx}`;
-      params.push(dateTo);
-      paramIdx++;
-    }
+      if (dateFrom) {
+        sql += ` AND cs.closed_at >= $${paramIdx}`;
+        params.push(dateFrom);
+        paramIdx++;
+      }
+      if (dateTo) {
+        sql += ` AND cs.closed_at <= $${paramIdx}`;
+        params.push(dateTo);
+        paramIdx++;
+      }
 
-    sql += ' GROUP BY method ORDER BY total DESC';
-    const result = await pool.query(sql, params);
-    return result.rows.map((r: Record<string, unknown>) => ({
-      method: r.method as string,
-      total: parseFloat(r.total as string)
-    }));
+      sql += ' GROUP BY method ORDER BY total DESC';
+      const result = await client.query(sql, params);
+      return result.rows.map((r: Record<string, unknown>) => ({
+        method: r.method as string,
+        total: parseFloat(r.total as string)
+      }));
+    });
   }
 
   async getTopProducts(
@@ -330,33 +345,34 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
     dateTo?: string,
     limit = 10
   ): Promise<readonly { name: string; quantity: number; revenue: number }[]> {
-    const pool = getPool();
-    let sql = `SELECT csi.name_snapshot as name, SUM(csi.quantity) as quantity, SUM(csi.line_total) as revenue
-               FROM counter_sale_items csi
-               JOIN counter_sales cs ON cs.id = csi.counter_sale_id
-               WHERE cs.account_id = $1 AND cs.status = 'closed' AND csi.item_type = 'product'`;
-    const params: unknown[] = [accountId];
-    let paramIdx = 2;
+    return withTenantQuery(getPool(), async (client) => {
+      let sql = `SELECT csi.name_snapshot as name, SUM(csi.quantity) as quantity, SUM(csi.line_total) as revenue
+                 FROM counter_sale_items csi
+                 JOIN counter_sales cs ON cs.id = csi.counter_sale_id
+                 WHERE cs.account_id = $1 AND cs.status = 'closed' AND csi.item_type = 'product'`;
+      const params: unknown[] = [accountId];
+      let paramIdx = 2;
 
-    if (dateFrom) {
-      sql += ` AND cs.closed_at >= $${paramIdx}`;
-      params.push(dateFrom);
-      paramIdx++;
-    }
-    if (dateTo) {
-      sql += ` AND cs.closed_at <= $${paramIdx}`;
-      params.push(dateTo);
-      paramIdx++;
-    }
+      if (dateFrom) {
+        sql += ` AND cs.closed_at >= $${paramIdx}`;
+        params.push(dateFrom);
+        paramIdx++;
+      }
+      if (dateTo) {
+        sql += ` AND cs.closed_at <= $${paramIdx}`;
+        params.push(dateTo);
+        paramIdx++;
+      }
 
-    sql += ` GROUP BY csi.name_snapshot ORDER BY revenue DESC LIMIT $${paramIdx}`;
-    params.push(limit);
-    const result = await pool.query(sql, params);
-    return result.rows.map((r: Record<string, unknown>) => ({
-      name: r.name as string,
-      quantity: parseInt(r.quantity as string, 10),
-      revenue: parseFloat(r.revenue as string)
-    }));
+      sql += ` GROUP BY csi.name_snapshot ORDER BY revenue DESC LIMIT $${paramIdx}`;
+      params.push(limit);
+      const result = await client.query(sql, params);
+      return result.rows.map((r: Record<string, unknown>) => ({
+        name: r.name as string,
+        quantity: parseInt(r.quantity as string, 10),
+        revenue: parseFloat(r.revenue as string)
+      }));
+    });
   }
 
   async getTopServices(
@@ -365,52 +381,54 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
     dateTo?: string,
     limit = 10
   ): Promise<readonly { name: string; quantity: number; revenue: number }[]> {
-    const pool = getPool();
-    let sql = `SELECT csi.name_snapshot as name, SUM(csi.quantity) as quantity, SUM(csi.line_total) as revenue
-               FROM counter_sale_items csi
-               JOIN counter_sales cs ON cs.id = csi.counter_sale_id
-               WHERE cs.account_id = $1 AND cs.status = 'closed' AND csi.item_type = 'service'`;
-    const params: unknown[] = [accountId];
-    let paramIdx = 2;
+    return withTenantQuery(getPool(), async (client) => {
+      let sql = `SELECT csi.name_snapshot as name, SUM(csi.quantity) as quantity, SUM(csi.line_total) as revenue
+                 FROM counter_sale_items csi
+                 JOIN counter_sales cs ON cs.id = csi.counter_sale_id
+                 WHERE cs.account_id = $1 AND cs.status = 'closed' AND csi.item_type = 'service'`;
+      const params: unknown[] = [accountId];
+      let paramIdx = 2;
 
-    if (dateFrom) {
-      sql += ` AND cs.closed_at >= $${paramIdx}`;
-      params.push(dateFrom);
-      paramIdx++;
-    }
-    if (dateTo) {
-      sql += ` AND cs.closed_at <= $${paramIdx}`;
-      params.push(dateTo);
-      paramIdx++;
-    }
+      if (dateFrom) {
+        sql += ` AND cs.closed_at >= $${paramIdx}`;
+        params.push(dateFrom);
+        paramIdx++;
+      }
+      if (dateTo) {
+        sql += ` AND cs.closed_at <= $${paramIdx}`;
+        params.push(dateTo);
+        paramIdx++;
+      }
 
-    sql += ` GROUP BY csi.name_snapshot ORDER BY revenue DESC LIMIT $${paramIdx}`;
-    params.push(limit);
-    const result = await pool.query(sql, params);
-    return result.rows.map((r: Record<string, unknown>) => ({
-      name: r.name as string,
-      quantity: parseInt(r.quantity as string, 10),
-      revenue: parseFloat(r.revenue as string)
-    }));
+      sql += ` GROUP BY csi.name_snapshot ORDER BY revenue DESC LIMIT $${paramIdx}`;
+      params.push(limit);
+      const result = await client.query(sql, params);
+      return result.rows.map((r: Record<string, unknown>) => ({
+        name: r.name as string,
+        quantity: parseInt(r.quantity as string, 10),
+        revenue: parseFloat(r.revenue as string)
+      }));
+    });
   }
 
   async getLowStockAlerts(
     accountId: AccountId
   ): Promise<{ name: string; code: string; onHand: number; reorderLevel: number }[]> {
-    const pool = getPool();
-    const result = await pool.query(
-      `SELECT name, sku as code, on_hand_quantity as onHand, reorder_level as reorderLevel
-       FROM inventory_items
-       WHERE account_id = $1 AND on_hand_quantity <= reorder_level
-       ORDER BY on_hand_quantity ASC`,
-      [accountId]
-    );
-    return result.rows.map((r: Record<string, unknown>) => ({
-      name: r.name as string,
-      code: r.code as string,
-      onHand: Number(r.onHand),
-      reorderLevel: Number(r.reorderLevel)
-    }));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT name, sku as code, on_hand_quantity as onHand, reorder_level as reorderLevel
+         FROM inventory_items
+         WHERE account_id = $1 AND on_hand_quantity <= reorder_level
+         ORDER BY on_hand_quantity ASC`,
+        [accountId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => ({
+        name: r.name as string,
+        code: r.code as string,
+        onHand: Number(r.onHand),
+        reorderLevel: Number(r.reorderLevel)
+      }));
+    });
   }
 
   private mapSale(row: Record<string, unknown>): CounterSaleRecord {

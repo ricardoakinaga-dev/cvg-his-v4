@@ -2,6 +2,7 @@ import { eq, and, or, ilike } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { owners } from '@cvg-his-v2/shared-database';
 import type { AccountId, OwnerContact, OwnerId, OwnerSummary } from '@cvg-his-v2/shared-types';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface OwnerRepository {
   create(owner: OwnerSummary): Promise<void>;
@@ -19,6 +20,7 @@ export class DatabaseOwnerRepository implements OwnerRepository {
   }
 
   public async create(owner: OwnerSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context: throws if called outside runWithTenantContext
     await this.#db.insert(owners).values({
       id: owner.id,
       accountId: owner.accountId,
@@ -34,6 +36,7 @@ export class DatabaseOwnerRepository implements OwnerRepository {
   }
 
   public async update(owner: OwnerSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db
       .update(owners)
       .set({
@@ -48,6 +51,7 @@ export class DatabaseOwnerRepository implements OwnerRepository {
   }
 
   public async findById(id: OwnerId): Promise<OwnerSummary | null> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db.select().from(owners).where(eq(owners.id, id)).limit(1);
 
     if (result.length === 0) {
@@ -62,6 +66,7 @@ export class DatabaseOwnerRepository implements OwnerRepository {
     accountId: AccountId,
     search?: string
   ): Promise<readonly OwnerSummary[]> {
+    requireAccountId(); // Enforce tenant context
     let query = this.#db.select().from(owners).where(eq(owners.accountId, accountId));
 
     if (search) {
@@ -87,6 +92,7 @@ export class DatabaseOwnerRepository implements OwnerRepository {
   }
 
   public async delete(id: OwnerId): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.delete(owners).where(eq(owners.id, id));
   }
 

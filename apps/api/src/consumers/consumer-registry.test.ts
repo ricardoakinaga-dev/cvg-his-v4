@@ -39,6 +39,26 @@ function createMockWebhooksService() {
   } as unknown as import('@cvg-his-v2/module-webhooks').WebhooksService;
 }
 
+function createMockEncounterFinancialService() {
+  return {
+    async registerPayment(): Promise<void> {}
+  } as unknown as import('@cvg-his-v2/module-financial').EncounterFinancialService;
+}
+
+function createMockPixTransactions() {
+  return {
+    async findByTransactionId(): Promise<null> {
+      return null;
+    },
+    async create(): Promise<void> {},
+    async updateStatus(): Promise<null> {
+      return null;
+    },
+    async updateBillingSettlement(): Promise<void> {},
+    async updateCashReconciliation(): Promise<void> {}
+  } as unknown as import('../pix-transaction-repository.js').PixTransactionRepository;
+}
+
 test('ConsumerRegistry.add() registers a consumer', () => {
   const registry = new ConsumerRegistry();
   const consumer = makeConsumer('test');
@@ -132,7 +152,11 @@ test('ConsumerRegistry.registerAll() with all three production consumers — cor
   const mockEventBus = makeMockEventBus() as any;
   const registry = new ConsumerRegistry();
 
-  const payments = new PaymentsEventHandlers({ billing: createMockBillingService() });
+  const payments = new PaymentsEventHandlers({
+    billing: createMockBillingService(),
+    encounterFinancial: createMockEncounterFinancialService(),
+    pixTransactions: createMockPixTransactions()
+  });
   const billing = new BillingEventHandlers({ billing: createMockBillingService() });
   const webhooks = new WebhooksEventHandlers({ webhooks: createMockWebhooksService() });
 

@@ -1,0 +1,117 @@
+# Default values for cvg-his-v2-spa
+replicaCount: 2
+
+image:
+  repository: cvghis/spa
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  fsGroup: 101
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/client_max_body_size: "10m"
+  hosts:
+    - host: app.cvg-his.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: spa-cvg-his-tls
+      hosts:
+        - app.cvg-his.internal
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+startupProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  NODE_ENV: "production"
+  # API endpoint for the SPA to connect to
+  VITE_API_URL: "https://api.cvg-his.internal"
+
+# ConfigMaps for build-time vars (used in nginx.conf)
+# Note: SPA image should include nginx for serving static content
+volumes:
+  - name: nginx-config
+    configMap:
+      name: {{ include "cvg-his-v2-spa.fullname" . }}-nginx-config
+
+volumeMounts:
+  - name: nginx-config
+    mountPath: /etc/nginx/conf.d
+    readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: cvg-his-v2-spa
+          topologyKey: kubernetes.io/hostname

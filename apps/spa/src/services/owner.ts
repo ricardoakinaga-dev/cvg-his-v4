@@ -3,14 +3,42 @@ import type {
   OwnerSummary,
   CreateOwnerRequest,
   UpdateOwnerRequest,
-  OwnersListResponse
+  OwnersListResponse,
+  OwnerListFilters
 } from '@/types/owner';
 
 export const ownerService = {
-  async list(search?: string): Promise<OwnerSummary[]> {
-    const params = search ? `?q=${encodeURIComponent(search)}` : '';
-    const response = await apiRequest<OwnersListResponse>(`/owners${params}`);
+  async list(filters?: string | OwnerListFilters): Promise<OwnerSummary[]> {
+    const response = await this.listPage(filters);
     return response.items ?? [];
+  },
+
+  async listPage(filters?: string | OwnerListFilters): Promise<OwnersListResponse> {
+    const searchParams = new URLSearchParams();
+    const normalizedFilters =
+      typeof filters === 'string' ? ({ search: filters } satisfies OwnerListFilters) : filters;
+
+    if (normalizedFilters?.search) {
+      searchParams.set('q', normalizedFilters.search);
+    }
+    if (normalizedFilters?.status && normalizedFilters.status !== 'all') {
+      searchParams.set('status', normalizedFilters.status);
+    }
+    if (typeof normalizedFilters?.financialResponsible === 'boolean') {
+      searchParams.set(
+        'financialResponsible',
+        normalizedFilters.financialResponsible ? 'true' : 'false'
+      );
+    }
+    if (normalizedFilters?.page) {
+      searchParams.set('page', String(normalizedFilters.page));
+    }
+    if (normalizedFilters?.pageSize) {
+      searchParams.set('pageSize', String(normalizedFilters.pageSize));
+    }
+
+    const query = searchParams.toString();
+    return apiRequest<OwnersListResponse>(`/owners${query ? `?${query}` : ''}`);
   },
 
   async getById(id: string): Promise<OwnerSummary> {

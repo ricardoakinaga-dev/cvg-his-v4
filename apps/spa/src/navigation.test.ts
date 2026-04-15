@@ -42,7 +42,11 @@ describe('navigation groups', () => {
     expect(findGroupPaths('atendimento')).not.toContain('/scheduling');
   });
 
-  it('publishes the mandatory laboratory, inventory and finance routes in the official map', () => {
+  it('publishes the mandatory laboratory, inventory, atendimento e finance routes in the official map', () => {
+    expect(findGroupPaths('atendimento')).toEqual(
+      expect.arrayContaining(['/patients', '/owners', '/appointments', '/encounters', '/counter-sales'])
+    );
+
     expect(findGroupPaths('laboratorio')).toEqual(
       expect.arrayContaining([
         '/laboratory',
@@ -66,7 +70,7 @@ describe('navigation groups', () => {
     );
 
     expect(findGroupPaths('financeiro')).toEqual(
-      expect.arrayContaining(['/billing', '/cash', '/pix', '/quotes', '/counter-sales'])
+      expect.arrayContaining(['/billing', '/cash', '/pix', '/quotes'])
     );
   });
 

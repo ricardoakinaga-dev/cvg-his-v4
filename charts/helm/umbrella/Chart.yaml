@@ -1,0 +1,30 @@
+apiVersion: v2
+name: cvg-his-v2
+description: CVG-HIS-V2 Full Application Helm chart (umbrella)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - his
+  - healthcare
+  - umbrella
+maintainers:
+  - name: CVG Team
+    email: team@cvg.com.br
+dependencies:
+  - name: cvg-his-v2-api
+    version: "0.1.0"
+    repository: "file://./api"
+    condition: api.enabled
+  - name: cvg-his-v2-worker
+    version: "0.1.0"
+    repository: "file://./worker"
+    condition: worker.enabled
+  - name: cvg-his-v2-spa
+    version: "0.1.0"
+    repository: "file://./spa"
+    condition: spa.enabled
+  - name: cvg-his-v2-web
+    version: "0.1.0"
+    repository: "file://./web"
+    condition: web.enabled

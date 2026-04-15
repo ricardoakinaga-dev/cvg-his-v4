@@ -27,7 +27,12 @@ interface MigrationFile {
 
 function getMigrationFiles(): MigrationFile[] {
   return readdirSync(migrationsFolder)
-    .filter((file) => file.endsWith('.sql') && !file.endsWith('.revert.sql'))
+    .filter(
+      (file) =>
+        file.endsWith('.sql') &&
+        !file.endsWith('.revert.sql') &&
+        !file.endsWith('.seed.sql')
+    )
     .sort()
     .map((file) => {
       const path = resolve(migrationsFolder, file);

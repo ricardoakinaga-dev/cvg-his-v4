@@ -1,0 +1,22 @@
+# Umbrella chart values - enables all components by default
+api:
+  enabled: true
+worker:
+  enabled: true
+spa:
+  enabled: true
+web:
+  enabled: true
+
+# Global settings that propagate to all sub-charts
+global:
+  imagePullSecrets: []
+  # External database host (when not using embedded postgres)
+  database:
+    host: "postgres"
+    port: 5432
+    name: "cvghis"
+  # External redis host
+  redis:
+    host: "redis"
+    port: 6379

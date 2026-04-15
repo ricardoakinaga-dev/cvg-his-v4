@@ -1,4 +1,10 @@
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
+import type {
+  FeatureFlagMetricsCollector,
+  FeatureFlagEvaluationMetrics,
+  FeatureFlagErrorMetrics,
+  FeatureFlagFallbackMetrics
+} from '@cvg-his-v2/shared-feature-flags';
 
 // ============================================================================
 // Prometheus Registry
@@ -57,12 +63,103 @@ export const appDbHealthy = new Gauge({
   registers: [registry]
 });
 
+export const appRedisHealthy = new Gauge({
+  name: 'app_redis_healthy',
+  help: 'Redis health status for distributed runtime state (1 = healthy, 0 = unhealthy or not configured)',
+  registers: [registry]
+});
+
 export const appPersistenceMode = new Gauge({
   name: 'app_persistence_mode',
   help: 'Persistence mode (1 = database, 0 = in-memory)',
   labelNames: ['mode'] as const,
   registers: [registry]
 });
+
+export const appRateLimiterMode = new Gauge({
+  name: 'app_rate_limiter_mode',
+  help: 'Auth rate limiter mode (1 = active mode)',
+  labelNames: ['mode'] as const,
+  registers: [registry]
+});
+
+export const appRuntimeDistributedStateEnabled = new Gauge({
+  name: 'app_runtime_distributed_state_enabled',
+  help: 'Whether distributed runtime state is enabled for this API runtime (1 = enabled, 0 = disabled)',
+  registers: [registry]
+});
+
+// ============================================================================
+// Feature Flag Metrics (PR-FF-13)
+// ============================================================================
+
+export const featureFlagEvaluationsTotal = new Counter({
+  name: 'feature_flag_evaluations_total',
+  help: 'Total number of feature flag evaluations',
+  labelNames: ['flag_key', 'provider', 'reason', 'enabled'] as const,
+  registers: [registry]
+});
+
+export const featureFlagErrorsTotal = new Counter({
+  name: 'feature_flag_errors_total',
+  help: 'Total number of feature flag errors',
+  labelNames: ['flag_key', 'provider', 'error_type'] as const,
+  registers: [registry]
+});
+
+export const featureFlagFallbacksTotal = new Counter({
+  name: 'feature_flag_fallbacks_total',
+  help: 'Total number of feature flag fallback evaluations',
+  labelNames: ['flag_key', 'provider', 'fallback_reason'] as const,
+  registers: [registry]
+});
+
+export const featureFlagEvaluationDuration = new Histogram({
+  name: 'feature_flag_evaluation_duration_ms',
+  help: 'Feature flag evaluation duration in milliseconds',
+  labelNames: ['flag_key', 'provider'] as const,
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100],
+  registers: [registry]
+});
+
+/**
+ * Creates a Prometheus-backed FeatureFlagMetricsCollector.
+ * This collector records evaluations, errors, and fallbacks to Prometheus counters/histograms.
+ */
+export function createFeatureFlagMetricsCollector(): FeatureFlagMetricsCollector {
+  return {
+    recordEvaluation(metrics: FeatureFlagEvaluationMetrics): void {
+      featureFlagEvaluationsTotal.inc({
+        flag_key: metrics.flagKey,
+        provider: metrics.provider,
+        reason: metrics.reason,
+        enabled: String(metrics.enabled)
+      });
+      if (metrics.durationMs !== undefined) {
+        featureFlagEvaluationDuration.observe(
+          { flag_key: metrics.flagKey, provider: metrics.provider },
+          metrics.durationMs
+        );
+      }
+    },
+
+    recordError(metrics: FeatureFlagErrorMetrics): void {
+      featureFlagErrorsTotal.inc({
+        flag_key: metrics.flagKey,
+        provider: metrics.provider,
+        error_type: metrics.errorType
+      });
+    },
+
+    recordFallback(metrics: FeatureFlagFallbackMetrics): void {
+      featureFlagFallbacksTotal.inc({
+        flag_key: metrics.flagKey,
+        provider: metrics.provider,
+        fallback_reason: metrics.fallbackReason
+      });
+    }
+  };
+}
 
 // ============================================================================
 // Metrics Registry Access
@@ -85,10 +182,15 @@ export function updateAppMetrics(options: {
   activeRequests: number;
   dbHealthy: boolean;
   persistenceMode: string;
+  redisHealthy: boolean;
+  rateLimiterMode: string;
+  runtimeDistributedStateEnabled: boolean;
 }): void {
   appUptimeSeconds.set(options.uptime);
   appActiveRequests.set(options.activeRequests);
   appDbHealthy.set(options.dbHealthy ? 1 : 0);
+  appRedisHealthy.set(options.redisHealthy ? 1 : 0);
+  appRuntimeDistributedStateEnabled.set(options.runtimeDistributedStateEnabled ? 1 : 0);
 
   // Reset previous persistence mode labels
   appPersistenceMode.reset();
@@ -97,6 +199,9 @@ export function updateAppMetrics(options: {
   } else {
     appPersistenceMode.set({ mode: 'in-memory' }, 1);
   }
+
+  appRateLimiterMode.reset();
+  appRateLimiterMode.set({ mode: options.rateLimiterMode }, 1);
 }
 
 export function incrementActiveRequests(): void {
@@ -141,6 +246,7 @@ export function normalizeRoute(pathname: string): string {
     [/^\/ready(\/.*)?$/, '/ready'],
     [/^\/live(\/.*)?$/, '/live'],
     [/^\/metrics$/, '/metrics'],
+    [/^\/admin\/commercial-dashboard$/, '/admin/commercial-dashboard'],
     // Generic resource patterns: /resource/:id, /resource/:id/sub-resource
     [
       /^\/(owners|patients|encounters|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,

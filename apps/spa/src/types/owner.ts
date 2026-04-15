@@ -47,4 +47,16 @@ export interface UpdateOwnerRequest {
 
 export interface OwnersListResponse {
   items: OwnerSummary[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+}
+
+export interface OwnerListFilters {
+  search?: string;
+  status?: 'active' | 'inactive' | 'all';
+  financialResponsible?: boolean;
+  page?: number;
+  pageSize?: number;
 }

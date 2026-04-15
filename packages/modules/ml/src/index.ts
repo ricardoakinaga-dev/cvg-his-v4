@@ -25,3 +25,6 @@ export type {
 } from './model-registry.service.js';
 export { DatabaseModelRepository } from './repositories/database-model.repository.js';
 export type { ModelRepository } from './repositories/model-repository.interface.js';
+
+// Smart Scheduling (F3-03)
+export { SmartSchedulingService } from './smart-scheduling.service.js';

@@ -1,0 +1,232 @@
+import { apiRequest } from './api';
+
+export type CounterSaleStatus = 'open' | 'closed' | 'cancelled';
+export type CounterSaleItemType = 'product' | 'service';
+export type CounterSalePaymentMethod =
+  | 'cash'
+  | 'credit_card'
+  | 'debit_card'
+  | 'pix'
+  | 'bank_transfer'
+  | 'check'
+  | 'insurance'
+  | 'other';
+
+export interface CounterSaleSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly number: string;
+  readonly ownerId: string | null;
+  readonly status: CounterSaleStatus;
+  readonly subtotal: number;
+  readonly discountAmount: number;
+  readonly total: number;
+  readonly paidAmount: number;
+  readonly balanceDue: number;
+  readonly notes: string | null;
+  readonly openedByUserId: string;
+  readonly closedByUserId: string | null;
+  readonly closedAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CounterSaleItemSummary {
+  readonly id: string;
+  readonly counterSaleId: string;
+  readonly accountId: string;
+  readonly itemType: CounterSaleItemType;
+  readonly catalogItemId: string | null;
+  readonly nameSnapshot: string;
+  readonly codeSnapshot: string | null;
+  readonly unitPrice: number;
+  readonly quantity: number;
+  readonly discountAmount: number;
+  readonly lineTotal: number;
+  readonly notes: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CounterSalePaymentSummary {
+  readonly id: string;
+  readonly counterSaleId: string;
+  readonly accountId: string;
+  readonly method: CounterSalePaymentMethod;
+  readonly amount: number;
+  readonly installments: number;
+  readonly reference: string | null;
+  readonly notes: string | null;
+  readonly createdAt: string;
+}
+
+export interface CounterSaleDetail extends CounterSaleSummary {
+  readonly items: readonly CounterSaleItemSummary[];
+  readonly payments: readonly CounterSalePaymentSummary[];
+}
+
+export interface CounterSalesCommercialDashboard {
+  readonly openSales: number;
+  readonly closedToday: number;
+  readonly grossRevenueToday: number;
+  readonly netRevenueToday: number;
+  readonly avgTicket: number;
+  readonly salesByPaymentMethod: readonly {
+    method: string;
+    total: number;
+  }[];
+  readonly topProducts: readonly {
+    name: string;
+    quantity: number;
+    revenue: number;
+  }[];
+  readonly topServices: readonly {
+    name: string;
+    quantity: number;
+    revenue: number;
+  }[];
+  readonly quotesIssued: number;
+  readonly quotesConverted: number;
+  readonly lowStockAlerts?: readonly {
+    name: string;
+    code: string;
+    onHand: number;
+    reorderLevel: number;
+  }[];
+}
+
+interface CounterSalesListResponse {
+  items: readonly CounterSaleSummary[];
+}
+
+export interface CounterSalesListFilters {
+  search?: string;
+  status?: CounterSaleStatus | 'all';
+  ownerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface CreateCounterSalePayload {
+  ownerId?: string | null;
+  notes?: string | null;
+}
+
+export interface CreateCounterSaleItemPayload {
+  itemType: CounterSaleItemType;
+  catalogItemId?: string | null;
+  nameSnapshot: string;
+  codeSnapshot?: string | null;
+  unitPrice: number;
+  quantity?: number;
+  discountAmount?: number;
+  notes?: string | null;
+}
+
+export interface UpdateCounterSaleItemPayload {
+  quantity?: number;
+  discountAmount?: number;
+  notes?: string | null;
+}
+
+export interface CreateCounterSalePaymentPayload {
+  method: CounterSalePaymentMethod;
+  amount: number;
+  installments?: number;
+  reference?: string | null;
+  notes?: string | null;
+}
+
+export const counterSalesService = {
+  async list(filters: CounterSalesListFilters = {}): Promise<CounterSaleSummary[]> {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+    if (filters.ownerId) params.set('ownerId', filters.ownerId);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+
+    const query = params.toString();
+    const response = await apiRequest<CounterSalesListResponse>(
+      `/counter-sales${query ? `?${query}` : ''}`
+    );
+    return [...(response.items ?? [])];
+  },
+
+  async getById(id: string): Promise<CounterSaleDetail> {
+    return apiRequest<CounterSaleDetail>(`/counter-sales/${id}`);
+  },
+
+  async getCommercialDashboard(filters?: {
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<CounterSalesCommercialDashboard> {
+    const params = new URLSearchParams();
+    if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+
+    const query = params.toString();
+    return apiRequest<CounterSalesCommercialDashboard>(
+      `/admin/commercial-dashboard${query ? `?${query}` : ''}`
+    );
+  },
+
+  async create(payload: CreateCounterSalePayload): Promise<CounterSaleSummary> {
+    return apiRequest<CounterSaleSummary>('/counter-sales', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async addItem(id: string, payload: CreateCounterSaleItemPayload): Promise<CounterSaleItemSummary> {
+    return apiRequest<CounterSaleItemSummary>(`/counter-sales/${id}/items`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateItem(
+    id: string,
+    itemId: string,
+    payload: UpdateCounterSaleItemPayload
+  ): Promise<CounterSaleItemSummary> {
+    return apiRequest<CounterSaleItemSummary>(`/counter-sales/${id}/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async removeItem(id: string, itemId: string): Promise<void> {
+    await apiRequest<void>(`/counter-sales/${id}/items/${itemId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async addPayment(
+    id: string,
+    payload: CreateCounterSalePaymentPayload
+  ): Promise<CounterSalePaymentSummary> {
+    return apiRequest<CounterSalePaymentSummary>(`/counter-sales/${id}/payments`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async close(id: string): Promise<CounterSaleSummary> {
+    return apiRequest<CounterSaleSummary>(`/counter-sales/${id}/close`, {
+      method: 'POST'
+    });
+  },
+
+  async cancel(id: string): Promise<CounterSaleSummary> {
+    return apiRequest<CounterSaleSummary>(`/counter-sales/${id}/cancel`, {
+      method: 'POST'
+    });
+  },
+
+  async reopen(id: string): Promise<CounterSaleSummary> {
+    return apiRequest<CounterSaleSummary>(`/counter-sales/${id}/reopen`, {
+      method: 'POST'
+    });
+  }
+};

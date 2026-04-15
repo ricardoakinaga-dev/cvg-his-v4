@@ -108,6 +108,10 @@ function instrumentPool(targetPool: Pool): Pool {
 }
 
 export function createDatabaseClient(connectionString: string) {
+  if (pool && db) {
+    return db;
+  }
+
   const basePool = new Pool({ connectionString });
   const otelEnabled = process.env.OTEL_ENABLED === 'true' || process.env.OTEL_ENABLED === '1';
   pool = otelEnabled ? instrumentPool(basePool) : basePool;

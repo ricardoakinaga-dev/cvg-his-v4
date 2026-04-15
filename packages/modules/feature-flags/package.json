@@ -1,0 +1,27 @@
+{
+  "name": "@cvg-his-v2/module-feature-flags",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:^",
+    "@cvg-his-v2/shared-feature-flags": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*",
+    "@cvg-his-v2/tenant-context": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"console.log('no tests for module-feature-flags')\""
+  }
+}

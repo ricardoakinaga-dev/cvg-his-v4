@@ -44,6 +44,19 @@ export interface UpdatePatientRequest {
 
 export interface PatientsListResponse {
   items: PatientSummary[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+}
+
+export interface PatientListFilters {
+  search?: string;
+  ownerId?: string;
+  species?: string;
+  status?: PatientStatus | 'all';
+  page?: number;
+  pageSize?: number;
 }
 
 export interface OwnerPatientLinkSummary {

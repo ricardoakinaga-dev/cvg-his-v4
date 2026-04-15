@@ -1,0 +1,383 @@
+/**
+ * DatabaseFiscalRepository — GAP-08
+ *
+ * Repository that reads fiscal data (CFOP, ICMS, NCM, PIS/COFINS, NFS-e)
+ * from the database instead of in-memory arrays.
+ *
+ * Uses the Drizzle schemas created in packages/db/src/schema/:
+ * - cfop_entries
+ * - icms_rules
+ * - ncm_entries
+ * - pis_cofins_rules
+ * - nfse_layouts
+ */
+
+import { getPool } from '@cvg-his-v2/shared-database';
+import type { AccountId } from '@cvg-his-v2/shared-types';
+import type {
+  FiscalCfopSummary,
+  FiscalIcmsRuleSummary,
+  FiscalNcmEntrySummary,
+  FiscalPisCofinsRuleSummary,
+  FiscalNfseLayoutSummary,
+  UpdateFiscalNfseLayoutRequest
+} from '@cvg-his-v2/shared-contracts';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface DbFiscalFilters {
+  readonly accountId: AccountId;
+}
+
+export interface DbCfopFilters extends DbFiscalFilters {
+  readonly search?: string;
+  readonly section?: string;
+  readonly documentType?: string;
+}
+
+export interface DbIcmsRuleFilters extends DbFiscalFilters {
+  readonly ufOrigin?: string;
+  readonly ufDestination?: string;
+  readonly ncm?: string;
+  readonly operationType?: string;
+}
+
+export interface DbNcmEntryFilters extends DbFiscalFilters {
+  readonly search?: string;
+}
+
+export interface DbPisCofinsRuleFilters extends DbFiscalFilters {
+  readonly regime?: string;
+  readonly appliesTo?: string;
+}
+
+export interface DbNfseLayoutFilters extends DbFiscalFilters {
+  readonly state?: string;
+  readonly active?: boolean;
+}
+
+function mapNfseLayoutRow(row: Record<string, unknown>): FiscalNfseLayoutSummary {
+  return {
+    id: row.id as string,
+    city: row.city as string,
+    state: row.state as string,
+    municipalityCode: (row.municipality_code as string) ?? '',
+    provider: row.provider as string,
+    version: row.version as string,
+    active: Boolean(row.active),
+    environment: row.environment as 'producao' | 'homologacao',
+    serviceCode: (row.service_code as string) ?? '',
+    serviceFocus: (row.service_focus as string) ?? ''
+  };
+}
+
+// ============================================================================
+// Database Fiscal Repository
+// ============================================================================
+
+export class DatabaseFiscalRepository {
+  private get pool() {
+    return getPool();
+  }
+
+  // --------------------------------------------------------------------------
+  // CFOP
+  // --------------------------------------------------------------------------
+
+  async listCfop(filters: DbCfopFilters): Promise<FiscalCfopSummary[]> {
+    const pool = this.pool;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.search) {
+      conditions.push(`(
+        code ILIKE $${params.length + 1} OR
+        description ILIKE $${params.length + 1} OR
+        category ILIKE $${params.length + 1}
+      )`);
+      params.push(`%${filters.search}%`);
+    }
+
+    if (filters.section) {
+      conditions.push(`section = $${params.length + 1}`);
+      params.push(filters.section);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `SELECT * FROM cfop_entries ${where} ORDER BY code`;
+    const result = await pool.query(query, params);
+
+    let items = result.rows.map((row) => ({
+      code: row.code as string,
+      description: row.description as string,
+      section: row.section as 'entrada' | 'saida',
+      category: row.category as string,
+      applicableTo: JSON.parse(row.applicable_to as string) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[],
+      icmsRelevant: Boolean(row.icms_relevant),
+      pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
+      ipiRelevant: Boolean(row.ipi_relevant),
+      documentTypesLabel: (JSON.parse(row.applicable_to as string) as string[]).join(', ').toUpperCase()
+    })) as FiscalCfopSummary[];
+
+    if (filters.documentType) {
+      items = items.filter((item) => item.applicableTo.includes(filters.documentType as 'nfe' | 'nfce' | 'nfse' | 'cte'));
+    }
+
+    return items;
+  }
+
+  async findCfopByCode(code: string): Promise<FiscalCfopSummary | null> {
+    const pool = this.pool;
+    const result = await pool.query(
+      'SELECT * FROM cfop_entries WHERE code = $1 LIMIT 1',
+      [code]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      code: row.code as string,
+      description: row.description as string,
+      section: row.section as 'entrada' | 'saida',
+      category: row.category as string,
+      applicableTo: JSON.parse(row.applicable_to as string) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[],
+      icmsRelevant: Boolean(row.icms_relevant),
+      pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
+      ipiRelevant: Boolean(row.ipi_relevant),
+      documentTypesLabel: (JSON.parse(row.applicable_to as string) as string[]).join(', ').toUpperCase()
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // ICMS Rules
+  // --------------------------------------------------------------------------
+
+  async listIcmsRules(filters: DbIcmsRuleFilters): Promise<FiscalIcmsRuleSummary[]> {
+    const pool = this.pool;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.ufOrigin) {
+      conditions.push(`uf_origin = $${params.length + 1}`);
+      params.push(filters.ufOrigin);
+    }
+    if (filters.ufDestination) {
+      conditions.push(`uf_destination = $${params.length + 1}`);
+      params.push(filters.ufDestination);
+    }
+    if (filters.ncm) {
+      conditions.push(`ncm = $${params.length + 1}`);
+      params.push(filters.ncm);
+    }
+    if (filters.operationType) {
+      conditions.push(`operation_type = $${params.length + 1}`);
+      params.push(filters.operationType);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(
+      `SELECT * FROM icms_rules ${where} ORDER BY uf_origin, uf_destination, ncm`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      ufOrigin: row.uf_origin as string,
+      ufDestination: row.uf_destination as string,
+      ncm: row.ncm as string,
+      rate: parseFloat(row.rate as string),
+      cst: row.cst as string,
+      operationType: row.operation_type as 'interna' | 'interestadual'
+    })) as FiscalIcmsRuleSummary[];
+  }
+
+  // --------------------------------------------------------------------------
+  // NCM Entries
+  // --------------------------------------------------------------------------
+
+  async listNcmEntries(filters: DbNcmEntryFilters): Promise<FiscalNcmEntrySummary[]> {
+    const pool = this.pool;
+    const params: unknown[] = [];
+    let where = '';
+
+    if (filters.search) {
+      where = `WHERE (
+        ncm ILIKE $1 OR
+        category ILIKE $1 OR
+        notes ILIKE $1 OR
+        source ILIKE $1
+      )`;
+      params.push(`%${filters.search}%`);
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM ncm_entries ${where} ORDER BY ncm LIMIT 100`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      ncm: row.ncm as string,
+      category: row.category as string,
+      ipiRate: parseFloat(row.ipi_rate as string),
+      source: row.source as string,
+      notes: (row.notes as string) ?? ''
+    })) as FiscalNcmEntrySummary[];
+  }
+
+  // --------------------------------------------------------------------------
+  // PIS/COFINS Rules
+  // --------------------------------------------------------------------------
+
+  async listPisCofinsRules(filters: DbPisCofinsRuleFilters): Promise<FiscalPisCofinsRuleSummary[]> {
+    const pool = this.pool;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.regime) {
+      conditions.push(`regime = $${params.length + 1}`);
+      params.push(filters.regime);
+    }
+    if (filters.appliesTo) {
+      conditions.push(`applies_to = $${params.length + 1}`);
+      params.push(filters.appliesTo);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(
+      `SELECT * FROM pis_cofins_rules ${where} ORDER BY regime, applies_to`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      regime: row.regime as 'simples_nacional' | 'lucro_presumido' | 'lucro_real',
+      appliesTo: row.applies_to as 'mercadoria' | 'servico' | 'ambos',
+      pisRate: parseFloat(row.pis_rate as string),
+      cofinsRate: parseFloat(row.cofins_rate as string),
+      notes: (row.notes as string) ?? ''
+    })) as FiscalPisCofinsRuleSummary[];
+  }
+
+  // --------------------------------------------------------------------------
+  // NFS-e Layouts
+  // --------------------------------------------------------------------------
+
+  async listNfseLayouts(filters: DbNfseLayoutFilters): Promise<FiscalNfseLayoutSummary[]> {
+    const pool = this.pool;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.state) {
+      conditions.push(`state = $${params.length + 1}`);
+      params.push(filters.state);
+    }
+    if (filters.active !== undefined) {
+      conditions.push(`active = $${params.length + 1}`);
+      params.push(filters.active);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(
+      `SELECT * FROM nfse_layouts ${where} ORDER BY state, city`,
+      params
+    );
+
+    return result.rows.map((row) => mapNfseLayoutRow(row as Record<string, unknown>));
+  }
+
+  async createNfseLayout(
+    _accountId: AccountId,
+    layout: FiscalNfseLayoutSummary
+  ): Promise<FiscalNfseLayoutSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO nfse_layouts (
+        id,
+        city,
+        state,
+        municipality_code,
+        provider,
+        version,
+        active,
+        environment,
+        service_code,
+        service_focus,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP::text, CURRENT_TIMESTAMP::text)
+      RETURNING *`,
+      [
+        layout.id,
+        layout.city,
+        layout.state,
+        layout.municipalityCode || null,
+        layout.provider,
+        layout.version,
+        layout.active,
+        layout.environment,
+        layout.serviceCode || null,
+        layout.serviceFocus || null
+      ]
+    );
+
+    return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+  }
+
+  async updateNfseLayout(
+    _accountId: AccountId,
+    id: string,
+    payload: UpdateFiscalNfseLayoutRequest
+  ): Promise<FiscalNfseLayoutSummary | null> {
+    const current = await this.pool.query('SELECT * FROM nfse_layouts WHERE id = $1 LIMIT 1', [id]);
+    if (current.rows.length === 0) {
+      return null;
+    }
+
+    const row = current.rows[0] as Record<string, unknown>;
+    const next: FiscalNfseLayoutSummary = {
+      id,
+      city: (payload.city ?? row.city) as string,
+      state: (payload.state ?? row.state) as string,
+      municipalityCode: (payload.municipalityCode ?? row.municipality_code ?? '') as string,
+      provider: (payload.provider ?? row.provider) as string,
+      version: (payload.version ?? row.version) as string,
+      active: payload.active ?? Boolean(row.active),
+      environment: (payload.environment ?? row.environment) as 'producao' | 'homologacao',
+      serviceCode: (payload.serviceCode ?? row.service_code ?? '') as string,
+      serviceFocus: (payload.serviceFocus ?? row.service_focus ?? '') as string
+    };
+
+    const result = await this.pool.query(
+      `UPDATE nfse_layouts
+      SET
+        city = $2,
+        state = $3,
+        municipality_code = $4,
+        provider = $5,
+        version = $6,
+        active = $7,
+        environment = $8,
+        service_code = $9,
+        service_focus = $10,
+        updated_at = CURRENT_TIMESTAMP::text
+      WHERE id = $1
+      RETURNING *`,
+      [
+        id,
+        next.city,
+        next.state,
+        next.municipalityCode || null,
+        next.provider,
+        next.version,
+        next.active,
+        next.environment,
+        next.serviceCode || null,
+        next.serviceFocus || null
+      ]
+    );
+
+    return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+  }
+}

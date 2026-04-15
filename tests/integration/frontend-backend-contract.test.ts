@@ -19,6 +19,7 @@ const backendRoutePatterns = [
   /^\/access-control\/users\/[^/]+\/sectors$/,
   /^\/access-control\/users\/[^/]+\/teams$/,
   /^\/api-keys$/,
+  /^\/admin\/commercial-dashboard$/,
   /^\/appointments$/,
   /^\/appointments\/[^/]+$/,
   /^\/appointments\/[^/]+\/cancel$/,
@@ -32,6 +33,14 @@ const backendRoutePatterns = [
   /^\/billing\/[^/]+\/status$/,
   /^\/billing\/estimate$/,
   /^\/billing\/items$/,
+  /^\/counter-sales$/,
+  /^\/counter-sales\/[^/]+$/,
+  /^\/counter-sales\/[^/]+\/cancel$/,
+  /^\/counter-sales\/[^/]+\/close$/,
+  /^\/counter-sales\/[^/]+\/items$/,
+  /^\/counter-sales\/[^/]+\/items\/[^/]+$/,
+  /^\/counter-sales\/[^/]+\/payments$/,
+  /^\/counter-sales\/[^/]+\/reopen$/,
   /^\/diagnostics\/orders$/,
   /^\/discharges$/,
   /^\/discharges\/[^/]+$/,
@@ -40,6 +49,15 @@ const backendRoutePatterns = [
   /^\/encounters\/[^/]+\/close$/,
   /^\/encounters\/[^/]+\/timeline$/,
   /^\/encounters\/[^/]+\/transition$/,
+  /^\/fiscal\/cfop$/,
+  /^\/fiscal\/icms$/,
+  /^\/fiscal\/icms-matrix$/,
+  /^\/fiscal\/ncm$/,
+  /^\/fiscal\/nfse$/,
+  /^\/fiscal\/nfse\/[^/]+$/,
+  /^\/fiscal\/pis-cofins$/,
+  /^\/fiscal\/summary$/,
+  /^\/fiscal\/tax-preview$/,
   /^\/health$/,
   /^\/inpatient$/,
   /^\/inpatient\/[^/]+\/assign-bed$/,
@@ -50,6 +68,12 @@ const backendRoutePatterns = [
   /^\/inventory\/[^/]+$/,
   /^\/inventory\/consumptions$/,
   /^\/inventory\/lots$/,
+  /^\/laboratory\/equipment$/,
+  /^\/laboratory\/orders$/,
+  /^\/laboratory\/orders\/[^/]+\/result$/,
+  /^\/laboratory\/reference-values$/,
+  /^\/laboratory\/report-types$/,
+  /^\/laboratory\/summary$/,
   /^\/lgpd\/consent$/,
   /^\/lgpd\/consent\/revoke$/,
   /^\/lgpd\/consent\/status$/,
@@ -75,6 +99,8 @@ const backendRoutePatterns = [
   /^\/patients$/,
   /^\/patients\/[^/]+$/,
   /^\/payments\/pix\/intents$/,
+  /^\/prescriptions$/,
+  /^\/prescriptions\/[^/]+$/,
   /^\/prescription-executions$/,
   /^\/prescription-executions\/[^/]+$/,
   /^\/prescription-executions\/[^/]+\/execute$/,
@@ -96,6 +122,9 @@ const backendRoutePatterns = [
   /^\/quotes\/[^/]+\/items$/,
   /^\/quotes\/[^/]+\/print$/,
   /^\/quotes\/[^/]+\/reject$/,
+  /^\/reports\/administrative-hubs$/,
+  /^\/scheduling\/availability$/,
+  /^\/scheduling\/overview$/,
   /^\/sectors$/,
   /^\/services$/,
   /^\/services\/[^/]+$/,
@@ -115,9 +144,11 @@ const backendRoutePatterns = [
 
 function normalizeServicePath(path: string): string {
   return path
+    .replace(/\$\{buildQuery\([\s\S]*?\)\}/g, '')
     .replace(/\$\{params\}/g, '')
     .replace(/\$\{query \?.*$/, '')
-    .replace(/\$\{[^}]*$/, '')
+    .replace(/\$\{suffix\}/g, '')
+    .replace(/\$\{search\.toString\(\)\}/g, '')
     .replace(/\$\{[^}]+\}/g, '{param}')
     .replace(/\?.*$/, '')
     .replace(/\{param\}/g, 'sample');

@@ -15,6 +15,8 @@ function createDeps(overrides: Partial<Parameters<typeof createHealthResponse>[4
     workerDetail: 'Worker dependency not configured because DATABASE_URL is absent',
     productionReady: false,
     initialized: true,
+    mlReady: true,
+    mlDetail: 'SmartSchedulingService, ModelRegistryService, FeatureStoreService wired',
     ...overrides
   };
 }

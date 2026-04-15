@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cvg-his-v2-spa
+description: CVG-HIS-V2 SPA (Frontend) Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - his
+  - healthcare
+  - spa
+  - frontend
+maintainers:
+  - name: CVG Team
+    email: team@cvg.com.br

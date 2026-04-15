@@ -11,6 +11,11 @@ import type { SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import {
+  EncounterFinancialService,
+  InMemoryEncounterFinancialRepository,
+  type EncounterFinancialRepository
+} from '@cvg-his-v2/module-financial';
+import {
   DiagnosticsService,
   InMemoryLaboratoryCatalogRepository,
   LaboratoryService
@@ -104,8 +109,19 @@ import type { AccessControlRepository } from '@cvg-his-v2/module-access-control'
 import type { ProductsRepository } from '@cvg-his-v2/module-products';
 import type { ServicesRepository } from '@cvg-his-v2/module-services';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
+import type { FeatureRepository } from '@cvg-his-v2/module-ml';
+import type { ModelRepository } from '@cvg-his-v2/module-ml';
+import {
+  FeatureStoreService,
+  ModelRegistryService,
+  SmartSchedulingService
+} from '@cvg-his-v2/module-ml';
 
 import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
+import {
+  InMemoryPixTransactionRepository,
+  type PixTransactionRepository
+} from './pix-transaction-repository.js';
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -147,6 +163,10 @@ export interface RuntimeRepositories {
   readonly webhook?: WebhookRepository;
   readonly apiKey?: ApiKeyRepository;
   readonly outbox?: OutboxRepository;
+  readonly feature?: FeatureRepository;
+  readonly model?: ModelRepository;
+  readonly encounterFinancial?: EncounterFinancialRepository;
+  readonly pixTransaction?: PixTransactionRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -158,6 +178,10 @@ export interface ApiRuntimeOptions {
   readonly sectorBedOptions?: SectorBedServiceOptions;
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
+  /** Gates distributed runtime state (Redis-backed session, encounter timeline, etc.) */
+  readonly runtimeDistributedStateEnabled?: boolean;
+  /** Gates automatic WhatsApp reminder dispatch on appointment creation. */
+  readonly notificationsWhatsappRemindersEnabled?: boolean;
 }
 
 function createRuntimeSeeds<T>(repository: unknown, fallbackSeeds: readonly T[]): readonly T[] {
@@ -196,6 +220,13 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const webhooks = new WebhooksService({ repository: repos.webhook ?? inMemoryRepos.webhook });
   const apiKeys = new ApiKeysService(repos.apiKey ?? inMemoryRepos.apiKey);
   const eventBus = new EventBusService(repos.outbox ?? inMemoryRepos.outbox);
+
+  // ML services — F3-01/F3-02/F3-03 (GAP-09)
+  // Priority: SmartSchedulingService (F3-03) is the primary consumer-facing service,
+  // backed by ModelRegistryService (F3-02) and FeatureStoreService (F3-01)
+  const modelRegistry = new ModelRegistryService(repos.model ?? inMemoryRepos.model);
+  const featureStore = new FeatureStoreService(repos.feature ?? inMemoryRepos.feature);
+  const smartScheduling = new SmartSchedulingService(modelRegistry);
 
   async function publishEvent(
     moduleName: ModuleName,
@@ -243,6 +274,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     new RuntimePatientLookup(patients),
     settingsLookup
   );
+  const notificationsWhatsappRemindersEnabled =
+    options.notificationsWhatsappRemindersEnabled ?? false;
   const services = new ServicesService({ repository: repos.services });
   const scheduling = new SchedulingService(
     owners,
@@ -263,6 +296,30 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           reason: appointment.reason,
           status: appointment.status,
           createdAt: appointment.createdAt
+        });
+        if (!notificationsWhatsappRemindersEnabled) {
+          audit.write({
+            actorId: 'system',
+            accountId: appointment.accountId,
+            module: 'notifications',
+            action: 'whatsapp_reminder_skipped_flag_disabled',
+            entityType: 'appointment',
+            entityId: appointment.id,
+            payloadSummary: `Automatic WhatsApp reminder skipped for appointment ${appointment.id} because notifications.whatsapp.reminders.enabled is disabled`,
+            riskLevel: 'low'
+          });
+          return;
+        }
+
+        audit.write({
+          actorId: 'system',
+          accountId: appointment.accountId,
+          module: 'notifications',
+          action: 'whatsapp_reminder_scheduled',
+          entityType: 'appointment',
+          entityId: appointment.id,
+          payloadSummary: `Automatic WhatsApp reminder scheduled for appointment ${appointment.id}`,
+          riskLevel: 'low'
         });
         void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
       },
@@ -361,11 +418,36 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     }
   });
+  const pixTransactions = repos.pixTransaction ?? new InMemoryPixTransactionRepository();
+  const encounterFinancial = new EncounterFinancialService(encounters, billing, patients, owners, {
+    repository: repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository(),
+    async onReceivablePaid(payment) {
+      if (
+        payment.externalReferenceType !== 'pix_transaction'
+        || !payment.externalReferenceId
+      ) {
+        return;
+      }
+
+      await pixTransactions.updateBillingSettlement({
+        transactionId: payment.externalReferenceId,
+        billingSettlementStatus: 'applied',
+        billingSettledAt: payment.paidAt,
+        updatedAt: payment.paidAt
+      });
+      await pixTransactions.updateCashReconciliation({
+        transactionId: payment.externalReferenceId,
+        cashReconciliationStatus: 'skipped_no_open_register',
+        cashReconciledAt: payment.paidAt,
+        updatedAt: payment.paidAt
+      });
+    }
+  });
 
   // Register all domain event consumers via ConsumerRegistry
   // Order matters: payments must run before billing (PIX settlement), then webhooks
   const registry = new ConsumerRegistry();
-  registry.add('payments', new PaymentsEventHandlers({ billing }));
+  registry.add('payments', new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions }));
   registry.add('billing', new BillingEventHandlers({ billing }));
   registry.add('webhooks', new WebhooksEventHandlers({ webhooks }));
   registry.registerAll(eventBus);
@@ -507,6 +589,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     diagnostics,
     laboratory,
     billing,
+    encounterFinancial,
     inventory,
     notifications,
     audit,
@@ -521,7 +604,12 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     lgpd,
     webhooks,
     apiKeys,
-    eventBus
+    eventBus,
+    pixTransactions,
+    // ML services — F3-01/F3-02/F3-03
+    modelRegistry,
+    featureStore,
+    smartScheduling
   };
 
   return {

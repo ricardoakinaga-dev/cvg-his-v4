@@ -78,6 +78,7 @@ import {
   type AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
 import { DatabaseBillingRepository } from '@cvg-his-v2/module-billing';
+import { DatabaseEncounterFinancialRepository } from '@cvg-his-v2/module-financial';
 import { DatabaseInventoryRepository } from '@cvg-his-v2/module-inventory';
 import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
 import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
@@ -128,6 +129,7 @@ import type {
 } from '@cvg-his-v2/shared-types';
 
 import type { RuntimeRepositories } from './runtime.js';
+import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
 
 export interface BootstrapOptions {
   databaseUrl?: string;
@@ -718,6 +720,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
         administrationEvent: new DatabaseAdministrationEventRepository(),
         billing: new DatabaseBillingRepository(),
+        encounterFinancial: new DatabaseEncounterFinancialRepository(),
         inventory: new DatabaseInventoryRepository(),
         scheduling: new DatabaseSchedulingRepository(),
         triage: new DatabaseTriageRepository(),
@@ -729,7 +732,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         dsr: new DatabaseDsrRepository(db),
         webhook: new DatabaseWebhookRepository(db),
         apiKey: new DatabaseApiKeyRepository(),
-        outbox: new DatabaseOutboxRepository()
+        outbox: new DatabaseOutboxRepository(),
+        pixTransaction: new DatabasePixTransactionRepository()
       };
       results.repositoriesUseDatabase = true;
       results.fileStorage = new LocalFileStorage({

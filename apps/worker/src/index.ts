@@ -1,5 +1,6 @@
 import { loadWorkerConfig } from '@cvg-his-v2/shared-config';
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
 import { createServer } from 'node:http';
 
@@ -7,10 +8,15 @@ import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js'
 import { startWorkerObservability, withWorkerSpan } from './observability.js';
 import { createWorkerNotifications, createWorkerEventBus } from './runner.js';
 import { runWorkerTick, runEventBusTick } from './runner.js';
+import { createWorkerFeatureFlags } from './feature-flags.js';
+import { createWorkerFeatureFlagMetricsCollector, getWorkerMetricsText } from './worker-metrics.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
+const workerAccountId =
+  process.env.WORKER_ACCOUNT_ID?.trim() ||
+  (config.environment === 'development' || config.environment === 'test' ? 'acc_cvg_demo' : '');
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -55,6 +61,20 @@ async function main() {
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
 
+  // Feature flags — evaluated once at startup with Prometheus metrics collector (PR-FF-13, GAP-12)
+  const workerFeatureFlags = createWorkerFeatureFlags({
+    environment: config.environment,
+    enabledKeys: config.workerFeatureFlags,
+    metrics: createWorkerFeatureFlagMetricsCollector()
+  });
+
+  logger.info('worker feature flags initialized', {
+    service: config.appName,
+    providerName: workerFeatureFlags.providerName,
+    runtimeDistributedStateEnabled: workerFeatureFlags.runtimeDistributedStateEnabled,
+    notificationsWhatsappProviderEnabled: workerFeatureFlags.notificationsWhatsappProviderEnabled
+  });
+
   logger.info('worker dependency state', {
     service: config.appName,
     databaseHealthy: bootstrap.databaseHealthy,
@@ -75,7 +95,7 @@ async function main() {
     eventBusRepository: bootstrap.outboxRepository
   });
 
-  const healthServer = createServer((req, res) => {
+  const healthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
     if (req.url === '/health') {
       res.writeHead(200);
@@ -91,22 +111,33 @@ async function main() {
         })
       );
     } else if (req.url === '/metrics') {
-      res.writeHead(200);
-      res.end(
-        JSON.stringify({
-          service: 'worker',
-          startedAt: workerState.startedAt,
-          ticksCompleted: workerState.ticksCompleted,
-          lastTickAt: workerState.lastTickAt,
-          lastTickDurationMs: workerState.lastTickDurationMs,
-          errors: workerState.errors,
-          lastError: workerState.lastError,
-          databaseHealthy: workerState.databaseHealthy,
-          persistenceMode: workerState.persistenceMode,
-          memory: process.memoryUsage(),
-          uptime: process.uptime()
-        })
-      );
+      // Return Prometheus text format for scraping
+      const acceptHeader = req.headers.accept ?? '';
+      if (acceptHeader.includes('text/plain')) {
+        const metricsText = await getWorkerMetricsText();
+        res.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
+        res.writeHead(200);
+        res.end(metricsText);
+      } else {
+        // Fallback JSON for human inspection
+        res.setHeader('content-type', 'application/json');
+        res.writeHead(200);
+        res.end(
+          JSON.stringify({
+            service: 'worker',
+            startedAt: workerState.startedAt,
+            ticksCompleted: workerState.ticksCompleted,
+            lastTickAt: workerState.lastTickAt,
+            lastTickDurationMs: workerState.lastTickDurationMs,
+            errors: workerState.errors,
+            lastError: workerState.lastError,
+            databaseHealthy: workerState.databaseHealthy,
+            persistenceMode: workerState.persistenceMode,
+            memory: process.memoryUsage(),
+            uptime: process.uptime()
+          })
+        );
+      }
     } else {
       res.writeHead(404);
       res.end(JSON.stringify({ error: 'not found' }));
@@ -138,7 +169,14 @@ async function main() {
           'worker.database_healthy': workerState.databaseHealthy
         },
         async () => {
-          await runWorkerTick(logger, tickContext, notifications);
+          await runWithTenantContext(
+            {
+              tenantId: workerAccountId || correlationId,
+              accountId: workerAccountId || undefined,
+              correlationId
+            },
+            () => runWorkerTick(logger, tickContext, notifications)
+          );
         }
       );
 
@@ -150,7 +188,14 @@ async function main() {
           'worker.database_healthy': workerState.databaseHealthy
         },
         async () => {
-          await runEventBusTick(logger, tickContext, eventBus);
+          await runWithTenantContext(
+            {
+              tenantId: workerAccountId || correlationId,
+              accountId: workerAccountId || undefined,
+              correlationId
+            },
+            () => runEventBusTick(logger, tickContext, eventBus)
+          );
         }
       );
 

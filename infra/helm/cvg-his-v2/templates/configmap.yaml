@@ -1,0 +1,26 @@
+{{- /*
+ConfigMap — non-secret environment variables for API
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cvg-his-v2.api.configmapName" . }}
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.api.env.NODE_ENV | quote }}
+  HOST: {{ .Values.api.env.HOST | quote }}
+  PORT: {{ .Values.api.env.PORT | quote }}
+  APP_NAME: {{ .Values.api.env.APP_NAME | quote }}
+  CORS_ALLOWED_ORIGINS: {{ .Values.api.env.CORS_ALLOWED_ORIGINS | quote }}
+  AUTH_ACCESS_TOKEN_TTL_SECONDS: {{ .Values.api.env.AUTH_ACCESS_TOKEN_TTL_SECONDS | quote }}
+  AUTH_REFRESH_TOKEN_TTL_SECONDS: {{ .Values.api.env.AUTH_REFRESH_TOKEN_TTL_SECONDS | quote }}
+  FILE_STORAGE_PATH: {{ .Values.api.env.FILE_STORAGE_PATH | quote }}
+  RUNTIME_DISTRIBUTED_STATE_ENABLED: {{ .Values.api.env.RUNTIME_DISTRIBUTED_STATE_ENABLED | quote }}
+  VAULT_ENABLED: {{ .Values.api.env.VAULT_ENABLED | quote }}
+  OTEL_ENABLED: {{ .Values.api.env.OTEL_ENABLED | quote }}
+  OTEL_SERVICE_NAME: {{ .Chart.Name | quote }}
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+{{- if .Values.api.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.api.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | quote }}
+{{- end }}

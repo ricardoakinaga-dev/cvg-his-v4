@@ -152,7 +152,12 @@ export default defineConfig(({ mode }) => {
     server: {
       port: runtimeConfig.port,
       host: runtimeConfig.host,
-      allowedHosts: ['tired-bugs-refuse.loca.lt', '.loca.lt'],
+      allowedHosts: [
+        'tired-bugs-refuse.loca.lt',
+        '.loca.lt',
+        'his.centroveterinarioguarapiranga.com',
+        'hi.centroveterinarioguarapiranga.com'
+      ],
       proxy: {
         '/api': {
           target: runtimeConfig.proxyApiTarget,

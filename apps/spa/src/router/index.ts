@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { routes } from './routes';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
+import { clearChunkRecoveryTarget, recoverChunkLoadError } from './chunk-recovery';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +33,8 @@ router.beforeEach((to) => {
 });
 
 router.afterEach((to) => {
+  clearChunkRecoveryTarget();
+
   const app = useAppStore();
   const title = typeof to.meta.title === 'string' && to.meta.title.trim().length > 0
     ? to.meta.title
@@ -50,4 +53,12 @@ router.afterEach((to) => {
   if (typeof document !== 'undefined') {
     document.title = `${title} · CVG HIS SPA`;
   }
+});
+
+router.onError((error, to) => {
+  if (recoverChunkLoadError(error, to)) {
+    return;
+  }
+
+  console.error('router navigation failed', error);
 });

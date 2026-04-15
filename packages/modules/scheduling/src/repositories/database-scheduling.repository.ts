@@ -1,4 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
+import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
   AppointmentId,
@@ -24,128 +25,136 @@ export interface SchedulingRepository {
 
 export class DatabaseSchedulingRepository implements SchedulingRepository {
   async createAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO appointments
-         (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, practitioner_staff_id, service_id, unit, specialty, resource_label, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-      [
-        appointment.id,
-        appointment.accountId,
-        appointment.ownerId,
-        appointment.patientId,
-        new Date(appointment.scheduledAt),
-        appointment.durationMinutes ?? null,
-        appointment.visitType,
-        appointment.reason ?? null,
-        appointment.practitionerStaffId ?? null,
-        appointment.serviceId ?? null,
-        appointment.unit ?? null,
-        appointment.specialty ?? null,
-        appointment.resourceLabel ?? null,
-        appointment.status,
-        new Date(appointment.createdAt),
-        new Date(appointment.updatedAt)
-      ]
-    );
+    await withTenantQuery(getPool(), async (client) => {
+      return await client.query(
+        `INSERT INTO appointments
+           (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, practitioner_staff_id, service_id, unit, specialty, resource_label, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        [
+          appointment.id,
+          appointment.accountId,
+          appointment.ownerId,
+          appointment.patientId,
+          new Date(appointment.scheduledAt),
+          appointment.durationMinutes ?? null,
+          appointment.visitType,
+          appointment.reason ?? null,
+          appointment.practitionerStaffId ?? null,
+          appointment.serviceId ?? null,
+          appointment.unit ?? null,
+          appointment.specialty ?? null,
+          appointment.resourceLabel ?? null,
+          appointment.status,
+          new Date(appointment.createdAt),
+          new Date(appointment.updatedAt)
+        ]
+      );
+    });
   }
 
   async updateAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE appointments
-          SET status = $2,
-              reason = $3,
-              updated_at = $4
-        WHERE id = $1`,
-      [appointment.id, appointment.status, appointment.reason ?? null, new Date(appointment.updatedAt)]
-    );
+    await withTenantQuery(getPool(), async (client) => {
+      return await client.query(
+        `UPDATE appointments
+            SET status = $2,
+                reason = $3,
+                updated_at = $4
+          WHERE id = $1`,
+        [appointment.id, appointment.status, appointment.reason ?? null, new Date(appointment.updatedAt)]
+      );
+    });
   }
 
   async findAppointmentById(id: AppointmentId): Promise<SchedulingAppointmentSummary | null> {
-    const pool = getPool();
-    const result = await pool.query('SELECT * FROM appointments WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return this.mapAppointment(result.rows[0]);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM appointments WHERE id = $1', [id]);
+      if (result.rows.length === 0) return null;
+      return this.mapAppointment(result.rows[0]);
+    });
   }
 
   async findAllAppointments(accountId?: AccountId): Promise<readonly SchedulingAppointmentSummary[]> {
-    const pool = getPool();
-    const result = accountId
-      ? await pool.query('SELECT * FROM appointments WHERE account_id = $1 ORDER BY scheduled_at ASC', [
-          accountId
-        ])
-      : await pool.query('SELECT * FROM appointments ORDER BY scheduled_at ASC');
-    return result.rows.map((r: Record<string, unknown>) => this.mapAppointment(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = accountId
+        ? await client.query('SELECT * FROM appointments WHERE account_id = $1 ORDER BY scheduled_at ASC', [
+            accountId
+          ])
+        : await client.query('SELECT * FROM appointments ORDER BY scheduled_at ASC');
+      return result.rows.map((r: Record<string, unknown>) => this.mapAppointment(r));
+    });
   }
 
   async createQueueEntry(entry: QueueEntrySummary): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO scheduling_queue_entries
-         (id, account_id, patient_id, owner_id, appointment_id, encounter_id, reason, priority, status, checked_in_at, called_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [
-        entry.id,
-        entry.accountId,
-        entry.patientId,
-        entry.ownerId,
-        entry.appointmentId ?? null,
-        entry.encounterId ?? null,
-        entry.reason,
-        entry.priority,
-        entry.status,
-        new Date(entry.checkedInAt),
-        entry.calledAt ? new Date(entry.calledAt) : null,
-        new Date(entry.createdAt),
-        new Date(entry.updatedAt)
-      ]
-    );
+    await withTenantQuery(getPool(), async (client) => {
+      return await client.query(
+        `INSERT INTO scheduling_queue_entries
+           (id, account_id, patient_id, owner_id, appointment_id, encounter_id, reason, priority, status, checked_in_at, called_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          entry.id,
+          entry.accountId,
+          entry.patientId,
+          entry.ownerId,
+          entry.appointmentId ?? null,
+          entry.encounterId ?? null,
+          entry.reason,
+          entry.priority,
+          entry.status,
+          new Date(entry.checkedInAt),
+          entry.calledAt ? new Date(entry.calledAt) : null,
+          new Date(entry.createdAt),
+          new Date(entry.updatedAt)
+        ]
+      );
+    });
   }
 
   async updateQueueEntry(entry: QueueEntrySummary): Promise<void> {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE scheduling_queue_entries
-          SET appointment_id = $2,
-              encounter_id = $3,
-              reason = $4,
-              priority = $5,
-              status = $6,
-              checked_in_at = $7,
-              called_at = $8,
-              updated_at = $9
-        WHERE id = $1`,
-      [
-        entry.id,
-        entry.appointmentId ?? null,
-        entry.encounterId ?? null,
-        entry.reason,
-        entry.priority,
-        entry.status,
-        new Date(entry.checkedInAt),
-        entry.calledAt ? new Date(entry.calledAt) : null,
-        new Date(entry.updatedAt)
-      ]
-    );
+    await withTenantQuery(getPool(), async (client) => {
+      return await client.query(
+        `UPDATE scheduling_queue_entries
+            SET appointment_id = $2,
+                encounter_id = $3,
+                reason = $4,
+                priority = $5,
+                status = $6,
+                checked_in_at = $7,
+                called_at = $8,
+                updated_at = $9
+          WHERE id = $1`,
+        [
+          entry.id,
+          entry.appointmentId ?? null,
+          entry.encounterId ?? null,
+          entry.reason,
+          entry.priority,
+          entry.status,
+          new Date(entry.checkedInAt),
+          entry.calledAt ? new Date(entry.calledAt) : null,
+          new Date(entry.updatedAt)
+        ]
+      );
+    });
   }
 
   async findQueueEntryById(id: QueueEntryId): Promise<QueueEntrySummary | null> {
-    const pool = getPool();
-    const result = await pool.query('SELECT * FROM scheduling_queue_entries WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return this.mapQueueEntry(result.rows[0]);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM scheduling_queue_entries WHERE id = $1', [id]);
+      if (result.rows.length === 0) return null;
+      return this.mapQueueEntry(result.rows[0]);
+    });
   }
 
   async findAllQueueEntries(accountId?: AccountId): Promise<readonly QueueEntrySummary[]> {
-    const pool = getPool();
-    const result = accountId
-      ? await pool.query(
-          'SELECT * FROM scheduling_queue_entries WHERE account_id = $1 ORDER BY checked_in_at ASC',
-          [accountId]
-        )
-      : await pool.query('SELECT * FROM scheduling_queue_entries ORDER BY checked_in_at ASC');
-    return result.rows.map((r: Record<string, unknown>) => this.mapQueueEntry(r));
+    return withTenantQuery(getPool(), async (client) => {
+      const result = accountId
+        ? await client.query(
+            'SELECT * FROM scheduling_queue_entries WHERE account_id = $1 ORDER BY checked_in_at ASC',
+            [accountId]
+          )
+        : await client.query('SELECT * FROM scheduling_queue_entries ORDER BY checked_in_at ASC');
+      return result.rows.map((r: Record<string, unknown>) => this.mapQueueEntry(r));
+    });
   }
 
   private mapAppointment(row: Record<string, unknown>): SchedulingAppointmentSummary {

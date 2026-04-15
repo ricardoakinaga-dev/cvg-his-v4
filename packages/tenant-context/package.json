@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",
-    "@cvg-his-v2/module-auth": "workspace:*"
+    "@cvg-his-v2/shared-database": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.5"

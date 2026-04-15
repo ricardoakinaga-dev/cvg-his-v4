@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { ChaosEngine } from '@cvg-his-v2/chaos';
+
+import { setAppState } from './app-state.js';
 import { createApiServer } from './server.js';
 
 class MockRequest extends Readable {
@@ -122,6 +125,39 @@ function createServerUnderTest(overrides: Partial<Parameters<typeof createApiSer
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    featureFlags: {
+      providerName: 'test',
+      enabledKeys: ['notifications.whatsapp.inbound_actions.enabled'],
+      decisions: {
+        'notifications.whatsapp.inbound_actions.enabled': {
+          key: 'notifications.whatsapp.inbound_actions.enabled',
+          enabled: true,
+          provider: 'test',
+          reason: 'test-default',
+          evaluatedAt: new Date('2026-04-15T00:00:00.000Z').toISOString(),
+          definition: {} as never,
+          context: { environment: 'test' } as never
+        }
+      },
+      authOidcEnabled: false,
+      authWebauthnEnabled: false,
+      runtimeDistributedStateEnabled: false,
+      fiscalBackofficeEnabled: false,
+      notificationsWhatsappRemindersEnabled: false,
+      notificationsWhatsappInboundActionsEnabled: true,
+      provider: {
+        name: 'test',
+        evaluate: async () => ({
+          key: 'notifications.whatsapp.inbound_actions.enabled',
+          enabled: true,
+          provider: 'test',
+          reason: 'test-default',
+          evaluatedAt: new Date('2026-04-15T00:00:00.000Z').toISOString(),
+          definition: {} as never,
+          context: { environment: 'test' } as never
+        })
+      }
+    } as never,
     ...overrides
   });
 }
@@ -255,6 +291,351 @@ test('observability contract exposes request and trace correlation headers', asy
   assert.equal(response.getHeader('x-correlation-id'), 'corr-obs-123');
   assert.equal(response.getHeader('x-request-id'), 'corr-obs-123');
   assert.equal(response.getHeader('x-trace-id'), traceparent?.split('-')[1]);
+});
+
+test('chaos operations expose effective runtime state, runbooks and metrics', async () => {
+  setAppState({
+    persistenceMode: 'database',
+    databaseConfigured: true,
+    databaseHealthy: true,
+    databaseDetail: 'Database connected',
+    repositoriesReady: true,
+    repositoryCount: 13,
+    workerReady: true,
+    workerDetail: 'Worker connected',
+    productionReady: true,
+    initialized: true,
+    mlReady: true,
+    mlDetail: 'ML ready'
+  });
+
+  const server = createServerUnderTest({
+    redisUrl: 'redis://127.0.0.1:6379/0',
+    runtimeDistributedStateEnabled: true
+  });
+
+  const chaos = ChaosEngine.getInstance();
+  for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
+    if (chaos.isActive(experimentId)) {
+      await chaos.stop(experimentId);
+    }
+  }
+  try {
+    const startDatabaseFailure = await performRequest(server, {
+      method: 'POST',
+      url: '/chaos/experiments/database-failure/start',
+      headers: {
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { durationMs: 60_000 }
+    });
+    assert.equal(startDatabaseFailure.statusCode, 200);
+
+    const startRedisFailure = await performRequest(server, {
+      method: 'POST',
+      url: '/chaos/experiments/redis-failure/start',
+      headers: {
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { durationMs: 60_000 }
+    });
+    assert.equal(startRedisFailure.statusCode, 200);
+
+    const startWorkerFailure = await performRequest(server, {
+      method: 'POST',
+      url: '/chaos/experiments/worker-failure/start',
+      headers: {
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { durationMs: 60_000, faultDelayMs: 5 }
+    });
+    assert.equal(startWorkerFailure.statusCode, 200);
+
+    const experimentsResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/chaos/experiments',
+      headers: {
+        host: 'localhost'
+      }
+    });
+    assert.equal(experimentsResponse.statusCode, 200);
+    const experimentsPayload = experimentsResponse.bodyJson<{
+      runtimeState: {
+        databaseHealthy: boolean;
+        persistenceMode: string;
+        workerReady: boolean;
+        redisHealthy: boolean;
+        rateLimiterMode: string;
+        activeExperimentIds: string[];
+      };
+      experiments: Array<{
+        id: string;
+        active: boolean;
+        runbook?: { path: string };
+        runtimeImpact?: { persistenceMode: string; redisHealthy: boolean; workerReady: boolean };
+      }>;
+    }>();
+
+    assert.equal(experimentsPayload.runtimeState.databaseHealthy, false);
+    assert.equal(experimentsPayload.runtimeState.persistenceMode, 'in-memory');
+    assert.equal(experimentsPayload.runtimeState.workerReady, false);
+    assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
+    assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'in-memory-fallback');
+    assert.equal(experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'), true);
+
+    const databaseExperiment = experimentsPayload.experiments.find((item) => item.id === 'database-failure');
+    assert.equal(databaseExperiment?.active, true);
+    assert.equal(
+      databaseExperiment?.runbook?.path,
+      'packages/chaos/src/runbooks/database-failure-runbook.md'
+    );
+    assert.equal(databaseExperiment?.runtimeImpact?.persistenceMode, 'in-memory');
+
+    const readyResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/ready',
+      headers: {
+        host: 'localhost'
+      }
+    });
+    assert.equal(readyResponse.statusCode, 503);
+    const readyPayload = readyResponse.bodyJson<{
+      readiness: { ready: boolean; persistenceMode: string };
+      dependencies: {
+        database: { state: string };
+        worker: { state: string };
+      };
+    }>();
+    assert.equal(readyPayload.readiness.ready, false);
+    assert.equal(readyPayload.readiness.persistenceMode, 'in-memory');
+    assert.equal(readyPayload.dependencies.database.state, 'unhealthy');
+    assert.equal(readyPayload.dependencies.worker.state, 'degraded');
+
+    const metricsResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/metrics',
+      headers: {
+        host: 'localhost'
+      }
+    });
+    assert.equal(metricsResponse.statusCode, 200);
+    const metricsText = metricsResponse.bodyText();
+    assert.match(metricsText, /^app_database_healthy 0$/m);
+    assert.match(metricsText, /^app_redis_healthy 0$/m);
+    assert.match(metricsText, /^app_persistence_mode\{mode="in-memory"\} 1$/m);
+    assert.match(metricsText, /^app_rate_limiter_mode\{mode="in-memory-fallback"\} 1$/m);
+  } finally {
+    for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
+      if (chaos.isActive(experimentId)) {
+        await chaos.stop(experimentId);
+      }
+    }
+  }
+});
+
+test('bootstrap serves extracted OpenAPI and docs routes over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+
+  const openApiResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/openapi.json',
+    headers: {
+      host: 'localhost'
+    }
+  });
+  assert.equal(openApiResponse.statusCode, 200);
+  assert.equal(openApiResponse.getHeader('content-type'), 'application/json');
+  const openApiPayload = openApiResponse.bodyJson<{ openapi: string; paths: Record<string, unknown> }>();
+  assert.equal(openApiPayload.openapi, '3.0.3');
+  assert.ok(Object.keys(openApiPayload.paths).length > 0);
+
+  const docsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/api-docs',
+    headers: {
+      host: 'localhost'
+    }
+  });
+  assert.equal(docsResponse.statusCode, 200);
+  assert.equal(
+    docsResponse.bodyJson<{ endpoints: { openapi: { url: string } } }>().endpoints.openapi.url,
+    '/openapi.json'
+  );
+});
+
+test('bootstrap serves extracted owners and patients routes over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const ownersResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/owners?financialResponsible=true',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(ownersResponse.statusCode, 200);
+  const ownersPayload = ownersResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(ownersPayload.items[0]?.id, 'owner_maria_silva');
+
+  const patientsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/owner-patient-links?ownerId=owner_maria_silva',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(patientsResponse.statusCode, 200);
+  const patientsPayload = patientsResponse.bodyJson<{ items: Array<{ patientId: string }> }>();
+  assert.equal(patientsPayload.items[0]?.patientId, 'patient_luna');
+});
+
+test('bootstrap serves administrative financial routes over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Fluxo financeiro administrativo HTTP'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const estimateResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/billing/estimate',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      administrativeNotes: 'Orcamento administrativo HTTP'
+    }
+  });
+  assert.equal(estimateResponse.statusCode, 200);
+
+  const itemResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/billing/items',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      itemType: 'service',
+      description: 'Consulta HTTP',
+      quantity: 1,
+      unitPriceAmount: 150
+    }
+  });
+  assert.equal(itemResponse.statusCode, 201);
+
+  const summaryResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/financial-summary`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(summaryResponse.statusCode, 200);
+  const summary = summaryResponse.bodyJson<{
+    total: number;
+    receivables: Array<{ installmentLabel: string }>;
+  }>();
+  assert.equal(summary.total, 150);
+  assert.equal(summary.receivables.length, 1);
+
+  const closeResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/encounters/${encounter.id}/financial-close`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      notes: 'Parcelamento administrativo HTTP',
+      installments: [
+        { label: 'Entrada', amount: 50, dueAt: '2026-04-15T00:00:00.000Z' },
+        { label: '30 dias', amount: 100, dueAt: '2026-05-15T00:00:00.000Z' }
+      ]
+    }
+  });
+  assert.equal(closeResponse.statusCode, 200);
+  const closedSummary = closeResponse.bodyJson<{
+    financialClosed: boolean;
+    receivables: Array<{ installmentLabel: string }>;
+  }>();
+  assert.equal(closedSummary.financialClosed, true);
+  assert.equal(closedSummary.receivables.length, 2);
+
+  const receivablesResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/financial/receivables?encounterId=${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(receivablesResponse.statusCode, 200);
+  const receivables = receivablesResponse.bodyJson<{ data: Array<{ encounterId: string }> }>();
+  assert.equal(receivables.data.length, 2);
+  assert.equal(receivables.data[0]?.encounterId, encounter.id);
+});
+
+test('bootstrap serves administrative report hubs over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/reports/administrative-hubs',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    generatedAt: string;
+    domains: {
+      financial: { billing: { totalRecords: number } };
+      commercial: { quotes: { issuedCount: number } };
+      cash: { hasOpenRegister: boolean };
+      fiscal: { activeTaxes: number };
+    };
+    highlights: Array<{ title: string }>;
+  }>();
+
+  assert.ok(payload.generatedAt.length > 0);
+  assert.equal(typeof payload.domains.financial.billing.totalRecords, 'number');
+  assert.equal(typeof payload.domains.commercial.quotes.issuedCount, 'number');
+  assert.equal(typeof payload.domains.cash.hasOpenRegister, 'boolean');
+  assert.equal(typeof payload.domains.fiscal.activeTaxes, 'number');
+  assert.ok(Array.isArray(payload.highlights));
 });
 
 test('queue endpoints support check-in, list and call lifecycle over HTTP semantics', async () => {

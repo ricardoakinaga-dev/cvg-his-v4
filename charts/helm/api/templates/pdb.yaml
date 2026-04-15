@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cvg-his-v2-api.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "cvg-his-v2-api.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  # Require at least 1 pod available during disruptions (minAvailable strategy)
+  # Since we run 2+ replicas, this allows 1 disruption at a time
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: {{ include "cvg-his-v2-api.fullname" . }}

@@ -12,7 +12,10 @@
     }
   },
   "dependencies": {
-    "@cvg-his-v2/shared-contracts": "workspace:*"
+    "@cvg-his/db": "workspace:*",
+    "@cvg-his-v2/shared-contracts": "workspace:*",
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

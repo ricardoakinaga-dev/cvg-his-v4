@@ -1,28 +1,36 @@
-import { loadApiConfig } from '@cvg-his-v2/shared-config';
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import { createDatabaseClient, getDatabaseClient } from '@cvg-his-v2/shared-database';
+import { createFeatureFlagMetricsCollector } from './metrics.js';
 
 import { bootstrapServices } from './bootstrap.js';
 import { createApiServer } from './server.js';
+import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
+import { resolveApiStartup } from './startup-secrets.js';
 
-const config = loadApiConfig(process.env);
-const logger = createLogger(config.appName);
 const version = '0.1.0';
+let runtimeLogger = createLogger('cvg-his-v2-api-bootstrap');
 
 process.on('uncaughtException', (error) => {
-  logger.error('uncaught exception in api runtime', {
+  runtimeLogger.error('uncaught exception in api runtime', {
     error: error instanceof Error ? error.message : String(error)
   });
 });
 
 process.on('unhandledRejection', (error) => {
-  logger.error('unhandled rejection in api runtime', {
+  runtimeLogger.error('unhandled rejection in api runtime', {
     error: error instanceof Error ? error.message : String(error)
   });
 });
 
 async function main() {
+  const startup = await resolveApiStartup(process.env);
+  const config = startup.config;
+  const secretsManager = startup.secretsManager;
+  runtimeLogger = createLogger(config.appName);
+  const logger = runtimeLogger;
+
   const observability = await startApiObservability({
     enabled: config.otelEnabled,
     serviceName: config.otelServiceName,
@@ -54,8 +62,34 @@ async function main() {
     endpoint: observability.endpoint
   });
 
+  logger.info('secrets manager initialized', {
+    provider: secretsManager.provider,
+    vaultEnabled: config.vaultEnabled,
+    vaultNamespace: config.vaultNamespace,
+    databaseUrlResolvedFromSecrets: !process.env.DATABASE_URL && Boolean(startup.env.DATABASE_URL)
+  });
+
   const databaseUrl = config.databaseUrl;
   const databaseConfigured = Boolean(databaseUrl);
+  if (databaseUrl) {
+    createDatabaseClient(databaseUrl);
+  }
+
+  // GAP-06: Create API feature flags with database-backed provider + metrics
+  const featureFlagMetrics = createFeatureFlagMetricsCollector();
+  const db = databaseConfigured ? getDatabaseClient() : undefined;
+  const featureFlags: ApiFeatureFlagsSnapshot = await createApiFeatureFlags({
+    environment: config.environment,
+    enabledKeys: config.apiFeatureFlags ?? [],
+    db,
+    metrics: featureFlagMetrics
+  });
+
+  logger.info('feature flags initialized', {
+    provider: featureFlags.providerName,
+    enabledKeys: featureFlags.enabledKeys.length
+  });
+
   const bootstrapResult = await bootstrapServices({
     databaseUrl,
     fileStoragePath: config.fileStoragePath,
@@ -111,7 +145,11 @@ async function main() {
     workerReady,
     workerDetail,
     productionReady,
-    initialized: true
+    initialized: true,
+    secretsManagerProvider: secretsManager.provider,
+    // GAP-09: ML services are always instantiated in createApiRuntime (no async init required)
+    mlReady: true,
+    mlDetail: 'SmartSchedulingService (F3-03), ModelRegistryService (F3-02), FeatureStoreService (F3-01) wired'
   });
 
   logger.info('persistence mode', {
@@ -136,7 +174,16 @@ async function main() {
     enableMfa: config.enableMfa,
     mfaEncryptionKey: config.mfaEncryptionKey,
     repositories: bootstrapResult.repositories,
-    fileStorage: bootstrapResult.fileStorage
+    fileStorage: bootstrapResult.fileStorage,
+    featureFlagsProvider: config.featureFlagsProvider,
+    runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
+    // GAP-06: pre-resolved feature flags passed directly (already awaited above)
+    featureFlags,
+    pagarmeApiKey: config.pagarmeApiKey,
+    pagarmePixKey: config.pagarmePixKey,
+    pixMockMode: config.pixMockMode,
+    redisUrl: config.redisUrl,
+    secretsManager
   });
 
   await server.ready;
@@ -154,7 +201,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error('failed to start api server', {
+  runtimeLogger.error('failed to start api server', {
     error: error instanceof Error ? error.message : String(error)
   });
   process.exit(1);

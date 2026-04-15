@@ -1,124 +1,198 @@
 <template>
-  <div class="commercial-reports-page">
+  <div class="administrative-reports-page">
     <AppPageHeader
-      title="Relatórios Comerciais"
-      subtitle="Hub analítico de faturamento, conversão comercial e receita operacional"
+      title="Hubs Administrativos"
+      subtitle="Leitura executiva consolidada de financeiro, comercial, caixa e fiscal"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
     </AppPageHeader>
 
-    <!-- Hub: KPI StatCards -->
-    <section class="hub-kpis">
-      <DsStatCard :label="summary.totalInvoices + ' fatura(s)'" value="" icon="💰" />
-      <DsStatCard :label="formatCurrency(summary.grossRevenue)" value="" icon="📈" />
-      <DsStatCard :label="summary.approvedQuotes + ' aprovado(s)'" value="" icon="✅" />
-      <DsStatCard :label="formatCurrency(summary.quotePipeline)" value="" icon="🧾" />
-    </section>
-
-    <!-- Hub: Operational Alerts -->
-    <section v-if="reportAlerts.length > 0" class="hub-alerts">
-      <DsAlert
-        v-for="(alert, i) in reportAlerts"
-        :key="i"
-        :variant="alert.variant"
-        dismissible
-      >
-        <strong>{{ alert.title }}</strong> — {{ alert.message }}
-      </DsAlert>
-    </section>
-
-    <!-- Hub: Quick Actions -->
-    <section class="hub-actions">
-      <DsCard title="Ações rápidas" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="primary" tag="a" to="/quotes" icon="🧾">
-            Criar Orçamento
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/billing" icon="💰">
-            Faturamento
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">
-            Ver Caixa
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/counter-sales" icon="🛒">
-            Vendas Balcão
-          </DsButton>
-          <DsButton variant="ghost" :loading="loading" @click="reload" icon="🔄">
-            Atualizar
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="reports-story">
-      <DsCard title="Leitura executiva da carteira">
-        <div class="summary-grid">
-          <div v-for="card in storyCards" :key="card.label" class="summary-card">
-            <span class="summary-card__label">{{ card.label }}</span>
-            <strong class="summary-card__value">{{ card.value }}</strong>
-            <span class="summary-card__hint">{{ card.hint }}</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
     <section class="filters">
-      <DsInput v-model="query" placeholder="Filtrar por número, status ou observação" />
-      <DsInput v-model="statusFilter" type="select" style="max-width: 180px">
-        <option value="">Todos os status</option>
-        <option value="open">Abertos</option>
-        <option value="settled">Quitados</option>
-        <option value="draft">Rascunhos</option>
-        <option value="approved">Aprovados</option>
-      </DsInput>
+      <DsInput v-model="filters.dateFrom" type="date" label="De" />
+      <DsInput v-model="filters.dateTo" type="date" label="Até" />
+      <div class="filters__actions">
+        <DsButton variant="primary" :loading="loading" @click="reload">Aplicar</DsButton>
+        <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
+      </div>
     </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
-    <div class="grid">
-      <DsCard title="Faturamento" class="panel">
+    <section class="hero-kpis">
+      <DsStatCard
+        label="Recebíveis em aberto"
+        :value="formatCurrency(report?.executive.outstandingReceivables ?? 0)"
+        icon="💰"
+      />
+      <DsStatCard
+        label="Pipeline comercial"
+        :value="formatCurrency(report?.executive.quotePipelineAmount ?? 0)"
+        icon="🧾"
+      />
+      <DsStatCard
+        label="Receita comercial"
+        :value="formatCurrency(report?.executive.commercialRevenue ?? 0)"
+        icon="📈"
+      />
+      <DsStatCard
+        label="PIX exigindo atenção"
+        :value="String(report?.executive.pixAttentionCount ?? 0)"
+        icon="💸"
+      />
+      <DsStatCard
+        label="Saldo do caixa aberto"
+        :value="formatCurrency(report?.executive.openCashBalance ?? 0)"
+        icon="🏦"
+      />
+      <DsStatCard
+        label="Cobertura fiscal"
+        :value="`${report?.executive.fiscalCoverageScore ?? 0}/100`"
+        icon="📋"
+      />
+    </section>
+
+    <section v-if="report?.highlights.length" class="highlights">
+      <DsAlert
+        v-for="highlight in report.highlights"
+        :key="`${highlight.domain}-${highlight.title}`"
+        :variant="highlight.severity"
+      >
+        <strong>{{ domainLabel(highlight.domain) }}:</strong> {{ highlight.title }} — {{ highlight.message }}
+      </DsAlert>
+    </section>
+
+    <section class="quick-actions">
+      <DsCard title="Atalhos operacionais" variant="compact">
+        <div class="quick-actions__grid">
+          <DsButton variant="primary" tag="a" to="/billing" icon="💰">Faturamento</DsButton>
+          <DsButton variant="secondary" tag="a" to="/pix" icon="💸">PIX</DsButton>
+          <DsButton variant="secondary" tag="a" to="/counter-sales" icon="🛒">Comandas</DsButton>
+          <DsButton variant="secondary" tag="a" to="/quotes" icon="🧾">Orçamentos</DsButton>
+          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">Caixa</DsButton>
+          <DsButton variant="secondary" tag="a" to="/fiscal" icon="📋">Fiscal</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
+    <div class="domains-grid">
+      <DsCard title="Financeiro">
+        <div class="summary-grid">
+          <div v-for="card in financialCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+
         <DataTable
-          :columns="billingColumns"
-          :rows="billingRows"
+          :columns="receivablesColumns"
+          :rows="receivablesRows"
           :loading="loading"
           empty-icon="💰"
-          empty-title="Sem faturamento no período"
-          empty-description="Os registros são consolidados a partir do módulo de faturamento."
+          empty-title="Sem recebíveis críticos"
+          empty-description="Os maiores recebíveis em aberto aparecem aqui para priorização financeira."
           variant="hoverable"
         >
-          <template #cell-status="{ row }">
-            <StatusBadge :label="billingStatusLabel(billingRow(row).status)" :variant="billingStatusVariant(billingRow(row).status)" />
+          <template #cell-dueAt="{ row }">
+            {{ formatDate(receivableRow(row).dueAt) }}
           </template>
-          <template #cell-subtotalAmount="{ row }">
-            {{ formatCurrency(billingRow(row).subtotalAmount) }}
+          <template #cell-amountOutstanding="{ row }">
+            {{ formatCurrency(receivableRow(row).amountOutstanding) }}
           </template>
         </DataTable>
       </DsCard>
 
-      <DsCard title="Orçamentos" class="panel">
+      <DsCard title="Comercial">
+        <div class="summary-grid">
+          <div v-for="card in commercialCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+
         <DataTable
-          :columns="quoteColumns"
-          :rows="quoteRows"
+          :columns="quotesColumns"
+          :rows="quotesRows"
           :loading="loading"
-          empty-icon="📝"
-          empty-title="Sem orçamentos"
-          empty-description="Os orçamentos aparecem aqui para análise comercial."
+          empty-icon="🧾"
+          empty-title="Sem orçamento recente"
+          empty-description="Os orçamentos mais recentes aparecem aqui para leitura gerencial."
           variant="hoverable"
         >
-          <template #cell-status="{ row }">
-            <StatusBadge :label="quoteStatusLabel(quoteRow(row).status)" :variant="quoteStatusVariant(quoteRow(row).status)" />
-          </template>
           <template #cell-total="{ row }">
             {{ formatCurrency(quoteRow(row).total) }}
           </template>
-          <template #cell-convertedToSaleId="{ row }">
-            <DsBadge :variant="quoteRow(row).convertedToSaleId ? 'success' : 'neutral'" size="sm">
-              {{ quoteRow(row).convertedToSaleId ? 'Convertido' : 'Pendente' }}
-            </DsBadge>
+          <template #cell-createdAt="{ row }">
+            {{ formatDate(quoteRow(row).createdAt) }}
+          </template>
+        </DataTable>
+      </DsCard>
+
+      <DsCard title="Caixa">
+        <div class="summary-grid">
+          <div v-for="card in cashCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+
+        <DataTable
+          :columns="cashColumns"
+          :rows="cashRows"
+          :loading="loading"
+          empty-icon="🏦"
+          empty-title="Sem histórico recente de caixa"
+          empty-description="Os últimos caixas ficam visíveis aqui para conferência operacional."
+          variant="hoverable"
+        >
+          <template #cell-openingAmount="{ row }">
+            {{ formatCurrency(cashRegisterRow(row).openingAmount) }}
+          </template>
+          <template #cell-runningBalance="{ row }">
+            {{ formatCurrency(cashRegisterRow(row).runningBalance) }}
+          </template>
+          <template #cell-openedAt="{ row }">
+            {{ formatDate(cashRegisterRow(row).openedAt) }}
+          </template>
+        </DataTable>
+      </DsCard>
+
+      <DsCard title="Fiscal">
+        <div class="summary-grid">
+          <div v-for="card in fiscalCards" :key="card.label" class="summary-card">
+            <span class="summary-card__label">{{ card.label }}</span>
+            <strong class="summary-card__value">{{ card.value }}</strong>
+            <span class="summary-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+
+        <div class="fiscal-alerts">
+          <DsAlert
+            v-for="alert in report?.domains.fiscal.alerts ?? []"
+            :key="alert.title"
+            :variant="alert.variant"
+          >
+            <strong>{{ alert.title }}</strong> — {{ alert.message }}
+          </DsAlert>
+        </div>
+
+        <DataTable
+          :columns="paymentMethodsColumns"
+          :rows="paymentMethodsRows"
+          :loading="loading"
+          empty-icon="📊"
+          empty-title="Sem mix de pagamentos"
+          empty-description="O hub comercial ainda não consolidou pagamentos para o período filtrado."
+          variant="hoverable"
+        >
+          <template #cell-total="{ row }">
+            {{ formatCurrency(paymentMethodRow(row).total) }}
           </template>
         </DataTable>
       </DsCard>
@@ -128,245 +202,299 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
-import StatusBadge from '@/components/StatusBadge.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
-import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
-import { billingService } from '@/services/billing';
-import { quoteService, type QuoteSummary } from '@/services/quotes';
-import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
-import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import {
+  administrativeReportsService,
+  type AdministrativeReportsResponse
+} from '@/services/administrativeReports';
 
 const loading = ref(true);
 const error = ref('');
-const query = ref('');
-const statusFilter = ref('');
-const billing = ref<BillingRecordSummary[]>([]);
-const quotes = ref<QuoteSummary[]>([]);
+const report = ref<AdministrativeReportsResponse | null>(null);
+const filters = ref({
+  dateFrom: '',
+  dateTo: ''
+});
 
-const billingColumns: DataTableColumn[] = [
-  { key: 'encounterId', label: 'Atendimento' },
-  { key: 'patientId', label: 'Paciente' },
-  { key: 'ownerId', label: 'Tutor' },
-  { key: 'status', label: 'Status' },
-  { key: 'subtotalAmount', label: 'Subtotal' }
+const receivablesColumns: DataTableColumn[] = [
+  { key: 'patientName', label: 'Paciente' },
+  { key: 'ownerName', label: 'Tutor' },
+  { key: 'installmentLabel', label: 'Parcela' },
+  { key: 'dueAt', label: 'Vencimento' },
+  { key: 'amountOutstanding', label: 'Saldo' }
 ];
 
-const quoteColumns: DataTableColumn[] = [
+const quotesColumns: DataTableColumn[] = [
   { key: 'number', label: 'Número' },
   { key: 'status', label: 'Status' },
   { key: 'total', label: 'Total' },
-  { key: 'convertedToSaleId', label: 'Venda' }
+  { key: 'createdAt', label: 'Criado em' }
 ];
 
-const summary = computed(() => ({
-  totalInvoices: billing.value.length,
-  grossRevenue: billing.value.reduce((sum, item) => sum + (item.subtotalAmount ?? 0), 0),
-  totalQuotes: quotes.value.length,
-  approvedQuotes: quotes.value.filter((item) => item.status === 'approved').length,
-  quotePipeline: quotes.value
-    .filter((item) => ['draft', 'approved'].includes(item.status))
-    .reduce((sum, item) => sum + (item.total ?? 0), 0)
-}));
-const storyCards = computed(() => {
-  const convertedQuotes = quotes.value.filter((item) => item.convertedToSaleId).length;
-  const conversionRate = quotes.value.length
-    ? `${Math.round((convertedQuotes / quotes.value.length) * 100)}%`
-    : '0%';
-  const settledBilling = billing.value.filter((item) => item.status === 'settled').length;
-  const settlementRate = billing.value.length
-    ? `${Math.round((settledBilling / billing.value.length) * 100)}%`
-    : '0%';
+const cashColumns: DataTableColumn[] = [
+  { key: 'status', label: 'Status' },
+  { key: 'openingAmount', label: 'Abertura' },
+  { key: 'runningBalance', label: 'Saldo corrente' },
+  { key: 'openedAt', label: 'Aberto em' }
+];
 
+const paymentMethodsColumns: DataTableColumn[] = [
+  { key: 'method', label: 'Método' },
+  { key: 'total', label: 'Total' }
+];
+
+const receivablesRows = computed(
+  () => (report.value?.domains.financial.receivables.topOpenReceivables ?? []) as unknown as DataTableRow[]
+);
+const quotesRows = computed(
+  () => (report.value?.domains.commercial.quotes.recent ?? []) as unknown as DataTableRow[]
+);
+const cashRows = computed(
+  () => (report.value?.domains.cash.recentRegisters ?? []) as unknown as DataTableRow[]
+);
+const paymentMethodsRows = computed(
+  () =>
+    (report.value?.domains.commercial.counterSales.byPaymentMethod ?? []) as unknown as DataTableRow[]
+);
+
+const financialCards = computed(() => {
+  const financial = report.value?.domains.financial;
+  if (!financial) return [];
   return [
-    { label: 'Conversão', value: conversionRate, hint: 'Orçamentos transformados em venda' },
-    { label: 'Liquidação', value: settlementRate, hint: 'Faturamentos já quitados' },
-    { label: 'Pipeline', value: formatCurrency(summary.value.quotePipeline), hint: 'Volume comercial em andamento' },
-    { label: 'Receita', value: formatCurrency(summary.value.grossRevenue), hint: 'Receita consolidada do período' }
+    {
+      label: 'Faturamentos',
+      value: String(financial.billing.totalRecords),
+      hint: `${financial.billing.openCount} aberto(s) e ${financial.billing.settledCount} quitado(s)`
+    },
+    {
+      label: 'Recebíveis abertos',
+      value: String(financial.receivables.openCount),
+      hint: `${financial.receivables.overdueCount} em atraso`
+    },
+    {
+      label: 'Saldo em aberto',
+      value: formatCurrency(financial.receivables.totalOutstanding),
+      hint: 'Volume atual de cobrança'
+    },
+    {
+      label: 'PIX reconciliado',
+      value: `${financial.pix.reconciledCount}/${financial.pix.completedCount}`,
+      hint: `${financial.pix.attentionRequiredCount} exigem ação`
+    }
   ];
 });
 
-interface ReportAlert {
-  variant: 'warning' | 'danger' | 'info';
-  title: string;
-  message: string;
-}
-
-const reportAlerts = computed<ReportAlert[]>(() => {
-  const alerts: ReportAlert[] = [];
-  const openBilling = billing.value.filter((b) => b.status === 'open').length;
-  if (openBilling > 0) {
-    alerts.push({ variant: 'warning', title: 'Cobranças em aberto', message: `${openBilling} fatura(s) aguardando quitação.` });
-  }
-  const approvedQuotesCount = quotes.value.filter((q) => q.status === 'approved').length;
-  if (approvedQuotesCount > 0) {
-    alerts.push({ variant: 'info', title: 'Orçamentos prontos', message: `${approvedQuotesCount} orçamento(s) aprovado(s) e aguardando conversão.` });
-  }
-  return alerts;
+const commercialCards = computed(() => {
+  const commercial = report.value?.domains.commercial;
+  if (!commercial) return [];
+  return [
+    {
+      label: 'Orçamentos emitidos',
+      value: String(commercial.quotes.issuedCount),
+      hint: `${commercial.quotes.approvedCount} aprovado(s)`
+    },
+    {
+      label: 'Pipeline',
+      value: formatCurrency(commercial.quotes.pipelineAmount),
+      hint: 'Valor ainda em negociação'
+    },
+    {
+      label: 'Receita bruta',
+      value: formatCurrency(commercial.counterSales.grossRevenue),
+      hint: `${commercial.counterSales.closedCount} venda(s) fechada(s)`
+    },
+    {
+      label: 'Ticket médio',
+      value: formatCurrency(commercial.counterSales.avgTicket),
+      hint: 'Média por venda fechada'
+    }
+  ];
 });
 
-const filteredBilling = computed(() => {
-  const needle = query.value.trim().toLowerCase();
-  return billing.value.filter((item) => {
-    const matchesQuery =
-      !needle ||
-      [item.encounterId, item.patientId, item.ownerId, item.status].some((value) =>
-        String(value ?? '').toLowerCase().includes(needle)
-      );
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value;
-    return matchesQuery && matchesStatus;
-  });
+const cashCards = computed(() => {
+  const cash = report.value?.domains.cash;
+  if (!cash) return [];
+  return [
+    {
+      label: 'Caixa aberto',
+      value: cash.hasOpenRegister ? 'Sim' : 'Não',
+      hint: cash.openRegister ? `Aberto em ${formatDate(cash.openRegister.openedAt)}` : 'Sem caixa ativo'
+    },
+    {
+      label: 'Saldo corrente',
+      value: formatCurrency(cash.openRegister?.runningBalance ?? 0),
+      hint: 'Saldo do caixa ativo'
+    },
+    {
+      label: 'Entradas recentes',
+      value: formatCurrency(cash.inflowAmount),
+      hint: 'Somatório das últimas movimentações'
+    },
+    {
+      label: 'Histórico',
+      value: String(cash.registerCount),
+      hint: 'Caixas mais recentes carregados no hub'
+    }
+  ];
 });
 
-const filteredQuotes = computed(() => {
-  const needle = query.value.trim().toLowerCase();
-  return quotes.value.filter((item) => {
-    const matchesQuery =
-      !needle ||
-      [item.number, item.status, item.notes, item.ownerId, item.convertedToSaleId].some((value) =>
-        String(value ?? '').toLowerCase().includes(needle)
-      );
-    const matchesStatus = !statusFilter.value || item.status === statusFilter.value;
-    return matchesQuery && matchesStatus;
-  });
+const fiscalCards = computed(() => {
+  const fiscal = report.value?.domains.fiscal;
+  if (!fiscal) return [];
+  return [
+    {
+      label: 'Tributos ativos',
+      value: String(fiscal.activeTaxes),
+      hint: 'Regra ativa no escopo atual'
+    },
+    {
+      label: 'CFOP publicados',
+      value: String(fiscal.cfopCount),
+      hint: 'Catálogo tributário disponível'
+    },
+    {
+      label: 'Layouts NFS-e',
+      value: String(fiscal.nfseLayouts),
+      hint: 'Municípios configurados'
+    },
+    {
+      label: 'Escopo',
+      value: fiscal.backendScope,
+      hint: fiscal.readOnly ? 'Backend em modo leitura' : 'Backoffice com escrita disponível'
+    }
+  ];
 });
 
-const billingRows = computed(() => filteredBilling.value as unknown as DataTableRow[]);
-const quoteRows = computed(() => filteredQuotes.value as unknown as DataTableRow[]);
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value || 0);
-}
-
-function billingStatusLabel(status: BillingStatus) {
-  const map: Record<BillingStatus, string> = {
-    draft: 'Rascunho',
-    estimated: 'Estimado',
-    open: 'Aberto',
-    settled: 'Quitado'
-  };
-  return map[status] ?? status;
-}
-
-function billingStatusVariant(status: BillingStatus) {
-  const map: Record<BillingStatus, 'neutral' | 'info' | 'warning' | 'success'> = {
-    draft: 'neutral',
-    estimated: 'info',
-    open: 'warning',
-    settled: 'success'
-  };
-  return map[status];
-}
-
-function quoteStatusLabel(status: QuoteSummary['status']) {
-  const map: Record<QuoteSummary['status'], string> = {
-    draft: 'Rascunho',
-    approved: 'Aprovado',
-    rejected: 'Rejeitado',
-    expired: 'Expirado',
-    cancelled: 'Cancelado'
-  };
-  return map[status];
-}
-
-function quoteStatusVariant(status: QuoteSummary['status']) {
-  const map: Record<QuoteSummary['status'], 'neutral' | 'info' | 'warning' | 'success' | 'danger'> = {
-    draft: 'neutral',
-    approved: 'success',
-    rejected: 'danger',
-    expired: 'warning',
-    cancelled: 'neutral'
-  };
-  return map[status];
-}
-
-async function loadData() {
+async function reload() {
   loading.value = true;
   error.value = '';
   try {
-    const [records, quoteItems] = await Promise.all([billingService.list(), quoteService.list()]);
-    billing.value = records;
-    quotes.value = quoteItems;
+    report.value = await administrativeReportsService.getHubs({
+      dateFrom: filters.value.dateFrom || undefined,
+      dateTo: filters.value.dateTo || undefined
+    });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao carregar relatórios comerciais';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar hubs administrativos';
   } finally {
     loading.value = false;
   }
 }
 
-function reload() {
-  void loadData();
+function resetFilters() {
+  filters.value = { dateFrom: '', dateTo: '' };
+  void reload();
 }
 
-onMounted(loadData);
-
-function billingRow(row: unknown): BillingRecordSummary {
-  return row as BillingRecordSummary;
+function formatCurrency(value: number | null | undefined): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value ?? 0);
 }
 
-function quoteRow(row: unknown): QuoteSummary {
-  return row as QuoteSummary;
+function formatDate(value: string | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(parsed);
 }
+
+function domainLabel(domain: 'financial' | 'commercial' | 'cash' | 'fiscal'): string {
+  return {
+    financial: 'Financeiro',
+    commercial: 'Comercial',
+    cash: 'Caixa',
+    fiscal: 'Fiscal'
+  }[domain];
+}
+
+function receivableRow(row: unknown) {
+  return row as AdministrativeReportsResponse['domains']['financial']['receivables']['topOpenReceivables'][number];
+}
+
+function quoteRow(row: unknown) {
+  return row as AdministrativeReportsResponse['domains']['commercial']['quotes']['recent'][number];
+}
+
+function cashRegisterRow(row: unknown) {
+  return row as AdministrativeReportsResponse['domains']['cash']['recentRegisters'][number];
+}
+
+function paymentMethodRow(row: unknown) {
+  return row as AdministrativeReportsResponse['domains']['commercial']['counterSales']['byPaymentMethod'][number];
+}
+
+onMounted(() => {
+  void reload();
+});
 </script>
 
 <style scoped>
-.commercial-reports-page {
+.administrative-reports-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.hub-alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hub-actions {
-  margin-bottom: 0;
-}
-
-.reports-story {
-  margin-bottom: 0;
-}
-
-.quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
+}
+
+.filters__actions {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.grid {
+.hero-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.highlights,
+.quick-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.quick-actions__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.domains-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
 }
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
+  margin-bottom: 16px;
 }
 
 .summary-card {
@@ -380,14 +508,14 @@ function quoteRow(row: unknown): QuoteSummary {
   display: block;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--color-text-muted, #64748b);
 }
 
 .summary-card__value {
   display: block;
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 20px;
   font-weight: 800;
 }
@@ -399,7 +527,9 @@ function quoteRow(row: unknown): QuoteSummary {
   color: var(--color-text-muted, #64748b);
 }
 
-.panel {
-  border-radius: 18px;
+.fiscal-alerts {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 </style>

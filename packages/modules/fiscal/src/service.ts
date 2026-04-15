@@ -1,4 +1,5 @@
 import type {
+  CreateFiscalNfseLayoutRequest,
   FiscalCfopSummary,
   FiscalDashboardSummary,
   FiscalIcmsMatrixRowSummary,
@@ -6,11 +7,14 @@ import type {
   FiscalNcmEntrySummary,
   FiscalNfseLayoutSummary,
   FiscalPisCofinsRuleSummary,
-  FiscalTaxPreview
+  FiscalTaxPreview,
+  UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
 import { CFOP_TABLE, type CfopSection } from './cfop-table.js';
 import { DEFAULT_TAX_RATES, TaxCalculator, type TaxRegime } from './tax-calculator.js';
+import { DatabaseFiscalRepository } from './database-fiscal.repository.js';
+import type { AccountId } from '@cvg-his-v2/shared-types';
 
 export interface FiscalCfopFilters {
   readonly search?: string;
@@ -258,6 +262,8 @@ const NFSE_LAYOUTS: readonly FiscalNfseLayoutSummary[] = [
   }
 ] as const;
 
+const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({ ...layout }));
+
 function createTaxPreview(): FiscalTaxPreview {
   const calculator = new TaxCalculator(DEFAULT_TAX_RATES, 'SP', 'simples_nacional');
 
@@ -306,8 +312,47 @@ function matchesContains(value: string, expected?: string): boolean {
   return !expected || value.toLowerCase().includes(expected.trim().toLowerCase());
 }
 
+function sanitizeLayoutId(city: string, state: string): string {
+  const normalizedCity = city
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `nfse-${state.toLowerCase()}-${normalizedCity}-${Date.now().toString(36)}`;
+}
+
+function assertNonEmpty(value: string | undefined, field: string): string {
+  const normalized = value?.trim();
+  if (!normalized) {
+    throw new Error(`${field} is required`);
+  }
+  return normalized;
+}
+
 export class FiscalService {
-  public listIcmsRules(filters: FiscalIcmsRuleFilters = {}): FiscalIcmsRuleSummary[] {
+  private readonly dbRepo?: DatabaseFiscalRepository;
+  private readonly accountId?: AccountId;
+
+  constructor(dbRepo?: DatabaseFiscalRepository, accountId?: AccountId) {
+    this.dbRepo = dbRepo;
+    this.accountId = accountId;
+  }
+
+  private hasDbRepo(): boolean {
+    return this.dbRepo != null && this.accountId != null;
+  }
+
+  public async listIcmsRules(filters: FiscalIcmsRuleFilters = {}): Promise<FiscalIcmsRuleSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listIcmsRules({
+        accountId: this.accountId!,
+        ufOrigin: filters.ufOrigin,
+        ufDestination: filters.ufDestination,
+        ncm: filters.ncm,
+        operationType: filters.operationType
+      });
+    }
     return ICMS_RULES.filter((rule) =>
       matchesExact(rule.ufOrigin, filters.ufOrigin)
       && matchesExact(rule.ufDestination, filters.ufDestination)
@@ -316,16 +361,31 @@ export class FiscalService {
     );
   }
 
-  public listPisCofinsRules(
+  public async listPisCofinsRules(
     filters: FiscalPisCofinsRuleFilters = {}
-  ): FiscalPisCofinsRuleSummary[] {
+  ): Promise<FiscalPisCofinsRuleSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listPisCofinsRules({
+        accountId: this.accountId!,
+        regime: filters.regime,
+        appliesTo: filters.appliesTo
+      });
+    }
     return PIS_COFINS_RULES.filter((rule) =>
       (!filters.regime || rule.regime === filters.regime)
       && (!filters.appliesTo || rule.appliesTo === filters.appliesTo)
     );
   }
 
-  public listCfop(filters: FiscalCfopFilters = {}): FiscalCfopSummary[] {
+  public async listCfop(filters: FiscalCfopFilters = {}): Promise<FiscalCfopSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listCfop({
+        accountId: this.accountId!,
+        search: filters.search,
+        section: filters.section,
+        documentType: filters.documentType
+      });
+    }
     const normalizedSearch = normalizeTerm(filters.search);
 
     return CFOP_TABLE
@@ -345,7 +405,13 @@ export class FiscalService {
       );
   }
 
-  public listNcmEntries(filters: FiscalNcmEntryFilters = {}): FiscalNcmEntrySummary[] {
+  public async listNcmEntries(filters: FiscalNcmEntryFilters = {}): Promise<FiscalNcmEntrySummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listNcmEntries({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
     return NCM_ENTRIES.filter((entry) =>
       matchesContains(
         `${entry.ncm} ${entry.category} ${entry.notes} ${entry.source}`,
@@ -354,10 +420,11 @@ export class FiscalService {
     );
   }
 
-  public listIcmsMatrix(filters: FiscalIcmsMatrixFilters = {}): FiscalIcmsMatrixRowSummary[] {
+  public async listIcmsMatrix(filters: FiscalIcmsMatrixFilters = {}): Promise<FiscalIcmsMatrixRowSummary[]> {
+    const rules = await this.listIcmsRules(filters);
     const rows = new Map<string, FiscalIcmsMatrixRowSummary>();
 
-    for (const rule of ICMS_RULES) {
+    for (const rule of rules) {
       const id = `${rule.ufOrigin}-${rule.ufDestination}-${rule.operationType}`;
       const current = rows.get(id);
 
@@ -379,23 +446,92 @@ export class FiscalService {
     );
   }
 
-  public listNfseLayouts(filters: FiscalNfseLayoutFilters = {}): FiscalNfseLayoutSummary[] {
-    return NFSE_LAYOUTS.filter((layout) =>
+  public async listNfseLayouts(filters: FiscalNfseLayoutFilters = {}): Promise<FiscalNfseLayoutSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listNfseLayouts({
+        accountId: this.accountId!,
+        state: filters.state,
+        active: filters.active
+      });
+    }
+    return inMemoryNfseLayouts.filter((layout) =>
       matchesExact(layout.state, filters.state)
       && (filters.active === undefined || layout.active === filters.active)
     );
   }
 
-  public getTaxPreview(): FiscalTaxPreview {
+  public async createNfseLayout(
+    payload: CreateFiscalNfseLayoutRequest
+  ): Promise<FiscalNfseLayoutSummary> {
+    const city = assertNonEmpty(payload.city, 'city');
+    const state = assertNonEmpty(payload.state, 'state').toUpperCase();
+    const provider = assertNonEmpty(payload.provider, 'provider');
+    const version = assertNonEmpty(payload.version, 'version');
+
+    const layout: FiscalNfseLayoutSummary = {
+      id: sanitizeLayoutId(city, state),
+      city,
+      state,
+      municipalityCode: payload.municipalityCode?.trim() ?? '',
+      provider,
+      version,
+      active: payload.active ?? false,
+      environment: payload.environment,
+      serviceCode: payload.serviceCode?.trim() ?? '',
+      serviceFocus: payload.serviceFocus?.trim() ?? ''
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createNfseLayout(this.accountId!, layout);
+    }
+
+    inMemoryNfseLayouts.unshift(layout);
+    return layout;
+  }
+
+  public async updateNfseLayout(
+    id: string,
+    payload: UpdateFiscalNfseLayoutRequest
+  ): Promise<FiscalNfseLayoutSummary | null> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateNfseLayout(this.accountId!, id, payload);
+    }
+
+    const index = inMemoryNfseLayouts.findIndex((layout) => layout.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryNfseLayouts[index];
+    const next: FiscalNfseLayoutSummary = {
+      ...current,
+      city: payload.city?.trim() || current.city,
+      state: payload.state?.trim().toUpperCase() || current.state,
+      municipalityCode: payload.municipalityCode?.trim() ?? current.municipalityCode,
+      provider: payload.provider?.trim() || current.provider,
+      version: payload.version?.trim() || current.version,
+      active: payload.active ?? current.active,
+      environment: payload.environment ?? current.environment,
+      serviceCode: payload.serviceCode?.trim() ?? current.serviceCode,
+      serviceFocus: payload.serviceFocus?.trim() ?? current.serviceFocus
+    };
+
+    inMemoryNfseLayouts[index] = next;
+    return next;
+  }
+
+  public async getTaxPreview(): Promise<FiscalTaxPreview> {
     return createTaxPreview();
   }
 
-  public getDashboardSummary(): FiscalDashboardSummary {
-    const cfopItems = this.listCfop();
-    const icmsRules = this.listIcmsRules();
-    const pisCofinsRules = this.listPisCofinsRules();
-    const ncmEntries = this.listNcmEntries();
-    const nfseLayouts = this.listNfseLayouts();
+  public async getDashboardSummary(): Promise<FiscalDashboardSummary> {
+    const [cfopItems, icmsRules, pisCofinsRules, ncmEntries, nfseLayouts] = await Promise.all([
+      this.listCfop(),
+      this.listIcmsRules(),
+      this.listPisCofinsRules(),
+      this.listNcmEntries(),
+      this.listNfseLayouts()
+    ]);
 
     return {
       activeTaxes: 5,
@@ -404,8 +540,8 @@ export class FiscalService {
       icmsRules: icmsRules.length,
       pisCofinsRules: pisCofinsRules.length,
       ncmEntries: ncmEntries.length,
-      readOnly: true,
-      backendScope: 'Consulta HTTP real para tabelas fiscais prioritárias',
+      readOnly: false,
+      backendScope: 'Consulta HTTP real para tabelas fiscais prioritárias com backoffice inicial de layouts NFS-e',
       pendingScopes: [
         'cadastros fiscais persistidos',
         'emissão NFS-e transacional',
@@ -420,15 +556,21 @@ export class FiscalService {
         },
         {
           variant: 'info',
+          title: 'Backoffice inicial de NFS-e publicado',
+          message:
+            'Layouts municipais de NFS-e agora podem ser cadastrados e ajustados pelo backoffice fiscal com gate dedicado.'
+        },
+        {
+          variant: 'info',
           title: 'Cobertura ampliada de tabelas prioritárias',
           message:
             'As rotas fiscais aceitam filtros operacionais por UF, regime, documento e status sem depender de catálogo local na SPA.'
         },
         {
           variant: 'warning',
-          title: 'Escopo atual segue read-only',
+          title: 'Escopo fiscal ainda parcial',
           message:
-            'Cadastro, edição e emissão fiscal ainda não estão publicados porque o backend transacional correspondente não existe.'
+            'Emissão, cancelamento e escrituração fiscal ainda não estão publicados porque o backend transacional correspondente não existe.'
         }
       ]
     };

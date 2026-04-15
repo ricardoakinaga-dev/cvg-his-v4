@@ -75,17 +75,35 @@ function createPrincipal(): AuthenticatedPrincipal {
     },
     access: {
       roleCodes: ['finance'],
-      permissionCodes: ['fiscal.read'],
+      permissionCodes: ['fiscal.read', 'fiscal.manage'],
       capabilities: []
     }
   };
 }
 
-test('handleFiscalRoutes serves dashboard summary from the backend fiscal service', () => {
+function createMockRequest(method: string, url: string, body?: object): object {
+  const bodyStr = body ? JSON.stringify(body) : '';
+  const chunks: Buffer[] = bodyStr ? [Buffer.from(bodyStr)] : [];
+
+  return {
+    method,
+    url,
+    [Symbol.asyncIterator]: () => ({
+      next: async () => {
+        if (chunks.length === 0) {
+          return { done: true, value: undefined };
+        }
+        return { done: false, value: chunks.shift()! };
+      }
+    })
+  };
+}
+
+test('handleFiscalRoutes serves dashboard summary from the backend fiscal service', async () => {
   const response = new MockResponse();
   let requiredPermission = '';
 
-  const handled = handleFiscalRoutes(
+  const handled = await handleFiscalRoutes(
     '/fiscal/summary',
     { method: 'GET', url: '/fiscal/summary' } as never,
     response as never,
@@ -96,7 +114,8 @@ test('handleFiscalRoutes serves dashboard summary from the backend fiscal servic
       requirePrincipal: (_request, permissionCode) => {
         requiredPermission = permissionCode;
         return createPrincipal();
-      }
+      },
+      fiscalBackofficeEnabled: true
     }
   );
 
@@ -108,10 +127,10 @@ test('handleFiscalRoutes serves dashboard summary from the backend fiscal servic
   assert.ok(payload.icmsRules > 0);
 });
 
-test('handleFiscalRoutes filters CFOP rows using query params', () => {
+test('handleFiscalRoutes filters CFOP rows using query params', async () => {
   const response = new MockResponse();
 
-  const handled = handleFiscalRoutes(
+  const handled = await handleFiscalRoutes(
     '/fiscal/cfop',
     {
       method: 'GET',
@@ -122,7 +141,8 @@ test('handleFiscalRoutes filters CFOP rows using query params', () => {
     {
       fiscal: new FiscalService(),
       audit: { write: () => ({}) } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
     }
   );
 
@@ -134,11 +154,11 @@ test('handleFiscalRoutes filters CFOP rows using query params', () => {
   assert.ok(payload.items.some((item) => item.category === 'servico'));
 });
 
-test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params', () => {
+test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params', async () => {
   const icmsResponse = new MockResponse();
   const nfseResponse = new MockResponse();
 
-  const icmsHandled = handleFiscalRoutes(
+  const icmsHandled = await handleFiscalRoutes(
     '/fiscal/icms',
     {
       method: 'GET',
@@ -149,11 +169,12 @@ test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params',
     {
       fiscal: new FiscalService(),
       audit: { write: () => ({}) } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
     }
   );
 
-  const nfseHandled = handleFiscalRoutes(
+  const nfseHandled = await handleFiscalRoutes(
     '/fiscal/nfse',
     {
       method: 'GET',
@@ -164,7 +185,8 @@ test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params',
     {
       fiscal: new FiscalService(),
       audit: { write: () => ({}) } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
     }
   );
 
@@ -186,10 +208,100 @@ test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params',
   assert.ok(nfsePayload.items.every((item) => item.active));
 });
 
-test('handleFiscalRoutes ignores unrelated paths', () => {
+test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffice is enabled', async () => {
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/nfse',
+    createMockRequest('POST', '/fiscal/nfse', {
+      city: 'Campinas',
+      state: 'SP',
+      municipalityCode: '3509502',
+      provider: 'ISS Campinas',
+      version: 'v1',
+      active: false,
+      environment: 'homologacao',
+      serviceCode: '0407',
+      serviceFocus: 'Expansão interior'
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-6',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ id: string; city: string; active: boolean }>();
+  assert.equal(createdPayload.city, 'Campinas');
+  assert.equal(createdPayload.active, false);
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/nfse/${createdPayload.id}`,
+    createMockRequest('PATCH', `/fiscal/nfse/${createdPayload.id}`, {
+      active: true,
+      environment: 'producao'
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-7',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ active: boolean; environment: string }>();
+  assert.equal(updatedPayload.active, true);
+  assert.equal(updatedPayload.environment, 'producao');
+});
+
+test('handleFiscalRoutes blocks write operations when fiscal backoffice flag is disabled', async () => {
   const response = new MockResponse();
 
-  const handled = handleFiscalRoutes(
+  const handled = await handleFiscalRoutes(
+    '/fiscal/nfse',
+    createMockRequest('POST', '/fiscal/nfse', {
+      city: 'Santos',
+      state: 'SP',
+      provider: 'ISS Santos',
+      version: 'v1',
+      environment: 'homologacao'
+    }) as never,
+    response as never,
+    'corr-fiscal-8',
+    {
+      fiscal: new FiscalService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: false
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 403);
+  const payload = response.bodyJson<{ code: string }>();
+  assert.equal(payload.code, 'FLAG_DISABLED');
+});
+
+test('handleFiscalRoutes ignores unrelated paths', async () => {
+  const response = new MockResponse();
+
+  const handled = await handleFiscalRoutes(
     '/inventory',
     { method: 'GET', url: '/inventory' } as never,
     response as never,
@@ -197,7 +309,8 @@ test('handleFiscalRoutes ignores unrelated paths', () => {
     {
       fiscal: new FiscalService(),
       audit: { write: () => ({}) } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
     }
   );
 

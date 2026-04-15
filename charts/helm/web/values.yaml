@@ -1,0 +1,99 @@
+# Default values for cvg-his-v2-web
+replicaCount: 1
+
+image:
+  repository: cvghis/web
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  fsGroup: 101
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: www.cvg-his.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: web-cvg-his-tls
+      hosts:
+        - www.cvg-his.internal
+
+resources:
+  limits:
+    cpu: "250m"
+    memory: "128Mi"
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+
+startupProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false  # Static marketing site doesn't need autoscaling
+
+env:
+  NODE_ENV: "production"
+
+volumes:
+  - name: nginx-config
+    configMap:
+      name: {{ include "cvg-his-v2-web.fullname" . }}-nginx-config
+
+volumeMounts:
+  - name: nginx-config
+    mountPath: /etc/nginx/conf.d
+    readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

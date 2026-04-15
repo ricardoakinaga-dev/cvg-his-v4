@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cvg-his-v2-web
+description: CVG-HIS-V2 Marketing Web Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - his
+  - healthcare
+  - web
+  - marketing
+maintainers:
+  - name: CVG Team
+    email: team@cvg.com.br

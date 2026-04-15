@@ -93,9 +93,13 @@ async function handlePixIntentCreate(
       billingRecordId: intent.billingRecordId,
       amount: intent.amount,
       currency: intent.currency,
+      description: intent.description,
       provider: intent.provider,
       status: intent.status,
-      expiresAt: intent.expiresAt
+      qrCodePayload: intent.qrCodePayload,
+      qrCodeBase64: intent.qrCodeBase64,
+      expiresAt: intent.expiresAt,
+      createdAt: intent.createdAt
     }
   });
 
@@ -174,7 +178,10 @@ async function handlePixIntentConfirm(
       intentId,
       billingRecordId: confirmResult.billingRecordId,
       accountId: apiKeyPrincipal.apiKey.accountId,
-      confirmedAt: confirmResult.completedAt
+      providerTransactionId: confirmResult.providerTransactionId,
+      providerConfirmationId: confirmResult.providerTransactionId,
+      status: confirmResult.status,
+      completedAt: confirmResult.completedAt
     }
   });
 

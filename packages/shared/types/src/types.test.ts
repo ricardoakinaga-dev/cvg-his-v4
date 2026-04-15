@@ -36,7 +36,7 @@ describe('types module', () => {
     });
 
     it(' branded id is assignable to base type', () => {
-      const id: TestBrandId = 'usr-456';
+      const id = createTestId('usr-456');
       const base: string = id;
       expect(base).toBe('usr-456');
     });

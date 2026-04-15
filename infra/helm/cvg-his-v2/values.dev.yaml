@@ -1,0 +1,56 @@
+# values.dev.yaml — Development environment overrides
+api:
+  replicaCount: 1
+  revisionHistoryLimit: 2
+  image:
+    pullPolicy: Always
+  probes:
+    enabled: false   # skip probes for fast restarts in dev
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    NODE_ENV: development
+    CORS_ALLOWED_ORIGINS: "*"
+    RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
+    VAULT_ENABLED: "false"
+  auth:
+    value: cvg-his-v2-development-auth-secret-1234567890
+
+worker:
+  replicaCount: 1
+  revisionHistoryLimit: 2
+  image:
+    pullPolicy: Always
+  env:
+    NODE_ENV: development
+
+spa:
+  replicaCount: 1
+  revisionHistoryLimit: 2
+  image:
+    pullPolicy: Always
+
+postgresql:
+  enabled: true
+  password: postgres
+  persistence:
+    enabled: true
+    size: 1Gi
+
+redis:
+  enabled: true
+  url: redis://RELEASE-NAME-cvg-his-v2-redis:6379
+
+ingress:
+  enabled: false   # no ingress in dev — use port-forward instead
+
+podDisruptionBudget:
+  api:
+    minAvailable: 1
+  spa:
+    minAvailable: 1

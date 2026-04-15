@@ -2,7 +2,7 @@
   <div class="fiscal-config-page">
     <AppPageHeader
       title="Fiscal"
-      subtitle="Consulta fiscal read-only via backend para tabelas e simulações operacionais"
+      subtitle="Consulta fiscal via backend com backoffice inicial para layouts municipais de NFS-e"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
@@ -34,6 +34,11 @@
     <DsAlert v-if="summary.readOnly" variant="info">
       <strong>{{ summary.backendScope }}</strong> Escopo atual: consulta e revisão operacional.
       Pendências ainda fora da UI publicada: {{ summary.pendingScopes.join(' • ') }}.
+    </DsAlert>
+
+    <DsAlert v-else variant="success">
+      <strong>{{ summary.backendScope }}</strong> O backoffice fiscal já permite cadastro e ajuste
+      inicial de layouts NFS-e, mantendo emissão e escrituração fora do escopo atual.
     </DsAlert>
 
     <section class="hub-section">

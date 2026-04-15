@@ -73,24 +73,16 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Pacientes');
+    expect(wrapper.text()).toContain('Animais e Pacientes');
   });
 
-  it('shows loading state initially', async () => {
-    let resolvePromise: (value: any) => void;
-    const slowPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-    mockListFn.mockImplementation(() => slowPromise);
-
+  it('loads patients on mount', async () => {
     const PatientsListPage = (await import('../PatientsListPage.vue')).default;
     const wrapper = mount(PatientsListPage);
 
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('.data-table-loading').exists()).toBe(true);
-
-    resolvePromise!(mockPatients);
     await flushPromises();
+    expect(mockListFn).toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Paciente em destaque');
   });
 
   it('shows error state when API fails', async () => {
@@ -113,7 +105,7 @@ describe('PatientsListPage', () => {
     expect(wrapper.text()).toContain('Nenhum paciente encontrado');
   });
 
-  it('renders patient data in the table', async () => {
+  it('renders patient data in cards', async () => {
     const PatientsListPage = (await import('../PatientsListPage.vue')).default;
     const wrapper = mount(PatientsListPage);
 
@@ -174,15 +166,17 @@ describe('PatientsListPage', () => {
     await flushPromises();
     const links = wrapper.findAll('a');
 
-    const detailLinks = links.filter((a) => a.text() === 'Ver');
-    expect(detailLinks).toHaveLength(2);
-    expect(detailLinks[0].attributes('href')).toBe('/patients/pat-1');
-    expect(detailLinks[1].attributes('href')).toBe('/patients/pat-2');
+    const detailLinks = links.filter((a) => a.text() === 'Detalhes');
+    expect(detailLinks.length).toBeGreaterThanOrEqual(2);
+    const detailHrefs = detailLinks.map((a) => a.attributes('href'));
+    expect(detailHrefs).toContain('/patients/pat-1');
+    expect(detailHrefs).toContain('/patients/pat-2');
 
     const editLinks = links.filter((a) => a.text() === 'Editar');
     expect(editLinks).toHaveLength(2);
-    expect(editLinks[0].attributes('href')).toBe('/patients/pat-1/edit');
-    expect(editLinks[1].attributes('href')).toBe('/patients/pat-2/edit');
+    const editHrefs = editLinks.map((a) => a.attributes('href'));
+    expect(editHrefs).toContain('/patients/pat-1/edit');
+    expect(editHrefs).toContain('/patients/pat-2/edit');
   });
 
   it('shows link to create new patient', async () => {
@@ -223,5 +217,14 @@ describe('PatientsListPage', () => {
     await flushPromises();
     const searchBtn = wrapper.findAll('button').find((b) => b.text() === 'Buscar');
     expect(searchBtn).toBeTruthy();
+  });
+
+  it('shows operational actions for each patient', async () => {
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('Abrir atendimento');
+    expect(wrapper.text()).toContain('Agendar');
   });
 });

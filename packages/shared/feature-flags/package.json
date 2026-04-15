@@ -1,0 +1,34 @@
+{
+  "name": "@cvg-his-v2/shared-feature-flags",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./database-provider": {
+      "types": "./dist/database-provider.d.ts",
+      "default": "./dist/database-provider.js"
+    },
+    "./repositories": {
+      "types": "./dist/repositories/index.d.ts",
+      "default": "./dist/repositories/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test dist/feature-flags.test.js"
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-validation": "workspace:*",
+    "@cvg-his-v2/module-audit": "workspace:*"
+  }
+}

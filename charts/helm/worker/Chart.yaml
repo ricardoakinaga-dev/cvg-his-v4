@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cvg-his-v2-worker
+description: CVG-HIS-V2 Background Worker Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - his
+  - healthcare
+  - worker
+  - background-jobs
+maintainers:
+  - name: CVG Team
+    email: team@cvg.com.br

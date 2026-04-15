@@ -85,12 +85,12 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | IMP-301 | P1 | R4 | Runtime | Migrar rate limiter para Redis | limiter distribuido e escalavel | IMP-105 | TODO |
 | IMP-302 | P1 | R4 | Runtime | Validar fallback seguro do limiter | protecao contra falha de Redis | IMP-301 | TODO |
-| IMP-303 | P1 | R4 | Runtime | Integrar Unleash para feature flags | rollout controlado por ambiente | IMP-105 | TODO |
+| IMP-303 | P1 | R4 | Runtime | Sistema interno de feature flags com governanca | rollout controlado por ambiente via `@cvg-his-v2/shared-feature-flags` + `DatabaseFeatureFlagRepository` + catalog via `GET /flags` | IMP-105 | ✅ DONE (sistema proprio em vez de Unleash; ver `0319` e `0325`) |
 | IMP-304 | P1 | R4 | Runtime | Definir governanca de flags | naming, owner, expurgo e auditoria | IMP-303 | TODO |
 | IMP-305 | P0 | R4 | QA | Levar coverage global para `40%` | threshold intermediario sustentado | IMP-005, IMP-006, IMP-007 | TODO |
 | IMP-306 | P1 | R4 | QA | Levar coverage global para `60%` | qualidade de medio prazo | IMP-305 | TODO |
 | IMP-307 | P1 | R4 | API | Extrair mais dominios de `server.ts` | API menos centralizada | IMP-010 | TODO |
-| IMP-308 | P1 | R4 | Release | Fixar gates de release sem excecao manual | trilha de entrega endurecida | IMP-305 | TODO |
+| IMP-308 | P1 | R4 | Release | Fixar gates de release sem excecao manual | trilha de entrega endurecida | IMP-305 | ✅ DONE (coverage threshold CI: `vitest.config.ts` com `coverage.thresholds` em 60%; `pnpm test:coverage` falha com exit code 1 se qualquer metrica cair abaixo; ver `0303-PLANO-CORRECAO-GAPS-ROADMAP-BACKLOG-2026-04-14.md` GAP-07) |
 
 ---
 

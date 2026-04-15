@@ -524,7 +524,7 @@ export class CounterSalesService {
 
   list(
     accountId: AccountId,
-    filters?: { status?: string; search?: string; ownerId?: string }
+    filters?: { status?: string; search?: string; ownerId?: string; dateFrom?: string; dateTo?: string }
   ): CounterSaleSummary[] {
     let items = Array.from(this.#sales.values()).filter((s) => s.accountId === accountId);
 
@@ -541,6 +541,12 @@ export class CounterSalesService {
           s.number.toLowerCase().includes(search) ||
           (s.notes?.toLowerCase().includes(search) ?? false)
       );
+    }
+    if (filters?.dateFrom) {
+      items = items.filter((s) => s.createdAt >= `${filters.dateFrom}T00:00:00`);
+    }
+    if (filters?.dateTo) {
+      items = items.filter((s) => s.createdAt <= `${filters.dateTo}T23:59:59`);
     }
 
     return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));

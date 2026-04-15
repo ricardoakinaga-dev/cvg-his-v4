@@ -1,4 +1,5 @@
 import type {
+  CreateFiscalNfseLayoutRequest,
   FiscalCfopListResponse,
   FiscalCfopSummary,
   FiscalDashboardSummary,
@@ -12,7 +13,8 @@ import type {
   FiscalNfseLayoutSummary,
   FiscalPisCofinsRuleListResponse,
   FiscalPisCofinsRuleSummary,
-  FiscalTaxPreview
+  FiscalTaxPreview,
+  UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
 import { apiRequest } from './api';
@@ -23,6 +25,8 @@ export type FiscalCfopRow = FiscalCfopSummary;
 export type FiscalNcmEntry = FiscalNcmEntrySummary;
 export type FiscalIcmsMatrixRow = FiscalIcmsMatrixRowSummary;
 export type FiscalNfseLayout = FiscalNfseLayoutSummary;
+export type CreateFiscalNfseLayout = CreateFiscalNfseLayoutRequest;
+export type UpdateFiscalNfseLayout = UpdateFiscalNfseLayoutRequest;
 
 export interface FiscalIcmsRuleFilters {
   ufOrigin?: string;
@@ -115,6 +119,20 @@ export const fiscalService = {
       `/fiscal/nfse${buildQuery({ ...filters })}`
     );
     return [...(response.items ?? [])];
+  },
+
+  async createNfseLayout(payload: CreateFiscalNfseLayout): Promise<FiscalNfseLayout> {
+    return apiRequest<FiscalNfseLayout>('/fiscal/nfse', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateNfseLayout(id: string, payload: UpdateFiscalNfseLayout): Promise<FiscalNfseLayout> {
+    return apiRequest<FiscalNfseLayout>(`/fiscal/nfse/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
 
   async getTaxPreview(): Promise<FiscalTaxPreview> {

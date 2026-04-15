@@ -9,6 +9,7 @@ import type {
   OwnerPatientLinkId,
   OwnerPatientLinkSummary
 } from '@cvg-his-v2/shared-types';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface PatientRepository {
   create(patient: PatientSummary): Promise<void>;
@@ -40,6 +41,7 @@ export class DatabasePatientRepository implements PatientRepository {
   }
 
   public async create(patient: PatientSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.insert(patients).values({
       id: patient.id,
       accountId: patient.accountId,
@@ -57,6 +59,7 @@ export class DatabasePatientRepository implements PatientRepository {
   }
 
   public async update(patient: PatientSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db
       .update(patients)
       .set({
@@ -73,6 +76,7 @@ export class DatabasePatientRepository implements PatientRepository {
   }
 
   public async findById(id: PatientId): Promise<PatientSummary | null> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db.select().from(patients).where(eq(patients.id, id)).limit(1);
 
     if (result.length === 0) {
@@ -87,6 +91,7 @@ export class DatabasePatientRepository implements PatientRepository {
     accountId: AccountId,
     search?: string
   ): Promise<readonly PatientSummary[]> {
+    requireAccountId(); // Enforce tenant context
     let result;
     if (search) {
       const searchTerm = `%${search}%`;
@@ -110,6 +115,7 @@ export class DatabasePatientRepository implements PatientRepository {
   }
 
   public async delete(id: PatientId): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.delete(patients).where(eq(patients.id, id));
   }
 
@@ -140,6 +146,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
   }
 
   public async create(link: OwnerPatientLinkSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.insert(ownerPatientLinks).values({
       id: link.id,
       ownerId: link.ownerId,
@@ -154,6 +161,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     id: OwnerPatientLinkId,
     accountId: AccountId
   ): Promise<OwnerPatientLinkSummary | null> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
@@ -172,6 +180,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     patientId: PatientId,
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
@@ -184,6 +193,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     ownerId: OwnerId,
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
@@ -193,6 +203,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
   }
 
   public async delete(id: OwnerPatientLinkId): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.delete(ownerPatientLinks).where(eq(ownerPatientLinks.id, id));
   }
 

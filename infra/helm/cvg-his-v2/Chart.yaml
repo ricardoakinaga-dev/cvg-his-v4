@@ -1,0 +1,17 @@
+apiVersion: v2
+name: cvg-his-v2
+description: CVG-HIS V2 — Hospital Information System (Enterprise)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - healthcare
+  - his
+  - cvg
+  - enterprise
+maintainers:
+  - name: CVG HIS Platform Team
+    email: platform@cvg.com
+icon: https://www.cvg.com/logo.png
+annotations:
+  category: Healthcare

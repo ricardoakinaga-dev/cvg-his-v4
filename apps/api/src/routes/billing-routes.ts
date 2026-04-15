@@ -1,0 +1,226 @@
+/**
+ * Billing route handlers.
+ * Extracted from server.ts as part of the controlled refactoring initiative (GAP-02).
+ */
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { BillingService } from '@cvg-his-v2/module-billing';
+import type {
+  CreateBillingEstimateRequest,
+  CreateBillingItemRequest,
+  UpdateBillingStatusRequest
+} from '@cvg-his-v2/shared-contracts';
+import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
+
+import { appendAudit } from '../helpers/audit-helper.js';
+import { readJsonBody } from '../helpers/common.js';
+
+export interface BillingRoutesHandlers {
+  billing: BillingService;
+  audit: AuditService;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  enforceAbac: (
+    actionCode: string,
+    principal: AuthenticatedPrincipal,
+    attrs: ResourceAttributes,
+    request: IncomingMessage
+  ) => void;
+}
+
+/**
+ * Handle all billing-related routes.
+ * Returns true if the request was handled, false if the route didn't match.
+ */
+export async function handleBillingRoutes(
+  pathname: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+  correlationId: string,
+  handlers: BillingRoutesHandlers
+): Promise<boolean> {
+  const { billing, audit, requirePrincipal, enforceAbac } = handlers;
+
+  // GET /billing — list billing records (optionally filtered by encounterId)
+  if (pathname === '/billing' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const encounterId = url.searchParams.get('encounterId') || undefined;
+    const items = await billing.list(encounterId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'list',
+      entityType: 'billing-record',
+      entityId: encounterId || 'all',
+      payloadSummary: encounterId
+        ? `Billing record for encounter ${encounterId}`
+        : 'Billing records listed',
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // GET /billing/:encounterId/items — list billing items for an encounter
+  if (
+    pathname.startsWith('/billing/') &&
+    pathname.endsWith('/items') &&
+    request.method === 'GET'
+  ) {
+    const principal = requirePrincipal(request, 'billing.read');
+    const encounterId = pathname.split('/')[2];
+    const items = await billing.listItems(encounterId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'list_items',
+      entityType: 'billing-item',
+      entityId: encounterId,
+      payloadSummary: `Billing items listed for encounter ${encounterId}`,
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // GET /billing/:encounterId — get billing record for an encounter
+  if (
+    pathname.startsWith('/billing/') &&
+    !pathname.endsWith('/items') &&
+    !pathname.endsWith('/status') &&
+    request.method === 'GET'
+  ) {
+    const principal = requirePrincipal(request, 'billing.read');
+    const encounterId = pathname.split('/')[2];
+    const record = await billing.getByEncounterOrThrow(encounterId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'get',
+      entityType: 'billing-record',
+      entityId: record.id,
+      payloadSummary: `Billing record retrieved for encounter ${encounterId}`,
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(record));
+    return true;
+  }
+
+  // POST /billing/estimate — create a billing estimate
+  if (pathname === '/billing/estimate' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payload = (await readJsonBody(request)) as CreateBillingEstimateRequest;
+    enforceAbac(
+      'billing.manage',
+      principal,
+      {
+        resourceType: 'billing_record',
+        resourceId: payload.encounterId,
+        encounterId: payload.encounterId as never,
+        accountId: principal.user.accountId as never,
+        status: 'estimated'
+      },
+      request
+    );
+    const record = await billing.createEstimate(payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'create_estimate',
+      entityType: 'billing-record',
+      entityId: record.id,
+      payloadSummary: `Billing estimate created for encounter ${payload.encounterId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(record));
+    return true;
+  }
+
+  // POST /billing/items — add a billing item
+  if (pathname === '/billing/items' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payload = (await readJsonBody(request)) as CreateBillingItemRequest;
+    enforceAbac(
+      'billing.manage',
+      principal,
+      {
+        resourceType: 'billing_item',
+        resourceId: payload.encounterId,
+        encounterId: payload.encounterId as never,
+        accountId: principal.user.accountId as never,
+        createdByUserId: principal.user.id as never,
+        status: 'draft'
+      },
+      request
+    );
+    const item = await billing.addItem(principal.user.id as never, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'add_item',
+      entityType: 'billing-item',
+      entityId: item.id,
+      payloadSummary: `Billing item added for encounter ${payload.encounterId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(item));
+    return true;
+  }
+
+  // PATCH /billing/:encounterId/status — update billing record status
+  if (
+    pathname.startsWith('/billing/') &&
+    pathname.endsWith('/status') &&
+    request.method === 'PATCH'
+  ) {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const encounterId = pathname.split('/')[2];
+    const payload = (await readJsonBody(request)) as UpdateBillingStatusRequest;
+    enforceAbac(
+      'billing.manage',
+      principal,
+      {
+        resourceType: 'billing_record',
+        resourceId: encounterId,
+        encounterId: encounterId as never,
+        accountId: principal.user.accountId as never,
+        status: payload.status
+      },
+      request
+    );
+    const record = await billing.updateStatus(encounterId as never, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'update_status',
+      entityType: 'billing-record',
+      entityId: record.id,
+      payloadSummary: `Billing status updated for encounter ${encounterId} to ${payload.status}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(record));
+    return true;
+  }
+
+  return false;
+}

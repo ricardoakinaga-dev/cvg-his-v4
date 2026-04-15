@@ -90,6 +90,12 @@ export const navGroups: AppNavGroup[] = [
             path: '/surgery',
             icon: '🔪',
             keywords: ['cirurgia', 'bloco cirurgico']
+          },
+          {
+            label: 'Comandas',
+            path: '/counter-sales',
+            icon: '🧾',
+            keywords: ['comandas', 'balcao', 'vendas', 'counter sales', 'pdv']
           }
         ]
       },
@@ -288,12 +294,6 @@ export const navGroups: AppNavGroup[] = [
             path: '/quotes',
             icon: '📝',
             keywords: ['orcamento', 'proposta', 'quote']
-          },
-          {
-            label: 'Vendas Assistidas',
-            path: '/counter-sales',
-            icon: '🛒',
-            keywords: ['vendas', 'comanda', 'balcao', 'counter sales']
           }
         ]
       }
@@ -352,10 +352,10 @@ export const navGroups: AppNavGroup[] = [
         label: 'Operação',
         items: [
           {
-            label: 'Relatórios Comerciais',
-            path: '/commercial-reports',
+            label: 'Hubs Administrativos',
+            path: '/administrative-reports',
             icon: '📊',
-            keywords: ['analytics', 'dashboard comercial', 'producao']
+            keywords: ['analytics', 'dashboard administrativo', 'financeiro', 'comercial', 'fiscal']
           }
         ]
       }

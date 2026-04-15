@@ -21,6 +21,10 @@ export function createHealthResponse(
     workerDetail: string;
     productionReady: boolean;
     initialized: boolean;
+    secretsManagerProvider?: 'vault' | 'env';
+    /** GAP-09: ML services wired to runtime */
+    mlReady: boolean;
+    mlDetail: string;
   }
 ): HealthResponse {
   const correlationId = request.headers['x-correlation-id'];
@@ -86,6 +90,15 @@ export function createHealthResponse(
             : 'degraded'
           : 'not-configured',
         detail: deps.workerDetail
+      },
+      secretsManager: {
+        state: deps.secretsManagerProvider ? 'configured' : 'not-configured',
+        detail: deps.secretsManagerProvider ?? 'using env vars'
+      },
+      // GAP-09: AI/ML module — SmartSchedulingService (primary), ModelRegistryService, FeatureStoreService
+      ml: {
+        state: deps.mlReady ? 'ready' : 'not-configured',
+        detail: deps.mlDetail
       }
     }
   };
@@ -107,6 +120,9 @@ export function createReadinessResponse(
     workerDetail: string;
     productionReady: boolean;
     initialized: boolean;
+    secretsManagerProvider?: 'vault' | 'env';
+    mlReady: boolean;
+    mlDetail: string;
   }
 ): HealthResponse {
   return createHealthResponse(appName, environment, version, request, deps);
@@ -149,6 +165,10 @@ export function createLivenessResponse(
       worker: {
         state: 'not-configured',
         detail: 'Liveness probe does not validate worker dependency'
+      },
+      secretsManager: {
+        state: 'not-configured',
+        detail: 'Liveness probe does not validate secrets manager'
       }
     }
   };

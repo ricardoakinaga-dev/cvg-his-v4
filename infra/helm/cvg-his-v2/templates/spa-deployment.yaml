@@ -1,0 +1,90 @@
+{{- /*
+SPA Deployment + Service
+*/ -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cvg-his-v2.spa.fullname" . }}
+  labels:
+    {{- include "cvg-his-v2.spa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.spa.replicaCount }}
+  revisionHistoryLimit: {{ .Values.spa.revisionHistoryLimit }}
+  strategy:
+    {{- toYaml .Values.spa.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: spa
+          image: {{ .Values.spa.image.registry }}/{{ .Values.spa.image.repository }}:{{ .Values.spa.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.spa.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.spa.service.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.spa.env.NODE_ENV | quote }}
+            - name: VITE_APP_NAME
+              value: {{ .Values.spa.env.VITE_APP_NAME | quote }}
+            - name: VITE_DISABLE_PWA
+              value: {{ .Values.spa.env.VITE_DISABLE_PWA | quote }}
+            {{- if .Values.spa.env.VITE_API_BASE_URL }}
+            - name: VITE_API_BASE_URL
+              value: {{ .Values.spa.env.VITE_API_BASE_URL | quote }}
+            {{- end }}
+          {{- if .Values.spa.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: {{ .Values.spa.probes.livenessDelay }}
+            periodSeconds: {{ .Values.spa.probes.livenessPeriod }}
+            failureThreshold: {{ .Values.spa.probes.livenessFailureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: {{ .Values.spa.probes.readinessDelay }}
+            periodSeconds: {{ .Values.spa.probes.readinessPeriod }}
+            failureThreshold: {{ .Values.spa.probes.readinessFailureThreshold }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: {{ .Values.spa.probes.startupDelay }}
+            periodSeconds: {{ .Values.spa.probes.startupPeriod }}
+            failureThreshold: {{ .Values.spa.probes.startupFailureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.spa.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cvg-his-v2.spa.fullname" . }}
+  labels:
+    {{- include "cvg-his-v2.spa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.spa.service.type }}
+  ports:
+    - port: {{ .Values.spa.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 4 }}

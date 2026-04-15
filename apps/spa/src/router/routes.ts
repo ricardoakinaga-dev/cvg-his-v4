@@ -512,12 +512,13 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
-        path: 'commercial-reports',
+        path: 'administrative-reports',
+        alias: ['/commercial-reports'],
         name: 'CommercialReports',
         component: () => import('@/pages/commercial-reports/CommercialReportsPage.vue'),
         meta: {
-          title: 'Relatórios Comerciais',
-          breadcrumb: 'Relatórios Comerciais',
+          title: 'Hubs Administrativos',
+          breadcrumb: 'Hubs Administrativos',
           breadcrumbParent: 'Dashboard',
           icon: '📊'
         }
@@ -592,12 +593,13 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'counter-sales',
         name: 'CounterSales',
+        alias: ['/comandas'],
         component: () => import('@/pages/sales/CounterSalesPage.vue'),
         meta: {
-          title: 'Vendas Assistidas',
-          breadcrumb: 'Vendas Assistidas',
-          breadcrumbParent: 'Dashboard',
-          icon: '🛒'
+          title: 'Comandas',
+          breadcrumb: 'Comandas',
+          breadcrumbParent: 'Atendimentos',
+          icon: '🧾'
         }
       },
       {

@@ -11,6 +11,7 @@ import type {
   PatientId,
   UserId
 } from '@cvg-his-v2/shared-types';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface EncounterRepository {
   create(encounter: EncounterSummary): Promise<void>;
@@ -35,6 +36,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async create(encounter: EncounterSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.insert(encounters).values({
       id: encounter.id,
       accountId: encounter.accountId,
@@ -52,6 +54,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async update(encounter: EncounterSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db
       .update(encounters)
       .set({
@@ -65,6 +68,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findById(id: EncounterId): Promise<EncounterSummary | null> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db.select().from(encounters).where(eq(encounters.id, id)).limit(1);
 
     if (result.length === 0) {
@@ -76,6 +80,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findActiveByPatientId(patientId: PatientId): Promise<EncounterSummary | null> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(encounters)
@@ -91,6 +96,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findAll(accountId: AccountId): Promise<readonly EncounterSummary[]> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(encounters)
@@ -100,6 +106,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findActive(accountId: AccountId): Promise<readonly EncounterSummary[]> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(encounters)
@@ -109,6 +116,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async delete(id: EncounterId): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.delete(encounters).where(eq(encounters.id, id));
   }
 
@@ -147,6 +155,7 @@ export class DatabaseEncounterTimelineRepository implements EncounterTimelineRep
   }
 
   public async create(event: EncounterTimelineEventSummary): Promise<void> {
+    requireAccountId(); // Enforce tenant context
     await this.#db.insert(encounterTimeline).values({
       id: event.id,
       encounterId: event.encounterId,
@@ -161,6 +170,7 @@ export class DatabaseEncounterTimelineRepository implements EncounterTimelineRep
   public async findByEncounterId(
     encounterId: EncounterId
   ): Promise<readonly EncounterTimelineEventSummary[]> {
+    requireAccountId(); // Enforce tenant context
     const result = await this.#db
       .select()
       .from(encounterTimeline)

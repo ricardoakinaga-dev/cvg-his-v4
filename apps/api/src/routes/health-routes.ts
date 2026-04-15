@@ -4,9 +4,11 @@
  * These handlers are registered in server.ts and called per request.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { ChaosEngine } from '@cvg-his-v2/chaos';
 import type { ApiServerOptions } from '../server.js';
 import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
+import { resolveOperationalRuntimeState } from '../chaos-operational-state.js';
 import { generateSLOReport, getSLOConfigs } from '../slos.js';
 
 /**
@@ -23,6 +25,19 @@ export function handleHealthRoutes(
 
   if (method !== 'GET') return false;
   const appState = getAppState();
+  const activeExperimentIds = ChaosEngine
+    .getInstance()
+    .listActiveExperiments()
+    .map((experiment) => experiment.id);
+  const operationalState = resolveOperationalRuntimeState({
+    appState,
+    activeExperimentIds,
+    runtimeDistributedStateEnabled:
+      options.runtimeDistributedStateEnabled
+      ?? options.featureFlags?.runtimeDistributedStateEnabled
+      ?? false,
+    redisUrl: options.redisUrl
+  });
 
   // GET /health
   if (url === '/health') {
@@ -34,7 +49,10 @@ export function handleHealthRoutes(
       timestamp: new Date().toISOString(),
       uptime: Math.round(process.uptime()),
       memory: process.memoryUsage(),
-      persistenceMode: appState.persistenceMode
+      persistenceMode: operationalState.persistenceMode,
+      activeChaosExperiments: operationalState.activeExperimentIds,
+      redisHealthy: operationalState.redisHealthy,
+      rateLimiterMode: operationalState.rateLimiterMode
     };
     response.setHeader('content-type', 'application/json');
     response.statusCode = 200;
@@ -51,15 +69,18 @@ export function handleHealthRoutes(
       request,
       {
         databaseConfigured: appState.databaseConfigured,
-        databaseHealthy: appState.databaseHealthy,
-        databaseDetail: appState.databaseDetail,
-        persistenceMode: appState.persistenceMode,
+        databaseHealthy: operationalState.databaseHealthy,
+        databaseDetail: operationalState.databaseDetail,
+        persistenceMode: operationalState.persistenceMode,
         repositoriesReady: appState.repositoriesReady,
         repositoryCount: appState.repositoryCount,
-        workerReady: appState.workerReady,
-        workerDetail: appState.workerDetail,
-        productionReady: appState.productionReady,
-        initialized: appState.initialized
+        workerReady: operationalState.workerReady,
+        workerDetail: operationalState.workerDetail,
+        productionReady: operationalState.productionReady,
+        initialized: appState.initialized,
+        secretsManagerProvider: appState.secretsManagerProvider,
+        mlReady: appState.mlReady,
+        mlDetail: appState.mlDetail
       }
     );
     response.statusCode = payload.readiness.ready ? 200 : 503;
@@ -76,15 +97,18 @@ export function handleHealthRoutes(
       request,
       {
         databaseConfigured: appState.databaseConfigured,
-        databaseHealthy: appState.databaseHealthy,
-        databaseDetail: appState.databaseDetail,
-        persistenceMode: appState.persistenceMode,
+        databaseHealthy: operationalState.databaseHealthy,
+        databaseDetail: operationalState.databaseDetail,
+        persistenceMode: operationalState.persistenceMode,
         repositoriesReady: appState.repositoriesReady,
         repositoryCount: appState.repositoryCount,
-        workerReady: appState.workerReady,
-        workerDetail: appState.workerDetail,
-        productionReady: appState.productionReady,
-        initialized: appState.initialized
+        workerReady: operationalState.workerReady,
+        workerDetail: operationalState.workerDetail,
+        productionReady: operationalState.productionReady,
+        initialized: appState.initialized,
+        secretsManagerProvider: appState.secretsManagerProvider,
+        mlReady: appState.mlReady,
+        mlDetail: appState.mlDetail
       }
     );
     response.statusCode = payload.readiness.ready ? 200 : 503;

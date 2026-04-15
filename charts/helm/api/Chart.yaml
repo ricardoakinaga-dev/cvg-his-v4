@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cvg-his-v2-api
+description: CVG-HIS-V2 API Server Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - his
+  - healthcare
+  - api
+maintainers:
+  - name: CVG Team
+    email: team@cvg.com.br

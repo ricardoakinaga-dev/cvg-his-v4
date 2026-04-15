@@ -1,0 +1,297 @@
+# Default values for cvg-his-v2 Helm chart
+# Overridable per environment via values.dev.yaml, values.staging.yaml, values.prod.yaml
+
+global:
+  environment: shared
+  imageRegistry: ""
+  imagePullSecrets: []
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ──────────────────────────────────────────────
+# API Service
+# ──────────────────────────────────────────────
+api:
+  replicaCount: 1
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  image:
+    registry: docker.io
+    repository: cvghis/cvg-his-v2-api
+    tag: ""           # defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+    sha: ""           # optional image SHA override
+
+  auth:
+    existingSecret: ""
+    secretKey: AUTH_SECRET
+    value: ""
+
+  service:
+    type: ClusterIP
+    port: 3001
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    hostname: "api.cvg-his-v2.local"
+    path: /
+    pathType: Prefix
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+  probes:
+    enabled: true
+    livenessDelay: 10
+    livenessPeriod: 10
+    livenessFailureThreshold: 3
+    readinessDelay: 5
+    readinessPeriod: 5
+    readinessFailureThreshold: 3
+    startupDelay: 15
+    startupPeriod: 10
+    startupFailureThreshold: 30
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  env:
+    NODE_ENV: production
+    HOST: "0.0.0.0"
+    PORT: "3001"
+    APP_NAME: cvg-his-v2-api
+    CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3002"
+    AUTH_ACCESS_TOKEN_TTL_SECONDS: "900"
+    AUTH_REFRESH_TOKEN_TTL_SECONDS: "604800"
+    FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
+    RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
+    VAULT_ENABLED: "false"
+    OTEL_ENABLED: "false"
+
+# ──────────────────────────────────────────────
+# Worker Service
+# ──────────────────────────────────────────────
+worker:
+  replicaCount: 1
+  revisionHistoryLimit: 3
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  image:
+    registry: docker.io
+    repository: cvghis/cvg-his-v2-worker
+    tag: ""
+    pullPolicy: IfNotPresent
+    sha: ""
+
+  probes:
+    enabled: true
+    # Worker has no HTTP endpoint — liveness via process check
+    livenessDelay: 30
+    livenessPeriod: 30
+    livenessFailureThreshold: 3
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  env:
+    NODE_ENV: production
+    APP_NAME: cvg-his-v2-worker
+    WORKER_INTERVAL_MS: "5000"
+    OTEL_ENABLED: "false"
+
+# ──────────────────────────────────────────────
+# SPA Frontend
+# ──────────────────────────────────────────────
+spa:
+  replicaCount: 1
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  image:
+    registry: docker.io
+    repository: cvghis/cvg-his-v2-spa
+    tag: ""
+    pullPolicy: IfNotPresent
+    sha: ""
+
+  service:
+    type: ClusterIP
+    port: 3002
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    hostname: "cvg-his-v2.local"
+    path: /
+    pathType: Prefix
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+  probes:
+    enabled: true
+    livenessDelay: 10
+    livenessPeriod: 10
+    livenessFailureThreshold: 3
+    readinessDelay: 5
+    readinessPeriod: 5
+    readinessFailureThreshold: 3
+    startupDelay: 15
+    startupPeriod: 10
+    startupFailureThreshold: 30
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  env:
+    NODE_ENV: production
+    VITE_APP_NAME: CVG HIS V2
+    VITE_DISABLE_PWA: "1"
+
+# ──────────────────────────────────────────────
+# PostgreSQL (StatefulSet — dev/staging only)
+# For production use external PostgreSQL (RDS, Cloud SQL)
+# ──────────────────────────────────────────────
+postgresql:
+  enabled: true
+  existingSecret: ""
+  secretKeys:
+    url: url
+    password: password
+  url: ""
+  password: ""
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Only for dev/staging — production should use external DB
+  auth:
+    database: cvg_his_v2
+    username: postgres
+    # password injected via secret — never store plaintext
+
+# ──────────────────────────────────────────────
+# Redis (StatefulSet — dev/staging only)
+# For production use external Redis (ElastiCache, Memorystore)
+# ──────────────────────────────────────────────
+redis:
+  enabled: true
+  existingSecret: ""
+  secretKeys:
+    url: url
+  url: ""
+
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ──────────────────────────────────────────────
+# Ingress
+# ──────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: api.cvg-his-v2.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 3001
+    - host: cvg-his-v2.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: spa
+          port: 3002
+  tls:
+    - hosts:
+        - api.cvg-his-v2.local
+        - cvg-his-v2.local
+      secretName: cvg-his-v2-tls
+
+# ──────────────────────────────────────────────
+# Common
+# ──────────────────────────────────────────────
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10000
+  runAsGroup: 10000
+  fsGroup: 10000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+podDisruptionBudget:
+  api:
+    minAvailable: 1
+  spa:
+    minAvailable: 1

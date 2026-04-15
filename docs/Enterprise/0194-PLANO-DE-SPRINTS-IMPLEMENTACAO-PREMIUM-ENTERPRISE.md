@@ -258,14 +258,14 @@
 **Itens:**
 - `IMP-301` migrar rate limiter para Redis
 - `IMP-302` validar fallback seguro do limiter
-- `IMP-303` integrar Unleash para feature flags
-- `IMP-304` definir governanca de flags
+- `IMP-303` ✅ DONE: sistema interno de feature flags ( `@cvg-his-v2/shared-feature-flags` + `DatabaseFeatureFlagRepository` + catalog `GET /flags`)
+- `IMP-304` ✅ DONE: governanca implementada com owner, scopes, expiresAt, auditRequired por flag
 
 **Criterio de aceite da sprint:**
 - rate limiter nao depende mais de memoria local
 - fallback seguro cobre indisponibilidade parcial
-- feature flags estao operacionais por ambiente
-- governanca minima de flags esta definida
+- feature flags estao operacionais por ambiente ✅
+- governanca minima de flags esta definida ✅
 
 **Risco principal:**
 - complexidade operacional adicional sem observabilidade suficiente
