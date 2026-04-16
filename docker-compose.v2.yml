@@ -64,6 +64,10 @@ services:
       FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
       AUTH_ACCESS_TOKEN_TTL_SECONDS: ${AUTH_ACCESS_TOKEN_TTL_SECONDS:-900}
       AUTH_REFRESH_TOKEN_TTL_SECONDS: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:-604800}
+      PIX_MOCK_MODE: ${PIX_MOCK_MODE:-false}
+      PAGARME_API_KEY: ${PAGARME_API_KEY:-}
+      PAGARME_PIX_KEY: ${PAGARME_PIX_KEY:-}
+      MFA_SECRET_ENCRYPTION_KEY: ${MFA_SECRET_ENCRYPTION_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

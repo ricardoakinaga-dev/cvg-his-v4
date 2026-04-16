@@ -79,7 +79,9 @@ export default defineConfig({
       '@cvg-his-v2/shared-validation': resolve(root, 'packages/shared/validation/src/index.ts'),
       '@cvg-his/db': resolve(root, 'packages/db/src/index.ts'),
       '@cvg-his/rbac': resolve(root, 'packages/rbac/src/index.ts'),
-      '@cvg-his-v2/tenant-context': resolve(root, 'packages/tenant-context/src/index.ts')
+      '@cvg-his-v2/tenant-context': resolve(root, 'packages/tenant-context/src/index.ts'),
+      '@cvg-his-v2/chaos': resolve(root, 'packages/chaos/src/index.ts'),
+      '@cvg-his-v2/secrets': resolve(root, 'packages/secrets/src/index.ts')
     }
   },
   test: {
@@ -89,11 +91,10 @@ export default defineConfig({
     exclude: commonTestExcludes,
     testTimeout: 30_000,
     hookTimeout: 60_000,
-    pool: 'forks',
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: true,
-        parallelMode: false
+      threads: {
+        singleThread: true
       }
     },
     minThreads: 1,
@@ -177,14 +178,14 @@ export default defineConfig({
       // Fails the build if any metric drops below the threshold.
       // GAP-14 phased approach — current coverage ~11.5% lines:
       // H1 (GAP-14 T1-T4): lines 10, functions 35, branches 40, statements 10
-      // H2 (GAP-14 T5-T7): lines 20, functions 40, branches 45, statements 20 ← CURRENT (R2)
-      // H3 (GAP-14 T8-T9): lines 40, functions 50, branches 50, statements 40
+      // H2 (GAP-14 T5-T7): lines 20, functions 40, branches 45, statements 20
+      // H3 (GAP-14 T8-T9): lines 40, functions 50, branches 50, statements 40 ← CURRENT (post GAP-204)
       // H4 (GAP-14 T10): lines 60, functions 60, branches 60, statements 60
       thresholds: {
-        lines: 20,
-        functions: 40,
-        branches: 45,
-        statements: 20
+        lines: 40,
+        functions: 50,
+        branches: 50,
+        statements: 40
       }
     }
   }

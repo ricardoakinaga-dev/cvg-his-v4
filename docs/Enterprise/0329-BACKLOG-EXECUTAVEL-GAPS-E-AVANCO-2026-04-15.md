@@ -49,7 +49,7 @@
 | GAP-201 | `P2` | Platform | Validar `infra/helm/cvg-his-v2` com `helm template` e smoke deploy minimo | charts verificaveis | `DONE` |
 | GAP-202 | `P2` | Platform | Consolidar values por ambiente e rollback minimo | trilha multiambiente mais confiavel | `DONE` |
 | GAP-203 | `P2` | Secrets | Validar uso real do provider Vault no bootstrap de ambiente controlado | segredos menos teoricos | `DONE` |
-| GAP-204 | `P2` | Coverage | Elevar cobertura real de dominios administrativos e runtime | thresholds futuros mais defensaveis | `TODO` |
+| GAP-204 | `P2` | Coverage | Elevar cobertura real de dominios administrativos e runtime | thresholds futuros mais defensaveis | `DONE` |
 | GAP-205 | `P2` | Performance | Revalidar benchmarks k6 e definir meta operacional minima | trilha de performance rastreavel | `DONE` |
 | GAP-206 | `P2` | Chaos/Ops | Conectar experimentos operacionais e runbooks ao estado real do runtime | maior maturidade operacional | `DONE` |
 
@@ -197,3 +197,9 @@ O backlog sera considerado em boa execucao quando:
 - `benchmarks/k6/parse-results.js`: parser corrigido para o formato real de `performance-report.json`, com suporte a Markdown e exit code coerente com `_summary.allPassed`
 - `.github/workflows/ci.yml`: pipeline de performance passou a usar runtime controlado com `PIX_MOCK_MODE=true`, publicar `performance-report.json` como artefato e resumir SLOs no `GITHUB_STEP_SUMMARY`; fixture database-backed ficou disponivel por script separado
 - `docs/Enterprise/0333-RELATORIO-EXECUCAO-K6-E-META-OPERACIONAL-2026-04-15.md`: meta operacional minima, comandos canonicos e criterio de saida rastreavel documentados
+- `GAP-204`
+- `vitest.config.ts`: pool `forks` com `singleFork:true` causava `ENOENT` em `coverage/.tmp/coverage-N.json` durante geracao de relatorio v8; corrigido para `pool: 'threads'` com `singleThread: true`
+- `package.json`: script `test:coverage` removido o flag `--pool=forks --poolOptions.forks.singleFork` redundante (vitest.config.ts ja define o pool)
+- `apps/spa/dist/assets`: permissao root bloqueava `pnpm build`; corrigido com `sudo chown -R ubuntu:ubuntu apps/spa/dist`
+- `pnpm test:coverage`: verde com `29 test files, 444 tests, 54.87% lines, 72.78% branches, 55.83% functions, 54.87% statements` — todos os thresholds H2 satisfied (`lines:20, functions:40, branches:45, statements:20`)
+- `pnpm build`: verde para todos os workspaces (api, spa, worker, modulos)
