@@ -5,7 +5,12 @@ import {
   incrementActiveRequests,
   decrementActiveRequests,
   resetActiveRequestsCount,
-  getMetricsText
+  getMetricsText,
+  recordRequestSloObservation,
+  getCurrentSloSnapshot,
+  resetRequestSloObservations,
+  recordSmartSchedulingRecommendation,
+  recordSmartSchedulingRecommendationApplied
 } from '../../../apps/api/src/metrics.js';
 
 describe('Metrics — Route Normalization', () => {
@@ -69,6 +74,7 @@ describe('Metrics — Route Normalization', () => {
 describe('Metrics — App Metrics', () => {
   beforeEach(() => {
     resetActiveRequestsCount();
+    resetRequestSloObservations();
   });
 
   it('should update uptime, db healthy and persistence mode', async () => {
@@ -128,5 +134,40 @@ describe('Metrics — App Metrics', () => {
 
     const metrics = await getMetricsText();
     expect(metrics).toContain('app_active_requests 0');
+  });
+
+  it('builds a current SLO snapshot from recent request observations', () => {
+    const now = Date.now();
+    recordRequestSloObservation({ durationMs: 120, statusCode: 200, timestamp: now - 1_000 });
+    recordRequestSloObservation({ durationMs: 260, statusCode: 200, timestamp: now - 2_000 });
+    recordRequestSloObservation({ durationMs: 900, statusCode: 503, timestamp: now - 3_000 });
+    recordRequestSloObservation({ durationMs: 80, statusCode: 200, timestamp: now - 10 * 60 * 1000 });
+
+    const snapshot = getCurrentSloSnapshot(now);
+
+    expect(snapshot.requestCount5m).toBe(3);
+    expect(snapshot.requestCount1h).toBeGreaterThanOrEqual(4);
+    expect(snapshot.p95LatencyMs).toBe(900);
+    expect(snapshot.p99LatencyMs).toBe(900);
+    expect(snapshot.errorRatePercent).toBeCloseTo(33.3333, 3);
+    expect(snapshot.availabilityPercent).toBeCloseTo(75, 3);
+  });
+
+  it('records smart scheduling recommendation generation and application metrics', async () => {
+    recordSmartSchedulingRecommendation({
+      visitType: 'scheduled',
+      confidence: 0.88
+    });
+    recordSmartSchedulingRecommendationApplied({
+      visitType: 'scheduled'
+    });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain(
+      'smart_scheduling_recommendations_total{visit_type="scheduled",confidence_band="high"} 1'
+    );
+    expect(metrics).toContain(
+      'smart_scheduling_recommendation_applies_total{visit_type="scheduled"} 1'
+    );
   });
 });

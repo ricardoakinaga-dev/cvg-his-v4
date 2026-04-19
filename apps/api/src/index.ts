@@ -182,6 +182,15 @@ async function main() {
     pagarmeApiKey: config.pagarmeApiKey,
     pagarmePixKey: config.pagarmePixKey,
     pixMockMode: config.pixMockMode,
+    resendApiKey: config.resendApiKey,
+    emailFrom: config.emailFrom,
+    emailMockMode: config.emailMockMode,
+    smsApiKey: config.smsApiKey,
+    smsFrom: config.smsFrom,
+    smsMockMode: config.smsMockMode,
+    googleCalendarAccessToken: config.googleCalendarAccessToken,
+    googleCalendarCalendarId: config.googleCalendarCalendarId,
+    googleCalendarMockMode: config.googleCalendarMockMode,
     redisUrl: config.redisUrl,
     secretsManager
   });

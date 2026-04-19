@@ -27,6 +27,8 @@ worker:
   revisionHistoryLimit: 3
   image:
     pullPolicy: Always
+  env:
+    NODE_ENV: staging
 
 spa:
   replicaCount: 2
@@ -71,6 +73,8 @@ ingress:
 
 podDisruptionBudget:
   api:
+    minAvailable: 1
+  worker:
     minAvailable: 1
   spa:
     minAvailable: 1

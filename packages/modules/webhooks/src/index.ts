@@ -153,6 +153,7 @@ export class WebhooksService {
     }
 
     await this.#repository.update({ ...existing, isActive: false, updatedAt: nowIso() });
+    await this.#repository.deleteDeliveriesByWebhook(webhookId);
     return true;
   }
 
@@ -268,8 +269,7 @@ export class WebhooksService {
 
       await this.#repository.createDelivery(delivery);
       dispatched++;
-
-      void this.#deliverWithRetry(webhook, delivery, payload);
+      await this.#deliverWithRetry(webhook, delivery, payload);
     }
 
     return dispatched;

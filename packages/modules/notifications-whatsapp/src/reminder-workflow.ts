@@ -32,7 +32,13 @@ export class AppointmentReminderWorkflow {
 
   async onAppointmentScheduled(
     appointment: SchedulingAppointmentSummary
-  ): Promise<{ processed: boolean; sent: boolean; error?: string }> {
+  ): Promise<{
+    processed: boolean;
+    sent: boolean;
+    error?: string;
+    messageId?: string;
+    provider?: 'twilio' | '360dialog';
+  }> {
     const ownerPhone = this.#ownerLookup.getOwnerPhone(appointment.ownerId);
     if (!ownerPhone || ownerPhone.trim().length === 0) {
       return {
@@ -63,7 +69,9 @@ export class AppointmentReminderWorkflow {
     return {
       processed: true,
       sent: result.sent,
-      error: result.error
+      error: result.error,
+      messageId: result.messageId,
+      provider: result.provider
     };
   }
 

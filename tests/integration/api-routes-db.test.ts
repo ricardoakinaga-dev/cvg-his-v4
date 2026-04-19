@@ -11,6 +11,7 @@ import { createApiServer } from '../../apps/api/src/server.ts';
 import { setAppState } from '../../apps/api/src/app-state.ts';
 import { bootstrapServices, shutdownServices } from '../../apps/api/src/bootstrap.ts';
 import { ApiKeysService } from '../../packages/modules/api-keys/src/index.ts';
+import { runWithTenantContext } from '../../packages/tenant-context/src/index.ts';
 import { TEST_DB_URL } from '../setup/env.ts';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -229,12 +230,21 @@ beforeAll(async () => {
   refreshToken = loginResponse.body.refreshToken;
 
   const apiKeys = new ApiKeysService(repositoriesUnderTest.apiKey);
-  const createdApiKey = await apiKeys.create({
-    accountId: 'acc_cvg_demo' as never,
-    name: 'Route Probe Bootstrap Key',
-    permissions: ['integrations.read', 'payments.manage'],
-    createdBy: 'user_admin'
-  });
+  const createdApiKey = await runWithTenantContext(
+    {
+      tenantId: 'tenant-route-probe',
+      accountId: 'acc_cvg_demo',
+      userId: 'user_admin',
+      correlationId: 'corr-route-probe-api-key-bootstrap'
+    },
+    () =>
+      apiKeys.create({
+        accountId: 'acc_cvg_demo' as never,
+        name: 'Route Probe Bootstrap Key',
+        permissions: ['integrations.read', 'payments.manage'],
+        createdBy: 'user_admin'
+      })
+  );
 
   createdApiKeyId = createdApiKey.apiKey.id;
   rawApiKey = createdApiKey.rawKey;

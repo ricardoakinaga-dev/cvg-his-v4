@@ -124,16 +124,21 @@ export class MfaService {
       : record.secret;
 
     let verified = false;
+    let recordToPersist = record;
 
     if (verifyTOTP(secret, token)) {
       verified = true;
-    } else if (this.#verifyRecoveryCode(record, token)) {
-      verified = true;
+    } else {
+      const recoveryRecord = this.#verifyRecoveryCode(record, token);
+      if (recoveryRecord) {
+        verified = true;
+        recordToPersist = recoveryRecord;
+      }
     }
 
     if (verified && this.#repository) {
       const now = new Date().toISOString();
-      await this.#repository.update({ ...record, lastUsedAt: now });
+      await this.#repository.update({ ...recordToPersist, lastUsedAt: now });
     }
 
     return verified;
@@ -186,12 +191,12 @@ export class MfaService {
     return newCodes;
   }
 
-  #verifyRecoveryCode(record: MfaRecord, token: string): boolean {
+  #verifyRecoveryCode(record: MfaRecord, token: string): MfaRecord | undefined {
     const cleanToken = token.replace(/[\s-]/g, '').toUpperCase();
     const hashedToken = hashRecoveryCode(cleanToken);
     const usedIndex = record.recoveryCodes.findIndex((code) => code === hashedToken);
 
-    if (usedIndex === -1) return false;
+    if (usedIndex === -1) return undefined;
 
     const updatedCodes = [...record.recoveryCodes];
     updatedCodes.splice(usedIndex, 1);
@@ -205,7 +210,7 @@ export class MfaService {
       void this.#repository.update(updated).catch(() => {});
     }
 
-    return true;
+    return updated;
   }
 
   async #getRecord(userId: string): Promise<MfaRecord | undefined> {

@@ -24,10 +24,17 @@
 import { execSync } from 'node:child_process';
 import { env } from 'node:process';
 
-const TEST_DB_URL =
-  env.DATABASE_URL_TEST ??
-  env.DATABASE_URL ??
-  'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
+function resolveDefaultTestDbUrl() {
+  if (env.DATABASE_URL_TEST ?? env.DATABASE_URL) {
+    return env.DATABASE_URL_TEST ?? env.DATABASE_URL;
+  }
+
+  const url = new URL('postgres://postgres:postgres@localhost:5433/cvg_his_v2_test');
+  url.pathname = `${url.pathname}_${process.pid}`;
+  return url.toString();
+}
+
+const TEST_DB_URL = resolveDefaultTestDbUrl();
 const TEST_DB_NAME = new URL(TEST_DB_URL).pathname.replace(/^\//, '');
 const ADMIN_DB_URL = (() => {
   const u = new URL(TEST_DB_URL);
@@ -58,6 +65,10 @@ function tryRun(cmd, opts = {}) {
   }
 }
 
+function cleanupRunner() {
+  run('node infra/scripts/cleanup-test-runner.mjs --kill-orphans --drop-stale-dbs');
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -66,9 +77,12 @@ async function main() {
   log(`Using test database: ${TEST_DB_NAME}`);
   log(`Database URL: ${TEST_DB_URL.replace(/\/\/.*:.*@/, '//***:***@')}`);
 
+  log('Cleaning orphan test processes and stale ephemeral databases...');
+  cleanupRunner();
+
   // Step 1: Start isolated test PostgreSQL and validate connectivity
   log('Starting isolated PostgreSQL test service...');
-  run(`docker compose -f ${COMPOSE_FILE} up -d --force-recreate postgres-test`);
+  run(`docker compose -f ${COMPOSE_FILE} up -d postgres-test`);
 
   log('Checking PostgreSQL connectivity...');
   let connected = false;

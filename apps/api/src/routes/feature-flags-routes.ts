@@ -55,6 +55,86 @@ interface CreateOverrideRequest {
   enabled: boolean;
 }
 
+type FeatureFlagLifecycleStatus = 'active' | 'expired' | 'expiring_soon' | 'permanent';
+
+function resolveLifecycleStatus(expiresAt?: string): FeatureFlagLifecycleStatus {
+  if (!expiresAt) {
+    return 'permanent';
+  }
+
+  const expiryDate = new Date(expiresAt);
+  const now = new Date();
+  if (expiryDate.getTime() <= now.getTime()) {
+    return 'expired';
+  }
+
+  const daysUntilExpiry = (expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+  if (daysUntilExpiry <= 7) {
+    return 'expiring_soon';
+  }
+
+  return 'active';
+}
+
+async function buildOperationalReport(
+  flag: Awaited<ReturnType<DatabaseFeatureFlagRepository['findByKey']>> extends infer T
+    ? NonNullable<T>
+    : never,
+  accountId: string,
+  environment: string,
+  userId: string,
+  featureFlagProvider: FeatureFlagProvider,
+  featureFlagRepository: DatabaseFeatureFlagRepository
+) {
+  const overrides = await featureFlagRepository.listOverrides(flag.key, accountId as never);
+  const decision = await featureFlagProvider.evaluate(flag, {
+    accountId: accountId as never,
+    environment,
+    userId
+  });
+  const lifecycleStatus = resolveLifecycleStatus(flag.expiresAt);
+  const enabledOverrides = overrides.filter((override) => override.enabled);
+  const percentageRollouts = overrides
+    .filter((override) => typeof override.percentage === 'number')
+    .map((override) => override.percentage);
+  const userTargets = overrides.reduce(
+    (count, override) => count + (override.allowedUsers?.length ?? 0) + (override.userId ? 1 : 0),
+    0
+  );
+  const accountTargets = overrides.filter((override) => override.accountIdOverride).length;
+  const environmentTargets = Array.from(
+    new Set(overrides.map((override) => override.environment).filter(Boolean))
+  );
+
+  return {
+    key: flag.key,
+    owner: flag.owner,
+    description: flag.description,
+    defaultValue: flag.defaultValue,
+    auditRequired: flag.auditRequired ?? false,
+    expiresAt: flag.expiresAt ?? null,
+    lifecycleStatus,
+    tags: [...(flag.tags ?? [])],
+    currentDecision: decision,
+    rolloutSummary: {
+      totalOverrides: overrides.length,
+      enabledOverrides: enabledOverrides.length,
+      percentageRollouts,
+      targetedUsers: userTargets,
+      targetedAccounts: accountTargets,
+      targetedEnvironments: environmentTargets
+    },
+    overrides: overrides.map((override) => ({
+      environment: override.environment ?? null,
+      accountIdOverride: override.accountIdOverride ?? null,
+      userId: override.userId ?? null,
+      percentage: override.percentage ?? null,
+      allowedUsers: [...(override.allowedUsers ?? [])],
+      enabled: override.enabled
+    }))
+  };
+}
+
 export async function handleFeatureFlagsRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -88,6 +168,51 @@ export async function handleFeatureFlagsRoutes(
     return json(response, 200, {
       items: flags,
       total: flags.length
+    });
+  }
+
+  if (pathname === '/flags/report' && method === 'GET') {
+    const principal = requirePrincipal(request, 'flags.read');
+    const accountId = principal.user.accountId;
+    const environment = url.searchParams.get('environment') ?? 'development';
+    const userId = url.searchParams.get('userId') ?? principal.user.id;
+    const flags = await featureFlagRepository.listByAccount(accountId);
+    const items = await Promise.all(
+      flags.map((flag) =>
+        buildOperationalReport(
+          flag,
+          accountId,
+          environment,
+          userId,
+          featureFlagProvider,
+          featureFlagRepository
+        )
+      )
+    );
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId,
+      module: 'feature-flags',
+      action: 'list_flag_reports',
+      entityType: 'feature_flag',
+      entityId: 'all',
+      payloadSummary: `Feature flag operational report generated: ${items.length} flags for ${environment}`,
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, {
+      environment,
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalFlags: items.length,
+        auditRequiredFlags: items.filter((item) => item.auditRequired).length,
+        expiredFlags: items.filter((item) => item.lifecycleStatus === 'expired').length,
+        expiringSoonFlags: items.filter((item) => item.lifecycleStatus === 'expiring_soon').length,
+        enabledForCurrentContext: items.filter((item) => item.currentDecision.enabled).length
+      },
+      items
     });
   }
 
@@ -125,34 +250,75 @@ export async function handleFeatureFlagsRoutes(
     return json(response, 201, flag);
   }
 
-  // GET /flags/:key - Get a specific flag
-  if (pathname.startsWith('/flags/') && method === 'GET') {
-    const match = pathname.match(/^\/flags\/([^/]+)$/);
+  if (pathname.match(/^\/flags\/[^/]+\/report$/) && method === 'GET') {
+    const match = pathname.match(/^\/flags\/([^/]+)\/report$/);
     if (!match) return false;
 
     const principal = requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
-
+    const environment = url.searchParams.get('environment') ?? 'development';
+    const userId = url.searchParams.get('userId') ?? principal.user.id;
     const flag = await featureFlagRepository.findByKey(flagKey, accountId);
 
     if (!flag) {
       return json(response, 404, { error: 'Flag not found' });
     }
 
+    const report = await buildOperationalReport(
+      flag,
+      accountId,
+      environment,
+      userId,
+      featureFlagProvider,
+      featureFlagRepository
+    );
+
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId,
       module: 'feature-flags',
-      action: 'get_flag',
+      action: 'get_flag_report',
       entityType: 'feature_flag',
       entityId: flagKey,
-      payloadSummary: `Feature flag retrieved: ${flagKey}`,
+      payloadSummary: `Feature flag report generated: ${flagKey} for ${environment}`,
       riskLevel: 'low',
       correlationId
     });
 
-    return json(response, 200, flag);
+    return json(response, 200, report);
+  }
+
+  // GET /flags/:key - Get a specific flag
+  if (pathname.startsWith('/flags/') && method === 'GET') {
+    const match = pathname.match(/^\/flags\/([^/]+)$/);
+    if (!match) {
+      // Keep probing more specific subroutes such as /flags/:key/evaluate and /flags/:key/overrides.
+    } else {
+      const principal = requirePrincipal(request, 'flags.read');
+      const accountId = principal.user.accountId;
+      const flagKey = match[1];
+
+      const flag = await featureFlagRepository.findByKey(flagKey, accountId);
+
+      if (!flag) {
+        return json(response, 404, { error: 'Flag not found' });
+      }
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId,
+        module: 'feature-flags',
+        action: 'get_flag',
+        entityType: 'feature_flag',
+        entityId: flagKey,
+        payloadSummary: `Feature flag retrieved: ${flagKey}`,
+        riskLevel: 'low',
+        correlationId
+      });
+
+      return json(response, 200, flag);
+    }
   }
 
   // PATCH /flags/:key - Update a flag

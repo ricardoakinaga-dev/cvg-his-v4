@@ -72,17 +72,6 @@ export async function handleInventoryRoutes(
   if (pathname === '/inventory/consumptions' && request.method === 'POST') {
     const principal = rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
-    enforceAbac(
-      'inventory.manage',
-      principal,
-      {
-        resourceType: 'inventory_item',
-        resourceId: payload.inventoryItemId,
-        encounterId: payload.encounterId as never,
-        accountId: principal.user.accountId as never
-      },
-      request
-    );
     const consumption = await inventory.consume(principal.user.id as never, payload);
     appendAudit(audit, {
       actorId: principal.user.id,

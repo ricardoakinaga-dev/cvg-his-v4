@@ -101,6 +101,16 @@ export async function createApiFeatureFlags(params: {
   readonly enabledKeys: readonly string[];
   readonly db?: DatabaseClient;
   readonly metrics?: FeatureFlagMetricsCollector;
+  readonly accountId?: EvaluationContext['accountId'];
+  readonly userId?: EvaluationContext['userId'];
+  readonly databaseProviderFactory?: (
+    fallbackProvider: FeatureFlagProvider,
+    options: {
+      readonly cacheTtlMs?: number;
+      readonly onFallback?: (key: string, reason: string) => void;
+      readonly metrics?: FeatureFlagMetricsCollector;
+    }
+  ) => FeatureFlagProvider;
 }): Promise<ApiFeatureFlagsSnapshot> {
   const registry = createRegistry();
 
@@ -108,8 +118,9 @@ export async function createApiFeatureFlags(params: {
   const envProvider = createEnvFeatureFlagProvider(params.enabledKeys);
 
   // Upstream chain: database → env (database is primary, env is fallback)
+  const createDatabaseProvider = params.databaseProviderFactory ?? createDatabaseFeatureFlagProvider;
   const upstreamProvider: FeatureFlagProvider = params.db
-    ? createDatabaseFeatureFlagProvider(envProvider, {
+    ? createDatabaseProvider(envProvider, {
         metrics: params.metrics,
         cacheTtlMs: 60_000
       })
@@ -123,7 +134,9 @@ export async function createApiFeatureFlags(params: {
   });
 
   const context: EvaluationContext = {
-    environment: params.environment
+    environment: params.environment,
+    accountId: params.accountId,
+    userId: params.userId
   };
   const decisionEntries = await Promise.all(
     registry.list().map(async (definition: FlagDefinition) => [

@@ -117,6 +117,11 @@ snapshot_legacy_state() {
   fi
 }
 
+capture_cutover_readiness() {
+  log "capturing machine-readable cutover readiness evidence"
+  node "$ROOT_DIR/infra/scripts/check-cutover-readiness.mjs" --json > "$BACKUP_DIR/cutover-readiness.json"
+}
+
 stop_previous_v2_stack() {
   log "stopping previous V2 stack"
   docker_compose down --remove-orphans || true
@@ -282,6 +287,26 @@ stop_legacy_if_requested() {
 }
 
 print_summary() {
+  cat > "$BACKUP_DIR/cutover-report.json" <<EOF
+{
+  "completedAt": "$TIMESTAMP",
+  "backupDir": "$BACKUP_DIR",
+  "composeFile": "$COMPOSE_FILE",
+  "envFile": "$ENV_FILE",
+  "apiHealthUrl": "${API_HEALTH_URL:-http://127.0.0.1:3003/health}",
+  "apiReadyUrl": "${API_READY_URL:-http://127.0.0.1:3003/ready}",
+  "apiMetricsUrl": "${API_METRICS_URL:-http://127.0.0.1:3003/metrics}",
+  "spaUrl": "${SPA_URL:-http://127.0.0.1:3002/}",
+  "workerHealthUrl": "${WORKER_HEALTH_URL:-}",
+  "caddySwitchEnabled": $([[ "${ENABLE_CADDY_SWITCH:-false}" == "true" ]] && printf 'true' || printf 'false'),
+  "legacyStoppedAfterSuccess": $([[ "${STOP_LEGACY_AFTER_SUCCESS:-false}" == "true" ]] && printf 'true' || printf 'false'),
+  "readinessEvidence": "$BACKUP_DIR/cutover-readiness.json",
+  "apiLogs": "$BACKUP_DIR/v2-api.logs.txt",
+  "workerLogs": "$BACKUP_DIR/v2-worker.logs.txt",
+  "spaLogs": "$BACKUP_DIR/v2-spa.logs.txt"
+}
+EOF
+
   cat <<EOF
 
 Cutover V2 complete.
@@ -309,6 +334,10 @@ Rollback:
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down
   # Restore legacy containers from backup: $BACKUP_DIR
 
+Evidence:
+  $BACKUP_DIR/cutover-readiness.json
+  $BACKUP_DIR/cutover-report.json
+
 Optional:
   ENABLE_CADDY_SWITCH=true CADDYFILE_TARGET=/etc/caddy/Caddyfile $0
 EOF
@@ -318,6 +347,7 @@ main() {
   ensure_prereqs
   validate_compose
   prepare_backup_dir
+  capture_cutover_readiness
   snapshot_legacy_state
   stop_previous_v2_stack
   build_v2_images

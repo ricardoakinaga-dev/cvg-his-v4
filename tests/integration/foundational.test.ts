@@ -24,6 +24,18 @@ import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 const TEST_ACCOUNT_ID = 'acc_test_001';
 const TEST_USER_ID = 'user_admin';
 
+function getSafeScheduledAt(base = new Date()): string {
+  const scheduledAt = new Date(base);
+  scheduledAt.setUTCHours(10, 0, 0, 0);
+
+  if (scheduledAt.getTime() <= base.getTime()) {
+    scheduledAt.setUTCDate(scheduledAt.getUTCDate() + 1);
+    scheduledAt.setUTCHours(10, 0, 0, 0);
+  }
+
+  return scheduledAt.toISOString();
+}
+
 // --- ICT-001: User with role receives effective permissions ---
 describe('ICT-001 — User → Role → Effective Permission', () => {
   it('creation of user with valid role results in effective permission', async () => {
@@ -198,7 +210,7 @@ describe('ICT-007 — Appointment → Correct Linkage', () => {
     });
 
     // Create appointment (real API: createAppointment(accountId, payload))
-    const scheduledAt = new Date(Date.now() + 3600000).toISOString();
+    const scheduledAt = getSafeScheduledAt();
     const appointment = await scheduling.createAppointment(TEST_ACCOUNT_ID, {
       patientId: patient.id,
       ownerId: owner.id,
@@ -240,7 +252,7 @@ describe('ICT-008 — Scheduling → Encounter Chain', () => {
     });
 
     // Create appointment and check-in
-    const scheduledAt = new Date(Date.now() + 3600000).toISOString();
+    const scheduledAt = getSafeScheduledAt();
     const appointment = await scheduling.createAppointment(TEST_ACCOUNT_ID, {
       patientId: patient.id,
       ownerId: owner.id,

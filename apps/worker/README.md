@@ -42,7 +42,10 @@ NODE_ENV=production node apps/worker/dist/index.js
 
 - `DATABASE_URL` — conexao PostgreSQL
 - `WORKER_INTERVAL_MS` — intervalo entre ticks (default: 5000)
+- `WORKER_HEALTH_PORT` — porta do servidor HTTP operacional (default: 3002)
 - `APP_NAME` — nome do servico (default: cvg-his-v2-worker)
+- `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` — trilha de observabilidade distribuida
+- `WORKER_FEATURE_FLAGS` — lista bootstrap de flags explicitas para o worker
 
 ## Dependencias
 
@@ -59,3 +62,10 @@ O worker executa em loop continuo:
 2. A cada `WORKER_INTERVAL_MS` ms, executa um tick
 3. Cada tick processa notificacoes pendentes e queues assincronas
 4. Graceful shutdown via `shutdownWorkerServices()`
+
+## Contrato operacional
+
+- `GET /health` — payload estruturado com `liveness`, `readiness`, dependencias e estatisticas do loop
+- `GET /ready` e `GET /health/ready` — pronto para trafego operacional e scraping
+- `GET /live` e `GET /health/live` — processo vivo sem validar dependencias
+- `GET /metrics` — Prometheus exposition format quando `Accept: text/plain`

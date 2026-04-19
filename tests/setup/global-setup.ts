@@ -1,7 +1,13 @@
-import { ensureTestDatabase, resetTestDatabase, closePools } from '../db/db-admin.js';
+import {
+  ensureTestDatabase,
+  resetTestDatabase,
+  closePools,
+  dropTestDatabase,
+  withTestDatabaseLock
+} from '../db/db-admin.js';
 import { applyDrizzleMigration, applySeed } from '../db/db-schema.js';
 import { verifyIntegrity } from '../db/db-integrity.js';
-import { TEST_DB_URL } from './env.js';
+import { TEST_DB_IS_EPHEMERAL, TEST_DB_NAME, TEST_DB_URL } from './env.js';
 import { getAdminPool } from '../db/db-admin.js';
 import { RLS_TEST_ROLE } from '../helpers/rls-helpers.js';
 import { Pool } from 'pg';
@@ -52,32 +58,37 @@ export default async function globalSetup() {
   try {
     process.env.DATABASE_URL_TEST = process.env.DATABASE_URL_TEST ?? TEST_DB_URL;
     process.env.DATABASE_URL = process.env.DATABASE_URL ?? process.env.DATABASE_URL_TEST;
-
-    await ensureTestDatabase();
-    await resetTestDatabase();
-    console.log('[test-setup] Test database reset');
-
-    await applyDrizzleMigration();
-    console.log('[test-setup] Migrations applied');
-
-    await applySeed();
-    console.log('[test-setup] Seed applied');
-
-    await ensureRlsTestRole();
-    console.log('[test-setup] RLS test role ensured');
-
-    const { ok, issues, stats } = await verifyIntegrity();
     console.log(
-      `[test-setup] Schema: ${stats.tables} tables, ${stats.enums} enums, ${stats.fks} FKs`
+      `[test-setup] Using test database ${TEST_DB_NAME}${TEST_DB_IS_EPHEMERAL ? ' (ephemeral)' : ''}`
     );
 
-    if (!ok) {
-      const message = `[test-setup] Integrity issues: ${issues.join('; ')}`;
-      if (requireTestDb) {
-        throw new Error(message);
+    await withTestDatabaseLock(async () => {
+      await ensureTestDatabase();
+      await resetTestDatabase();
+      console.log('[test-setup] Test database reset');
+
+      await applyDrizzleMigration();
+      console.log('[test-setup] Migrations applied');
+
+      await applySeed();
+      console.log('[test-setup] Seed applied');
+
+      await ensureRlsTestRole();
+      console.log('[test-setup] RLS test role ensured');
+
+      const { ok, issues, stats } = await verifyIntegrity();
+      console.log(
+        `[test-setup] Schema: ${stats.tables} tables, ${stats.enums} enums, ${stats.fks} FKs`
+      );
+
+      if (!ok) {
+        const message = `[test-setup] Integrity issues: ${issues.join('; ')}`;
+        if (requireTestDb) {
+          throw new Error(message);
+        }
+        console.warn(message);
       }
-      console.warn(message);
-    }
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     if (requireTestDb) {
@@ -91,6 +102,10 @@ export default async function globalSetup() {
 
 export async function globalTeardown() {
   console.log('[test-teardown] Cleaning up...');
+  await closePools();
+  await withTestDatabaseLock(async () => {
+    await dropTestDatabase();
+  });
   await closePools();
   console.log('[test-teardown] Done');
 }

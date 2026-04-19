@@ -585,6 +585,10 @@ class InMemoryWebhookRepository {
     this.#webhooks.set(webhook.id, webhook);
   }
 
+  async delete(webhookId: WebhookId): Promise<void> {
+    this.#webhooks.delete(webhookId);
+  }
+
   async findById(id: WebhookId): Promise<WebhookSummary | null> {
     return this.#webhooks.get(id) ?? null;
   }
@@ -611,6 +615,14 @@ class InMemoryWebhookRepository {
 
   async updateDelivery(delivery: WebhookDeliverySummary): Promise<void> {
     this.#deliveries.set(delivery.id, delivery);
+  }
+
+  async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
+    for (const [deliveryId, delivery] of this.#deliveries.entries()) {
+      if (delivery.webhookId === webhookId) {
+        this.#deliveries.delete(deliveryId);
+      }
+    }
   }
 
   async findDeliveriesByWebhook(
@@ -698,7 +710,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const db = getDatabaseClient();
 
       results.repositories = {
-        session: new DatabaseSessionRepository(db),
+        // Sessions remain in-memory in the runtime until the canonical
+        // sessions table/contract is promoted into the migration baseline.
+        session: new InMemorySessionRepository(),
         audit: new DatabaseAuditRepository(db),
         owner: new DatabaseOwnerRepository(db),
         patient: new DatabasePatientRepository(db),
@@ -741,7 +755,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
       logger.info('Database repositories initialized for critical auth/encounter runtime', {
         auditPersistence: 'database',
-        sessionPersistence: 'database',
+        sessionPersistence: 'in-memory',
         encounterTimelinePersistence: 'database'
       });
     } else {

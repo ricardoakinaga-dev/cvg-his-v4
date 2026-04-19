@@ -1,5 +1,9 @@
 # Plano: Plataforma Longa — Kubernetes / Helm
 
+**Taxonomia:** `OPERACIONAL`
+**Papel no sistema documental:** plano tematico vivo para plataforma longa, Helm, Kubernetes e operacao multiambiente
+**Ler em conjunto com:** `README.md`, `0195-POLITICA-ROTACAO-DE-SEGREDOS-E-CREDENCIAIS.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `301-RISK-REGISTER.md`
+
 **Data:** 2026-04-14  
 **Pendente:** ALTO | Plataforma longa (K8s/Helm) | Docs dizem 20/100, código ~15/100  
 **Fonte:** docs/Enterprise (0192, 0194, PLANO-F4/F4-11, 301-RISK-REGISTER)

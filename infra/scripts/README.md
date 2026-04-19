@@ -10,7 +10,7 @@ Scripts operacionais para deployment, backup e validação do CVG-HIS V2.
 | `check-health.mjs` | Valida endpoint de health da API |
 | `check-staging.mjs` | Valida env mínima de staging e opcionalmente consulta `STAGING_READY_URL` |
 | `check-cutover-readiness.mjs` | Valida se compose, proxy, env example e docs vivas continuam alinhados ao `apps/spa` e ao runner canônico de migrations |
-| `cutover-v2.sh` | Executa backup operacional, sobe `docker-compose.v2.yml`, valida `/health` e `/ready`, e permite cutover opcional de Caddy |
+| `cutover-v2.sh` | Executa backup operacional, sobe `docker-compose.v2.yml`, valida `/health` e `/ready`, e grava evidência `cutover-readiness.json` + `cutover-report.json` |
 | `prepare-test-db.mjs` | Prepara banco de dados de teste |
 | `run-e2e-spa.sh` | Executa testes e2e da SPA |
 | `serve-spa-e2e.mjs` | Sirve SPA local para testes e2e |
@@ -180,3 +180,9 @@ tar -C /srv/cvg-his-v2/storage -xzf storage/file-storage.tar.gz
 # 5. Validar
 curl http://localhost:3003/health
 ```
+### cutover-v2.sh
+
+Fluxo oficial de readiness e cutover do runtime V2. Além dos logs já existentes, agora grava evidência estruturada:
+
+- `cutover-readiness.json` com o resultado machine-readable do guardrail `check-cutover-readiness.mjs --json`
+- `cutover-report.json` com endpoints validados, arquivos usados e flags operacionais do cutover

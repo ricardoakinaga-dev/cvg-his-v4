@@ -63,6 +63,8 @@ export async function runEventBusTick(
     environment: context.environment,
     correlationId: context.correlationId,
     processedEvents: processed.length,
+    processedEventIds: processed.map((event) => event.id).slice(0, 10),
+    processedCorrelationIds: Array.from(new Set(processed.map((event) => event.correlationId))).slice(0, 10),
     persistenceMode: context.persistenceMode,
     databaseHealthy: context.databaseHealthy
   });

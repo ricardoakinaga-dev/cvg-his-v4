@@ -39,7 +39,7 @@ export async function handlePrescriptionExecutionsRoutes(
 
   // GET /prescription-executions — list prescription executions
   if (pathname === '/prescription-executions' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'prescription-executions.read');
+    const principal = requirePrincipal(request, 'medical-records.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId');
     const patientId = url.searchParams.get('patientId');
@@ -69,7 +69,7 @@ export async function handlePrescriptionExecutionsRoutes(
 
   // POST /prescription-executions — create a prescription execution
   if (pathname === '/prescription-executions' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'prescription-executions.manage');
+    const principal = requirePrincipal(request, 'medical-records.manage');
     const payload = (await readJsonBody(request)) as CreatePrescriptionExecutionRequest;
     validateRequestBody(
       payload as unknown as Record<string, unknown>,
@@ -112,7 +112,7 @@ export async function handlePrescriptionExecutionsRoutes(
     !pathname.includes('/suspend') &&
     !pathname.includes('/resume')
   ) {
-    const principal = requirePrincipal(request, 'prescription-executions.read');
+    const principal = requirePrincipal(request, 'medical-records.read');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const execution = prescriptionExecutions.getById(executionId as never);
     const events = prescriptionExecutions.getEvents(executionId as never);
@@ -138,7 +138,7 @@ export async function handlePrescriptionExecutionsRoutes(
     pathname.endsWith('/execute') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'prescription-executions.manage');
+    const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as ExecutePrescriptionRequest;
     const execution = prescriptionExecutions.execute(
@@ -168,7 +168,7 @@ export async function handlePrescriptionExecutionsRoutes(
     pathname.endsWith('/suspend') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'prescription-executions.manage');
+    const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as SuspendPrescriptionRequest;
     const execution = prescriptionExecutions.suspend(
@@ -198,7 +198,7 @@ export async function handlePrescriptionExecutionsRoutes(
     pathname.endsWith('/resume') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'prescription-executions.manage');
+    const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const execution = prescriptionExecutions.resume(
       executionId as never,
@@ -226,7 +226,7 @@ export async function handlePrescriptionExecutionsRoutes(
     pathname.endsWith('/log') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'prescription-executions.manage');
+    const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as LogAdministrationEventRequest;
     const event = prescriptionExecutions.logEvent(

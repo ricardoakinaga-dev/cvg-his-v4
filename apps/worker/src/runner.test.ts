@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
+import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 
 import {
   createWorkerNotifications,
@@ -132,6 +133,7 @@ test('runEventBusTick handles empty event queue', async () => {
   assert.equal(infoData.service, 'test-worker');
   assert.equal(infoData.correlationId, 'test-correlation-123');
   assert.equal(infoData.databaseHealthy, true);
+  assert.deepEqual(infoData.processedCorrelationIds, []);
 });
 
 test('runWorkerTick uses default notifications when none provided', async () => {
@@ -173,6 +175,51 @@ test('runEventBusTick uses provided eventBus', async () => {
   await runEventBusTick(logger, mockContext, eventBus);
 
   assert.equal(infoCalled, true, 'Should use provided event bus');
+});
+
+test('runEventBusTick logs processed event correlation ids for async trace follow-up', async () => {
+  let infoData: Record<string, unknown> = {};
+
+  const logger: Logger = {
+    ...mockLogger,
+    info: (_msg, ctx) => {
+      infoData = ctx ?? {};
+    }
+  };
+
+  const mockRepo: OutboxRepository = {
+    create: async () => {},
+    update: async () => {},
+    findById: async () => null,
+    findPending: async () => [
+      {
+        id: 'evt-1',
+        correlationId: 'corr-api-123' as CorrelationId,
+        moduleName: 'notifications' as ModuleName,
+        eventType: 'notification.sent',
+        payload: {
+          _meta: {
+            traceparent: '00-1234567890abcdef1234567890abcdef-1234567890abcdef-01'
+          }
+        },
+        status: 'pending',
+        attempts: 0,
+        maxAttempts: 3,
+        scheduledAt: new Date(Date.now() - 1000).toISOString(),
+        processedAt: null,
+        error: null,
+        createdAt: new Date(Date.now() - 1000).toISOString()
+      }
+    ],
+    findFailed: async () => [],
+    findByCorrelationId: async () => []
+  };
+
+  const eventBus = createWorkerEventBus({ eventBusRepository: mockRepo });
+  await runEventBusTick(logger, mockContext, eventBus);
+
+  assert.deepEqual(infoData.processedCorrelationIds, ['corr-api-123']);
+  assert.deepEqual(infoData.processedEventIds, ['evt-1']);
 });
 
 test('WorkerTickContext type is correctly structured', () => {

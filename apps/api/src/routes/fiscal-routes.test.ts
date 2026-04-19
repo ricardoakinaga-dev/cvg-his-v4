@@ -270,6 +270,145 @@ test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffic
   assert.equal(updatedPayload.environment, 'producao');
 });
 
+test('handleFiscalRoutes executes complete NFSe document lifecycle', async () => {
+  const response = new MockResponse();
+  const service = new FiscalService();
+
+  const createHandled = await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    createMockRequest('POST', '/fiscal/nfse/documents', {
+      competencia: '2026-04-17',
+      serie: '001',
+      numero: 1001,
+      provider: 'abrasf',
+      customer: {
+        type: 'cnpj',
+        document: '12345678000199',
+        name: 'Clinica Teste S/A',
+        email: 'finance@fiscal.test',
+        phone: '+55 11 99999-0000'
+      },
+      services: [
+        {
+          description: 'Servico veterinario completo',
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 120,
+          totalValue: 120,
+          issRate: 0.05,
+          issValue: 6,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0,
+          irrfValue: 0,
+          inssValue: 0
+        }
+      ]
+    }) as never,
+    response as never,
+    'corr-fiscal-9',
+    {
+      fiscal: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(response.statusCode, 201);
+  const createdPayload = response.bodyJson<{ id: string; status: string }>();
+  assert.equal(createdPayload.status, 'draft');
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    {
+      method: 'GET',
+      url: '/fiscal/nfse/documents?status=draft'
+    } as never,
+    listResponse as never,
+    'corr-fiscal-10',
+    {
+      fiscal: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(listHandled, true);
+  const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>();
+  const listed = listPayload.items.find((item) => item.id === createdPayload.id);
+  assert.ok(listed);
+
+  const getResponse = new MockResponse();
+  const getHandled = await handleFiscalRoutes(
+    `/fiscal/nfse/documents/${createdPayload.id}`,
+    {
+      method: 'GET',
+      url: `/fiscal/nfse/documents/${createdPayload.id}`
+    } as never,
+    getResponse as never,
+    'corr-fiscal-11',
+    {
+      fiscal: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(getHandled, true);
+  const documentPayload = getResponse.bodyJson<{ status: string }>();
+  assert.equal(documentPayload.status, 'draft');
+
+  const issuedResponse = new MockResponse();
+  const issueHandled = await handleFiscalRoutes(
+    `/fiscal/nfse/documents/${createdPayload.id}/issue`,
+    {
+      method: 'POST',
+      url: `/fiscal/nfse/documents/${createdPayload.id}/issue`
+    } as never,
+    issuedResponse as never,
+    'corr-fiscal-12',
+    {
+      fiscal: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(issueHandled, true);
+  assert.equal(issuedResponse.statusCode, 200);
+  const issuedPayload = issuedResponse.bodyJson<{ status: string; authorizationCode: string }>();
+  assert.equal(issuedPayload.status, 'issued');
+  assert.ok(issuedPayload.authorizationCode);
+
+  const cancelResponse = new MockResponse();
+  const cancelHandled = await handleFiscalRoutes(
+    `/fiscal/nfse/documents/${createdPayload.id}/cancel`,
+    createMockRequest('POST', `/fiscal/nfse/documents/${createdPayload.id}/cancel`, {
+      reason: 'Cancelamento operacional'
+    }) as never,
+    cancelResponse as never,
+    'corr-fiscal-13',
+    {
+      fiscal: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(cancelHandled, true);
+  assert.equal(cancelResponse.statusCode, 200);
+  const cancelledPayload = cancelResponse.bodyJson<{ status: string }>();
+  assert.equal(cancelledPayload.status, 'cancelled');
+});
+
 test('handleFiscalRoutes blocks write operations when fiscal backoffice flag is disabled', async () => {
   const response = new MockResponse();
 

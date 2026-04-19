@@ -3,7 +3,9 @@ import type {
   AppointmentSummary,
   CreateAppointmentRequest,
   AppointmentsListResponse,
-  SchedulingAvailabilityResponse
+  SchedulingAvailabilityResponse,
+  SmartSchedulingRecommendationRequest,
+  SmartSchedulingRecommendationResponse
 } from '@/types/appointment';
 
 export const appointmentService = {
@@ -18,6 +20,15 @@ export const appointmentService = {
 
   async create(payload: CreateAppointmentRequest): Promise<AppointmentSummary> {
     return apiRequest<AppointmentSummary>('/appointments', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async recommendDuration(
+    payload: SmartSchedulingRecommendationRequest
+  ): Promise<SmartSchedulingRecommendationResponse> {
+    return apiRequest<SmartSchedulingRecommendationResponse>('/scheduling/recommendations/duration', {
       method: 'POST',
       body: JSON.stringify(payload)
     });

@@ -70,8 +70,13 @@ import { handleHealthRoutes } from './routes/health-routes.js';
 import { handleLaboratoryRoutes } from './routes/laboratory-routes.js';
 import { handleLgpdRoutes } from './routes/lgpd-routes.js';
 import { handlePaymentsRoutes } from './routes/payments-routes.js';
+import { handleEmailRoutes } from './routes/email-routes.js';
+import { handleSmsRoutes } from './routes/sms-routes.js';
 import { handleFinancialRoutes } from './routes/financial-routes.js';
 import { handleSchedulingRoutes } from './routes/scheduling-routes.js';
+import { handleGoogleCalendarRoutes } from './routes/google-calendar-routes.js';
+import { handleLaboratoryIntegrationRoutes } from './routes/laboratory-integration-routes.js';
+import { handleMlRoutes } from './routes/ml-routes.js';
 import { handleSoc2Routes } from './routes/soc2-routes.js';
 import { handleWebhooksRoutes } from './routes/webhooks-routes.js';
 import { handleFeatureFlagsRoutes } from './routes/feature-flags-routes.js';
@@ -80,6 +85,7 @@ import { handleDischargesRoutes } from './routes/discharges-routes.js';
 import { handleBillingRoutes } from './routes/billing-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
 import { handleInventoryRoutes } from './routes/inventory-routes.js';
+import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
 import { handleAccessControlRoutes } from './routes/access-control-routes.js';
 import { handleInpatientRoutes } from './routes/inpatient-routes.js';
@@ -100,11 +106,25 @@ import {
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { LocalPixPaymentGateway, PagarMePaymentGatewayAdapter } from './payment-gateway.js';
 import {
+  LocalEmailGateway,
+  ResendEmailGatewayAdapter
+} from './email-gateway.js';
+import { InMemoryEmailDeliveryRepository } from './email-delivery-repository.js';
+import { LocalSmsGateway, TwilioSmsGatewayAdapter } from './sms-gateway.js';
+import { InMemorySmsDeliveryRepository } from './sms-delivery-repository.js';
+import {
+  GoogleCalendarGatewayAdapter,
+  LocalGoogleCalendarGateway
+} from './google-calendar-gateway.js';
+import { InMemoryGoogleCalendarSyncRepository } from './google-calendar-sync-repository.js';
+import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
+import {
   getMetricsText,
   httpErrorsTotal,
   httpRequestDurationSeconds,
   httpRequestsTotal,
   normalizeRoute,
+  recordRequestSloObservation,
   updateAppMetrics,
   createFeatureFlagMetricsCollector
 } from './metrics.js';
@@ -148,6 +168,11 @@ import {
 import { FiscalService } from '@cvg-his-v2/module-fiscal';
 import { DatabaseFeatureFlagRepository } from '@cvg-his-v2/module-feature-flags';
 import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
+import {
+  DemandForecastingService,
+  LabAnomalyDetectionService,
+  OcrFiscalService
+} from '@cvg-his-v2/module-ml';
 
 export interface ApiServerOptions {
   readonly appName: string;
@@ -172,6 +197,15 @@ export interface ApiServerOptions {
   readonly pagarmePixKey?: string;
   /** When true, forces LocalPixPaymentGateway (mock) even if pagarme keys are set. Default: false (PagarMe default). */
   readonly pixMockMode?: boolean;
+  readonly resendApiKey?: string;
+  readonly emailFrom?: string;
+  readonly emailMockMode?: boolean;
+  readonly smsApiKey?: string;
+  readonly smsFrom?: string;
+  readonly smsMockMode?: boolean;
+  readonly googleCalendarAccessToken?: string;
+  readonly googleCalendarCalendarId?: string;
+  readonly googleCalendarMockMode?: boolean;
   /** Redis URL for distributed rate limiting. When set, auth rate limiter uses Redis backend. */
   readonly redisUrl?: string;
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
@@ -375,6 +409,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     apiKeys,
     eventBus,
     pixTransactions,
+    cardTransactions,
+    smartScheduling,
     initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
@@ -386,13 +422,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     fileStorage: options.fileStorage,
     runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
     notificationsWhatsappRemindersEnabled:
-      options.featureFlags?.notificationsWhatsappRemindersEnabled
+      options.featureFlags?.notificationsWhatsappRemindersEnabled,
+    preserveSeedUsersWithRepository: options.environment === 'test'
   });
-  // GAP-01 fix: PagarMe is now the DEFAULT. LocalPix (mock) is the fallback.
-  // To use LocalPix in any environment, set PIX_MOCK_MODE=true.
-  const usePixMock =
-    options.pixMockMode === true ||
-    (options.pixMockMode !== false && (!options.pagarmeApiKey || !options.pagarmePixKey));
+  // PagarMe is preferred only when both credentials are present.
+  // Without complete credentials, the runtime must fall back to LocalPix so
+  // bootstrap, test, and validation environments stay operational.
+  const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
+  const usePixMock = options.pixMockMode === true || !hasPagarmeCredentials;
   const paymentGateway = usePixMock
     ? new LocalPixPaymentGateway()
     : new PagarMePaymentGatewayAdapter({
@@ -403,6 +440,38 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const paymentGatewayLabel =
     paymentGateway instanceof PagarMePaymentGatewayAdapter ? 'PagarMePixAdapter' : 'LocalPixPaymentGateway';
   logger.info('payment gateway initialized', { provider: paymentGatewayLabel });
+  const useEmailMock = options.emailMockMode === true || !options.resendApiKey;
+  const emailGateway = useEmailMock
+      ? new LocalEmailGateway()
+      : new ResendEmailGatewayAdapter({
+        apiKey: options.resendApiKey!,
+        from: options.emailFrom ?? 'noreply@cvg-his.local'
+      });
+  const emailDeliveries = new InMemoryEmailDeliveryRepository();
+  const useSmsMock = options.smsMockMode === true || !options.smsApiKey;
+  const smsGateway = useSmsMock
+    ? new LocalSmsGateway()
+    : new TwilioSmsGatewayAdapter({
+        apiKey: options.smsApiKey!,
+        from: options.smsFrom ?? 'CVGHIS'
+      });
+  const smsDeliveries = new InMemorySmsDeliveryRepository();
+  const hasGoogleCalendarCredentials = Boolean(
+    options.googleCalendarAccessToken && options.googleCalendarCalendarId
+  );
+  const useGoogleCalendarMock =
+    options.googleCalendarMockMode === true || !hasGoogleCalendarCredentials;
+  const googleCalendarGateway = useGoogleCalendarMock
+    ? new LocalGoogleCalendarGateway()
+    : new GoogleCalendarGatewayAdapter({
+        accessToken: options.googleCalendarAccessToken!,
+        calendarId: options.googleCalendarCalendarId!
+      });
+  const googleCalendarSyncs = new InMemoryGoogleCalendarSyncRepository();
+  const laboratoryResultImports = new InMemoryLaboratoryResultImportRepository();
+  const ocrFiscal = new OcrFiscalService();
+  const demandForecasting = new DemandForecastingService();
+  const labAnomalyDetection = new LabAnomalyDetectionService();
   const fiscal = new FiscalService();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
@@ -448,6 +517,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       staffId: undefined,
       teamIds: memberships.teams.map((t) => t.id),
       sectorIds: memberships.sectors.map((s) => s.id),
+      sectorCodes: memberships.sectors.map((s) => s.code),
       isActive: principal.user.status === 'active'
     };
   }
@@ -612,6 +682,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         { method, route, status_code: String(statusCode) },
         durationSec
       );
+      recordRequestSloObservation({
+        durationMs: durationSec * 1000,
+        statusCode
+      });
 
       if (statusCode >= 400) {
         const category = statusCode >= 500 ? '5xx' : '4xx';
@@ -935,6 +1009,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (
           await handleSchedulingRoutes(pathname, request, response, correlationId, {
             scheduling,
+            smartScheduling,
             audit,
             requirePrincipal
           })
@@ -1482,6 +1557,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           billing,
           audit,
           pixTransactions,
+          cardTransactions,
           requirePrincipal
         })) { return; }
 
@@ -1651,7 +1727,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           await handleOwnersRoutes(pathname, request, response, correlationId, {
             owners,
             audit,
-            requirePrincipal
+            requirePrincipal,
+            enforceAbac
           })
         ) {
           return;
@@ -2024,6 +2101,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           enforceAbac
         })) { return; }
 
+        // --- Surgery (delegated) ---
+        if (await handleSurgeryRoutes(pathname, request, response, correlationId, {
+          surgery,
+          audit,
+          requirePrincipal
+        })) { return; }
+
         // --- Webhooks (delegated to webhooks-routes) ---
         const webhooksHandled = handleWebhooksRoutes(pathname, request, response, correlationId, {
           webhooks,
@@ -2052,14 +2136,80 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           eventBus,
           paymentGateway,
           apiKeys,
-          audit
+          audit,
+          cardTransactions
         });
         if (await paymentsHandled) return;
+
+        const emailHandled = await handleEmailRoutes(pathname, request, response, correlationId, {
+          emailGateway,
+          emailDeliveries,
+          emailMode: useEmailMock ? 'mock' : 'provider',
+          emailFrom: options.emailFrom ?? 'noreply@cvg-his.local',
+          resendConfigured: Boolean(options.resendApiKey),
+          apiKeys,
+          audit
+        });
+        if (emailHandled) return;
+
+        const smsHandled = await handleSmsRoutes(pathname, request, response, correlationId, {
+          smsGateway,
+          smsDeliveries,
+          smsMode: useSmsMock ? 'mock' : 'provider',
+          smsFrom: options.smsFrom ?? 'CVGHIS',
+          smsConfigured: Boolean(options.smsApiKey),
+          apiKeys,
+          audit
+        });
+        if (smsHandled) return;
+
+        const googleCalendarHandled = await handleGoogleCalendarRoutes(
+          pathname,
+          request,
+          response,
+          correlationId,
+          {
+            scheduling,
+            googleCalendarGateway,
+            googleCalendarSyncs,
+            googleCalendarMode: useGoogleCalendarMock ? 'mock' : 'provider',
+            googleCalendarConfigured: hasGoogleCalendarCredentials,
+            googleCalendarCalendarId: options.googleCalendarCalendarId,
+            apiKeys,
+            audit
+          }
+        );
+        if (googleCalendarHandled) return;
+
+        const laboratoryIntegrationHandled = await handleLaboratoryIntegrationRoutes(
+          pathname,
+          request,
+          response,
+          correlationId,
+          {
+            laboratory,
+            laboratoryResultImports,
+            apiKeys,
+            audit
+          }
+        );
+        if (laboratoryIntegrationHandled) return;
+
+        if (await handleMlRoutes(pathname, request, response, correlationId, {
+          scheduling,
+          laboratory,
+          ocrFiscal,
+          demandForecasting,
+          labAnomalyDetection,
+          audit,
+          requirePrincipal
+        })) { return; }
 
         // --- WhatsApp (delegated) ---
         if (await handleWhatsAppRoutes(pathname, request, response, correlationId, {
           scheduling,
           audit,
+          requirePrincipal,
           notificationsWhatsappInboundActionsEnabled:
             featureFlags.notificationsWhatsappInboundActionsEnabled
         })) { return; }

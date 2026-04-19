@@ -1,5 +1,9 @@
 # 0325 — Catálogo Operacional de Feature Flags
 
+**Taxonomia:** `OPERACIONAL`
+**Papel no sistema documental:** catalogo vivo da superficie operacional de feature flags e sua governanca minima
+**Ler em conjunto com:** `README.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md`, `200-BACKLOG-MASTER.md`
+
 **Data:** 2026-04-14
 **PR:** PR-FF-12 (EP-FF-05 — Governança Operacional)
 **Status:** ✅ DONE

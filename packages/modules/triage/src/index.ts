@@ -1,9 +1,10 @@
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { CreateTriageRequest, UpdateTriageRequest } from '@cvg-his-v2/shared-contracts';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
   EncounterId,
+  PatientId,
   TriageRecordId,
   TriageSummary,
   UserId
@@ -81,6 +82,14 @@ export class TriageService {
   ): Promise<TriageSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const encounter = this.#encounters.getOrThrow(encounterId);
+    const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
+    if (patientId !== encounter.patientId) {
+      throw new ValidationError('Triage patientId must match encounter patientId', {
+        encounterId,
+        patientId,
+        encounterPatientId: encounter.patientId
+      });
+    }
     const existing = this.list(encounterId)[0];
     if (existing) {
       throw new ConflictError('Encounter already has an initial triage', {

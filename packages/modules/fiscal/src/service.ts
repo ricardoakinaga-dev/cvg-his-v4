@@ -1,20 +1,30 @@
 import type {
   CreateFiscalNfseLayoutRequest,
+  CreateFiscalNfseDocumentRequest,
+  FiscalNfseDocumentFilters,
   FiscalCfopSummary,
   FiscalDashboardSummary,
   FiscalIcmsMatrixRowSummary,
   FiscalIcmsRuleSummary,
+  FiscalNfseDocumentSummary,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutSummary,
   FiscalPisCofinsRuleSummary,
   FiscalTaxPreview,
+  CancelFiscalNfseDocumentRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
 import { CFOP_TABLE, type CfopSection } from './cfop-table.js';
 import { DEFAULT_TAX_RATES, TaxCalculator, type TaxRegime } from './tax-calculator.js';
 import { DatabaseFiscalRepository } from './database-fiscal.repository.js';
+import {
+  NfseEmitter,
+  type NfseDocument,
+  type NfseServiceLine
+} from './nfse-emitter.js';
 import type { AccountId } from '@cvg-his-v2/shared-types';
+import { randomBytes } from 'node:crypto';
 
 export interface FiscalCfopFilters {
   readonly search?: string;
@@ -263,6 +273,13 @@ const NFSE_LAYOUTS: readonly FiscalNfseLayoutSummary[] = [
 ] as const;
 
 const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({ ...layout }));
+const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
+
+type NfseIssuerDocument = NfseDocument & {
+  municipalityCode: string;
+  apiUrl: string;
+  environment: 'producao' | 'homologacao';
+};
 
 function createTaxPreview(): FiscalTaxPreview {
   const calculator = new TaxCalculator(DEFAULT_TAX_RATES, 'SP', 'simples_nacional');
@@ -328,6 +345,142 @@ function assertNonEmpty(value: string | undefined, field: string): string {
     throw new Error(`${field} is required`);
   }
   return normalized;
+}
+
+function assertPositiveInteger(value: number | undefined, field: string, fallback?: number): number {
+  if (value === undefined) {
+    if (fallback === undefined) {
+      throw new Error(`${field} is required`);
+    }
+
+    return fallback;
+  }
+
+  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) {
+    throw new Error(`${field} must be a positive integer`);
+  }
+
+  return value;
+}
+
+function assertNonNegative(value: number, field: string): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${field} must be zero or positive`);
+  }
+  return value;
+}
+
+function normalizeServices(
+  services: CreateFiscalNfseDocumentRequest['services']
+): readonly NfseServiceLine[] {
+  if (services.length === 0) {
+    throw new Error('services is required');
+  }
+
+  return services.map((service) => ({
+    description: assertNonEmpty(service.description, 'service.description'),
+    codigoServico: assertNonEmpty(service.codigoServico, 'service.codigoServico'),
+    cnae: assertNonEmpty(service.cnae, 'service.cnae'),
+    quantity: assertNonNegative(service.quantity, 'service.quantity'),
+    unitValue: assertNonNegative(service.unitValue, 'service.unitValue'),
+    totalValue: assertNonNegative(service.totalValue, 'service.totalValue'),
+    issRate: assertNonNegative(service.issRate, 'service.issRate'),
+    issValue: assertNonNegative(service.issValue, 'service.issValue'),
+    pisValue: assertNonNegative(service.pisValue, 'service.pisValue'),
+    cofinsValue: assertNonNegative(service.cofinsValue, 'service.cofinsValue'),
+    csllValue: assertNonNegative(service.csllValue, 'service.csllValue'),
+    irrfValue: service.irrfValue === undefined ? undefined : assertNonNegative(service.irrfValue, 'service.irrfValue'),
+    inssValue: service.inssValue === undefined ? undefined : assertNonNegative(service.inssValue, 'service.inssValue')
+  }));
+}
+
+function toFiscalDocumentSummary(document: NfseDocument): FiscalNfseDocumentSummary {
+  return {
+    id: document.id,
+    serie: document.serie,
+    numero: document.numero,
+    competencia: document.competencia,
+    provider: document.provider,
+    customer: {
+      type: document.customer.type,
+      document: document.customer.document,
+      name: document.customer.name,
+      email: document.customer.email,
+      phone: document.customer.phone
+    },
+    services: document.services.map((service) => ({
+      description: service.description,
+      codigoServico: service.codigoServico,
+      cnae: service.cnae,
+      quantity: service.quantity,
+      unitValue: service.unitValue,
+      totalValue: service.totalValue,
+      issRate: service.issRate,
+      issValue: service.issValue,
+      pisValue: service.pisValue,
+      cofinsValue: service.cofinsValue,
+      csllValue: service.csllValue,
+      irrfValue: service.irrfValue,
+      inssValue: service.inssValue
+    })),
+    subtotal: document.subtotal,
+    totalIss: document.totalIss,
+    totalPis: document.totalPis,
+    totalCofins: document.totalCofins,
+    totalCsll: document.totalCsll,
+    totalIrrf: document.totalIrrf,
+    totalInss: document.totalInss,
+    totalDocument: document.totalDocument,
+    observations: document.observations,
+    createdAt: document.createdAt,
+    status: document.status,
+    authorizationCode: document.authorizationCode,
+    verificationUrl: document.verificationUrl
+  };
+}
+
+function toEmitter(
+  provider: NfseIssuerDocument['provider'],
+  municipalityCode: string,
+  apiUrl: string
+): NfseEmitter {
+  return new NfseEmitter({
+    provider: {
+      provider,
+      apiUrl,
+      municipalityCode
+    },
+    issuer: {
+      cnpj: '99999999000101',
+      inscricaoMunicipal: '000001',
+      razaoSocial: 'CVG HIS Ltda',
+      nomeFantasia: 'CVG HIS',
+      address: {
+        street: 'Avenida Exemplo',
+        number: '1000',
+        district: 'Centro',
+        city: 'Sao Paulo',
+        state: 'SP',
+        zipCode: '01000000',
+        country: 'BR'
+      },
+      phone: '(11) 4000-0000',
+      email: 'fiscal@cvg-his.example.com'
+    },
+    regime: 'simples_nacional'
+  });
+}
+
+function nextDocumentId(): string {
+  return `nfse-${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
+function nextDocumentNumber(): number {
+  return (Date.now() % 900000) + Math.floor(randomBytes(1)[0] / 10);
+}
+
+function todayDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export class FiscalService {
@@ -520,6 +673,114 @@ export class FiscalService {
     return next;
   }
 
+  public async listNfseDocuments(
+    filters: FiscalNfseDocumentFilters = {}
+  ): Promise<FiscalNfseDocumentSummary[]> {
+    const normalizedSearch = normalizeTerm(filters.customerSearch);
+
+    return inMemoryNfseDocuments
+      .filter((document) => !filters.status || document.status === filters.status)
+      .filter((document) =>
+        normalizedSearch.length === 0
+        || normalizeTerm(document.customer.name).includes(normalizedSearch)
+        || normalizeTerm(document.customer.document).includes(normalizedSearch)
+      )
+      .map((document) => toFiscalDocumentSummary(document));
+  }
+
+  public async getNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
+    const found = inMemoryNfseDocuments.find((document) => document.id === id);
+    return found ? toFiscalDocumentSummary(found) : null;
+  }
+
+  public async createNfseDocument(
+    payload: CreateFiscalNfseDocumentRequest
+  ): Promise<FiscalNfseDocumentSummary> {
+    const serie = payload.serie?.trim() || '001';
+    const customer = {
+      type: payload.customer.type,
+      document: assertNonEmpty(payload.customer.document, 'customer.document'),
+      name: assertNonEmpty(payload.customer.name, 'customer.name'),
+      email: payload.customer.email?.trim() || undefined,
+      phone: payload.customer.phone?.trim() || undefined
+    };
+    const services = normalizeServices(payload.services);
+    const provider = payload.provider ?? 'abrasf';
+    const documentNumber = assertPositiveInteger(
+      payload.numero,
+      'numero',
+      nextDocumentNumber()
+    );
+    const competencia = payload.competencia?.trim() || todayDate();
+    const municipalityCode = payload.municipalityCode?.trim() || '3550308';
+    const apiUrl = payload.apiUrl?.trim() || 'https://simulator.example.invalid/nfse';
+
+    const draft = toEmitter(provider, municipalityCode, apiUrl).createDraft({
+      numero: documentNumber,
+      competencia,
+      customer,
+      services,
+      observations: payload.observations?.trim() || undefined
+    });
+
+    const document: NfseIssuerDocument = {
+      ...draft,
+      id: nextDocumentId(),
+      serie,
+      provider,
+      issuer: draft.issuer,
+      municipalityCode,
+      apiUrl,
+      environment: 'homologacao'
+    };
+
+    inMemoryNfseDocuments.unshift(document);
+    return toFiscalDocumentSummary(document);
+  }
+
+  public async issueNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
+    const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryNfseDocuments[index];
+    const emitter = toEmitter(current.provider, current.municipalityCode, current.apiUrl);
+    const nextDocument = await emitter.issue(current);
+    const next: NfseIssuerDocument = {
+      ...nextDocument,
+      municipalityCode: current.municipalityCode,
+      apiUrl: current.apiUrl,
+      environment: 'homologacao'
+    };
+
+    inMemoryNfseDocuments[index] = next;
+    return toFiscalDocumentSummary(next);
+  }
+
+  public async cancelNfseDocument(
+    id: string,
+    payload: CancelFiscalNfseDocumentRequest
+  ): Promise<FiscalNfseDocumentSummary | null> {
+    const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryNfseDocuments[index];
+    const emitter = toEmitter(current.provider, current.municipalityCode, current.apiUrl);
+    const nextDocument = await emitter.cancel(current, assertNonEmpty(payload.reason, 'reason'));
+    const next: NfseIssuerDocument = {
+      ...nextDocument,
+      municipalityCode: current.municipalityCode,
+      apiUrl: current.apiUrl,
+      environment: 'homologacao'
+    };
+
+    inMemoryNfseDocuments[index] = next;
+    return toFiscalDocumentSummary(next);
+  }
+
   public async getTaxPreview(): Promise<FiscalTaxPreview> {
     return createTaxPreview();
   }
@@ -568,9 +829,9 @@ export class FiscalService {
         },
         {
           variant: 'warning',
-          title: 'Escopo fiscal ainda parcial',
+          title: 'Ciclo fiscal documental em operação',
           message:
-            'Emissão, cancelamento e escrituração fiscal ainda não estão publicados porque o backend transacional correspondente não existe.'
+            'Emissão e cancelamento de documentos NFS-e funcionam no fluxo mínimo em memória com trilha auditada; etapa transacional persistente segue em evolução.'
         }
       ]
     };

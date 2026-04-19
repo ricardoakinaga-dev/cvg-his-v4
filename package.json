@@ -20,7 +20,8 @@
     "test:smoke": "npx playwright test --config e2e/playwright-smoke.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:db": "vitest run tests/integration/database --config vitest.integration.config.ts",
-    "test:critical": "REQUIRE_TEST_DB=1 DATABASE_URL_TEST=\"postgres://postgres:postgres@localhost:5433/cvg_his_v2_test\" DATABASE_URL=\"postgres://postgres:postgres@localhost:5433/cvg_his_v2_test\" vitest run tests/integration/database tests/integration/foundational.test.ts --config vitest.integration.config.ts --reporter=verbose",
+    "test:critical": "REQUIRE_TEST_DB=1 vitest run tests/integration/database tests/integration/foundational.test.ts --config vitest.integration.config.ts --reporter=verbose",
+    "test:runner:clean": "node infra/scripts/cleanup-test-runner.mjs --kill-orphans --drop-stale-dbs",
     "test:critical:bootstrap": "node infra/scripts/test-critical-bootstrap.mjs",
     "test:coverage": "vitest run --coverage --config vitest.config.ts --exclude 'tests/integration/database/**' --exclude 'tests/integration/factories.test.ts' --exclude 'tests/integration/db-schema.test.ts' --exclude 'tests/integration/foundational.test.ts' --exclude 'tests/integration/rls/rls-lgpd.test.ts' --exclude 'tests/integration/rls/rls-text-based-tables.test.ts' --exclude 'tests/integration/rls/rls-isolation.test.ts' --exclude 'tests/integration/webhook-persistence.test.ts' --exclude 'tests/integration/mfa/mfa-persistence.test.ts'",
     "test:e2e": "npx playwright test e2e/tests/fluxos-criticos.spec.ts --config playwright.config.ts",
@@ -50,7 +51,8 @@
     "cutover:check": "node infra/scripts/check-cutover-readiness.mjs",
     "deploy:check": "node infra/scripts/check-cutover-readiness.mjs",
     "deploy:cutover:v2": "bash infra/scripts/cutover-v2.sh",
-    "validate:openapi": "node scripts/validate-openapi.js"
+    "validate:openapi": "node scripts/validate-openapi.js",
+    "validate:helm": "node infra/scripts/validate-helm.mjs"
   },
   "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
   "main": "index.js",

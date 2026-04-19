@@ -15,6 +15,71 @@ import { test, expect } from '../fixtures/cvg-his.fixture';
  * Tests work around these gaps using available routes.
  */
 
+function buildOwnerPayload(fullName: string, tag: string) {
+  return {
+    fullName,
+    documentId: tag,
+    contacts: [
+      {
+        label: 'Celular',
+        value: `+55 11 9${tag.replace(/\D/g, '').slice(-8).padStart(8, '0')}`,
+        type: 'whatsapp' as const,
+        primary: true
+      },
+      {
+        label: 'Email',
+        value: `${tag.toLowerCase()}@test.com`,
+        type: 'email' as const,
+        primary: false
+      }
+    ],
+    financialResponsible: true
+  };
+}
+
+function buildPatientPayload(
+  primaryOwnerId: string,
+  name: string,
+  species: string,
+  sex: 'male' | 'female'
+) {
+  return {
+    primaryOwnerId,
+    name,
+    species,
+    breed: 'E2E Breed',
+    sex
+  };
+}
+
+function buildAppointmentPayload(
+  patientId: string,
+  ownerId: string,
+  practitionerStaffId: string,
+  scheduledAt: string,
+  reason: string
+) {
+  return {
+    patientId,
+    ownerId,
+    scheduledAt,
+    visitType: 'scheduled' as const,
+    reason,
+    practitionerStaffId
+  };
+}
+
+async function loginAs(apiContext: import('@playwright/test').APIRequestContext, username: string, password: string) {
+  const response = await apiContext.post('/auth/login', {
+    data: { username, password }
+  });
+  expect(response.ok()).toBeTruthy();
+  const session = await response.json();
+  return {
+    Authorization: `Bearer ${session.accessToken}`
+  };
+}
+
 test.describe('Critical Flows — Phase 4 E2E', () => {
   // ==========================================================================
   // FLOW 1: User creation + role + permission validation
@@ -96,7 +161,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           username: vetUsername,
           email: `${vetUsername}@cvg.local`,
-          password: 'Vet123!',
+          password: 'Vet1234!',
           roleCode: 'veterinarian',
           displayName: 'Dr. Veterinário E2E'
         }
@@ -136,7 +201,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 4. Verify veterinarian can access clinical operations
       const vetLoginRes = await apiContext.post('/auth/login', {
-        data: { username: vetUsername, password: 'Vet123!' }
+        data: { username: vetUsername, password: 'Vet1234!' }
       });
       expect(vetLoginRes.ok()).toBeTruthy();
       const vetSession = await vetLoginRes.json();
@@ -167,12 +232,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
     }) => {
       // 1. Create owner (tutor)
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Carlos Oliveira E2E`,
-          document: `E2E-FLOW3-${Date.now()}`,
-          phoneMain: '11977665544',
-          email: `carlos.flow3.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Carlos Oliveira E2E', `e2e-flow3-${Date.now()}`)
       });
       expect(ownerRes.ok()).toBeTruthy();
       const owner = await ownerRes.json();
@@ -182,20 +242,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 2. Create patient linked to owner
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId,
-          name: `Thor E2E`,
-          species: 'Canina',
-          breed: 'Pastor Alemão',
-          sex: 'male',
-          microchip: `E2E-FLOW3-${Date.now()}`
-        }
+        data: buildPatientPayload(ownerId, 'Thor E2E', 'canine', 'male')
       });
       expect(patientRes.ok()).toBeTruthy();
       const patient = await patientRes.json();
       patientId = patient.id;
       expect(patient.id).toBeTruthy();
-      expect(patient.ownerId).toBe(ownerId);
+      expect(patient.primaryOwnerId).toBe(ownerId);
       console.log(`   ✅ Paciente criado: ${patientId} (tutor: ${ownerId})`);
 
       // 3. Get available professional from staff
@@ -203,26 +256,21 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(staffRes.ok()).toBeTruthy();
       const staffList = await staffRes.json();
       expect(staffList.items.length).toBeGreaterThan(0);
-      professionalUserId = staffList.items[0].userId;
+      professionalUserId = staffList.items[0].id;
       console.log(`   ✅ Profissional elegível: ${professionalUserId}`);
 
       // 4. Create appointment with eligible professional
       const startAt = new Date();
       startAt.setDate(startAt.getDate() + 1);
       startAt.setHours(14, 0, 0, 0);
-      const endAt = new Date(startAt);
-      endAt.setMinutes(endAt.getMinutes() + 45);
-
       const appointmentRes = await apiContext.post('/appointments', {
-        data: {
+        data: buildAppointmentPayload(
           patientId,
           ownerId,
           professionalUserId,
-          startAt: startAt.toISOString(),
-          endAt: endAt.toISOString(),
-          type: 'consultation',
-          notes: 'Consulta de rotina - Flow 3 E2E'
-        }
+          startAt.toISOString(),
+          'Consulta de rotina - Flow 3 E2E'
+        )
       });
       expect(appointmentRes.ok()).toBeTruthy();
       const appointment = await appointmentRes.json();
@@ -230,7 +278,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(appointment.id).toBeTruthy();
       expect(appointment.patientId).toBe(patientId);
       expect(appointment.ownerId).toBe(ownerId);
-      expect(appointment.professionalUserId).toBe(professionalUserId);
+      expect(appointment.practitionerStaffId).toBe(professionalUserId);
       expect(appointment.status).toBe('scheduled');
       console.log(`   ✅ Agendamento criado: ${appointmentId}`);
 
@@ -262,47 +310,33 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
     }) => {
       // Setup: Create owner + patient + appointment
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Fernanda Lima E2E`,
-          document: `E2E-FLOW4-${Date.now()}`,
-          phoneMain: '11966554433',
-          email: `fernanda.flow4.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Fernanda Lima E2E', `e2e-flow4-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow4OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow4OwnerId,
-          name: `Bella E2E`,
-          species: 'Felina',
-          breed: 'Siamesa',
-          sex: 'female',
-          microchip: `E2E-FLOW4-${Date.now()}`
-        }
+        data: buildPatientPayload(flow4OwnerId, 'Bella E2E', 'feline', 'female')
       });
       const patient = await patientRes.json();
       flow4PatientId = patient.id;
 
       const staffRes = await apiContext.get('/staff');
       const staffList = await staffRes.json();
-      flow4ProfessionalUserId = staffList.items[0].userId;
+      flow4ProfessionalUserId =
+        staffList.items.find((item: any) => item.id !== 'staff_admin')?.id ?? staffList.items[0].id;
 
       const startAt = new Date();
-      startAt.setHours(startAt.getHours() + 2);
-      const endAt = new Date(startAt);
-      endAt.setMinutes(endAt.getMinutes() + 30);
-
+      startAt.setDate(startAt.getDate() + 2);
+      startAt.setHours(15, 0, 0, 0);
       const appointmentRes = await apiContext.post('/appointments', {
-        data: {
-          patientId: flow4PatientId,
-          ownerId: flow4OwnerId,
-          professionalUserId: flow4ProfessionalUserId,
-          startAt: startAt.toISOString(),
-          endAt: endAt.toISOString(),
-          type: 'consultation'
-        }
+        data: buildAppointmentPayload(
+          flow4PatientId,
+          flow4OwnerId,
+          flow4ProfessionalUserId,
+          startAt.toISOString(),
+          'Consulta de rotina - Flow 4 E2E'
+        )
       });
       const appointment = await appointmentRes.json();
       flow4AppointmentId = appointment.id;
@@ -324,12 +358,17 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(queueEntry.appointmentId).toBe(flow4AppointmentId);
       console.log(`   ✅ Check-in realizado: queue entry ${flow4QueueEntryId}`);
 
+      const callQueueRes = await apiContext.post(`/queue/${flow4QueueEntryId}/call`);
+      expect(callQueueRes.ok()).toBeTruthy();
+
       // Open encounter with queueEntryId to link to appointment
       const encounterRes = await apiContext.post('/encounters', {
         data: {
           patientId: flow4PatientId,
           ownerId: flow4OwnerId,
           queueEntryId: flow4QueueEntryId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Consulta de rotina - Flow 4 E2E'
         }
       });
@@ -362,25 +401,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Ricardo Souza E2E`,
-          document: `E2E-FLOW5-${Date.now()}`,
-          phoneMain: '11955443322',
-          email: `ricardo.flow5.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Ricardo Souza E2E', `e2e-flow5-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow5OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow5OwnerId,
-          name: `Max E2E`,
-          species: 'Canina',
-          breed: 'Labrador',
-          sex: 'male',
-          microchip: `E2E-FLOW5-${Date.now()}`
-        }
+        data: buildPatientPayload(flow5OwnerId, 'Max E2E', 'canine', 'male')
       });
       const patient = await patientRes.json();
       flow5PatientId = patient.id;
@@ -389,6 +416,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow5PatientId,
           ownerId: flow5OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Consulta para registro clínico - Flow 5 E2E'
         }
       });
@@ -404,7 +433,9 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const entryRes = await apiContext.post('/medical-records/entries', {
         data: {
           encounterId: flow5EncounterId,
-          entryType: 'SOAP',
+          patientId: flow5PatientId,
+          entryType: 'progress_note',
+          title: 'SOAP progress note',
           content:
             'S: Tutor relata falta de apetite há 2 dias.\nO: Paciente apático, TPC > 2s.\nA: Possível gastroenterite.\nP: Exames laboratoriais.'
         }
@@ -455,25 +486,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Patricia Mendes E2E`,
-          document: `E2E-FLOW6-${Date.now()}`,
-          phoneMain: '11944332211',
-          email: `patricia.flow6.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Patricia Mendes E2E', `e2e-flow6-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow6OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow6OwnerId,
-          name: `Rex E2E`,
-          species: 'Canina',
-          breed: 'Golden Retriever',
-          sex: 'male',
-          microchip: `E2E-FLOW6-${Date.now()}`
-        }
+        data: buildPatientPayload(flow6OwnerId, 'Rex E2E', 'canine', 'male')
       });
       const patient = await patientRes.json();
       flow6PatientId = patient.id;
@@ -482,6 +501,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow6PatientId,
           ownerId: flow6OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Consulta com faturamento - Flow 6 E2E'
         }
       });
@@ -531,9 +552,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Segundo item faturável criado (R$ 200.00)`);
 
       // 4. Verify billing items are listed
-      const itemsRes = await apiContext.get('/billing/items', {
-        params: { encounterId: flow6EncounterId }
-      });
+      const itemsRes = await apiContext.get(`/billing/${flow6EncounterId}/items`);
       expect(itemsRes.ok()).toBeTruthy();
       const items = await itemsRes.json();
       expect(items.items.length).toBe(2);
@@ -555,25 +574,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Marcos Pereira E2E`,
-          document: `E2E-FLOW7-${Date.now()}`,
-          phoneMain: '11933221100',
-          email: `marcos.flow7.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Marcos Pereira E2E', `e2e-flow7-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow7OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow7OwnerId,
-          name: `Luna E2E`,
-          species: 'Felina',
-          breed: 'Persa',
-          sex: 'female',
-          microchip: `E2E-FLOW7-${Date.now()}`
-        }
+        data: buildPatientPayload(flow7OwnerId, 'Luna E2E', 'feline', 'female')
       });
       const patient = await patientRes.json();
       flow7PatientId = patient.id;
@@ -582,6 +589,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow7PatientId,
           ownerId: flow7OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Consulta com consumo de estoque - Flow 7 E2E'
         }
       });
@@ -589,7 +598,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       flow7EncounterId = encounter.id;
 
       // Get initial inventory
-      const inventoryRes = await apiContext.get('/inventory/items');
+      const inventoryRes = await apiContext.get('/inventory');
       expect(inventoryRes.ok()).toBeTruthy();
       const inventory = await inventoryRes.json();
       expect(inventory.items.length).toBeGreaterThan(0);
@@ -602,12 +611,15 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       apiContext,
       testUser
     }) => {
+      const inventoryHeaders = await loginAs(apiContext, 'inventory', 'seed_inventory');
       // 1. Consume inventory item during encounter
       const consumeRes = await apiContext.post('/inventory/consumptions', {
+        headers: inventoryHeaders,
         data: {
           encounterId: flow7EncounterId,
           inventoryItemId,
-          quantity: 2
+          quantity: 2,
+          sourceEntityType: 'encounter'
         }
       });
       expect(consumeRes.ok()).toBeTruthy();
@@ -618,7 +630,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Consumo registrado: 2 unidades do item ${inventoryItemId}`);
 
       // 2. Verify stock was reduced (list all items and find ours)
-      const updatedItemsRes = await apiContext.get('/inventory/items');
+      const updatedItemsRes = await apiContext.get('/inventory', { headers: inventoryHeaders });
       expect(updatedItemsRes.ok()).toBeTruthy();
       const updatedItems = await updatedItemsRes.json();
       const updatedItem = updatedItems.items.find((i: any) => i.id === inventoryItemId);
@@ -630,6 +642,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 3. Verify consumption is linked to encounter
       const consumptionsRes = await apiContext.get('/inventory/consumptions', {
+        headers: inventoryHeaders,
         params: { encounterId: flow7EncounterId }
       });
       expect(consumptionsRes.ok()).toBeTruthy();
@@ -698,12 +711,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 5. Verify blocked from creating appointments
       const blockedApptRes = await apiContext.post('/appointments', {
-        data: {
-          patientId: 'test-patient',
-          ownerId: 'test-owner',
-          startAt: new Date().toISOString(),
-          endAt: new Date(Date.now() + 3600000).toISOString()
-        },
+        data: buildAppointmentPayload(
+          'patient_luna',
+          'owner_maria_silva',
+          'staff_vet',
+          new Date(Date.now() + 3600000).toISOString(),
+          'Tentativa bloqueada apos inativacao'
+        ),
         headers: { Authorization: `Bearer ${accessToken}` }
       });
       expect(blockedApptRes.status()).toBe(403);
@@ -724,25 +738,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Juliana Costa E2E`,
-          document: `E2E-FLOW9-${Date.now()}`,
-          phoneMain: '11922110099',
-          email: `juliana.flow9.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Juliana Costa E2E', `e2e-flow9-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow9OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow9OwnerId,
-          name: `Bob E2E`,
-          species: 'Canina',
-          breed: 'Bulldog',
-          sex: 'male',
-          microchip: `E2E-FLOW9-${Date.now()}`
-        }
+        data: buildPatientPayload(flow9OwnerId, 'Bob E2E', 'canine', 'male')
       });
       const patient = await patientRes.json();
       flow9PatientId = patient.id;
@@ -751,6 +753,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow9PatientId,
           ownerId: flow9OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Encaminhamento cirurgico - Flow 9 E2E'
         }
       });
@@ -759,14 +763,17 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
     });
 
     test('should request surgery and update status', async ({ apiContext, testUser }) => {
+      const vetHeaders = await loginAs(apiContext, 'vet', 'seed_vet');
       // 1. Request surgery case
-      const surgeryRes = await apiContext.post('/surgery/cases', {
+      const surgeryRes = await apiContext.post('/surgeries', {
+        headers: vetHeaders,
         data: {
           encounterId: flow9EncounterId,
+          patientId: flow9PatientId,
           procedureName: 'Ortopedia de quadril',
           surgeonUserId: 'user_vet',
           scheduledAt: new Date(Date.now() + 86400000).toISOString(),
-          notes: 'Cirurgia ortopedica - Flow 9 E2E'
+          preparationNotes: 'Cirurgia ortopedica - Flow 9 E2E'
         }
       });
       expect(surgeryRes.ok()).toBeTruthy();
@@ -779,16 +786,18 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Cirurgia solicitada: ${flow9SurgeryCaseId}`);
 
       // 2. Update surgery status to scheduled
-      const updateRes = await apiContext.patch(`/surgery/cases/${flow9SurgeryCaseId}`, {
-        data: { status: 'scheduled' }
+      const updateRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
+        headers: vetHeaders,
+        data: { status: 'pre_op' }
       });
       expect(updateRes.ok()).toBeTruthy();
       const updated = await updateRes.json();
-      expect(updated.status).toBe('scheduled');
-      console.log(`   ✅ Cirurgia agendada: status = scheduled`);
+      expect(updated.status).toBe('pre_op');
+      console.log(`   ✅ Cirurgia em preparo: status = pre_op`);
 
       // 3. Update to in_progress
-      const inProgressRes = await apiContext.patch(`/surgery/cases/${flow9SurgeryCaseId}`, {
+      const inProgressRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
+        headers: vetHeaders,
         data: { status: 'in_progress' }
       });
       expect(inProgressRes.ok()).toBeTruthy();
@@ -797,7 +806,14 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Cirurgia em andamento: status = in_progress`);
 
       // 4. Update to completed
-      const completedRes = await apiContext.patch(`/surgery/cases/${flow9SurgeryCaseId}`, {
+      const recoveryRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
+        headers: vetHeaders,
+        data: { status: 'recovery' }
+      });
+      expect(recoveryRes.ok()).toBeTruthy();
+
+      const completedRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
+        headers: vetHeaders,
         data: { status: 'completed' }
       });
       expect(completedRes.ok()).toBeTruthy();
@@ -806,7 +822,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Cirurgia concluida: status = completed`);
 
       // 5. Verify surgery is listable by encounter
-      const listRes = await apiContext.get('/surgery/cases', {
+      const listRes = await apiContext.get('/surgeries', {
+        headers: vetHeaders,
         params: { encounterId: flow9EncounterId }
       });
       expect(listRes.ok()).toBeTruthy();
@@ -829,25 +846,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Ana Beatriz E2E`,
-          document: `E2E-FLOW10-${Date.now()}`,
-          phoneMain: '11911009988',
-          email: `ana.flow10.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Ana Beatriz E2E', `e2e-flow10-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow10OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow10OwnerId,
-          name: `Mimi E2E`,
-          species: 'Felina',
-          breed: 'Angora',
-          sex: 'female',
-          microchip: `E2E-FLOW10-${Date.now()}`
-        }
+        data: buildPatientPayload(flow10OwnerId, 'Mimi E2E', 'feline', 'female')
       });
       const patient = await patientRes.json();
       flow10PatientId = patient.id;
@@ -856,6 +861,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow10PatientId,
           ownerId: flow10OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Prescricao medica - Flow 10 E2E'
         }
       });
@@ -868,14 +875,35 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       testUser
     }) => {
       // 1. Create prescription
+      const recordRes = await apiContext.get('/medical-records', {
+        params: { encounterId: flow10EncounterId }
+      });
+      expect(recordRes.ok()).toBeTruthy();
+      const recordPayload = await recordRes.json();
+      const prescEntryRes = await apiContext.post('/medical-records/entries', {
+        data: {
+          encounterId: flow10EncounterId,
+          patientId: flow10PatientId,
+          entryType: 'prescription',
+          title: 'Dipirona 500mg',
+          content:
+            'Posologia: 1 comprimido\nVia: oral\nFrequência: 8/8h\nObservações: Prescricao Flow 10 E2E'
+        }
+      });
+      expect(prescEntryRes.ok()).toBeTruthy();
+      const prescriptionEntry = await prescEntryRes.json();
+
+      const executionScheduledAt = new Date(Date.now() + 2 * 3600000).toISOString();
       const prescRes = await apiContext.post('/prescription-executions', {
         data: {
+          clinicalEntryId: prescriptionEntry.id,
+          patientId: flow10PatientId,
           encounterId: flow10EncounterId,
           medicationName: 'Dipirona 500mg',
           dosage: '1 comprimido',
           route: 'oral',
           frequency: '8/8h',
-          duration: '5 dias',
+          scheduledAt: executionScheduledAt,
           notes: 'Prescricao Flow 10 E2E'
         }
       });
@@ -918,25 +946,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
     test.beforeAll(async ({ apiContext }) => {
       const ownerRes = await apiContext.post('/owners', {
-        data: {
-          fullName: `Roberto Almeida E2E`,
-          document: `E2E-FLOW11-${Date.now()}`,
-          phoneMain: '11900998877',
-          email: `roberto.flow11.${Date.now()}@test.com`
-        }
+        data: buildOwnerPayload('Roberto Almeida E2E', `e2e-flow11-${Date.now()}`)
       });
       const owner = await ownerRes.json();
       flow11OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
-        data: {
-          ownerId: flow11OwnerId,
-          name: `Rex E2E`,
-          species: 'Canina',
-          breed: 'Rottweiler',
-          sex: 'male',
-          microchip: `E2E-FLOW11-${Date.now()}`
-        }
+        data: buildPatientPayload(flow11OwnerId, 'Rex E2E', 'canine', 'male')
       });
       const patient = await patientRes.json();
       flow11PatientId = patient.id;
@@ -945,6 +961,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         data: {
           patientId: flow11PatientId,
           ownerId: flow11OwnerId,
+          visitType: 'scheduled',
+          origin: 'schedule',
           reason: 'Atendimento com alta - Flow 11 E2E'
         }
       });
@@ -957,13 +975,12 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const dischargeRes = await apiContext.post('/discharges', {
         data: {
           encounterId: flow11EncounterId,
-          patientId: flow11PatientId,
-          ownerId: flow11OwnerId,
-          dischargeType: 'alta_clinica',
-          diagnosis: 'Gastroenterite tratada',
-          prescribedMedications: 'Dipirona 500mg 8/8h por 5 dias',
-          returnDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-          notes: 'Alta clinica - Flow 11 E2E'
+          dischargeType: 'ambulatory',
+          outcome: 'Gastroenterite tratada',
+          clinicalSummary: 'Paciente responde bem ao tratamento e recebe alta clinica.',
+          continuityInstructions: 'Dipirona 500mg 8/8h por 5 dias e dieta leve.',
+          followUpDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+          followUpNotes: 'Retorno ambulatorial em 7 dias.'
         }
       });
       expect(dischargeRes.ok()).toBeTruthy();
@@ -971,7 +988,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       flow11DischargeId = discharge.id;
       expect(flow11DischargeId).toBeTruthy();
       expect(discharge.encounterId).toBe(flow11EncounterId);
-      expect(discharge.dischargeType).toBe('alta_clinica');
+      expect(discharge.dischargeType).toBe('ambulatory');
       console.log(`   ✅ Alta criada: ${flow11DischargeId}`);
 
       // 2. List discharges

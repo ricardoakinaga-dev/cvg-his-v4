@@ -9,6 +9,7 @@ import {
   InMemoryPixTransactionRepository,
   type PixTransactionRepository
 } from '../pix-transaction-repository.js';
+import { InMemoryCardTransactionRepository } from '../card-transaction-repository.js';
 import { PaymentsEventHandlers } from './payments.consumer.js';
 
 function createMockBillingService() {
@@ -28,17 +29,27 @@ function createMockBillingService() {
 }
 
 function createMockEncounterFinancialService() {
-  const payments: Array<{ billingRecordId: string; amountPaid: number; transactionId?: string }> = [];
+  const payments: Array<{
+    billingRecordId: string;
+    amountPaid: number;
+    transactionId?: string;
+    externalReferenceType?: string | null;
+  }> = [];
   return Object.assign(
     {
       async recordPaymentForBillingRecord(
         billingRecordId: never,
-        input: { amountPaid: number; externalReferenceId?: string | null }
+        input: {
+          amountPaid: number;
+          externalReferenceId?: string | null;
+          externalReferenceType?: string | null;
+        }
       ): Promise<never> {
         payments.push({
           billingRecordId: billingRecordId as string,
           amountPaid: input.amountPaid,
-          transactionId: input.externalReferenceId ?? undefined
+          transactionId: input.externalReferenceId ?? undefined,
+          externalReferenceType: input.externalReferenceType ?? undefined
         });
         return {} as never;
       },
@@ -52,7 +63,7 @@ function createMockEncounterFinancialService() {
             amountPaid: payment.amountPaid,
             paidAt: new Date().toISOString(),
             paidByUserId: null,
-            externalReferenceType: 'pix_transaction',
+            externalReferenceType: payment.externalReferenceType ?? 'pix_transaction',
             externalReferenceId: payment.transactionId,
             notes: null
           }))
@@ -61,7 +72,12 @@ function createMockEncounterFinancialService() {
     },
     { payments }
   ) as unknown as EncounterFinancialService & {
-    payments: Array<{ billingRecordId: string; amountPaid: number; transactionId?: string }>;
+    payments: Array<{
+      billingRecordId: string;
+      amountPaid: number;
+      transactionId?: string;
+      externalReferenceType?: string | null;
+    }>;
   };
 }
 
@@ -120,6 +136,69 @@ function makePixIntentCreatedEvent(intentId = 'pix_intent_1', billingRecordId?: 
   } as OutboxEvent;
 }
 
+function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?: string): OutboxEvent {
+  return {
+    id: 'evt_card_001',
+    correlationId: 'corr_card_abc' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.card.intent.created',
+    payload: {
+      accountId: 'acc_test',
+      intentId,
+      billingRecordId,
+      amount: 320,
+      currency: 'BRL',
+      description: 'Cartao Internacao',
+      provider: 'local-card',
+      installments: 2,
+      status: 'authorized_pending_capture',
+      card: {
+        holderName: 'Maria Silva',
+        brand: 'visa',
+        last4: '4242'
+      },
+      providerOrderId: `order_${intentId}`,
+      providerChargeId: `charge_${intentId}`,
+      createdAt: new Date().toISOString()
+    },
+    status: 'processing',
+    attempts: 0,
+    maxAttempts: 3,
+    scheduledAt: new Date().toISOString(),
+    processedAt: null,
+    error: null,
+    createdAt: new Date().toISOString()
+  } as OutboxEvent;
+}
+
+function makeCardCompletedEvent(billingRecordId: string): OutboxEvent {
+  return {
+    id: 'evt_card_complete_001',
+    correlationId: 'corr_card_complete_abc' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.card.completed',
+    payload: {
+      accountId: 'acc_test',
+      intentId: 'card_intent_1',
+      billingRecordId,
+      provider: 'local-card',
+      providerOrderId: 'order_card_intent_1',
+      providerChargeId: 'charge_card_intent_1',
+      providerAuthorizationCode: 'auth_123',
+      providerReferenceId: 'ref_123',
+      status: 'captured',
+      capturedAt: new Date().toISOString()
+    },
+    status: 'processing',
+    attempts: 0,
+    maxAttempts: 3,
+    scheduledAt: new Date().toISOString(),
+    processedAt: null,
+    error: null,
+    createdAt: new Date().toISOString()
+  } as OutboxEvent;
+}
+
 async function seedPixTransaction(
   repository: PixTransactionRepository,
   transactionId = 'pix_intent_1',
@@ -148,8 +227,14 @@ test('PaymentsEventHandlers handles payment.pix.confirmed and settles billing re
   const billing = createMockBillingService();
   const encounterFinancial = createMockEncounterFinancialService();
   const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
   await seedPixTransaction(pixTransactions);
-  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions });
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
 
   const event = makePixConfirmedEvent('br_test_123');
   await handlers.handle(event);
@@ -170,8 +255,14 @@ test('PaymentsEventHandlers handles payment.pix.confirmed without billingRecordI
   const billing = createMockBillingService();
   const encounterFinancial = createMockEncounterFinancialService();
   const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
   await seedPixTransaction(pixTransactions, 'pix_intent_no_billing', undefined);
-  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions });
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
 
   const event = makePixConfirmedEvent('') as OutboxEvent;
   (event.payload as { billingRecordId?: string }).billingRecordId = undefined;
@@ -190,7 +281,13 @@ test('PaymentsEventHandlers ignores billing.status_changed events (no-op)', asyn
   const billing = createMockBillingService();
   const encounterFinancial = createMockEncounterFinancialService();
   const pixTransactions = new InMemoryPixTransactionRepository();
-  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions });
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
 
   const event: OutboxEvent = {
     id: 'evt_456',
@@ -217,7 +314,13 @@ test('PaymentsEventHandlers persists PIX intent creation without error', async (
   const billing = createMockBillingService();
   const encounterFinancial = createMockEncounterFinancialService();
   const pixTransactions = new InMemoryPixTransactionRepository();
-  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions });
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
 
   const event = makePixIntentCreatedEvent('pix_intent_new', 'br_new_456');
   await handlers.handle(event);
@@ -227,4 +330,33 @@ test('PaymentsEventHandlers persists PIX intent creation without error', async (
   const transaction = await pixTransactions.findByTransactionId('pix_intent_new');
   assert.equal(transaction?.amount, 150);
   assert.equal(transaction?.billingSettlementStatus, 'awaiting_payment');
+});
+
+test('PaymentsEventHandlers persists card intent creation and settles billing on capture', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await handlers.handle(makeCardIntentCreatedEvent('card_intent_1', 'br_card_456'));
+  const created = await cardTransactions.findByTransactionId('card_intent_1');
+  assert.equal(created?.status, 'authorized_pending_capture');
+  assert.equal(created?.billingSettlementStatus, 'awaiting_capture');
+
+  await handlers.handle(makeCardCompletedEvent('br_card_456'));
+
+  assert.equal(billing.settles.includes('br_card_456'), true);
+  assert.equal(encounterFinancial.payments.length, 1);
+  assert.equal(encounterFinancial.payments[0]?.transactionId, 'card_intent_1');
+  assert.equal(encounterFinancial.payments[0]?.externalReferenceType, 'other');
+
+  const captured = await cardTransactions.findByTransactionId('card_intent_1');
+  assert.equal(captured?.status, 'captured');
+  assert.equal(captured?.billingSettlementStatus, 'applied');
 });

@@ -1,5 +1,9 @@
 # 0322 — Plano de Ação: WhatsApp Integration
 
+**Taxonomia:** `OPERACIONAL`
+**Papel no sistema documental:** plano tematico vivo para fechamento operacional da frente de WhatsApp
+**Ler em conjunto com:** `README.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md`, `200-BACKLOG-MASTER.md`
+
 **Data:** 2026-04-14
 **Fonte:** `313.4-ONDA-3.4-WHATSAPP-VENDOR-PREP.md` e `0207-BACKLOG-DERIVADO-ERP`
 **Prioridade:** MÉDIO

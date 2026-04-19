@@ -241,9 +241,7 @@ export class WebAuthnServiceImpl implements WebAuthnService {
   ): Promise<{ credentialId: string }> {
     // In production: parse attestation object, verify signature chain,
     // store credential ID and public key. This requires a full FIDO2 verifier.
-    const credentialId = base64URLEncode(randomBytes(16));
-
-    await this.repository.save(userId, {
+    const credentialId = await this.repository.save(userId, {
       publicKey: `user:${userId}:${response.credentialId}`,
       counter: 0,
       deviceType: 'cross-platform',

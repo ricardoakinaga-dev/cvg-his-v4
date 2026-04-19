@@ -486,10 +486,21 @@ export class EncounterFinancialService {
     if (!receivable) {
       throw new NotFoundError('Encounter receivable not found', { receivableId });
     }
+    const amountPaid = roundCurrency(input.amountPaid);
+    if (amountPaid <= 0) {
+      throw new ConflictError('amountPaid must be greater than zero');
+    }
+    if (amountPaid > receivable.amountOutstanding) {
+      throw new ConflictError('Payment exceeds outstanding receivable balance', {
+        receivableId,
+        amountPaid,
+        outstandingAmount: receivable.amountOutstanding
+      });
+    }
     await this.#applyPayment(receivable.encounterId, receivable.financialAccountId, [
       {
         receivableId,
-        amountPaid: input.amountPaid,
+        amountPaid,
         notes: input.notes ?? null,
         paidByUserId: input.paidByUserId ?? null,
         externalReferenceType: input.externalReferenceType ?? null,

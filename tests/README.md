@@ -58,15 +58,22 @@ e2e/
 pnpm test:db:start
 ```
 
+Se houver sessão interrompida ou ruído de `vitest` órfão, limpe antes:
+
+```bash
+pnpm test:runner:clean
+```
+
 ### 2. Rodar suíte crítica (DB + integrações fundacionais)
 
 ```bash
-DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
 pnpm test:critical
 ```
 
 Cobre: migrations, FKs, constraints, RBAC, owner/patient, scheduling, encounters, audit, billing, inventory.
+
+Por padrão, o setup usa banco efêmero por execução quando `DATABASE_URL_TEST` não é informado.
+`pnpm test:critical:bootstrap` já faz limpeza prévia de processos órfãos e bancos efêmeros sem conexões.
 
 ### 3. Rodar fluxos críticos E2E (requer API rodando)
 
@@ -96,6 +103,7 @@ pnpm test:db:stop
 | `test:db`          | Validação estrutural do banco (migrations, FKs, constraints) | Banco rodando                 |
 | `test:integration` | Todas as integrações (DB + fundacionais + factories)         | Banco rodando                 |
 | `test:critical`    | Suíte crítica: DB (151) + fundacionais (11) = 162 testes     | Banco rodando                 |
+| `test:runner:clean`| Mata `vitest` órfão e remove bancos efêmeros sem conexões    | PostgreSQL local opcional     |
 | `test:e2e`         | 8 fluxos críticos via Playwright API context                 | API rodando em localhost:3000 |
 | `test:all`         | test:critical + test:e2e                                     | Banco + API rodando           |
 | `test:db:stop`     | Derruba PostgreSQL de teste                                  | —                             |
@@ -114,7 +122,7 @@ pnpm test:db:stop
 
 1. **Dual RBAC**: Seed usa `vet/enfermagem/recepcao`; AccessControlService usa `veterinarian/nurse/reception`. Testes funcionam com AccessControlService codes.
 2. **4 módulos sem persistência DB**: BillingService, InventoryService, SchedulingService, UsersService usam Maps em memória. Dados perdidos em restart.
-3. **Migration não idempotente**: `CREATE TYPE` sem `IF NOT EXISTS`. globalSetup faz drop+recreate do banco a cada run.
+3. **Migration não idempotente**: `CREATE TYPE` sem `IF NOT EXISTS`. O risco foi reduzido com banco efêmero por execução, lock administrativo e cleanup operacional, mas a limitação histórica da migration ainda existe.
 4. **Sem CI pipeline**: Validação depende de execução manual.
 5. **Sem cobertura configurada**: Não há métrica de coverage para módulos ou API.
 

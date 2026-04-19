@@ -15,6 +15,9 @@ function createMockRepository(): WebhookRepository {
     async update(webhook: WebhookSummary): Promise<void> {
       webhooks.set(webhook.id, webhook);
     },
+    async delete(id: never): Promise<void> {
+      webhooks.delete(id as string);
+    },
     async findById(id: never): Promise<WebhookSummary | null> {
       return webhooks.get(id as string) ?? null;
     },
@@ -26,6 +29,7 @@ function createMockRepository(): WebhookRepository {
     },
     async createDelivery(): Promise<void> {},
     async updateDelivery(): Promise<void> {},
+    async deleteDeliveriesByWebhook(): Promise<void> {},
     async findDeliveriesByWebhook(): Promise<readonly never[]> {
       return [];
     },

@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
+const emitJsonOnly = process.argv.includes('--json');
 
 function read(relativePath) {
   const fullPath = resolve(root, relativePath);
@@ -114,21 +115,49 @@ const checks = [
 ];
 
 let failures = 0;
+const results = [];
 
 for (const check of checks) {
   if (check.ok === undefined) {
-    console.log(`[deploy-check] SKIP ${check.label} (documento nao existe ainda)`);
+    results.push({ label: check.label, status: 'skip' });
+    if (!emitJsonOnly) {
+      console.log(`[deploy-check] SKIP ${check.label} (documento nao existe ainda)`);
+    }
   } else if (check.ok) {
-    console.log(`[deploy-check] PASS ${check.label}`);
+    results.push({ label: check.label, status: 'pass' });
+    if (!emitJsonOnly) {
+      console.log(`[deploy-check] PASS ${check.label}`);
+    }
   } else {
     failures += 1;
-    console.error(`[deploy-check] FAIL ${check.label}`);
+    results.push({ label: check.label, status: 'fail' });
+    if (!emitJsonOnly) {
+      console.error(`[deploy-check] FAIL ${check.label}`);
+    }
   }
 }
 
+if (emitJsonOnly) {
+  console.log(
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        failures,
+        results
+      },
+      null,
+      2
+    )
+  );
+}
+
 if (failures > 0) {
-  console.error(`[deploy-check] ${failures} check(s) failed`);
+  if (!emitJsonOnly) {
+    console.error(`[deploy-check] ${failures} check(s) failed`);
+  }
   process.exit(1);
 }
 
-console.log('[deploy-check] deploy documentation and runtime alignment are consistent');
+if (!emitJsonOnly) {
+  console.log('[deploy-check] deploy documentation and runtime alignment are consistent');
+}

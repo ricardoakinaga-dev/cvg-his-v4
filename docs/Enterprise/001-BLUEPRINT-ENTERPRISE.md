@@ -1,5 +1,9 @@
 # BLUEPRINT ENTERPRISE — CVG-HIS-V2
 
+**Taxonomia:** `APOIO`
+**Papel no sistema documental:** referencia estrutural de arquitetura alvo e principios de desenho
+**Ler em conjunto com:** `README.md`, `0334-PLANO-EXECUTIVO-REALINHAMENTO-ENTERPRISE-2026-04-17.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md`
+
 ## 1. Arquitetura Alvo Premium
 
 ### Stack Atual → Alvo

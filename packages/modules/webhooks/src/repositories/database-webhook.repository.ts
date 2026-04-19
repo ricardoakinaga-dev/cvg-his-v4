@@ -44,6 +44,10 @@ export class DatabaseWebhookRepository implements WebhookRepository {
       .where(eq(webhooks.id, webhook.id));
   }
 
+  public async delete(webhookId: WebhookId): Promise<void> {
+    await this.#db.delete(webhooks).where(eq(webhooks.id, webhookId));
+  }
+
   public async findById(id: WebhookId): Promise<WebhookSummary | null> {
     const result = await this.#db.select().from(webhooks).where(eq(webhooks.id, id)).limit(1);
 
@@ -103,6 +107,10 @@ export class DatabaseWebhookRepository implements WebhookRepository {
         nextRetryAt: delivery.nextRetryAt ? new Date(delivery.nextRetryAt) : null
       })
       .where(eq(webhookDeliveries.id, delivery.id));
+  }
+
+  public async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
+    await this.#db.delete(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
   }
 
   public async findDeliveriesByWebhook(

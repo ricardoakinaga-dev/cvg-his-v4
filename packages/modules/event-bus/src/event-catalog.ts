@@ -98,10 +98,10 @@ export const PAYABLE_PAID = 'payable.paid';
 export const BILLING_RECORD_CREATED = 'billing.record.created';
 export const BILLING_RECORD_SETTLED = 'billing.record.settled';
 
-export const PAYMENT_PIX_INTENT_CREATED = 'payment.pix.intent_created';
-export const PAYMENT_PIX_COMPLETED = 'payment.pix.completed';
+export const PAYMENT_PIX_INTENT_CREATED = 'payment.pix.intent.created';
+export const PAYMENT_PIX_COMPLETED = 'payment.pix.confirmed';
 export const PAYMENT_PIX_FAILED = 'payment.pix.failed';
-export const PAYMENT_CARD_INTENT_CREATED = 'payment.card.intent_created';
+export const PAYMENT_CARD_INTENT_CREATED = 'payment.card.intent.created';
 export const PAYMENT_CARD_COMPLETED = 'payment.card.completed';
 export const PAYMENT_CARD_FAILED = 'payment.card.failed';
 

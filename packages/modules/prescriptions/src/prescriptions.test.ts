@@ -17,6 +17,7 @@ const ACTOR_ID = 'user_doc_01' as UserId;
 
 function createPayload(overrides: Partial<CreatePrescriptionRequest> = {}): CreatePrescriptionRequest {
   return {
+    medicalRecordId: 'mr_001',
     encounterId: ENCOUNTER_1,
     patientId: PATIENT_1,
     medicationName: 'Amoxicilina',
@@ -53,6 +54,7 @@ describe('PrescriptionsService', () => {
 
     it('should create a prescription with only required fields', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, {
+        medicalRecordId: 'mr_001',
         encounterId: ENCOUNTER_1,
         patientId: PATIENT_1,
         medicationName: 'Dipirona'
@@ -76,6 +78,7 @@ describe('PrescriptionsService', () => {
     it('should throw ValidationError for empty medicationName', () => {
       expect(() =>
         service.create(ACCOUNT_ID, ACTOR_ID, {
+          medicalRecordId: 'mr_001',
           encounterId: ENCOUNTER_1,
           patientId: PATIENT_1,
           medicationName: ''
@@ -86,6 +89,7 @@ describe('PrescriptionsService', () => {
     it('should throw ValidationError for medicationName shorter than 2 chars', () => {
       expect(() =>
         service.create(ACCOUNT_ID, ACTOR_ID, {
+          medicalRecordId: 'mr_001',
           encounterId: ENCOUNTER_1,
           patientId: PATIENT_1,
           medicationName: 'A'

@@ -5,6 +5,7 @@ import type { LaboratoryService } from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
   DiagnosticOrderListResponse,
+  ExamCatalogListResponse,
   LaboratoryEquipmentListResponse,
   LaboratoryReferenceValueListResponse,
   LaboratoryReportTypeListResponse,
@@ -35,7 +36,14 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
 }
 
 function isDiagnosticsBridge(pathname: string): boolean {
-  return pathname === '/diagnostics/orders' || pathname.startsWith('/diagnostics/orders/');
+  return pathname === '/diagnostics/summary'
+    || pathname === '/diagnostics/catalog'
+    || pathname === '/diagnostics/results'
+    || pathname === '/diagnostics/equipment'
+    || pathname === '/diagnostics/report-types'
+    || pathname === '/diagnostics/reference-values'
+    || pathname === '/diagnostics/orders'
+    || pathname.startsWith('/diagnostics/orders/');
 }
 
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
@@ -58,7 +66,7 @@ export async function handleLaboratoryRoutes(
   const { laboratory, audit, requirePrincipal } = handlers;
   const routeModule = resolveModuleName(pathname);
 
-  if (pathname === '/laboratory/summary' && request.method === 'GET') {
+  if ((pathname === '/laboratory/summary' || pathname === '/diagnostics/summary') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const payload = await laboratory.getDashboardSummary(principal.user.accountId as never);
     appendAudit(audit, {
@@ -69,6 +77,26 @@ export async function handleLaboratoryRoutes(
       entityType: 'laboratory-summary',
       entityId: 'dashboard',
       payloadSummary: 'Laboratory summary inspected',
+      riskLevel: 'low',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if ((pathname === '/laboratory/catalog' || pathname === '/diagnostics/catalog') && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const payload: ExamCatalogListResponse = {
+      items: laboratory.listCatalog()
+    };
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'catalog_read',
+      entityType: 'diagnostic-catalog',
+      entityId: 'default',
+      payloadSummary: 'Diagnostics catalog inspected',
       riskLevel: 'low',
       correlationId
     });
@@ -96,6 +124,26 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, payload);
   }
 
+  const orderRouteMatch = pathname.match(/^\/(?:laboratory|diagnostics)\/orders\/([^/]+)$/);
+  if (orderRouteMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const orderId = requireNonEmptyString(orderRouteMatch[1], 'diagnosticOrderId');
+    const payload = laboratory.getOrder(principal.user.accountId as never, orderId as never);
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'read',
+      entityType: 'diagnostic-order',
+      entityId: orderId,
+      payloadSummary: `Laboratory order ${orderId} inspected`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
   if ((pathname === '/laboratory/orders' || pathname === '/diagnostics/orders') && request.method === 'POST') {
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as CreateDiagnosticOrderRequest;
@@ -114,6 +162,27 @@ export async function handleLaboratoryRoutes(
       correlationId
     });
     return json(response, 201, order);
+  }
+
+  if ((pathname === '/laboratory/results' || pathname === '/diagnostics/results') && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const examType = url.searchParams.get('examType') ?? undefined;
+    const items = await laboratory.listResults(principal.user.accountId as never, examType);
+    const payload: DiagnosticOrderListResponse = { items };
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'results_list',
+      entityType: 'diagnostic-order',
+      entityId: examType ?? 'all-results',
+      payloadSummary: 'Released laboratory results listed',
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, payload);
   }
 
   const resultRouteMatch = pathname.match(
@@ -140,7 +209,7 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, order);
   }
 
-  if (pathname === '/laboratory/equipment' && request.method === 'GET') {
+  if ((pathname === '/laboratory/equipment' || pathname === '/diagnostics/equipment') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const payload: LaboratoryEquipmentListResponse = {
       items: await laboratory.listEquipment(principal.user.accountId as never)
@@ -148,7 +217,7 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, payload);
   }
 
-  if (pathname === '/laboratory/report-types' && request.method === 'GET') {
+  if ((pathname === '/laboratory/report-types' || pathname === '/diagnostics/report-types') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const payload: LaboratoryReportTypeListResponse = {
       items: await laboratory.listReportTypes(principal.user.accountId as never)
@@ -156,7 +225,10 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, payload);
   }
 
-  if (pathname === '/laboratory/reference-values' && request.method === 'GET') {
+  if (
+    (pathname === '/laboratory/reference-values' || pathname === '/diagnostics/reference-values')
+    && request.method === 'GET'
+  ) {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = url.searchParams.get('examType') ?? undefined;

@@ -141,8 +141,59 @@ export async function handleApiKeysRoutes(
         delivery: 'retry-3x'
       },
       payments: {
-        provider: 'local-pix',
-        endpoints: ['/payments/pix/intents']
+        provider: 'gateway-abstraction',
+        capabilities: ['pix', 'cards'],
+        endpoints: [
+          '/payments/pix/intents',
+          '/payments/cards/intents',
+          '/payments/cards/intents/{intentId}/capture',
+          '/payments/cards/report',
+          '/financial/reconciliation/cards'
+        ]
+      },
+      email: {
+        provider: 'gateway-abstraction',
+        capabilities: ['transactional', 'retry', 'report'],
+        providers: ['local-email', 'resend'],
+        config: ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_MOCK_MODE'],
+        endpoints: [
+          '/integrations/email/messages',
+          '/integrations/email/messages/{messageId}/retry',
+          '/integrations/email/messages/report'
+        ]
+      },
+      sms: {
+        provider: 'gateway-abstraction',
+        capabilities: ['transactional', 'retry', 'report'],
+        providers: ['local-sms', 'twilio'],
+        config: ['SMS_API_KEY', 'SMS_FROM', 'SMS_MOCK_MODE'],
+        endpoints: [
+          '/integrations/sms/messages',
+          '/integrations/sms/messages/{messageId}/retry',
+          '/integrations/sms/messages/report'
+        ]
+      },
+      googleCalendar: {
+        provider: 'gateway-abstraction',
+        capabilities: ['appointment-sync', 'operational-report'],
+        providers: ['local-google-calendar', 'google-calendar'],
+        config: [
+          'GOOGLE_CALENDAR_ACCESS_TOKEN',
+          'GOOGLE_CALENDAR_CALENDAR_ID',
+          'GOOGLE_CALENDAR_MOCK_MODE'
+        ],
+        endpoints: [
+          '/integrations/google-calendar/appointments/{appointmentId}/sync',
+          '/integrations/google-calendar/report'
+        ]
+      },
+      laboratoryEquipmentBridge: {
+        provider: 'equipment-bridge',
+        capabilities: ['result-import', 'idempotency', 'operational-report'],
+        endpoints: [
+          '/integrations/laboratory/equipment-results/imports',
+          '/integrations/laboratory/equipment-results/report'
+        ]
       }
     };
     await apiKeys.recordUsage({

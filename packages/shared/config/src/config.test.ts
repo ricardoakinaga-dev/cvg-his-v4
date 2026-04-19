@@ -62,11 +62,17 @@ describe('config module', () => {
 
     it('loads with explicit values', () => {
       const env = cleanApiEnv();
+      env.RESEND_API_KEY = 're_test_key';
+      env.EMAIL_FROM = 'clinic@example.com';
+      env.EMAIL_MOCK_MODE = 'false';
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.appName).toBe('test-api');
       expect(config.port).toBe(3001);
       expect(config.host).toBe('127.0.0.1');
       expect(config.environment).toBe('development');
+      expect(config.resendApiKey).toBe('re_test_key');
+      expect(config.emailFrom).toBe('clinic@example.com');
+      expect(config.emailMockMode).toBe(false);
     });
 
     it('parses CORS_ALLOWED_ORIGINS correctly', () => {

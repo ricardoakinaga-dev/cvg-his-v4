@@ -7,7 +7,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
-import type { SchedulingAppointmentSummary } from '@cvg-his-v2/shared-types';
+import type { WhatsAppAppointmentReportResponse } from '@cvg-his-v2/shared-contracts';
+import type { AuthenticatedPrincipal, SchedulingAppointmentSummary } from '@cvg-his-v2/shared-types';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -16,6 +17,7 @@ export interface WhatsAppRoutesHandlers {
   scheduling: SchedulingService;
   audit: AuditService;
   notificationsWhatsappInboundActionsEnabled: boolean;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
 
 type ScopedScheduling = {
@@ -26,6 +28,83 @@ type ScopedScheduling = {
   ): Promise<unknown>;
   cancelAppointment(appointmentId: string, reason?: string): Promise<unknown>;
 };
+
+function json(response: ServerResponse, statusCode: number, payload: unknown): true {
+  response.statusCode = statusCode;
+  response.setHeader('content-type', 'application/json');
+  response.end(JSON.stringify(payload));
+  return true;
+}
+
+function extractAuditMetadata(summary: string): Record<string, string> {
+  const metadata: Record<string, string> = {};
+
+  for (const segment of summary.split(';')) {
+    const separator = segment.indexOf('=');
+    if (separator <= 0) {
+      continue;
+    }
+
+    const key = segment.slice(0, separator).trim();
+    const value = segment.slice(separator + 1).trim();
+    if (key) {
+      metadata[key] = value;
+    }
+  }
+
+  return metadata;
+}
+
+function buildAppointmentReport(
+  appointmentId: string,
+  audit: AuditService
+): WhatsAppAppointmentReportResponse {
+  const events = audit.list().filter((event) => {
+    if (event.entityId === appointmentId) {
+      return true;
+    }
+
+    return (
+      event.module === 'whatsapp'
+      && event.action === 'inbound_received'
+      && event.payloadSummary.includes(`appointmentId=${appointmentId}`)
+    );
+  });
+  const sentEvent = events.find((event) => event.action === 'whatsapp_reminder_sent');
+  const failedEvent = events.find((event) => event.action === 'whatsapp_reminder_failed');
+  const sentMetadata = sentEvent ? extractAuditMetadata(sentEvent.payloadSummary) : {};
+  const failedMetadata = failedEvent ? extractAuditMetadata(failedEvent.payloadSummary) : {};
+
+  let deliveryStatus: WhatsAppAppointmentReportResponse['deliveryStatus'] = 'not_scheduled';
+  if (events.some((event) => event.action === 'inbound_reschedule_request')) {
+    deliveryStatus = 'reschedule_requested';
+  } else if (events.some((event) => event.action === 'whatsapp_cancel')) {
+    deliveryStatus = 'cancelled';
+  } else if (events.some((event) => event.action === 'whatsapp_confirm')) {
+    deliveryStatus = 'confirmed';
+  } else if (sentEvent) {
+    deliveryStatus = 'sent';
+  } else if (failedEvent) {
+    deliveryStatus = 'failed';
+  } else if (events.some((event) => event.action === 'whatsapp_reminder_scheduled')) {
+    deliveryStatus = 'scheduled';
+  }
+
+  return {
+    appointmentId,
+    deliveryStatus,
+    vendorProvider:
+      (sentMetadata['provider'] as 'twilio' | '360dialog' | undefined)
+      ?? (failedMetadata['provider'] as 'twilio' | '360dialog' | undefined)
+      ?? null,
+    vendorMessageId: sentMetadata['messageId'] || null,
+    lastError: failedMetadata['error'] || null,
+    correlationIds: Array.from(
+      new Set(events.map((event) => event.correlationId).filter((value): value is string => Boolean(value)))
+    ),
+    events
+  };
+}
 
 /**
  * Handle WhatsApp inbound route.
@@ -38,7 +117,34 @@ export async function handleWhatsAppRoutes(
   correlationId: string,
   handlers: WhatsAppRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, audit, notificationsWhatsappInboundActionsEnabled } = handlers;
+  const { scheduling, audit, notificationsWhatsappInboundActionsEnabled, requirePrincipal } = handlers;
+
+  if (
+    pathname.startsWith('/whatsapp/appointments/') &&
+    pathname.endsWith('/report') &&
+    request.method === 'GET'
+  ) {
+    const principal = requirePrincipal(request, 'notifications.read');
+    const appointmentId = pathname.split('/')[3] ?? '';
+    const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+    if (appointment.accountId !== principal.user.accountId) {
+      return json(response, 404, { code: 'NOT_FOUND', message: 'Appointment not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'whatsapp',
+      action: 'read_report',
+      entityType: 'appointment',
+      entityId: appointmentId,
+      payloadSummary: `WhatsApp operational report read for appointment ${appointmentId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, buildAppointmentReport(appointmentId, audit));
+  }
 
   if (pathname !== '/webhooks/whatsapp/inbound' || request.method !== 'POST') {
     return false;

@@ -92,6 +92,14 @@ export class DiagnosticsService {
 
   public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (payload.patientId !== encounter.patientId) {
+      throw new Error('patientId must match the encounter patient');
+    }
+
+    if (payload.examCatalogId && !this.getCatalogEntry(payload.examCatalogId)) {
+      throw new Error(`Unknown exam catalog entry '${payload.examCatalogId}'`);
+    }
+
     const now = nowIso();
     const order: DiagnosticOrderSummary = {
       id: createCorrelationId('diag') as DiagnosticOrderId,
@@ -154,13 +162,21 @@ export class DiagnosticsService {
       throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
     }
 
+    if (payload.status === 'collected') {
+      requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
+    }
+
+    if (payload.status === 'resulted' && !payload.resultSummary && !payload.resultAttachmentId) {
+      throw new Error('resultSummary or resultAttachmentId is required when status is resulted');
+    }
+
     const now = nowIso();
     const updated: DiagnosticOrderSummary = {
       ...current,
       status: payload.status,
       ...(payload.status === 'collected' && {
         collectedAt: now,
-        collectedByUserId: payload.collectedByUserId
+        collectedByUserId: requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId')
       }),
       ...(payload.status === 'resulted' && {
         resultSummary: payload.resultSummary,

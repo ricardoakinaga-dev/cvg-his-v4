@@ -28,3 +28,9 @@ export type { ModelRepository } from './repositories/model-repository.interface.
 
 // Smart Scheduling (F3-03)
 export { SmartSchedulingService } from './smart-scheduling.service.js';
+export { OcrFiscalService } from './ocr-fiscal.service.js';
+export type { OcrFiscalPreview, OcrFiscalPreviewInput, OcrFiscalLineItem } from './ocr-fiscal.service.js';
+export { DemandForecastingService } from './demand-forecasting.service.js';
+export type { DemandForecast, DemandForecastDay, DemandForecastInput } from './demand-forecasting.service.js';
+export { LabAnomalyDetectionService } from './lab-anomaly-detection.service.js';
+export type { LabAnomalyDetectionResult, LabAnomalyFlag } from './lab-anomaly-detection.service.js';

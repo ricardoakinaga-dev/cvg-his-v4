@@ -32,6 +32,7 @@ export interface CreateAppointmentRequest {
   unit?: string;
   specialty?: string;
   resourceLabel?: string;
+  smartSchedulingRecommendationId?: string;
 }
 
 export interface AppointmentsListResponse {
@@ -139,4 +140,30 @@ export interface SchedulingAvailabilityResponse {
     available: boolean;
     reason: string;
   }>;
+}
+
+export interface SmartSchedulingRecommendationRequest {
+  patientId: string;
+  scheduledAt: string;
+  visitType?: AppointmentVisitType;
+  reason?: string;
+  practitionerStaffId?: string;
+  serviceId?: string;
+  specialty?: string;
+  unit?: string;
+  resourceLabel?: string;
+}
+
+export interface SmartSchedulingRecommendationResponse {
+  recommendationId: string;
+  predictedDurationMinutes: number;
+  confidence: number;
+  historicalAverageMinutes: number;
+  suggestedBufferMinutes: number;
+  factors: string[];
+  basedOn: {
+    patientId: string;
+    previousVisits: number;
+    visitType: AppointmentVisitType;
+  };
 }

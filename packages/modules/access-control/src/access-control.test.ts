@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+
 import { AccessControlService } from './index.js';
 import { AbacEngine } from './abac.js';
 import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
@@ -392,6 +394,7 @@ describe('AccessControlService', () => {
           roleCodes: ['admin'],
           teamIds: [],
           sectorIds: [],
+          sectorCodes: [],
           isActive: true
         },
         {
@@ -453,5 +456,87 @@ describe('AccessControlService', () => {
 
     expect(usersPerm?.effective).toBe(false);
     expect(usersPerm?.resolution).toBe('team_deny');
+  });
+
+  it('enforces owner sector isolation only when actor lacks the requested sector code', () => {
+    const engine = new AbacEngine();
+    const environment = {
+      timestamp: new Date('2026-04-18T10:00:00.000Z').toISOString(),
+      dayOfWeek: 5 as const,
+      hourOfDay: 10
+    };
+
+    expect(() =>
+      engine.enforce(
+        'owners.read',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: ['icu'],
+          isActive: true
+        },
+        {
+          resourceType: 'owner',
+          resourceId: 'owner-1',
+          accountId,
+          sectorCode: 'icu'
+        },
+        environment
+      )
+    ).not.toThrow();
+
+    expect(() =>
+      engine.enforce(
+        'owners.read',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: ['reception'],
+          isActive: true
+        },
+        {
+          resourceType: 'owner',
+          resourceId: 'owner-1',
+          accountId,
+          sectorCode: 'icu'
+        },
+        environment
+      )
+    ).toThrow(ForbiddenError);
+  });
+
+  it('denies inventory writes outside business hours for non-admin roles', () => {
+    const engine = new AbacEngine();
+
+    expect(() =>
+      engine.enforce(
+        'inventory.manage',
+        {
+          userId,
+          accountId,
+          roleCodes: ['inventory'],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: [],
+          isActive: true
+        },
+        {
+          resourceType: 'inventory_item',
+          resourceId: 'item-1',
+          accountId
+        },
+        {
+          timestamp: new Date('2026-04-18T22:00:00.000Z').toISOString(),
+          dayOfWeek: 5,
+          hourOfDay: 22
+        }
+      )
+    ).toThrow(ForbiddenError);
   });
 });

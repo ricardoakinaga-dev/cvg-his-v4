@@ -6,6 +6,19 @@ Este chart agora segue uma trilha multiambiente explícita:
 - `values.dev.yaml`: desenvolvimento com secrets locais do chart
 - `values.staging.yaml`: staging com `existingSecret` para API/Postgres/Redis
 - `values.prod.yaml`: produção com `existingSecret` para API/Postgres/Redis
+- `values.schema.json`: guardrail tipado para `helm lint`
+
+## Guardrails operacionais
+
+- `ServiceAccount` explícito com `automountServiceAccountToken=false` por padrão.
+- `PodDisruptionBudget` explícito para `api`, `worker` e `spa`.
+- `ConfigMap` por serviço para reduzir drift entre valores, templates e runtime.
+- `worker` expõe `Service` de health/metrics e usa probes HTTP (`/live`, `/ready`, `/health`) em vez de `exec`.
+- `pnpm validate:helm` executa `helm lint` e `helm template` para `dev`, `staging` e `prod`, validando também:
+  - presença de `Deployment`, `Service` e `PodDisruptionBudget` por serviço
+  - alinhamento dos probes operacionais da API e do worker
+  - ausência de `Secret` gerado pelo chart em `staging/prod`
+  - presença de PostgreSQL/Redis embutidos apenas em `dev`
 
 ## Render por ambiente
 
@@ -31,6 +44,12 @@ Produção:
 helm template cvg-his-v2-prod infra/helm/cvg-his-v2 \
   -f infra/helm/cvg-his-v2/values.yaml \
   -f infra/helm/cvg-his-v2/values.prod.yaml
+```
+
+Validação de guardrails:
+
+```bash
+pnpm validate:helm
 ```
 
 ## Convenção de secrets
@@ -82,3 +101,7 @@ kubectl rollout status deploy/cvg-his-v2-prod-cvg-his-v2-worker -n cvg-his
 
 - `revisionHistoryLimit` e `strategy` foram explicitados em `api`, `spa` e `worker` para preservar trilha mínima de reversão.
 - `runtime.distributed_state.enabled` e o `AUTH_SECRET` precisam estar coerentes em staging/prod, porque o fluxo OIDC distribuído depende disso.
+- Os endpoints canônicos de probe são:
+  - API: `/live`, `/ready`, `/health`
+  - Worker: `/live`, `/ready`, `/health`
+  - SPA: `/`

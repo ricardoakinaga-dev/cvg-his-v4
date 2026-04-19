@@ -17,6 +17,7 @@
       <DsStatCard :label="`${pendingCount} aguardando laudo`" value="" icon="📋" />
       <DsStatCard :label="`${filteredResults.length} liberado(s)`" value="" icon="✅" />
       <DsStatCard :label="`${allResults.length} item(ns) monitorados`" value="" icon="📊" />
+      <DsStatCard :label="`${anomalySummary.flaggedOrders} com anomalia`" value="" icon="🚨" />
     </section>
 
     <div class="filter-bar">
@@ -47,6 +48,16 @@
       <template #cell-resultSummary="{ row }">
         {{ (row as DiagnosticOrderSummary).resultSummary ?? 'Aguardando liberação no prontuário' }}
       </template>
+      <template #cell-anomaly="{ row }">
+        <DsBadge
+          v-if="anomalyByOrder[(row as DiagnosticOrderSummary).id]"
+          :variant="anomalyByOrder[(row as DiagnosticOrderSummary).id]?.severity === 'critical' ? 'danger' : 'warning'"
+          size="sm"
+        >
+          {{ anomalyByOrder[(row as DiagnosticOrderSummary).id]?.severity === 'critical' ? 'Crítica' : 'Revisar' }}
+        </DsBadge>
+        <span v-else>—</span>
+      </template>
       <template #cell-createdAt="{ row }">
         {{ formatDate((row as DiagnosticOrderSummary).createdAt) }}
       </template>
@@ -72,9 +83,11 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { laboratoryService } from '@/services/laboratory';
+import { mlService, type LabAnomalyResponse } from '@/services/ml';
 
 const route = useRoute();
 const allResults = ref<DiagnosticOrderSummary[]>([]);
+const anomalies = ref<LabAnomalyResponse | null>(null);
 const loading = ref(false);
 const error = ref('');
 const filterType = ref('');
@@ -84,6 +97,7 @@ const columns: DataTableColumn[] = [
   { key: 'patientId', label: 'Paciente' },
   { key: 'status', label: 'Status' },
   { key: 'resultSummary', label: 'Resumo do Laudo' },
+  { key: 'anomaly', label: 'Anomalia' },
   { key: 'createdAt', label: 'Data' },
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
@@ -104,6 +118,12 @@ const filteredResults = computed(() => {
 const pendingCount = computed(() =>
   allResults.value.filter((item) => item.status === 'requested' || item.status === 'collected').length
 );
+const anomalyByOrder = computed<Record<string, { severity: 'warning' | 'critical'; message: string }>>(() =>
+  Object.fromEntries((anomalies.value?.flags ?? []).map((flag) => [flag.orderId, flag]))
+);
+const anomalySummary = computed(() => ({
+  flaggedOrders: anomalies.value?.flaggedOrders ?? 0
+}));
 
 function formatDate(d: string): string {
   return new Date(d).toLocaleString('pt-BR', {
@@ -146,7 +166,12 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    allResults.value = await laboratoryService.listResults();
+    const [results, anomalyResponse] = await Promise.all([
+      laboratoryService.listResults(),
+      mlService.getLabAnomalies({ examType: filterType.value || undefined }).catch(() => null)
+    ]);
+    allResults.value = results;
+    anomalies.value = anomalyResponse;
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar resultados';
   } finally {

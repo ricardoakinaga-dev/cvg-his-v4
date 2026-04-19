@@ -120,6 +120,93 @@ describe('financial-routes', () => {
     expect(response.bodyJson<{ totalOutstanding: number }>().totalOutstanding).toBe(120);
   });
 
+  it('returns encounter financial summary with billing.read permission', async () => {
+    const response = new MockResponse();
+    const getSummary = vi.fn(async () => ({
+      encounterId: 'enc-1',
+      accountId: 'acc-1',
+      financialStatus: 'pending',
+      receivables: [],
+      payments: []
+    }));
+    const requirePrincipal = vi.fn(() => createPrincipal() as never);
+
+    const handled = await handleFinancialRoutes(
+      '/encounters/enc-1/financial-summary',
+      {
+        method: 'GET',
+        url: '/encounters/enc-1/financial-summary'
+      } as never,
+      response as never,
+      'corr-financial-summary-1',
+      {
+        encounterFinancial: { getSummary } as never,
+        billing: {} as never,
+        audit: { write: vi.fn() } as never,
+        pixTransactions: { list: vi.fn() } as never,
+        requirePrincipal
+      }
+    );
+
+    expect(handled).toBe(true);
+    expect(requirePrincipal).toHaveBeenCalledWith(expect.anything(), 'billing.read');
+    expect(getSummary).toHaveBeenCalledWith('enc-1');
+    expect(response.statusCode).toBe(200);
+    expect(response.bodyJson<{ encounterId: string }>().encounterId).toBe('enc-1');
+  });
+
+  it('closes encounter financial account with normalized payload', async () => {
+    const response = new MockResponse();
+    const closeEncounterFinancial = vi.fn(async () => ({
+      encounterId: 'enc-1',
+      financialStatus: 'partial',
+      financialClosed: true
+    }));
+    const requirePrincipal = vi.fn(() => createPrincipal() as never);
+
+    const handled = await handleFinancialRoutes(
+      '/encounters/enc-1/financial-close',
+      createJsonRequest('POST', '/encounters/enc-1/financial-close', {
+        paidAmount: 50,
+        notes: 'Fechamento administrativo',
+        installments: [
+          {
+            label: 'Entrada',
+            amount: 100,
+            dueAt: '2026-04-20T00:00:00.000Z',
+            notes: 'Primeira parcela'
+          }
+        ]
+      }) as never,
+      response as never,
+      'corr-financial-close-1',
+      {
+        encounterFinancial: { closeEncounterFinancial } as never,
+        billing: {} as never,
+        audit: { write: vi.fn() } as never,
+        pixTransactions: { list: vi.fn() } as never,
+        requirePrincipal
+      }
+    );
+
+    expect(handled).toBe(true);
+    expect(requirePrincipal).toHaveBeenCalledWith(expect.anything(), 'billing.manage');
+    expect(closeEncounterFinancial).toHaveBeenCalledWith('enc-1', 'user-1', {
+      paidAmount: 50,
+      notes: 'Fechamento administrativo',
+      installments: [
+        {
+          label: 'Entrada',
+          amount: 100,
+          dueAt: '2026-04-20T00:00:00.000Z',
+          notes: 'Primeira parcela'
+        }
+      ]
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.bodyJson<{ financialClosed: boolean }>().financialClosed).toBe(true);
+  });
+
   it('builds an aging report from open receivables across pages', async () => {
     const response = new MockResponse();
     const now = new Date();

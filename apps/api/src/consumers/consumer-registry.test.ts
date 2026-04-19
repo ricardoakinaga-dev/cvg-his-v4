@@ -5,6 +5,7 @@ import { ConsumerRegistry, type DomainConsumer } from './index.js';
 import { PaymentsEventHandlers } from './payments.consumer.js';
 import { BillingEventHandlers } from './billing.consumer.js';
 import { WebhooksEventHandlers } from './webhooks.consumer.js';
+import { InMemoryCardTransactionRepository } from '../card-transaction-repository.js';
 
 /**
  * Helper: create a minimal DomainConsumer with a given name.
@@ -155,7 +156,8 @@ test('ConsumerRegistry.registerAll() with all three production consumers — cor
   const payments = new PaymentsEventHandlers({
     billing: createMockBillingService(),
     encounterFinancial: createMockEncounterFinancialService(),
-    pixTransactions: createMockPixTransactions()
+    pixTransactions: createMockPixTransactions(),
+    cardTransactions: new InMemoryCardTransactionRepository()
   });
   const billing = new BillingEventHandlers({ billing: createMockBillingService() });
   const webhooks = new WebhooksEventHandlers({ webhooks: createMockWebhooksService() });

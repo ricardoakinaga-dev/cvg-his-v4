@@ -1,5 +1,9 @@
 # 0195 - Politica de Rotacao de Segredos e Credenciais
 
+**Taxonomia:** `OPERACIONAL`
+**Papel no sistema documental:** politica operacional viva para segredos e credenciais enquanto a trilha de secrets manager segue em evolucao
+**Ler em conjunto com:** `README.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `0323-PLANO-PLATAFORMA-LONGA-KUBERNETES-HELM-2026-04-14.md`, `301-RISK-REGISTER.md`
+
 **Status:** vivo  
 **Data de validacao:** 2026-04-12  
 **Escopo:** politica operacional minima para rotacao de segredos enquanto o runtime ainda usa `.env` e variaveis de ambiente  

@@ -1,23 +1,32 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { SmartSchedulingService } from '@cvg-his-v2/module-ml';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import type {
   AppointmentListResponse,
   CheckInQueueRequest,
   CreateAppointmentRequest,
+  SmartSchedulingRecommendationRequest,
+  SmartSchedulingRecommendationResponse,
   QueueListResponse,
   SchedulingAvailabilityResponse,
   SchedulingOverviewResponse
 } from '@cvg-his-v2/shared-contracts';
+import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import {
+  recordSmartSchedulingRecommendation,
+  recordSmartSchedulingRecommendationApplied
+} from '../metrics.js';
 
 export interface SchedulingRoutesHandlers {
   scheduling: SchedulingService;
+  smartScheduling: SmartSchedulingService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -48,7 +57,7 @@ export async function handleSchedulingRoutes(
   correlationId: string,
   handlers: SchedulingRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, audit, requirePrincipal } = handlers;
+  const { scheduling, smartScheduling, audit, requirePrincipal } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -85,6 +94,11 @@ export async function handleSchedulingRoutes(
     const principal = requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
     const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
+    if (payload.smartSchedulingRecommendationId) {
+      recordSmartSchedulingRecommendationApplied({
+        visitType: payload.visitType ?? 'scheduled'
+      });
+    }
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -97,6 +111,62 @@ export async function handleSchedulingRoutes(
       correlationId
     });
     return json(response, 201, appointment);
+  }
+
+  if (pathname === '/scheduling/recommendations/duration' && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const payload = (await readJsonBody(request)) as SmartSchedulingRecommendationRequest;
+    const patientId = requireNonEmptyString(payload.patientId, 'patientId');
+    const scheduledAt = requireNonEmptyString(payload.scheduledAt, 'scheduledAt');
+    const visitType = payload.visitType ?? 'scheduled';
+    const previousVisits = scheduling
+      .listAppointments(principal.user.accountId)
+      .filter((appointment) => appointment.patientId === patientId && appointment.status !== 'cancelled')
+      .length;
+
+    const prediction = await smartScheduling.predictDuration({
+      visitType,
+      patientId,
+      previousVisits,
+      reason: payload.reason,
+      specialty: payload.specialty,
+      serviceId: payload.serviceId,
+      unit: payload.unit,
+      scheduledAt
+    });
+
+    recordSmartSchedulingRecommendation({
+      visitType,
+      confidence: prediction.confidence
+    });
+
+    const recommendation: SmartSchedulingRecommendationResponse = {
+      recommendationId: createCorrelationId('smartsch'),
+      predictedDurationMinutes: prediction.predictedMinutes,
+      confidence: prediction.confidence,
+      historicalAverageMinutes: prediction.historicalAvg,
+      suggestedBufferMinutes: prediction.suggestedBufferMinutes,
+      factors: prediction.factors,
+      basedOn: {
+        patientId,
+        previousVisits,
+        visitType
+      }
+    };
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'smart_duration_recommendation',
+      entityType: 'appointment-recommendation',
+      entityId: recommendation.recommendationId,
+      payloadSummary: `Smart scheduling recommendation generated for patient ${patientId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, recommendation);
   }
 
   if (pathname.startsWith('/appointments/') && method === 'GET') {

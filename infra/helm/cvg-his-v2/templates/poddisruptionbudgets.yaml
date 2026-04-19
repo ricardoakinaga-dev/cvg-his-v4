@@ -1,0 +1,41 @@
+{{- if .Values.podDisruptionBudget.api.minAvailable }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cvg-his-v2.api.fullname" . }}
+  labels:
+    {{- include "cvg-his-v2.api.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.api.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "cvg-his-v2.api.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- if .Values.podDisruptionBudget.worker.minAvailable }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cvg-his-v2.worker.fullname" . }}
+  labels:
+    {{- include "cvg-his-v2.worker.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.worker.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "cvg-his-v2.worker.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- if .Values.podDisruptionBudget.spa.minAvailable }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cvg-his-v2.spa.fullname" . }}
+  labels:
+    {{- include "cvg-his-v2.spa.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.spa.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 6 }}
+{{- end }}

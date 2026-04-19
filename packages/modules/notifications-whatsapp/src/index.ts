@@ -3,7 +3,8 @@ import type { AccountId, OwnerId, PatientId } from '@cvg-his-v2/shared-types';
 import type {
   NotificationChannelConfig,
   WhatsAppMessagePayload,
-  WhatsAppProvider
+  WhatsAppProvider,
+  WhatsAppProviderType
 } from './types.js';
 import { ProviderNotConfiguredError, MissingCredentialsError } from './types.js';
 import { createWhatsAppProvider } from './adapters.js';
@@ -40,6 +41,13 @@ export interface SettingsLookup {
   getClinicName(accountId: AccountId): string | null;
 }
 
+export interface WhatsAppReminderSendResult {
+  readonly sent: boolean;
+  readonly messageId?: string;
+  readonly error?: string;
+  readonly provider?: WhatsAppProviderType;
+}
+
 export class WhatsAppProviderService {
   readonly #settingsProvider: NotificationSettingsProvider;
   readonly #ownerLookup: OwnerLookup;
@@ -72,13 +80,13 @@ export class WhatsAppProviderService {
 
   async sendAppointmentReminder(
     data: AppointmentReminderData
-  ): Promise<{ sent: boolean; messageId?: string; error?: string }> {
+  ): Promise<WhatsAppReminderSendResult> {
     try {
       const provider = await this.#getProvider(data.accountId);
 
       const validation = await provider.validateConfiguration();
       if (!validation.valid) {
-        return { sent: false, error: validation.error };
+        return { sent: false, error: validation.error, provider: provider.type };
       }
 
       const templateBody = this.#buildReminderTemplate(data);
@@ -103,7 +111,8 @@ export class WhatsAppProviderService {
       return {
         sent: result.success,
         messageId: result.messageId,
-        error: result.success ? undefined : result.errorMessage
+        error: result.success ? undefined : result.errorMessage,
+        provider: provider.type
       };
     } catch (err) {
       if (err instanceof ProviderNotConfiguredError) {

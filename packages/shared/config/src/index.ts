@@ -97,6 +97,15 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
   { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
   { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
+  { app: 'api', key: 'RESEND_API_KEY', required: false, sensitive: true, description: 'Resend API key for transactional email provider.' },
+  { app: 'api', key: 'EMAIL_FROM', required: false, defaultValue: 'noreply@cvg-his.local', description: 'Default sender used by the transactional email provider.' },
+  { app: 'api', key: 'EMAIL_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalEmailGateway even if RESEND_API_KEY is set. Default: false (Resend is the default provider when configured).' },
+  { app: 'api', key: 'SMS_API_KEY', required: false, sensitive: true, description: 'Twilio-compatible API key for transactional SMS provider.' },
+  { app: 'api', key: 'SMS_FROM', required: false, defaultValue: 'CVGHIS', description: 'Default sender used by the SMS provider.' },
+  { app: 'api', key: 'SMS_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalSmsGateway even if SMS_API_KEY is set.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', required: false, sensitive: true, description: 'Bearer token used for outbound Google Calendar sync.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_CALENDAR_ID', required: false, description: 'Google Calendar identifier used for outbound appointment sync.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalGoogleCalendarGateway even if Google Calendar credentials are set.' },
   { app: 'api', key: 'REDIS_URL', required: false, description: 'Redis connection URL for distributed rate limiting. When set, the auth rate limiter uses Redis backend instead of in-memory.' },
   { app: 'api', key: 'VAULT_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables HashiCorp Vault AppRole bootstrap for managed secrets.' },
   { app: 'api', key: 'VAULT_URL', required: false, description: 'Base URL of the Vault server.' },
@@ -156,6 +165,15 @@ export interface ApiAppConfig {
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
   readonly pixMockMode?: boolean;
+  readonly resendApiKey?: string;
+  readonly emailFrom?: string;
+  readonly emailMockMode?: boolean;
+  readonly smsApiKey?: string;
+  readonly smsFrom?: string;
+  readonly smsMockMode?: boolean;
+  readonly googleCalendarAccessToken?: string;
+  readonly googleCalendarCalendarId?: string;
+  readonly googleCalendarMockMode?: boolean;
   readonly redisUrl?: string;
   readonly vaultEnabled: boolean;
   readonly vaultUrl?: string;
@@ -423,6 +441,15 @@ const apiEnvSchema = z
     PAGARME_API_KEY: optionalNonEmptyStringSchema,
     PAGARME_PIX_KEY: optionalNonEmptyStringSchema,
     PIX_MOCK_MODE: booleanStringSchema.default(false),
+    RESEND_API_KEY: optionalNonEmptyStringSchema,
+    EMAIL_FROM: optionalNonEmptyStringSchema.default('noreply@cvg-his.local'),
+    EMAIL_MOCK_MODE: booleanStringSchema.default(false),
+    SMS_API_KEY: optionalNonEmptyStringSchema,
+    SMS_FROM: optionalNonEmptyStringSchema.default('CVGHIS'),
+    SMS_MOCK_MODE: booleanStringSchema.default(false),
+    GOOGLE_CALENDAR_ACCESS_TOKEN: optionalNonEmptyStringSchema,
+    GOOGLE_CALENDAR_CALENDAR_ID: optionalNonEmptyStringSchema,
+    GOOGLE_CALENDAR_MOCK_MODE: booleanStringSchema.default(false),
     REDIS_URL: optionalUrlSchema,
     VAULT_ENABLED: booleanStringSchema.default(false),
     VAULT_URL: optionalUrlSchema,
@@ -533,6 +560,15 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     pagarmeApiKey: parsed.PAGARME_API_KEY,
     pagarmePixKey: parsed.PAGARME_PIX_KEY,
     pixMockMode: parsed.PIX_MOCK_MODE,
+    resendApiKey: parsed.RESEND_API_KEY,
+    emailFrom: parsed.EMAIL_FROM,
+    emailMockMode: parsed.EMAIL_MOCK_MODE,
+    smsApiKey: parsed.SMS_API_KEY,
+    smsFrom: parsed.SMS_FROM,
+    smsMockMode: parsed.SMS_MOCK_MODE,
+    googleCalendarAccessToken: parsed.GOOGLE_CALENDAR_ACCESS_TOKEN,
+    googleCalendarCalendarId: parsed.GOOGLE_CALENDAR_CALENDAR_ID,
+    googleCalendarMockMode: parsed.GOOGLE_CALENDAR_MOCK_MODE,
     redisUrl: parsed.REDIS_URL,
     vaultEnabled: parsed.VAULT_ENABLED,
     vaultUrl: parsed.VAULT_URL,

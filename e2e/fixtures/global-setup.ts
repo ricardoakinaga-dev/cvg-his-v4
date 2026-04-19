@@ -25,8 +25,9 @@ async function globalSetup(config: FullConfig) {
       const res = await fetch(`${API_URL}/health`);
       if (res.ok) {
         const data = await res.json();
+        const healthStatus = data.status ?? (data.ok ? 'ok' : 'unknown');
         console.log(
-          `   ✅ API healthy (status: ${data.status}, uptime: ${Math.round(data.uptime)}s)`
+          `   ✅ API healthy (status: ${healthStatus}, uptime: ${Math.round(data.uptime)}s)`
         );
         healthy = true;
         break;
@@ -41,18 +42,22 @@ async function globalSetup(config: FullConfig) {
   }
 
   // 2. Check Web health
-  console.log('   ⏳ Checking Web health...');
-  for (let i = 0; i < 30; i++) {
-    try {
-      const res = await fetch(`${BASE_URL}/login`);
-      if (res.ok || res.status === 307) {
-        console.log('   ✅ Web UI is reachable');
-        break;
+  if (BASE_URL !== API_URL) {
+    console.log('   ⏳ Checking Web health...');
+    for (let i = 0; i < 30; i++) {
+      try {
+        const res = await fetch(`${BASE_URL}/login`);
+        if (res.ok || res.status === 307) {
+          console.log('   ✅ Web UI is reachable');
+          break;
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+      await new Promise((r) => setTimeout(r, 1000));
     }
-    await new Promise((r) => setTimeout(r, 1000));
+  } else {
+    console.log('   ℹ️  Web health check skipped (API-only E2E runtime)');
   }
 
   // 3. Login with seeded admin user
@@ -74,8 +79,9 @@ async function globalSetup(config: FullConfig) {
 
       // Save token for tests (note: actor is nested in response)
       process.env.E2E_AUTH_TOKEN = data.accessToken;
-      process.env.E2E_USER_ID = data.actor?.userId || data.user?.id;
-      process.env.E2E_ACCOUNT_ID = data.actor?.accountId || data.user?.accountId;
+      process.env.E2E_USER_ID = data.actor?.userId || data.user?.id || 'user_admin';
+      process.env.E2E_ACCOUNT_ID =
+        data.actor?.accountId || data.user?.accountId || 'acc_cvg_demo';
       console.log(`   ℹ️  User ID: ${process.env.E2E_USER_ID}`);
       console.log(`   ℹ️  Account ID: ${process.env.E2E_ACCOUNT_ID}`);
     } else {

@@ -4,9 +4,12 @@ import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fisc
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
   CreateFiscalNfseLayoutRequest,
+  CreateFiscalNfseDocumentRequest,
+  CancelFiscalNfseDocumentRequest,
   FiscalCfopListResponse,
   FiscalIcmsMatrixListResponse,
   FiscalIcmsRuleListResponse,
+  FiscalNfseDocumentListResponse,
   FiscalNcmEntryListResponse,
   FiscalNfseLayoutListResponse,
   FiscalPisCofinsRuleListResponse,
@@ -42,6 +45,14 @@ function parseOptionalBoolean(value: string | null): boolean | undefined {
   }
 
   return undefined;
+}
+
+function mapFiscalDocumentStateError(message: string): number {
+  if (message.includes('Cannot issue document in status') || message.includes('Cannot cancel document in status')) {
+    return 409;
+  }
+
+  return 400;
 }
 
 function getScopedFiscalService(
@@ -207,6 +218,130 @@ export async function handleFiscalRoutes(
     });
 
     return json(response, 201, created);
+  }
+
+  if (pathname === '/fiscal/nfse/documents' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'fiscal.read');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const payload: FiscalNfseDocumentListResponse = {
+      items: await scopedFiscal.listNfseDocuments({
+        status: (url.searchParams.get('status') as 'draft' | 'issued' | 'cancelled' | 'error' | null)
+          ?? undefined,
+        customerSearch: url.searchParams.get('customerSearch') ?? undefined
+      })
+    };
+    return json(response, 200, payload);
+  }
+
+  if (pathname === '/fiscal/nfse/documents' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+
+    try {
+      const payload = (await readJsonBody(request)) as CreateFiscalNfseDocumentRequest;
+      const created = await scopedFiscal.createNfseDocument(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'nfse-document',
+        entityId: created.id,
+        payloadSummary: `NFS-e document #${created.numero} for ${created.customer.name}`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    } catch (error) {
+      return json(response, 400, {
+        code: 'INVALID_REQUEST',
+        message: error instanceof Error ? error.message : 'invalid request'
+      });
+    }
+  }
+
+  const nfseDocumentGetMatch = pathname.match(/^\/fiscal\/nfse\/documents\/([^/]+)$/);
+  if (nfseDocumentGetMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'fiscal.read');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const documentId = requireNonEmptyString(nfseDocumentGetMatch[1], 'documentId');
+    const found = await scopedFiscal.getNfseDocument(documentId);
+
+    if (!found) {
+      return json(response, 404, {
+        code: 'NFSE_DOCUMENT_NOT_FOUND',
+        message: 'NFS-e document not found'
+      });
+    }
+
+    return json(response, 200, found);
+  }
+
+  const nfseDocumentActionMatch = pathname.match(/^\/fiscal\/nfse\/documents\/([^/]+)\/(issue|cancel)$/);
+  if (nfseDocumentActionMatch && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const documentId = requireNonEmptyString(nfseDocumentActionMatch[1], 'documentId');
+    const action = nfseDocumentActionMatch[2];
+
+    try {
+      if (action === 'issue') {
+        const issued = await scopedFiscal.issueNfseDocument(documentId);
+        if (!issued) {
+          return json(response, 404, {
+            code: 'NFSE_DOCUMENT_NOT_FOUND',
+            message: 'NFS-e document not found'
+          });
+        }
+
+        appendAudit(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'fiscal',
+          action: 'issue',
+          entityType: 'nfse-document',
+          entityId: documentId,
+          payloadSummary: `NFS-e document ${documentId} issued`,
+          riskLevel: 'high',
+          correlationId
+        });
+
+        return json(response, 200, issued);
+      }
+
+      const payload = (await readJsonBody(request)) as CancelFiscalNfseDocumentRequest;
+      const cancelled = await scopedFiscal.cancelNfseDocument(documentId, payload);
+
+      if (!cancelled) {
+        return json(response, 404, {
+          code: 'NFSE_DOCUMENT_NOT_FOUND',
+          message: 'NFS-e document not found'
+        });
+      }
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'cancel',
+        entityType: 'nfse-document',
+        entityId: documentId,
+        payloadSummary: `NFS-e document ${documentId} cancelled`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 200, cancelled);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'invalid request';
+      return json(response, mapFiscalDocumentStateError(message), {
+        code: 'INVALID_DOCUMENT_STATE',
+        message
+      });
+    }
   }
 
   const nfseLayoutMatch = pathname.match(/^\/fiscal\/nfse\/([^/]+)$/);

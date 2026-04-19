@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { AbacEngine } from '@cvg-his-v2/module-access-control';
 import { OwnersService } from '@cvg-his-v2/module-owners';
+import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleOwnersRoutes } from './owners-routes.js';
@@ -10,13 +13,22 @@ import { handleOwnersRoutes } from './owners-routes.js';
 class MockRequest extends Readable {
   public readonly method: string;
   public readonly url: string;
+  public readonly headers: Record<string, string>;
+  public readonly socket: { remoteAddress: string };
   readonly #body: Buffer;
   #sent = false;
 
-  constructor(input: { method: string; url: string; body?: Record<string, unknown> }) {
+  constructor(input: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: Record<string, unknown>;
+  }) {
     super();
     this.method = input.method;
     this.url = input.url;
+    this.headers = input.headers ?? {};
+    this.socket = { remoteAddress: '127.0.0.1' };
     this.#body = Buffer.from(input.body ? JSON.stringify(input.body) : '', 'utf8');
   }
 
@@ -102,6 +114,34 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
+function createAbacEnforcer(sectorCodes: readonly string[]) {
+  const engine = new AbacEngine();
+  return (
+    actionCode: string,
+    principal: AuthenticatedPrincipal,
+    resource: ResourceAttributes
+  ) =>
+    engine.enforce(
+      actionCode,
+      {
+        userId: principal.user.id,
+        accountId: principal.user.accountId,
+        roleCodes: principal.access.roleCodes,
+        teamIds: [],
+        sectorIds: [],
+        sectorCodes,
+        isActive: true
+      },
+      resource,
+      {
+        timestamp: new Date('2026-04-18T10:00:00.000Z').toISOString(),
+        dayOfWeek: 5,
+        hourOfDay: 10,
+        ipAddress: '127.0.0.1'
+      }
+    );
+}
+
 test('handleOwnersRoutes GET /owners lists filtered owners', async () => {
   const response = new MockResponse();
 
@@ -165,4 +205,34 @@ test('handleOwnersRoutes POST /owners creates a new owner', async () => {
   const payload = response.bodyJson<{ id: string; fullName: string }>();
   assert.equal(payload.fullName, 'Ana Martins');
   assert.equal(owners.list('Ana Martins').length, 1);
+});
+
+test('handleOwnersRoutes enforces contextual sector isolation when x-sector-code is present', async () => {
+  const response = new MockResponse();
+
+  await assert.rejects(
+    () =>
+      handleOwnersRoutes(
+        '/owners/owner_maria_silva',
+        new MockRequest({
+          method: 'GET',
+          url: '/owners/owner_maria_silva',
+          headers: {
+            'x-sector-code': 'icu'
+          }
+        }) as never,
+        response as never,
+        'corr-owners-3',
+        {
+          owners: new OwnersService(),
+          audit: { write: () => {} } as never,
+          requirePrincipal: () => createPrincipal(),
+          enforceAbac: createAbacEnforcer(['reception'])
+        }
+      ),
+    (error: unknown) => {
+      assert.equal(error instanceof ForbiddenError, true);
+      return true;
+    }
+  );
 });

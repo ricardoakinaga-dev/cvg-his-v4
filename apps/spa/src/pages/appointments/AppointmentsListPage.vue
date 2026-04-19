@@ -40,6 +40,14 @@
         </DsCard>
       </section>
 
+      <section v-if="forecastCards.length > 0" class="appointments-cockpit__forecast">
+        <DsCard v-for="card in forecastCards" :key="card.label" class="metric-card">
+          <span class="metric-card__label">{{ card.label }}</span>
+          <strong class="metric-card__value">{{ card.value }}</strong>
+          <span class="metric-card__hint">{{ card.hint }}</span>
+        </DsCard>
+      </section>
+
       <div class="appointments-cockpit__layout">
         <aside class="appointments-cockpit__sidebar">
           <DsCard title="Filtro e contexto" class="sidebar-card">
@@ -524,6 +532,7 @@ import AppointmentClientSelectorModal from '@/components/appointments/Appointmen
 import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
 import { apiRequest, ApiError } from '@/services/api';
 import { appointmentService } from '@/services/appointment';
+import { mlService, type DemandForecastResponse } from '@/services/ml';
 import { getSchedulingOverview, checkInQueue } from '@/services/scheduling';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -555,6 +564,7 @@ const error = ref('');
 const permissionCodes = ref<string[] | null>(null);
 const overview = ref<SchedulingOverviewResponse | null>(null);
 const services = ref<ServiceSummary[]>([]);
+const demandForecast = ref<DemandForecastResponse | null>(null);
 const showClientSelector = ref(false);
 const showQuickCreate = ref(false);
 const selectedClient = ref<OwnerSummary | null>(null);
@@ -647,6 +657,17 @@ const summaryCards = computed(() => {
     }
   ];
 });
+const forecastCards = computed(() =>
+  (demandForecast.value?.days.slice(0, 3) ?? []).map((day) => ({
+    label: new Date(day.date).toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit'
+    }),
+    value: `${day.predictedAppointments} agenda(s)`,
+    hint: `${day.predictedMinutes} min previstos • pico ${day.peakVisitType} • confiança ${Math.round(day.confidence * 100)}%`
+  }))
+);
 const normalizedReferenceDate = computed(() =>
   viewMode.value === 'month' ? startOfMonth(referenceDate.value) : referenceDate.value
 );
@@ -949,7 +970,7 @@ async function loadOverview() {
   error.value = '';
 
   try {
-    const [overviewResponse, servicesResponse] = await Promise.all([
+    const [overviewResponse, servicesResponse, forecastResponse] = await Promise.all([
       getSchedulingOverview({
         viewMode: viewMode.value,
         referenceDate: `${normalizedReferenceDate.value}T00:00:00.000Z`,
@@ -960,11 +981,16 @@ async function loadOverview() {
         specialty: filters.value.specialty || undefined,
         search: filters.value.search.trim() || undefined
       }),
-      servicesService.list().catch(() => [])
+      servicesService.list().catch(() => []),
+      mlService.getDemandForecast({
+        horizonDays: 7,
+        referenceDate: `${normalizedReferenceDate.value}T00:00:00.000Z`
+      }).catch(() => null)
     ]);
 
     overview.value = overviewResponse;
     services.value = servicesResponse;
+    demandForecast.value = forecastResponse;
     await loadReferenceData(overviewResponse.items);
   } catch (loadError) {
     if (loadError instanceof ApiError && loadError.status === 403) {
@@ -1090,6 +1116,13 @@ onMounted(async () => {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin: 16px 0;
+}
+
+.appointments-cockpit__forecast {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .metric-card {

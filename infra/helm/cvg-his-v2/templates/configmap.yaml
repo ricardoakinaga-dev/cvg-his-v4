@@ -1,5 +1,5 @@
 {{- /*
-ConfigMap — non-secret environment variables for API
+ConfigMaps — non-secret environment variables for API, worker and SPA
 */ -}}
 apiVersion: v1
 kind: ConfigMap
@@ -23,4 +23,38 @@ data:
   OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
 {{- if .Values.api.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT }}
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.api.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | quote }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cvg-his-v2.worker.configmapName" . }}
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.worker.env.NODE_ENV | quote }}
+  APP_NAME: {{ .Values.worker.env.APP_NAME | quote }}
+  WORKER_INTERVAL_MS: {{ .Values.worker.env.WORKER_INTERVAL_MS | quote }}
+  WORKER_HEALTH_PORT: {{ .Values.worker.env.WORKER_HEALTH_PORT | quote }}
+  FEATURE_FLAGS_PROVIDER: {{ .Values.worker.env.FEATURE_FLAGS_PROVIDER | quote }}
+  WORKER_FEATURE_FLAGS: {{ .Values.worker.env.WORKER_FEATURE_FLAGS | quote }}
+  OTEL_ENABLED: {{ .Values.worker.env.OTEL_ENABLED | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.worker.env.OTEL_SERVICE_NAME | quote }}
+  OTEL_EXPORTER_OTLP_PROTOCOL: {{ .Values.worker.env.OTEL_EXPORTER_OTLP_PROTOCOL | quote }}
+{{- if .Values.worker.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.worker.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | quote }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cvg-his-v2.spa.configmapName" . }}
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.spa.env.NODE_ENV | quote }}
+  VITE_APP_NAME: {{ .Values.spa.env.VITE_APP_NAME | quote }}
+  VITE_DISABLE_PWA: {{ .Values.spa.env.VITE_DISABLE_PWA | quote }}
+{{- if .Values.spa.env.VITE_API_BASE_URL }}
+  VITE_API_BASE_URL: {{ .Values.spa.env.VITE_API_BASE_URL | quote }}
 {{- end }}

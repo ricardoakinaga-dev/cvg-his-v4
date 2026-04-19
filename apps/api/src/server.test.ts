@@ -225,6 +225,16 @@ test('CORS preflight reflects an allowed origin', async () => {
   assert.match(response.getHeader('access-control-allow-methods') ?? '', /OPTIONS/);
 });
 
+test('server falls back to LocalPix when PagarMe credentials are absent', async () => {
+  assert.doesNotThrow(() =>
+    createServerUnderTest({
+      pixMockMode: false,
+      pagarmeApiKey: undefined,
+      pagarmePixKey: undefined
+    })
+  );
+});
+
 test('CORS rejects an origin outside the allowlist', async () => {
   const server = createServerUnderTest({
     corsAllowedOrigins: ['https://app.example.com']
@@ -1106,8 +1116,17 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
     }
   });
   assert.equal(catalogResponse.statusCode, 200);
-  const catalog = catalogResponse.bodyJson<{ payments: { provider: string } }>();
-  assert.equal(catalog.payments.provider, 'local-pix');
+  const catalog = catalogResponse.bodyJson<{
+    payments: { provider: string; capabilities: string[]; endpoints: string[] };
+  }>();
+  assert.equal(catalog.payments.provider, 'gateway-abstraction');
+  assert.deepEqual(catalog.payments.capabilities, ['pix', 'cards']);
+  assert.equal(catalog.payments.endpoints.includes('/payments/cards/intents'), true);
+  assert.equal(
+    catalog.payments.endpoints.includes('/payments/cards/intents/{intentId}/capture'),
+    true
+  );
+  assert.equal(catalog.payments.endpoints.includes('/payments/cards/report'), true);
 
   const paymentResponse = await performRequest(server, {
     method: 'POST',
@@ -1135,6 +1154,80 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   assert.equal(payment.status, 'pending');
   assert.ok(payment.eventId);
   assert.ok(payment.qrCodePayload.includes('bill_123'));
+
+  const cardIntentResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/payments/cards/intents',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      billingRecordId: 'bill_card_123',
+      amount: 320,
+      description: 'Internacao parcelada',
+      cardHolderName: 'Maria Silva',
+      customerName: 'Maria Silva',
+      customerEmail: 'maria@example.com',
+      brand: 'visa',
+      last4: '4242',
+      installments: 4
+    }
+  });
+  assert.equal(cardIntentResponse.statusCode, 201);
+  const cardIntent = cardIntentResponse.bodyJson<{
+    provider: string;
+    status: string;
+    installments: number;
+    eventId: string;
+    id: string;
+    providerChargeId?: string;
+    card: { last4: string; brand?: string };
+  }>();
+  assert.equal(cardIntent.provider, 'local-card');
+  assert.equal(cardIntent.status, 'authorized_pending_capture');
+  assert.equal(cardIntent.installments, 4);
+  assert.equal(cardIntent.card.last4, '4242');
+  assert.equal(cardIntent.card.brand, 'visa');
+  assert.ok(cardIntent.eventId);
+  assert.ok(cardIntent.providerChargeId);
+
+  const cardCaptureResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/payments/cards/intents/${cardIntent.id}/capture`,
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      host: 'localhost'
+    }
+  });
+  assert.equal(cardCaptureResponse.statusCode, 200);
+  const cardCapture = cardCaptureResponse.bodyJson<{
+    provider: string;
+    status: string;
+    providerChargeId?: string;
+  }>();
+  assert.equal(cardCapture.provider, 'local-card');
+  assert.equal(cardCapture.status, 'captured');
+  assert.ok(cardCapture.providerChargeId);
+
+  const cardReportResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/payments/cards/report',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      host: 'localhost'
+    }
+  });
+  assert.equal(cardReportResponse.statusCode, 200);
+  const cardReport = cardReportResponse.bodyJson<{
+    provider: string;
+    summary: { total: number };
+    items: unknown[];
+  }>();
+  assert.equal(cardReport.provider, 'local-card');
+  assert.ok(Array.isArray(cardReport.items));
+  assert.equal(typeof cardReport.summary.total, 'number');
 });
 
 // =============================================================================

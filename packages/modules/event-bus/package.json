@@ -22,7 +22,8 @@
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",
     "@cvg-his-v2/shared-validation": "workspace:*",
-    "@cvg-his-v2/tenant-context": "workspace:*"
+    "@cvg-his-v2/tenant-context": "workspace:*",
+    "@opentelemetry/api": "^1.9.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

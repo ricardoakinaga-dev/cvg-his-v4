@@ -48,6 +48,7 @@ export interface PrescriptionSummary {
 }
 
 export interface CreatePrescriptionRequest {
+  readonly medicalRecordId: string;
   readonly encounterId: string;
   readonly patientId: string;
   readonly medicationName: string;
@@ -216,6 +217,7 @@ export class PrescriptionsService {
   }
 
   #validateCreate(payload: CreatePrescriptionRequest): void {
+    requireNonEmptyString(payload.medicalRecordId, 'medicalRecordId');
     requireNonEmptyString(payload.encounterId, 'encounterId');
     requireNonEmptyString(payload.patientId, 'patientId');
     requireNonEmptyString(payload.medicationName, 'medicationName');
@@ -231,7 +233,7 @@ export class PrescriptionsService {
     const entry: ClinicalEntrySummary = {
       id: createCorrelationId('rx') as ClinicalEntryId,
       accountId,
-      medicalRecordId: '' as never,
+      medicalRecordId: payload.medicalRecordId as never,
       encounterId: payload.encounterId as EncounterId,
       patientId: payload.patientId as PatientId,
       entryType: 'prescription',

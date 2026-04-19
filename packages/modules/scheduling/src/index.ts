@@ -546,7 +546,7 @@ export class SchedulingService {
     this.#owners.getOrThrow(ownerId);
 
     const scheduledAt = parseDate(payload.scheduledAt, 'scheduledAt');
-    const visitType = payload.visitType;
+    const visitType = payload.visitType ?? 'scheduled';
     const durationMinutes = defaultDurationMinutes(visitType, payload.durationMinutes);
     const practitionerStaffId = payload.practitionerStaffId?.trim()
       ? (payload.practitionerStaffId as StaffId)

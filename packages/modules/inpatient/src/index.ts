@@ -2,6 +2,7 @@ import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   AddInpatientProgressRequest,
   CreateInpatientAdmissionRequest,
+  InpatientHandoverPreviewResponse,
   UpdateInpatientStatusRequest,
   AssignBedRequest
 } from '@cvg-his-v2/shared-contracts';
@@ -263,6 +264,18 @@ export class InpatientService {
       throw new Error(`Invalid status transition from '${stay.status}' to '${payload.status}'`);
     }
 
+    if (payload.status === 'discharged' && !payload.dischargeReason?.trim()) {
+      throw new ValidationError('dischargeReason is required when discharging inpatient stay');
+    }
+
+    if (
+      payload.status === 'transferred' &&
+      !payload.transferToUnit?.trim() &&
+      !payload.transferToWard?.trim()
+    ) {
+      throw new ValidationError('transfer target is required when transferring inpatient stay');
+    }
+
     const now = nowIso();
     const updated: InpatientStaySummary = {
       ...stay,
@@ -280,8 +293,64 @@ export class InpatientService {
 
     this.#stays.set(stayId, updated);
     this.#enqueuePersist(async () => {
+      if (
+        this.#sectorBedService &&
+        stay.bedId &&
+        (payload.status === 'discharged' || payload.status === 'transferred')
+      ) {
+        await this.#sectorBedService.setBedAvailable(stay.bedId);
+      }
       await this.updateStay(updated);
     });
     return updated;
+  }
+
+  public buildHandoverPreview(filters?: {
+    readonly unit?: string;
+    readonly ward?: string;
+    readonly includeDischarged?: boolean;
+  }): InpatientHandoverPreviewResponse {
+    const includeDischarged = filters?.includeDischarged ?? false;
+    const items = this.list()
+      .filter((stay) => includeDischarged || stay.status !== 'discharged')
+      .filter((stay) => !filters?.unit || stay.unit === filters.unit)
+      .filter((stay) => !filters?.ward || stay.ward === filters.ward)
+      .sort((left, right) => {
+        const unitOrder = left.unit.localeCompare(right.unit);
+        if (unitOrder !== 0) return unitOrder;
+        const wardOrder = left.ward.localeCompare(right.ward);
+        if (wardOrder !== 0) return wardOrder;
+        return left.bed.localeCompare(right.bed);
+      })
+      .map((stay) => {
+        const latestProgress = this.listProgress(stay.id)[0];
+        const requiresAttention =
+          stay.status === 'transferred'
+          || (latestProgress?.note.toLowerCase().includes('urg') ?? false)
+          || (latestProgress?.note.toLowerCase().includes('pend') ?? false);
+
+        return {
+          stayId: stay.id,
+          encounterId: stay.encounterId,
+          patientId: stay.patientId,
+          unit: stay.unit,
+          ward: stay.ward,
+          bed: stay.bed,
+          status: stay.status,
+          latestProgressNote: latestProgress?.note ?? null,
+          latestProgressAt: latestProgress?.createdAt ?? null,
+          transferTarget: {
+            unit: stay.transferToUnit ?? null,
+            ward: stay.transferToWard ?? null
+          },
+          requiresAttention
+        };
+      });
+
+    return {
+      generatedAt: nowIso(),
+      totalActiveStays: items.length,
+      items
+    };
   }
 }

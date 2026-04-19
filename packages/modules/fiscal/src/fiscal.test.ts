@@ -45,6 +45,22 @@ test('FiscalService builds dashboard and tax preview from real module data', asy
   assert.ok(preview.servico.totalWithTax > preview.servico.baseValue);
 });
 
+test('FiscalService exposes filtered NCM catalog and consolidated ICMS matrix', async () => {
+  const service = new FiscalService();
+
+  const ncmRows = await service.listNcmEntries({ search: 'imagem' });
+  const matrixRows = await service.listIcmsMatrix({ ufOrigin: 'SP', operationType: 'interestadual' });
+
+  assert.equal(ncmRows.length, 1);
+  assert.equal(ncmRows[0]?.ncm, '9022');
+  assert.ok(ncmRows[0]?.notes.toLowerCase().includes('ultrassom'));
+
+  assert.ok(matrixRows.length > 0);
+  assert.ok(matrixRows.every((row) => row.ufOrigin === 'SP'));
+  assert.ok(matrixRows.every((row) => row.operationType === 'interestadual'));
+  assert.ok(matrixRows.some((row) => row.ufDestination === 'RJ' && row.rate === 12));
+});
+
 test('FiscalService creates and updates NFS-e layouts in backoffice mode', async () => {
   const service = new FiscalService();
 
@@ -75,4 +91,180 @@ test('FiscalService creates and updates NFS-e layouts in backoffice mode', async
 
   const filtered = await service.listNfseLayouts({ state: 'SP', active: true });
   assert.ok(filtered.some((layout) => layout.id === created.id));
+});
+
+test('FiscalService applies defaults and sanitization when creating draft NFS-e documents', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createNfseDocument({
+    provider: 'iss_net',
+    customer: {
+      type: 'cpf',
+      document: ' 123.456.789-09 ',
+      name: '  Ana Fiscal ',
+      email: '  ana@example.com ',
+      phone: '  +5511911110000 '
+    },
+    services: [
+      {
+        description: ' Painel laboratorial ',
+        codigoServico: '0403',
+        cnae: '8640-2/02',
+        quantity: 1,
+        unitValue: 240,
+        totalValue: 240,
+        issRate: 0.05,
+        issValue: 12,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0,
+        irrfValue: 0,
+        inssValue: 0
+      }
+    ],
+    observations: '  janela de coleta  '
+  });
+
+  assert.equal(created.status, 'draft');
+  assert.equal(created.serie, '001');
+  assert.equal(created.provider, 'iss_net');
+  assert.equal(created.customer.document, '123.456.789-09');
+  assert.equal(created.customer.name, 'Ana Fiscal');
+  assert.equal(created.customer.email, 'ana@example.com');
+  assert.equal(created.customer.phone, '+5511911110000');
+  assert.equal(created.observations, 'janela de coleta');
+  assert.match(created.competencia, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(created.numero > 0);
+});
+
+test('FiscalService rejects invalid draft payloads and invalid NFS-e transitions', async () => {
+  const service = new FiscalService();
+
+  await assert.rejects(
+    () =>
+      service.createNfseDocument({
+        customer: {
+          type: 'cnpj',
+          document: '12.345.678/0001-90',
+          name: 'Hospital Invalido'
+        },
+        services: [
+          {
+            description: 'Consulta',
+            codigoServico: '0407',
+            cnae: '7500-1/00',
+            quantity: -1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0,
+            irrfValue: 0,
+            inssValue: 0
+          }
+        ]
+      }),
+    /service\.quantity must be zero or positive/
+  );
+
+  const created = await service.createNfseDocument({
+    serie: '001',
+    numero: 2010,
+    customer: {
+      type: 'cnpj',
+      document: '98.765.432/0001-10',
+      name: 'Clinica Beta'
+    },
+    services: [
+      {
+        description: 'Consulta retorno',
+        codigoServico: '0407',
+        cnae: '7500-1/00',
+        quantity: 1,
+        unitValue: 120,
+        totalValue: 120,
+        issRate: 0.05,
+        issValue: 6,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0,
+        irrfValue: 0,
+        inssValue: 0
+      }
+    ]
+  });
+
+  await assert.rejects(() => service.cancelNfseDocument(created.id, { reason: 'nao pode ainda' }), {
+    message: /Cannot cancel document in status: draft/
+  });
+
+  const issued = await service.issueNfseDocument(created.id);
+  assert.equal(issued?.status, 'issued');
+
+  await assert.rejects(() => service.issueNfseDocument(created.id), {
+    message: /Cannot issue document in status: issued/
+  });
+
+  await assert.rejects(() => service.cancelNfseDocument(created.id, { reason: '   ' }), {
+    message: /reason is required/
+  });
+});
+
+test('FiscalService cria e altera ciclo documental NFS-e', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createNfseDocument({
+    competencia: '2026-04-17',
+    serie: '001',
+    numero: 2002,
+    provider: 'abrasf',
+    customer: {
+      type: 'cnpj',
+      document: '12.345.678/0001-90',
+      name: 'Hospital Alpha',
+      email: 'finance@alpha.example',
+      phone: '+5511999990000'
+    },
+    services: [
+      {
+        description: 'Consulta especializada',
+        codigoServico: '0407',
+        cnae: '7500-1/00',
+        quantity: 1,
+        unitValue: 150,
+        totalValue: 150,
+        issRate: 0.05,
+        issValue: 7.5,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0,
+        irrfValue: 0,
+        inssValue: 0
+      }
+    ]
+  });
+
+  assert.equal(created.status, 'draft');
+  assert.equal(created.numero, 2002);
+
+  const draftList = await service.listNfseDocuments({ status: 'draft' });
+  assert.ok(draftList.some((item) => item.id === created.id));
+
+  const issued = await service.issueNfseDocument(created.id);
+  assert.ok(issued);
+  assert.equal(issued?.status, 'issued');
+  assert.ok(issued?.authorizationCode);
+
+  const issuedList = await service.listNfseDocuments({ status: 'issued' });
+  assert.ok(issuedList.some((item) => item.id === created.id));
+
+  const cancelled = await service.cancelNfseDocument(created.id, { reason: 'teste automatizado' });
+  assert.ok(cancelled);
+  assert.equal(cancelled?.status, 'cancelled');
+
+  const single = await service.getNfseDocument(created.id);
+  assert.equal(single?.status, 'cancelled');
+  assert.equal(single?.authorizationCode, issued?.authorizationCode);
 });

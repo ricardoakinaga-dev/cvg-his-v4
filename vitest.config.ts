@@ -39,6 +39,10 @@ export default defineConfig({
       '@cvg-his-v2/module-diagnostics': resolve(root, 'packages/modules/diagnostics/src/index.ts'),
       '@cvg-his-v2/module-discharges': resolve(root, 'packages/modules/discharges/src/index.ts'),
       '@cvg-his-v2/module-encounters': resolve(root, 'packages/modules/encounters/src/index.ts'),
+      '@cvg-his-v2/module-feature-flags': resolve(
+        root,
+        'packages/modules/feature-flags/src/index.ts'
+      ),
       '@cvg-his-v2/module-inpatient': resolve(root, 'packages/modules/inpatient/src/index.ts'),
       '@cvg-his-v2/module-inventory': resolve(root, 'packages/modules/inventory/src/index.ts'),
       '@cvg-his-v2/module-medical-records': resolve(
@@ -118,7 +122,6 @@ export default defineConfig({
         'apps/api/src/tracing.ts',
         'apps/api/src/tenant-db.ts',
         'apps/api/src/chaos-integration.ts',
-        'apps/api/src/pix-transaction-repository.ts',
         'apps/api/src/bootstrap.ts',
         'apps/api/src/payment-gateway.ts',
         'apps/api/src/runtime-repositories.ts',

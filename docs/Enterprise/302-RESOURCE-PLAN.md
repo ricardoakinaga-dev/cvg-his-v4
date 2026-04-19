@@ -1,5 +1,9 @@
 # RESOURCE PLAN — Enterprise Transformation
 
+**Taxonomia:** `APOIO`
+**Papel no sistema documental:** referencia de capacidade, squads e custo macro para sustentar a execucao do roadmap
+**Ler em conjunto com:** `README.md`, `0334-PLANO-EXECUTIVO-REALINHAMENTO-ENTERPRISE-2026-04-17.md`, `100-ROADMAP-VISAO-GERAL.md`, `200-BACKLOG-MASTER.md`
+
 ## Squads por Onda
 
 ### Onda 1 — Fundação Crítica

@@ -167,6 +167,60 @@ test('DiagnosticsService createOrder links catalog entry', () => {
   assert.equal(catalogEntry?.name, 'Hemograma');
 });
 
+test('DiagnosticsService createOrder rejects patient mismatch and unknown catalog', () => {
+  const { service, encounter } = createService();
+
+  assert.throws(
+    () =>
+      service.createOrder({
+        encounterId: encounter.id,
+        patientId: 'patient_other',
+        examType: 'Hemograma',
+        reason: 'Check-up'
+      }),
+    /patientId must match/
+  );
+
+  assert.throws(
+    () =>
+      service.createOrder({
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        examCatalogId: 'cat_missing',
+        reason: 'Check-up'
+      }),
+    /Unknown exam catalog entry/
+  );
+});
+
+test('DiagnosticsService recordResult requires collector and clinical evidence when resulting', () => {
+  const { service, encounter } = createService();
+
+  const order = service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    examCatalogId: 'cat_001',
+    reason: 'Check-up'
+  });
+
+  assert.throws(
+    () => service.recordResult(order.id, { status: 'collected' }),
+    /collectedByUserId/
+  );
+
+  service.recordResult(order.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_1'
+  });
+
+  assert.throws(
+    () => service.recordResult(order.id, { status: 'resulted' }),
+    /resultSummary or resultAttachmentId/
+  );
+});
+
 test('DiagnosticsService hydrateFromDatabase loads persisted orders by account', async () => {
   const { encounter } = createService();
   const service = new DiagnosticsService(
@@ -235,4 +289,109 @@ test('LaboratoryService serves backend-first catalog and dashboard summary', asy
   assert.ok(equipment.length >= 4);
   assert.equal(summary.totalOrders, 1);
   assert.ok(summary.equipmentActive >= 1);
+});
+
+test('LaboratoryService exposes resulted orders and order detail scoped by account', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: new InMemoryLaboratoryCatalogRepository()
+  });
+
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    examCatalogId: 'cat_001',
+    reason: 'Check-up'
+  });
+
+  diagnostics.recordResult(order.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_1'
+  });
+  diagnostics.recordResult(order.id, {
+    status: 'resulted',
+    resultAttachmentId: 'att_1'
+  });
+
+  const [results, detail, catalog] = await Promise.all([
+    laboratory.listResults('acc_test' as never, 'HEM'),
+    Promise.resolve(laboratory.getOrder('acc_test' as never, order.id)),
+    Promise.resolve(laboratory.listCatalog())
+  ]);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, order.id);
+  assert.equal(detail.id, order.id);
+  assert.ok(catalog.some((item) => item.id === 'cat_001'));
+});
+
+test('LaboratoryService falls back to default catalogs when repository is not configured', async () => {
+  const { service: diagnostics } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+
+  const [equipment, reportTypes, referenceValues] = await Promise.all([
+    laboratory.listEquipment('acc_test' as never),
+    laboratory.listReportTypes('acc_test' as never),
+    laboratory.listReferenceValues('acc_test' as never, 'HEM')
+  ]);
+
+  assert.ok(equipment.length >= 1);
+  assert.ok(reportTypes.length >= 1);
+  assert.ok(referenceValues.length >= 1);
+  assert.equal(referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')), true);
+});
+
+test('LaboratoryService listResults filters only released or evidenced orders', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+
+  const openOrder = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Urinalise',
+    reason: 'Triagem'
+  });
+  const releasedOrder = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Bioquimico',
+    reason: 'Seguimento'
+  });
+
+  diagnostics.recordResult(releasedOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_1'
+  });
+  diagnostics.recordResult(releasedOrder.id, {
+    status: 'resulted',
+    resultSummary: 'Tudo normal'
+  });
+
+  const results = await laboratory.listResults('acc_test' as never);
+
+  assert.equal(results.some((item) => item.id === releasedOrder.id), true);
+  assert.equal(results.some((item) => item.id === openOrder.id), false);
+});
+
+test('LaboratoryService getOrder blocks access to another account and proxy methods stay coherent', () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+
+  const created = laboratory.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Citologia',
+    reason: 'Controle'
+  });
+  const collected = laboratory.recordResult(created.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_2'
+  });
+
+  assert.equal(collected.status, 'collected');
+  assert.throws(
+    () => laboratory.getOrder('acc_other' as never, created.id),
+    /does not belong to the current account/
+  );
 });

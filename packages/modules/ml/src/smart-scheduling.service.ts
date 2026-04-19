@@ -16,6 +16,7 @@ export interface DurationPrediction {
   predictedMinutes: number;
   confidence: number;
   historicalAvg: number;
+  suggestedBufferMinutes: number;
   factors: string[];
 }
 
@@ -33,9 +34,17 @@ export class SmartSchedulingService {
     visitType: string;
     patientId?: string;
     previousVisits?: number;
+    reason?: string;
+    specialty?: string;
+    serviceId?: string;
+    unit?: string;
+    scheduledAt?: string;
   }): Promise<DurationPrediction> {
     // Base durations by visit type (in minutes)
     const baseDurations: Record<string, number> = {
+      scheduled: 30,
+      return: 20,
+      walk_in: 45,
       'consulta': 30,
       'exame': 45,
       'procedimento': 60,
@@ -51,9 +60,14 @@ export class SmartSchedulingService {
     const factors: string[] = [`Base duration for ${params.visitType}: ${baseDuration}min`];
 
     // Patient history adjustments
-    if (params.previousVisits !== undefined && params.previousVisits > 5) {
+    if (params.previousVisits !== undefined && params.previousVisits > 3) {
       adjustment -= 5; // Experienced patient, faster
       factors.push('Experienced patient: -5min');
+    }
+
+    if (params.visitType === 'walk_in') {
+      adjustment += 10;
+      factors.push('Walk-in buffer: +10min');
     }
 
     // Emergency visits get longer
@@ -68,6 +82,37 @@ export class SmartSchedulingService {
       factors.push('Surgery buffer: +20min');
     }
 
+    const normalizedSpecialty = params.specialty?.trim().toLowerCase();
+    if (normalizedSpecialty?.includes('cardio') || normalizedSpecialty?.includes('dermato')) {
+      adjustment += 10;
+      factors.push(`Specialty buffer (${params.specialty}): +10min`);
+    }
+
+    const normalizedReason = params.reason?.trim().toLowerCase();
+    if (normalizedReason?.includes('retorno') && params.visitType !== 'return') {
+      adjustment -= 5;
+      factors.push('Return-like reason: -5min');
+    }
+    if (
+      normalizedReason?.includes('cirurg')
+      || normalizedReason?.includes('proced')
+      || normalizedReason?.includes('ultra')
+    ) {
+      adjustment += 15;
+      factors.push('Complex procedure keyword: +15min');
+    }
+
+    if (params.scheduledAt) {
+      const scheduledAt = new Date(params.scheduledAt);
+      if (!Number.isNaN(scheduledAt.getTime())) {
+        const hour = scheduledAt.getUTCHours();
+        if (hour >= 11 && hour <= 13) {
+          adjustment += 5;
+          factors.push('Midday operational buffer: +5min');
+        }
+      }
+    }
+
     const predictedMinutes = Math.max(15, baseDuration + adjustment);
     const confidence = this.calculateConfidence(params);
 
@@ -75,6 +120,7 @@ export class SmartSchedulingService {
       predictedMinutes,
       confidence,
       historicalAvg: baseDuration,
+      suggestedBufferMinutes: Math.max(0, predictedMinutes - baseDuration),
       factors
     };
   }
@@ -87,10 +133,21 @@ export class SmartSchedulingService {
     visitType: string;
     patientId?: string;
     preferredTime?: string;
+    previousVisits?: number;
+    reason?: string;
+    specialty?: string;
+    serviceId?: string;
+    unit?: string;
   }): Promise<SchedulingRecommendation> {
     const prediction = await this.predictDuration({
       visitType: params.visitType,
-      patientId: params.patientId
+      patientId: params.patientId,
+      previousVisits: params.previousVisits,
+      reason: params.reason,
+      specialty: params.specialty,
+      serviceId: params.serviceId,
+      unit: params.unit,
+      scheduledAt: params.preferredTime
     });
 
     return {
@@ -118,11 +175,29 @@ export class SmartSchedulingService {
   /**
    * Calculate confidence score based on available data
    */
-  private calculateConfidence(params: { visitType: string; patientId?: string; previousVisits?: number }): number {
+  private calculateConfidence(params: {
+    visitType: string;
+    patientId?: string;
+    previousVisits?: number;
+    specialty?: string;
+    reason?: string;
+  }): number {
     let confidence = 0.7; // Base confidence
 
     // Known visit type increases confidence
-    const knownTypes = ['consulta', 'exame', 'procedimento', 'vacina', 'cirurgia', 'retorno', 'emergencia', 'triagem'];
+    const knownTypes = [
+      'scheduled',
+      'return',
+      'walk_in',
+      'consulta',
+      'exame',
+      'procedimento',
+      'vacina',
+      'cirurgia',
+      'retorno',
+      'emergencia',
+      'triagem'
+    ];
     if (knownTypes.includes(params.visitType)) {
       confidence += 0.1;
     }
@@ -135,6 +210,14 @@ export class SmartSchedulingService {
     // Emergency is less predictable
     if (params.visitType === 'emergencia') {
       confidence -= 0.15;
+    }
+
+    if (params.specialty?.trim()) {
+      confidence += 0.03;
+    }
+
+    if (params.reason?.trim()) {
+      confidence += 0.02;
     }
 
     return Math.max(0.3, Math.min(0.95, confidence));

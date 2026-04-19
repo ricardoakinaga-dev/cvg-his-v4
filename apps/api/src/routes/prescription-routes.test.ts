@@ -105,6 +105,7 @@ test('handlePrescriptionRoutes creates a prescription', async () => {
   const service = createPrescriptionsService();
 
   const createPayload = {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Amoxicilina',
@@ -137,6 +138,7 @@ test('handlePrescriptionRoutes gets a prescription by id', async () => {
 
   // First create a prescription
   const created = service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Dipirona'
@@ -167,11 +169,13 @@ test('handlePrescriptionRoutes lists prescriptions', async () => {
 
   // Create a couple of prescriptions
   service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Amoxicilina'
   });
   service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Dipirona'
@@ -202,6 +206,7 @@ test('handlePrescriptionRoutes updates a prescription', async () => {
 
   // First create a prescription
   const created = service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Amoxicilina'
@@ -232,6 +237,7 @@ test('handlePrescriptionRoutes archives a prescription', async () => {
 
   // First create a prescription
   const created = service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     medicationName: 'Amoxicilina'

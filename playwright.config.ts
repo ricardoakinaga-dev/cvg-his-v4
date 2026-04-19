@@ -29,6 +29,14 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] }
     }
   ],
+  webServer: {
+    command: "bash -lc 'fuser -k 3001/tcp 2>/dev/null || true; pnpm dev:api'",
+    url: 'http://127.0.0.1:3001/health',
+    reuseExistingServer: false,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    timeout: 120_000
+  },
   // Global setup for auth
   globalSetup: './e2e/fixtures/global-setup.ts'
 });

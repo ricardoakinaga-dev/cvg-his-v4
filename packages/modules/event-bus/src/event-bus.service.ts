@@ -1,4 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import {
+  ROOT_CONTEXT,
+  SpanStatusCode,
+  context as otelContext,
+  trace as otelTrace
+} from '@opentelemetry/api';
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
@@ -38,6 +44,86 @@ export const DEFAULT_BACKOFF: BackoffOptions = {
 
 function computeBackoffDelay(attempt: number, opts: BackoffOptions): number {
   return Math.min(opts.baseMs * Math.pow(2, attempt), opts.maxMs);
+}
+
+interface OutboxTraceMeta {
+  readonly traceparent?: string;
+  readonly sourceService?: string;
+}
+
+function readTraceMeta(event: OutboxEvent): OutboxTraceMeta {
+  const meta = event.payload['_meta'];
+  if (!meta || typeof meta !== 'object') {
+    return {};
+  }
+
+  const candidate = meta as Record<string, unknown>;
+  return {
+    traceparent: typeof candidate.traceparent === 'string' ? candidate.traceparent : undefined,
+    sourceService: typeof candidate.sourceService === 'string' ? candidate.sourceService : undefined
+  };
+}
+
+function parseTraceparent(traceparent?: string) {
+  if (!traceparent) {
+    return undefined;
+  }
+
+  const match = /^00-([a-f0-9]{32})-([a-f0-9]{16})-([a-f0-9]{2})$/i.exec(traceparent.trim());
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    traceId: match[1],
+    spanId: match[2],
+    traceFlags: parseInt(match[3], 16)
+  };
+}
+
+async function withEventSpan<T>(event: OutboxEvent, fn: () => Promise<T>): Promise<T> {
+  const tracer = otelTrace.getTracer('cvg-his-v2.event-bus');
+  const traceMeta = readTraceMeta(event);
+  const upstreamContext = parseTraceparent(traceMeta.traceparent);
+  const parentContext = upstreamContext
+    ? otelTrace.setSpanContext(ROOT_CONTEXT, {
+        ...upstreamContext,
+        isRemote: true
+      })
+    : ROOT_CONTEXT;
+
+  return await tracer.startActiveSpan(
+    `eventbus.process ${event.eventType}`,
+    {
+      attributes: {
+        'eventbus.event_id': event.id,
+        'eventbus.event_type': event.eventType,
+        'eventbus.module_name': event.moduleName,
+        'eventbus.correlation_id': event.correlationId,
+        'eventbus.attempt': event.attempts + 1,
+        'eventbus.max_attempts': event.maxAttempts,
+        'eventbus.source_service': traceMeta.sourceService ?? 'unknown',
+        'eventbus.async_parent_present': upstreamContext ? 1 : 0
+      }
+    },
+    parentContext,
+    async (span) => {
+      try {
+        const result = await otelContext.with(otelTrace.setSpan(parentContext, span), fn);
+        span.setStatus({ code: SpanStatusCode.OK });
+        return result;
+      } catch (error) {
+        span.recordException(error instanceof Error ? error : new Error(String(error)));
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+      } finally {
+        span.end();
+      }
+    }
+  );
 }
 
 export class DatabaseOutboxRepository implements OutboxRepository {
@@ -205,76 +291,81 @@ export class EventBusService {
     }
 
     for (const event of pending) {
-      const updated: OutboxEvent = {
-        ...event,
-        status: 'processing'
-      };
-      await this.#repository.update(updated);
+      await withEventSpan(event, async () => {
+        const updated: OutboxEvent = {
+          ...event,
+          status: 'processing'
+        };
+        await this.#repository.update(updated);
 
-      console.info(
-        `[EventBus] Dispatching event ${event.eventType} (${event.id}) to ${this.#handlers.size} handler(s) — attempt ${event.attempts + 1}/${event.maxAttempts}`
-      );
-
-      try {
-        let handlerFailed = false;
-        const handlerResults = await Promise.allSettled(
-          Array.from(this.#handlers).map((handler) => handler(event))
+        console.info(
+          `[EventBus] Dispatching event ${event.eventType} (${event.id}) correlation=${event.correlationId} to ${this.#handlers.size} handler(s) — attempt ${event.attempts + 1}/${event.maxAttempts}`
         );
-        for (const result of handlerResults) {
-          if (result.status === 'rejected') {
-            console.error(`[EventBus] Handler error for ${event.eventType} (${event.id}):`, result.reason);
-            handlerFailed = true;
+
+        try {
+          let handlerFailed = false;
+          const handlerResults = await Promise.allSettled(
+            Array.from(this.#handlers).map((handler) => handler(event))
+          );
+          for (const result of handlerResults) {
+            if (result.status === 'rejected') {
+              console.error(
+                `[EventBus] Handler error for ${event.eventType} (${event.id}) correlation=${event.correlationId}:`,
+                result.reason
+              );
+              handlerFailed = true;
+            }
+          }
+
+          if (handlerFailed) {
+            const failedErrors = handlerResults
+              .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+              .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
+            throw new Error(failedErrors.join('; '));
+          }
+
+          const completed: OutboxEvent = {
+            ...updated,
+            status: 'completed',
+            processedAt: nowIso()
+          };
+          await this.#repository.update(completed);
+          processed.push(completed);
+          console.info(
+            `[EventBus] Event ${event.eventType} (${event.id}) correlation=${event.correlationId} completed — ${this.#handlers.size} handler(s) succeeded`
+          );
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          const shouldRetry = event.attempts + 1 < event.maxAttempts;
+
+          if (shouldRetry) {
+            const delayMs = computeBackoffDelay(event.attempts, this.#backoff);
+            const scheduledAt = new Date(Date.now() + delayMs).toISOString();
+            const retrying: OutboxEvent = {
+              ...event,
+              status: 'retrying',
+              attempts: event.attempts + 1,
+              error: errorMessage,
+              scheduledAt
+            };
+            await this.#repository.update(retrying);
+            console.warn(
+              `[EventBus] ${event.eventType} (${event.id}) correlation=${event.correlationId} retry ${event.attempts + 1}/${event.maxAttempts} in ${delayMs}ms: ${errorMessage}`
+            );
+          } else {
+            const failed: OutboxEvent = {
+              ...event,
+              status: 'failed',
+              attempts: event.maxAttempts,
+              error: `[DLQ] All ${event.maxAttempts} attempts exhausted. Last error: ${errorMessage}`
+            };
+            await this.#repository.update(failed);
+            console.error(
+              `[EventBus] [DLQ] ${event.eventType} (${event.id}) correlation=${event.correlationId} moved to dead-letter queue after ${event.maxAttempts} attempts: ${errorMessage}`
+            );
           }
         }
-
-        if (handlerFailed) {
-          const failedErrors = handlerResults
-            .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-            .map((r) => r.reason instanceof Error ? r.reason.message : String(r.reason));
-          throw new Error(failedErrors.join('; '));
-        }
-
-        const completed: OutboxEvent = {
-          ...updated,
-          status: 'completed',
-          processedAt: nowIso()
-        };
-        await this.#repository.update(completed);
-        processed.push(completed);
-        console.info(`[EventBus] Event ${event.eventType} (${event.id}) completed — ${this.#handlers.size} handler(s) succeeded`);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        const shouldRetry = event.attempts + 1 < event.maxAttempts;
-
-        if (shouldRetry) {
-          // Apply exponential backoff before the next retry
-          const delayMs = computeBackoffDelay(event.attempts, this.#backoff);
-          const scheduledAt = new Date(Date.now() + delayMs).toISOString();
-          const retrying: OutboxEvent = {
-            ...event,
-            status: 'retrying',
-            attempts: event.attempts + 1,
-            error: errorMessage,
-            scheduledAt
-          };
-          await this.#repository.update(retrying);
-          console.warn(
-            `[EventBus] ${event.eventType} (${event.id}) retry ${event.attempts + 1}/${event.maxAttempts} in ${delayMs}ms: ${errorMessage}`
-          );
-        } else {
-          // Exhausted all attempts — move to DLQ
-          const failed: OutboxEvent = {
-            ...event,
-            status: 'failed',
-            attempts: event.maxAttempts,
-            error: `[DLQ] All ${event.maxAttempts} attempts exhausted. Last error: ${errorMessage}`
-          };
-          await this.#repository.update(failed);
-          console.error(
-            `[EventBus] [DLQ] ${event.eventType} (${event.id}) moved to dead-letter queue after ${event.maxAttempts} attempts: ${errorMessage}`
-          );
-        }
-      }
+      });
     }
 
     return processed;

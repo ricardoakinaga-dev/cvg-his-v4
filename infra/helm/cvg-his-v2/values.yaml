@@ -17,6 +17,7 @@ fullnameOverride: ""
 api:
   replicaCount: 1
   revisionHistoryLimit: 5
+  podAnnotations: {}
 
   strategy:
     type: RollingUpdate
@@ -39,6 +40,7 @@ api:
   service:
     type: ClusterIP
     port: 3001
+    annotations: {}
 
   ingress:
     enabled: true
@@ -52,12 +54,15 @@ api:
 
   probes:
     enabled: true
+    livenessPath: /live
     livenessDelay: 10
     livenessPeriod: 10
     livenessFailureThreshold: 3
+    readinessPath: /ready
     readinessDelay: 5
     readinessPeriod: 5
     readinessFailureThreshold: 3
+    startupPath: /health
     startupDelay: 15
     startupPeriod: 10
     startupFailureThreshold: 30
@@ -82,6 +87,9 @@ api:
     RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
     VAULT_ENABLED: "false"
     OTEL_ENABLED: "false"
+    OTEL_SERVICE_NAME: cvg-his-v2-api
+    OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ""
 
 # ──────────────────────────────────────────────
 # Worker Service
@@ -89,6 +97,7 @@ api:
 worker:
   replicaCount: 1
   revisionHistoryLimit: 3
+  podAnnotations: {}
 
   strategy:
     type: RollingUpdate
@@ -103,12 +112,25 @@ worker:
     pullPolicy: IfNotPresent
     sha: ""
 
+  service:
+    type: ClusterIP
+    port: 3002
+    annotations: {}
+
   probes:
     enabled: true
-    # Worker has no HTTP endpoint — liveness via process check
+    livenessPath: /live
     livenessDelay: 30
     livenessPeriod: 30
     livenessFailureThreshold: 3
+    readinessPath: /ready
+    readinessDelay: 10
+    readinessPeriod: 15
+    readinessFailureThreshold: 3
+    startupPath: /health
+    startupDelay: 10
+    startupPeriod: 10
+    startupFailureThreshold: 18
 
   resources:
     requests:
@@ -122,7 +144,13 @@ worker:
     NODE_ENV: production
     APP_NAME: cvg-his-v2-worker
     WORKER_INTERVAL_MS: "5000"
+    WORKER_HEALTH_PORT: "3002"
+    FEATURE_FLAGS_PROVIDER: env
+    WORKER_FEATURE_FLAGS: ""
     OTEL_ENABLED: "false"
+    OTEL_SERVICE_NAME: cvg-his-v2-worker
+    OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ""
 
 # ──────────────────────────────────────────────
 # SPA Frontend
@@ -130,6 +158,7 @@ worker:
 spa:
   replicaCount: 1
   revisionHistoryLimit: 5
+  podAnnotations: {}
 
   strategy:
     type: RollingUpdate
@@ -147,6 +176,7 @@ spa:
   service:
     type: ClusterIP
     port: 3002
+    annotations: {}
 
   ingress:
     enabled: true
@@ -277,6 +307,17 @@ persistence:
   size: 1Gi
   storageClass: ""
 
+serviceAccount:
+  create: true
+  name: ""
+  automountServiceAccountToken: false
+
+deploymentDefaults:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10000
@@ -292,6 +333,8 @@ securityContext:
 
 podDisruptionBudget:
   api:
+    minAvailable: 1
+  worker:
     minAvailable: 1
   spa:
     minAvailable: 1

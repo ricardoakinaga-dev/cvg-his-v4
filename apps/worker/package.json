@@ -12,6 +12,7 @@
     "@cvg-his-v2/module-notifications": "workspace:*",
     "@cvg-his-v2/module-staff": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",
+    "@cvg-his-v2/shared-contracts": "workspace:*",
     "@cvg-his-v2/shared-database": "workspace:*",
     "@cvg-his-v2/shared-logging": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",

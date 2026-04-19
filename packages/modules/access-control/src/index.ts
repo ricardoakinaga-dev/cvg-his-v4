@@ -148,6 +148,42 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     description: 'Create clinical entries, prescriptions and conduct.'
   },
   {
+    id: 'perm_prescriptions_read' as PermissionId,
+    code: 'prescriptions.read',
+    module: 'medical-records',
+    description: 'Read prescription entries linked to the clinical record.'
+  },
+  {
+    id: 'perm_prescriptions_write' as PermissionId,
+    code: 'prescriptions.write',
+    module: 'medical-records',
+    description: 'Create, update and archive prescription entries.'
+  },
+  {
+    id: 'perm_prescription_executions_read' as PermissionId,
+    code: 'prescription-executions.read',
+    module: 'medical-records',
+    description: 'Read scheduled prescription execution plans.'
+  },
+  {
+    id: 'perm_prescription_executions_manage' as PermissionId,
+    code: 'prescription-executions.manage',
+    module: 'medical-records',
+    description: 'Schedule, execute and suspend prescription administrations.'
+  },
+  {
+    id: 'perm_discharges_read' as PermissionId,
+    code: 'discharges.read',
+    module: 'encounters',
+    description: 'Read discharge summaries and follow-up instructions.'
+  },
+  {
+    id: 'perm_discharges_manage' as PermissionId,
+    code: 'discharges.manage',
+    module: 'encounters',
+    description: 'Create and update discharge records.'
+  },
+  {
     id: 'perm_attachments_read' as PermissionId,
     code: 'attachments.read',
     module: 'attachments',
@@ -396,6 +432,12 @@ const roleCatalog: readonly RoleDefinition[] = [
       'triage.read',
       'triage.manage',
       'medical-records.read',
+      'prescriptions.read',
+      'prescriptions.write',
+      'prescription-executions.read',
+      'prescription-executions.manage',
+      'discharges.read',
+      'discharges.manage',
       'attachments.read',
       'inpatient.read',
       'inventory.read',
@@ -418,6 +460,12 @@ const roleCatalog: readonly RoleDefinition[] = [
       'triage.read',
       'medical-records.read',
       'medical-records.manage',
+      'prescriptions.read',
+      'prescriptions.write',
+      'prescription-executions.read',
+      'prescription-executions.manage',
+      'discharges.read',
+      'discharges.manage',
       'attachments.read',
       'attachments.manage',
       'inpatient.read',

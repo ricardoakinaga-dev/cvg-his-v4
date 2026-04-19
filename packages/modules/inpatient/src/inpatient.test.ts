@@ -69,7 +69,8 @@ test('InpatientService updateStatus persists latest status', () => {
   });
 
   const updated = service.updateStatus(stay.id, {
-    status: 'discharged'
+    status: 'discharged',
+    dischargeReason: 'Alta clinica'
   });
 
   assert.equal(updated.status, 'discharged');
@@ -116,7 +117,11 @@ test('InpatientService updateStatus blocks invalid transitions', () => {
     bed: 'B12'
   });
 
-  service.updateStatus(stay.id, { status: 'discharged' });
+  service.updateStatus(stay.id, {
+    status: 'discharged',
+    dischargeReason: 'Alta clinica'
+  });
+
 
   assert.throws(
     () => service.updateStatus(stay.id, { status: 'admitted' }),
@@ -144,4 +149,48 @@ test('InpatientService updateStatus records transfer metadata', () => {
   assert.equal(transferred.status, 'transferred');
   assert.equal(transferred.transferToUnit, 'Enfermaria');
   assert.equal(transferred.transferToWard, 'Ala B');
+});
+
+test('InpatientService updateStatus requires discharge reason and transfer target', () => {
+  const { service, encounter } = createService();
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  assert.throws(
+    () => service.updateStatus(stay.id, { status: 'discharged' }),
+    /dischargeReason is required/
+  );
+
+  assert.throws(
+    () => service.updateStatus(stay.id, { status: 'transferred' }),
+    /transfer target is required/
+  );
+});
+
+test('InpatientService buildHandoverPreview summarizes latest progress and transfer attention', () => {
+  const { service, encounter } = createService();
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  service.addProgress('doctor_1' as never, {
+    stayId: stay.id,
+    note: 'Pendente reavaliacao hemodinamica'
+  });
+
+  const preview = service.buildHandoverPreview({ ward: 'Ala A' });
+  assert.equal(preview.totalActiveStays, 1);
+  assert.equal(preview.items[0]?.stayId, stay.id);
+  assert.equal(preview.items[0]?.latestProgressNote, 'Pendente reavaliacao hemodinamica');
+  assert.equal(preview.items[0]?.requiresAttention, true);
 });

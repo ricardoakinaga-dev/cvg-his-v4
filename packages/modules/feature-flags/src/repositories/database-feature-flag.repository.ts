@@ -35,12 +35,20 @@ export interface FeatureFlagRepository {
   listOverrides(flagKey: string, accountId: AccountId): Promise<readonly PartialFlagOverride[]>;
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string | undefined | null): value is string {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
 export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   public async findByKey(key: string, accountId: AccountId): Promise<FlagDefinition | null> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
       const result = await client.query(
         'SELECT * FROM feature_flags WHERE key = $1 AND account_id = $2 LIMIT 1',
-        [key, accountId]
+        [key, resolvedAccountId]
       );
       if (result.rows.length === 0) return null;
       return this.mapRowToDefinition(result.rows[0]);
@@ -49,9 +57,10 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
 
   public async listByAccount(accountId: AccountId): Promise<readonly FlagDefinition[]> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
       const result = await client.query(
         'SELECT * FROM feature_flags WHERE account_id = $1 ORDER BY created_at DESC',
-        [accountId]
+        [resolvedAccountId]
       );
       return result.rows.map((row) => this.mapRowToDefinition(row));
     });
@@ -59,18 +68,19 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
 
   public async create(flag: FlagDefinition, accountId: AccountId): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
       await client.query(
         `INSERT INTO feature_flags (account_id, key, owner, description, default_value, enabled, scopes, expires_at, audit_required, tags, metadata, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8, $9, $10, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, $5::jsonb, 'true'::jsonb, $6::jsonb, $7, $8::jsonb, $9::jsonb, $10::jsonb, NOW(), NOW())`,
         [
-          accountId,
+          resolvedAccountId,
           flag.key,
           flag.owner,
           flag.description,
-          flag.defaultValue,
+          JSON.stringify(Boolean(flag.defaultValue)),
           JSON.stringify([...flag.scopes]),
           flag.expiresAt ? new Date(flag.expiresAt) : null,
-          flag.auditRequired ?? false,
+          JSON.stringify(Boolean(flag.auditRequired ?? false)),
           JSON.stringify(flag.tags ?? []),
           flag.metadata ? JSON.stringify(flag.metadata) : null
         ]
@@ -81,15 +91,25 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   public async update(flag: FlagDefinition): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `UPDATE feature_flags SET owner = $2, description = $3, default_value = $4, scopes = $5, expires_at = $6, audit_required = $7, tags = $8, metadata = $9, updated_at = NOW() WHERE key = $1`,
+        `UPDATE feature_flags
+         SET owner = $2,
+             description = $3,
+             default_value = $4::jsonb,
+             scopes = $5::jsonb,
+             expires_at = $6,
+             audit_required = $7::jsonb,
+             tags = $8::jsonb,
+             metadata = $9::jsonb,
+             updated_at = NOW()
+         WHERE key = $1`,
         [
           flag.key,
           flag.owner,
           flag.description,
-          flag.defaultValue,
+          JSON.stringify(Boolean(flag.defaultValue)),
           JSON.stringify([...flag.scopes]),
           flag.expiresAt ? new Date(flag.expiresAt) : null,
-          flag.auditRequired ?? false,
+          JSON.stringify(Boolean(flag.auditRequired ?? false)),
           JSON.stringify(flag.tags ?? []),
           flag.metadata ? JSON.stringify(flag.metadata) : null
         ]
@@ -103,31 +123,68 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     override: PartialFlagOverride
   ): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
+
       // Get flag_id first
       const flagResult = await client.query(
         'SELECT id FROM feature_flags WHERE key = $1 AND account_id = $2 LIMIT 1',
-        [flagKey, accountId]
+        [flagKey, resolvedAccountId]
       );
       if (flagResult.rows.length === 0) return;
 
       const flagId = flagResult.rows[0].id;
-      await client.query(
-        `INSERT INTO feature_flag_overrides (account_id, flag_id, environment, account_id_override, user_id, percentage, allowed_users, enabled, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-         ON CONFLICT (flag_id, environment, account_id_override) DO UPDATE SET
-           percentage = EXCLUDED.percentage,
-           allowed_users = EXCLUDED.allowed_users,
-           enabled = EXCLUDED.enabled,
-           updated_at = NOW()`,
+      const normalizedOverrideAccountId =
+        override.accountIdOverride && isUuid(String(override.accountIdOverride))
+          ? override.accountIdOverride
+          : null;
+      const normalizedUserId = isUuid(override.userId) ? override.userId : null;
+      const serializedPercentage =
+        override.percentage === null || override.percentage === undefined
+          ? null
+          : JSON.stringify(override.percentage);
+      const serializedAllowedUsers = JSON.stringify([
+        ...(override.allowedUsers ?? []),
+        ...(override.userId && !normalizedUserId ? [override.userId] : [])
+      ]);
+
+      const updated = await client.query(
+        `UPDATE feature_flag_overrides
+         SET user_id = $4,
+             percentage = $5::jsonb,
+             allowed_users = $6::jsonb,
+             enabled = $7::jsonb,
+             updated_at = NOW()
+         WHERE flag_id = $1
+           AND ((environment = $2) OR (environment IS NULL AND $2 IS NULL))
+           AND ((account_id_override = $3) OR (account_id_override IS NULL AND $3 IS NULL))
+         RETURNING id`,
         [
-          accountId,
           flagId,
           override.environment ?? null,
-          override.accountIdOverride ?? null,
-          override.userId ?? null,
-          override.percentage ?? null,
-          JSON.stringify([...(override.allowedUsers ?? [])]),
-          override.enabled
+          normalizedOverrideAccountId,
+          normalizedUserId,
+          serializedPercentage,
+          serializedAllowedUsers,
+          JSON.stringify(Boolean(override.enabled))
+        ]
+      );
+
+      if (updated.rows.length > 0) {
+        return;
+      }
+
+      await client.query(
+        `INSERT INTO feature_flag_overrides (account_id, flag_id, environment, account_id_override, user_id, percentage, allowed_users, enabled, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, NOW(), NOW())`,
+        [
+          resolvedAccountId,
+          flagId,
+          override.environment ?? null,
+          normalizedOverrideAccountId,
+          normalizedUserId,
+          serializedPercentage,
+          serializedAllowedUsers,
+          JSON.stringify(Boolean(override.enabled))
         ]
       );
     });
@@ -139,12 +196,13 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     accountId: AccountId
   ): Promise<PartialFlagOverride | null> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
       const result = await client.query(
         `SELECT o.* FROM feature_flag_overrides o
          JOIN feature_flags f ON f.id = o.flag_id
          WHERE f.key = $1 AND f.account_id = $2 AND o.environment = $3 AND o.account_id_override = $4
          LIMIT 1`,
-        [flagKey, accountId, environment, accountId]
+        [flagKey, resolvedAccountId, environment, resolvedAccountId]
       );
       if (result.rows.length === 0) return null;
       return this.mapRowToOverride(result.rows[0]);
@@ -153,14 +211,39 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
 
   public async listOverrides(flagKey: string, accountId: AccountId): Promise<readonly PartialFlagOverride[]> {
     return withTenantQuery(getPool(), async (client) => {
+      const resolvedAccountId = await this.resolveAccountId(client, accountId);
       const result = await client.query(
         `SELECT o.* FROM feature_flag_overrides o
          JOIN feature_flags f ON f.id = o.flag_id
          WHERE f.key = $1 AND f.account_id = $2`,
-        [flagKey, accountId]
+        [flagKey, resolvedAccountId]
       );
       return result.rows.map((row) => this.mapRowToOverride(row));
     });
+  }
+
+  private async resolveAccountId(
+    client: { query: (queryText: string, params?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> },
+    accountId: AccountId
+  ): Promise<string> {
+    if (isUuid(String(accountId))) {
+      return String(accountId);
+    }
+
+    const result = await client.query(
+      `SELECT id
+       FROM accounts
+       WHERE slug = 'default'
+       ORDER BY created_at ASC NULLS LAST, id ASC
+       LIMIT 1`
+    );
+
+    const resolved = result.rows[0]?.id;
+    if (typeof resolved !== 'string' || resolved.length === 0) {
+      throw new Error(`Unable to resolve database account id for legacy account "${String(accountId)}"`);
+    }
+
+    return resolved;
   }
 
   private mapRowToDefinition(row: Record<string, unknown>): FlagDefinition {
@@ -181,7 +264,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     return {
       environment: row.environment as string | undefined,
       accountIdOverride: row.account_id_override as AccountId | undefined,
-      userId: row.user_id as string | undefined,
+      userId: row.user_id ? (row.user_id as string) : undefined,
       percentage: row.percentage as number | null,
       allowedUsers: (row.allowed_users as string[]) ?? [],
       enabled: row.enabled as boolean

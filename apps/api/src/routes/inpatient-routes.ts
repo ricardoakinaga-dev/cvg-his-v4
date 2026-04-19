@@ -7,7 +7,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { InpatientService } from '@cvg-his-v2/module-inpatient';
 import type { SectorBedService } from '@cvg-his-v2/module-inpatient';
-import type { CreateSectorRequest, CreateBedRequest } from '@cvg-his-v2/shared-contracts';
+import type {
+  CreateSectorRequest,
+  CreateBedRequest,
+  InpatientHandoverPreviewResponse
+} from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -143,6 +147,31 @@ export async function handleInpatientRoutes(
     });
     response.statusCode = 200;
     response.end(JSON.stringify(bedMap));
+    return true;
+  }
+
+  // GET /inpatient/handover-preview
+  if (pathname === '/inpatient/handover-preview' && request.method === 'GET') {
+    const principal = rp(request, 'inpatient.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const payload: InpatientHandoverPreviewResponse = inpatient.buildHandoverPreview({
+      unit: url.searchParams.get('unit') ?? undefined,
+      ward: url.searchParams.get('ward') ?? undefined,
+      includeDischarged: url.searchParams.get('includeDischarged') === 'true'
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'read_handover_preview',
+      entityType: 'handover-preview',
+      entityId: `${url.searchParams.get('ward') ?? 'all'}:${url.searchParams.get('unit') ?? 'all'}`,
+      payloadSummary: `Inpatient handover preview generated with ${payload.items.length} stay(s)`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(payload));
     return true;
   }
 

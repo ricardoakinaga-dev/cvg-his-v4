@@ -144,6 +144,58 @@
       </form>
 
       <div class="appointment-quick-create__aside">
+        <DsCard title="Smart scheduling">
+          <div v-if="recommendationLoading" class="availability-state">
+            <DsSpinner size="sm" inline label="Calculando sugestão..." />
+          </div>
+          <p v-else-if="!canRecommendDuration" class="muted">
+            Selecione paciente, horário e tipo para gerar uma recomendação de duração.
+          </p>
+          <template v-else-if="recommendation">
+            <DsAlert :variant="recommendationApplied ? 'success' : 'info'">
+              {{
+                recommendationApplied
+                  ? 'Sugestão aplicada ao agendamento.'
+                  : 'Sugestão pronta para aplicação no slot.'
+              }}
+            </DsAlert>
+
+            <div class="summary-list">
+              <div class="summary-list__item">
+                <span class="summary-list__label">Duração prevista</span>
+                <strong>{{ recommendation.predictedDurationMinutes }} min</strong>
+              </div>
+              <div class="summary-list__item">
+                <span class="summary-list__label">Confiança</span>
+                <strong>{{ recommendationConfidenceLabel }}</strong>
+              </div>
+              <div class="summary-list__item">
+                <span class="summary-list__label">Histórico base</span>
+                <strong>{{ recommendation.historicalAverageMinutes }} min</strong>
+              </div>
+            </div>
+
+            <div v-if="recommendation.factors.length" class="availability-list">
+              <h4>Fatores considerados</h4>
+              <ul>
+                <li v-for="factor in recommendation.factors" :key="factor">{{ factor }}</li>
+              </ul>
+            </div>
+
+            <div class="inline-actions inline-actions--start">
+              <DsButton
+                type="button"
+                size="sm"
+                variant="primary"
+                :disabled="recommendationApplied"
+                @click="applyRecommendation"
+              >
+                {{ recommendationApplied ? 'Sugestão aplicada' : 'Aplicar duração sugerida' }}
+              </DsButton>
+            </div>
+          </template>
+        </DsCard>
+
         <DsCard title="Disponibilidade">
           <div v-if="availabilityLoading" class="availability-state">
             <DsSpinner size="sm" inline label="Validando slot..." />
@@ -273,7 +325,8 @@ import type {
   AppointmentSummary,
   AppointmentVisitType,
   SchedulingAvailabilityResponse,
-  SchedulingProfessionalSummary
+  SchedulingProfessionalSummary,
+  SmartSchedulingRecommendationResponse
 } from '@/types/appointment';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
@@ -321,6 +374,8 @@ const servicesLoading = ref(false);
 const submitting = ref(false);
 const availabilityLoading = ref(false);
 const availability = ref<SchedulingAvailabilityResponse | null>(null);
+const recommendationLoading = ref(false);
+const recommendation = ref<SmartSchedulingRecommendationResponse | null>(null);
 const formError = ref('');
 const errors = reactive<Record<string, string>>({
   ownerId: '',
@@ -340,7 +395,8 @@ const form = reactive({
   unit: '',
   specialty: '',
   resourceLabel: '',
-  reason: ''
+  reason: '',
+  smartSchedulingRecommendationId: ''
 });
 
 const showOwnerModal = ref(false);
@@ -384,6 +440,15 @@ const selectedProfessionalLabel = computed(() => {
   return professionals.value.find((professional) => professional.id === form.practitionerStaffId)?.fullName || 'Sem profissional';
 });
 const canCheckAvailability = computed(() => Boolean(form.ownerId && form.patientId && form.scheduledAt));
+const canRecommendDuration = computed(() => Boolean(form.patientId && form.scheduledAt && form.visitType));
+const recommendationApplied = computed(
+  () => Boolean(form.smartSchedulingRecommendationId)
+    && form.smartSchedulingRecommendationId === recommendation.value?.recommendationId
+);
+const recommendationConfidenceLabel = computed(() => {
+  if (!recommendation.value) return '—';
+  return `${Math.round(recommendation.value.confidence * 100)}%`;
+});
 const ownerPrimaryContact = computed(() => {
   const owner = props.ownerSnapshot;
   if (!owner) return 'Sem contato principal';
@@ -393,6 +458,8 @@ const ownerPrimaryContact = computed(() => {
 
 let availabilityRequestId = 0;
 let availabilityTimer: ReturnType<typeof setTimeout> | null = null;
+let recommendationRequestId = 0;
+let recommendationTimer: ReturnType<typeof setTimeout> | null = null;
 
 function resetErrors() {
   errors.ownerId = '';
@@ -614,6 +681,51 @@ async function refreshAvailability() {
   }
 }
 
+async function refreshRecommendation() {
+  if (!canRecommendDuration.value) {
+    recommendation.value = null;
+    form.smartSchedulingRecommendationId = '';
+    return;
+  }
+
+  recommendationLoading.value = true;
+  const requestId = ++recommendationRequestId;
+
+  try {
+    const response = await appointmentService.recommendDuration({
+      patientId: form.patientId,
+      scheduledAt: new Date(form.scheduledAt).toISOString(),
+      visitType: form.visitType,
+      reason: form.reason.trim() || undefined,
+      practitionerStaffId: form.practitionerStaffId || undefined,
+      serviceId: form.serviceId || undefined,
+      specialty: form.specialty.trim() || undefined,
+      unit: form.unit.trim() || undefined,
+      resourceLabel: form.resourceLabel.trim() || undefined
+    });
+
+    if (requestId === recommendationRequestId) {
+      recommendation.value = response;
+      if (
+        form.smartSchedulingRecommendationId
+        && form.smartSchedulingRecommendationId !== response.recommendationId
+      ) {
+        form.smartSchedulingRecommendationId = '';
+      }
+    }
+  } catch (error) {
+    if (requestId === recommendationRequestId) {
+      recommendation.value = null;
+      form.smartSchedulingRecommendationId = '';
+      formError.value = error instanceof Error ? error.message : 'Erro ao gerar sugestão de duração';
+    }
+  } finally {
+    if (requestId === recommendationRequestId) {
+      recommendationLoading.value = false;
+    }
+  }
+}
+
 function scheduleAvailabilityRefresh() {
   if (availabilityTimer) {
     clearTimeout(availabilityTimer);
@@ -624,8 +736,24 @@ function scheduleAvailabilityRefresh() {
   }, 250);
 }
 
+function scheduleRecommendationRefresh() {
+  if (recommendationTimer) {
+    clearTimeout(recommendationTimer);
+  }
+
+  recommendationTimer = setTimeout(() => {
+    void refreshRecommendation();
+  }, 300);
+}
+
 function applySuggestion(startsAt: string) {
   form.scheduledAt = startsAt.slice(0, 16);
+}
+
+function applyRecommendation() {
+  if (!recommendation.value) return;
+  form.durationMinutes = recommendation.value.predictedDurationMinutes;
+  form.smartSchedulingRecommendationId = recommendation.value.recommendationId;
 }
 
 function formatRange(startsAt: string, endsAt: string): string {
@@ -658,7 +786,8 @@ async function submit() {
       unit: form.unit.trim() || undefined,
       specialty: form.specialty.trim() || undefined,
       resourceLabel: form.resourceLabel.trim() || undefined,
-      reason: form.reason.trim()
+      reason: form.reason.trim(),
+      smartSchedulingRecommendationId: form.smartSchedulingRecommendationId || undefined
     });
 
     emit('created', appointment);
@@ -677,6 +806,27 @@ watch(
       return;
     }
     scheduleAvailabilityRefresh();
+  }
+);
+
+watch(
+  () => [form.patientId, form.scheduledAt, form.visitType, form.reason, form.specialty, form.serviceId, form.unit, form.resourceLabel, form.practitionerStaffId],
+  () => {
+    if (!canRecommendDuration.value) {
+      recommendation.value = null;
+      form.smartSchedulingRecommendationId = '';
+      return;
+    }
+    scheduleRecommendationRefresh();
+  }
+);
+
+watch(
+  () => form.durationMinutes,
+  (durationMinutes) => {
+    if (recommendation.value && durationMinutes !== recommendation.value.predictedDurationMinutes) {
+      form.smartSchedulingRecommendationId = '';
+    }
   }
 );
 
@@ -700,6 +850,9 @@ watch(
 
 onMounted(async () => {
   await loadLookups();
+  if (canRecommendDuration.value) {
+    await refreshRecommendation();
+  }
   if (canCheckAvailability.value) {
     await refreshAvailability();
   }
@@ -735,6 +888,10 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.inline-actions--start {
+  justify-content: flex-start;
 }
 
 .selected-client {

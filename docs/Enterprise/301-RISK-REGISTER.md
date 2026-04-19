@@ -1,5 +1,9 @@
 # RISK REGISTER — Enterprise Transformation
 
+**Taxonomia:** `APOIO`
+**Papel no sistema documental:** registro de riscos corporativos que sustenta priorizacao, mitigacoes e decisoes de plataforma
+**Ler em conjunto com:** `README.md`, `0334-PLANO-EXECUTIVO-REALINHAMENTO-ENTERPRISE-2026-04-17.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md`, `0323-PLANO-PLATAFORMA-LONGA-KUBERNETES-HELM-2026-04-14.md`
+
 | ID | Risco | Prob | Impacto | Onda | Mitigação |
 |----|-------|------|---------|------|-----------|
 | R-01 | Multi-tenancy quebra funcionalidade existente | Alta | Crítico | 1 | Migração gradual, feature flag, testes exaustivos |

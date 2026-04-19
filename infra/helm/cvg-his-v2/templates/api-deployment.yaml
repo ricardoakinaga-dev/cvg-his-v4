@@ -19,9 +19,31 @@ spec:
     metadata:
       labels:
         {{- include "cvg-his-v2.api.selectorLabels" . | nindent 8 }}
+      {{- with .Values.api.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      serviceAccountName: {{ include "cvg-his-v2.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deploymentDefaults.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deploymentDefaults.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deploymentDefaults.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deploymentDefaults.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
@@ -34,34 +56,15 @@ spec:
             - name: http
               containerPort: {{ .Values.api.service.port }}
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "cvg-his-v2.api.configmapName" . }}
           env:
-            - name: NODE_ENV
-              value: {{ .Values.api.env.NODE_ENV | quote }}
-            - name: HOST
-              value: {{ .Values.api.env.HOST | quote }}
-            - name: PORT
-              value: {{ .Values.api.env.PORT | quote }}
-            - name: APP_NAME
-              value: {{ .Values.api.env.APP_NAME | quote }}
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.api.secretName" . }}
                   key: {{ .Values.api.auth.secretKey }}
-            - name: CORS_ALLOWED_ORIGINS
-              value: {{ .Values.api.env.CORS_ALLOWED_ORIGINS | quote }}
-            - name: AUTH_ACCESS_TOKEN_TTL_SECONDS
-              value: {{ .Values.api.env.AUTH_ACCESS_TOKEN_TTL_SECONDS | quote }}
-            - name: AUTH_REFRESH_TOKEN_TTL_SECONDS
-              value: {{ .Values.api.env.AUTH_REFRESH_TOKEN_TTL_SECONDS | quote }}
-            - name: FILE_STORAGE_PATH
-              value: {{ .Values.api.env.FILE_STORAGE_PATH | quote }}
-            - name: RUNTIME_DISTRIBUTED_STATE_ENABLED
-              value: {{ .Values.api.env.RUNTIME_DISTRIBUTED_STATE_ENABLED | quote }}
-            - name: VAULT_ENABLED
-              value: {{ .Values.api.env.VAULT_ENABLED | quote }}
-            - name: OTEL_ENABLED
-              value: {{ .Values.api.env.OTEL_ENABLED | quote }}
             # DATABASE_URL injected via secretRef
             - name: DATABASE_URL
               valueFrom:
@@ -78,21 +81,21 @@ spec:
           {{- if .Values.api.probes.enabled }}
           livenessProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.api.probes.livenessPath | default "/live" }}
               port: http
             initialDelaySeconds: {{ .Values.api.probes.livenessDelay }}
             periodSeconds: {{ .Values.api.probes.livenessPeriod }}
             failureThreshold: {{ .Values.api.probes.livenessFailureThreshold }}
           readinessProbe:
             httpGet:
-              path: /ready
+              path: {{ .Values.api.probes.readinessPath | default "/ready" }}
               port: http
             initialDelaySeconds: {{ .Values.api.probes.readinessDelay }}
             periodSeconds: {{ .Values.api.probes.readinessPeriod }}
             failureThreshold: {{ .Values.api.probes.readinessFailureThreshold }}
           startupProbe:
             httpGet:
-              path: /health
+              path: {{ .Values.api.probes.startupPath | default "/health" }}
               port: http
             initialDelaySeconds: {{ .Values.api.probes.startupDelay }}
             periodSeconds: {{ .Values.api.probes.startupPeriod }}
@@ -120,6 +123,10 @@ metadata:
   name: {{ include "cvg-his-v2.api.fullname" . }}
   labels:
     {{- include "cvg-his-v2.api.labels" . | nindent 4 }}
+  {{- with .Values.api.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.api.service.type }}
   ports:

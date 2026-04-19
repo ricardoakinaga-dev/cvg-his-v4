@@ -10,6 +10,11 @@ import { createWorkerNotifications, createWorkerEventBus } from './runner.js';
 import { runWorkerTick, runEventBusTick } from './runner.js';
 import { createWorkerFeatureFlags } from './feature-flags.js';
 import { createWorkerFeatureFlagMetricsCollector, getWorkerMetricsText } from './worker-metrics.js';
+import {
+  createWorkerHealthResponse,
+  createWorkerLivenessResponse,
+  createWorkerReadinessResponse
+} from './health.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
@@ -98,18 +103,63 @@ async function main() {
   const healthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
     if (req.url === '/health') {
-      res.writeHead(200);
-      res.end(JSON.stringify({ ok: true, service: 'worker', uptime: workerState.startedAt }));
-    } else if (req.url === '/ready') {
-      const ready = workerState.databaseHealthy;
-      res.writeHead(ready ? 200 : 503);
-      res.end(
-        JSON.stringify({
-          ready,
+      const payload = {
+        ...createWorkerHealthResponse('worker', config.environment, '0.1.0', req, {
+          databaseConfigured: Boolean(config.databaseUrl),
           databaseHealthy: workerState.databaseHealthy,
-          persistenceMode: workerState.persistenceMode
-        })
+          databaseDetail: workerState.databaseHealthy ? 'database connected' : 'database unavailable',
+          persistenceMode: workerState.persistenceMode,
+          ticksCompleted: workerState.ticksCompleted,
+          lastTickAt: workerState.lastTickAt,
+          lastError: workerState.lastError,
+          initialized: true
+        }),
+        worker: {
+          startedAt: workerState.startedAt,
+          lastTickDurationMs: workerState.lastTickDurationMs,
+          errors: workerState.errors,
+          memory: process.memoryUsage(),
+          uptime: process.uptime()
+        }
+      };
+      res.writeHead(200);
+      res.end(JSON.stringify(payload));
+    } else if (req.url === '/live' || req.url === '/health/live') {
+      const payload = createWorkerLivenessResponse(
+        'worker',
+        config.environment,
+        '0.1.0',
+        req,
+        true
       );
+      res.writeHead(200);
+      res.end(JSON.stringify(payload));
+    } else if (req.url === '/ready') {
+      const payload = createWorkerReadinessResponse('worker', config.environment, '0.1.0', req, {
+        databaseConfigured: Boolean(config.databaseUrl),
+        databaseHealthy: workerState.databaseHealthy,
+        databaseDetail: workerState.databaseHealthy ? 'database connected' : 'database unavailable',
+        persistenceMode: workerState.persistenceMode,
+        ticksCompleted: workerState.ticksCompleted,
+        lastTickAt: workerState.lastTickAt,
+        lastError: workerState.lastError,
+        initialized: true
+      });
+      res.writeHead(payload.readiness.ready ? 200 : 503);
+      res.end(JSON.stringify(payload));
+    } else if (req.url === '/health/ready') {
+      const payload = createWorkerReadinessResponse('worker', config.environment, '0.1.0', req, {
+        databaseConfigured: Boolean(config.databaseUrl),
+        databaseHealthy: workerState.databaseHealthy,
+        databaseDetail: workerState.databaseHealthy ? 'database connected' : 'database unavailable',
+        persistenceMode: workerState.persistenceMode,
+        ticksCompleted: workerState.ticksCompleted,
+        lastTickAt: workerState.lastTickAt,
+        lastError: workerState.lastError,
+        initialized: true
+      });
+      res.writeHead(payload.readiness.ready ? 200 : 503);
+      res.end(JSON.stringify(payload));
     } else if (req.url === '/metrics') {
       // Return Prometheus text format for scraping
       const acceptHeader = req.headers.accept ?? '';

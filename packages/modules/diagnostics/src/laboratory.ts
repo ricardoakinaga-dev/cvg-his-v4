@@ -2,6 +2,7 @@ import type {
   AccountId,
   DiagnosticOrderId,
   DiagnosticOrderSummary,
+  ExamCatalogEntry,
   LaboratoryDashboardSummary,
   LaboratoryEquipmentSummary,
   LaboratoryReferenceValueSummary,
@@ -20,7 +21,9 @@ import {
 interface DiagnosticsOrdersGateway {
   list(encounterId?: string): readonly DiagnosticOrderSummary[];
   listByAccount(accountId: AccountId): readonly DiagnosticOrderSummary[];
+  listCatalog(): readonly ExamCatalogEntry[];
   createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary;
+  getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary;
   recordResult(
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
@@ -115,6 +118,38 @@ export class LaboratoryService {
       : this.#diagnostics.listByAccount(accountId);
 
     return [...items].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  public getOrder(accountId: AccountId, orderId: DiagnosticOrderId): DiagnosticOrderSummary {
+    const order = this.#diagnostics.getOrThrow(orderId);
+    if (order.accountId !== accountId) {
+      throw new Error('Diagnostic order does not belong to the current account');
+    }
+
+    return order;
+  }
+
+  public async listResults(
+    accountId: AccountId,
+    filterExam?: string
+  ): Promise<readonly DiagnosticOrderSummary[]> {
+    const normalizedFilter = normalizeText(filterExam);
+    const items = await this.listOrders(accountId);
+    return items.filter((order) => {
+      if (order.status !== 'resulted' && !order.resultSummary && !order.resultAttachmentId) {
+        return false;
+      }
+
+      return (
+        !normalizedFilter ||
+        normalizeText(order.examType).includes(normalizedFilter) ||
+        normalizeText(order.examCatalogId).includes(normalizedFilter)
+      );
+    });
+  }
+
+  public listCatalog(): readonly ExamCatalogEntry[] {
+    return [...this.#diagnostics.listCatalog()].sort((left, right) => left.name.localeCompare(right.name));
   }
 
   public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {

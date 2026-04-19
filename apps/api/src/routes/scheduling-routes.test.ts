@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { Writable } from 'node:stream';
 import test from 'node:test';
 
+import { SmartSchedulingService } from '@cvg-his-v2/module-ml';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import { SchedulingService } from '@cvg-his-v2/module-scheduling';
@@ -89,6 +90,10 @@ function createSchedulingService() {
   return new SchedulingService(owners, patients);
 }
 
+function createSmartSchedulingService() {
+  return new SmartSchedulingService({} as never);
+}
+
 function createJsonRequest(method: string, url: string, body?: Record<string, unknown>) {
   if (!body) {
     return { method, url } as never;
@@ -112,6 +117,7 @@ test('handleSchedulingRoutes ignores unrelated routes', async () => {
     'corr-scheduling-0',
     {
       scheduling: createSchedulingService(),
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -134,6 +140,7 @@ test('handleSchedulingRoutes returns overview and availability for the agenda co
     'corr-scheduling-overview',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -164,6 +171,7 @@ test('handleSchedulingRoutes returns overview and availability for the agenda co
     'corr-scheduling-availability',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -202,6 +210,7 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
     'corr-scheduling-create',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -224,6 +233,7 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
     'corr-scheduling-list',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -242,6 +252,7 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
     'corr-scheduling-detail',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -263,6 +274,7 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
     'corr-scheduling-cancel',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -293,6 +305,7 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
     'corr-scheduling-check-in',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -312,6 +325,7 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
     'corr-scheduling-queue',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -330,6 +344,7 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
     'corr-scheduling-call',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -351,6 +366,7 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
     'corr-scheduling-start-care',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -370,6 +386,7 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
     'corr-scheduling-no-show',
     {
       scheduling,
+      smartScheduling: createSmartSchedulingService(),
       audit: createAudit() as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -381,4 +398,46 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
   assert.equal(cancelledEntry.id, checkedIn.id);
   assert.equal(cancelledEntry.status, 'cancelled');
   assert.equal(scheduling.getAppointmentOrThrow('appt_luna_checkup' as never).status, 'cancelled');
+});
+
+test('handleSchedulingRoutes returns smart duration recommendation for appointment flow', async () => {
+  const scheduling = createSchedulingService();
+  const response = new MockResponse();
+
+  const handled = await handleSchedulingRoutes(
+    '/scheduling/recommendations/duration',
+    createJsonRequest('POST', '/scheduling/recommendations/duration', {
+      patientId: 'patient_luna',
+      scheduledAt: '2026-03-25T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Retorno cardiologico',
+      specialty: 'Cardiologia'
+    }),
+    response as never,
+    'corr-scheduling-smart-duration',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+
+  const payload = response.bodyJson<{
+    recommendationId: string;
+    predictedDurationMinutes: number;
+    confidence: number;
+    suggestedBufferMinutes: number;
+    basedOn: { previousVisits: number; visitType: string };
+  }>();
+
+  assert.ok(payload.recommendationId.startsWith('smartsch_'));
+  assert.ok(payload.predictedDurationMinutes >= 30);
+  assert.ok(payload.confidence >= 0.7);
+  assert.ok(payload.suggestedBufferMinutes >= 0);
+  assert.equal(payload.basedOn.visitType, 'scheduled');
+  assert.ok(payload.basedOn.previousVisits >= 1);
 });

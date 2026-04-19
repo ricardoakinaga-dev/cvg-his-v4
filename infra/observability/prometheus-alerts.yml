@@ -1,29 +1,97 @@
 groups:
-  - name: cvg-his-v2-api
+  - name: cvg-his-v2-slos
     rules:
-      # AL-01: API Down
-      - alert: CVG_HIS_API_Down
-        expr: sum(rate(http_requests_total[5m])) == 0 unless app_uptime_seconds > 0
+      - alert: CVG_HIS_API_SLO_Availability_Alert
+        expr: 100 * avg_over_time(up{job="cvg-api"}[1h]) < 99
+        for: 5m
+        labels:
+          severity: warning
+          slo: api-availability
+        annotations:
+          summary: 'Disponibilidade da API abaixo do alerta do SLO'
+          description: 'Disponibilidade observada na janela de 1h abaixo de 99.0%, contra target de 99.5%.'
+
+      - alert: CVG_HIS_API_SLO_Availability_Critical
+        expr: 100 * avg_over_time(up{job="cvg-api"}[1h]) < 98
         for: 5m
         labels:
           severity: critical
+          slo: api-availability
         annotations:
-          summary: 'API CVG-HIS-V2 está indisponível'
-          description: 'Nenhum request processado nos últimos 5 minutos enquanto API está no ar.'
-          runbook_url: 'https://docs.cvg.com/runbooks/api-down'
+          summary: 'Disponibilidade da API abaixo do crítico do SLO'
+          description: 'Disponibilidade observada na janela de 1h abaixo de 98.0%, com consumo crítico do error budget.'
 
-      # AL-02: High Error Rate 5xx
-      - alert: CVG_HIS_API_HighErrorRate
-        expr: sum(rate(http_errors_total{status_category="5xx"}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+      - alert: CVG_HIS_API_SLO_ErrorRate_Alert
+        expr: sum(rate(http_errors_total{status_category="5xx"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.005
+        for: 5m
+        labels:
+          severity: warning
+          slo: api-error-rate
+        annotations:
+          summary: 'Taxa de erro 5xx acima do alerta do SLO'
+          description: 'Taxa de 5xx acima de 0.5% na janela de 5m; o target operacional do SLO é 0.1%.'
+
+      - alert: CVG_HIS_API_SLO_ErrorRate_Critical
+        expr: sum(rate(http_errors_total{status_category="5xx"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.01
         for: 5m
         labels:
           severity: critical
+          slo: api-error-rate
         annotations:
-          summary: 'Taxa de erros 5xx elevada na API CVG-HIS-V2'
-          description: 'Mais de 5% das requests resultam em erro 5xx nos últimos 5 minutos.'
-          runbook_url: 'https://docs.cvg.com/runbooks/high-error-rate'
+          summary: 'Taxa de erro 5xx acima do crítico do SLO'
+          description: 'Taxa de 5xx acima de 1.0% na janela de 5m; error budget em consumo crítico.'
 
-      # AL-03: Database Unhealthy
+      - alert: CVG_HIS_API_SLO_P95Latency_Alert
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+          slo: api-latency-p95
+        annotations:
+          summary: 'P95 da API acima do alerta do SLO'
+          description: 'P95 acima de 250ms na janela de 5m; o target operacional é 200ms.'
+
+      - alert: CVG_HIS_API_SLO_P95Latency_Critical
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.3
+        for: 5m
+        labels:
+          severity: critical
+          slo: api-latency-p95
+        annotations:
+          summary: 'P95 da API acima do crítico do SLO'
+          description: 'P95 acima de 300ms na janela de 5m.'
+
+      - alert: CVG_HIS_API_SLO_P99Latency_Alert
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.6
+        for: 5m
+        labels:
+          severity: warning
+          slo: api-latency-p99
+        annotations:
+          summary: 'P99 da API acima do alerta do SLO'
+          description: 'P99 acima de 600ms na janela de 5m; o target operacional é 500ms.'
+
+      - alert: CVG_HIS_API_SLO_P99Latency_Critical
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          slo: api-latency-p99
+        annotations:
+          summary: 'P99 da API acima do crítico do SLO'
+          description: 'P99 acima de 800ms na janela de 5m.'
+
+  - name: cvg-his-v2-operational
+    rules:
+      - alert: CVG_HIS_API_Liveness_Failing
+        expr: up{job="cvg-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Liveness probe da API CVG-HIS-V2 falhando'
+          description: 'O processo da API não está respondendo ao probe de liveness.'
+
       - alert: CVG_HIS_DB_Unhealthy
         expr: app_database_healthy == 0
         for: 1m
@@ -32,31 +100,7 @@ groups:
         annotations:
           summary: 'Banco de dados da API CVG-HIS-V2 está unreachable'
           description: 'O banco de dados não está respondendo há mais de 1 minuto.'
-          runbook_url: 'https://docs.cvg.com/runbooks/db-unhealthy'
 
-      # AL-04: Liveness Failing
-      - alert: CVG_HIS_API_Liveness_Failing
-        expr: up{job="cvg-his-v2-api"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: 'Liveness probe da API CVG-HIS-V2 falhando'
-          description: 'O processo da API não está respondendo ao probe de liveness.'
-          runbook_url: 'https://docs.cvg.com/runbooks/liveness-failing'
-
-      # AL-05: High Latency
-      - alert: CVG_HIS_API_HighLatency
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: 'Latência elevada na API CVG-HIS-V2'
-          description: 'P95 de latência acima de 1 segundo nos últimos 5 minutos.'
-          runbook_url: 'https://docs.cvg.com/runbooks/high-latency'
-
-      # AL-06: In-Memory Mode in Production
       - alert: CVG_HIS_API_InMemoryMode
         expr: app_persistence_mode{mode="in-memory"} == 1 and app_uptime_seconds > 300
         for: 5m
@@ -65,15 +109,3 @@ groups:
         annotations:
           summary: 'API CVG-HIS-V2 rodando em modo in-memory'
           description: 'API está em fallback in-memory há mais de 5 minutos. Dados serão perdidos em restart.'
-          runbook_url: 'https://docs.cvg.com/runbooks/in-memory-mode'
-
-      # AL-07: High Client Error Rate 4xx
-      - alert: CVG_HIS_API_HighClientErrorRate
-        expr: sum(rate(http_errors_total{status_category="4xx"}[5m])) / sum(rate(http_requests_total[5m])) > 0.10
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: 'Taxa de erros 4xx elevada na API CVG-HIS-V2'
-          description: 'Mais de 10% das requests resultam em erro 4xx. Pode indicar problema no cliente ou tentativa de acesso não autorizado.'
-          runbook_url: 'https://docs.cvg.com/runbooks/high-client-error-rate'

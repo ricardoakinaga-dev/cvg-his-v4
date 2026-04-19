@@ -10,6 +10,7 @@ import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
 import { resolveOperationalRuntimeState } from '../chaos-operational-state.js';
 import { generateSLOReport, getSLOConfigs } from '../slos.js';
+import { getCurrentSloSnapshot } from '../metrics.js';
 
 /**
  * Handle all /health, /ready, /live routes.
@@ -83,6 +84,7 @@ export function handleHealthRoutes(
         mlDetail: appState.mlDetail
       }
     );
+    response.setHeader('content-type', 'application/json');
     response.statusCode = payload.readiness.ready ? 200 : 503;
     response.end(JSON.stringify(payload));
     return true;
@@ -111,6 +113,7 @@ export function handleHealthRoutes(
         mlDetail: appState.mlDetail
       }
     );
+    response.setHeader('content-type', 'application/json');
     response.statusCode = payload.readiness.ready ? 200 : 503;
     response.end(JSON.stringify(payload));
     return true;
@@ -125,6 +128,7 @@ export function handleHealthRoutes(
       request,
       appState.initialized
     );
+    response.setHeader('content-type', 'application/json');
     response.statusCode = 200;
     response.end(JSON.stringify(payload));
     return true;
@@ -139,6 +143,7 @@ export function handleHealthRoutes(
       request,
       appState.initialized
     );
+    response.setHeader('content-type', 'application/json');
     response.statusCode = 200;
     response.end(JSON.stringify(payload));
     return true;
@@ -146,16 +151,16 @@ export function handleHealthRoutes(
 
   // GET /slos — SLO compliance report
   if (url === '/slos' && method === 'GET') {
-    // Build approximate current metrics from current state
+    const snapshot = getCurrentSloSnapshot();
     const report = generateSLOReport({
-      p95LatencyMs: 0,
-      p99LatencyMs: 0,
-      availabilityPercent: 99.9,
-      errorRatePercent: 0.01
+      p95LatencyMs: snapshot.p95LatencyMs,
+      p99LatencyMs: snapshot.p99LatencyMs,
+      availabilityPercent: snapshot.availabilityPercent,
+      errorRatePercent: snapshot.errorRatePercent
     });
     response.setHeader('content-type', 'application/json');
     response.statusCode = 200;
-    response.end(JSON.stringify({ configs: getSLOConfigs(), report }, null, 2));
+    response.end(JSON.stringify({ configs: getSLOConfigs(), snapshot, report }, null, 2));
     return true;
   }
 

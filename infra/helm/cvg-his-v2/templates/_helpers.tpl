@@ -75,3 +75,19 @@ app.kubernetes.io/component: spa
 {{- define "cvg-his-v2.api.configmapName" -}}
 {{- printf "%s-api-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}
+
+{{- define "cvg-his-v2.worker.configmapName" -}}
+{{- printf "%s-worker-config" (include "cvg-his-v2.fullname" .) }}
+{{- end }}
+
+{{- define "cvg-his-v2.spa.configmapName" -}}
+{{- printf "%s-spa-config" (include "cvg-his-v2.fullname" .) }}
+{{- end }}
+
+{{- define "cvg-his-v2.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "cvg-his-v2.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end }}

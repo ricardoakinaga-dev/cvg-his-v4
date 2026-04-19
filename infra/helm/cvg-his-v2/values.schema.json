@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "cvg-his-v2 chart values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "automountServiceAccountToken": { "type": "boolean" }
+      }
+    },
+    "deploymentDefaults": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "nodeSelector": { "type": "object" },
+        "tolerations": { "type": "array" },
+        "affinity": { "type": "object" },
+        "topologySpreadConstraints": { "type": "array" }
+      }
+    },
+    "api": {
+      "type": "object",
+      "required": ["service", "probes", "env", "auth"],
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "properties": {
+            "type": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "probes": {
+          "type": "object",
+          "required": ["enabled", "livenessPath", "readinessPath", "startupPath"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "livenessPath": { "type": "string", "pattern": "^/" },
+            "readinessPath": { "type": "string", "pattern": "^/" },
+            "startupPath": { "type": "string", "pattern": "^/" }
+          }
+        },
+        "env": {
+          "type": "object",
+          "required": [
+            "NODE_ENV",
+            "HOST",
+            "PORT",
+            "APP_NAME",
+            "CORS_ALLOWED_ORIGINS",
+            "AUTH_ACCESS_TOKEN_TTL_SECONDS",
+            "AUTH_REFRESH_TOKEN_TTL_SECONDS",
+            "FILE_STORAGE_PATH",
+            "RUNTIME_DISTRIBUTED_STATE_ENABLED",
+            "VAULT_ENABLED",
+            "OTEL_ENABLED",
+            "OTEL_SERVICE_NAME",
+            "OTEL_EXPORTER_OTLP_PROTOCOL"
+          ],
+          "properties": {
+            "NODE_ENV": { "type": "string" },
+            "PORT": { "type": "string", "pattern": "^[0-9]+$" },
+            "HOST": { "type": "string" },
+            "APP_NAME": { "type": "string" },
+            "CORS_ALLOWED_ORIGINS": { "type": "string" },
+            "OTEL_EXPORTER_OTLP_PROTOCOL": { "type": "string", "enum": ["http/protobuf"] }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "required": ["secretKey"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 },
+            "value": { "type": "string" }
+          }
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "required": ["service", "probes", "env"],
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "properties": {
+            "type": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "probes": {
+          "type": "object",
+          "required": ["enabled", "livenessPath", "readinessPath", "startupPath"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "livenessPath": { "type": "string", "pattern": "^/" },
+            "readinessPath": { "type": "string", "pattern": "^/" },
+            "startupPath": { "type": "string", "pattern": "^/" }
+          }
+        },
+        "env": {
+          "type": "object",
+          "required": [
+            "NODE_ENV",
+            "APP_NAME",
+            "WORKER_INTERVAL_MS",
+            "WORKER_HEALTH_PORT",
+            "FEATURE_FLAGS_PROVIDER",
+            "WORKER_FEATURE_FLAGS",
+            "OTEL_ENABLED",
+            "OTEL_SERVICE_NAME",
+            "OTEL_EXPORTER_OTLP_PROTOCOL"
+          ],
+          "properties": {
+            "WORKER_INTERVAL_MS": { "type": "string", "pattern": "^[0-9]+$" },
+            "WORKER_HEALTH_PORT": { "type": "string", "pattern": "^[0-9]+$" },
+            "OTEL_EXPORTER_OTLP_PROTOCOL": { "type": "string", "enum": ["http/protobuf"] }
+          }
+        }
+      }
+    },
+    "spa": {
+      "type": "object",
+      "required": ["service", "probes", "env"],
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "properties": {
+            "type": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "probes": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "env": {
+          "type": "object",
+          "required": ["NODE_ENV", "VITE_APP_NAME", "VITE_DISABLE_PWA"],
+          "properties": {
+            "NODE_ENV": { "type": "string" }
+          }
+        }
+      }
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "required": ["runAsNonRoot"],
+      "properties": {
+        "runAsNonRoot": { "type": "boolean" }
+      }
+    },
+    "securityContext": {
+      "type": "object",
+      "required": ["allowPrivilegeEscalation", "readOnlyRootFilesystem"],
+      "properties": {
+        "allowPrivilegeEscalation": { "type": "boolean" },
+        "readOnlyRootFilesystem": { "type": "boolean" }
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "type": "object",
+          "properties": {
+            "minAvailable": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "worker": {
+          "type": "object",
+          "properties": {
+            "minAvailable": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "spa": {
+          "type": "object",
+          "properties": {
+            "minAvailable": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

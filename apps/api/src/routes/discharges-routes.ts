@@ -34,7 +34,7 @@ export async function handleDischargesRoutes(
 
   // GET /discharges — list all discharges for account
   if (pathname === '/discharges' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'discharges.read');
+    const principal = requirePrincipal(request, 'encounters.read');
     const items = discharges.list(principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -54,7 +54,7 @@ export async function handleDischargesRoutes(
 
   // POST /discharges — create a new discharge
   if (pathname === '/discharges' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'discharges.manage');
+    const principal = requirePrincipal(request, 'encounters.manage');
     const payload = (await readJsonBody(request)) as CreateDischargeRequest;
     validateRequestBody(
       payload as unknown as Record<string, unknown>,
@@ -95,7 +95,7 @@ export async function handleDischargesRoutes(
     request.method === 'GET' &&
     !pathname.includes('?')
   ) {
-    const principal = requirePrincipal(request, 'discharges.read');
+    const principal = requirePrincipal(request, 'encounters.read');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
     const discharge = discharges.getById(dischargeId as never);
     appendAudit(audit, {
@@ -116,7 +116,7 @@ export async function handleDischargesRoutes(
 
   // PATCH /discharges/:dischargeId — update a discharge
   if (pathname.startsWith('/discharges/') && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'discharges.manage');
+    const principal = requirePrincipal(request, 'encounters.manage');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
     const body = await readJsonBody(request);
     const { expectedVersion, ...payload } = body as UpdateDischargeRequest & {

@@ -98,7 +98,9 @@ import {
   type SettingsLookup
 } from '@cvg-his-v2/module-notifications-whatsapp';
 import type { ApiKeyRepository } from '@cvg-his-v2/module-api-keys';
-import { createCorrelationId } from '@cvg-his-v2/shared-utils';
+import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
+import { trace as otelTrace } from '@opentelemetry/api';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
 import type { InventoryRepository } from '@cvg-his-v2/module-inventory';
@@ -122,6 +124,14 @@ import {
   InMemoryPixTransactionRepository,
   type PixTransactionRepository
 } from './pix-transaction-repository.js';
+import {
+  InMemoryCardTransactionRepository,
+  type CardTransactionRepository
+} from './card-transaction-repository.js';
+
+function sanitizeAuditValue(value: string): string {
+  return value.replace(/[;\n\r=]/g, ' ').trim();
+}
 
 export interface RuntimeRepositories {
   readonly session?: SessionRepository;
@@ -167,6 +177,7 @@ export interface RuntimeRepositories {
   readonly model?: ModelRepository;
   readonly encounterFinancial?: EncounterFinancialRepository;
   readonly pixTransaction?: PixTransactionRepository;
+  readonly cardTransaction?: CardTransactionRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -182,6 +193,8 @@ export interface ApiRuntimeOptions {
   readonly runtimeDistributedStateEnabled?: boolean;
   /** Gates automatic WhatsApp reminder dispatch on appointment creation. */
   readonly notificationsWhatsappRemindersEnabled?: boolean;
+  /** Keeps canonical seed principals even when a users repository is configured. */
+  readonly preserveSeedUsersWithRepository?: boolean;
 }
 
 function createRuntimeSeeds<T>(repository: unknown, fallbackSeeds: readonly T[]): readonly T[] {
@@ -207,7 +220,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const accessControl = new AccessControlService({ repository: repos.accessControl });
   const users = new UsersService({
     repository: repos.users,
-    seedUsersEnabled: repos.users === undefined
+    seedUsersEnabled: repos.users === undefined || options.preserveSeedUsersWithRepository === true
   });
   const staff = new StaffService(
     { repository: repos.staff },
@@ -233,11 +246,37 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     eventType: string,
     payload: Record<string, unknown>
   ) {
+    const tenantContext = getTenantContext();
+    const correlationId =
+      (tenantContext?.correlationId as CorrelationId | undefined)
+      ?? (createCorrelationId('evt') as CorrelationId);
+    const activeSpan = otelTrace.getActiveSpan();
+    const activeSpanContext = activeSpan?.spanContext();
+    const traceparent =
+      activeSpanContext && otelTrace.isSpanContextValid(activeSpanContext)
+        ? `00-${activeSpanContext.traceId}-${activeSpanContext.spanId}-${activeSpanContext.traceFlags
+            .toString(16)
+            .padStart(2, '0')}`
+        : undefined;
+
     await eventBus.publish({
-      correlationId: createCorrelationId('evt') as CorrelationId,
+      correlationId,
       moduleName,
       eventType,
-      payload
+      payload: {
+        ...payload,
+        _meta: {
+          ...(typeof payload._meta === 'object' && payload._meta !== null
+            ? (payload._meta as Record<string, unknown>)
+            : {}),
+          correlationId,
+          publishedAt: nowIso(),
+          sourceService: 'cvg-his-v2-api',
+          tenantId: tenantContext?.tenantId,
+          accountId: tenantContext?.accountId,
+          traceparent
+        }
+      }
     });
   }
 
@@ -311,7 +350,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           return;
         }
 
-        audit.write({
+        const reminderScheduledAudit = audit.write({
           actorId: 'system',
           accountId: appointment.accountId,
           module: 'notifications',
@@ -321,7 +360,44 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           payloadSummary: `Automatic WhatsApp reminder scheduled for appointment ${appointment.id}`,
           riskLevel: 'low'
         });
-        void appointmentReminderWorkflow.onAppointmentScheduled(appointment);
+        void appointmentReminderWorkflow
+          .onAppointmentScheduled(appointment)
+          .then((result) => {
+            const action = result.sent ? 'whatsapp_reminder_sent' : 'whatsapp_reminder_failed';
+            const outcome = result.sent ? 'sent' : 'failed';
+            const metadata = [
+              `provider=${sanitizeAuditValue(result.provider ?? 'unknown')}`,
+              `messageId=${sanitizeAuditValue(result.messageId ?? '')}`,
+              `error=${sanitizeAuditValue(result.error ?? '')}`
+            ].join('; ');
+
+            audit.write({
+              actorId: 'system',
+              accountId: appointment.accountId,
+              module: 'notifications',
+              action,
+              entityType: 'appointment',
+              entityId: appointment.id,
+              payloadSummary:
+                `WhatsApp reminder ${outcome} for appointment ${appointment.id}; ${metadata}`,
+              riskLevel: result.sent ? 'low' : 'medium',
+              correlationId: reminderScheduledAudit.correlationId
+            });
+          })
+          .catch((error) => {
+            audit.write({
+              actorId: 'system',
+              accountId: appointment.accountId,
+              module: 'notifications',
+              action: 'whatsapp_reminder_failed',
+              entityType: 'appointment',
+              entityId: appointment.id,
+              payloadSummary:
+                `WhatsApp reminder failed for appointment ${appointment.id}; provider=unknown; messageId=; error=${sanitizeAuditValue(error instanceof Error ? error.message : 'unknown_error')}`,
+              riskLevel: 'medium',
+              correlationId: reminderScheduledAudit.correlationId
+            });
+          });
       },
       async onAppointmentStatusChanged(appointment, previousStatus) {
         await publishEvent('scheduling' as ModuleName, 'appointment.status_changed', {
@@ -419,35 +495,53 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     }
   });
   const pixTransactions = repos.pixTransaction ?? new InMemoryPixTransactionRepository();
+  const cardTransactions = repos.cardTransaction ?? new InMemoryCardTransactionRepository();
   const encounterFinancial = new EncounterFinancialService(encounters, billing, patients, owners, {
     repository: repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository(),
     async onReceivablePaid(payment) {
       if (
         payment.externalReferenceType !== 'pix_transaction'
-        || !payment.externalReferenceId
+        && payment.externalReferenceType !== 'other'
       ) {
         return;
       }
 
-      await pixTransactions.updateBillingSettlement({
+      if (!payment.externalReferenceId) {
+        return;
+      }
+
+      if (payment.externalReferenceType === 'pix_transaction') {
+        await pixTransactions.updateBillingSettlement({
+          transactionId: payment.externalReferenceId,
+          billingSettlementStatus: 'applied',
+          billingSettledAt: payment.paidAt,
+          updatedAt: payment.paidAt
+        });
+        await pixTransactions.updateCashReconciliation({
+          transactionId: payment.externalReferenceId,
+          cashReconciliationStatus: 'skipped_no_open_register',
+          cashReconciledAt: payment.paidAt,
+          updatedAt: payment.paidAt
+        });
+        return;
+      }
+
+      await cardTransactions.updateBillingSettlement({
         transactionId: payment.externalReferenceId,
         billingSettlementStatus: 'applied',
         billingSettledAt: payment.paidAt,
-        updatedAt: payment.paidAt
-      });
-      await pixTransactions.updateCashReconciliation({
-        transactionId: payment.externalReferenceId,
-        cashReconciliationStatus: 'skipped_no_open_register',
-        cashReconciledAt: payment.paidAt,
         updatedAt: payment.paidAt
       });
     }
   });
 
   // Register all domain event consumers via ConsumerRegistry
-  // Order matters: payments must run before billing (PIX settlement), then webhooks
+  // Order matters: payments must run before billing (payment settlement), then webhooks
   const registry = new ConsumerRegistry();
-  registry.add('payments', new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions }));
+  registry.add(
+    'payments',
+    new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions })
+  );
   registry.add('billing', new BillingEventHandlers({ billing }));
   registry.add('webhooks', new WebhooksEventHandlers({ webhooks }));
   registry.registerAll(eventBus);
@@ -606,6 +700,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     apiKeys,
     eventBus,
     pixTransactions,
+    cardTransactions,
     // ML services — F3-01/F3-02/F3-03
     modelRegistry,
     featureStore,

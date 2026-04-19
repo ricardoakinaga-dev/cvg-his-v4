@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 
-import { BillingService } from './index.js';
+import { BillingService, type BillingRepository } from './index.js';
 
 function createService() {
   return new BillingService({
@@ -16,6 +16,27 @@ function createService() {
       };
     }
   } as never);
+}
+
+function createRepository(overrides?: Partial<BillingRepository>): BillingRepository {
+  return {
+    async createRecord() {},
+    async updateRecord() {},
+    async findRecordById() {
+      return null;
+    },
+    async findRecordsByEncounter() {
+      return [];
+    },
+    async findRecordsByAccountId() {
+      return [];
+    },
+    async createItem() {},
+    async findItemsByRecord() {
+      return [];
+    },
+    ...overrides
+  };
 }
 
 test('BillingService createEstimate moves billing record to estimated', async () => {
@@ -115,4 +136,122 @@ test('BillingService list filters by encounter', async () => {
   assert.equal(service.list().length, 2);
   assert.equal(service.list('encounter_1').length, 1);
   assert.equal(service.list('encounter_1')[0].encounterId, 'encounter_1');
+});
+
+test('BillingService hydrates records and items from repository', async () => {
+  const repository = createRepository({
+    async findRecordsByAccountId() {
+      return [
+        {
+          id: 'bill_repo_1' as never,
+          accountId: 'acc_test' as never,
+          encounterId: 'encounter_repo' as never,
+          patientId: 'patient_1' as never,
+          ownerId: 'owner_1' as never,
+          status: 'open',
+          subtotalAmount: 90,
+          currency: 'BRL',
+          createdAt: '2026-04-13T00:00:00.000Z',
+          updatedAt: '2026-04-13T00:00:00.000Z'
+        }
+      ];
+    },
+    async findItemsByRecord(recordId) {
+      assert.equal(recordId, 'bill_repo_1');
+      return [
+        {
+          id: 'bill_item_repo_1' as never,
+          billingRecordId: 'bill_repo_1' as never,
+          accountId: 'acc_test' as never,
+          encounterId: 'encounter_repo' as never,
+          itemType: 'service',
+          description: 'Consulta carregada do repo',
+          quantity: 1,
+          unitPriceAmount: 90,
+          totalAmount: 90,
+          createdByUserId: 'finance_1' as never,
+          createdAt: '2026-04-13T00:00:00.000Z'
+        }
+      ];
+    }
+  });
+
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  await service.hydrateFromDatabase();
+
+  assert.equal(service.list().length, 1);
+  assert.equal(service.getOrThrow('bill_repo_1' as never).status, 'open');
+  assert.equal((await service.listItems('encounter_repo' as never)).length, 1);
+});
+
+test('BillingService reuses repository record and triggers callbacks only on real status changes', async () => {
+  const created: string[] = [];
+  const changes: string[] = [];
+  const repository = createRepository({
+    async findRecordsByEncounter(encounterId) {
+      assert.equal(encounterId, 'encounter_repo');
+      return [
+        {
+          id: 'bill_repo_2' as never,
+          accountId: 'acc_test' as never,
+          encounterId: 'encounter_repo' as never,
+          patientId: 'patient_1' as never,
+          ownerId: 'owner_1' as never,
+          status: 'draft',
+          subtotalAmount: 0,
+          currency: 'BRL',
+          createdAt: '2026-04-13T00:00:00.000Z',
+          updatedAt: '2026-04-13T00:00:00.000Z'
+        }
+      ];
+    },
+    async findItemsByRecord() {
+      return [];
+    }
+  });
+
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository,
+      onRecordCreated: async (record) => {
+        created.push(record.id);
+      },
+      onStatusChanged: async (record, previousStatus) => {
+        changes.push(`${previousStatus}->${record.status}`);
+      }
+    }
+  );
+
+  const reused = await service.ensureRecord('encounter_repo' as never);
+  const unchanged = await service.updateStatus('encounter_repo' as never, { status: 'draft' });
+  const changed = await service.updateStatus('encounter_repo' as never, { status: 'open' });
+
+  assert.equal(reused.id, 'bill_repo_2');
+  assert.equal(unchanged.status, 'draft');
+  assert.equal(changed.status, 'open');
+  assert.equal(created.length, 0);
+  assert.deepEqual(changes, ['draft->open']);
 });

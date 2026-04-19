@@ -132,6 +132,10 @@ class InMemoryWebhookRepository implements WebhookRepository {
     this.#webhooks.set(webhook.id, webhook);
   }
 
+  async delete(webhookId: WebhookId): Promise<void> {
+    this.#webhooks.delete(webhookId);
+  }
+
   async findById(id: WebhookId): Promise<WebhookSummary | null> {
     return this.#webhooks.get(id) ?? null;
   }
@@ -152,6 +156,14 @@ class InMemoryWebhookRepository implements WebhookRepository {
 
   async updateDelivery(delivery: WebhookDeliverySummary): Promise<void> {
     this.#deliveries.set(delivery.id, delivery);
+  }
+
+  async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
+    for (const [deliveryId, delivery] of this.#deliveries.entries()) {
+      if (delivery.webhookId === webhookId) {
+        this.#deliveries.delete(deliveryId);
+      }
+    }
   }
 
   async findDeliveriesByWebhook(webhookId: WebhookId): Promise<readonly WebhookDeliverySummary[]> {

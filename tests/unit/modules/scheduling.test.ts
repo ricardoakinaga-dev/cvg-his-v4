@@ -101,4 +101,72 @@ describe('module-scheduling / operational overview', () => {
     expect(item?.operational.encounterId).toBe('enc_operational');
     expect(item?.operational.source).toBe('queue');
   });
+
+  it('returns outside-hours conflicts and actionable availability suggestions', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-17T09:00:00.000Z',
+      durationMinutes: 30,
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Sala US',
+      visitType: 'scheduled',
+      reason: 'Ultrassom original'
+    });
+
+    const availability = service.getAvailability(accountId, {
+      scheduledAt: '2026-04-17T06:30:00.000Z',
+      durationMinutes: 30,
+      patientId: 'patient_luna',
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Sala US'
+    });
+
+    expect(availability.available).toBe(false);
+    expect(availability.conflicts.some((conflict) => conflict.type === 'outside_hours')).toBe(
+      true
+    );
+    expect(availability.suggestions.length).toBeGreaterThan(0);
+    expect(availability.suggestions.some((slot) => slot.available)).toBe(true);
+  });
+
+  it('flags resource and staff overlap for competing slots', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const owners = new OwnersService();
+    const patients = new PatientsService({ owners });
+    const otherPatient = patients.create(accountId, {
+      name: 'Simba',
+      species: 'cat',
+      breed: 'SRD',
+      sex: 'male',
+      primaryOwnerId: 'owner_maria_silva'
+    });
+
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-18T11:00:00.000Z',
+      durationMinutes: 30,
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Consultorio 2',
+      visitType: 'scheduled',
+      reason: 'Consulta 1'
+    });
+
+    const availability = service.getAvailability(accountId, {
+      scheduledAt: '2026-04-18T11:15:00.000Z',
+      durationMinutes: 30,
+      patientId: otherPatient.id,
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Consultorio 2'
+    });
+
+    expect(availability.conflicts.some((conflict) => conflict.type === 'resource_overlap')).toBe(
+      true
+    );
+    expect(availability.conflicts.some((conflict) => conflict.type === 'staff_overlap')).toBe(
+      true
+    );
+  });
 });

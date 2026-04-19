@@ -8,6 +8,7 @@ import type {
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
   DiagnosticOrderSummary,
+  ExamCatalogEntry,
   EncounterSummary,
   EncounterTimelineEventSummary,
   EntryRevisionSummary,
@@ -127,6 +128,23 @@ export interface AuditEventListResponse {
   readonly items: readonly AuditEventSummary[];
 }
 
+export interface WhatsAppAppointmentReportResponse {
+  readonly appointmentId: string;
+  readonly deliveryStatus:
+    | 'not_scheduled'
+    | 'scheduled'
+    | 'sent'
+    | 'failed'
+    | 'confirmed'
+    | 'cancelled'
+    | 'reschedule_requested';
+  readonly vendorProvider: 'twilio' | '360dialog' | null;
+  readonly vendorMessageId: string | null;
+  readonly lastError: string | null;
+  readonly correlationIds: readonly string[];
+  readonly events: readonly AuditEventSummary[];
+}
+
 export interface CreateOwnerRequest {
   readonly fullName: string;
   readonly documentId?: string;
@@ -208,13 +226,14 @@ export interface CreateAppointmentRequest {
   readonly ownerId: string;
   readonly scheduledAt: string;
   readonly durationMinutes?: number;
-  readonly visitType: 'walk_in' | 'scheduled' | 'return';
+  readonly visitType?: 'walk_in' | 'scheduled' | 'return';
   readonly reason: string;
   readonly practitionerStaffId?: string;
   readonly serviceId?: string;
   readonly unit?: string;
   readonly specialty?: string;
   readonly resourceLabel?: string;
+  readonly smartSchedulingRecommendationId?: string;
 }
 
 export interface AppointmentListResponse {
@@ -231,6 +250,32 @@ export interface SchedulingProfessionalSummary {
   readonly specialty?: string;
   readonly unit?: string;
   readonly status: 'active' | 'inactive';
+}
+
+export interface SmartSchedulingRecommendationRequest {
+  readonly patientId: string;
+  readonly scheduledAt: string;
+  readonly visitType?: 'walk_in' | 'scheduled' | 'return';
+  readonly reason?: string;
+  readonly practitionerStaffId?: string;
+  readonly serviceId?: string;
+  readonly specialty?: string;
+  readonly unit?: string;
+  readonly resourceLabel?: string;
+}
+
+export interface SmartSchedulingRecommendationResponse {
+  readonly recommendationId: string;
+  readonly predictedDurationMinutes: number;
+  readonly confidence: number;
+  readonly historicalAverageMinutes: number;
+  readonly suggestedBufferMinutes: number;
+  readonly factors: readonly string[];
+  readonly basedOn: {
+    readonly patientId: string;
+    readonly previousVisits: number;
+    readonly visitType: 'walk_in' | 'scheduled' | 'return';
+  };
 }
 
 export interface SchedulingFilterOptions {
@@ -356,6 +401,78 @@ export interface FiscalNcmEntrySummary {
   readonly notes: string;
 }
 
+export type FiscalNfseProvider = 'abrasf' | 'iss_sp' | 'iss_net' | 'nota_rio';
+
+export type FiscalNfseDocumentStatus = 'draft' | 'issued' | 'cancelled' | 'error';
+
+export interface FiscalNfseCustomerSummary {
+  readonly type: 'cpf' | 'cnpj';
+  readonly document: string;
+  readonly name: string;
+  readonly email?: string;
+  readonly phone?: string;
+}
+
+export interface FiscalNfseServiceLineSummary {
+  readonly description: string;
+  readonly codigoServico: string;
+  readonly cnae: string;
+  readonly quantity: number;
+  readonly unitValue: number;
+  readonly totalValue: number;
+  readonly issRate: number;
+  readonly issValue: number;
+  readonly pisValue: number;
+  readonly cofinsValue: number;
+  readonly csllValue: number;
+  readonly irrfValue?: number;
+  readonly inssValue?: number;
+}
+
+export interface FiscalNfseDocumentSummary {
+  readonly id: string;
+  readonly serie: string;
+  readonly numero: number;
+  readonly competencia: string;
+  readonly provider: FiscalNfseProvider;
+  readonly customer: FiscalNfseCustomerSummary;
+  readonly services: readonly FiscalNfseServiceLineSummary[];
+  readonly subtotal: number;
+  readonly totalIss: number;
+  readonly totalPis: number;
+  readonly totalCofins: number;
+  readonly totalCsll: number;
+  readonly totalIrrf?: number;
+  readonly totalInss?: number;
+  readonly totalDocument: number;
+  readonly observations?: string;
+  readonly createdAt: string;
+  readonly status: FiscalNfseDocumentStatus;
+  readonly authorizationCode?: string;
+  readonly verificationUrl?: string;
+}
+
+export interface CreateFiscalNfseDocumentRequest {
+  readonly competencia?: string;
+  readonly serie?: string;
+  readonly numero?: number;
+  readonly provider?: FiscalNfseProvider;
+  readonly municipalityCode?: string;
+  readonly apiUrl?: string;
+  readonly customer: FiscalNfseCustomerSummary;
+  readonly services: readonly FiscalNfseServiceLineSummary[];
+  readonly observations?: string;
+}
+
+export interface CancelFiscalNfseDocumentRequest {
+  readonly reason: string;
+}
+
+export interface FiscalNfseDocumentFilters {
+  readonly status?: FiscalNfseDocumentStatus;
+  readonly customerSearch?: string;
+}
+
 export interface FiscalIcmsMatrixRowSummary {
   readonly id: string;
   readonly ufOrigin: string;
@@ -436,6 +553,10 @@ export interface FiscalIcmsMatrixListResponse {
 
 export interface FiscalNfseLayoutListResponse {
   readonly items: readonly FiscalNfseLayoutSummary[];
+}
+
+export interface FiscalNfseDocumentListResponse {
+  readonly items: readonly FiscalNfseDocumentSummary[];
 }
 
 export interface CreateEncounterRequest {
@@ -570,6 +691,29 @@ export interface InpatientProgressListResponse {
   readonly items: readonly InpatientProgressSummary[];
 }
 
+export interface InpatientHandoverPreviewItem {
+  readonly stayId: string;
+  readonly encounterId: string;
+  readonly patientId: string;
+  readonly unit: string;
+  readonly ward: string;
+  readonly bed: string;
+  readonly status: 'admitted' | 'stable' | 'transferred' | 'discharged';
+  readonly latestProgressNote: string | null;
+  readonly latestProgressAt: string | null;
+  readonly transferTarget: {
+    readonly unit: string | null;
+    readonly ward: string | null;
+  };
+  readonly requiresAttention: boolean;
+}
+
+export interface InpatientHandoverPreviewResponse {
+  readonly generatedAt: string;
+  readonly totalActiveStays: number;
+  readonly items: readonly InpatientHandoverPreviewItem[];
+}
+
 export interface UpdateInpatientStatusRequest {
   readonly status: 'admitted' | 'stable' | 'transferred' | 'discharged';
   readonly dischargeReason?: string;
@@ -608,6 +752,10 @@ export interface CreateDiagnosticOrderRequest {
 
 export interface DiagnosticOrderListResponse {
   readonly items: readonly DiagnosticOrderSummary[];
+}
+
+export interface ExamCatalogListResponse {
+  readonly items: readonly ExamCatalogEntry[];
 }
 
 export interface LaboratoryEquipmentListResponse {

@@ -25,14 +25,15 @@ function createTestRuntime(
 async function waitForAuditAction(
   runtime: ReturnType<typeof createApiRuntime>,
   action: string,
-  attempts = 20
+  attempts = 50,
+  delayMs = 10
 ): Promise<boolean> {
   for (let index = 0; index < attempts; index += 1) {
     if (runtime.audit.list().some((entry) => entry.action === action)) {
       return true;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
   return runtime.audit.list().some((entry) => entry.action === action);
@@ -197,6 +198,110 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
   assert.equal(reconciledTransaction?.status, 'completed');
   assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
   assert.equal(reconciledTransaction?.cashReconciliationStatus, 'skipped_no_open_register');
+});
+
+test('runtime reconciles card capture into administrative financial state', async () => {
+  const runtime = createTestRuntime();
+  const receptionLogin = await runtime.auth.login(
+    {
+      username: 'reception',
+      password: 'seed_reception'
+    },
+    'corr_card_financial_runtime'
+  ) as AuthSessionResponse;
+  const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+  const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Fluxo financeiro administrativo com cartao'
+  });
+
+  const billingRecord = await runtime.billing.createEstimate({
+    encounterId: encounter.id,
+    administrativeNotes: 'Fechamento administrativo via cartao'
+  });
+  await runtime.billing.addItem(reception.user.id, {
+    encounterId: encounter.id,
+    itemType: 'service',
+    description: 'Procedimento cirurgico',
+    quantity: 1,
+    unitPriceAmount: 320
+  });
+
+  await runtime.eventBus.publish({
+    correlationId: 'corr_card_financial_intent' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.card.intent.created',
+    payload: {
+      accountId: reception.user.accountId,
+      intentId: 'card_intent_runtime_1',
+      billingRecordId: billingRecord.id,
+      amount: 320,
+      currency: 'BRL',
+      description: 'Procedimento cirurgico',
+      provider: 'local-card',
+      installments: 2,
+      status: 'authorized_pending_capture',
+      card: {
+        holderName: 'Maria Silva',
+        brand: 'visa',
+        last4: '4242'
+      },
+      providerOrderId: 'order_runtime_1',
+      providerChargeId: 'charge_runtime_1',
+      createdAt: new Date().toISOString()
+    }
+  });
+  await runtime.eventBus.processPending(10);
+
+  const createdTransaction = await runtime.cardTransactions.findByTransactionId(
+    'card_intent_runtime_1'
+  );
+  assert.equal(createdTransaction?.status, 'authorized_pending_capture');
+  assert.equal(createdTransaction?.billingSettlementStatus, 'awaiting_capture');
+
+  await runtime.eventBus.publish({
+    correlationId: 'corr_card_financial_complete' as never,
+    moduleName: 'billing' as never,
+    eventType: 'payment.card.completed',
+    payload: {
+      accountId: reception.user.accountId,
+      intentId: 'card_intent_runtime_1',
+      billingRecordId: billingRecord.id,
+      provider: 'local-card',
+      providerOrderId: 'order_runtime_1',
+      providerChargeId: 'charge_runtime_1',
+      providerAuthorizationCode: 'auth_runtime_1',
+      providerReferenceId: 'ref_runtime_1',
+      status: 'captured',
+      capturedAt: new Date().toISOString()
+    }
+  });
+  await runtime.eventBus.processPending(10);
+
+  const settledBilling = runtime.billing.getOrThrow(billingRecord.id);
+  assert.equal(settledBilling.status, 'settled');
+
+  const summary = await runtime.encounterFinancial.getSummary(encounter.id);
+  assert.equal(summary.balanceDue, 0);
+  assert.equal(summary.financialStatus, 'paid');
+  assert.equal(
+    summary.payments.some(
+      (payment) =>
+        payment.externalReferenceType === 'other'
+        && payment.externalReferenceId === 'card_intent_runtime_1'
+    ),
+    true
+  );
+
+  const reconciledTransaction = await runtime.cardTransactions.findByTransactionId(
+    'card_intent_runtime_1'
+  );
+  assert.equal(reconciledTransaction?.status, 'captured');
+  assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
 });
 
 test('runtime does not preload demo seeds when repository-backed services are configured', () => {
@@ -1553,6 +1658,109 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
     runtimeEnabled.audit.list().some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
     false
   );
+});
+
+test('runtime records successful WhatsApp reminder delivery with vendor correlation metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalEnv = {
+    enabled: process.env['WHATSAPP_ENABLED'],
+    provider: process.env['WHATSAPP_PROVIDER'],
+    apiKey: process.env['WHATSAPP_API_KEY'],
+    fromNumber: process.env['WHATSAPP_FROM_NUMBER']
+  };
+
+  process.env['WHATSAPP_ENABLED'] = 'true';
+  process.env['WHATSAPP_PROVIDER'] = '360dialog';
+  process.env['WHATSAPP_API_KEY'] = 'test-wa-key';
+  process.env['WHATSAPP_FROM_NUMBER'] = '5511999999999';
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ messages: [{ id: 'wamid.runtime.123' }] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })) as typeof fetch;
+
+  try {
+    const runtime = createTestRuntime(undefined, {
+      notificationsWhatsappRemindersEnabled: true
+    });
+    const receptionLogin = await runtime.auth.login(
+      { username: 'reception', password: 'seed_reception' },
+      'corr_whatsapp_reminder_delivery'
+    ) as AuthSessionResponse;
+    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+    await runtime.scheduling.createAppointment(reception.user.accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-13T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Reminder delivery evidence'
+    });
+
+    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_sent'), true);
+
+    const deliveryEvent = runtime.audit.list().find((entry) => entry.action === 'whatsapp_reminder_sent');
+    assert.ok(deliveryEvent);
+    assert.equal(deliveryEvent?.payloadSummary.includes('provider=360dialog'), true);
+    assert.equal(deliveryEvent?.payloadSummary.includes('messageId=wamid.runtime.123'), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env['WHATSAPP_ENABLED'] = originalEnv.enabled;
+    process.env['WHATSAPP_PROVIDER'] = originalEnv.provider;
+    process.env['WHATSAPP_API_KEY'] = originalEnv.apiKey;
+    process.env['WHATSAPP_FROM_NUMBER'] = originalEnv.fromNumber;
+  }
+});
+
+test('runtime records failed WhatsApp reminder delivery when vendor dispatch throws', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalEnv = {
+    enabled: process.env['WHATSAPP_ENABLED'],
+    provider: process.env['WHATSAPP_PROVIDER'],
+    apiKey: process.env['WHATSAPP_API_KEY'],
+    fromNumber: process.env['WHATSAPP_FROM_NUMBER']
+  };
+
+  process.env['WHATSAPP_ENABLED'] = 'true';
+  process.env['WHATSAPP_PROVIDER'] = '360dialog';
+  process.env['WHATSAPP_API_KEY'] = 'test-wa-key';
+  process.env['WHATSAPP_FROM_NUMBER'] = '5511999999999';
+  globalThis.fetch = (async () => {
+    throw new Error('gateway timeout');
+  }) as typeof fetch;
+
+  try {
+    const runtime = createTestRuntime(undefined, {
+      notificationsWhatsappRemindersEnabled: true
+    });
+    const receptionLogin = await runtime.auth.login(
+      { username: 'reception', password: 'seed_reception' },
+      'corr_whatsapp_reminder_failure'
+    ) as AuthSessionResponse;
+    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
+
+    await runtime.scheduling.createAppointment(reception.user.accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-13T13:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Reminder delivery failure evidence'
+    });
+
+    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_scheduled'), true);
+    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_failed'), true);
+
+    const failureEvent = runtime.audit.list().find((entry) => entry.action === 'whatsapp_reminder_failed');
+    assert.ok(failureEvent);
+    assert.equal(failureEvent?.payloadSummary.includes('provider=360dialog'), true);
+    assert.equal(failureEvent?.payloadSummary.includes('error=gateway timeout'), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env['WHATSAPP_ENABLED'] = originalEnv.enabled;
+    process.env['WHATSAPP_PROVIDER'] = originalEnv.provider;
+    process.env['WHATSAPP_API_KEY'] = originalEnv.apiKey;
+    process.env['WHATSAPP_FROM_NUMBER'] = originalEnv.fromNumber;
+  }
 });
 
 test('scheduling hardening: rejects double cancellation', async () => {

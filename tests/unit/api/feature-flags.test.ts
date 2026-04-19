@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   API_FEATURE_FLAG_DEFINITIONS,
@@ -53,5 +53,83 @@ describe('api feature flags', () => {
     expect(decision.enabled).toBe(true);
     expect(decision.reason).toBe('bootstrap');
     expect(decision.provider).toBe('env-bootstrap');
+  });
+
+  it('maps multiple bootstrap rollouts into the snapshot booleans', async () => {
+    const flags = await createApiFeatureFlags({
+      environment: 'staging',
+      enabledKeys: [
+        'auth.oidc.enabled',
+        'runtime.distributed_state.enabled',
+        'notifications.whatsapp.reminders.enabled'
+      ]
+    });
+
+    expect(flags.providerName).toBe('env-bootstrap-with-rules');
+    expect(flags.authOidcEnabled).toBe(true);
+    expect(flags.runtimeDistributedStateEnabled).toBe(true);
+    expect(flags.notificationsWhatsappRemindersEnabled).toBe(true);
+    expect(flags.notificationsWhatsappInboundActionsEnabled).toBe(false);
+    expect(flags.enabledKeys).toEqual(
+      expect.arrayContaining([
+        'auth.oidc.enabled',
+        'runtime.distributed_state.enabled',
+        'notifications.whatsapp.reminders.enabled'
+      ])
+    );
+  });
+
+  it('maps inbound WhatsApp bootstrap rollout into the snapshot booleans', async () => {
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: ['notifications.whatsapp.inbound_actions.enabled']
+    });
+
+    expect(flags.authOidcEnabled).toBe(false);
+    expect(flags.fiscalBackofficeEnabled).toBe(false);
+    expect(flags.notificationsWhatsappInboundActionsEnabled).toBe(true);
+    expect(flags.enabledKeys).toEqual(['notifications.whatsapp.inbound_actions.enabled']);
+  });
+
+  it('uses persisted overrides when account context is provided', async () => {
+    const accountId = 'acc_flags_001' as never;
+    const databaseProviderFactory = vi.fn((fallbackProvider) => ({
+      name: 'database-repository',
+      async evaluate(definition, context) {
+        if (
+          definition.key === 'runtime.distributed_state.enabled'
+          && context.accountId === accountId
+          && context.environment === 'production'
+        ) {
+          return {
+            key: definition.key,
+            enabled: true,
+            reason: 'persisted_override',
+            provider: 'database-repository'
+          };
+        }
+
+        return fallbackProvider.evaluate(definition, context);
+      }
+    }));
+
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: ['auth.oidc.enabled'],
+      db: {} as never,
+      accountId,
+      databaseProviderFactory
+    });
+
+    expect(databaseProviderFactory).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'env-bootstrap' }),
+      expect.objectContaining({ cacheTtlMs: 60_000 })
+    );
+    expect(flags.providerName).toBe('database-repository-with-rules');
+    expect(flags.authOidcEnabled).toBe(true);
+    expect(flags.runtimeDistributedStateEnabled).toBe(true);
+    expect(flags.enabledKeys).toEqual(
+      expect.arrayContaining(['auth.oidc.enabled', 'runtime.distributed_state.enabled'])
+    );
   });
 });

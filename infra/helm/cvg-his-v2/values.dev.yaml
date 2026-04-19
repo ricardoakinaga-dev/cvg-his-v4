@@ -26,6 +26,8 @@ worker:
   revisionHistoryLimit: 2
   image:
     pullPolicy: Always
+  probes:
+    enabled: true
   env:
     NODE_ENV: development
 
@@ -51,6 +53,8 @@ ingress:
 
 podDisruptionBudget:
   api:
+    minAvailable: 1
+  worker:
     minAvailable: 1
   spa:
     minAvailable: 1

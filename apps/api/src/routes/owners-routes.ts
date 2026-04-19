@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type {
   CreateOwnerRequest,
@@ -15,6 +16,12 @@ export interface OwnersRoutesHandlers {
   owners: OwnersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  enforceAbac?: (
+    actionCode: string,
+    principal: AuthenticatedPrincipal,
+    attrs: ResourceAttributes,
+    request: IncomingMessage
+  ) => void;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -31,13 +38,33 @@ export async function handleOwnersRoutes(
   correlationId: string,
   handlers: OwnersRoutesHandlers
 ): Promise<boolean> {
-  const { owners, audit, requirePrincipal } = handlers;
+  const { owners, audit, requirePrincipal, enforceAbac } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
+  const sectorCodeHeader = request.headers['x-sector-code'];
+  const sectorCode =
+    typeof sectorCodeHeader === 'string'
+      ? sectorCodeHeader.trim()
+      : Array.isArray(sectorCodeHeader)
+        ? sectorCodeHeader[0]?.trim()
+        : undefined;
 
   // GET /owners - List owners
   if (pathname === '/owners' && method === 'GET') {
     const principal = requirePrincipal(request, 'owners.read');
+    if (sectorCode) {
+      enforceAbac?.(
+        'owners.read',
+        principal,
+        {
+          resourceType: 'owner',
+          resourceId: 'all',
+          accountId: principal.user.accountId,
+          sectorCode
+        },
+        request
+      );
+    }
     const query = url.searchParams.get('q') ?? undefined;
     const status = url.searchParams.get('status') ?? undefined;
     const financialResponsible = url.searchParams.get('financialResponsible');
@@ -72,6 +99,19 @@ export async function handleOwnersRoutes(
   // POST /owners - Create owner
   if (pathname === '/owners' && method === 'POST') {
     const principal = requirePrincipal(request, 'owners.manage');
+    if (sectorCode) {
+      enforceAbac?.(
+        'owners.manage',
+        principal,
+        {
+          resourceType: 'owner',
+          resourceId: 'new',
+          accountId: principal.user.accountId,
+          sectorCode
+        },
+        request
+      );
+    }
     const body = (await readJsonBody(request)) as CreateOwnerRequest;
 
     const owner = owners.create(principal.user.accountId, body);
@@ -98,6 +138,19 @@ export async function handleOwnersRoutes(
 
     const principal = requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
+    if (sectorCode) {
+      enforceAbac?.(
+        'owners.read',
+        principal,
+        {
+          resourceType: 'owner',
+          resourceId: ownerId,
+          accountId: principal.user.accountId,
+          sectorCode
+        },
+        request
+      );
+    }
 
     const owner = owners.getOrThrow(ownerId as never);
 
@@ -123,6 +176,19 @@ export async function handleOwnersRoutes(
 
     const principal = requirePrincipal(request, 'owners.manage');
     const ownerId = match[1];
+    if (sectorCode) {
+      enforceAbac?.(
+        'owners.manage',
+        principal,
+        {
+          resourceType: 'owner',
+          resourceId: ownerId,
+          accountId: principal.user.accountId,
+          sectorCode
+        },
+        request
+      );
+    }
     const body = (await readJsonBody(request)) as UpdateOwnerRequest;
 
     const owner = owners.update(ownerId as never, body);
@@ -149,6 +215,19 @@ export async function handleOwnersRoutes(
 
     const principal = requirePrincipal(request, 'owners.manage');
     const ownerId = match[1];
+    if (sectorCode) {
+      enforceAbac?.(
+        'owners.manage',
+        principal,
+        {
+          resourceType: 'owner',
+          resourceId: ownerId,
+          accountId: principal.user.accountId,
+          sectorCode
+        },
+        request
+      );
+    }
 
     const owner = owners.update(ownerId as never, { status: 'inactive' });
 

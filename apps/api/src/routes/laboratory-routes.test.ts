@@ -94,12 +94,29 @@ function createLaboratoryService(): LaboratoryService {
     } as never
   );
 
-  diagnostics.createOrder({
+  const requestedOrder = diagnostics.createOrder({
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Hemograma',
     examCatalogId: 'cat_001',
     reason: 'Check-up'
+  });
+
+  diagnostics.recordResult(requestedOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'lab-user'
+  });
+  diagnostics.recordResult(requestedOrder.id, {
+    status: 'resulted',
+    resultSummary: 'Hemograma dentro da normalidade'
+  });
+
+  diagnostics.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Bioquimico',
+    examCatalogId: 'cat_002',
+    reason: 'Seguimento'
   });
 
   return new LaboratoryService(diagnostics, {
@@ -147,6 +164,72 @@ test('handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge', as
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   const payload = response.bodyJson<{ items: Array<{ encounterId: string }> }>();
+  assert.equal(payload.items.length, 2);
+  assert.equal(payload.items.every((item) => item.encounterId === 'enc-1'), true);
+});
+
+test('handleLaboratoryRoutes exposes diagnostics catalog and order detail', async () => {
+  const laboratory = createLaboratoryService();
+  const orders = await laboratory.listOrders('acc-1' as never, 'enc-1');
+
+  const catalogResponse = new MockResponse();
+  const detailResponse = new MockResponse();
+
+  const catalogHandled = await handleLaboratoryRoutes(
+    '/diagnostics/catalog',
+    { method: 'GET', url: '/diagnostics/catalog' } as never,
+    catalogResponse as never,
+    'corr-lab-3',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const detailHandled = await handleLaboratoryRoutes(
+    `/laboratory/orders/${orders[0].id}`,
+    { method: 'GET', url: `/laboratory/orders/${orders[0].id}` } as never,
+    detailResponse as never,
+    'corr-lab-4',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(catalogHandled, true);
+  assert.equal(detailHandled, true);
+  assert.equal(catalogResponse.statusCode, 200);
+  assert.equal(detailResponse.statusCode, 200);
+
+  const catalogPayload = catalogResponse.bodyJson<{ items: Array<{ id: string; code: string }> }>();
+  const detailPayload = detailResponse.bodyJson<{ id: string; status: string }>();
+
+  assert.ok(catalogPayload.items.some((item) => item.id === 'cat_001' && item.code === 'HEM'));
+  assert.equal(detailPayload.id, orders[0].id);
+});
+
+test('handleLaboratoryRoutes lists resulted orders through the diagnostics bridge', async () => {
+  const response = new MockResponse();
+
+  const handled = await handleLaboratoryRoutes(
+    '/diagnostics/results',
+    { method: 'GET', url: '/diagnostics/results?examType=HEM' } as never,
+    response as never,
+    'corr-lab-5',
+    {
+      laboratory: createLaboratoryService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ status: string; examCatalogId?: string }> }>();
   assert.equal(payload.items.length, 1);
-  assert.equal(payload.items[0].encounterId, 'enc-1');
+  assert.equal(payload.items[0].status, 'resulted');
+  assert.equal(payload.items[0].examCatalogId, 'cat_001');
 });

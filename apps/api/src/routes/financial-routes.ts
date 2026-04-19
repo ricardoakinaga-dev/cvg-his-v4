@@ -12,12 +12,17 @@ import type {
   PixTransactionRecord,
   PixTransactionRepository
 } from '../pix-transaction-repository.js';
+import type {
+  CardTransactionRecord,
+  CardTransactionRepository
+} from '../card-transaction-repository.js';
 
 export interface FinancialRoutesHandlers {
   encounterFinancial: EncounterFinancialService;
   billing: BillingService;
   audit: AuditService;
   pixTransactions: PixTransactionRepository;
+  cardTransactions: CardTransactionRepository;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
 
@@ -345,6 +350,155 @@ async function listReconciliationRows(
   };
 }
 
+async function listCardReconciliationRows(
+  handlers: FinancialRoutesHandlers,
+  params: {
+    readonly accountId: string;
+    readonly status?: CardTransactionRecord['status'];
+    readonly provider?: CardTransactionRecord['provider'];
+    readonly search?: string;
+    readonly page?: number;
+    readonly pageSize?: number;
+  }
+) {
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.max(1, Math.min(100, params.pageSize ?? 20));
+  const search = params.search?.trim().toLowerCase();
+  const transactions = await handlers.cardTransactions.list({
+    accountId: params.accountId,
+    status: params.status,
+    provider: params.provider
+  });
+
+  const billingCache = new Map<string, ReturnType<BillingService['getOrThrow']> | null>();
+  const summaryCache = new Map<string, Awaited<ReturnType<EncounterFinancialService['getSummary']>> | null>();
+
+  async function getBillingRecord(recordId: string) {
+    if (!billingCache.has(recordId)) {
+      try {
+        billingCache.set(recordId, handlers.billing.getOrThrow(recordId as never));
+      } catch {
+        billingCache.set(recordId, null);
+      }
+    }
+    return billingCache.get(recordId) ?? null;
+  }
+
+  async function getFinancialSummary(encounterId: string) {
+    if (!summaryCache.has(encounterId)) {
+      try {
+        summaryCache.set(
+          encounterId,
+          await handlers.encounterFinancial.getSummary(encounterId as never)
+        );
+      } catch {
+        summaryCache.set(encounterId, null);
+      }
+    }
+    return summaryCache.get(encounterId) ?? null;
+  }
+
+  const data = [];
+  for (const transaction of transactions) {
+    const billingRecord = transaction.billingRecordId
+      ? await getBillingRecord(transaction.billingRecordId)
+      : null;
+    const financialSummary = billingRecord
+      ? await getFinancialSummary(billingRecord.encounterId)
+      : null;
+    const matchedPayments = financialSummary
+      ? financialSummary.payments.filter(
+          (payment) =>
+            payment.externalReferenceType === 'other'
+            && payment.externalReferenceId === transaction.transactionId
+        )
+      : [];
+    const receivableIds = Array.from(new Set(matchedPayments.map((payment) => payment.receivableId)));
+    const matchedReceivables = financialSummary
+      ? financialSummary.receivables.filter((receivable) => receivableIds.includes(receivable.id))
+      : [];
+    const reconciliationState =
+      transaction.status === 'captured'
+      && (transaction.billingSettlementStatus === 'applied'
+        || transaction.billingSettlementStatus === 'not_applicable')
+        ? 'reconciled'
+        : transaction.status === 'captured'
+          ? 'attention_required'
+          : 'pending';
+
+    const row = {
+      transactionId: transaction.transactionId,
+      provider: transaction.provider,
+      status: transaction.status,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      description: transaction.description,
+      installments: transaction.installments,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+      capturedAt: transaction.capturedAt ?? null,
+      providerOrderId: transaction.providerOrderId ?? null,
+      providerChargeId: transaction.providerChargeId ?? null,
+      providerAuthorizationCode: transaction.providerAuthorizationCode ?? null,
+      providerReferenceId: transaction.providerReferenceId ?? null,
+      billingRecordId: transaction.billingRecordId ?? null,
+      billingSettlementStatus: transaction.billingSettlementStatus,
+      billingSettledAt: transaction.billingSettledAt ?? null,
+      billingSettlementError: transaction.billingSettlementError ?? null,
+      failureReason: transaction.failureReason ?? null,
+      encounterId: billingRecord?.encounterId ?? null,
+      encounterStatus: financialSummary?.encounterStatus ?? null,
+      financialStatus: financialSummary?.financialStatus ?? null,
+      patientId: financialSummary?.patientId ?? null,
+      patientName: financialSummary?.patientName ?? null,
+      ownerId: financialSummary?.ownerId ?? null,
+      ownerName: financialSummary?.ownerName ?? null,
+      cardHolderName: transaction.cardHolderName ?? null,
+      cardBrand: transaction.cardBrand ?? null,
+      cardLast4: transaction.cardLast4 ?? null,
+      receivableIds,
+      receivableLabels: matchedReceivables.map((receivable) => receivable.installmentLabel),
+      receivableStatuses: matchedReceivables.map((receivable) => receivable.status),
+      receivablePaymentIds: matchedPayments.map((payment) => payment.id),
+      receivablePaidAmount: matchedPayments.reduce((sum, payment) => sum + payment.amountPaid, 0),
+      reconciliationState
+    };
+
+    const haystack = [
+      row.transactionId,
+      row.providerOrderId ?? '',
+      row.providerChargeId ?? '',
+      row.billingRecordId ?? '',
+      row.patientName ?? '',
+      row.ownerName ?? '',
+      row.cardHolderName ?? '',
+      row.cardBrand ?? '',
+      row.cardLast4 ?? ''
+    ]
+      .join(' ')
+      .toLowerCase();
+    if (search && !haystack.includes(search)) {
+      continue;
+    }
+
+    data.push(row);
+  }
+
+  const total = data.length;
+  const paged = data.slice((page - 1) * pageSize, page * pageSize);
+  return {
+    data: paged,
+    page,
+    pageSize,
+    total,
+    capturedCount: data.filter((item) => item.status === 'captured').length,
+    awaitingCaptureCount: data.filter((item) => item.status === 'authorized_pending_capture').length,
+    attentionCount: data.filter((item) => item.reconciliationState === 'attention_required').length,
+    pendingCount: data.filter((item) => item.reconciliationState === 'pending').length,
+    reconciledCount: data.filter((item) => item.reconciliationState === 'reconciled').length
+  };
+}
+
 export async function handleFinancialRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -356,6 +510,7 @@ export async function handleFinancialRoutes(
     pathname === '/financial/receivables'
     || pathname === '/financial/aging'
     || pathname === '/financial/reconciliation'
+    || pathname === '/financial/reconciliation/cards'
     || pathname.startsWith('/encounters/')
     || pathname.startsWith('/financial/receivables/');
   if (!isFinancialPath) {
@@ -519,6 +674,46 @@ export async function handleFinancialRoutes(
       entityType: 'pix-transaction',
       entityId: 'all',
       payloadSummary: 'Financial reconciliation view listed',
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, result);
+  }
+
+  if (pathname === '/financial/reconciliation/cards' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const status = url.searchParams.get('status');
+    const provider = url.searchParams.get('provider');
+    const search = url.searchParams.get('search');
+    const result = await listCardReconciliationRows(handlers, {
+      accountId: principal.user.accountId,
+      status:
+        status === 'pending'
+        || status === 'authorized_pending_capture'
+        || status === 'captured'
+        || status === 'not_authorized'
+        || status === 'failed'
+        || status === 'voided'
+          ? status
+          : undefined,
+      provider:
+        provider === 'local-card' || provider === 'pagarme-card'
+          ? provider
+          : undefined,
+      search: search ?? undefined,
+      page: normalizePage(url.searchParams.get('page'), 1),
+      pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'list_card_reconciliation',
+      entityType: 'card-transaction',
+      entityId: 'all',
+      payloadSummary: 'Card reconciliation view listed',
       riskLevel: 'low',
       correlationId
     });

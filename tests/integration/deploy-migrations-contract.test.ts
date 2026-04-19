@@ -32,7 +32,12 @@ describe('Deploy and Migration Contracts', () => {
 
   it('database records every official migration file in drizzle_migrations', async () => {
     const migrationFiles = readdirSync('packages/db/migrations')
-      .filter((file) => file.endsWith('.sql') && !file.endsWith('.revert.sql'))
+      .filter(
+        (file) =>
+          file.endsWith('.sql')
+          && !file.endsWith('.revert.sql')
+          && !file.endsWith('.seed.sql')
+      )
       .map((file) => file.replace(/\.sql$/, ''))
       .sort();
 

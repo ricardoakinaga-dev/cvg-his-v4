@@ -87,6 +87,8 @@ tags:
     description: Triage classification
   - name: Billing
     description: Billing and financial records
+  - name: Financial
+    description: Financial operations, receivables, reconciliation and admin controls
   - name: Inventory
     description: Inventory and stock management
   - name: Notifications
@@ -99,6 +101,8 @@ tags:
     description: Premium integration catalog and contract surface
   - name: Payments
     description: Safe payment intent and provider abstraction endpoints
+  - name: Feature Flags
+    description: Feature flag catalog, rollout overrides and operational governance
   - name: Access Control
     description: Roles, permissions and team management
   - name: Audit
@@ -111,8 +115,16 @@ tags:
     description: Service quotes and estimates
   - name: Prescriptions
     description: Medication prescriptions and executions
+  - name: Diagnostics
+    description: Diagnostic orders, released results and exam catalog bridge
+  - name: Laboratory
+    description: Laboratory operations, report types, equipment and reference values
+  - name: ML
+    description: Applied intelligence endpoints for OCR, forecasting and anomaly detection
   - name: Discharges
     description: Patient discharge management
+  - name: Fiscal
+    description: Fiscal tables, NFS-e documents and operational backoffice
   - name: Utilities
     description: Utility endpoints for master search and address lookup
 
@@ -219,6 +231,212 @@ paths:
                   # HELP http_requests_total Total HTTP requests
                   # TYPE http_requests_total counter
                   http_requests_total{method="GET",route="/health",status_code="200"} 42
+
+  /flags:
+    get:
+      operationId: listFeatureFlags
+      summary: List feature flags
+      description: Returns the operational feature flag catalog for the authenticated account.
+      tags: [Feature Flags]
+      responses:
+        '200':
+          description: Feature flags listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagListResponse'
+    post:
+      operationId: createFeatureFlag
+      summary: Create feature flag
+      tags: [Feature Flags]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeatureFlagRequest'
+      responses:
+        '201':
+          description: Feature flag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagDefinition'
+
+  /flags/report:
+    get:
+      operationId: listFeatureFlagOperationalReport
+      summary: List feature flag operational report
+      description: Returns rollout, lifecycle and current decision summary for all flags in the current account.
+      tags: [Feature Flags]
+      parameters:
+        - in: query
+          name: environment
+          schema:
+            type: string
+          description: Evaluation environment, defaults to `development`.
+        - in: query
+          name: userId
+          schema:
+            type: string
+          description: Optional user override for evaluation context.
+      responses:
+        '200':
+          description: Operational report generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagOperationalReportListResponse'
+
+  /flags/{key}:
+    get:
+      operationId: getFeatureFlag
+      summary: Get feature flag
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      responses:
+        '200':
+          description: Feature flag found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagDefinition'
+        '404':
+          description: Feature flag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: updateFeatureFlag
+      summary: Update feature flag
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFeatureFlagRequest'
+      responses:
+        '200':
+          description: Feature flag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagDefinition'
+    delete:
+      operationId: disableFeatureFlag
+      summary: Disable feature flag
+      description: Applies a disabling override for the selected environment.
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+        - in: query
+          name: environment
+          schema:
+            type: string
+          description: Optional target environment for the disabling override.
+      responses:
+        '204':
+          description: Feature flag disabled
+
+  /flags/{key}/evaluate:
+    get:
+      operationId: evaluateFeatureFlag
+      summary: Evaluate feature flag
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+        - in: query
+          name: environment
+          schema:
+            type: string
+          description: Evaluation environment, defaults to `development`.
+        - in: query
+          name: userId
+          schema:
+            type: string
+          description: Optional user override for evaluation context.
+      responses:
+        '200':
+          description: Feature flag decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagDecision'
+
+  /flags/{key}/overrides:
+    get:
+      operationId: listFeatureFlagOverrides
+      summary: List feature flag overrides
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      responses:
+        '200':
+          description: Feature flag overrides listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagOverrideListResponse'
+    post:
+      operationId: upsertFeatureFlagOverride
+      summary: Upsert feature flag override
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertFeatureFlagOverrideRequest'
+      responses:
+        '200':
+          description: Feature flag override persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  flagKey:
+                    type: string
+
+  /flags/{key}/report:
+    get:
+      operationId: getFeatureFlagOperationalReport
+      summary: Get feature flag operational report
+      tags: [Feature Flags]
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+        - in: query
+          name: environment
+          schema:
+            type: string
+          description: Evaluation environment, defaults to `development`.
+        - in: query
+          name: userId
+          schema:
+            type: string
+          description: Optional user override for evaluation context.
+      responses:
+        '200':
+          description: Operational report generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagOperationalReport'
+        '404':
+          description: Feature flag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /auth/login:
     post:
@@ -779,6 +997,12 @@ paths:
           schema:
             type: string
           description: Search by name or document
+        - name: x-sector-code
+          in: header
+          schema:
+            type: string
+          required: false
+          description: Optional operational sector context used for ABAC segregation.
         - name: page
           in: query
           schema:
@@ -803,6 +1027,13 @@ paths:
       summary: Create owner
       description: Creates a new owner/tutor record.
       tags: [Owners]
+      parameters:
+        - name: x-sector-code
+          in: header
+          schema:
+            type: string
+          required: false
+          description: Optional operational sector context used for ABAC segregation.
       requestBody:
         required: true
         content:
@@ -830,6 +1061,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: x-sector-code
+          in: header
+          schema:
+            type: string
+          required: false
+          description: Optional operational sector context used for ABAC segregation.
       responses:
         '200':
           description: Owner details
@@ -852,6 +1089,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: x-sector-code
+          in: header
+          schema:
+            type: string
+          required: false
+          description: Optional operational sector context used for ABAC segregation.
       requestBody:
         required: true
         content:
@@ -1157,6 +1400,54 @@ paths:
         '200':
           description: Encounter transitioned
 
+  /encounters/{encounterId}/financial-summary:
+    get:
+      operationId: getEncounterFinancialSummary
+      summary: Get encounter financial summary
+      description: Returns financial account summary for an encounter.
+      tags: [Financial]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Encounter financial summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterFinancialSummary'
+
+  /encounters/{encounterId}/financial-close:
+    post:
+      operationId: closeEncounterFinancial
+      summary: Close encounter financial account
+      description: Defines receivable installments and optional closure payment for encounter finance.
+      tags: [Financial]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterFinancialCloseRequest'
+      responses:
+        '200':
+          description: Encounter financial close result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterFinancialSummary'
+
   /appointments:
     get:
       operationId: listAppointments
@@ -1188,6 +1479,87 @@ paths:
       responses:
         '201':
           description: Appointment created
+
+  /scheduling/recommendations/duration:
+    post:
+      operationId: recommendAppointmentDuration
+      summary: Generate smart scheduling duration recommendation
+      tags: [Appointments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartSchedulingRecommendationRequest'
+      responses:
+        '200':
+          description: Smart scheduling recommendation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartSchedulingRecommendationResponse'
+
+  /ml/ocr/fiscal-preview:
+    post:
+      operationId: previewFiscalDocumentWithOcr
+      summary: Generate OCR preview for fiscal/documental text
+      tags: [ML]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OcrFiscalPreviewRequest'
+      responses:
+        '200':
+          description: OCR fiscal preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OcrFiscalPreviewResponse'
+
+  /ml/forecasting/demand:
+    get:
+      operationId: getDemandForecast
+      summary: Forecast short-term appointment demand
+      tags: [ML]
+      parameters:
+        - name: horizonDays
+          in: query
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 30
+        - name: referenceDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Demand forecast
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandForecastResponse'
+
+  /ml/anomalies/laboratory-results:
+    get:
+      operationId: getLaboratoryAnomalies
+      summary: Detect laboratory anomalies from released results
+      tags: [ML]
+      parameters:
+        - name: examType
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory anomaly scan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabAnomalyDetectionResponse'
 
   /appointments/{appointmentId}/cancel:
     post:
@@ -1665,6 +2037,501 @@ paths:
         '201':
           description: Item added
 
+  /financial/receivables:
+    get:
+      operationId: listFinancialReceivables
+      summary: List financial receivables
+      description: Lists open and settled receivables with patient/owner context and pagination.
+      tags: [Financial]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, settled]
+        - name: encounterId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Match against patient/owner/installment label
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Financial receivables list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialReceivableListResponse'
+
+  /financial/aging:
+    get:
+      operationId: getFinancialAgingReport
+      summary: Get financial aging report
+      description: Returns ageing buckets with counts, amounts and aging detail.
+      tags: [Financial]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Optional search term over aging lines
+      responses:
+        '200':
+          description: Aging report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialAgingReportResponse'
+
+  /financial/reconciliation:
+    get:
+      operationId: listFinancialReconciliation
+      summary: List financial reconciliation rows
+      description: Joins PIX transactions with receivable and billing context.
+      tags: [Financial]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, expired, cancelled]
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [local-pix, mock, pagarme]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Reconciliation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialReconciliationResponse'
+
+  /financial/reconciliation/cards:
+    get:
+      operationId: listCardFinancialReconciliation
+      summary: List card reconciliation rows
+      description: Joins card transactions with receivable and billing context.
+      tags: [Financial]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, authorized_pending_capture, captured, not_authorized, failed, voided]
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [local-card, pagarme-card]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Card reconciliation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardFinancialReconciliationResponse'
+
+  /financial/receivables/{receivableId}/settle:
+    post:
+      operationId: settleFinancialReceivable
+      summary: Settle a receivable
+      description: Applies a manual settlement payment to a receivable.
+      tags: [Financial]
+      parameters:
+        - name: receivableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleReceivableRequest'
+      responses:
+        '200':
+          description: Settled receivable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterFinancialReceivable'
+
+  /fiscal/summary:
+    get:
+      operationId: getFiscalSummary
+      summary: Get fiscal dashboard summary
+      description: Returns fiscal backoffice coverage summary and pending operational scopes.
+      tags: [Fiscal]
+      responses:
+        '200':
+          description: Fiscal dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalDashboardSummary'
+
+  /fiscal/tax-preview:
+    get:
+      operationId: getFiscalTaxPreview
+      summary: Get fiscal tax preview
+      tags: [Fiscal]
+      responses:
+        '200':
+          description: Tax preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalTaxPreview'
+
+  /fiscal/icms:
+    get:
+      operationId: listFiscalIcmsRules
+      summary: List ICMS rules
+      tags: [Fiscal]
+      parameters:
+        - name: ufOrigin
+          in: query
+          schema:
+            type: string
+        - name: ufDestination
+          in: query
+          schema:
+            type: string
+        - name: ncm
+          in: query
+          schema:
+            type: string
+        - name: operationType
+          in: query
+          schema:
+            type: string
+            enum: [interna, interestadual]
+      responses:
+        '200':
+          description: ICMS rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIcmsRuleListResponse'
+
+  /fiscal/pis-cofins:
+    get:
+      operationId: listFiscalPisCofinsRules
+      summary: List PIS/COFINS rules
+      tags: [Fiscal]
+      parameters:
+        - name: regime
+          in: query
+          schema:
+            type: string
+            enum: [simples_nacional, lucro_presumido, lucro_real]
+        - name: appliesTo
+          in: query
+          schema:
+            type: string
+            enum: [mercadoria, servico, ambos]
+      responses:
+        '200':
+          description: PIS/COFINS rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalPisCofinsRuleListResponse'
+
+  /fiscal/cfop:
+    get:
+      operationId: listFiscalCfop
+      summary: List CFOP rules
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: section
+          in: query
+          schema:
+            type: string
+            enum: [entrada, saida]
+        - name: documentType
+          in: query
+          schema:
+            type: string
+            enum: [nfe, nfce, nfse, cte]
+      responses:
+        '200':
+          description: CFOP rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCfopListResponse'
+
+  /fiscal/ncm:
+    get:
+      operationId: listFiscalNcmEntries
+      summary: List NCM entries
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NCM entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNcmEntryListResponse'
+
+  /fiscal/icms-matrix:
+    get:
+      operationId: listFiscalIcmsMatrix
+      summary: List ICMS matrix
+      tags: [Fiscal]
+      parameters:
+        - name: ufOrigin
+          in: query
+          schema:
+            type: string
+        - name: ufDestination
+          in: query
+          schema:
+            type: string
+        - name: operationType
+          in: query
+          schema:
+            type: string
+            enum: [interna, interestadual]
+      responses:
+        '200':
+          description: ICMS matrix rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIcmsMatrixListResponse'
+
+  /fiscal/nfse:
+    get:
+      operationId: listFiscalNfseLayouts
+      summary: List NFS-e layouts
+      tags: [Fiscal]
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: NFS-e layouts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseLayoutListResponse'
+    post:
+      operationId: createFiscalNfseLayout
+      summary: Create NFS-e layout
+      description: Creates a backoffice NFS-e provider layout for a municipality.
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalNfseLayoutRequest'
+      responses:
+        '201':
+          description: Layout created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseLayoutSummary'
+
+  /fiscal/nfse/{layoutId}:
+    patch:
+      operationId: updateFiscalNfseLayout
+      summary: Update NFS-e layout
+      tags: [Fiscal]
+      parameters:
+        - name: layoutId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalNfseLayoutRequest'
+      responses:
+        '200':
+          description: Layout updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseLayoutSummary'
+
+  /fiscal/nfse/documents:
+    get:
+      operationId: listFiscalNfseDocuments
+      summary: List NFS-e documents
+      tags: [Fiscal]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, issued, cancelled, error]
+        - name: customerSearch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NFS-e documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseDocumentListResponse'
+    post:
+      operationId: createFiscalNfseDocument
+      summary: Create NFS-e document
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalNfseDocumentRequest'
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseDocumentSummary'
+
+  /fiscal/nfse/documents/{documentId}:
+    get:
+      operationId: getFiscalNfseDocument
+      summary: Get NFS-e document
+      tags: [Fiscal]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: NFS-e document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseDocumentSummary'
+
+  /fiscal/nfse/documents/{documentId}/issue:
+    post:
+      operationId: issueFiscalNfseDocument
+      summary: Issue NFS-e document
+      tags: [Fiscal]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseDocumentSummary'
+
+  /fiscal/nfse/documents/{documentId}/cancel:
+    post:
+      operationId: cancelFiscalNfseDocument
+      summary: Cancel NFS-e document
+      tags: [Fiscal]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelFiscalNfseDocumentRequest'
+      responses:
+        '200':
+          description: Document cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalNfseDocumentSummary'
+
   /inventory:
     get:
       operationId: listInventoryItems
@@ -2074,6 +2941,303 @@ paths:
         '403':
           description: Forbidden
 
+  /payments/cards/intents:
+    post:
+      operationId: createCardPaymentIntent
+      summary: Create a card payment intent through the safe gateway abstraction
+      tags: [Payments]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardPaymentIntentRequest'
+      responses:
+        '201':
+          description: Card intent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPaymentIntentResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '501':
+          description: Card provider not configured
+
+  /payments/cards/intents/{intentId}/capture:
+    post:
+      operationId: captureCardPaymentIntent
+      summary: Capture an authorized card payment intent
+      tags: [Payments]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Card capture completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPaymentCaptureResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: Card capture failed
+        '501':
+          description: Card capture not available
+
+  /payments/cards/report:
+    get:
+      operationId: getCardPaymentsReport
+      summary: Get operational card payments report
+      tags: [Payments]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Card payments operational report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPaymentsReportResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /integrations/email/messages:
+    post:
+      operationId: sendTransactionalEmail
+      summary: Send transactional email through integration gateway
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailMessageRequest'
+      responses:
+        '201':
+          description: Email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailMessageResponse'
+        '202':
+          description: Email accepted but send failed and may require retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailMessageResponse'
+
+  /integrations/email/messages/{messageId}/retry:
+    post:
+      operationId: retryTransactionalEmail
+      summary: Retry transactional email send
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retry succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailMessageResponse'
+        '202':
+          description: Retry attempted but failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailMessageResponse'
+        '404':
+          description: Email message not found
+
+  /integrations/email/messages/report:
+    get:
+      operationId: getTransactionalEmailReport
+      summary: Get transactional email operational report
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Email report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailMessageReportResponse'
+
+  /integrations/sms/messages:
+    post:
+      operationId: sendTransactionalSms
+      summary: Send transactional SMS through integration gateway
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsMessageRequest'
+      responses:
+        '201':
+          description: SMS sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmsMessageResponse'
+        '202':
+          description: SMS accepted but send failed and may require retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmsMessageResponse'
+
+  /integrations/sms/messages/{messageId}/retry:
+    post:
+      operationId: retryTransactionalSms
+      summary: Retry transactional SMS send
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retry succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmsMessageResponse'
+        '202':
+          description: Retry attempted but failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmsMessageResponse'
+        '404':
+          description: SMS message not found
+
+  /integrations/sms/messages/report:
+    get:
+      operationId: getTransactionalSmsReport
+      summary: Get transactional SMS operational report
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: SMS report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmsMessageReportResponse'
+
+  /integrations/google-calendar/appointments/{appointmentId}/sync:
+    post:
+      operationId: syncAppointmentToGoogleCalendar
+      summary: Sync one appointment to Google Calendar
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Appointment synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarSyncResponse'
+        '202':
+          description: Sync attempted but failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarSyncResponse'
+
+  /integrations/google-calendar/report:
+    get:
+      operationId: getGoogleCalendarOperationalReport
+      summary: Get Google Calendar sync operational report
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Google Calendar report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarSyncReportResponse'
+
+  /integrations/laboratory/equipment-results/imports:
+    post:
+      operationId: importEquipmentResult
+      summary: Import one laboratory result from external equipment bridge
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaboratoryResultImportRequest'
+      responses:
+        '201':
+          description: Result imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+
+  /integrations/laboratory/equipment-results/report:
+    get:
+      operationId: getLaboratoryEquipmentImportReport
+      summary: Get laboratory equipment import operational report
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Equipment import report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportReportResponse'
+
   /webhooks/whatsapp/inbound:
     post:
       operationId: receiveWhatsAppInbound
@@ -2111,6 +3275,32 @@ paths:
               schema:
                 type: string
                 enum: [OK, CONFIRMADO, CANCELADO, AGUARDANDO REMARCA]
+
+  /whatsapp/appointments/{appointmentId}/report:
+    get:
+      operationId: getWhatsAppAppointmentReport
+      summary: Get operational WhatsApp report for a scheduled appointment
+      tags: [Notifications]
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: WhatsApp operational report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppAppointmentReport'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Appointment not found
 
   /sectors:
     get:
@@ -2222,6 +3412,35 @@ paths:
                     type: array
                     items:
                       type: object
+
+  /inpatient/handover-preview:
+    get:
+      operationId: getInpatientHandoverPreview
+      summary: Generate operational handover preview for inpatient stays
+      tags: [Inpatient]
+      parameters:
+        - name: unit
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: ward
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: includeDischarged
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Handover preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientHandoverPreviewResponse'
 
   /inpatient/{stayId}/assign-bed:
     post:
@@ -3466,6 +4685,358 @@ paths:
         '502':
           description: ViaCEP service unavailable
 
+  /laboratory/summary:
+    get:
+      operationId: getLaboratorySummary
+      summary: Get laboratory operational summary
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Laboratory summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryDashboardSummary'
+
+  /diagnostics/summary:
+    get:
+      operationId: getDiagnosticsSummary
+      summary: Get diagnostics operational summary bridge
+      tags: [Diagnostics]
+      responses:
+        '200':
+          description: Diagnostics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryDashboardSummary'
+
+  /laboratory/catalog:
+    get:
+      operationId: listLaboratoryExamCatalog
+      summary: List laboratory exam catalog
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Laboratory exam catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamCatalogListResponse'
+
+  /diagnostics/catalog:
+    get:
+      operationId: listDiagnosticsCatalog
+      summary: List diagnostics exam catalog bridge
+      tags: [Diagnostics]
+      responses:
+        '200':
+          description: Diagnostics exam catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamCatalogListResponse'
+
+  /laboratory/orders:
+    get:
+      operationId: listLaboratoryOrders
+      summary: List laboratory orders
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: encounterId
+          schema:
+            type: string
+          description: Optional encounter filter.
+      responses:
+        '200':
+          description: Laboratory orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+    post:
+      operationId: createLaboratoryOrder
+      summary: Create laboratory order
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagnosticOrderRequest'
+      responses:
+        '201':
+          description: Laboratory order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /diagnostics/orders:
+    get:
+      operationId: listDiagnosticsOrders
+      summary: List diagnostics orders bridge
+      tags: [Diagnostics]
+      parameters:
+        - in: query
+          name: encounterId
+          schema:
+            type: string
+          description: Optional encounter filter.
+      responses:
+        '200':
+          description: Diagnostics orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+    post:
+      operationId: createDiagnosticsOrder
+      summary: Create diagnostics order bridge
+      tags: [Diagnostics]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagnosticOrderRequest'
+      responses:
+        '201':
+          description: Diagnostics order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /laboratory/orders/{orderId}:
+    get:
+      operationId: getLaboratoryOrder
+      summary: Get laboratory order by ID
+      tags: [Laboratory]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+        '404':
+          description: Laboratory order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /diagnostics/orders/{orderId}:
+    get:
+      operationId: getDiagnosticsOrder
+      summary: Get diagnostics order by ID bridge
+      tags: [Diagnostics]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Diagnostics order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+        '404':
+          description: Diagnostics order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /laboratory/orders/{orderId}/result:
+    post:
+      operationId: recordLaboratoryOrderResult
+      summary: Record collection, release or cancellation of a laboratory order
+      tags: [Laboratory]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDiagnosticResultRequest'
+      responses:
+        '200':
+          description: Laboratory order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /diagnostics/orders/{orderId}/result:
+    post:
+      operationId: recordDiagnosticsOrderResult
+      summary: Record collection, release or cancellation of a diagnostics order bridge
+      tags: [Diagnostics]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDiagnosticResultRequest'
+      responses:
+        '200':
+          description: Diagnostics order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /laboratory/results:
+    get:
+      operationId: listLaboratoryResults
+      summary: List released laboratory results
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Optional exam type or catalog code filter.
+      responses:
+        '200':
+          description: Released laboratory results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /diagnostics/results:
+    get:
+      operationId: listDiagnosticsResults
+      summary: List released diagnostics results bridge
+      tags: [Diagnostics]
+      parameters:
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Optional exam type or catalog code filter.
+      responses:
+        '200':
+          description: Released diagnostics results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratory/equipment:
+    get:
+      operationId: listLaboratoryEquipment
+      summary: List laboratory equipment
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Laboratory equipment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentListResponse'
+
+  /diagnostics/equipment:
+    get:
+      operationId: listDiagnosticsEquipment
+      summary: List diagnostics equipment bridge
+      tags: [Diagnostics]
+      responses:
+        '200':
+          description: Diagnostics equipment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentListResponse'
+
+  /laboratory/report-types:
+    get:
+      operationId: listLaboratoryReportTypes
+      summary: List laboratory report types
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Laboratory report types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeListResponse'
+
+  /diagnostics/report-types:
+    get:
+      operationId: listDiagnosticsReportTypes
+      summary: List diagnostics report types bridge
+      tags: [Diagnostics]
+      responses:
+        '200':
+          description: Diagnostics report types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeListResponse'
+
+  /laboratory/reference-values:
+    get:
+      operationId: listLaboratoryReferenceValues
+      summary: List laboratory reference values
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Optional exam type or catalog code filter.
+      responses:
+        '200':
+          description: Laboratory reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+
+  /diagnostics/reference-values:
+    get:
+      operationId: listDiagnosticsReferenceValues
+      summary: List diagnostics reference values bridge
+      tags: [Diagnostics]
+      parameters:
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Optional exam type or catalog code filter.
+      responses:
+        '200':
+          description: Diagnostics reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -3481,6 +5052,15 @@ components:
       name: X-API-Key
       description: |
         API key issued by the /api-keys endpoint for third-party access.
+
+  parameters:
+    FeatureFlagKey:
+      in: path
+      name: key
+      required: true
+      schema:
+        type: string
+      description: Canonical feature flag key.
 
   schemas:
     ErrorResponse:
@@ -3554,6 +5134,215 @@ components:
           type: string
         version:
           type: string
+
+    CreateFeatureFlagRequest:
+      type: object
+      required: [key, owner, description, defaultValue]
+      properties:
+        key:
+          type: string
+        owner:
+          type: string
+        description:
+          type: string
+        defaultValue:
+          type: boolean
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [global, environment, tenant, account, user]
+        expiresAt:
+          type: string
+          format: date-time
+        auditRequired:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+
+    UpdateFeatureFlagRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateFeatureFlagRequest'
+
+    UpsertFeatureFlagOverrideRequest:
+      type: object
+      required: [enabled]
+      properties:
+        environment:
+          type: string
+        accountIdOverride:
+          type: string
+        userId:
+          type: string
+        percentage:
+          type: number
+          nullable: true
+        allowedUsers:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+
+    FeatureFlagDefinition:
+      type: object
+      properties:
+        key:
+          type: string
+        owner:
+          type: string
+        description:
+          type: string
+        defaultValue:
+          type: boolean
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [global, environment, tenant, account, user]
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        auditRequired:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+
+    FeatureFlagDecision:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+        provider:
+          type: string
+
+    FeatureFlagOverride:
+      type: object
+      properties:
+        environment:
+          type: string
+          nullable: true
+        accountIdOverride:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          nullable: true
+        percentage:
+          type: number
+          nullable: true
+        allowedUsers:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+
+    FeatureFlagRolloutSummary:
+      type: object
+      properties:
+        totalOverrides:
+          type: integer
+        enabledOverrides:
+          type: integer
+        percentageRollouts:
+          type: array
+          items:
+            type: number
+        targetedUsers:
+          type: integer
+        targetedAccounts:
+          type: integer
+        targetedEnvironments:
+          type: array
+          items:
+            type: string
+
+    FeatureFlagOperationalReport:
+      type: object
+      properties:
+        key:
+          type: string
+        owner:
+          type: string
+        description:
+          type: string
+        defaultValue:
+          type: boolean
+        auditRequired:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lifecycleStatus:
+          type: string
+          enum: [active, expired, expiring_soon, permanent]
+        tags:
+          type: array
+          items:
+            type: string
+        currentDecision:
+          $ref: '#/components/schemas/FeatureFlagDecision'
+        rolloutSummary:
+          $ref: '#/components/schemas/FeatureFlagRolloutSummary'
+        overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagOverride'
+
+    FeatureFlagListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagDefinition'
+        total:
+          type: integer
+
+    FeatureFlagOverrideListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagOverride'
+        total:
+          type: integer
+
+    FeatureFlagOperationalReportListResponse:
+      type: object
+      properties:
+        environment:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        summary:
+          type: object
+          properties:
+            totalFlags:
+              type: integer
+            auditRequiredFlags:
+              type: integer
+            expiredFlags:
+              type: integer
+            expiringSoonFlags:
+              type: integer
+            enabledForCurrentContext:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureFlagOperationalReport'
 
     LoginRequest:
       type: object
@@ -3819,6 +5608,50 @@ components:
 
     CreateAppointmentRequest:
       type: object
+      required: [patientId, ownerId, scheduledAt, reason]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: number
+          minimum: 1
+          maximum: 480
+          nullable: true
+        visitType:
+          type: string
+          enum: [walk_in, scheduled, return]
+        reason:
+          type: string
+        practitionerStaffId:
+          type: string
+          format: uuid
+          nullable: true
+        serviceId:
+          type: string
+          format: uuid
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        specialty:
+          type: string
+          nullable: true
+        resourceLabel:
+          type: string
+          nullable: true
+        smartSchedulingRecommendationId:
+          type: string
+          nullable: true
+
+    SmartSchedulingRecommendationRequest:
+      type: object
       required: [patientId, scheduledAt]
       properties:
         patientId:
@@ -3827,8 +5660,208 @@ components:
         scheduledAt:
           type: string
           format: date-time
+        visitType:
+          type: string
+          enum: [walk_in, scheduled, return]
         reason:
           type: string
+          nullable: true
+        practitionerStaffId:
+          type: string
+          format: uuid
+          nullable: true
+        serviceId:
+          type: string
+          format: uuid
+          nullable: true
+        specialty:
+          type: string
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        resourceLabel:
+          type: string
+          nullable: true
+
+    SmartSchedulingRecommendationResponse:
+      type: object
+      required:
+        - recommendationId
+        - predictedDurationMinutes
+        - confidence
+        - historicalAverageMinutes
+        - suggestedBufferMinutes
+        - factors
+        - basedOn
+      properties:
+        recommendationId:
+          type: string
+        predictedDurationMinutes:
+          type: integer
+          minimum: 15
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        historicalAverageMinutes:
+          type: integer
+          minimum: 0
+        suggestedBufferMinutes:
+          type: integer
+          minimum: 0
+        factors:
+          type: array
+          items:
+            type: string
+        basedOn:
+          type: object
+          required: [patientId, previousVisits, visitType]
+          properties:
+            patientId:
+              type: string
+              format: uuid
+            previousVisits:
+              type: integer
+              minimum: 0
+            visitType:
+              type: string
+              enum: [walk_in, scheduled, return]
+
+    OcrFiscalPreviewRequest:
+      type: object
+      required: [rawText]
+      properties:
+        rawText:
+          type: string
+        documentName:
+          type: string
+
+    OcrFiscalLineItem:
+      type: object
+      properties:
+        description:
+          type: string
+        quantity:
+          type: number
+          nullable: true
+        unitAmount:
+          type: number
+          nullable: true
+        totalAmount:
+          type: number
+          nullable: true
+
+    OcrFiscalPreviewResponse:
+      type: object
+      properties:
+        previewId:
+          type: string
+        detectedType:
+          type: string
+          enum: [nfse, nfe, receipt, unknown]
+        confidence:
+          type: number
+        documentNumber:
+          type: string
+          nullable: true
+        series:
+          type: string
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          nullable: true
+        issuerDocument:
+          type: string
+          nullable: true
+        recipientDocument:
+          type: string
+          nullable: true
+        totalAmount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          enum: [BRL]
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/OcrFiscalLineItem'
+        warnings:
+          type: array
+          items:
+            type: string
+
+    DemandForecastDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        predictedAppointments:
+          type: integer
+        predictedMinutes:
+          type: integer
+        peakVisitType:
+          type: string
+          enum: [scheduled, return, walk_in, mixed]
+        confidence:
+          type: number
+
+    DemandForecastResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        horizonDays:
+          type: integer
+        baselineSampleSize:
+          type: integer
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DemandForecastDay'
+
+    LabAnomalyFlag:
+      type: object
+      properties:
+        orderId:
+          type: string
+        examType:
+          type: string
+        parameter:
+          type: string
+        observedValue:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          enum: [warning, critical]
+        classification:
+          type: string
+          enum: [out_of_range, keyword_match]
+        message:
+          type: string
+
+    LabAnomalyDetectionResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        totalAnalyzed:
+          type: integer
+        flaggedOrders:
+          type: integer
+        flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabAnomalyFlag'
 
     QueueEntry:
       type: object
@@ -4061,6 +6094,971 @@ components:
         unitPriceAmount:
           type: number
 
+    EncounterReceivablePayment:
+      type: object
+      properties:
+        id:
+          type: string
+        receivableId:
+          type: string
+        financialAccountId:
+          type: string
+        encounterId:
+          type: string
+        amountPaid:
+          type: number
+        paidAt:
+          type: string
+          format: date-time
+        paidByUserId:
+          type: string
+          nullable: true
+        externalReferenceType:
+          type: string
+          enum: [pix_transaction, cash_movement, billing_record, other]
+          nullable: true
+        externalReferenceId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    EncounterFinancialReceivable:
+      type: object
+      properties:
+        id:
+          type: string
+        encounterId:
+          type: string
+        financialAccountId:
+          type: string
+        installmentNumber:
+          type: integer
+        installmentLabel:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [open, settled]
+        amountOriginal:
+          type: number
+        amountPaid:
+          type: number
+        amountOutstanding:
+          type: number
+        issuedAt:
+          type: string
+          format: date-time
+        settledAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterReceivablePayment'
+
+    EncounterFinancialSummary:
+      type: object
+      properties:
+        encounterId:
+          type: string
+        accountId:
+          type: string
+        encounterStatus:
+          type: string
+          enum: [open, closed]
+        patientId:
+          type: string
+        patientName:
+          type: string
+        patientSpecies:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+        ownerName:
+          type: string
+        ownerPhoneMain:
+          type: string
+          nullable: true
+        financialStatus:
+          type: string
+          enum: [pending, partial, paid]
+        financialClosed:
+          type: boolean
+        subtotal:
+          type: number
+        discountTotal:
+          type: number
+        total:
+          type: number
+        paidAmount:
+          type: number
+        balanceDue:
+          type: number
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closedByUserId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        receivable:
+          allOf:
+            - $ref: '#/components/schemas/EncounterFinancialReceivable'
+          nullable: true
+        receivables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterFinancialReceivable'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterReceivablePayment'
+
+    FinancialReceivableListItem:
+      allOf:
+        - $ref: '#/components/schemas/EncounterFinancialReceivable'
+        - type: object
+          properties:
+            encounterStatus:
+              type: string
+              enum: [open, closed]
+            patientId:
+              type: string
+            patientName:
+              type: string
+            patientSpecies:
+              type: string
+              nullable: true
+            ownerId:
+              type: string
+            ownerName:
+              type: string
+            ownerPhoneMain:
+              type: string
+              nullable: true
+            financialStatus:
+              type: string
+              enum: [pending, partial, paid]
+            totalAmount:
+              type: number
+            lastClosedAt:
+              type: string
+              format: date-time
+              nullable: true
+
+    FinancialReceivableListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialReceivableListItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        openCount:
+          type: integer
+        settledCount:
+          type: integer
+        totalOutstanding:
+          type: number
+        totalSettled:
+          type: number
+
+    FinancialAgingBucket:
+      type: object
+      properties:
+        bucket:
+          type: string
+          enum: [current, 1_30, 31_60, 61_90, 91_plus]
+        label:
+          type: string
+        count:
+          type: integer
+        amount:
+          type: number
+
+    FinancialAgingLine:
+      type: object
+      properties:
+        receivableId:
+          type: string
+        encounterId:
+          type: string
+        installmentLabel:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        amountOutstanding:
+          type: number
+        patientName:
+          type: string
+        ownerName:
+          type: string
+        bucket:
+          type: string
+          enum: [current, 1_30, 31_60, 61_90, 91_plus]
+        financialStatus:
+          type: string
+
+    FinancialAgingReportResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        totalOpenCount:
+          type: integer
+        totalOpenAmount:
+          type: number
+        currentAmount:
+          type: number
+        overdueAmount:
+          type: number
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialAgingBucket'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialAgingLine'
+
+    FinancialReconciliationItem:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        provider:
+          type: string
+          enum: [local-pix, mock, pagarme]
+        status:
+          type: string
+          enum: [pending, completed, expired, cancelled]
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        providerTransactionId:
+          type: string
+          nullable: true
+        providerConfirmationId:
+          type: string
+          nullable: true
+        providerWebhookEventId:
+          type: string
+          nullable: true
+        billingRecordId:
+          type: string
+          nullable: true
+        billingSettlementStatus:
+          type: string
+        billingSettledAt:
+          type: string
+          format: date-time
+          nullable: true
+        billingSettlementError:
+          type: string
+          nullable: true
+        cashReconciliationStatus:
+          type: string
+        cashReconciledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cashReconciliationError:
+          type: string
+          nullable: true
+        cashRegisterId:
+          type: string
+          nullable: true
+        cashMovementId:
+          type: string
+          nullable: true
+        encounterId:
+          type: string
+          nullable: true
+        encounterStatus:
+          type: string
+          nullable: true
+        financialStatus:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          nullable: true
+        patientName:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        receivableIds:
+          type: array
+          items:
+            type: string
+        receivableLabels:
+          type: array
+          items:
+            type: string
+        receivableStatuses:
+          type: array
+          items:
+            type: string
+        receivablePaymentIds:
+          type: array
+          items:
+            type: string
+        receivablePaidAmount:
+          type: number
+        reconciliationState:
+          type: string
+          enum: [pending, attention_required, reconciled]
+
+    FinancialReconciliationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialReconciliationItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        completedCount:
+          type: integer
+        reconciledCount:
+          type: integer
+        attentionCount:
+          type: integer
+        pendingCount:
+          type: integer
+
+    CardFinancialReconciliationItem:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        provider:
+          type: string
+          enum: [local-card, pagarme-card]
+        status:
+          type: string
+          enum: [pending, authorized_pending_capture, captured, not_authorized, failed, voided]
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        installments:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        capturedAt:
+          type: string
+          format: date-time
+          nullable: true
+        providerOrderId:
+          type: string
+          nullable: true
+        providerChargeId:
+          type: string
+          nullable: true
+        providerAuthorizationCode:
+          type: string
+          nullable: true
+        providerReferenceId:
+          type: string
+          nullable: true
+        billingRecordId:
+          type: string
+          nullable: true
+        billingSettlementStatus:
+          type: string
+        billingSettledAt:
+          type: string
+          format: date-time
+          nullable: true
+        billingSettlementError:
+          type: string
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        encounterId:
+          type: string
+          nullable: true
+        encounterStatus:
+          type: string
+          nullable: true
+        financialStatus:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          nullable: true
+        patientName:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        cardHolderName:
+          type: string
+          nullable: true
+        cardBrand:
+          type: string
+          nullable: true
+        cardLast4:
+          type: string
+          nullable: true
+        receivableIds:
+          type: array
+          items:
+            type: string
+        receivableLabels:
+          type: array
+          items:
+            type: string
+        receivableStatuses:
+          type: array
+          items:
+            type: string
+        receivablePaymentIds:
+          type: array
+          items:
+            type: string
+        receivablePaidAmount:
+          type: number
+        reconciliationState:
+          type: string
+          enum: [pending, attention_required, reconciled]
+
+    CardFinancialReconciliationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardFinancialReconciliationItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        capturedCount:
+          type: integer
+        awaitingCaptureCount:
+          type: integer
+        attentionCount:
+          type: integer
+        pendingCount:
+          type: integer
+        reconciledCount:
+          type: integer
+
+    EncounterFinancialInstallmentRequest:
+      type: object
+      required: [amount]
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    EncounterFinancialCloseRequest:
+      type: object
+      properties:
+        paidAmount:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        installments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterFinancialInstallmentRequest'
+
+    SettleReceivableRequest:
+      type: object
+      required: [amountPaid]
+      properties:
+        amountPaid:
+          type: number
+        notes:
+          type: string
+          nullable: true
+
+    FiscalDashboardAlert:
+      type: object
+      properties:
+        variant:
+          type: string
+          enum: [info, warning]
+        title:
+          type: string
+        message:
+          type: string
+
+    FiscalDashboardSummary:
+      type: object
+      properties:
+        activeTaxes:
+          type: integer
+        cfopCount:
+          type: integer
+        nfseLayouts:
+          type: integer
+        icmsRules:
+          type: integer
+        pisCofinsRules:
+          type: integer
+        ncmEntries:
+          type: integer
+        readOnly:
+          type: boolean
+        backendScope:
+          type: string
+        pendingScopes:
+          type: array
+          items:
+            type: string
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalDashboardAlert'
+
+    FiscalIcmsRuleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        ufOrigin:
+          type: string
+        ufDestination:
+          type: string
+        ncm:
+          type: string
+        rate:
+          type: number
+        cst:
+          type: string
+        operationType:
+          type: string
+          enum: [interna, interestadual]
+
+    FiscalPisCofinsRuleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        regime:
+          type: string
+          enum: [simples_nacional, lucro_presumido, lucro_real]
+        appliesTo:
+          type: string
+          enum: [mercadoria, servico, ambos]
+        pisRate:
+          type: number
+        cofinsRate:
+          type: number
+        notes:
+          type: string
+
+    FiscalCfopSummary:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        section:
+          type: string
+          enum: [entrada, saida]
+        category:
+          type: string
+        applicableTo:
+          type: array
+          items:
+            type: string
+            enum: [nfe, nfce, nfse, cte]
+        icmsRelevant:
+          type: boolean
+        pisCofinsRelevant:
+          type: boolean
+        ipiRelevant:
+          type: boolean
+        documentTypesLabel:
+          type: string
+
+    FiscalNcmEntrySummary:
+      type: object
+      properties:
+        id:
+          type: string
+        ncm:
+          type: string
+        category:
+          type: string
+        ipiRate:
+          type: number
+        source:
+          type: string
+        notes:
+          type: string
+
+    FiscalIcmsMatrixRowSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        ufOrigin:
+          type: string
+        ufDestination:
+          type: string
+        rate:
+          type: number
+        operationType:
+          type: string
+          enum: [interna, interestadual]
+
+    FiscalNfseCustomerSummary:
+      type: object
+      required: [type, document, name]
+      properties:
+        type:
+          type: string
+          enum: [cpf, cnpj]
+        document:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+
+    FiscalNfseServiceLineSummary:
+      type: object
+      required: [description, codigoServico, cnae, quantity, unitValue, totalValue, issRate, issValue, pisValue, cofinsValue, csllValue]
+      properties:
+        description:
+          type: string
+        codigoServico:
+          type: string
+        cnae:
+          type: string
+        quantity:
+          type: number
+        unitValue:
+          type: number
+        totalValue:
+          type: number
+        issRate:
+          type: number
+        issValue:
+          type: number
+        pisValue:
+          type: number
+        cofinsValue:
+          type: number
+        csllValue:
+          type: number
+        irrfValue:
+          type: number
+          nullable: true
+        inssValue:
+          type: number
+          nullable: true
+
+    FiscalNfseDocumentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        serie:
+          type: string
+        numero:
+          type: integer
+        competencia:
+          type: string
+        provider:
+          type: string
+          enum: [abrasf, iss_sp, iss_net, nota_rio]
+        customer:
+          $ref: '#/components/schemas/FiscalNfseCustomerSummary'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalNfseServiceLineSummary'
+        subtotal:
+          type: number
+        totalIss:
+          type: number
+        totalPis:
+          type: number
+        totalCofins:
+          type: number
+        totalCsll:
+          type: number
+        totalIrrf:
+          type: number
+          nullable: true
+        totalInss:
+          type: number
+          nullable: true
+        totalDocument:
+          type: number
+        observations:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [draft, issued, cancelled, error]
+        authorizationCode:
+          type: string
+          nullable: true
+        verificationUrl:
+          type: string
+          nullable: true
+
+    FiscalNfseLayoutSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        municipalityCode:
+          type: string
+        provider:
+          type: string
+        version:
+          type: string
+        active:
+          type: boolean
+        environment:
+          type: string
+          enum: [producao, homologacao]
+        serviceCode:
+          type: string
+        serviceFocus:
+          type: string
+
+    CreateFiscalNfseLayoutRequest:
+      type: object
+      required: [city, state, provider, version, environment]
+      properties:
+        city:
+          type: string
+        state:
+          type: string
+        municipalityCode:
+          type: string
+        provider:
+          type: string
+        version:
+          type: string
+        active:
+          type: boolean
+        environment:
+          type: string
+          enum: [producao, homologacao]
+        serviceCode:
+          type: string
+        serviceFocus:
+          type: string
+
+    UpdateFiscalNfseLayoutRequest:
+      type: object
+      properties:
+        city:
+          type: string
+        state:
+          type: string
+        municipalityCode:
+          type: string
+        provider:
+          type: string
+        version:
+          type: string
+        active:
+          type: boolean
+        environment:
+          type: string
+          enum: [producao, homologacao]
+        serviceCode:
+          type: string
+        serviceFocus:
+          type: string
+
+    CreateFiscalNfseDocumentRequest:
+      type: object
+      required: [customer, services]
+      properties:
+        competencia:
+          type: string
+        serie:
+          type: string
+        numero:
+          type: integer
+        provider:
+          type: string
+          enum: [abrasf, iss_sp, iss_net, nota_rio]
+        municipalityCode:
+          type: string
+        apiUrl:
+          type: string
+        customer:
+          $ref: '#/components/schemas/FiscalNfseCustomerSummary'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalNfseServiceLineSummary'
+        observations:
+          type: string
+
+    CancelFiscalNfseDocumentRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    FiscalTaxPreview:
+      type: object
+      properties:
+        mercadoria:
+          $ref: '#/components/schemas/FiscalTaxPreviewLine'
+        servico:
+          $ref: '#/components/schemas/FiscalTaxPreviewLine'
+
+    FiscalTaxPreviewLine:
+      type: object
+      properties:
+        baseValue:
+          type: number
+        totalTaxValue:
+          type: number
+        totalWithTax:
+          type: number
+
+    FiscalIcmsRuleListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalIcmsRuleSummary'
+
+    FiscalPisCofinsRuleListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalPisCofinsRuleSummary'
+
+    FiscalCfopListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalCfopSummary'
+
+    FiscalNcmEntryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalNcmEntrySummary'
+
+    FiscalIcmsMatrixListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalIcmsMatrixRowSummary'
+
+    FiscalNfseLayoutListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalNfseLayoutSummary'
+
+    FiscalNfseDocumentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalNfseDocumentSummary'
+
     InventoryItem:
       type: object
       properties:
@@ -4148,6 +7146,35 @@ components:
           type: string
           format: date-time
 
+    WhatsAppAppointmentReport:
+      type: object
+      required: [appointmentId, deliveryStatus, vendorProvider, vendorMessageId, lastError, correlationIds, events]
+      properties:
+        appointmentId:
+          type: string
+          format: uuid
+        deliveryStatus:
+          type: string
+          enum: [not_scheduled, scheduled, sent, failed, confirmed, cancelled, reschedule_requested]
+        vendorProvider:
+          type: string
+          nullable: true
+          enum: [twilio, 360dialog]
+        vendorMessageId:
+          type: string
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        correlationIds:
+          type: array
+          items:
+            type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+
     Sector:
       type: object
       properties:
@@ -4223,6 +7250,75 @@ components:
         bedId:
           type: string
           format: uuid
+
+    InpatientHandoverPreviewResponse:
+      type: object
+      required: [generatedAt, totalActiveStays, items]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        totalActiveStays:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InpatientHandoverPreviewItem'
+
+    InpatientHandoverPreviewItem:
+      type: object
+      required:
+        [
+          stayId,
+          encounterId,
+          patientId,
+          unit,
+          ward,
+          bed,
+          status,
+          latestProgressNote,
+          latestProgressAt,
+          transferTarget,
+          requiresAttention
+        ]
+      properties:
+        stayId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        unit:
+          type: string
+        ward:
+          type: string
+        bed:
+          type: string
+        status:
+          type: string
+          enum: [admitted, stable, transferred, discharged]
+        latestProgressNote:
+          type: string
+          nullable: true
+        latestProgressAt:
+          type: string
+          format: date-time
+          nullable: true
+        transferTarget:
+          type: object
+          required: [unit, ward]
+          properties:
+            unit:
+              type: string
+              nullable: true
+            ward:
+              type: string
+              nullable: true
+        requiresAttention:
+          type: boolean
 
     Team:
       type: object
@@ -4443,6 +7539,205 @@ components:
       properties:
         reason:
           type: string
+
+    ExamCatalogEntry:
+      type: object
+      required: [id, code, name, category]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        requiresPreparation:
+          type: boolean
+        preparationInstructions:
+          type: string
+
+    DiagnosticOrderSummary:
+      type: object
+      required:
+        [id, accountId, encounterId, patientId, examType, reason, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        encounterId:
+          type: string
+        patientId:
+          type: string
+        examType:
+          type: string
+        examCatalogId:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [requested, collected, resulted, cancelled]
+        collectedAt:
+          type: string
+          format: date-time
+        collectedByUserId:
+          type: string
+        resultSummary:
+          type: string
+        resultAttachmentId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateDiagnosticOrderRequest:
+      type: object
+      required: [encounterId, patientId, examType, reason]
+      properties:
+        encounterId:
+          type: string
+        patientId:
+          type: string
+        examType:
+          type: string
+        examCatalogId:
+          type: string
+        reason:
+          type: string
+
+    RecordDiagnosticResultRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [collected, resulted, cancelled]
+        resultSummary:
+          type: string
+        resultAttachmentId:
+          type: string
+        collectedByUserId:
+          type: string
+
+    DiagnosticOrderListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+    ExamCatalogListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamCatalogEntry'
+
+    LaboratoryDashboardSummary:
+      type: object
+      required: [totalOrders, pendingOrders, pendingResults, releasedResults, equipmentActive]
+      properties:
+        totalOrders:
+          type: integer
+        pendingOrders:
+          type: integer
+        pendingResults:
+          type: integer
+        releasedResults:
+          type: integer
+        equipmentActive:
+          type: integer
+
+    LaboratoryEquipmentSummary:
+      type: object
+      required: [id, name, type, serialNumber, status, lastCalibrationAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+          enum: [active, maintenance]
+        lastCalibrationAt:
+          type: string
+          format: date-time
+
+    LaboratoryEquipmentListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+
+    LaboratoryReportTypeSummary:
+      type: object
+      required: [id, name, code, category, description, active]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+
+    LaboratoryReportTypeListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboratoryReportTypeSummary'
+
+    LaboratoryReferenceValueSummary:
+      type: object
+      required: [id, parameter, examType, minValue, maxValue, unit]
+      properties:
+        id:
+          type: string
+        parameter:
+          type: string
+        examType:
+          type: string
+        minValue:
+          type: number
+        maxValue:
+          type: number
+        unit:
+          type: string
+
+    LaboratoryReferenceValueListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
 
     Discharge:
       type: object
@@ -4716,6 +8011,10 @@ components:
           properties:
             provider:
               type: string
+            capabilities:
+              type: array
+              items:
+                type: string
             endpoints:
               type: array
               items:
@@ -4763,10 +8062,487 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    CardPaymentIntentRequest:
+      type: object
+      required: [amount, description, cardHolderName, last4, customerName, customerEmail]
+      properties:
+        billingRecordId:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+        cardHolderName:
+          type: string
+        brand:
+          type: string
+        last4:
+          type: string
+          pattern: '^[0-9]{4}$'
+        installments:
+          type: integer
+          minimum: 1
+          maximum: 12
+        capture:
+          type: boolean
+        cardToken:
+          type: string
+        cardId:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        customerType:
+          type: string
+          enum: [individual, company]
+        customerDocument:
+          type: string
+        billingAddress:
+          type: object
+          properties:
+            line1:
+              type: string
+            line2:
+              type: string
+            zipCode:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            country:
+              type: string
+
+    CardPaymentCardSummary:
+      type: object
+      properties:
+        holderName:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        last4:
+          type: string
+
+    CardPaymentIntentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        accountId:
+          type: string
+        billingRecordId:
+          type: string
+          nullable: true
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        installments:
+          type: integer
+        status:
+          type: string
+          enum: [pending, authorized_pending_capture, captured, not_authorized, failed]
+        card:
+          $ref: '#/components/schemas/CardPaymentCardSummary'
+        createdAt:
+          type: string
+          format: date-time
+        providerOrderId:
+          type: string
+          nullable: true
+        providerChargeId:
+          type: string
+          nullable: true
+        providerAuthorizationCode:
+          type: string
+          nullable: true
+        providerReferenceId:
+          type: string
+          nullable: true
         eventId:
           type: string
         eventCorrelationId:
           type: string
+
+    CardPaymentCaptureResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [captured, failed]
+        providerOrderId:
+          type: string
+          nullable: true
+        providerChargeId:
+          type: string
+          nullable: true
+        providerAuthorizationCode:
+          type: string
+          nullable: true
+        providerReferenceId:
+          type: string
+          nullable: true
+        capturedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        eventId:
+          type: string
+        eventCorrelationId:
+          type: string
+
+    CardPaymentsReportSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        captured:
+          type: integer
+        awaitingCapture:
+          type: integer
+        failed:
+          type: integer
+        pendingBilling:
+          type: integer
+
+    CardPaymentsReportResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        summary:
+          $ref: '#/components/schemas/CardPaymentsReportSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardFinancialReconciliationItem'
+
+    EmailMessageRequest:
+      type: object
+      required: [to, subject, text]
+      properties:
+        to:
+          type: string
+          format: email
+        subject:
+          type: string
+        text:
+          type: string
+        maxRetries:
+          type: integer
+          minimum: 0
+          maximum: 5
+
+    EmailMessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+        accountId:
+          type: string
+        provider:
+          type: string
+          enum: [local-email, resend]
+        to:
+          type: string
+          format: email
+        subject:
+          type: string
+        text:
+          type: string
+        status:
+          type: string
+          enum: [queued, sent, failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        providerMessageId:
+          type: string
+          nullable: true
+        retryCount:
+          type: integer
+        maxRetries:
+          type: integer
+
+    EmailMessageReportSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        sent:
+          type: integer
+        failed:
+          type: integer
+        queued:
+          type: integer
+
+    EmailMessageReportResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        summary:
+          $ref: '#/components/schemas/EmailMessageReportSummary'
+        operational:
+          $ref: '#/components/schemas/EmailMessageOperationalReport'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailMessageResponse'
+
+    EmailMessageOperationalReport:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [mock, provider]
+        defaultFrom:
+          type: string
+          format: email
+        resendConfigured:
+          type: boolean
+        pendingRetries:
+          type: integer
+        byProvider:
+          type: object
+          properties:
+            local-email:
+              type: integer
+            resend:
+              type: integer
+
+    SmsMessageRequest:
+      type: object
+      required: [to, text]
+      properties:
+        to:
+          type: string
+        text:
+          type: string
+        maxRetries:
+          type: integer
+          minimum: 0
+          maximum: 5
+
+    SmsMessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+        accountId:
+          type: string
+        provider:
+          type: string
+          enum: [local-sms, twilio]
+        to:
+          type: string
+        text:
+          type: string
+        status:
+          type: string
+          enum: [queued, sent, failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        providerMessageId:
+          type: string
+          nullable: true
+        retryCount:
+          type: integer
+        maxRetries:
+          type: integer
+
+    SmsMessageReportSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        sent:
+          type: integer
+        failed:
+          type: integer
+        queued:
+          type: integer
+
+    SmsMessageOperationalReport:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [mock, provider]
+        defaultFrom:
+          type: string
+        smsConfigured:
+          type: boolean
+        pendingRetries:
+          type: integer
+
+    SmsMessageReportResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        summary:
+          $ref: '#/components/schemas/SmsMessageReportSummary'
+        operational:
+          $ref: '#/components/schemas/SmsMessageOperationalReport'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SmsMessageResponse'
+
+    GoogleCalendarSyncResponse:
+      type: object
+      properties:
+        appointmentId:
+          type: string
+        accountId:
+          type: string
+        provider:
+          type: string
+          enum: [local-google-calendar, google-calendar]
+        status:
+          type: string
+          enum: [synced, cancelled, failed]
+        externalEventId:
+          type: string
+          nullable: true
+        lastSyncedAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+          nullable: true
+
+    GoogleCalendarSyncReportResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        operational:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [mock, provider]
+            configured:
+              type: boolean
+            calendarId:
+              type: string
+              nullable: true
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            synced:
+              type: integer
+            cancelled:
+              type: integer
+            failed:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoogleCalendarSyncResponse'
+
+    LaboratoryResultImportRequest:
+      type: object
+      required: [externalResultId, orderId, equipmentId, resultSummary]
+      properties:
+        externalResultId:
+          type: string
+        orderId:
+          type: string
+        equipmentId:
+          type: string
+        resultSummary:
+          type: string
+
+    LaboratoryResultImportResponse:
+      type: object
+      properties:
+        externalResultId:
+          type: string
+        orderId:
+          type: string
+        accountId:
+          type: string
+        equipmentId:
+          type: string
+        status:
+          type: string
+          enum: [imported, failed]
+        importedAt:
+          type: string
+          format: date-time
+        resultSummary:
+          type: string
+        failureReason:
+          type: string
+          nullable: true
+
+    LaboratoryResultImportReportResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            imported:
+              type: integer
+            failed:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboratoryResultImportResponse'
 
     CreateWebhookRequest:
       type: object

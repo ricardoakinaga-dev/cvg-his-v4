@@ -11,6 +11,16 @@ import type {
 // ============================================================================
 
 const registry = new Registry();
+const REQUEST_SLO_OBSERVATION_LIMIT = 20_000;
+const REQUEST_SLO_OBSERVATION_RETENTION_MS = 60 * 60 * 1000;
+
+interface RequestSloObservation {
+  readonly timestamp: number;
+  readonly durationMs: number;
+  readonly statusCode: number;
+}
+
+const requestSloObservations: RequestSloObservation[] = [];
 
 // Collect default Node.js metrics (event loop, GC, handles, etc.)
 collectDefaultMetrics({ register: registry });
@@ -86,6 +96,20 @@ export const appRateLimiterMode = new Gauge({
 export const appRuntimeDistributedStateEnabled = new Gauge({
   name: 'app_runtime_distributed_state_enabled',
   help: 'Whether distributed runtime state is enabled for this API runtime (1 = enabled, 0 = disabled)',
+  registers: [registry]
+});
+
+export const smartSchedulingRecommendationsTotal = new Counter({
+  name: 'smart_scheduling_recommendations_total',
+  help: 'Total number of smart scheduling recommendations generated',
+  labelNames: ['visit_type', 'confidence_band'] as const,
+  registers: [registry]
+});
+
+export const smartSchedulingRecommendationAppliesTotal = new Counter({
+  name: 'smart_scheduling_recommendation_applies_total',
+  help: 'Total number of smart scheduling recommendations applied on appointment creation',
+  labelNames: ['visit_type'] as const,
   registers: [registry]
 });
 
@@ -173,6 +197,88 @@ export async function getMetricsText(): Promise<string> {
   return registry.metrics();
 }
 
+function pruneSloObservations(now = Date.now()): void {
+  const cutoff = now - REQUEST_SLO_OBSERVATION_RETENTION_MS;
+  while (requestSloObservations.length > 0) {
+    const oldest = requestSloObservations[0];
+    if (!oldest || oldest.timestamp >= cutoff) {
+      break;
+    }
+    requestSloObservations.shift();
+  }
+
+  if (requestSloObservations.length > REQUEST_SLO_OBSERVATION_LIMIT) {
+    requestSloObservations.splice(0, requestSloObservations.length - REQUEST_SLO_OBSERVATION_LIMIT);
+  }
+}
+
+export function recordRequestSloObservation(input: {
+  readonly durationMs: number;
+  readonly statusCode: number;
+  readonly timestamp?: number;
+}): void {
+  const timestamp = input.timestamp ?? Date.now();
+  requestSloObservations.push({
+    timestamp,
+    durationMs: Math.max(0, input.durationMs),
+    statusCode: input.statusCode
+  });
+  pruneSloObservations(timestamp);
+}
+
+export function resetRequestSloObservations(): void {
+  requestSloObservations.length = 0;
+}
+
+function percentile(values: readonly number[], p: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[index] ?? 0;
+}
+
+export interface CurrentSloSnapshot {
+  readonly generatedAt: string;
+  readonly latencyWindowMinutes: number;
+  readonly availabilityWindowMinutes: number;
+  readonly requestCount5m: number;
+  readonly requestCount1h: number;
+  readonly p95LatencyMs: number;
+  readonly p99LatencyMs: number;
+  readonly availabilityPercent: number;
+  readonly errorRatePercent: number;
+}
+
+export function getCurrentSloSnapshot(now = Date.now()): CurrentSloSnapshot {
+  pruneSloObservations(now);
+  const last5mCutoff = now - 5 * 60 * 1000;
+  const last1hCutoff = now - 60 * 60 * 1000;
+  const last5m = requestSloObservations.filter((sample) => sample.timestamp >= last5mCutoff);
+  const last1h = requestSloObservations.filter((sample) => sample.timestamp >= last1hCutoff);
+
+  const durations = last5m.map((sample) => sample.durationMs);
+  const last1hFailures = last1h.filter((sample) => sample.statusCode >= 500).length;
+  const last5mFailures = last5m.filter((sample) => sample.statusCode >= 500).length;
+  const availabilityPercent =
+    last1h.length === 0 ? 100 : ((last1h.length - last1hFailures) / last1h.length) * 100;
+  const errorRatePercent = last5m.length === 0 ? 0 : (last5mFailures / last5m.length) * 100;
+
+  return {
+    generatedAt: new Date(now).toISOString(),
+    latencyWindowMinutes: 5,
+    availabilityWindowMinutes: 60,
+    requestCount5m: last5m.length,
+    requestCount1h: last1h.length,
+    p95LatencyMs: Number(percentile(durations, 95).toFixed(2)),
+    p99LatencyMs: Number(percentile(durations, 99).toFixed(2)),
+    availabilityPercent: Number(availabilityPercent.toFixed(4)),
+    errorRatePercent: Number(errorRatePercent.toFixed(4))
+  };
+}
+
 // ============================================================================
 // Update Functions (called periodically or on state changes)
 // ============================================================================
@@ -216,6 +322,26 @@ export function resetActiveRequestsCount(): void {
   appActiveRequests.set(0);
 }
 
+export function recordSmartSchedulingRecommendation(input: {
+  readonly visitType: string;
+  readonly confidence: number;
+}): void {
+  const confidenceBand =
+    input.confidence >= 0.85 ? 'high' : input.confidence >= 0.7 ? 'medium' : 'low';
+  smartSchedulingRecommendationsTotal.inc({
+    visit_type: input.visitType,
+    confidence_band: confidenceBand
+  });
+}
+
+export function recordSmartSchedulingRecommendationApplied(input: {
+  readonly visitType: string;
+}): void {
+  smartSchedulingRecommendationAppliesTotal.inc({
+    visit_type: input.visitType
+  });
+}
+
 // ============================================================================
 // Route Normalization
 // Prevents high cardinality from dynamic route segments
@@ -249,7 +375,7 @@ export function normalizeRoute(pathname: string): string {
     [/^\/admin\/commercial-dashboard$/, '/admin/commercial-dashboard'],
     // Generic resource patterns: /resource/:id, /resource/:id/sub-resource
     [
-      /^\/(owners|patients|encounters|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,
+      /^\/(owners|patients|encounters|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|laboratory|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,
       '/{resource}/:id'
     ]
   ];

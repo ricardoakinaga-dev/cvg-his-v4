@@ -28,9 +28,9 @@
 └─────────────────────┬───────────────────────────────────────┘
                       │ OTLP HTTP
 ┌─────────────────────▼───────────────────────────────────────┐
-│  Collector (external)│ Receives traces from API/Worker       │
-│  Not included in    │ Configure via OTEL_EXPORTER_OTLP_ENDPOINT │
-│  this repo          │                                       │
+│  OTEL Collector     │ Receives traces from API/Worker       │
+│  infra/observability│ Docker profile: observability         │
+│  /otel-collector... │ OTLP HTTP :4318                       │
 └─────────────────────┬───────────────────────────────────────┘
 ```
 
@@ -80,6 +80,7 @@ Ref: `apps/api/src/slos.ts`
 - Middleware de tracing no handler HTTP (spans por request)
 - Spans de DB no `shared-database`
 - Spans de worker jobs
+- Async trace handoff via outbox/event-bus (`payload._meta.traceparent`) para correlação API → worker
 - `x-trace-id` exposto no response header
 
 ### 4.2 Variáveis de ambiente
@@ -89,11 +90,22 @@ Ref: `apps/api/src/slos.ts`
 | `OTEL_ENABLED` | Habilita OTel SDK | `true` |
 | `OTEL_SERVICE_NAME` | Nome do serviço | `cvg-api` |
 | `OTEL_ENVIRONMENT` | Ambiente | `production` |
-| `OTLP_TRACES_ENDPOINT` | Endpoint OTLP | `http://collector:4318/v1/traces` |
+| `OTLP_TRACES_ENDPOINT` | Endpoint OTLP | `http://otel-collector:4318/v1/traces` |
 | `OTLP_PROTOCOL` | Protocolo | `http/protobuf` |
 | `OTLP_HEADERS` | Headers auth | `Authorization=Bearer xxx` |
 
-### 4.3 Como adicionar tracing a uma função
+### 4.3 Subir stack de observabilidade local
+
+```bash
+docker compose --profile observability up -d otel-collector prometheus grafana
+```
+
+Portas:
+- OTEL collector: `4318`
+- Prometheus: `9090`
+- Grafana: `3005`
+
+### 4.4 Como adicionar tracing a uma função
 
 ```typescript
 import { withSpan } from './tracing.js';
@@ -207,7 +219,6 @@ curl -s http://localhost:3001/slos | jq .
 
 ## 10. Limitações atuais
 
-- Sem collector OTLP incluído no docker-compose (precisa de collector externo)
-- Sem retenção configurada de traces (depende do collector)
+- Collector usa exporter `debug` como baseline local; retenção e backend de traces seguem responsabilidade do ambiente alvo
 - Sem sampling configurado (100% das requests são traceadas)
 - Dashboard espera `job="cvg-api"` label no Prometheus

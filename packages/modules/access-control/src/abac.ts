@@ -31,6 +31,7 @@ export interface ActorAttributes {
   readonly staffId?: StaffId;
   readonly teamIds: readonly string[];
   readonly sectorIds: readonly string[];
+  readonly sectorCodes: readonly string[];
   readonly isActive: boolean;
 }
 
@@ -88,8 +89,10 @@ export type ConditionOperator =
   | 'has'     // array/slice contains value
   | 'regex'   // matches regex
   | 'between' // numeric range [min, max] inclusive
+  | 'not_between'
   | 'startsWith'
-  | 'endsWith';
+  | 'endsWith'
+  | 'nhas';
 
 export interface PolicyCondition {
   readonly attribute: string; // e.g. 'actor.roleCodes', 'resource.ownerId', 'environment.hourOfDay'
@@ -200,12 +203,23 @@ function evaluateCondition(condition: PolicyCondition, attrValue: unknown): bool
       if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2) return false;
       return attrValue >= (value[0] as number) && attrValue <= (value[1] as number);
 
+    case 'not_between':
+      if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2) return false;
+      return attrValue < (value[0] as number) || attrValue > (value[1] as number);
+
     case 'has':
       if (Array.isArray(attrValue)) return attrValue.includes(value);
       if (typeof attrValue === 'string' && typeof value === 'string') {
         return attrValue.includes(value);
       }
       return false;
+
+    case 'nhas':
+      if (Array.isArray(attrValue)) return !attrValue.includes(value);
+      if (typeof attrValue === 'string' && typeof value === 'string') {
+        return !attrValue.includes(value);
+      }
+      return true;
 
     case 'regex': {
       if (typeof attrValue !== 'string' || typeof value !== 'string') return false;
@@ -268,6 +282,11 @@ function resolveConditionValue(
   resource: ResourceAttributes,
   environment: EnvironmentAttributes
 ): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      typeof item === 'string' ? resolveConditionValue(item, actor, resource, environment) : item
+    );
+  }
   if (typeof value !== 'string') return value;
   const match = value.match(/^\{\{(actor|resource|environment)\.(\w+)\}\}$/);
   if (!match) return value;
@@ -320,12 +339,28 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
             value: '' as unknown as string
           },
           {
-            attribute: 'actor.sectorIds',
-            operator: 'has',
+            attribute: 'actor.sectorCodes',
+            operator: 'nhas',
             value: '{{resource.sectorCode}}'
           }
         ],
         effect: 'deny'
+      },
+      {
+        description: 'Permit access to owner when actor belongs to the requested sector',
+        conditions: [
+          {
+            attribute: 'resource.sectorCode',
+            operator: 'neq',
+            value: '' as unknown as string
+          },
+          {
+            attribute: 'actor.sectorCodes',
+            operator: 'has',
+            value: '{{resource.sectorCode}}'
+          }
+        ],
+        effect: 'permit'
       }
     ]
   },
@@ -450,7 +485,7 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
         conditions: [
           {
             attribute: 'environment.hourOfDay',
-            operator: 'between',
+            operator: 'not_between',
             value: [7, 20] as [number, number]
           },
           {
@@ -460,6 +495,28 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
           }
         ],
         effect: 'deny'
+      },
+      {
+        description: 'Permit admins to manage inventory at any time',
+        conditions: [
+          {
+            attribute: 'actor.roleCodes',
+            operator: 'has',
+            value: 'admin'
+          }
+        ],
+        effect: 'permit'
+      },
+      {
+        description: 'Permit inventory role to manage stock usage',
+        conditions: [
+          {
+            attribute: 'actor.roleCodes',
+            operator: 'has',
+            value: 'inventory'
+          }
+        ],
+        effect: 'permit'
       },
       {
         description: 'Permit inventory role during business hours',
@@ -607,7 +664,7 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
         conditions: [
           {
             attribute: 'environment.hourOfDay',
-            operator: 'between',
+            operator: 'not_between',
             value: [8, 19] as [number, number]
           }
         ],

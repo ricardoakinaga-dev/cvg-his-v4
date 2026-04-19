@@ -51,3 +51,48 @@ test('LocalPixPaymentGateway confirmPayment carries billingRecordId from created
   assert.equal(result.billingRecordId, 'bill_settled_001');
   assert.ok(result.completedAt.length > 0);
 });
+
+test('LocalPixPaymentGateway creates a local card intent for safe provider-less rollout', async () => {
+  const gateway = new LocalPixPaymentGateway();
+
+  const intent = await gateway.createCardIntent?.({
+    accountId: 'acc_cvg_demo',
+    billingRecordId: 'bill_card_42',
+    amount: 220.5,
+    description: 'Internacao',
+    cardHolderName: 'Maria Silva',
+    brand: 'visa',
+    last4: '4242',
+    installments: 3
+  });
+
+  assert.ok(intent);
+  assert.equal(intent?.provider, 'local-card');
+  assert.equal(intent?.status, 'authorized_pending_capture');
+  assert.equal(intent?.installments, 3);
+  assert.equal(intent?.card.last4, '4242');
+  assert.equal(intent?.card.brand, 'visa');
+  assert.ok(intent?.providerChargeId);
+});
+
+test('LocalPixPaymentGateway captures a previously authorized card intent', async () => {
+  const gateway = new LocalPixPaymentGateway();
+  const intent = await gateway.createCardIntent?.({
+    accountId: 'acc_cvg_demo',
+    billingRecordId: 'bill_card_capture_42',
+    amount: 180,
+    description: 'Exame complementar',
+    cardHolderName: 'Maria Silva',
+    brand: 'mastercard',
+    last4: '5454',
+    installments: 1,
+    capture: false
+  });
+
+  assert.ok(intent);
+  const result = await gateway.captureCardIntent?.(intent!.id);
+  assert.ok(result);
+  assert.equal(result?.status, 'captured');
+  assert.equal(result?.provider, 'local-card');
+  assert.equal(result?.billingRecordId, 'bill_card_capture_42');
+});
