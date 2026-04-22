@@ -203,14 +203,6 @@
       <header class="topbar">
         <div class="topbar__system-row">
           <div class="topbar__system-left">
-            <div class="topbar__brand-pill">
-              <div class="topbar__brand-logo">V</div>
-              <div class="topbar__brand-copy">
-                <strong>CVG HIS</strong>
-                <span>Shell Vetus-aligned</span>
-              </div>
-            </div>
-
             <button
               class="topbar__collapse-btn"
               type="button"
@@ -221,6 +213,14 @@
               <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
               <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
             </button>
+
+            <div class="topbar__brand-pill">
+              <div class="topbar__brand-logo">V</div>
+              <div class="topbar__brand-copy">
+                <strong>CVG HIS</strong>
+                <span>Centro Veterinário Guarapiranga</span>
+              </div>
+            </div>
 
             <button class="topbar__search-shell" type="button" @click="openPalette">
               <span class="topbar__search-shell-icon">🔎</span>
@@ -415,6 +415,10 @@ const currentAreaLabel = computed(() => {
 });
 
 const currentPageTitle = computed(() => {
+  if (route.path === '/') {
+    return 'Início';
+  }
+
   const routeTitle = typeof route.meta.title === 'string' ? route.meta.title : undefined;
   if (routeTitle) {
     return routeTitle;
@@ -436,9 +440,11 @@ const shellBreadcrumbs = computed(() => {
   const crumbs: Array<{ label: string }> = [];
   const area = currentAreaLabel.value;
   const parent = typeof route.meta.breadcrumbParent === 'string' ? route.meta.breadcrumbParent : undefined;
-  const current = typeof route.meta.breadcrumb === 'string'
-    ? route.meta.breadcrumb
-    : currentLocation.value?.item.label ?? currentPageTitle.value;
+  const current = route.path === '/'
+    ? undefined
+    : typeof route.meta.breadcrumb === 'string'
+      ? route.meta.breadcrumb
+      : currentLocation.value?.item.label ?? currentPageTitle.value;
 
   if (area) {
     crumbs.push({ label: area });
@@ -988,8 +994,8 @@ function handleLogout() {
   display: grid;
   gap: 8px;
   margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(148, 163, 184, 0.26);
+  padding-top: 10px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .sidebar__utility-label {
@@ -1002,14 +1008,14 @@ function handleLogout() {
 }
 
 .sidebar__utility-group {
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(255, 255, 255, 0.82);
   overflow: hidden;
 }
 
 .sidebar__utility-group--enterprise {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.025), rgba(37, 99, 235, 0.015));
+  background: rgba(248, 250, 252, 0.88);
 }
 
 .sidebar__utility-summary {
@@ -1035,13 +1041,13 @@ function handleLogout() {
 .sidebar__group {
   border-radius: 14px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
+  background: rgba(255, 255, 255, 0.94);
   overflow: hidden;
 }
 
 .sidebar__group--active {
-  border-color: rgba(37, 99, 235, 0.28);
-  box-shadow: inset 4px 0 0 rgba(37, 99, 235, 0.96);
+  border-color: rgba(37, 99, 235, 0.22);
+  box-shadow: inset 3px 0 0 rgba(37, 99, 235, 0.9);
 }
 
 .sidebar__group-summary {
@@ -1055,7 +1061,7 @@ function handleLogout() {
 }
 
 .sidebar__group--active > .sidebar__group-summary {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.04));
+  background: rgba(239, 246, 255, 0.88);
 }
 
 .sidebar__group-summary::-webkit-details-marker {
@@ -1092,18 +1098,19 @@ function handleLogout() {
 }
 
 .sidebar__group-body {
-  background: linear-gradient(180deg, rgba(250, 245, 235, 0.95), rgba(255, 248, 240, 0.72));
+  background: rgba(248, 250, 252, 0.74);
 }
 
 .sidebar__section {
   display: grid;
   gap: 4px;
   padding: 6px 4px;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .sidebar__section--active {
-  background: rgba(245, 158, 11, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(37, 99, 235, 0.12);
 }
 
 .sidebar__section-label {
@@ -1238,16 +1245,16 @@ function handleLogout() {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #f97316, #fb923c);
   color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 10px 25px rgba(249, 115, 22, 0.22);
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.18);
 }
 
 .topbar__brand-copy {
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .topbar__brand-copy strong {
@@ -1256,22 +1263,22 @@ function handleLogout() {
 }
 
 .topbar__brand-copy span {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted, #64748b);
 }
 
 .topbar__collapse-btn {
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(249, 115, 22, 0.22);
-  background: linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(255, 255, 255, 1));
-  color: #c2410c;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-secondary, #475569);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
+  justify-content: center;
 }
 
 .topbar__collapse-icon {
@@ -1279,8 +1286,7 @@ function handleLogout() {
 }
 
 .topbar__collapse-label {
-  font-size: 12px;
-  white-space: nowrap;
+  display: none;
 }
 
 .topbar__search-shell {
@@ -1392,23 +1398,35 @@ function handleLogout() {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   background: var(--color-surface, #ffffff);
   color: var(--color-text-secondary, #475569);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.topbar__icon-btn--notifications {
-  color: #1d4ed8;
-}
-
-.topbar__icon-btn--support {
-  color: #475569;
+.topbar__icon-btn--notifications,
+.topbar__icon-btn--support,
+.topbar__icon-btn--whatsapp {
+  color: var(--color-text-secondary, #475569);
+  border-color: rgba(226, 232, 240, 0.95);
+  background: var(--color-surface, #ffffff);
 }
 
 .topbar__icon-btn--whatsapp {
-  color: #15803d;
-  border-color: rgba(34, 197, 94, 0.22);
-  background: linear-gradient(135deg, rgba(240, 253, 244, 0.96), rgba(255, 255, 255, 1));
+  position: relative;
+}
+
+.topbar__icon-btn--whatsapp::after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #16a34a;
 }
 
 .topbar__profile {
@@ -1555,8 +1573,7 @@ function handleLogout() {
   .sidebar__microcopy,
   .sidebar__section-label,
   .sidebar__ghost-btn,
-  .sidebar__utility-label,
-  .topbar__collapse-label {
+  .sidebar__utility-label {
     display: none;
   }
 }

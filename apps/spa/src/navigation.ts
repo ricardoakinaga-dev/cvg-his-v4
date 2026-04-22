@@ -369,7 +369,7 @@ export const navGroups: AppNavGroup[] = [
           {
             label: 'WhatsApp Operacional',
             path: '/notifications/whatsapp',
-            icon: '💬',
+            icon: '🟢',
             keywords: ['whatsapp', 'mensagens', 'relacionamento']
           }
         ]

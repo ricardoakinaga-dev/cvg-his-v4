@@ -1,12 +1,14 @@
 <template>
   <div class="dashboard-page">
-    <AppPageHeader
-      title="Visão operacional do dia"
-      :breadcrumbs="['Início']"
-      subtitle="Acompanhe a jornada de Atendimento entre agenda, fila, triagem, atendimento, prontuário e internação."
-      :secondary-actions="headerSecondaryActions"
-      :primary-action="headerPrimaryAction"
-    />
+    <DsCard class="dashboard-hero">
+      <AppPageHeader
+        title="Visão operacional do dia"
+        :breadcrumbs="['Início']"
+        subtitle="Acompanhe a jornada de Atendimento entre agenda, fila, triagem, atendimento, prontuário e internação."
+        :secondary-actions="headerSecondaryActions"
+        :primary-action="headerPrimaryAction"
+      />
+    </DsCard>
 
     <section v-if="stats.length > 0" class="dashboard-grid" aria-label="KPIs operacionais">
       <DsStatCard
@@ -266,14 +268,25 @@ onMounted(() => {
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   max-width: 1400px;
+}
+
+.dashboard-hero {
+  padding: 20px 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.metric-card {
+  min-width: 0;
 }
 
 .dashboard-panels {
@@ -337,6 +350,12 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+@media (max-width: 1280px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1080px) {
   .dashboard-panels {
     grid-template-columns: 1fr;
@@ -344,6 +363,7 @@ onMounted(() => {
 }
 
 @media (max-width: 720px) {
+  .dashboard-grid,
   .domain-shortcuts {
     grid-template-columns: 1fr 1fr;
   }
