@@ -85,6 +85,37 @@ describe('apiRequest', () => {
     }
   });
 
+  it('clears the session and redirects to login when an authenticated request returns 404 session not found', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: vi.fn().mockResolvedValue({ code: 'NOT_FOUND', message: 'Session not found' })
+    });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule('/patients');
+
+    try {
+      await expect(apiRequest('/patients')).rejects.toMatchObject({
+        name: 'ApiError',
+        message: 'Sua sessão expirou. Faça login novamente.',
+        status: 404,
+        statusText: 'Not Found',
+        body: { code: 'NOT_FOUND', message: 'Session not found' }
+      });
+
+      expect(mockClearSession).toHaveBeenCalledTimes(1);
+      expect(mockRouterReplace).toHaveBeenCalledWith({
+        path: '/login',
+        query: { next: '/patients' }
+      });
+    } finally {
+      cleanup();
+    }
+  });
+
   it('keeps the existing error flow for 403 responses', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
@@ -104,6 +135,40 @@ describe('apiRequest', () => {
         status: 403,
         statusText: 'Forbidden',
         body: { detail: 'forbidden' }
+      });
+
+      expect(mockClearSession).not.toHaveBeenCalled();
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('prefers backend error message for non-auth failures such as finance runtime policy errors', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      json: vi.fn().mockResolvedValue({
+        code: 'FINANCE_CATALOG_DB_REQUIRED',
+        message: 'Finance catalog runtime requires database-backed persistence in the default API runtime'
+      })
+    });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule();
+
+    try {
+      await expect(apiRequest('/expenses-catalog')).rejects.toMatchObject({
+        name: 'ApiError',
+        message: 'Finance catalog runtime requires database-backed persistence in the default API runtime',
+        status: 503,
+        statusText: 'Service Unavailable',
+        body: {
+          code: 'FINANCE_CATALOG_DB_REQUIRED',
+          message: 'Finance catalog runtime requires database-backed persistence in the default API runtime'
+        }
       });
 
       expect(mockClearSession).not.toHaveBeenCalled();

@@ -20,6 +20,10 @@ export class ApiError extends Error {
   }
 }
 
+interface ApiErrorBodyShape {
+  message?: unknown;
+}
+
 const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Faça login novamente.';
 
 function generateCorrelationId(): string {
@@ -91,6 +95,15 @@ async function redirectToLogin(): Promise<void> {
   });
 }
 
+function isSessionNotFoundResponse(body: unknown): boolean {
+  if (!body || typeof body !== 'object') {
+    return false;
+  }
+
+  const payload = body as { code?: unknown; message?: unknown };
+  return payload.code === 'NOT_FOUND' && payload.message === 'Session not found';
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   options: ApiRequestOptions = {}
@@ -130,7 +143,7 @@ export async function apiRequest<T = unknown>(
       body = null;
     }
 
-    if (!skipAuth && response.status === 401) {
+    if (!skipAuth && (response.status === 401 || (response.status === 404 && isSessionNotFoundResponse(body)))) {
       const authStore = useAuthStore();
       authStore.clearSession();
       await redirectToLogin();
@@ -138,7 +151,9 @@ export async function apiRequest<T = unknown>(
     }
 
     throw new ApiError(
-      `HTTP ${response.status}: ${response.statusText}`,
+      typeof (body as ApiErrorBodyShape | null)?.message === 'string'
+        ? (body as ApiErrorBodyShape).message as string
+        : `HTTP ${response.status}: ${response.statusText}`,
       response.status,
       response.statusText,
       body
