@@ -1,6 +1,9 @@
 <template>
   <div class="detail-page">
-    <AppPageHeader title="Detalhes do Serviço" :subtitle="service?.name ?? 'Carregando...'">
+    <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços', service?.name ?? 'Detalhes']"
+      title="Detalhes do Serviço"
+      :subtitle="service?.name ?? 'Carregando...'">
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/services')">Voltar</DsButton>
         <DsButton variant="primary" @click="router.push(`/services/${serviceId}/edit`)">Editar</DsButton>

@@ -10,7 +10,7 @@
     <DsAlert v-else-if="error" variant="danger">{{ error }}</DsAlert>
 
     <template v-else-if="user">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['RH', 'Usuários', 'Usuários', user.displayName]">
         <template #title>👤 {{ user.displayName }}</template>
         <template #subtitle>
           <StatusBadge

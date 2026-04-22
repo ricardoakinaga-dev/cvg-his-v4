@@ -1,6 +1,6 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader title="Prescrições" subtitle="Workspace clínico real para prescrição e rastreio">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Prescrições']" title="Prescrições" subtitle="Workspace clínico real para prescrição e rastreio">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
       </template>

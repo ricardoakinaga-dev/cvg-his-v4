@@ -2,6 +2,7 @@
   <div class="owners-list-page">
     <AppPageHeader
       title="Clientes e Tutores"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores']"
       subtitle="Atendimento > Cadastrados > Clientes. Hub relacional que conecta pacientes, agenda, atendimento e operação financeira."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"

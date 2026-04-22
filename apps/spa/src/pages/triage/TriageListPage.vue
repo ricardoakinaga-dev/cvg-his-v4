@@ -1,6 +1,6 @@
 <template>
   <div class="triage-list-page">
-    <AppPageHeader title="🧭 Triagem" subtitle="Atendimento > Triagem. Classificação inicial que orienta prioridade, destino e próximos passos do caso.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Triagem']" title="🧭 Triagem" subtitle="Atendimento > Triagem. Classificação inicial que orienta prioridade, destino e próximos passos do caso.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="fetchData">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>

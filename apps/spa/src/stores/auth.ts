@@ -115,8 +115,6 @@ export const useAuthStore = defineStore('auth', {
 
     needsMfaSetup: (state) => state.mfaSetupRequired,
 
-    pendingMfaUserId: (state) => state.pendingMfaUserId,
-
     userName: (state) => state.user.name ?? state.user.email ?? 'Usuário'
   },
 

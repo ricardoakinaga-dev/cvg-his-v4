@@ -2,6 +2,7 @@
   <div class="users-list-page">
     <AppPageHeader
       title="👤 Usuários"
+      :breadcrumbs="['RH', 'Usuários', 'Usuários']"
       subtitle="Gestão de pessoas, acessos e perfís do quadro de RH"
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"

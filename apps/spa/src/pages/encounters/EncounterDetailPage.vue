@@ -12,7 +12,7 @@
       {{ error }}
     </DsAlert>
     <template v-else-if="encounter">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Atendimento', patientName || 'Detalhes']">
         <template #title>🩺 Atendimento</template>
         <template #subtitle>
           <StatusBadge

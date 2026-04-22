@@ -1,6 +1,9 @@
 <template>
   <div class="detail-page">
-    <AppPageHeader title="Detalhes do Produto" :subtitle="product?.name ?? 'Carregando...'">
+    <AppPageHeader
+      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos', product?.name ?? 'Detalhes']"
+      title="Detalhes do Produto"
+      :subtitle="product?.name ?? 'Carregando...'">
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/products')">Voltar</DsButton>
         <DsButton variant="primary" @click="router.push(`/products/${productId}/edit`)">Editar</DsButton>

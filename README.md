@@ -45,12 +45,9 @@ Os servicos definidos hoje em [`docker-compose.v2.yml`](/root/.openclaw/workspac
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
 
-`cvg-his-v2-web` permanece apenas como servico legado congelado no compose, fora do fluxo canonico.
-
 Portas externas atuais:
 
 - API: `127.0.0.1:3003 -> 3001`
-- Web: `127.0.0.1:3004 -> 3000` (legado; fora do fluxo canonico)
 - SPA: `127.0.0.1:3002 -> 3002`
 - Postgres: `127.0.0.1:5432 -> 5432`
 - Redis: `127.0.0.1:6380 -> 6379`
@@ -175,7 +172,6 @@ Os artefatos vivos de cutover e proxy agora seguem a mesma topologia do compose 
 
 - SPA em `127.0.0.1:3002`
 - API em `127.0.0.1:3003`
-- `apps/web` isolado em `profile legacy`
 
 Antes de publicar trafego, rode o guardrail documental e operacional:
 
@@ -214,15 +210,13 @@ pnpm dev
 pnpm build
 pnpm typecheck
 pnpm test
-pnpm guardrail:legacy-web
 pnpm deploy:check
 ```
 
-Guardrails de corte do legado:
+Checks operacionais:
 
-- `pnpm guardrail:legacy-web` falha se houver mudanca funcional em `apps/web`
 - `pnpm deploy:check` valida se compose, proxy, env example e docs vivas continuam alinhados a `apps/spa` e ao runner canonico de migrations
-- `pnpm dev:legacy-web` existe apenas para suporte residual ou investigacao historica, nunca para novas features
+- `pnpm test:smoke` executa a trilha funcional principal da SPA sem os cenarios visuais
 
 ## Documentacao operacional
 

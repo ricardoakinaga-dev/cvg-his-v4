@@ -17,6 +17,7 @@ COPY packages ./packages
 COPY infra ./infra
 
 RUN pnpm install --frozen-lockfile --prod=false
+RUN find . -name 'tsconfig.tsbuildinfo' -delete
 RUN pnpm --filter @cvg-his-v2/spa run build
 
 FROM nginx:1.27-alpine AS runner

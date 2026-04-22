@@ -14,7 +14,7 @@
     </DsAlert>
 
     <template v-else-if="owner">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores', owner.fullName]">
         <template #title>{{ owner.fullName }}</template>
         <template #subtitle>
           <StatusBadge

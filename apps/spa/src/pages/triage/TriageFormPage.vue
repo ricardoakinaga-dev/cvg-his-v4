@@ -1,6 +1,7 @@
 <template>
   <div class="triage-form-page">
     <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Atendimentos', 'Triagem', 'Nova Triagem']"
       title="Nova Triagem"
       subtitle="Atendimento > Triagem. Registre prioridade, destino e alertas para orientar o próximo passo do caso."
     >

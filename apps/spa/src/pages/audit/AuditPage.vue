@@ -1,6 +1,6 @@
 <template>
   <div class="audit-page">
-    <AppPageHeader title="Auditoria" subtitle="Linha do tempo de eventos, risco e conformidade — Console Enterprise e Relatórios">
+    <AppPageHeader :breadcrumbs="['Console Enterprise', 'Governança', 'Auditoria']" title="Auditoria" subtitle="Linha do tempo de eventos, risco e conformidade — Console Enterprise e Relatórios">
       <template #actions>
         <DsBadge variant="info" size="md">{{ filteredEvents.length }} eventos</DsBadge>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>

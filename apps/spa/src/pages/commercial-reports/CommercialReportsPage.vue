@@ -2,6 +2,7 @@
   <div class="administrative-reports-page">
     <AppPageHeader
       title="Hubs Administrativos"
+      :breadcrumbs="['Relatórios', 'Hubs Administrativos']"
       subtitle="Leitura executiva consolidada de financeiro, comercial, caixa e fiscal"
     >
       <template #actions>

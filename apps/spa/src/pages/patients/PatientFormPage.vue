@@ -1,6 +1,7 @@
 <template>
   <div class="patient-form-page">
     <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes', isEdit ? 'Editar Paciente' : 'Novo Paciente']"
       title="Cadastro de paciente"
       :subtitle="
         isEdit

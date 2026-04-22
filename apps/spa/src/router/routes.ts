@@ -28,7 +28,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'owners',
         name: 'Owners',
         component: () => import('@/pages/owners/OwnersListPage.vue'),
-        meta: { title: 'Tutores', breadcrumb: 'Tutores', breadcrumbParent: 'Dashboard', icon: '👤' }
+        meta: { title: 'Tutores', breadcrumb: 'Tutores', breadcrumbParent: 'Cadastros', icon: '👤' }
       },
       {
         path: 'owners/new',
@@ -70,7 +70,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Pacientes',
           breadcrumb: 'Pacientes',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Cadastros',
           icon: '🐾'
         }
       },
@@ -114,7 +114,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Atendimentos',
           breadcrumb: 'Atendimentos',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '🏥'
         }
       },
@@ -144,7 +144,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'appointments',
         name: 'Appointments',
         component: () => import('@/pages/appointments/AppointmentsListPage.vue'),
-        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Dashboard', icon: '📅' }
+        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimentos', icon: '📅' }
       },
       {
         path: 'appointments/new',
@@ -175,7 +175,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Prontuário',
           breadcrumb: 'Prontuário',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '📋'
         }
       },
@@ -208,7 +208,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Laboratório',
           breadcrumb: 'Laboratório',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Laboratório',
           icon: '🔬'
         }
       },
@@ -274,7 +274,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Prescrições',
           breadcrumb: 'Prescrições',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '💊'
         }
       },
@@ -285,7 +285,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Execuções de Prescrição',
           breadcrumb: 'Execuções',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '🩺'
         }
       },
@@ -296,7 +296,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Altas',
           breadcrumb: 'Altas',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Internação',
           icon: '🏠'
         }
       },
@@ -308,7 +308,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Cirurgias',
           breadcrumb: 'Cirurgias',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '🔪'
         }
       },
@@ -319,7 +319,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Internação',
           breadcrumb: 'Internação',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimento',
           icon: '🛏️'
         }
       },
@@ -353,7 +353,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Setores',
           breadcrumb: 'Setores',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Internação',
           icon: '🏢'
         }
       },
@@ -364,7 +364,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Leitos',
           breadcrumb: 'Leitos',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Internação',
           icon: '🛏️'
         }
       },
@@ -375,7 +375,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Faturamento',
           breadcrumb: 'Faturamento',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Controles',
           icon: '💰'
         }
       },
@@ -397,7 +397,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Triagem',
           breadcrumb: 'Triagem',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Atendimentos',
           icon: '🏷️'
         }
       },
@@ -430,7 +430,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Usuários',
           breadcrumb: 'Usuários',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Usuários',
           icon: '👤'
         }
       },
@@ -474,7 +474,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Governança de Acesso',
           breadcrumb: 'Governança de Acesso',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Governança',
           icon: '🔐'
         }
       },
@@ -485,7 +485,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Auditoria',
           breadcrumb: 'Auditoria',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Governança',
           icon: '🧾'
         }
       },
@@ -496,7 +496,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'LGPD',
           breadcrumb: 'LGPD',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Governança',
           icon: '🔒'
         }
       },
@@ -507,7 +507,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Busca mestre',
           breadcrumb: 'Busca mestre',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Utilidades',
           icon: '🔎'
         }
       },
@@ -519,8 +519,85 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Hubs Administrativos',
           breadcrumb: 'Hubs Administrativos',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Relatórios',
           icon: '📊'
+        }
+      },
+      {
+        path: 'reports',
+        name: 'ReportsDomainHub',
+        component: () => import('@/pages/reports/ReportsDomainHubPage.vue'),
+        meta: {
+          title: 'Relatórios por Domínio',
+          breadcrumb: 'Visão por Domínio',
+          breadcrumbParent: 'Relatórios',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'reports/financial',
+        name: 'FinancialReports',
+        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        meta: {
+          title: 'Relatórios Financeiros',
+          breadcrumb: 'Relatórios Financeiros',
+          breadcrumbParent: 'Financeiro',
+          icon: '💰'
+        }
+      },
+      {
+        path: 'reports/appointments',
+        name: 'AppointmentReports',
+        component: () => import('@/pages/reports/AppointmentReportsPage.vue'),
+        meta: {
+          title: 'Relatórios de Agenda',
+          breadcrumb: 'Relatórios de Agenda',
+          breadcrumbParent: 'Agenda',
+          icon: '📅'
+        }
+      },
+      {
+        path: 'reports/encounters',
+        name: 'EncounterReports',
+        component: () => import('@/pages/reports/EncounterReportsPage.vue'),
+        meta: {
+          title: 'Relatórios de Atendimento',
+          breadcrumb: 'Relatórios de Atendimento',
+          breadcrumbParent: 'Atendimento',
+          icon: '🩺'
+        }
+      },
+      {
+        path: 'reports/registers',
+        name: 'RegisterReports',
+        component: () => import('@/pages/reports/RegisterReportsPage.vue'),
+        meta: {
+          title: 'Relatórios de Cadastros',
+          breadcrumb: 'Relatórios de Cadastros',
+          breadcrumbParent: 'Cadastros',
+          icon: '📋'
+        }
+      },
+      {
+        path: 'reports/inventory',
+        name: 'InventoryReports',
+        component: () => import('@/pages/reports/InventoryReportsPage.vue'),
+        meta: {
+          title: 'Relatórios de Estoque',
+          breadcrumb: 'Relatórios de Estoque',
+          breadcrumbParent: 'Estoque',
+          icon: '📦'
+        }
+      },
+      {
+        path: 'reports/production',
+        name: 'ProductionReports',
+        component: () => import('@/pages/reports/ProductionReportsPage.vue'),
+        meta: {
+          title: 'Relatórios de Produção',
+          breadcrumb: 'Relatórios de Produção',
+          breadcrumbParent: 'Produção',
+          icon: '🏭'
         }
       },
       {
@@ -530,7 +607,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Cliente API',
           breadcrumb: 'Cliente API',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Integrações',
           icon: '🛠️'
         }
       },
@@ -541,7 +618,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Chaves de API',
           breadcrumb: 'Chaves de API',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Integrações',
           icon: '🔐'
         }
       },
@@ -552,7 +629,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Central de Notificações',
           breadcrumb: 'Central de Notificações',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Comunicação',
           icon: '🔔'
         }
       },
@@ -574,7 +651,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIX',
           breadcrumb: 'PIX',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Maquininha de Cartão',
           icon: '💸'
         }
       },
@@ -586,7 +663,62 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Caixa',
           breadcrumb: 'Caixa',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Gaveta',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'payment-methods',
+        name: 'PaymentMethods',
+        component: () => import('@/pages/finance/PaymentMethodsPage.vue'),
+        meta: {
+          title: 'Formas de Pagamento',
+          breadcrumb: 'Formas de Pagamento',
+          breadcrumbParent: 'Cadastros',
+          icon: '💳'
+        }
+      },
+      {
+        path: 'banks',
+        name: 'Banks',
+        component: () => import('@/pages/finance/BanksPage.vue'),
+        meta: {
+          title: 'Bancos',
+          breadcrumb: 'Bancos',
+          breadcrumbParent: 'Cadastros',
+          icon: '🏦'
+        }
+      },
+      {
+        path: 'cost-centers',
+        name: 'CostCenters',
+        component: () => import('@/pages/finance/CostCentersPage.vue'),
+        meta: {
+          title: 'Centros de Custo',
+          breadcrumb: 'Centros de Custo',
+          breadcrumbParent: 'Cadastros',
+          icon: '📊'
+        }
+      },
+      {
+        path: 'cards',
+        name: 'Cards',
+        component: () => import('@/pages/finance/CardsPage.vue'),
+        meta: {
+          title: 'Cartões',
+          breadcrumb: 'Cartões',
+          breadcrumbParent: 'Cadastros',
+          icon: '💳'
+        }
+      },
+      {
+        path: 'expenses',
+        name: 'Expenses',
+        component: () => import('@/pages/finance/ExpensesPage.vue'),
+        meta: {
+          title: 'Custos e Despesas',
+          breadcrumb: 'Custos e Despesas',
+          breadcrumbParent: 'Cadastros',
           icon: '🧾'
         }
       },
@@ -610,7 +742,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Orçamentos',
           breadcrumb: 'Orçamentos',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Controles',
           icon: '📝'
         }
       },
@@ -651,7 +783,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Fila Operacional',
           breadcrumb: 'Fila Operacional',
-          breadcrumbParent: 'Agenda',
+          breadcrumbParent: 'Atendimentos',
           icon: '🏥'
         }
       },
@@ -662,7 +794,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Estoque',
           breadcrumb: 'Estoque',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Controles',
           icon: '📦'
         }
       },
@@ -673,7 +805,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Novo Item',
           breadcrumb: 'Novo Item',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Controles',
           icon: '📦'
         }
       },
@@ -684,7 +816,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Detalhes do Item',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Controles',
           icon: '📦'
         }
       },
@@ -695,7 +827,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Editar Item',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Controles',
           icon: '📦'
         }
       },
@@ -706,7 +838,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Movimentações',
           breadcrumb: 'Movimentações',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Controles',
           icon: '📥'
         }
       },
@@ -716,8 +848,8 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/inventory/InventoryValidityPage.vue'),
         meta: {
           title: 'Validade e Lotes',
-          breadcrumb: 'Validade e Lotes',
-          breadcrumbParent: 'Estoque',
+          breadcrumb: 'Validade de Produtos',
+          breadcrumbParent: 'Controles',
           icon: '📅'
         }
       },
@@ -728,7 +860,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Fiscal',
           breadcrumb: 'Fiscal',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📋'
         }
       },
@@ -739,7 +871,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'ICMS',
           breadcrumb: 'ICMS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }
       },
@@ -750,7 +882,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIS / COFINS',
           breadcrumb: 'PIS / COFINS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📈'
         }
       },
@@ -761,7 +893,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'CFOP',
           breadcrumb: 'CFOP',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🔢'
         }
       },
@@ -772,7 +904,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'NFS-e',
           breadcrumb: 'NFS-e',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📄'
         }
       },
@@ -783,7 +915,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'IBPT / NCM',
           breadcrumb: 'IBPT / NCM',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🏷️'
         }
       },
@@ -794,7 +926,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Matriz ICMS',
           breadcrumb: 'Matriz ICMS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }
       },
@@ -849,8 +981,52 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Produtos',
           breadcrumb: 'Produtos',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Cadastrados',
           icon: '📦'
+        }
+      },
+      {
+        path: 'suppliers',
+        name: 'Suppliers',
+        component: () => import('@/pages/inventory/SuppliersPage.vue'),
+        meta: {
+          title: 'Fornecedores',
+          breadcrumb: 'Fornecedores',
+          breadcrumbParent: 'Cadastrados',
+          icon: '🚚'
+        }
+      },
+      {
+        path: 'manufacturers',
+        name: 'Manufacturers',
+        component: () => import('@/pages/inventory/ManufacturersPage.vue'),
+        meta: {
+          title: 'Fabricantes',
+          breadcrumb: 'Fabricantes',
+          breadcrumbParent: 'Cadastrados',
+          icon: '🏭'
+        }
+      },
+      {
+        path: 'product-groups',
+        name: 'ProductGroups',
+        component: () => import('@/pages/inventory/ProductGroupsPage.vue'),
+        meta: {
+          title: 'Grupos de Produto',
+          breadcrumb: 'Grupos de Produto',
+          breadcrumbParent: 'Cadastrados',
+          icon: '🗂️'
+        }
+      },
+      {
+        path: 'warehouses',
+        name: 'Warehouses',
+        component: () => import('@/pages/inventory/WarehousesPage.vue'),
+        meta: {
+          title: 'Estoques',
+          breadcrumb: 'Estoques',
+          breadcrumbParent: 'Cadastrados',
+          icon: '🏬'
         }
       },
       {
@@ -893,7 +1069,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Serviços',
           breadcrumb: 'Serviços',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Cadastros',
           icon: '🛠️'
         }
       },
@@ -937,7 +1113,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Equipe',
           breadcrumb: 'Equipe',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Usuários',
           icon: '👨‍⚕️'
         }
       },
@@ -972,6 +1148,39 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Equipe',
           icon: '👨‍⚕️'
+        }
+      },
+      {
+        path: 'commission-rules',
+        name: 'CommissionRules',
+        component: () => import('@/pages/rh/CommissionRulesPage.vue'),
+        meta: {
+          title: 'Regras de Comissão',
+          breadcrumb: 'Regras de Comissão',
+          breadcrumbParent: 'Comissões',
+          icon: '📐'
+        }
+      },
+      {
+        path: 'commission-calculations',
+        name: 'CommissionCalculations',
+        component: () => import('@/pages/rh/CommissionCalculationsPage.vue'),
+        meta: {
+          title: 'Cálculo de Comissões',
+          breadcrumb: 'Cálculo de Comissões',
+          breadcrumbParent: 'Comissões',
+          icon: '🧮'
+        }
+      },
+      {
+        path: 'time-off',
+        name: 'TimeOff',
+        component: () => import('@/pages/rh/TimeOffPage.vue'),
+        meta: {
+          title: 'Folgas',
+          breadcrumb: 'Folgas',
+          breadcrumbParent: 'Cadastros',
+          icon: '🌴'
         }
       }
     ]

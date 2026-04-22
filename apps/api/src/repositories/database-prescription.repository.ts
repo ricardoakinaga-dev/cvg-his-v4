@@ -1,5 +1,6 @@
+import { eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { clinicalEntries, eq } from '@cvg-his-v2/shared-database';
+import { clinicalEntries } from '@cvg-his-v2/shared-database';
 import {
   type PrescriptionRepository,
   type PrescriptionSummary,

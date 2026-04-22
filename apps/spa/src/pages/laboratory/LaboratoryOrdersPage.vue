@@ -1,6 +1,7 @@
 <template>
   <div class="laboratory-orders-page">
     <AppPageHeader
+      :breadcrumbs="['Laboratório', 'Atendimentos', 'Pedidos de Exame']"
       title="Pedidos de Exame"
       subtitle="Solicitações laboratoriais e backlog de coleta"
     >

@@ -1,6 +1,6 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader title="Cirurgias" subtitle="Primeiro corte real da trilha cirúrgica na SPA">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Cirurgias']" title="Cirurgias" subtitle="Primeiro corte real da trilha cirúrgica na SPA">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
       </template>

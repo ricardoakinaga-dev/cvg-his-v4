@@ -1,6 +1,6 @@
 <template>
   <div class="medical-records-list-page">
-    <AppPageHeader title="📋 Prontuário Clínico" subtitle="Atendimento > Prontuário. Documentação clínica aberta nos atendimentos ativos e concluídos.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Prontuário Clínico']" title="📋 Prontuário Clínico" subtitle="Atendimento > Prontuário. Documentação clínica aberta nos atendimentos ativos e concluídos.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/encounters" variant="secondary">🩺 Ver Atendimentos</DsButton>

@@ -1,6 +1,9 @@
 <template>
   <div class="list-page">
-    <AppPageHeader title="Serviços" subtitle="Catálogo de serviços cadastrados no sistema">
+    <AppPageHeader
+      title="Serviços"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços']"
+      subtitle="Catálogo de serviços cadastrados no sistema">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
         <DsButton variant="primary" @click="router.push('/services/new')">Novo Serviço</DsButton>

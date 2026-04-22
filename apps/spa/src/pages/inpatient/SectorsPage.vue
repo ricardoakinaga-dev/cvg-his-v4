@@ -1,6 +1,6 @@
 <template>
   <div class="sectors-page">
-    <AppPageHeader title="Setores" subtitle="Atendimento > Internação > Setores. Organize a estrutura que sustenta leitos, ocupação e admissões.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Setores']" title="Setores" subtitle="Atendimento > Internação > Setores. Organize a estrutura que sustenta leitos, ocupação e admissões.">
       <template #actions>
         <DsBadge variant="info" size="md">{{ sectors.length }} setores</DsBadge>
         <DsButton variant="ghost" tag="a" href="/beds">Leitos</DsButton>

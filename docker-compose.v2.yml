@@ -3,15 +3,9 @@
 # FRONTEND CANONICO: cvg-his-v2-spa (apps/spa)
 #   his.centroveterinarioguarapiranga.com -> cvg-his-v2-spa:3002
 #
-# REGRA OPERACIONAL:
-#   O dominio principal serve cvg-his-v2-spa, NAO cvg-his-v2-web.
-#   cvg-his-v2-web e um frontend legado na porta 3004, isolado em profile legacy.
-#   Ele nao sobe por padrao e nao entra no fluxo canonico.
-#
 # Portas:
 #   SPA:     3002:3002  — frontend canonico (apps/spa)
 #   API:     3003:3001  — API do sistema
-#   Web:     3004:3000  — portal legado (apps/web) — fora do fluxo canonico
 #   Worker:  sem porta publicada
 #   OTEL:    4318:4318  — collector OTLP HTTP (profile observability)
 #   Prom:    9090:9090  — Prometheus (profile observability)
@@ -123,26 +117,6 @@ services:
     ports:
       - '3003:3001'
 
-  cvg-his-v2-web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    image: cvg-his-v2-cvg-his-v2-web:035e555
-    profiles: ['legacy']
-    # Nao usar como runtime padrao; mantido apenas para fallback historico.
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      HOST: 0.0.0.0
-      PORT: 3000
-      APP_NAME: cvg-his-v2-web
-      API_BASE_URL: http://cvg-his-v2-api:3001
-    depends_on:
-      cvg-his-v2-api:
-        condition: service_healthy
-    ports:
-      - '3004:3000'
-
   cvg-his-v2-worker:
     build:
       context: .
@@ -152,7 +126,8 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       APP_NAME: cvg-his-v2-worker
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      WORKER_ACCOUNT_ID: ${WORKER_ACCOUNT_ID:-}
       WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAME: ${WORKER_OTEL_SERVICE_NAME:-cvg-his-v2-worker}

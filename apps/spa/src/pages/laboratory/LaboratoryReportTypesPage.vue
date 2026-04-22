@@ -1,6 +1,7 @@
 <template>
   <div class="laboratory-report-types-page">
     <AppPageHeader
+      :breadcrumbs="['Laboratório', 'Cadastrados', 'Tipos de Laudo']"
       title="Tipos de Laudo"
       subtitle="Modelos e templates de laudos laboratoriais"
     >

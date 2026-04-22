@@ -14,7 +14,7 @@
     </DsAlert>
 
     <template v-else-if="webhook">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks', 'Webhook']">
         <template #title>Webhook</template>
         <template #subtitle>
           <StatusBadge

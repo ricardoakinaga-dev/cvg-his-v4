@@ -1,6 +1,6 @@
 <template>
   <div class="master-search-page">
-    <AppPageHeader title="Busca federada" subtitle="Busca mestre transversal para suporte operacional, relacionamento e conferência cadastral">
+    <AppPageHeader title="Busca federada" :breadcrumbs="['Console Enterprise', 'Utilidades', 'Busca Mestre']" subtitle="Busca mestre transversal para suporte operacional, relacionamento e conferência cadastral">
       <template #actions>
         <DsBadge variant="info" size="md">{{ totals.owners }} tutores</DsBadge>
         <DsBadge variant="info" size="md">{{ totals.patients }} pacientes</DsBadge>

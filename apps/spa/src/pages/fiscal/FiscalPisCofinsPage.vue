@@ -1,6 +1,6 @@
 <template>
   <div class="fiscal-pis-cofins-page">
-    <AppPageHeader title="PIS / COFINS" subtitle="Consulta de alíquotas por regime tributário e aplicação operacional">
+    <AppPageHeader title="PIS / COFINS" :breadcrumbs="['Estoque', 'Configurações Fiscais', 'PIS / COFINS']" subtitle="Consulta de alíquotas por regime tributário e aplicação operacional">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
       </template>

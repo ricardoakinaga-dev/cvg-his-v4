@@ -13,7 +13,7 @@
     </DsAlert>
 
     <template v-else-if="record">
-      <AppPageHeader title="📋 Prontuário Clínico" :subtitle="`Paciente: ${patientName}`">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Prontuário Clínico', patientName || 'Detalhes']" title="📋 Prontuário Clínico" :subtitle="`Paciente: ${patientName}`">
         <template #subtitle>
           <StatusBadge
             :label="record.status === 'open' ? 'Aberto' : 'Concluído'"

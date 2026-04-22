@@ -1,6 +1,7 @@
 <template>
   <div class="form-page">
     <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços', isEditing ? 'Editar Serviço' : 'Novo Serviço']"
       :title="isEditing ? 'Editar Serviço' : 'Novo Serviço'"
       :subtitle="isEditing ? 'Atualize os dados do serviço' : 'Cadastre um novo serviço no catálogo'"
     >

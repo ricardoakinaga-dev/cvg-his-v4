@@ -1,6 +1,7 @@
 <template>
   <div class="laboratory-results-page">
     <AppPageHeader
+      :breadcrumbs="['Laboratório', 'Atendimentos', 'Resultados']"
       title="Resultados Laboratoriais"
       subtitle="Laudos liberados e pendências por tipo de exame"
     >

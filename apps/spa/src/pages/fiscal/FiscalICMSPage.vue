@@ -2,6 +2,7 @@
   <div class="fiscal-icms-page">
     <AppPageHeader
       title="ICMS"
+      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'ICMS']"
       subtitle="Consulta de ICMS interestadual e interno publicada pela API fiscal"
     >
       <template #actions>

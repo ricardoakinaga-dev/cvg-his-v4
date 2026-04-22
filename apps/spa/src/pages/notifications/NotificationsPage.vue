@@ -1,6 +1,6 @@
 <template>
   <div class="notifications-page">
-  <AppPageHeader title="Notificações e Campanhas" subtitle="Centro de relacionamento, campanhas e filas de comunicação do Marketing">
+  <AppPageHeader :breadcrumbs="['Marketing', 'Comunicação', 'Central de Notificações']" title="Notificações e Campanhas" subtitle="Centro de relacionamento, campanhas e filas de comunicação do Marketing">
       <template #actions>
         <DsButton variant="secondary" :loading="notificationLoading || jobLoading" @click="reload">
           Atualizar

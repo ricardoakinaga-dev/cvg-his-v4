@@ -1,6 +1,6 @@
 <template>
   <div class="inpatient-list-page">
-    <AppPageHeader title="🛏️ Internação" subtitle="Atendimento > Internação. Acompanhe admissões, leitos e evolução dos pacientes internados.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Internação']" title="🛏️ Internação" subtitle="Atendimento > Internação. Acompanhe admissões, leitos e evolução dos pacientes internados.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="reload">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>

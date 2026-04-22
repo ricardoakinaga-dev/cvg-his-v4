@@ -2,6 +2,7 @@
   <div class="counter-sales-page">
     <AppPageHeader
       title="🧾 Comandas"
+      :breadcrumbs="['Atendimento', 'Atendimentos', 'Comandas']"
       subtitle="Workbench premium de balcão para abrir, compor, cobrar, imprimir e conectar a venda à jornada assistencial."
     >
       <template #actions>

@@ -1,6 +1,6 @@
 <template>
   <div class="pix-page">
-    <AppPageHeader title="PIX" subtitle="Pagamentos instantâneos, intents e conferência operacional do financeiro">
+    <AppPageHeader title="PIX" :breadcrumbs="['Financeiro', 'Maquininha de Cartão', 'PIX']" subtitle="Pagamentos instantâneos, intents e conferência operacional do financeiro">
       <template #actions>
         <DsButton variant="secondary" @click="resetForm">Limpar</DsButton>
       </template>

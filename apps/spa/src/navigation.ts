@@ -48,8 +48,8 @@ export const navGroups: AppNavGroup[] = [
     description: 'Recepção, jornada clínica, internação e cadastros assistenciais',
     sections: [
       {
-        id: 'atendimento-cadastrados',
-        label: 'Cadastrados',
+        id: 'atendimento-cadastros',
+        label: 'Cadastros',
         items: [
           { label: 'Pacientes', path: '/patients', icon: '🐾', keywords: ['animais', 'pet', 'cadastro'] },
           { label: 'Tutores', path: '/owners', icon: '👤', keywords: ['clientes', 'owners', 'responsaveis'] },
@@ -236,12 +236,16 @@ export const navGroups: AppNavGroup[] = [
         id: 'estoque-cadastrados',
         label: 'Cadastrados',
         items: [
-          { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['catalogo', 'sku', 'item'] }
+          { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['catalogo', 'sku', 'item'] },
+          { label: 'Fornecedores', path: '/suppliers', icon: '🚚', keywords: ['fornecedor', 'compras', 'despesas'] },
+          { label: 'Fabricantes', path: '/manufacturers', icon: '🏭', keywords: ['fabricante', 'marca', 'laboratorio'] },
+          { label: 'Grupos de Produto', path: '/product-groups', icon: '🗂️', keywords: ['grupo', 'categoria', 'classificacao'] },
+          { label: 'Estoques', path: '/warehouses', icon: '🏬', keywords: ['estoques', 'almoxarifado', 'geladeira'] }
         ]
       },
       {
-        id: 'estoque-fiscal',
-        label: 'Fiscal',
+        id: 'estoque-configuracoes-fiscais',
+        label: 'Configurações Fiscais',
         items: [
           {
             label: 'Configuração Fiscal',
@@ -288,12 +292,59 @@ export const navGroups: AppNavGroup[] = [
             icon: '💳',
             keywords: ['billing', 'comanda', 'cobranca']
           },
-          { label: 'PIX', path: '/pix', icon: '💸', keywords: ['qrcode', 'pagamento instantaneo'] },
           {
             label: 'Orçamentos',
             path: '/quotes',
             icon: '📝',
             keywords: ['orcamento', 'proposta', 'quote']
+          }
+        ]
+      },
+      {
+        id: 'financeiro-maquininha-cartao',
+        label: 'Maquininha de Cartão',
+        items: [
+          {
+            label: 'PIX',
+            path: '/pix',
+            icon: '💸',
+            keywords: ['qrcode', 'pagamento instantaneo', 'recebimento']
+          }
+        ]
+      },
+      {
+        id: 'financeiro-cadastros',
+        label: 'Cadastros',
+        items: [
+          {
+            label: 'Formas de Pagamento',
+            path: '/payment-methods',
+            icon: '💳',
+            keywords: ['pagamento', 'meio de pagamento', 'forma de pagamento']
+          },
+          {
+            label: 'Bancos',
+            path: '/banks',
+            icon: '🏦',
+            keywords: ['bancos', 'conta bancária', 'bank']
+          },
+          {
+            label: 'Centros de Custo',
+            path: '/cost-centers',
+            icon: '📊',
+            keywords: ['centro de custo', 'rateio', 'custos']
+          },
+          {
+            label: 'Cartões',
+            path: '/cards',
+            icon: '💳',
+            keywords: ['cartões', 'bandeira', 'administradora']
+          },
+          {
+            label: 'Custos e Despesas',
+            path: '/expenses',
+            icon: '🧾',
+            keywords: ['custos', 'despesas', 'cadastro financeiro']
           }
         ]
       }
@@ -338,6 +389,36 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Usuários', path: '/users', icon: '👤', keywords: ['login', 'acesso', 'usuarios'] },
           { label: 'Equipe', path: '/staff', icon: '🩺', keywords: ['profissionais', 'staff', 'colaboradores'] }
         ]
+      },
+      {
+        id: 'rh-comissoes',
+        label: 'Comissões',
+        items: [
+          {
+            label: 'Regras de Comissão',
+            path: '/commission-rules',
+            icon: '📐',
+            keywords: ['comissão', 'regra', 'repasse']
+          },
+          {
+            label: 'Cálculo de Comissões',
+            path: '/commission-calculations',
+            icon: '🧮',
+            keywords: ['comissão', 'cálculo', 'apuração']
+          }
+        ]
+      },
+      {
+        id: 'rh-cadastros',
+        label: 'Cadastros',
+        items: [
+          {
+            label: 'Folgas',
+            path: '/time-off',
+            icon: '🌴',
+            keywords: ['folga', 'escala', 'indisponibilidade']
+          }
+        ]
       }
     ]
   },
@@ -348,8 +429,92 @@ export const navGroups: AppNavGroup[] = [
     description: 'Análises por domínio e visão gerencial da operação',
     sections: [
       {
-        id: 'relatorios-operacao',
-        label: 'Operação',
+        id: 'relatorios-visao-dominio',
+        label: 'Visão por Domínio',
+        items: [
+          {
+            label: 'Relatórios por Domínio',
+            path: '/reports',
+            icon: '📈',
+            keywords: ['relatórios', 'domínio', 'analítico']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-financeiro',
+        label: 'Financeiro',
+        items: [
+          {
+            label: 'Relatórios Financeiros',
+            path: '/reports/financial',
+            icon: '💰',
+            keywords: ['financeiro', 'recebíveis', 'caixa']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-agenda',
+        label: 'Agenda',
+        items: [
+          {
+            label: 'Relatórios de Agenda',
+            path: '/reports/appointments',
+            icon: '📅',
+            keywords: ['agenda', 'capacidade', 'no-show']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-atendimento',
+        label: 'Atendimento',
+        items: [
+          {
+            label: 'Relatórios de Atendimento',
+            path: '/reports/encounters',
+            icon: '🩺',
+            keywords: ['atendimento', 'produtividade', 'assistencial']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-cadastros',
+        label: 'Cadastros',
+        items: [
+          {
+            label: 'Relatórios de Cadastros',
+            path: '/reports/registers',
+            icon: '📋',
+            keywords: ['cadastros', 'pacientes', 'tutores', 'serviços']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-estoque',
+        label: 'Estoque',
+        items: [
+          {
+            label: 'Relatórios de Estoque',
+            path: '/reports/inventory',
+            icon: '📦',
+            keywords: ['estoque', 'giro', 'validade', 'consumo']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-producao',
+        label: 'Produção',
+        items: [
+          {
+            label: 'Relatórios de Produção',
+            path: '/reports/production',
+            icon: '🏭',
+            keywords: ['produção', 'produtividade', 'assistencial', 'profissional']
+          }
+        ]
+      },
+      {
+        id: 'relatorios-executivo',
+        label: 'Executivo',
         items: [
           {
             label: 'Hubs Administrativos',

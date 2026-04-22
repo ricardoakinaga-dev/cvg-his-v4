@@ -13,7 +13,7 @@
     </div>
 
     <template v-else-if="record">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['Financeiro', 'Controles', 'Faturamento', `Atendimento ${encounterId.slice(0, 8)}...`]">
         <template #title>
           <span>💰 Faturamento</span>
           <br />

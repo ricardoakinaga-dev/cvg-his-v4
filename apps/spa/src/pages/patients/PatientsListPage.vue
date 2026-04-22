@@ -2,6 +2,7 @@
   <div class="patients-list-page">
     <AppPageHeader
       title="Animais e Pacientes"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes']"
       subtitle="Atendimento > Cadastrados > Animais. Base clínica do hospital, conectada a agenda, atendimento, prontuário e internação."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"

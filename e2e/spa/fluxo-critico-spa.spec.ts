@@ -61,14 +61,14 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     console.log('   👤 Verifying owner in list...');
     await page.goto(`${SPA_URL}/owners`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(ownerName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(ownerName).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Owner visible in list');
 
     // ── Step 3: Verify patient in list ──
     console.log('   🐾 Verifying patient in list...');
     await page.goto(`${SPA_URL}/patients`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(patientName).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Patient visible in list');
 
     // ── Step 4: Open encounter via API and continue flow in SPA ──

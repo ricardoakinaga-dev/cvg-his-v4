@@ -4,14 +4,9 @@
 # his.domain.com -> SPA (porta 3002)
 # his-api.domain.com -> API (porta 3003)
 #
-# REGRA OPERACIONAL:
-#   O dominio principal his.centroveterinarioguarapiranga.com DEVE servir cvg-his-v2-spa.
-#   NUNCA apontar para cvg-his-v2-web (apps/web) — este e um frontend legado.
-#
 # Mapeamento de portas (docker-compose.v2.yml):
 #   SPA:  3002:3002  — frontend canonico (apps/spa)
 #   API:  3003:3001  — API do sistema
-#   Web:  3004:3000  — portal legado (apps/web) — fora da trilha oficial
 #
 # Para atualizar a SPA apos mudancas de codigo:
 #   1. Rebuild: docker compose build --no-cache cvg-his-v2-spa

@@ -1,6 +1,6 @@
 <template>
   <div class="fiscal-icms-matrix-page">
-    <AppPageHeader title="Matriz ICMS" subtitle="Visão consolidada da matriz interestadual por UF de destino">
+    <AppPageHeader title="Matriz ICMS" :breadcrumbs="['Estoque', 'Configurações Fiscais', 'Matriz ICMS']" subtitle="Visão consolidada da matriz interestadual por UF de destino">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
       </template>

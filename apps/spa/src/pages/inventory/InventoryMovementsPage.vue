@@ -2,6 +2,7 @@
   <div class="inventory-movements-page">
     <AppPageHeader
       title="Ledger de Consumo"
+      :breadcrumbs="['Estoque', 'Controles', 'Movimentações']"
       subtitle="Histórico transacional de saídas assistenciais e comerciais do estoque"
     >
       <template #actions>

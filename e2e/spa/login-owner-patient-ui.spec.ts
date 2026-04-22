@@ -55,7 +55,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     console.log('   🔍 Verifying owner in list...');
     await page.goto(`${SPA_URL}/owners`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(ownerName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(ownerName).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Owner visible in list');
 
     // ── Step 3: Create Patient via UI ──
@@ -75,7 +75,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     console.log('   🔍 Verifying patient in list...');
     await page.goto(`${SPA_URL}/patients`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(patientName).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Patient visible in list');
 
     // ── Step 4: Verify owner-patient relationship ──

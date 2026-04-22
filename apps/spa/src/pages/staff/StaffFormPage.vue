@@ -1,6 +1,7 @@
 <template>
   <div class="form-page">
     <AppPageHeader
+      :breadcrumbs="['RH', 'Usuários', 'Equipe', isEditing ? 'Editar Membro' : 'Novo Membro']"
       :title="isEditing ? 'Editar Membro' : 'Novo Membro'"
       :subtitle="isEditing ? 'Atualize os dados do membro da equipe' : 'Cadastre um novo membro na equipe'"
     >

@@ -2,6 +2,7 @@
   <div class="inventory-validity-page">
     <AppPageHeader
       title="Validade e Lotes"
+      :breadcrumbs="['Estoque', 'Controles', 'Validade de Produtos']"
       subtitle="Controle de expiração, localização e criticidade dos lotes ativos do estoque"
     >
       <template #actions>

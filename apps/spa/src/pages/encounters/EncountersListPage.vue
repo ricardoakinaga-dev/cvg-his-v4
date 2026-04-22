@@ -1,6 +1,6 @@
 <template>
   <div class="encounters-list-page">
-    <AppPageHeader title="🩺 Atendimentos" subtitle="Atendimento > Atendimentos. Abra episódios clínicos vindos da agenda, fila ou triagem e siga para prontuário e internação.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Atendimentos']" title="🩺 Atendimentos" subtitle="Atendimento > Atendimentos. Abra episódios clínicos vindos da agenda, fila ou triagem e siga para prontuário e internação.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>

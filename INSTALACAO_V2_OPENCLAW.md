@@ -31,7 +31,6 @@ Servicos da stack:
 Portas externas do compose atual:
 
 - API: `3003`
-- Web: `3004`
 - SPA: `3002`
 - Postgres: `5432`
 - Redis: `6380`
@@ -128,7 +127,7 @@ Quando houver nova versao:
 
 ## Observacao critica
 
-O `apps/web` ainda existe no compose apenas como perfil legado. Ele nao participa do deploy oficial e nao deve entrar em build, up, proxy ou checklist principal.
+O frontend oficial e unico do projeto e `apps/spa`. Nenhum passo operacional deve depender de `apps/web`.
 
 Antes de qualquer publicacao:
 

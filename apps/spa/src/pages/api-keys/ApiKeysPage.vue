@@ -1,6 +1,6 @@
 <template>
   <div class="api-keys-page">
-    <AppPageHeader title="🔑 Chaves de API" subtitle="Gerenciamento de chaves para integrações externas — Console Enterprise">
+    <AppPageHeader title="🔑 Chaves de API" :breadcrumbs="['Console Enterprise', 'Integrações', 'Chaves de API']" subtitle="Gerenciamento de chaves para integrações externas — Console Enterprise">
       <template #actions>
         <DsBadge variant="info" size="md" :aria-label="`${apiKeys.length} chaves cadastradas`">
           {{ apiKeys.length }} chaves

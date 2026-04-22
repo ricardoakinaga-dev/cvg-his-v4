@@ -1,6 +1,18 @@
 <template>
   <div class="app-page-header">
     <div class="app-page-header__content">
+      <div v-if="breadcrumbs.length > 0 || $slots.breadcrumbs" class="app-page-header__breadcrumbs" aria-label="Breadcrumbs">
+        <slot name="breadcrumbs">
+          <span
+            v-for="(crumb, index) in breadcrumbs"
+            :key="`${crumb}-${index}`"
+            class="app-page-header__breadcrumb-item"
+          >
+            <span v-if="index > 0" class="app-page-header__breadcrumb-separator">/</span>
+            <span>{{ crumb }}</span>
+          </span>
+        </slot>
+      </div>
       <h1 class="app-page-header__title">
         <slot name="title">{{ title }}</slot>
       </h1>
@@ -81,11 +93,13 @@ export interface PageAction {
 const props = withDefaults(defineProps<{
   title?: string;
   subtitle?: string;
+  breadcrumbs?: string[];
   tabs?: PageTab[];
   modelValue?: string;
   primaryAction?: PageAction | null;
   secondaryActions?: PageAction[];
 }>(), {
+  breadcrumbs: () => [],
   tabs: () => [],
   modelValue: '',
   primaryAction: null,
@@ -125,6 +139,28 @@ function emitAction(action: PageAction, event: MouseEvent) {
 .app-page-header__content {
   flex: 1;
   min-width: 0;
+}
+
+.app-page-header__breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-page-header__breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-page-header__breadcrumb-separator {
+  color: var(--color-border-strong, #94a3b8);
 }
 
 .app-page-header__title {

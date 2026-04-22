@@ -12,7 +12,7 @@
     </template>
 
     <template v-else-if="record">
-      <AppPageHeader :subtitle="detailSubtitle">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Triagem', patientName || 'Detalhes']" :subtitle="detailSubtitle">
         <template #title>🧭 Triagem</template>
         <template #actions>
           <DsButton variant="secondary" size="sm" tag="a" :to="`/encounters/${record.encounterId}`">

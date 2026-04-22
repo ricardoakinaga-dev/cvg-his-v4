@@ -17,6 +17,17 @@ describe('AppPageHeader', () => {
     expect(wrapper.find('.app-page-header__subtitle').text()).toBe('Subtitle text');
   });
 
+  it('renders breadcrumb props in order', () => {
+    const wrapper = mount(AppPageHeader, {
+      props: { title: 'Title', breadcrumbs: ['Atendimento', 'Cadastros', 'Pacientes'] }
+    });
+
+    expect(wrapper.find('.app-page-header__breadcrumbs').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Atendimento');
+    expect(wrapper.text()).toContain('Cadastros');
+    expect(wrapper.text()).toContain('Pacientes');
+  });
+
   it('renders title slot', () => {
     const wrapper = mount(AppPageHeader, {
       slots: { title: 'Custom Title <em>HTML</em>' }

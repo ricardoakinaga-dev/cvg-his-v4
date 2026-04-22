@@ -1,6 +1,6 @@
 <template>
   <div class="encounter-form-page">
-    <AppPageHeader>
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Novo Atendimento']">
       <template #title>🩺 Abrir Atendimento</template>
       <template #subtitle>
         Atendimento > Atendimentos. Abra o episódio clínico a partir da recepção, agenda ou fila e prepare o prontuário.

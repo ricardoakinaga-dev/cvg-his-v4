@@ -1,6 +1,7 @@
 <template>
   <div class="lgpd-page">
     <AppPageHeader
+      :breadcrumbs="['Console Enterprise', 'Governança', 'LGPD']"
       title="LGPD"
       subtitle="Consentimento, direitos do titular e governança de dados — Console Enterprise"
     >

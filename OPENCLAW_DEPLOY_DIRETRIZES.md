@@ -44,12 +44,9 @@ Os servicos corretos no compose atual sao:
 - `cvg-his-v2-worker`
 - `cvg-his-v2-spa`
 
-`cvg-his-v2-web` e `apps/web` permanecem apenas como legado de transicao, fora do fluxo canonico.
-
 Mapeamento externo atual:
 
 - API: `3003:3001`
-- Web: `3004:3000` (legado; fora do fluxo canonico)
 - SPA: `3002:3002`
 - Postgres: `5432:5432`
 - Redis: `6380:6379`
@@ -59,7 +56,6 @@ Consequencia operacional:
 
 - health da API deve ser validado em `http://127.0.0.1:3003/health`
 - ready da API deve ser validado em `http://127.0.0.1:3003/ready`
-- Web legado, se ainda estiver ativo, deve ser validado em `http://127.0.0.1:3004/`
 - SPA deve ser validada em `http://127.0.0.1:3002/`
 - Worker deve ser validado por `docker compose ps` e logs, a menos que a porta seja publicada explicitamente
 
@@ -221,7 +217,7 @@ O OpenClaw nao deve:
 ## 10. Observacao critica sobre SPA como frontend canonico
 
 **REGRA DEPLOY:** O dominio principal `his.centroveterinarioguarapiranga.com` DEVE servir
-`cvg-his-v2-spa` (porta 3002, apps/spa). **NUNCA** apontar para `cvg-his-v2-web` (porta 3004).
+`cvg-his-v2-spa` (porta 3002, apps/spa).
 
 `infra/docker/Caddyfile.v2` ja esta configurado com `reverse_proxy 127.0.0.1:3002` (SPA).
 Se o Caddyfile local divergir, alinhar para `reverse_proxy 127.0.0.1:3002` antes de expor trafego.
@@ -230,7 +226,6 @@ Mapeamento de portas:
 
 - `127.0.0.1:3002` — SPA (frontend canonico, apps/spa) — o que o dominio publica
 - `127.0.0.1:3003` — API
-- `127.0.0.1:3004` — Web (portal alternativo, apps/web — NAO o frontend principal)
 
 Exemplo seguro para o script de cutover:
 
@@ -266,7 +261,6 @@ O OpenClaw deve interromper o deploy se encontrar:
 - tentativa de usar SQL legado em paralelo ao fluxo `packages/db`
 - tentativa de subir imagem ou servico legado
 - API sem responder em `3003`
-- Web sem responder em `3004`
 - SPA sem responder em `3002`
 - worker em crash loop
 

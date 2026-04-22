@@ -1,6 +1,6 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader title="Altas" subtitle="Trilha real de alta clínica ligada aos atendimentos">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Altas']" title="Altas" subtitle="Trilha real de alta clínica ligada aos atendimentos">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
       </template>

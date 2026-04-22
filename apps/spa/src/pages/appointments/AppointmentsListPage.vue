@@ -1,6 +1,6 @@
 <template>
   <div class="appointments-cockpit">
-    <AppPageHeader>
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Agenda']">
       <template #title>📅 Agenda</template>
       <template #subtitle>
         Atendimento &gt; Agenda. Cockpit multiprofissional com mini calendário lateral, filtros
@@ -33,18 +33,25 @@
 
     <template v-else>
       <section class="appointments-cockpit__summary">
-        <DsCard v-for="card in summaryCards" :key="card.label" class="metric-card">
-          <span class="metric-card__label">{{ card.label }}</span>
-          <strong class="metric-card__value">{{ card.value }}</strong>
-          <span class="metric-card__hint">{{ card.hint }}</span>
+        <DsCard v-for="card in summaryCards" :key="card.label" class="metric-card metric-card--summary">
+          <div class="metric-card__stack">
+            <div class="metric-card__label">{{ card.label }}</div>
+            <div class="metric-card__value">{{ card.value }}</div>
+          </div>
+          <p class="metric-card__hint">{{ card.hint }}</p>
         </DsCard>
       </section>
 
       <section v-if="forecastCards.length > 0" class="appointments-cockpit__forecast">
-        <DsCard v-for="card in forecastCards" :key="card.label" class="metric-card">
-          <span class="metric-card__label">{{ card.label }}</span>
-          <strong class="metric-card__value">{{ card.value }}</strong>
-          <span class="metric-card__hint">{{ card.hint }}</span>
+        <DsCard v-for="card in forecastCards" :key="card.label" class="metric-card metric-card--forecast">
+          <div class="metric-card__stack">
+            <div class="metric-card__label">{{ card.label }}</div>
+            <div class="metric-card__value">
+              <span class="metric-card__value-number">{{ card.count }}</span>
+              <span class="metric-card__value-unit">{{ card.unit }}</span>
+            </div>
+          </div>
+          <p class="metric-card__hint">{{ card.hint }}</p>
         </DsCard>
       </section>
 
@@ -658,13 +665,14 @@ const summaryCards = computed(() => {
   ];
 });
 const forecastCards = computed(() =>
-  (demandForecast.value?.days.slice(0, 3) ?? []).map((day) => ({
+  (demandForecast.value?.days?.slice(0, 3) ?? []).map((day) => ({
     label: new Date(day.date).toLocaleDateString('pt-BR', {
       weekday: 'short',
       day: '2-digit',
       month: '2-digit'
     }),
-    value: `${day.predictedAppointments} agenda(s)`,
+    count: day.predictedAppointments,
+    unit: 'agenda(s)',
     hint: `${day.predictedMinutes} min previstos • pico ${day.peakVisitType} • confiança ${Math.round(day.confidence * 100)}%`
   }))
 );
@@ -1126,24 +1134,82 @@ onMounted(async () => {
 }
 
 .metric-card {
+  min-height: 100%;
+}
+
+.metric-card :deep(.ds-card__body) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+  min-height: 100%;
+}
+
+.metric-card__stack {
   display: grid;
   gap: 6px;
+  align-content: start;
 }
 
 .metric-card__label {
+  display: block;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted, #64748b);
+  word-break: break-word;
 }
 
 .metric-card__value {
-  font-size: 28px;
+  display: block;
+  font-size: clamp(1.625rem, 1.4rem + 0.7vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: var(--color-text, #0f172a);
 }
 
 .metric-card__hint {
+  display: block;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
   color: var(--color-text-secondary, #475569);
+  word-break: break-word;
+}
+
+.metric-card--summary .metric-card__label {
+  font-size: 0.75rem;
+}
+
+.metric-card--forecast .metric-card__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 1rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.metric-card--forecast .metric-card__value-number,
+.metric-card--forecast .metric-card__value-unit {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.metric-card--forecast .metric-card__value-number {
+  font-weight: 700;
+}
+
+.metric-card--forecast .metric-card__value-unit {
+  font-weight: 500;
+}
+
+.metric-card--forecast .metric-card__hint {
+  font-size: 0.875rem;
+  line-height: 1.45;
 }
 
 .appointments-cockpit__layout {

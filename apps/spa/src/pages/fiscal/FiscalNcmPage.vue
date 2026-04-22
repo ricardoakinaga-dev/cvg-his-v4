@@ -1,6 +1,6 @@
 <template>
   <div class="fiscal-ncm-page">
-    <AppPageHeader title="IBPT / NCM" subtitle="Base de NCMs operacionais e alíquota de IPI usada no catálogo">
+    <AppPageHeader title="IBPT / NCM" :breadcrumbs="['Estoque', 'Configurações Fiscais', 'IBPT / NCM']" subtitle="Base de NCMs operacionais e alíquota de IPI usada no catálogo">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
       </template>

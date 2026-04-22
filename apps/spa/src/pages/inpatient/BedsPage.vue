@@ -1,6 +1,6 @@
 <template>
   <div class="beds-page">
-    <AppPageHeader title="Leitos" subtitle="Atendimento > Internação > Leitos. Gestão de disponibilidade assistencial por setor.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Leitos']" title="Leitos" subtitle="Atendimento > Internação > Leitos. Gestão de disponibilidade assistencial por setor.">
       <template #actions>
         <DsBadge variant="info" size="md">{{ beds.length }} leitos</DsBadge>
         <DsButton variant="ghost" tag="a" href="/sectors">Setores</DsButton>

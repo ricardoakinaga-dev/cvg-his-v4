@@ -8,6 +8,10 @@ import {
   navGroups
 } from './navigation';
 
+function findSectionLabels(groupId: string) {
+  return findGroup(groupId)?.sections.map((section) => section.label) ?? [];
+}
+
 function findGroup(groupId: string) {
   return navGroups.find((group) => group.id === groupId);
 }
@@ -65,12 +69,61 @@ describe('navigation groups', () => {
         '/inventory/movements',
         '/inventory/validity',
         '/products',
+        '/suppliers',
+        '/manufacturers',
+        '/product-groups',
+        '/warehouses',
         '/fiscal'
       ])
     );
 
     expect(findGroupPaths('financeiro')).toEqual(
-      expect.arrayContaining(['/billing', '/cash', '/pix', '/quotes'])
+      expect.arrayContaining([
+        '/billing',
+        '/cash',
+        '/pix',
+        '/quotes',
+        '/payment-methods',
+        '/banks',
+        '/cost-centers',
+        '/cards',
+        '/expenses'
+      ])
+    );
+
+    expect(findGroupPaths('relatorios')).toEqual(
+      expect.arrayContaining([
+        '/reports',
+        '/reports/financial',
+        '/reports/appointments',
+        '/reports/encounters',
+        '/reports/registers',
+        '/reports/inventory',
+        '/reports/production',
+        '/administrative-reports'
+      ])
+    );
+  });
+
+  it('prepares the official target subdomains for the next shell refactor', () => {
+    expect(findSectionLabels('atendimento')).toEqual(
+      expect.arrayContaining(['Atendimentos', 'Internação', 'Cadastros'])
+    );
+
+    expect(findSectionLabels('laboratorio')).toEqual(
+      expect.arrayContaining(['Atendimentos', 'Cadastrados'])
+    );
+
+    expect(findSectionLabels('estoque')).toEqual(
+      expect.arrayContaining(['Controles', 'Cadastrados', 'Configurações Fiscais'])
+    );
+
+    expect(findSectionLabels('financeiro')).toEqual(
+      expect.arrayContaining(['Gaveta', 'Controles', 'Maquininha de Cartão', 'Cadastros'])
+    );
+
+    expect(findSectionLabels('rh')).toEqual(
+      expect.arrayContaining(['Usuários', 'Comissões', 'Cadastros'])
     );
   });
 

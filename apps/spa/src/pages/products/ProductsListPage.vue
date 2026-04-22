@@ -1,6 +1,9 @@
 <template>
   <div class="list-page">
-    <AppPageHeader title="Produtos" subtitle="Catálogo de produtos e mercadorias para estoque e comercialização">
+    <AppPageHeader
+      title="Produtos"
+      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos']"
+      subtitle="Catálogo de produtos e mercadorias para estoque e comercialização">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
         <DsButton variant="primary" @click="router.push('/products/new')">Novo Produto</DsButton>

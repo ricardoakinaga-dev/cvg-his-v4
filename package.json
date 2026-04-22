@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "overrides": {
+      "drizzle-orm": "^0.38.4"
+    }
+  },
   "engines": {
     "node": ">=22.0.0"
   },
@@ -10,14 +15,13 @@
     "dev": "pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/spa --filter @cvg-his-v2/worker run dev",
     "dev:api": "pnpm --filter @cvg-his-v2/api run dev",
     "dev:spa": "pnpm --filter @cvg-his-v2/spa run dev",
-    "dev:legacy-web": "pnpm --filter @cvg-his-v2/web run dev",
     "dev:worker": "pnpm --filter @cvg-his-v2/worker run dev",
     "build": "pnpm -r --filter @cvg-his-v2/* run build",
     "typecheck": "pnpm -r --filter @cvg-his-v2/* run typecheck",
     "lint": "pnpm -r --filter @cvg-his-v2/* run lint",
     "test": "pnpm -r --filter @cvg-his-v2/* run test",
     "test:all": "pnpm test:critical && pnpm test:e2e",
-    "test:smoke": "npx playwright test --config e2e/playwright-smoke.config.ts",
+    "test:smoke": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts --grep-invert \"Visual\"'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:db": "vitest run tests/integration/database --config vitest.integration.config.ts",
     "test:critical": "REQUIRE_TEST_DB=1 vitest run tests/integration/database tests/integration/foundational.test.ts --config vitest.integration.config.ts --reporter=verbose",
@@ -37,7 +41,7 @@
     "benchmark:k6:seed": "pnpm exec tsx benchmarks/k6/seed-benchmark-fixtures.ts",
     "benchmark:k6": "k6 run benchmarks/k6/api-benchmark.js",
     "benchmark:k6:parse": "node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json",
-    "release:check": "flock -w 1800 /tmp/cvg-his-v2-release-check.lock -c 'pnpm guardrail:legacy-web && pnpm deploy:check && pnpm build && pnpm test:coverage && pnpm test:e2e:spa:docker'",
+    "release:check": "flock -w 1800 /tmp/cvg-his-v2-release-check.lock -c 'pnpm deploy:check && pnpm build && pnpm test:coverage && pnpm test:e2e:spa:docker'",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "ops:backup:v2": "bash infra/scripts/backup-v2.sh",
     "ops:restore:drill:v2": "bash infra/scripts/restore-drill-v2.sh",
@@ -46,7 +50,6 @@
     "turbo:build": "PATH=./node_modules/.bin:.:$PATH turbo run build --filter=@cvg-his-v2/*",
     "turbo:typecheck": "PATH=./node_modules/.bin:.:$PATH turbo run typecheck --filter=@cvg-his-v2/*",
     "guardrail:ds-imports": "bash scripts/check-legacy-ds-imports.sh",
-    "guardrail:legacy-web": "node scripts/enforce-legacy-web-freeze.mjs",
     "security:secrets": "secretlint --secretlintrc .secretlintrc.json --secretlintignore .secretlintignore \".github/**/*.{yml,yaml}\" \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,vue}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs}\" \"infra/**/*.{ts,js,mjs,cjs,yml,yaml}\" \"scripts/**/*.{ts,js,mjs,cjs}\" \"docker-compose*.yml\"",
     "cutover:check": "node infra/scripts/check-cutover-readiness.mjs",
     "deploy:check": "node infra/scripts/check-cutover-readiness.mjs",

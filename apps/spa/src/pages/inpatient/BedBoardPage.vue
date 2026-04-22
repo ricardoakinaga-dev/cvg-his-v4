@@ -1,6 +1,6 @@
 <template>
   <div class="bed-board-page">
-    <AppPageHeader title="🗺️ Mapa de Leitos" subtitle="Atendimento > Internação > Mapa de Leitos. Visão geral da ocupação por setor e disponibilidade assistencial.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Mapa de Leitos']" title="🗺️ Mapa de Leitos" subtitle="Atendimento > Internação > Mapa de Leitos. Visão geral da ocupação por setor e disponibilidade assistencial.">
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/inpatient">🛏️ Internações</DsButton>
         <DsButton variant="ghost" tag="a" href="/sectors">🏢 Setores</DsButton>

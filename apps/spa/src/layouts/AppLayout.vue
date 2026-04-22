@@ -24,6 +24,20 @@
         </button>
       </div>
 
+      <section class="sidebar__company-context" :class="{ 'sidebar__company-context--collapsed': appStore.sidebarCollapsed }">
+        <div class="sidebar__company-head">
+          <span class="sidebar__eyebrow">Empresa</span>
+          <span v-if="!appStore.sidebarCollapsed" class="sidebar__company-switch">Contexto ativo</span>
+        </div>
+        <div class="sidebar__company-card">
+          <span class="sidebar__company-icon">🏥</span>
+          <div v-if="!appStore.sidebarCollapsed" class="sidebar__company-copy">
+            <strong>Centro Veterinário Guarapiranga</strong>
+            <span>Operação principal</span>
+          </div>
+        </div>
+      </section>
+
       <div class="sidebar__search">
         <input
           v-model="searchQuery"
@@ -39,6 +53,7 @@
           v-for="group in filteredGroups"
           :key="group.id"
           class="sidebar__group"
+          :class="{ 'sidebar__group--active': matchingNavGroup?.id === group.id }"
           :open="shouldOpenGroup(group.id)"
         >
           <summary class="sidebar__group-summary">
@@ -56,6 +71,7 @@
               v-for="section in group.sections"
               :key="section.id"
               class="sidebar__section"
+              :class="{ 'sidebar__section--active': currentLocation?.section.id === section.id }"
             >
               <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
                 {{ section.label }}
@@ -78,98 +94,128 @@
         </details>
       </nav>
 
-      <section v-if="filteredEnterpriseSections.length" class="sidebar__panel sidebar__panel--enterprise">
-        <div class="sidebar__panel-head">
-          <span class="sidebar__eyebrow">Console Enterprise</span>
-          <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
-        </div>
-        <div class="sidebar__enterprise-groups">
-          <section
-            v-for="section in filteredEnterpriseSections"
-            :key="section.id"
-            class="sidebar__section"
-          >
-            <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
-              {{ section.label }}
-            </p>
-            <router-link
-              v-for="item in section.items"
-              :key="item.path"
-              :to="item.path"
-              class="sidebar__link sidebar__link--utility"
-              :class="{ 'sidebar__link--active': isActivePath(item.path) }"
-              :title="item.label"
-            >
-              <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
-                {{ item.label }}
-              </span>
-            </router-link>
+      <section class="sidebar__utility-stack">
+        <details
+          v-if="filteredEnterpriseSections.length"
+          class="sidebar__utility-group sidebar__utility-group--enterprise"
+        >
+          <summary class="sidebar__utility-summary">
+            <span class="sidebar__eyebrow">Console Enterprise</span>
+            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
+          </summary>
+          <div class="sidebar__panel sidebar__panel--enterprise">
+            <div class="sidebar__enterprise-groups">
+              <section
+                v-for="section in filteredEnterpriseSections"
+                :key="section.id"
+                class="sidebar__section"
+              >
+                <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+                  {{ section.label }}
+                </p>
+                <router-link
+                  v-for="item in section.items"
+                  :key="item.path"
+                  :to="item.path"
+                  class="sidebar__link sidebar__link--utility"
+                  :class="{ 'sidebar__link--active': isActivePath(item.path) }"
+                  :title="item.label"
+                >
+                  <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                    {{ item.label }}
+                  </span>
+                </router-link>
+              </section>
+            </div>
+          </div>
+        </details>
+
+        <details v-if="favoriteLinks.length" class="sidebar__utility-group">
+          <summary class="sidebar__utility-summary">
+            <span class="sidebar__eyebrow">Favoritos</span>
+            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Atalhos pessoais</span>
+          </summary>
+          <section class="sidebar__panel">
+            <div class="sidebar__panel-head">
+              <button
+                v-if="!appStore.sidebarCollapsed"
+                class="sidebar__ghost-btn"
+                type="button"
+                @click="toggleCurrentFavoriteRoute()"
+              >
+                {{ isCurrentRouteFavorite ? 'Desfavoritar atual' : 'Favoritar atual' }}
+              </button>
+            </div>
+            <div class="sidebar__quick-links">
+              <router-link
+                v-for="item in favoriteLinks"
+                :key="item.path"
+                :to="item.path"
+                class="sidebar__quick-link"
+                :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
+              >
+                <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
+                <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
+                  {{ item.label }}
+                </span>
+              </router-link>
+            </div>
           </section>
-        </div>
-      </section>
+        </details>
 
-      <section v-if="favoriteLinks.length" class="sidebar__panel">
-        <div class="sidebar__panel-head">
-          <span class="sidebar__eyebrow">Favoritos</span>
-          <button
-            v-if="!appStore.sidebarCollapsed"
-            class="sidebar__ghost-btn"
-            type="button"
-            @click="toggleCurrentFavoriteRoute()"
-          >
-            {{ isCurrentRouteFavorite ? 'Desfavoritar atual' : 'Favoritar atual' }}
-          </button>
-        </div>
-        <div class="sidebar__quick-links">
-          <router-link
-            v-for="item in favoriteLinks"
-            :key="item.path"
-            :to="item.path"
-            class="sidebar__quick-link"
-            :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
-          >
-            <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
-              {{ item.label }}
-            </span>
-          </router-link>
-        </div>
-      </section>
-
-      <section v-if="recentLinks.length" class="sidebar__panel sidebar__panel--recent">
-        <div class="sidebar__panel-head">
-          <span class="sidebar__eyebrow">Recentes</span>
-          <button
-            v-if="!appStore.sidebarCollapsed"
-            class="sidebar__ghost-btn"
-            type="button"
-            @click="appStore.clearRecentRoutes()"
-          >
-            Limpar
-          </button>
-        </div>
-        <div class="sidebar__recent-list">
-          <router-link
-            v-for="item in recentLinks"
-            :key="item.path"
-            :to="item.path"
-            class="sidebar__recent-link"
-            :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
-          >
-            <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
-              {{ item.label }}
-            </span>
-          </router-link>
-        </div>
+        <details v-if="recentLinks.length" class="sidebar__utility-group">
+          <summary class="sidebar__utility-summary">
+            <span class="sidebar__eyebrow">Recentes</span>
+            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Histórico de navegação</span>
+          </summary>
+          <section class="sidebar__panel sidebar__panel--recent">
+            <div class="sidebar__panel-head">
+              <button
+                v-if="!appStore.sidebarCollapsed"
+                class="sidebar__ghost-btn"
+                type="button"
+                @click="appStore.clearRecentRoutes()"
+              >
+                Limpar
+              </button>
+            </div>
+            <div class="sidebar__recent-list">
+              <router-link
+                v-for="item in recentLinks"
+                :key="item.path"
+                :to="item.path"
+                class="sidebar__recent-link"
+                :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
+              >
+                <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
+                <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
+                  {{ item.label }}
+                </span>
+              </router-link>
+            </div>
+          </section>
+        </details>
       </section>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
         <div class="topbar__title-block">
+          <div class="topbar__breadcrumbs" aria-label="Breadcrumbs">
+            <span
+              v-for="(crumb, index) in shellBreadcrumbs"
+              :key="`${crumb.label}-${index}`"
+              class="topbar__breadcrumb-item"
+            >
+              <span v-if="index > 0" class="topbar__breadcrumb-separator">/</span>
+              <span>{{ crumb.label }}</span>
+            </span>
+          </div>
           <h1 class="topbar__title">{{ currentPageTitle }}</h1>
+          <p class="topbar__subtitle">
+            {{ currentAreaLabel }} · Centro Veterinário Guarapiranga
+          </p>
         </div>
 
         <div class="topbar__action-row">
@@ -340,6 +386,30 @@ const currentPageTitle = computed(() => {
   }
 
   return currentLocation.value?.item.label ?? currentAreaLabel.value;
+});
+
+const shellBreadcrumbs = computed(() => {
+  const crumbs: Array<{ label: string }> = [];
+  const area = currentAreaLabel.value;
+  const parent = typeof route.meta.breadcrumbParent === 'string' ? route.meta.breadcrumbParent : undefined;
+  const current = typeof route.meta.breadcrumb === 'string'
+    ? route.meta.breadcrumb
+    : currentLocation.value?.item.label ?? currentPageTitle.value;
+
+  if (area) {
+    crumbs.push({ label: area });
+  }
+
+  if (parent && parent !== area) {
+    crumbs.push({ label: parent });
+  }
+
+  const lastCrumb = crumbs[crumbs.length - 1]?.label;
+  if (current && current !== lastCrumb) {
+    crumbs.push({ label: current });
+  }
+
+  return crumbs;
 });
 
 const favoriteTargetPath = computed(() => currentLocation.value?.item.path ?? route.path);
@@ -774,6 +844,63 @@ function handleLogout() {
   flex-shrink: 0;
 }
 
+.sidebar__company-context {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(239, 246, 255, 0.92));
+}
+
+.sidebar__company-context--collapsed {
+  padding: 10px;
+}
+
+.sidebar__company-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sidebar__company-switch {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.sidebar__company-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+}
+
+.sidebar__company-icon {
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar__company-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar__company-copy strong {
+  font-size: 13px;
+  color: var(--color-text, #0f172a);
+}
+
+.sidebar__company-copy span {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
 .sidebar__panel {
   padding: 12px;
   border-radius: 14px;
@@ -826,6 +953,37 @@ function handleLogout() {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.sidebar__utility-stack {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.sidebar__utility-group {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+}
+
+.sidebar__utility-group--enterprise {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.025), rgba(37, 99, 235, 0.015));
+}
+
+.sidebar__utility-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.sidebar__utility-summary::-webkit-details-marker {
+  display: none;
+}
+
 .sidebar__nav {
   display: grid;
   gap: 10px;
@@ -837,6 +995,11 @@ function handleLogout() {
   border: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface, #ffffff);
   overflow: hidden;
+}
+
+.sidebar__group--active {
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.9);
 }
 
 .sidebar__group-summary {
@@ -885,6 +1048,12 @@ function handleLogout() {
 .sidebar__section {
   display: grid;
   gap: 4px;
+  padding: 6px 4px;
+  border-radius: 12px;
+}
+
+.sidebar__section--active {
+  background: rgba(245, 158, 11, 0.08);
 }
 
 .sidebar__section-label {
@@ -986,6 +1155,28 @@ function handleLogout() {
 
 .topbar__title-block {
   min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.topbar__breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+}
+
+.topbar__breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar__breadcrumb-separator {
+  color: var(--color-border-strong, #94a3b8);
 }
 
 .topbar__title {
@@ -997,6 +1188,12 @@ function handleLogout() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.topbar__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted, #64748b);
 }
 
 .topbar__action-row {

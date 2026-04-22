@@ -109,7 +109,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Agenda/ }).first()).toBeVisible({
       timeout: 15000
     });
 
@@ -169,7 +169,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Agenda/ }).first()).toBeVisible({
       timeout: 10000
     });
     console.log('   ✅ Appointments list accessible');
@@ -186,7 +186,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: /Agenda Premium/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Agenda/ }).first()).toBeVisible({
       timeout: 10000
     });
 
@@ -195,10 +195,10 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await expect(page.getByRole('link', { name: /Fila operacional/ })).toBeVisible({
       timeout: 10000
     });
-    await expect(page.getByRole('button', { name: /\+ Agendamento rápido/ }).first()).toBeVisible({
+    await expect(page.getByRole('button', { name: /\+ Criar agendamento/ }).first()).toBeVisible({
       timeout: 10000
     });
-    await expect(page.getByText('Filtro operacional')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Filtro e contexto')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#referenceDate')).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('tablist', { name: /Modo da agenda/ })).toBeVisible({
       timeout: 10000

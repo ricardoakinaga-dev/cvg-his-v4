@@ -491,7 +491,7 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
           {
             attribute: 'actor.roleCodes',
             operator: 'nin',
-            value: ['admin', 'inventory'] as unknown as readonly string[]
+            value: ['admin'] as unknown as readonly string[]
           }
         ],
         effect: 'deny'
@@ -503,17 +503,6 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
             attribute: 'actor.roleCodes',
             operator: 'has',
             value: 'admin'
-          }
-        ],
-        effect: 'permit'
-      },
-      {
-        description: 'Permit inventory role to manage stock usage',
-        conditions: [
-          {
-            attribute: 'actor.roleCodes',
-            operator: 'has',
-            value: 'inventory'
           }
         ],
         effect: 'permit'

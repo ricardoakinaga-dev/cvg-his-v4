@@ -1,6 +1,7 @@
 <template>
   <div class="laboratory-reference-values-page">
     <AppPageHeader
+      :breadcrumbs="['Laboratório', 'Cadastrados', 'Valores de Referência']"
       title="Valores de Referência"
       subtitle="Tabela de valores de referência por tipo de exame"
     >

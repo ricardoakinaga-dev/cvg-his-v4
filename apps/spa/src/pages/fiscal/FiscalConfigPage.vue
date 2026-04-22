@@ -2,6 +2,7 @@
   <div class="fiscal-config-page">
     <AppPageHeader
       title="Fiscal"
+      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'Fiscal']"
       subtitle="Consulta fiscal via backend com backoffice inicial para layouts municipais de NFS-e"
     >
       <template #actions>

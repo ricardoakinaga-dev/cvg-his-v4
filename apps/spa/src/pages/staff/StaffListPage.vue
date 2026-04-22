@@ -1,6 +1,9 @@
 <template>
   <div class="list-page">
-    <AppPageHeader title="Equipe" subtitle="Profissionais, departamentos, cargos e capacidade operacional do quadro de RH">
+    <AppPageHeader
+      title="Equipe"
+      :breadcrumbs="['RH', 'Usuários', 'Equipe']"
+      subtitle="Profissionais, departamentos, cargos e capacidade operacional do quadro de RH">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
         <DsButton variant="primary" @click="router.push('/staff/new')">Novo Membro</DsButton>

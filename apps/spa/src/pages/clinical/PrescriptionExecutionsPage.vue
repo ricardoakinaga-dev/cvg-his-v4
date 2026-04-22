@@ -1,6 +1,7 @@
 <template>
   <div class="clinical-page">
     <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Atendimentos', 'Execuções de Prescrição']"
       title="Execuções de Prescrição"
       subtitle="Operação real das administrações ligadas às prescrições"
     >

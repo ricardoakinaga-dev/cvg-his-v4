@@ -12,7 +12,7 @@
     </template>
 
     <template v-else-if="item">
-      <AppPageHeader>
+      <AppPageHeader :breadcrumbs="['Estoque', 'Controles', 'Estoque', item.name]">
         <template #title>{{ item.name }}</template>
         <template #subtitle>
           <span class="inventory-sku">SKU: {{ item.sku }}</span>

@@ -18,7 +18,6 @@ const files = {
   compose: read('docker-compose.v2.yml'),
   envExample: read('.env.v2.example'),
   caddy: read('infra/docker/Caddyfile.v2'),
-  legacyReadme: read('apps/web/README.md'),
   deployDoc: read('docs/130-instalacao-publicacao-cvg-his-v2-real.md'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
   policy: read('docs/470-politica-migracao-e-deploy.md')
@@ -29,6 +28,7 @@ const requiredBuildCommand =
 const requiredUpCommand = 'up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa';
 const forbiddenWebBuildPattern = /build[^\n]*cvg-his-v2-web/;
 const forbiddenWebUpPattern = /up[^\n]*cvg-his-v2-web/;
+const forbiddenLegacyWebPattern = /apps\/web|cvg-his-v2-web|3004|profile legacy|portal legado/i;
 
 const checks = [
   {
@@ -52,8 +52,9 @@ const checks = [
       files.directives?.includes('cvg-his-v2-api') &&
       files.directives?.includes('cvg-his-v2-worker') &&
       files.directives?.includes('cvg-his-v2-spa') &&
-      files.directives?.includes('apps/web') &&
-      files.directives?.includes('fora do fluxo canonico')
+      !files.directives?.includes('- `3004`') &&
+      !files.directives?.includes('Web: `3004') &&
+      !files.directives?.includes('portal legado')
   },
   {
     label: 'checklist de cutover usa portas e servicos atuais',
@@ -74,11 +75,10 @@ const checks = [
       files.policy?.includes('deprecada')
   },
   {
-    label: 'compose deixa apps/web isolado em profile legacy',
+    label: 'compose canonico nao inclui mais o frontend legado',
     ok:
-      files.compose?.includes("profiles: ['legacy']") &&
-      files.compose?.includes('cvg-his-v2-web:') &&
-      files.compose?.includes('cvg-his-v2-spa:')
+      files.compose?.includes('cvg-his-v2-spa:') &&
+      !forbiddenLegacyWebPattern.test(files.compose ?? '')
   },
   {
     label: 'compose canonico nasce com NODE_ENV production-like por default',
@@ -92,12 +92,6 @@ const checks = [
       files.caddy?.includes('reverse_proxy 127.0.0.1:3002') &&
       files.caddy?.includes('reverse_proxy 127.0.0.1:3003') &&
       !files.caddy?.includes('reverse_proxy 127.0.0.1:3004')
-  },
-  {
-    label: 'README do legado declara congelamento operacional',
-    ok:
-      files.legacyReadme?.includes('Frontend legado congelado') &&
-      files.legacyReadme?.includes('nao recebe novas features')
   },
   {
     label: 'env example de publicacao nasce em production',

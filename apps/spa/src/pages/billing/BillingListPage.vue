@@ -2,6 +2,7 @@
   <div class="billing-list-page">
     <AppPageHeader
       title="💰 Faturamento"
+      :breadcrumbs="['Financeiro', 'Controles', 'Faturamento']"
       subtitle="Contas a receber, cobrança assistencial e leitura executiva do backoffice financeiro"
       :secondary-actions="headerSecondaryActions"
     />

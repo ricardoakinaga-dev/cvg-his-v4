@@ -1,6 +1,7 @@
 <template>
   <div class="clinical-page">
     <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Atendimentos', 'Central Diagnóstica']"
       title="Central Diagnóstica"
       subtitle="Ponte operacional entre atendimento, prontuário e domínio Laboratório"
     >

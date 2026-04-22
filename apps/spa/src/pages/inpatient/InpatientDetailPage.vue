@@ -1,6 +1,6 @@
 <template>
   <div class="inpatient-detail-page">
-      <AppPageHeader title="🛏️ Detalhes da Internação">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Detalhes da Internação', stay ? patientName(stay.patientId) : 'Detalhes']" title="🛏️ Detalhes da Internação">
       <template #subtitle>
         <span class="muted">Atendimento &gt; Internação</span>
         <span v-if="stay" class="muted">{{ patientName(stay.patientId) }}</span>

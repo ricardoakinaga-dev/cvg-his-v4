@@ -2,6 +2,7 @@
   <div class="laboratory-hub-page">
     <AppPageHeader
       title="Laboratório"
+      :breadcrumbs="['Laboratório', 'Visão geral']"
       subtitle="Operação de exames, laudos, equipamentos e parâmetros laboratoriais"
     >
       <template #actions>

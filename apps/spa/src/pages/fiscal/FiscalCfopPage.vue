@@ -1,6 +1,6 @@
 <template>
   <div class="fiscal-cfop-page">
-    <AppPageHeader title="CFOP" subtitle="Tabela operacional de entradas, saídas, devoluções e serviços">
+    <AppPageHeader title="CFOP" :breadcrumbs="['Estoque', 'Configurações Fiscais', 'CFOP']" subtitle="Tabela operacional de entradas, saídas, devoluções e serviços">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
       </template>

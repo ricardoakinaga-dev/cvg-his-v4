@@ -1,6 +1,6 @@
 <template>
   <div class="whatsapp-page">
-    <AppPageHeader title="WhatsApp Operacional" subtitle="Canal de confirmação, relacionamento e réguas operacionais do Marketing">
+    <AppPageHeader :breadcrumbs="['Marketing', 'Comunicação', 'WhatsApp Operacional']" title="WhatsApp Operacional" subtitle="Canal de confirmação, relacionamento e réguas operacionais do Marketing">
       <template #actions>
         <DsButton variant="secondary" @click="resetForm">Limpar</DsButton>
       </template>

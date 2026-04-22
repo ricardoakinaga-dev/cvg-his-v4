@@ -10,6 +10,7 @@ COPY packages ./packages
 COPY infra ./infra
 
 RUN pnpm install --no-frozen-lockfile --prod=false
+RUN find . -name 'tsconfig.tsbuildinfo' -delete
 RUN pnpm build
 
 FROM node:22-bookworm-slim AS runner

@@ -1,6 +1,7 @@
 <template>
   <div class="access-control-page">
     <AppPageHeader
+      :breadcrumbs="['Console Enterprise', 'Governança', 'Governança de Acesso']"
       title="🔐 Governança de Acesso"
       subtitle="Usuários, equipes, setores e matriz de permissões — RH e Console Enterprise"
     >

@@ -1,6 +1,6 @@
 <template>
   <div class="owner-form-page">
-    <AppPageHeader>
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores', isEdit ? 'Editar Tutor' : 'Novo Tutor']">
       <template #title>
         {{ isEdit ? 'Editar Tutor' : 'Novo Tutor' }}
       </template>

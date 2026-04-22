@@ -1,6 +1,6 @@
 <template>
   <div class="webhooks-list-page">
-    <AppPageHeader title="Webhooks" subtitle="Entrega de eventos, integrações e saúde operacional do ecossistema externo">
+    <AppPageHeader :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks']" title="Webhooks" subtitle="Entrega de eventos, integrações e saúde operacional do ecossistema externo">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
         <DsButton tag="a" to="/webhooks/new" variant="primary">+ Novo Webhook</DsButton>

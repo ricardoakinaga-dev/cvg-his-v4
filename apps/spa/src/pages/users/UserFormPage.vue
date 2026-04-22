@@ -1,6 +1,6 @@
 <template>
   <div class="user-form-page">
-    <AppPageHeader>
+    <AppPageHeader :breadcrumbs="['RH', 'Usuários', 'Usuários', isEdit ? 'Editar Usuário' : 'Novo Usuário']">
       <template #title>
         {{ isEdit ? 'Editar Usuário' : 'Novo Usuário' }}
       </template>

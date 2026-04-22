@@ -1,6 +1,6 @@
 <template>
   <div class="api-client-page">
-    <AppPageHeader title="Cliente API" subtitle="Diagnóstico, health check e apoio operacional às integrações enterprise">
+    <AppPageHeader title="Cliente API" :breadcrumbs="['Console Enterprise', 'Integrações', 'Cliente API']" subtitle="Diagnóstico, health check e apoio operacional às integrações enterprise">
       <template #actions>
         <DsBadge variant="info" size="md">{{ apiBaseLabel }}</DsBadge>
         <DsButton variant="secondary" :loading="loading" @click="reloadHealth">Atualizar</DsButton>

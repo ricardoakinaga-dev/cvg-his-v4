@@ -1,6 +1,7 @@
 <template>
   <div class="laboratory-equipment-page">
     <AppPageHeader
+      :breadcrumbs="['Laboratório', 'Cadastrados', 'Equipamentos']"
       title="Equipamentos Laboratoriais"
       subtitle="Gestão de equipamentos e máquinas do laboratório"
     >

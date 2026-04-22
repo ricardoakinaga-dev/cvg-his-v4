@@ -2,6 +2,7 @@
   <div class="inventory-list-page">
     <AppPageHeader
       title="Estoque"
+      :breadcrumbs="['Estoque', 'Controles', 'Estoque']"
       subtitle="Controle de estoque, movimentações e níveis de reposição"
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
@@ -63,6 +64,10 @@
       <DsCard title="Cadastros" variant="compact">
         <div class="hub-links">
           <DsButton variant="secondary" tag="a" to="/products">Catálogo de produtos</DsButton>
+          <DsButton variant="secondary" tag="a" to="/suppliers">Fornecedores e despesas</DsButton>
+          <DsButton variant="secondary" tag="a" to="/manufacturers">Fabricantes</DsButton>
+          <DsButton variant="secondary" tag="a" to="/product-groups">Grupos de produto</DsButton>
+          <DsButton variant="secondary" tag="a" to="/warehouses">Estoques cadastrados</DsButton>
           <DsButton variant="secondary" tag="a" to="/quotes">Orçamentos vinculados</DsButton>
         </div>
       </DsCard>

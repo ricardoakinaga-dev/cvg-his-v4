@@ -1,6 +1,6 @@
 <template>
   <div class="inventory-form-page">
-    <AppPageHeader>
+    <AppPageHeader :breadcrumbs="['Estoque', 'Controles', 'Estoque', isEdit ? 'Editar Item' : 'Novo Item']">
       <template #title>{{ isEdit ? 'Editar Item' : 'Novo Item de Estoque' }}</template>
     </AppPageHeader>
 

@@ -2,6 +2,7 @@
   <div class="fiscal-nfse-page">
     <AppPageHeader
       title="NFS-e"
+      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'NFS-e']"
       subtitle="Backoffice inicial para cadastro e ajuste de layouts municipais de NFS-e"
     >
       <template #actions>

@@ -1,6 +1,7 @@
 <template>
   <div class="form-page">
     <AppPageHeader
+      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos', isEditing ? 'Editar Produto' : 'Novo Produto']"
       :title="isEditing ? 'Editar Produto' : 'Novo Produto'"
       :subtitle="isEditing ? 'Atualize os dados do produto' : 'Cadastre um novo produto no catálogo'"
     >

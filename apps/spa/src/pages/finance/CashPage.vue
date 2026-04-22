@@ -1,6 +1,6 @@
 <template>
   <div class="cash-page">
-    <AppPageHeader title="Caixa / Gaveta" subtitle="Abertura, fechamento e liquidação operacional do caixa financeiro">
+    <AppPageHeader title="Caixa / Gaveta" :breadcrumbs="['Financeiro', 'Gaveta', 'Caixa']" subtitle="Abertura, fechamento e liquidação operacional do caixa financeiro">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadQuotes">Atualizar recebíveis</DsButton>
       </template>

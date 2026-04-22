@@ -2,6 +2,7 @@
   <div class="dashboard-page">
     <AppPageHeader
       title="Início"
+      :breadcrumbs="['Início', 'Dashboard']"
       subtitle="Porta operacional do dia — acompanhe a jornada de Atendimento entre agenda, fila, triagem, atendimento, prontuário e internação."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
