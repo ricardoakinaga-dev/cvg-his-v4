@@ -9,10 +9,9 @@
   >
     <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
       <div class="sidebar__brand">
-        <div class="sidebar__brand-mark">🏥</div>
         <div v-if="!appStore.sidebarCollapsed" class="sidebar__brand-copy">
-          <strong>CVG HIS</strong>
-          <span>Estrutura Vetus-aligned</span>
+          <span class="sidebar__eyebrow">Menu</span>
+          <strong>Navegação operacional</strong>
         </div>
         <button
           class="sidebar__toggle"
@@ -26,14 +25,14 @@
 
       <section class="sidebar__company-context" :class="{ 'sidebar__company-context--collapsed': appStore.sidebarCollapsed }">
         <div class="sidebar__company-head">
-          <span class="sidebar__eyebrow">Empresa</span>
-          <span v-if="!appStore.sidebarCollapsed" class="sidebar__company-switch">Contexto ativo</span>
+          <span class="sidebar__eyebrow">Empresa:</span>
+          <span v-if="!appStore.sidebarCollapsed" class="sidebar__company-switch">↔ Trocar contexto</span>
         </div>
         <div class="sidebar__company-card">
           <span class="sidebar__company-icon">🏥</span>
           <div v-if="!appStore.sidebarCollapsed" class="sidebar__company-copy">
             <strong>Centro Veterinário Guarapiranga</strong>
-            <span>Operação principal</span>
+            <span>Unidade principal ativa</span>
           </div>
         </div>
       </section>
@@ -201,47 +200,81 @@
 
     <main class="workspace">
       <header class="topbar">
-        <div class="topbar__title-block">
-          <div class="topbar__breadcrumbs" aria-label="Breadcrumbs">
-            <span
-              v-for="(crumb, index) in shellBreadcrumbs"
-              :key="`${crumb.label}-${index}`"
-              class="topbar__breadcrumb-item"
+        <div class="topbar__system-row">
+          <div class="topbar__system-left">
+            <div class="topbar__brand-pill">
+              <div class="topbar__brand-logo">V</div>
+              <div class="topbar__brand-copy">
+                <strong>CVG HIS</strong>
+                <span>Shell Vetus-aligned</span>
+              </div>
+            </div>
+
+            <button
+              class="topbar__collapse-btn"
+              type="button"
+              @click="appStore.toggleSidebar()"
+              :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+              :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
             >
-              <span v-if="index > 0" class="topbar__breadcrumb-separator">/</span>
-              <span>{{ crumb.label }}</span>
-            </span>
+              {{ appStore.sidebarCollapsed ? '☰' : '⇤' }}
+            </button>
+
+            <button class="topbar__search-shell" type="button" @click="openPalette">
+              <span class="topbar__search-shell-icon">🔎</span>
+              <span class="topbar__search-shell-copy">Buscar módulo, rotina ou relatório</span>
+              <kbd>Ctrl+K</kbd>
+            </button>
           </div>
-          <h1 class="topbar__title">{{ currentPageTitle }}</h1>
-          <p class="topbar__subtitle">
-            {{ currentAreaLabel }} · Centro Veterinário Guarapiranga
-          </p>
+
+          <div class="topbar__system-right">
+            <button class="topbar__icon-btn" type="button" title="Notificações" @click="navigateTo('/notifications')">
+              🔔
+            </button>
+
+            <button class="topbar__icon-btn" type="button" title="Suporte" @click="openSupportCenter()">
+              ❔
+            </button>
+
+            <button class="topbar__icon-btn" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
+              💬
+            </button>
+
+            <button
+              class="topbar__icon-btn"
+              type="button"
+              :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+              @click="themeStore.toggle()"
+            >
+              {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+            </button>
+
+            <div class="topbar__profile">
+              <strong>{{ authStore.userName }}</strong>
+              <span>{{ userBadgeId }}</span>
+            </div>
+
+            <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
+          </div>
         </div>
 
-        <div class="topbar__action-row">
-          <button class="topbar__action-btn topbar__action-btn--search" type="button" @click="openPalette">
-            <span>Buscar</span>
-            <kbd>Ctrl+K</kbd>
-          </button>
-
-          <button class="topbar__icon-btn" type="button" title="Notificações" @click="navigateTo('/notifications')">
-            🔔
-          </button>
-
-          <button
-            class="topbar__icon-btn"
-            type="button"
-            :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
-            @click="themeStore.toggle()"
-          >
-            {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
-          </button>
-
-          <div class="topbar__profile">
-            <strong>{{ authStore.userName }}</strong>
+        <div class="topbar__context-row">
+          <div class="topbar__title-block">
+            <div class="topbar__breadcrumbs" aria-label="Breadcrumbs">
+              <span
+                v-for="(crumb, index) in shellBreadcrumbs"
+                :key="`${crumb.label}-${index}`"
+                class="topbar__breadcrumb-item"
+              >
+                <span v-if="index > 0" class="topbar__breadcrumb-separator">/</span>
+                <span>{{ crumb.label }}</span>
+              </span>
+            </div>
+            <h1 class="topbar__title">{{ currentPageTitle }}</h1>
+            <p class="topbar__subtitle">
+              {{ currentAreaLabel }} · Centro Veterinário Guarapiranga
+            </p>
           </div>
-
-          <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
         </div>
       </header>
 
@@ -386,6 +419,15 @@ const currentPageTitle = computed(() => {
   }
 
   return currentLocation.value?.item.label ?? currentAreaLabel.value;
+});
+
+const userBadgeId = computed(() => {
+  const rawId = authStore.user.id ?? authStore.user.accountId ?? null;
+  if (!rawId) {
+    return 'Id. --';
+  }
+
+  return `Id. ${rawId.slice(0, 8)}`;
 });
 
 const shellBreadcrumbs = computed(() => {
@@ -798,22 +840,9 @@ function handleLogout() {
 .sidebar__brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--color-bg-subtle, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-}
-
-.sidebar__brand-mark {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(249, 115, 22, 0.12));
-  border: 1px solid var(--color-border, #e2e8f0);
-  font-size: 20px;
+  padding: 8px 10px 2px;
 }
 
 .sidebar__brand-copy {
@@ -824,13 +853,13 @@ function handleLogout() {
 }
 
 .sidebar__brand-copy strong {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text, #0f172a);
 }
 
 .sidebar__brand-copy span {
-  font-size: 12px;
-  color: var(--color-text-muted, #94a3b8);
+  font-size: 11px;
+  color: var(--color-primary-600, #2563eb);
 }
 
 .sidebar__toggle {
@@ -998,8 +1027,8 @@ function handleLogout() {
 }
 
 .sidebar__group--active {
-  border-color: rgba(37, 99, 235, 0.24);
-  box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.9);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: inset 4px 0 0 rgba(37, 99, 235, 0.96);
 }
 
 .sidebar__group-summary {
@@ -1010,6 +1039,10 @@ function handleLogout() {
   padding: 12px 12px 10px;
   cursor: pointer;
   user-select: none;
+}
+
+.sidebar__group--active > .sidebar__group-summary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.04));
 }
 
 .sidebar__group-summary::-webkit-details-marker {
@@ -1045,6 +1078,10 @@ function handleLogout() {
   padding: 0 8px 10px;
 }
 
+.sidebar__group-body {
+  background: linear-gradient(180deg, rgba(250, 245, 235, 0.95), rgba(255, 248, 240, 0.72));
+}
+
 .sidebar__section {
   display: grid;
   gap: 4px;
@@ -1053,7 +1090,7 @@ function handleLogout() {
 }
 
 .sidebar__section--active {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(245, 158, 11, 0.14);
 }
 
 .sidebar__section-label {
@@ -1143,14 +1180,113 @@ function handleLogout() {
 }
 
 .topbar {
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
+  display: grid;
+  gap: 0;
   border-bottom: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface, #ffffff);
   min-width: 0;
+}
+
+.topbar__system-row,
+.topbar__context-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 12px 24px;
+}
+
+.topbar__system-row {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.topbar__system-left,
+.topbar__system-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar__system-left {
+  flex: 1;
+}
+
+.topbar__brand-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar__brand-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 10px 25px rgba(249, 115, 22, 0.22);
+}
+
+.topbar__brand-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.topbar__brand-copy strong {
+  font-size: 14px;
+  color: var(--color-text, #0f172a);
+}
+
+.topbar__brand-copy span {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.topbar__collapse-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-secondary, #475569);
+  flex-shrink: 0;
+}
+
+.topbar__search-shell {
+  flex: 1;
+  min-height: 40px;
+  max-width: 520px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #dbe3ee);
+  background: #ffffff;
+  color: var(--color-text-secondary, #475569);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.topbar__search-shell-copy {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__search-shell-icon {
+  font-size: 14px;
+}
+
+.topbar__context-row {
+  align-items: flex-start;
 }
 
 .topbar__title-block {
@@ -1236,18 +1372,23 @@ function handleLogout() {
 }
 
 .topbar__profile {
-  display: flex;
+  display: grid;
   align-items: center;
   min-height: 38px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(37, 99, 235, 0.18);
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(14, 165, 233, 0.04));
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.26);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.72), rgba(255, 255, 255, 0.98));
 }
 
 .topbar__profile strong {
   font-size: 13px;
   color: var(--color-text, #0f172a);
+}
+
+.topbar__profile span {
+  font-size: 11px;
+  color: var(--color-primary-700, #1d4ed8);
 }
 
 .topbar__logout-btn {
@@ -1379,13 +1520,16 @@ function handleLogout() {
 }
 
 @media (max-width: 980px) {
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
+  .topbar__system-row,
+  .topbar__context-row,
+  .topbar__system-left,
+  .topbar__system-right {
+    flex-wrap: wrap;
   }
 
-  .topbar__action-row {
-    justify-content: flex-start;
+  .topbar__search-shell {
+    max-width: none;
+    width: 100%;
   }
 }
 
