@@ -42,8 +42,8 @@
           v-model="searchQuery"
           type="search"
           class="sidebar__search-input"
-          placeholder="Buscar modulo, rotina ou relatorio..."
-          aria-label="Buscar modulo"
+          placeholder="Buscar módulo, rotina ou relatório..."
+          aria-label="Buscar módulo"
         />
       </div>
 
@@ -94,6 +94,7 @@
       </nav>
 
       <section class="sidebar__utility-stack">
+        <div v-if="!appStore.sidebarCollapsed" class="sidebar__utility-label">Utilitários</div>
         <details
           v-if="filteredEnterpriseSections.length"
           class="sidebar__utility-group sidebar__utility-group--enterprise"
@@ -217,7 +218,8 @@
               :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
               :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
             >
-              {{ appStore.sidebarCollapsed ? '☰' : '⇤' }}
+              <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
+              <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
             </button>
 
             <button class="topbar__search-shell" type="button" @click="openPalette">
@@ -228,15 +230,15 @@
           </div>
 
           <div class="topbar__system-right">
-            <button class="topbar__icon-btn" type="button" title="Notificações" @click="navigateTo('/notifications')">
+            <button class="topbar__icon-btn topbar__icon-btn--notifications" type="button" title="Notificações" @click="navigateTo('/notifications')">
               🔔
             </button>
 
-            <button class="topbar__icon-btn" type="button" title="Suporte" @click="openSupportCenter()">
+            <button class="topbar__icon-btn topbar__icon-btn--support" type="button" title="Suporte" @click="openSupportCenter()">
               ❔
             </button>
 
-            <button class="topbar__icon-btn" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
+            <button class="topbar__icon-btn topbar__icon-btn--whatsapp" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
               💬
             </button>
 
@@ -986,6 +988,17 @@ function handleLogout() {
   display: grid;
   gap: 8px;
   margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.26);
+}
+
+.sidebar__utility-label {
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #94a3b8);
 }
 
 .sidebar__utility-group {
@@ -1248,13 +1261,26 @@ function handleLogout() {
 }
 
 .topbar__collapse-btn {
-  width: 36px;
-  height: 36px;
+  min-height: 38px;
+  padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(255, 255, 255, 1));
+  color: #c2410c;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.topbar__collapse-icon {
+  font-size: 14px;
+}
+
+.topbar__collapse-label {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .topbar__search-shell {
@@ -1369,6 +1395,20 @@ function handleLogout() {
   border: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface, #ffffff);
   color: var(--color-text-secondary, #475569);
+}
+
+.topbar__icon-btn--notifications {
+  color: #1d4ed8;
+}
+
+.topbar__icon-btn--support {
+  color: #475569;
+}
+
+.topbar__icon-btn--whatsapp {
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.22);
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.96), rgba(255, 255, 255, 1));
 }
 
 .topbar__profile {
@@ -1514,7 +1554,9 @@ function handleLogout() {
   .sidebar__recent-link-label,
   .sidebar__microcopy,
   .sidebar__section-label,
-  .sidebar__ghost-btn {
+  .sidebar__ghost-btn,
+  .sidebar__utility-label,
+  .topbar__collapse-label {
     display: none;
   }
 }
