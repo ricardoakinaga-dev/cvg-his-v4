@@ -140,9 +140,17 @@ describe('config module', () => {
       const env = cleanApiEnv();
       env.ENABLE_MFA = 'true';
       env.MFA_SECRET_ENCRYPTION_KEY = 'a-32-char-secret-key-for-mfa!!';
+      env.AUTH_SECRET_PREVIOUS = 'a-second-very-long-secret-that-is-at-least-32-chars';
+      env.AUTH_SECRET_VERSION = '2026-q2';
+      env.MFA_SECRET_ENCRYPTION_KEY_VERSION = '2026-h1';
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.enableMfa).toBe(true);
       expect(config.mfaEncryptionKey).toBe('a-32-char-secret-key-for-mfa!!');
+      expect(config.authVerifierSecrets).toEqual([
+        'a-second-very-long-secret-that-is-at-least-32-chars'
+      ]);
+      expect(config.authSecretVersion).toBe('2026-q2');
+      expect(config.mfaEncryptionKeyVersion).toBe('2026-h1');
     });
 
     it('throws when ENABLE_MFA=true but no MFA_SECRET_ENCRYPTION_KEY', () => {

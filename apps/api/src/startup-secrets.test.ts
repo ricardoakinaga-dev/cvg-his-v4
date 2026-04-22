@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 
-import { buildApiManagedSecretDescriptors, resolveApiStartup } from './startup-secrets.js';
+import {
+  buildApiManagedSecretDescriptors,
+  buildSecretRotationStatusReport,
+  resolveApiStartup
+} from './startup-secrets.js';
 
 async function startMockVaultServer(): Promise<{
   readonly baseUrl: string;
@@ -27,6 +31,12 @@ async function startMockVaultServer(): Promise<{
     const payloads: Record<string, Record<string, string>> = {
       '/v1/secret/data/cvg-his-v2/production/api': {
         AUTH_SECRET: 'vault-auth-token-key-with-more-than-32-characters'
+      },
+      '/v1/secret/data/cvg-his-v2/production/api_previous': {
+        AUTH_SECRET_PREVIOUS: 'vault-previous-auth-token-key-with-more-than-32-characters'
+      },
+      '/v1/secret/data/cvg-his-v2/production/api_version': {
+        AUTH_SECRET_VERSION: '2026-q2'
       },
       '/v1/secret/data/cvg-his-v2/production/database': {
         DATABASE_URL: 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2'
@@ -78,7 +88,10 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
     descriptors.map((descriptor) => [descriptor.key, descriptor.path, descriptor.required]),
     [
       ['AUTH_SECRET', 'production/api', true],
+      ['AUTH_SECRET_PREVIOUS', 'production/api_previous', false],
+      ['AUTH_SECRET_VERSION', 'production/api_version', false],
       ['MFA_SECRET_ENCRYPTION_KEY', 'production/mfa', true],
+      ['MFA_SECRET_ENCRYPTION_KEY_VERSION', 'production/mfa_version', false],
       ['DATABASE_URL', 'production/database', true],
       ['REDIS_URL', 'production/redis', false],
       ['PAGARME_API_KEY', 'production/pagarme', false],
@@ -110,11 +123,16 @@ test('resolveApiStartup resolves managed secrets from Vault before validating AP
     assert.equal(startup.secretsManager.provider, 'vault');
     assert.equal(startup.config.databaseUrl, 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2');
     assert.equal(startup.config.authSecret, 'vault-auth-token-key-with-more-than-32-characters');
+    assert.deepEqual(startup.config.authVerifierSecrets, [
+      'vault-previous-auth-token-key-with-more-than-32-characters'
+    ]);
+    assert.equal(startup.config.authSecretVersion, '2026-q2');
     assert.equal(startup.config.pagarmeApiKey, 'vault-pagarme-api-key');
     assert.equal(startup.config.pagarmePixKey, 'vault-pagarme-pix-key');
     assert.equal(startup.env.DATABASE_URL, 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2');
     assert.ok(vault.requests.includes('POST /v1/auth/approle/login'));
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api'));
+    assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api_previous'));
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/database'));
   } finally {
     await vault.close();
@@ -132,6 +150,7 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
       CORS_ALLOWED_ORIGINS: 'https://app.cvg.com',
       FILE_STORAGE_PATH: '/tmp/cvg-his-v2',
       AUTH_SECRET: 'explicit-auth-token-key-with-more-than-32-characters',
+      AUTH_SECRET_PREVIOUS: 'explicit-previous-auth-token-key-with-more-than-32-chars',
       DATABASE_URL: 'postgres://env-user:env-pass@db:5432/cvg_his_v2',
       VAULT_ENABLED: 'true',
       VAULT_URL: vault.baseUrl,
@@ -141,10 +160,35 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
     });
 
     assert.equal(startup.config.authSecret, 'explicit-auth-token-key-with-more-than-32-characters');
+    assert.deepEqual(startup.config.authVerifierSecrets, [
+      'explicit-previous-auth-token-key-with-more-than-32-chars'
+    ]);
     assert.equal(startup.config.databaseUrl, 'postgres://env-user:env-pass@db:5432/cvg_his_v2');
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api'), false);
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/database'), false);
   } finally {
     await vault.close();
   }
+});
+
+test('buildSecretRotationStatusReport summarizes readiness for audited secret rotation', () => {
+  const report = buildSecretRotationStatusReport({
+    provider: 'vault',
+    env: {
+      NODE_ENV: 'production',
+      AUTH_SECRET: 'explicit-auth-token-key-with-more-than-32-characters',
+      AUTH_SECRET_PREVIOUS: 'previous-auth-token-key-with-more-than-32-characters',
+      AUTH_SECRET_VERSION: '2026-q2',
+      MFA_SECRET_ENCRYPTION_KEY_VERSION: '2026-h1'
+    }
+  });
+
+  assert.deepEqual(report, {
+    provider: 'vault',
+    environment: 'production',
+    authSecretVersion: '2026-q2',
+    previousAuthSecretConfigured: true,
+    mfaEncryptionKeyVersion: '2026-h1',
+    rotationReady: true
+  });
 });

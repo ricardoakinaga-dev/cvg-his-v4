@@ -18,6 +18,8 @@ const SEED_PASSWORD = 'seed_admin';
 function createAuthService(options: {
   readonly mfa?: MfaService;
   readonly sessionRepository?: SessionRepository;
+  readonly secret?: string;
+  readonly verifierSecrets?: readonly string[];
 } = {}) {
   const users = new UsersService();
   const staff = new StaffService();
@@ -25,7 +27,8 @@ function createAuthService(options: {
   const audit = new AuditService();
 
   return new AuthService({
-    secret: 'test-secret-key',
+    secret: options.secret ?? 'test-secret-key',
+    verifierSecrets: options.verifierSecrets,
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
     users,
@@ -168,6 +171,95 @@ test('AuthService: revoked session cannot be refreshed', async () => {
       return true;
     }
   );
+});
+
+test('AuthService: listSessionsForUser returns sessions ordered newest first', async () => {
+  const auth = createAuthService();
+
+  const first = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-list-1');
+  const second = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-list-2');
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  const sessions = auth.listSessionsForUser('user_admin' as never);
+
+  assert.equal(sessions.length, 2);
+  assert.equal(sessions[0].sessionId, second.principal.session.sessionId);
+  assert.equal(sessions[1].sessionId, first.principal.session.sessionId);
+});
+
+test('AuthService: revokeOtherSessions keeps current session active and revokes the rest', async () => {
+  const auth = createAuthService();
+
+  const first = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-1');
+  const second = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-2');
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  const revoked = auth.revokeOtherSessions(second.principal.session.sessionId, 'corr-revoke-others');
+
+  assert.equal(revoked, 1);
+  assert.equal(auth.listSessionsForUser('user_admin' as never)[0].sessionId, second.principal.session.sessionId);
+  assert.throws(
+    () => auth.authenticateAccessToken(first.accessToken),
+    (err) => {
+      assert.ok(err instanceof AuthenticationError);
+      return true;
+    }
+  );
+  const principal = auth.authenticateAccessToken(second.accessToken);
+  assert.equal(principal.session.sessionId, second.principal.session.sessionId);
+});
+
+test('AuthService: revokeSessionForUser revokes only the targeted sibling session', async () => {
+  const auth = createAuthService();
+
+  const first = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-target-1');
+  const second = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-target-2');
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  const revoked = auth.revokeSessionForUser(
+    second.principal.session.sessionId,
+    first.principal.session.sessionId,
+    'corr-revoke-target'
+  );
+
+  assert.equal(revoked, true);
+  assert.throws(
+    () => auth.authenticateAccessToken(first.accessToken),
+    (err) => {
+      assert.ok(err instanceof AuthenticationError);
+      return true;
+    }
+  );
+  const principal = auth.authenticateAccessToken(second.accessToken);
+  assert.equal(principal.session.sessionId, second.principal.session.sessionId);
+});
+
+test('AuthService: previous verifier secrets allow rotated auth secret rollout without breaking sessions', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const oldAuth = createAuthService({
+    secret: 'old-secret-key-which-is-long-enough-for-tests',
+    sessionRepository
+  });
+  const rotatedAuth = createAuthService({
+    secret: 'new-secret-key-which-is-long-enough-for-tests',
+    verifierSecrets: ['old-secret-key-which-is-long-enough-for-tests'],
+    sessionRepository
+  });
+
+  const login = await oldAuth.login({ username: 'admin', password: 'seed_admin' }, 'corr-rotate-1');
+  assert.ok('accessToken' in login);
+
+  await rotatedAuth.hydrateFromRepository(['user_admin' as never]);
+
+  const principal = rotatedAuth.authenticateAccessToken(login.accessToken);
+  const refreshed = rotatedAuth.refresh({ refreshToken: login.refreshToken }, 'corr-rotate-refresh');
+
+  assert.equal(principal.user.id, 'user_admin');
+  assert.notEqual(refreshed.accessToken, login.accessToken);
+  assert.notEqual(refreshed.refreshToken, login.refreshToken);
 });
 
 test('AuthService: authenticateAccessToken returns principal for valid token', async () => {

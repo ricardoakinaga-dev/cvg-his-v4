@@ -74,6 +74,46 @@ export const API_FEATURE_FLAG_DEFINITIONS: readonly FlagDefinition[] = [
     expiresAt: '2026-12-31T00:00:00.000Z',
     auditRequired: true,
     tags: ['notifications', 'whatsapp', 'webhook', 'rollout']
+  },
+  {
+    key: 'ml.smart_scheduling.enabled',
+    owner: 'ml-operations',
+    description: 'Controls smart scheduling recommendations and telemetry.',
+    defaultValue: true,
+    scopes: ['environment', 'account'],
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    auditRequired: true,
+    tags: ['ml', 'scheduling', 'rollout']
+  },
+  {
+    key: 'ml.forecasting.enabled',
+    owner: 'ml-operations',
+    description: 'Controls demand forecasting endpoints and operational reporting.',
+    defaultValue: true,
+    scopes: ['environment', 'account'],
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    auditRequired: true,
+    tags: ['ml', 'forecasting', 'rollout']
+  },
+  {
+    key: 'ml.anomaly_detection.enabled',
+    owner: 'ml-operations',
+    description: 'Controls laboratory anomaly detection and review workflow.',
+    defaultValue: true,
+    scopes: ['environment', 'account'],
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    auditRequired: true,
+    tags: ['ml', 'anomaly-detection', 'rollout']
+  },
+  {
+    key: 'ml.ocr_fiscal.enabled',
+    owner: 'ml-operations',
+    description: 'Controls OCR fiscal preview endpoints.',
+    defaultValue: true,
+    scopes: ['environment', 'account'],
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    auditRequired: true,
+    tags: ['ml', 'ocr', 'fiscal', 'rollout']
   }
 ] as const;
 
@@ -87,6 +127,10 @@ export interface ApiFeatureFlagsSnapshot {
   readonly fiscalBackofficeEnabled: boolean;
   readonly notificationsWhatsappRemindersEnabled: boolean;
   readonly notificationsWhatsappInboundActionsEnabled: boolean;
+  readonly mlSmartSchedulingEnabled: boolean;
+  readonly mlForecastingEnabled: boolean;
+  readonly mlAnomalyDetectionEnabled: boolean;
+  readonly mlOcrFiscalEnabled: boolean;
   readonly provider: FeatureFlagProvider;
 }
 
@@ -164,6 +208,10 @@ export async function createApiFeatureFlags(params: {
       decisions['notifications.whatsapp.reminders.enabled']?.enabled ?? false,
     notificationsWhatsappInboundActionsEnabled:
       decisions['notifications.whatsapp.inbound_actions.enabled']?.enabled ?? false,
+    mlSmartSchedulingEnabled: decisions['ml.smart_scheduling.enabled']?.enabled ?? true,
+    mlForecastingEnabled: decisions['ml.forecasting.enabled']?.enabled ?? true,
+    mlAnomalyDetectionEnabled: decisions['ml.anomaly_detection.enabled']?.enabled ?? true,
+    mlOcrFiscalEnabled: decisions['ml.ocr_fiscal.enabled']?.enabled ?? true,
     provider
   };
 }

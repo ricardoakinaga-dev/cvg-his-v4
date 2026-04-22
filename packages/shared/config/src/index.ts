@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const INSECURE_DEFAULT_SECRET = 'cvg-his-v2-phase-3-dev-secret';
 const DEFAULT_API_APP_NAME = 'cvg-his-v2-api';
-const DEFAULT_WEB_APP_NAME = 'cvg-his-v2-web';
+const DEFAULT_WEB_APP_NAME = 'cvg-his-v2-spa';
 const DEFAULT_WORKER_APP_NAME = 'cvg-his-v2-worker';
 const DEFAULT_API_PORT = 3001;
 const DEFAULT_WEB_PORT = 3000;
@@ -146,6 +146,8 @@ export interface ApiAppConfig {
   readonly host: string;
   readonly corsAllowedOrigins: readonly string[];
   readonly authSecret: string;
+  readonly authVerifierSecrets: readonly string[];
+  readonly authSecretVersion?: string;
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests: number;
@@ -159,6 +161,7 @@ export interface ApiAppConfig {
   readonly fileStoragePath: string;
   readonly enableMfa: boolean;
   readonly mfaEncryptionKey?: string;
+  readonly mfaEncryptionKeyVersion?: string;
   readonly featureFlagsProvider: string;
   readonly apiFeatureFlags: readonly string[];
   readonly runtimeDistributedStateEnabled: boolean;
@@ -422,6 +425,8 @@ const apiEnvSchema = z
     HOST: nonEmptyStringSchema.default(DEFAULT_HOST),
     CORS_ALLOWED_ORIGINS: optionalNonEmptyStringSchema,
     AUTH_SECRET: nonEmptyStringSchema.default(INSECURE_DEFAULT_SECRET),
+    AUTH_SECRET_PREVIOUS: optionalNonEmptyStringSchema,
+    AUTH_SECRET_VERSION: optionalNonEmptyStringSchema,
     AUTH_ACCESS_TOKEN_TTL_SECONDS: positiveNumberSchema.default(DEFAULT_ACCESS_TOKEN_TTL_SECONDS),
     AUTH_REFRESH_TOKEN_TTL_SECONDS: positiveNumberSchema.default(DEFAULT_REFRESH_TOKEN_TTL_SECONDS),
     AUTH_RATE_LIMIT_MAX_REQUESTS: positiveNumberSchema.default(10),
@@ -435,6 +440,7 @@ const apiEnvSchema = z
     FILE_STORAGE_PATH: nonEmptyStringSchema.default(DEFAULT_FILE_STORAGE_PATH),
     ENABLE_MFA: booleanStringSchema.default(false),
     MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
+    MFA_SECRET_ENCRYPTION_KEY_VERSION: optionalNonEmptyStringSchema,
     FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
     API_FEATURE_FLAGS: optionalNonEmptyStringSchema,
     RUNTIME_DISTRIBUTED_STATE_ENABLED: booleanStringSchema.default(false),
@@ -532,6 +538,9 @@ const spaViteEnvSchema = spaClientEnvBaseSchema.extend({
 export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
   const parsed = parseConfig('api', apiEnvSchema, env);
   validateSecret(parsed.AUTH_SECRET, parsed.NODE_ENV);
+  for (const previousSecret of parseSecretList(parsed.AUTH_SECRET_PREVIOUS)) {
+    validateSecret(previousSecret, parsed.NODE_ENV);
+  }
   validateOtelConfig(parsed);
 
   return {
@@ -541,6 +550,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     host: parsed.HOST,
     corsAllowedOrigins: resolveCorsAllowedOrigins(parsed.NODE_ENV, parsed.CORS_ALLOWED_ORIGINS),
     authSecret: parsed.AUTH_SECRET,
+    authVerifierSecrets: parseSecretList(parsed.AUTH_SECRET_PREVIOUS),
+    authSecretVersion: parsed.AUTH_SECRET_VERSION,
     accessTokenTtlSeconds: parsed.AUTH_ACCESS_TOKEN_TTL_SECONDS,
     refreshTokenTtlSeconds: parsed.AUTH_REFRESH_TOKEN_TTL_SECONDS,
     authRateLimitMaxRequests: parsed.AUTH_RATE_LIMIT_MAX_REQUESTS,
@@ -554,6 +565,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     fileStoragePath: parsed.FILE_STORAGE_PATH,
     enableMfa: parsed.ENABLE_MFA,
     mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
+    mfaEncryptionKeyVersion: parsed.MFA_SECRET_ENCRYPTION_KEY_VERSION,
     featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
     apiFeatureFlags: parseFeatureFlagKeys(parsed.API_FEATURE_FLAGS),
     runtimeDistributedStateEnabled: parsed.RUNTIME_DISTRIBUTED_STATE_ENABLED,
@@ -577,6 +589,16 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     vaultNamespace: parsed.VAULT_NAMESPACE,
     vaultSecretPathPrefix: parsed.VAULT_SECRET_PATH_PREFIX
   };
+}
+
+function parseSecretList(value: string | undefined): readonly string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 export function loadWebConfig(env: NodeJS.ProcessEnv): WebAppConfig {

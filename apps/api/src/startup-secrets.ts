@@ -7,9 +7,21 @@ export interface ApiStartupResolution {
   readonly env: NodeJS.ProcessEnv;
 }
 
+export interface SecretRotationStatusReport {
+  readonly provider: string;
+  readonly environment: string;
+  readonly authSecretVersion?: string;
+  readonly previousAuthSecretConfigured: boolean;
+  readonly mfaEncryptionKeyVersion?: string;
+  readonly rotationReady: boolean;
+}
+
 const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   AUTH_SECRET: 'api',
+  AUTH_SECRET_PREVIOUS: 'api_previous',
+  AUTH_SECRET_VERSION: 'api_version',
   MFA_SECRET_ENCRYPTION_KEY: 'mfa',
+  MFA_SECRET_ENCRYPTION_KEY_VERSION: 'mfa_version',
   DATABASE_URL: 'database',
   REDIS_URL: 'redis',
   PAGARME_API_KEY: 'pagarme',
@@ -92,5 +104,27 @@ export async function resolveApiStartup(env: NodeJS.ProcessEnv = process.env): P
     config: loadApiConfig(resolvedEnv),
     secretsManager,
     env: resolvedEnv
+  };
+}
+
+export function buildSecretRotationStatusReport(input: {
+  readonly env: NodeJS.ProcessEnv;
+  readonly provider: string;
+}): SecretRotationStatusReport {
+  const environment = normalizeVaultEnvironment(input.env.NODE_ENV);
+  const authSecretVersion = input.env.AUTH_SECRET_VERSION?.trim() || undefined;
+  const previousAuthSecretConfigured = hasConfiguredValue(input.env.AUTH_SECRET_PREVIOUS);
+  const mfaEncryptionKeyVersion = input.env.MFA_SECRET_ENCRYPTION_KEY_VERSION?.trim() || undefined;
+
+  return {
+    provider: input.provider,
+    environment,
+    authSecretVersion,
+    previousAuthSecretConfigured,
+    mfaEncryptionKeyVersion,
+    rotationReady:
+      hasConfiguredValue(input.env.AUTH_SECRET)
+      && authSecretVersion !== undefined
+      && (previousAuthSecretConfigured || !isProductionLikeEnvironment(environment))
   };
 }

@@ -96,6 +96,22 @@ test('EncountersService: closeEncounter sets closed status', () => {
   assert.ok(closed.closedAt);
 });
 
+test('EncountersService: deleteEncounter removes encounter and timeline from memory', () => {
+  const encounters = createEncountersService();
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Delete test'
+  });
+
+  encounters.deleteEncounter(encounter.id);
+
+  assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
+});
+
 test('EncountersService: appendTimeline adds events', () => {
   const encounters = createEncountersService();
 

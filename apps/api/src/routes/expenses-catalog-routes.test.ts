@@ -457,14 +457,35 @@ test('expenses catalog routes persist to disk across runtime restart, support co
     assert.ok(
       events.some(
         (event) =>
+          event.action === 'create_cost_center_catalog_item' &&
+          event.payloadSummary.includes('code=ADM-FIN') &&
+          event.payloadSummary.includes('kind=Administrativo') &&
+          event.payloadSummary.includes('owner=Gerência Financeira')
+      )
+    );
+    assert.ok(
+      events.some(
+        (event) =>
           event.action === 'update_cost_center_catalog_item' &&
-          event.payloadSummary.includes('owner: Gerência Financeira → Diretoria Financeira')
+          event.payloadSummary.includes('owner: Gerência Financeira → Diretoria Financeira') &&
+          event.payloadSummary.includes('description: Rateio administrativo do financeiro → Rateio administrativo consolidado')
+      )
+    );
+    assert.ok(
+      events.some(
+        (event) =>
+          event.action === 'create_expense_catalog_item' &&
+          event.payloadSummary.includes(`id=${created.id}`) &&
+          event.payloadSummary.includes('name=Hospedagem Cloud') &&
+          event.payloadSummary.includes('category=Tecnologia') &&
+          event.payloadSummary.includes('costCenter=ADM-FIN')
       )
     );
     assert.ok(
       events.some(
         (event) =>
           event.action === 'update_expense_catalog_item' &&
+          event.payloadSummary.includes('name: Hospedagem Cloud → Hospedagem Cloud Premium') &&
           event.payloadSummary.includes('costCenterCode: ADM-FIN → LAB-OP') &&
           event.payloadSummary.includes('description: Infraestrutura de produção → Infraestrutura revisada')
       )
@@ -473,9 +494,19 @@ test('expenses catalog routes persist to disk across runtime restart, support co
     assert.ok(
       events.some(
         (event) =>
+          event.action === 'remove_cost_center_catalog_item' &&
+          event.payloadSummary.includes('code=ADM-FIN') &&
+          event.payloadSummary.includes('name=Administrativo Financeiro Corporativo')
+      )
+    );
+    assert.ok(
+      events.some(
+        (event) =>
           event.action === 'remove_expense_catalog_item' &&
-          event.payloadSummary.includes('Hospedagem Cloud Premium') &&
-          event.payloadSummary.includes('LAB-OP')
+          event.payloadSummary.includes(`id=${created.id}`) &&
+          event.payloadSummary.includes('name=Hospedagem Cloud Premium') &&
+          event.payloadSummary.includes('category=Tecnologia') &&
+          event.payloadSummary.includes('costCenter=LAB-OP')
       )
     );
   } finally {

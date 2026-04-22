@@ -10,6 +10,8 @@ import {
   handleAuthRoutes
 } from './auth-routes.js';
 
+const DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS = 60_000;
+
 class MockResponse extends Writable {
   public statusCode = 200;
   readonly #headers = new Map<string, string>();
@@ -104,6 +106,7 @@ test('handleAuthRoutes returns the current authenticated session payload', async
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: null,
       oidcStateStore: createInMemoryOidcStateStore(),
       oidcStateTtlMs: 60_000,
@@ -138,6 +141,41 @@ test('handleAuthRoutes returns the current authenticated session payload', async
   });
 });
 
+test('handleAuthRoutes returns the current user session list', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+
+  const handled = await handleAuthRoutes(
+    '/auth/sessions',
+    { method: 'GET', url: '/auth/sessions', headers: {} } as never,
+    response as never,
+    'corr-auth-sessions',
+    {
+      auth: {
+        listSessionsForUser: () => [principal.session]
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), { items: [principal.session] });
+});
+
 test('handleAuthRoutes ignores unrelated routes', async () => {
   const response = new MockResponse();
 
@@ -156,6 +194,7 @@ test('handleAuthRoutes ignores unrelated routes', async () => {
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: null,
       oidcStateStore: createInMemoryOidcStateStore(),
       oidcStateTtlMs: 60_000,
@@ -203,6 +242,7 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: null,
       oidcStateStore: createInMemoryOidcStateStore(),
       oidcStateTtlMs: 60_000,
@@ -249,6 +289,7 @@ test('handleAuthRoutes POST /auth/login returns 429 when rate limited', async ()
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: null,
       oidcStateStore: createInMemoryOidcStateStore(),
       oidcStateTtlMs: 60_000,
@@ -261,6 +302,94 @@ test('handleAuthRoutes POST /auth/login returns 429 when rate limited', async ()
   assert.equal(response.statusCode, 429);
   assert.equal(response.getHeader('retry-after'), '30');
   assert.equal(response.bodyJson<{ code: string }>().code, 'RATE_LIMITED');
+});
+
+test('handleAuthRoutes POST /auth/logout-all-others revokes sibling sessions', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+
+  const handled = await handleAuthRoutes(
+    '/auth/logout-all-others',
+    {
+      method: 'POST',
+      url: '/auth/logout-all-others',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {}
+    } as never,
+    response as never,
+    'corr-auth-revoke-others',
+    {
+      auth: {
+        revokeOtherSessions: () => 2
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), {
+    revokedSessions: 2,
+    keptSessionId: principal.session.sessionId
+  });
+});
+
+test('handleAuthRoutes POST /auth/sessions/:sessionId/revoke revokes a targeted sibling session', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+
+  const handled = await handleAuthRoutes(
+    '/auth/sessions/session-2/revoke',
+    {
+      method: 'POST',
+      url: '/auth/sessions/session-2/revoke',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {}
+    } as never,
+    response as never,
+    'corr-auth-revoke-one',
+    {
+      auth: {
+        revokeSessionForUser: () => true
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), {
+    revoked: true,
+    sessionId: 'session-2'
+  });
 });
 
 test('handleAuthRoutes GET /auth/oidc/login emits a stateless signed state when distributed mode is enabled', async () => {
@@ -290,6 +419,7 @@ test('handleAuthRoutes GET /auth/oidc/login emits a stateless signed state when 
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: {
         issuer: 'https://issuer.example.com',
         clientId: 'client-id',
@@ -352,6 +482,7 @@ test('handleAuthRoutes GET /auth/oidc/callback rejects tampered stateless state'
         authWebauthnEnabled: false
       },
       webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
       oidcConfig: {
         issuer: 'https://issuer.example.com',
         clientId: 'client-id',
@@ -373,4 +504,119 @@ test('handleAuthRoutes GET /auth/oidc/callback rejects tampered stateless state'
   assert.equal(handled, true);
   assert.equal(response.statusCode, 400);
   assert.equal(response.bodyJson<{ code: string }>().code, 'INVALID_STATE');
+});
+
+test('handleAuthRoutes POST /auth/mfa/webauthn/setup rejects expired registration challenge', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  let verifyCalled = false;
+
+  const handled = await handleAuthRoutes(
+    '/auth/mfa/webauthn/setup',
+    {
+      method: 'POST',
+      url: '/auth/mfa/webauthn/setup',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            credentialId: 'cred-1',
+            attestationObject: 'attestation',
+            clientDataJSON: 'client-data'
+          })
+        );
+      }
+    } as never,
+    response as never,
+    'corr-auth-webauthn-reg-expired',
+    {
+      auth: {} as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: true
+      },
+      webauthnService: {
+        verifyRegistration: async () => {
+          verifyCalled = true;
+          return { credentialId: 'cred-1' };
+        }
+      } as never,
+      webauthnChallenges: new Map([
+        ['reg:user-1', { challenge: 'challenge-1', createdAt: Date.now() - 5_000 }]
+      ]),
+      webauthnChallengeTtlMs: 1_000,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'CHALLENGE_EXPIRED');
+  assert.equal(verifyCalled, false);
+});
+
+test('handleAuthRoutes POST /auth/mfa/webauthn/assert rejects expired authentication challenge', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  let verifyCalled = false;
+
+  const handled = await handleAuthRoutes(
+    '/auth/mfa/webauthn/assert',
+    {
+      method: 'POST',
+      url: '/auth/mfa/webauthn/assert',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            credentialId: 'cred-1',
+            authenticatorData: 'auth-data',
+            clientDataJSON: 'client-data',
+            signature: 'signature'
+          })
+        );
+      }
+    } as never,
+    response as never,
+    'corr-auth-webauthn-assert-expired',
+    {
+      auth: {} as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: true
+      },
+      webauthnService: {
+        verifyAuthentication: async () => {
+          verifyCalled = true;
+          return { success: true };
+        }
+      } as never,
+      webauthnChallenges: new Map([
+        ['auth:user-1', { challenge: 'challenge-2', createdAt: Date.now() - 5_000 }]
+      ]),
+      webauthnChallengeTtlMs: 1_000,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'CHALLENGE_EXPIRED');
+  assert.equal(verifyCalled, false);
 });

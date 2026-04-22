@@ -182,6 +182,7 @@ export interface RuntimeRepositories {
 
 export interface ApiRuntimeOptions {
   readonly authSecret: string;
+  readonly authVerifierSecrets?: readonly string[];
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly repositories?: RuntimeRepositories;
@@ -656,6 +657,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
 
   const auth = new AuthService({
     secret: options.authSecret,
+    verifierSecrets: options.authVerifierSecrets,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
     users,

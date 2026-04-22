@@ -41,6 +41,7 @@ interface TokenPayload {
 
 export interface AuthServiceOptions {
   readonly secret: string;
+  readonly verifierSecrets?: readonly string[];
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly users: UsersService;
@@ -54,6 +55,7 @@ export interface AuthServiceOptions {
 
 export class AuthService {
   readonly #secret: string;
+  readonly #verifierSecrets: readonly string[];
   readonly #accessTokenTtlSeconds: number;
   readonly #refreshTokenTtlSeconds: number;
   readonly #users: UsersService;
@@ -67,6 +69,9 @@ export class AuthService {
 
   public constructor(options: AuthServiceOptions) {
     this.#secret = options.secret;
+    this.#verifierSecrets = [options.secret, ...(options.verifierSecrets ?? [])].filter(
+      (value, index, array) => value.length > 0 && array.indexOf(value) === index
+    );
     this.#accessTokenTtlSeconds = options.accessTokenTtlSeconds;
     this.#refreshTokenTtlSeconds = options.refreshTokenTtlSeconds;
     this.#users = options.users;
@@ -240,7 +245,7 @@ export class AuthService {
   public refresh(input: RefreshSessionRequest, correlationId: string): AuthSessionResponse {
     const token = requireNonEmptyString(input.refreshToken, 'refreshToken');
     const payload = this.#verifyToken(token, 'refresh');
-    const session = this.#requireActiveSession(payload.session_id as SessionId);
+    const session = this.#requireActiveSession(payload.session_id as SessionId, 'refresh');
 
     if (payload.nonce !== session.refreshNonce) {
       throw new AuthenticationError('Refresh token has been rotated');
@@ -294,7 +299,7 @@ export class AuthService {
 
     const type = input.refreshToken ? 'refresh' : 'access';
     const payload = this.#verifyToken(token, type);
-    const session = this.#requireActiveSession(payload.session_id as SessionId);
+    const session = this.#requireActiveSession(payload.session_id as SessionId, type);
     const revokedAt = nowIso();
 
     this.#sessions.set(session.sessionId, {
@@ -307,7 +312,8 @@ export class AuthService {
       this.#sessionRepository
         .update({
           ...session,
-          active: false
+          active: false,
+          revokedAt
         })
         .catch((err) => {
           console.error('Failed to revoke session in database:', err);
@@ -333,18 +339,126 @@ export class AuthService {
 
   public authenticateAccessToken(accessToken: string): AuthenticatedPrincipal {
     const payload = this.#verifyToken(accessToken, 'access');
-    const session = this.#requireActiveSession(payload.session_id as SessionId);
+    const session = this.#requireActiveSession(payload.session_id as SessionId, 'access');
     const user = this.#users.getOrThrow(payload.sub as UserId);
     return this.#buildPrincipal(user, session);
   }
 
   public getSession(accessToken: string): SessionSummary {
     const payload = this.#verifyToken(accessToken, 'access');
-    return this.#requireActiveSession(payload.session_id as SessionId);
+    return this.#requireActiveSession(payload.session_id as SessionId, 'access');
   }
 
   public listSessions(): readonly SessionSummary[] {
     return Array.from(this.#sessions.values());
+  }
+
+  public listSessionsForUser(userId: UserId): readonly SessionSummary[] {
+    return Array.from(this.#sessions.values())
+      .filter((session) => session.userId === userId)
+      .reverse();
+  }
+
+  public revokeOtherSessions(currentSessionId: SessionId, correlationId: string): number {
+    const currentSession = this.#requireActiveSession(currentSessionId, 'access');
+    let revoked = 0;
+
+    for (const session of this.#sessions.values()) {
+      if (session.userId !== currentSession.userId || session.sessionId === currentSessionId) {
+        continue;
+      }
+      if (!session.active || session.revokedAt) {
+        continue;
+      }
+
+      const revokedAt = nowIso();
+      this.#sessions.set(session.sessionId, {
+        ...session,
+        active: false,
+        revokedAt
+      });
+      revoked += 1;
+
+      if (this.#sessionRepository) {
+        this.#sessionRepository
+          .update({
+            sessionId: session.sessionId,
+            active: false,
+            revokedAt
+          })
+          .catch((err) => {
+            console.error('Failed to revoke session in database:', err);
+          });
+      }
+    }
+
+    this.#audit.write({
+      actorId: currentSession.userId,
+      accountId: currentSession.accountId,
+      module: 'auth',
+      action: 'logout_other_sessions',
+      entityType: 'session',
+      entityId: currentSessionId,
+      correlationId,
+      payloadSummary: `Revoked ${revoked} other active sessions`,
+      riskLevel: 'medium'
+    });
+
+    return revoked;
+  }
+
+  public revokeSessionForUser(
+    currentSessionId: SessionId,
+    targetSessionId: SessionId,
+    correlationId: string
+  ): boolean {
+    const currentSession = this.#requireActiveSession(currentSessionId, 'access');
+    const targetSession = this.#sessions.get(targetSessionId);
+
+    if (!targetSession || targetSession.userId !== currentSession.userId) {
+      throw new NotFoundError('Session not found');
+    }
+
+    if (targetSession.sessionId === currentSessionId) {
+      throw new ForbiddenError('Current session cannot revoke itself through this operation');
+    }
+
+    if (!targetSession.active || targetSession.revokedAt) {
+      return false;
+    }
+
+    const revokedAt = nowIso();
+    this.#sessions.set(targetSession.sessionId, {
+      ...targetSession,
+      active: false,
+      revokedAt
+    });
+
+    if (this.#sessionRepository) {
+      this.#sessionRepository
+        .update({
+          sessionId: targetSession.sessionId,
+          active: false,
+          revokedAt
+        })
+        .catch((err) => {
+          console.error('Failed to revoke session in database:', err);
+        });
+    }
+
+    this.#audit.write({
+      actorId: currentSession.userId,
+      accountId: currentSession.accountId,
+      module: 'auth',
+      action: 'logout_session',
+      entityType: 'session',
+      entityId: targetSessionId,
+      correlationId,
+      payloadSummary: `Revoked session ${targetSessionId}`,
+      riskLevel: 'medium'
+    });
+
+    return true;
   }
 
   public async hydrateFromRepository(userIds?: readonly UserId[]): Promise<void> {
@@ -463,11 +577,14 @@ export class AuthService {
       throw new AuthenticationError('Malformed token');
     }
 
-    const expectedSignature = createHmac('sha256', this.#secret)
-      .update(encodedPayload)
-      .digest('base64url');
+    const isValidSignature = this.#verifierSecrets.some((secret) => {
+      const expectedSignature = createHmac('sha256', secret)
+        .update(encodedPayload)
+        .digest('base64url');
+      return providedSignature === expectedSignature;
+    });
 
-    if (providedSignature !== expectedSignature) {
+    if (!isValidSignature) {
       throw new AuthenticationError('Invalid token signature');
     }
 
@@ -486,7 +603,10 @@ export class AuthService {
     return payload;
   }
 
-  #requireActiveSession(sessionId: SessionId): SessionRecord {
+  #requireActiveSession(
+    sessionId: SessionId,
+    tokenType: 'access' | 'refresh'
+  ): SessionRecord {
     const session = this.#sessions.get(sessionId);
     if (!session) {
       throw new NotFoundError('Session not found', { sessionId });
@@ -494,6 +614,28 @@ export class AuthService {
 
     if (!session.active || session.revokedAt) {
       throw new AuthenticationError('Session is not active', { sessionId });
+    }
+
+    const expiry = tokenType === 'refresh' ? session.refreshExpiresAt : session.expiresAt;
+    if (new Date(expiry).getTime() <= Date.now()) {
+      const revokedAt = nowIso();
+      this.#sessions.set(sessionId, {
+        ...session,
+        active: false,
+        revokedAt
+      });
+      if (this.#sessionRepository) {
+        this.#sessionRepository
+          .update({
+            sessionId,
+            active: false,
+            revokedAt
+          })
+          .catch((err) => {
+            console.error('Failed to expire session in database:', err);
+          });
+      }
+      throw new AuthenticationError('Session expired', { sessionId });
     }
 
     return session;

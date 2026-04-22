@@ -615,6 +615,50 @@ test('bootstrap serves administrative financial routes over HTTP semantics', asy
   assert.equal(receivables.data[0]?.encounterId, encounter.id);
 });
 
+test('bootstrap deletes encounters over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Delete encounter over HTTP'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const deleteResponse = await performRequest(server, {
+    method: 'DELETE',
+    url: `/encounters/${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(deleteResponse.statusCode, 204);
+
+  const getResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(getResponse.statusCode, 404);
+});
+
 test('bootstrap serves administrative report hubs over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');

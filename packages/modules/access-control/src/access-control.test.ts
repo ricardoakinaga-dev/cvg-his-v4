@@ -392,6 +392,7 @@ describe('AccessControlService', () => {
           userId,
           accountId,
           roleCodes: ['admin'],
+          branchIds: [],
           teamIds: [],
           sectorIds: [],
           sectorCodes: [],
@@ -473,6 +474,7 @@ describe('AccessControlService', () => {
           userId,
           accountId,
           roleCodes: ['admin'],
+          branchIds: [],
           teamIds: [],
           sectorIds: [],
           sectorCodes: ['icu'],
@@ -495,6 +497,7 @@ describe('AccessControlService', () => {
           userId,
           accountId,
           roleCodes: ['admin'],
+          branchIds: [],
           teamIds: [],
           sectorIds: [],
           sectorCodes: ['reception'],
@@ -511,6 +514,101 @@ describe('AccessControlService', () => {
     ).toThrow(ForbiddenError);
   });
 
+  it('denies ABAC access when the resource belongs to another account even if sector matches', () => {
+    const engine = new AbacEngine();
+
+    expect(() =>
+      engine.enforce(
+        'owners.read',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          branchIds: [],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: ['icu'],
+          isActive: true
+        },
+        {
+          resourceType: 'owner',
+          resourceId: 'owner-2',
+          accountId: 'acc_other' as AccountId,
+          sectorCode: 'icu'
+        },
+        {
+          timestamp: new Date('2026-04-18T10:00:00.000Z').toISOString(),
+          dayOfWeek: 5,
+          hourOfDay: 10
+        }
+      )
+    ).toThrow(/Cross-account ABAC access is not allowed/);
+  });
+
+  it('permits same-account owner access only when tenant and sector constraints both hold', () => {
+    const engine = new AbacEngine();
+
+    expect(() =>
+      engine.enforce(
+        'owners.manage',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          branchIds: ['branch_a'],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: ['triage', 'icu'],
+          isActive: true
+        },
+        {
+          resourceType: 'owner',
+          resourceId: 'owner-3',
+          accountId,
+          branchId: 'branch_a',
+          sectorCode: 'triage'
+        },
+        {
+          timestamp: new Date('2026-04-18T14:00:00.000Z').toISOString(),
+          dayOfWeek: 5,
+          hourOfDay: 14
+        }
+      )
+    ).not.toThrow();
+  });
+
+  it('denies same-account owner access when branch isolation fails even if sector matches', () => {
+    const engine = new AbacEngine();
+
+    expect(() =>
+      engine.enforce(
+        'owners.read',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          branchIds: ['branch_b'],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: ['triage'],
+          isActive: true
+        },
+        {
+          resourceType: 'owner',
+          resourceId: 'owner-branch',
+          accountId,
+          branchId: 'branch_a',
+          sectorCode: 'triage'
+        },
+        {
+          timestamp: new Date('2026-04-18T14:00:00.000Z').toISOString(),
+          dayOfWeek: 5,
+          hourOfDay: 14
+        }
+      )
+    ).toThrow(ForbiddenError);
+  });
+
   it('denies inventory writes outside business hours for non-admin roles', () => {
     const engine = new AbacEngine();
 
@@ -521,6 +619,7 @@ describe('AccessControlService', () => {
           userId,
           accountId,
           roleCodes: ['inventory'],
+          branchIds: [],
           teamIds: [],
           sectorIds: [],
           sectorCodes: [],

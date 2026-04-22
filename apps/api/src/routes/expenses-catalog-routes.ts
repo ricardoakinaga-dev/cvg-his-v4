@@ -134,6 +134,54 @@ function parseCostCenterSort(value: string | null): 'code' | 'name' | 'kind' | '
   return 'name';
 }
 
+function summarizeExpenseSnapshot(item: ExpenseCatalogItem): string {
+  return [
+    `id=${item.id}`,
+    `name=${item.name}`,
+    `kind=${item.kind}`,
+    `category=${item.category}`,
+    `costCenter=${item.costCenterCode}`,
+    `costCenterName=${item.costCenterName}`
+  ].join(' | ');
+}
+
+function summarizeCostCenterSnapshot(item: ExpenseCostCenterItem): string {
+  return [
+    `code=${item.code}`,
+    `name=${item.name}`,
+    `kind=${item.kind}`,
+    `owner=${item.owner}`
+  ].join(' | ');
+}
+
+function summarizeDiffLabel(diffSummary: string): string {
+  return diffSummary.trim() ? diffSummary : 'no material field changes detected';
+}
+
+function buildExpenseCreateAuditSummary(item: ExpenseCatalogItem): string {
+  return `Expense catalog item created | ${summarizeExpenseSnapshot(item)}`;
+}
+
+function buildExpenseUpdateAuditSummary(item: ExpenseCatalogItem, diffSummary: string): string {
+  return `Expense catalog item updated | ${summarizeExpenseSnapshot(item)} | changes=${summarizeDiffLabel(diffSummary)}`;
+}
+
+function buildExpenseRemoveAuditSummary(item: ExpenseCatalogItem): string {
+  return `Expense catalog item removed | ${summarizeExpenseSnapshot(item)}`;
+}
+
+function buildCostCenterCreateAuditSummary(item: ExpenseCostCenterItem): string {
+  return `Cost center catalog item created | ${summarizeCostCenterSnapshot(item)}`;
+}
+
+function buildCostCenterUpdateAuditSummary(item: ExpenseCostCenterItem, diffSummary: string): string {
+  return `Cost center catalog item updated | ${summarizeCostCenterSnapshot(item)} | changes=${summarizeDiffLabel(diffSummary)}`;
+}
+
+function buildCostCenterRemoveAuditSummary(item: ExpenseCostCenterItem): string {
+  return `Cost center catalog item removed | ${summarizeCostCenterSnapshot(item)}`;
+}
+
 function wrapStore(store: ExpensesCatalogStore): CatalogPersistence {
   return {
     isValidCategory(category: string) {
@@ -288,7 +336,7 @@ export async function handleExpensesCatalogRoutes(
         action: 'create_cost_center_catalog_item',
         entityType: 'cost-center-catalog',
         entityId: created.code,
-        payloadSummary: `Cost center ${created.code} created`,
+        payloadSummary: buildCostCenterCreateAuditSummary(created),
         riskLevel: 'medium',
         correlationId
       });
@@ -318,7 +366,7 @@ export async function handleExpensesCatalogRoutes(
         action: 'update_cost_center_catalog_item',
         entityType: 'cost-center-catalog',
         entityId: item.code,
-        payloadSummary: `Cost center ${item.code} updated; ${diffSummary}`,
+        payloadSummary: buildCostCenterUpdateAuditSummary(item, diffSummary),
         riskLevel: 'medium',
         correlationId
       });
@@ -343,7 +391,7 @@ export async function handleExpensesCatalogRoutes(
         action: 'remove_cost_center_catalog_item',
         entityType: 'cost-center-catalog',
         entityId: removed.code,
-        payloadSummary: `Cost center ${removed.code} removed`,
+        payloadSummary: buildCostCenterRemoveAuditSummary(removed),
         riskLevel: 'medium',
         correlationId
       });
@@ -375,7 +423,7 @@ export async function handleExpensesCatalogRoutes(
       action: 'create_expense_catalog_item',
       entityType: 'expense-catalog',
       entityId: created.id,
-      payloadSummary: `Expense catalog item ${created.id} created for ${created.costCenterCode}`,
+      payloadSummary: buildExpenseCreateAuditSummary(created),
       riskLevel: 'medium',
       correlationId
     });
@@ -403,7 +451,7 @@ export async function handleExpensesCatalogRoutes(
         action: 'update_expense_catalog_item',
         entityType: 'expense-catalog',
         entityId: item.id,
-        payloadSummary: `Expense catalog item ${item.id} updated; ${diffSummary}`,
+        payloadSummary: buildExpenseUpdateAuditSummary(item, diffSummary),
         riskLevel: 'medium',
         correlationId
       });
@@ -425,7 +473,7 @@ export async function handleExpensesCatalogRoutes(
         action: 'remove_expense_catalog_item',
         entityType: 'expense-catalog',
         entityId: removed.id,
-        payloadSummary: `Expense catalog item ${removed.id} removed (${removed.name}, ${removed.category}, ${removed.costCenterCode})`,
+        payloadSummary: buildExpenseRemoveAuditSummary(removed),
         riskLevel: 'medium',
         correlationId
       });

@@ -249,6 +249,18 @@ export class EncountersService {
     return updated;
   }
 
+  public deleteEncounter(encounterId: EncounterId): void {
+    this.getOrThrow(encounterId);
+    this.#encounters.delete(encounterId);
+    this.#timeline.delete(encounterId);
+
+    if (this.#encounterRepository) {
+      this.#encounterRepository.delete(encounterId).catch((err) => {
+        console.error('Failed to delete encounter from database:', err);
+      });
+    }
+  }
+
   public listTimeline(encounterId: EncounterId): readonly EncounterTimelineEventSummary[] {
     this.getOrThrow(encounterId);
     return [...(this.#timeline.get(encounterId) ?? [])];

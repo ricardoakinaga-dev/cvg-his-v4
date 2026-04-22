@@ -11,7 +11,7 @@ import type {
 export async function listTriageRecords(encounterId?: string): Promise<TriageSummary[]> {
   const params = encounterId ? `?encounterId=${encodeURIComponent(encounterId)}` : '';
   const response = await apiRequest<TriageListResponse>(`/triage${params}`);
-  return response.records;
+  return response.records ?? response.items ?? [];
 }
 
 export async function createTriage(payload: CreateTriageRequest): Promise<TriageSummary> {
@@ -35,5 +35,5 @@ export async function getTriageHistory(triageId: string): Promise<TriageVersionS
   const response = await apiRequest<TriageHistoryResponse>(
     `/triage/${encodeURIComponent(triageId)}/history`
   );
-  return response.versions;
+  return response.versions ?? response.items ?? [];
 }

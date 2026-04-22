@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { loadApiConfigMock, createSecretsManagerMock } = vi.hoisted(() => ({
   loadApiConfigMock: vi.fn((env: NodeJS.ProcessEnv) => ({
     authSecret: env.AUTH_SECRET,
+    authVerifierSecrets: env.AUTH_SECRET_PREVIOUS
+      ? env.AUTH_SECRET_PREVIOUS.split(',').map((value) => value.trim()).filter(Boolean)
+      : [],
+    authSecretVersion: env.AUTH_SECRET_VERSION,
     databaseUrl: env.DATABASE_URL,
     pagarmeApiKey: env.PAGARME_API_KEY,
     pagarmePixKey: env.PAGARME_PIX_KEY,
@@ -21,6 +25,7 @@ vi.mock('@cvg-his-v2/secrets', () => ({
 
 import {
   buildApiManagedSecretDescriptors,
+  buildSecretRotationStatusReport,
   resolveApiEnvironmentWithSecrets,
   resolveApiStartup
 } from '../../../apps/api/src/startup-secrets.ts';
@@ -38,7 +43,10 @@ describe('startup-secrets runtime coverage', () => {
 
     expect(descriptors).toEqual([
       { key: 'AUTH_SECRET', path: 'staging/api', required: true },
+      { key: 'AUTH_SECRET_PREVIOUS', path: 'staging/api_previous', required: false },
+      { key: 'AUTH_SECRET_VERSION', path: 'staging/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'staging/mfa', required: true },
+      { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'staging/mfa_version', required: false },
       { key: 'DATABASE_URL', path: 'staging/database', required: true },
       { key: 'REDIS_URL', path: 'staging/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'staging/pagarme', required: false },
@@ -54,7 +62,10 @@ describe('startup-secrets runtime coverage', () => {
 
     expect(descriptors).toEqual([
       { key: 'AUTH_SECRET', path: 'development/api', required: false },
+      { key: 'AUTH_SECRET_PREVIOUS', path: 'development/api_previous', required: false },
+      { key: 'AUTH_SECRET_VERSION', path: 'development/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'development/mfa', required: false },
+      { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'development/mfa_version', required: false },
       { key: 'DATABASE_URL', path: 'development/database', required: false },
       { key: 'REDIS_URL', path: 'development/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'development/pagarme', required: false },
@@ -82,7 +93,10 @@ describe('startup-secrets runtime coverage', () => {
     expect(getMany).toHaveBeenCalledTimes(1);
     expect(getMany).toHaveBeenCalledWith([
       { key: 'AUTH_SECRET', path: 'production/api', required: true },
+      { key: 'AUTH_SECRET_PREVIOUS', path: 'production/api_previous', required: false },
+      { key: 'AUTH_SECRET_VERSION', path: 'production/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'production/mfa', required: false },
+      { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'production/mfa_version', required: false },
       { key: 'REDIS_URL', path: 'production/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false }
     ]);
@@ -100,7 +114,10 @@ describe('startup-secrets runtime coverage', () => {
         NODE_ENV: 'production',
         ENABLE_MFA: 'true',
         AUTH_SECRET: 'configured-auth',
+        AUTH_SECRET_PREVIOUS: 'configured-prev-auth',
         MFA_SECRET_ENCRYPTION_KEY: 'configured-mfa-secret',
+        AUTH_SECRET_VERSION: '2026-q2',
+        MFA_SECRET_ENCRYPTION_KEY_VERSION: '2026-h1',
         DATABASE_URL: 'postgres://configured',
         REDIS_URL: 'redis://configured',
         PAGARME_API_KEY: 'configured-pagarme',
@@ -111,6 +128,7 @@ describe('startup-secrets runtime coverage', () => {
 
     expect(getMany).not.toHaveBeenCalled();
     expect(resolved.AUTH_SECRET).toBe('configured-auth');
+    expect(resolved.AUTH_SECRET_PREVIOUS).toBe('configured-prev-auth');
     expect(resolved.MFA_SECRET_ENCRYPTION_KEY).toBe('configured-mfa-secret');
   });
 
@@ -119,6 +137,8 @@ describe('startup-secrets runtime coverage', () => {
       provider: 'vault',
       getMany: vi.fn(async () => ({
         AUTH_SECRET: 'vault-auth-secret',
+        AUTH_SECRET_PREVIOUS: 'vault-prev-auth-secret',
+        AUTH_SECRET_VERSION: '2026-q2',
         DATABASE_URL: 'postgres://vault-db',
         PAGARME_API_KEY: 'vault-pagarme',
         PAGARME_PIX_KEY: 'vault-pix'
@@ -147,6 +167,8 @@ describe('startup-secrets runtime coverage', () => {
     expect(loadApiConfigMock).toHaveBeenCalledWith(
       expect.objectContaining({
         AUTH_SECRET: 'vault-auth-secret',
+        AUTH_SECRET_PREVIOUS: 'vault-prev-auth-secret',
+        AUTH_SECRET_VERSION: '2026-q2',
         DATABASE_URL: 'postgres://vault-db',
         PAGARME_API_KEY: 'vault-pagarme',
         PAGARME_PIX_KEY: 'vault-pix'
@@ -154,6 +176,29 @@ describe('startup-secrets runtime coverage', () => {
     );
     expect(startup.secretsManager).toBe(secretsManager);
     expect(startup.env.AUTH_SECRET).toBe('vault-auth-secret');
+    expect(startup.env.AUTH_SECRET_PREVIOUS).toBe('vault-prev-auth-secret');
+    expect(startup.config.authVerifierSecrets).toEqual(['vault-prev-auth-secret']);
+    expect(startup.config.authSecretVersion).toBe('2026-q2');
     expect(startup.config.authSecret).toBe('vault-auth-secret');
+  });
+
+  it('reports rotation as not ready without secret version metadata in production', () => {
+    const report = buildSecretRotationStatusReport({
+      provider: 'env',
+      env: {
+        NODE_ENV: 'production',
+        AUTH_SECRET: 'configured-auth',
+        AUTH_SECRET_PREVIOUS: 'configured-prev-auth'
+      }
+    });
+
+    expect(report).toEqual({
+      provider: 'env',
+      environment: 'production',
+      authSecretVersion: undefined,
+      previousAuthSecretConfigured: true,
+      mfaEncryptionKeyVersion: undefined,
+      rotationReady: false
+    });
   });
 });

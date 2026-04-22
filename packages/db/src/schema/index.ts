@@ -56,3 +56,4 @@ export * from './icms-rules.js';
 export * from './ncm-entries.js';
 export * from './pis-cofins-rules.js';
 export * from './nfse-layouts.js';
+export * from './finance_catalogs.js';

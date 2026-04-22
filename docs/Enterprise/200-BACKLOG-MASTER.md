@@ -83,6 +83,27 @@
 - A OpenAPI vigente do workspace passou a `165 paths`, `32 tags` e `161 schemas`.
 - O endurecimento residual do reminder de WhatsApp foi fechado na propria suite ampla de `apps/api`: o runtime preserva corretamente `provider=360dialog` no audit log de falha de vendor, e o teste foi alinhado a esse contrato real sem reabrir `ML-001`.
 
+## Atualizacao operacional 22/04/2026 - fechamento dos gaps do relatorio 0336
+
+- O backlog seguia marcado como `Fechado`, mas a auditoria executavel `0336` encontrou gaps reais entre essa declaracao e o runtime em prontuario, contratos SPA/API e docs ativas.
+- Esses gaps foram fechados na propria rodada de remediacao:
+  - `packages/db/migrations/0019_medical_records_rls.sql`
+  - `packages/db/migrations/0020_medical_records_integrity.sql`
+  - alinhamento de sessao orfa `404 Session not found` na SPA
+  - alinhamento do contrato de triagem para `items` ou `records`
+  - cobertura de rotas financeiras faltantes em `frontend-backend-contract.test.ts`
+  - consolidacao final de `apps/spa` como frontend canonico sem `cvg-his-v2-web` no config compartilhado
+- Evidencia da remediacao:
+  - `pnpm typecheck` -> `PASS`
+  - `pnpm build` -> `PASS`
+  - `pnpm test:integration` -> `PASS` (`75 arquivos`, `886 testes`)
+  - `pnpm test:smoke` -> `PASS` (`13 passed`)
+  - `node scripts/validate-openapi.js` -> `PASS` (`175 paths`, `33 tags`, `178 schemas`)
+  - `node infra/scripts/check-cutover-readiness.mjs` -> `PASS`
+- Leitura executiva correta apos essa rodada:
+  - os itens do backlog continuam `Fechados`
+  - o fechamento agora voltou a estar sustentado por evidencia executavel atualizada e registrada na linha mestra documental
+
 ## Atualizacao operacional 19/04/2026 - lote premium de integracoes e ML aplicado
 
 - `INT-003` foi fechado com `POST /integrations/sms/messages`, retry explicito, relatorio operacional e adapters `local/twilio`.

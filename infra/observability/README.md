@@ -2,7 +2,7 @@
 
 **Stack**: Prometheus metrics + OpenTelemetry tracing + Grafana dashboards
 **Services**: API (`cvg-api`), Worker (`cvg-worker`)
-**Environment**: See `docker-compose.v2.yml` for service endpoints
+**Environment**: ver `docker-compose.v2.yml` para endpoints canonicos
 
 ---
 
@@ -67,6 +67,17 @@ CPU, memory, event loop, GC, handles, requests in flight, etc.
 
 Ref: `apps/api/src/slos.ts`
 
+## 3.1 Capacidades criticas amarradas a SLO, alerta e dashboard
+
+| Capacidade critica | Fonte primaria | SLO/alerta principal | Evidencia operacional |
+|---|---|---|---|
+| Disponibilidade da API | `/health`, `/ready`, `/metrics` | `api-availability`, `CVG_HIS_API_SLO_Availability_*` | dashboard + probes |
+| Latencia operacional | `/metrics`, `/slos` | `api-latency-p95`, `api-latency-p99` | dashboard + relatorio SLO |
+| Taxa de erro 5xx | `/metrics`, `/slos` | `api-error-rate`, `CVG_HIS_API_SLO_ErrorRate_*` | dashboard + alertas |
+| Saude do banco | `/ready`, Prometheus gauge | `CVG_HIS_DB_Unhealthy` | readiness + alert |
+| Runtime em memoria indevido | `/health`, Prometheus gauge | `CVG_HIS_API_InMemoryMode` | health + alert |
+| Liveness da aplicacao | `/health`, `/live` | `CVG_HIS_API_Liveness_Failing` | probe + alert |
+
 ---
 
 ## 4. Tracing (OpenTelemetry)
@@ -126,7 +137,7 @@ scrape_configs:
   - job_name: 'cvg-api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['host.docker.internal:3001']
+      - targets: ['host.docker.internal:3003']
         labels:
           service: 'api'
           environment: 'development'
@@ -134,7 +145,7 @@ scrape_configs:
   - job_name: 'cvg-worker'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['host.docker.internal:3002']
+      - targets: ['host.docker.internal:3003']
         labels:
           service: 'worker'
           environment: 'development'
@@ -202,7 +213,7 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 ### 9.1 Verificar se API está expondo métricas
 
 ```bash
-curl -s http://localhost:3001/metrics | head -50
+curl -s http://localhost:3003/metrics | head -50
 ```
 
 ### 9.2 Verificar traces estão sendo exportados
@@ -212,7 +223,7 @@ Verificar logs da API procurando por `span` exportado ou erros de conexão OTLP.
 ### 9.3 Validar SLOs
 
 ```bash
-curl -s http://localhost:3001/slos | jq .
+curl -s http://localhost:3003/slos | jq .
 ```
 
 ---

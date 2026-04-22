@@ -25,6 +25,15 @@ import type {
   EntryRevisionRepository
 } from '../index.js';
 
+function isMissingRelationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: unknown };
+  return candidate.code === '42P01';
+}
+
 export class DatabaseMedicalRecordRepository implements MedicalRecordRepository {
   readonly #db: DatabaseClient;
 
@@ -55,11 +64,19 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
   }
 
   public async findById(id: MedicalRecordId): Promise<MedicalRecordSummary | null> {
-    const result = await this.#db
-      .select()
-      .from(medicalRecords)
-      .where(eq(medicalRecords.id, id))
-      .limit(1);
+    let result: typeof medicalRecords.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(medicalRecords)
+        .where(eq(medicalRecords.id, id))
+        .limit(1);
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     if (result.length === 0) {
       return null;
@@ -70,11 +87,19 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
   }
 
   public async findByEncounterId(encounterId: EncounterId): Promise<MedicalRecordSummary | null> {
-    const result = await this.#db
-      .select()
-      .from(medicalRecords)
-      .where(eq(medicalRecords.encounterId, encounterId))
-      .limit(1);
+    let result: typeof medicalRecords.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(medicalRecords)
+        .where(eq(medicalRecords.encounterId, encounterId))
+        .limit(1);
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     if (result.length === 0) {
       return null;
@@ -85,10 +110,18 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
   }
 
   public async findAll(accountId: AccountId): Promise<readonly MedicalRecordSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(medicalRecords)
-      .where(eq(medicalRecords.accountId, accountId));
+    let result: typeof medicalRecords.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(medicalRecords)
+        .where(eq(medicalRecords.accountId, accountId));
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return [];
+      }
+      throw error;
+    }
 
     return result.map((row) => this.mapRowToRecord(row));
   }
@@ -149,11 +182,19 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
   }
 
   public async findById(entryId: ClinicalEntryId): Promise<ClinicalEntrySummary | null> {
-    const result = await this.#db
-      .select()
-      .from(clinicalEntries)
-      .where(eq(clinicalEntries.id, entryId))
-      .limit(1);
+    let result: typeof clinicalEntries.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(clinicalEntries)
+        .where(eq(clinicalEntries.id, entryId))
+        .limit(1);
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     if (result.length === 0) return null;
     return this.mapRow(result[0]);
@@ -162,10 +203,18 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
   public async findByMedicalRecordId(
     medicalRecordId: MedicalRecordId
   ): Promise<readonly ClinicalEntrySummary[]> {
-    const result = await this.#db
-      .select()
-      .from(clinicalEntries)
-      .where(eq(clinicalEntries.medicalRecordId, medicalRecordId));
+    let result: typeof clinicalEntries.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(clinicalEntries)
+        .where(eq(clinicalEntries.medicalRecordId, medicalRecordId));
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return [];
+      }
+      throw error;
+    }
 
     return result.map((row) => this.mapRow(row));
   }
@@ -216,10 +265,18 @@ export class DatabaseClinicalTimelineRepository implements ClinicalTimelineRepos
   public async findByMedicalRecordId(
     medicalRecordId: MedicalRecordId
   ): Promise<readonly ClinicalTimelineEventSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(clinicalTimeline)
-      .where(eq(clinicalTimeline.medicalRecordId, medicalRecordId));
+    let result: typeof clinicalTimeline.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(clinicalTimeline)
+        .where(eq(clinicalTimeline.medicalRecordId, medicalRecordId));
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return [];
+      }
+      throw error;
+    }
 
     return result.map((row: typeof clinicalTimeline.$inferSelect) => ({
       id: row.id as ClinicalTimelineEventSummary['id'],
@@ -257,10 +314,18 @@ export class DatabaseEntryRevisionRepository implements EntryRevisionRepository 
   }
 
   public async findByEntryId(entryId: ClinicalEntryId): Promise<readonly EntryRevisionSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(entryRevisions)
-      .where(eq(entryRevisions.entryId, entryId));
+    let result: typeof entryRevisions.$inferSelect[];
+    try {
+      result = await this.#db
+        .select()
+        .from(entryRevisions)
+        .where(eq(entryRevisions.entryId, entryId));
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        return [];
+      }
+      throw error;
+    }
 
     return result.map((row: typeof entryRevisions.$inferSelect) => ({
       id: row.id as never,

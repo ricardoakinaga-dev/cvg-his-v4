@@ -2,6 +2,7 @@
   <div class="audit-page">
     <AppPageHeader :breadcrumbs="['Console Enterprise', 'Governança', 'Auditoria']" title="Auditoria" subtitle="Linha do tempo de eventos, risco e conformidade — Console Enterprise e Relatórios">
       <template #actions>
+        <DsButton v-if="originHref" tag="a" :to="originHref" variant="secondary">{{ originLabel }}</DsButton>
         <DsBadge variant="info" size="md">{{ filteredEvents.length }} eventos</DsBadge>
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
@@ -52,6 +53,8 @@
 
     <section class="audit-toolbar">
       <DsInput v-model="query" placeholder="Buscar por módulo, ação, ator, entidade ou correlação" />
+      <DsInput v-model="entityFilter" placeholder="Filtrar por entidade ou id afetado" />
+      <DsInput v-model="correlationFilter" placeholder="Filtrar por correlationId" />
       <label class="field">
         <span>Risco</span>
         <select v-model="riskFilter">
@@ -96,6 +99,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -107,10 +111,13 @@ import { auditService } from '@/services/audit';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
+const route = useRoute();
 const events = ref<AuditEventSummary[]>([]);
 const loading = ref(true);
 const error = ref('');
 const query = ref('');
+const entityFilter = ref('');
+const correlationFilter = ref('');
 const riskFilter = ref<'low' | 'medium' | 'high' | ''>('');
 
 const columns: DataTableColumn[] = [
@@ -125,13 +132,19 @@ const columns: DataTableColumn[] = [
 
 const filteredEvents = computed(() => {
   const needle = query.value.trim().toLowerCase();
+  const entityNeedle = entityFilter.value.trim().toLowerCase();
+  const correlationNeedle = correlationFilter.value.trim().toLowerCase();
   return events.value.filter((event) => {
     const matchesQuery =
       !needle ||
       [event.module, event.action, event.actorId, event.entityType, event.entityId, event.correlationId, event.payloadSummary]
         .some((value) => String(value ?? '').toLowerCase().includes(needle));
+    const matchesEntity =
+      !entityNeedle ||
+      [event.entityType, event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(entityNeedle));
+    const matchesCorrelation = !correlationNeedle || String(event.correlationId ?? '').toLowerCase().includes(correlationNeedle);
     const matchesRisk = !riskFilter.value || event.riskLevel === riskFilter.value;
-    return matchesQuery && matchesRisk;
+    return matchesQuery && matchesEntity && matchesCorrelation && matchesRisk;
   });
 });
 const eventRows = computed(() => filteredEvents.value as unknown as DataTableRow[]);
@@ -170,6 +183,8 @@ const latestEventLabel = computed(() => {
   )[0];
   return formatDate(latest.occurredAt);
 });
+const originHref = computed(() => (typeof route?.query?.origin === 'string' ? route.query.origin : ''));
+const originLabel = computed(() => (typeof route?.query?.originLabel === 'string' ? route.query.originLabel : 'Voltar para origem'));
 const insightCards = computed(() => [
   {
     label: 'Risco alto',
@@ -238,7 +253,17 @@ function reload() {
   void loadEvents();
 }
 
-onMounted(loadEvents);
+function hydrateFiltersFromRoute() {
+  const routeQuery = route?.query ?? {};
+  query.value = typeof routeQuery.q === 'string' ? routeQuery.q : '';
+  entityFilter.value = typeof routeQuery.entity === 'string' ? routeQuery.entity : '';
+  correlationFilter.value = typeof routeQuery.correlationId === 'string' ? routeQuery.correlationId : '';
+}
+
+onMounted(() => {
+  hydrateFiltersFromRoute();
+  void loadEvents();
+});
 
 function auditRow(row: unknown): AuditEventSummary {
   return row as AuditEventSummary;

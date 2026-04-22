@@ -12,6 +12,7 @@ import { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleMlRoutes } from './ml-routes.js';
+import { MlTelemetryService } from '../ml-telemetry.js';
 
 class MockResponse extends Writable {
   public statusCode = 200;
@@ -214,4 +215,152 @@ test('handleMlRoutes validates demand forecasting query params against API contr
     invalidDateResponse.bodyJson<{ message: string }>().message,
     'referenceDate must be a valid ISO-8601 date-time'
   );
+});
+
+test('handleMlRoutes publishes operational report and anomaly review workflow', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const scheduling = new SchedulingService(owners, patients);
+  await scheduling.createAppointment('acc_cvg_demo' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-20T09:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Consulta'
+  });
+
+  const encounters = new EncountersService({ owners, patients });
+  const diagnostics = new DiagnosticsService(encounters);
+  const laboratory = new LaboratoryService(diagnostics);
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Anomaly scan'
+  });
+  const order = laboratory.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'HEM',
+    reason: 'Monitoramento'
+  });
+  laboratory.recordResult(order.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_user'
+  });
+  laboratory.recordResult(order.id, {
+    status: 'resulted',
+    resultSummary: 'Leucocitos: 30'
+  });
+
+  const telemetry = new MlTelemetryService();
+  telemetry.recordSmartSchedulingRecommendation({
+    accountId: 'acc_cvg_demo',
+    recommendationId: 'smartsch_1',
+    visitType: 'scheduled',
+    predictedDurationMinutes: 30,
+    confidence: 0.82
+  });
+  telemetry.recordSmartSchedulingApplication({
+    accountId: 'acc_cvg_demo',
+    recommendationId: 'smartsch_1',
+    appliedDurationMinutes: 45
+  });
+
+  const handlers = {
+    scheduling,
+    laboratory,
+    telemetry,
+    ocrFiscal: new OcrFiscalService(),
+    demandForecasting: new DemandForecastingService(),
+    labAnomalyDetection: new LabAnomalyDetectionService(),
+    audit: new AuditService(),
+    featureFlags: {
+      providerName: 'test',
+      enabledKeys: [
+        'ml.smart_scheduling.enabled',
+        'ml.forecasting.enabled',
+        'ml.anomaly_detection.enabled',
+        'ml.ocr_fiscal.enabled'
+      ],
+      decisions: {},
+      authOidcEnabled: false,
+      authWebauthnEnabled: false,
+      runtimeDistributedStateEnabled: false,
+      fiscalBackofficeEnabled: false,
+      notificationsWhatsappRemindersEnabled: false,
+      notificationsWhatsappInboundActionsEnabled: false,
+      mlSmartSchedulingEnabled: true,
+      mlForecastingEnabled: true,
+      mlAnomalyDetectionEnabled: true,
+      mlOcrFiscalEnabled: true,
+      provider: { name: 'test', evaluate: async () => ({ key: '', enabled: true, provider: 'test', reason: 'default', evaluatedAt: '', definition: {} as never, context: {} as never }) } as never
+    },
+    requirePrincipal: () => ({
+      ...principal(),
+      access: {
+        ...principal().access,
+        permissionCodes: ['fiscal.read', 'scheduling.read', 'diagnostics.read', 'diagnostics.manage']
+      }
+    })
+  };
+
+  const forecastResponse = new MockResponse();
+  await handleMlRoutes(
+    '/ml/forecasting/demand',
+    createRequest('GET', '/ml/forecasting/demand?horizonDays=5&referenceDate=2026-04-21T00:00:00.000Z'),
+    forecastResponse as never,
+    'corr-ml-report-1',
+    handlers
+  );
+  assert.equal(forecastResponse.statusCode, 200);
+
+  const anomaliesResponse = new MockResponse();
+  await handleMlRoutes(
+    '/ml/anomalies/laboratory-results',
+    createRequest('GET', '/ml/anomalies/laboratory-results?examType=HEM'),
+    anomaliesResponse as never,
+    'corr-ml-report-2',
+    handlers
+  );
+  assert.equal(anomaliesResponse.statusCode, 200);
+
+  const reviewResponse = new MockResponse();
+  await handleMlRoutes(
+    '/ml/anomalies/reviews',
+    createRequest('POST', '/ml/anomalies/reviews', {
+      orderId: order.id,
+      disposition: 'confirmed',
+      note: 'Critico confirmado pela equipe clinica'
+    }),
+    reviewResponse as never,
+    'corr-ml-review',
+    handlers
+  );
+  assert.equal(reviewResponse.statusCode, 201);
+
+  const reportResponse = new MockResponse();
+  await handleMlRoutes(
+    '/ml/report',
+    createRequest('GET', '/ml/report'),
+    reportResponse as never,
+    'corr-ml-report-3',
+    handlers
+  );
+  assert.equal(reportResponse.statusCode, 200);
+  const report = reportResponse.bodyJson<{
+    smartScheduling: { recommendations: number; adopted: number; overrides: number };
+    forecasting: { snapshots: number };
+    anomalyDetection: { scans: number; reviewedOrders: number; confirmedOrders: number };
+    governance: { features: Array<{ key: string; enabled: boolean }> };
+  }>();
+  assert.equal(report.smartScheduling.recommendations, 1);
+  assert.equal(report.smartScheduling.adopted, 1);
+  assert.equal(report.smartScheduling.overrides, 1);
+  assert.equal(report.forecasting.snapshots, 1);
+  assert.equal(report.anomalyDetection.scans, 1);
+  assert.equal(report.anomalyDetection.reviewedOrders, 1);
+  assert.equal(report.anomalyDetection.confirmedOrders, 1);
+  assert.ok(report.governance.features.some((feature) => feature.key === 'ml.forecasting.enabled' && feature.enabled));
 });

@@ -10,6 +10,8 @@
 
 ---
 
+> **ATUALIZACAO DE CONTEXTO (22/04/2026):** este documento permanece como baseline historico da leitura de `19/04/2026`, mas partes dele foram superadas pela remediacao registrada em `0336-RELATORIO-AUDITORIA-EXECUTAVEL-2026-04-22.md`. Em especial: `apps/web` nao faz mais parte do runtime oficial ativo, o frontend canonico e `apps/spa`, e o trilho canonico de prontuario foi endurecido com `0018`, `0019` e `0020`.
+
 ## 1. Resumo executivo
 
 Leitura consolidada do estado atual:
@@ -106,7 +108,7 @@ Documentos de apoio tematico:
 
 ### Estado confirmado
 
-- monorepo amplo e modular, com `apps/api`, `apps/spa`, `apps/web`, `apps/worker` e `38` modulos em `packages/modules`
+- monorepo amplo e modular, com `apps/api`, `apps/spa`, `apps/worker` e `38` modulos em `packages/modules`; a referencia a `apps/web` nesta auditoria deve ser lida como fotografia historica do workspace em `19/04/2026`
 - OpenAPI viva e maior do que parte das docs atuais
 - tenancy/RLS reais, com migrations, wrappers e suites dedicadas
 - MFA, WebAuthn, OIDC, ABAC, SOC2 e scans materializados no codigo
@@ -116,7 +118,7 @@ Documentos de apoio tematico:
 
 ### Gaps tecnicos mais relevantes
 
-1. `apps/web` ainda convive com a SPA nova, mantendo superficie duplicada e migracao incompleta.
+1. Na data desta auditoria, `apps/web` ainda convivia com a SPA nova, mantendo superficie duplicada e migracao incompleta. Esse ponto foi fechado na trilha posterior de remediacao e nao representa mais o runtime oficial atual.
 2. Hotspots ainda grandes em `apps/api/src/server.ts`, `apps/api/src/runtime.ts` e `apps/spa/src/router/routes.ts`.
 3. O provider de segredos e pratico e funcional, mas a garantia enterprise final ainda depende de disciplina de ambiente quando Vault nao e o backend efetivo.
 4. A trilha de cobertura esta forte, mas o harness ainda tem arestas operacionais, como o diretorio `coverage/.tmp`.

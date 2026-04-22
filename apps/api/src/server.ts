@@ -83,6 +83,7 @@ import { handleFeatureFlagsRoutes } from './routes/feature-flags-routes.js';
 import { handleAdministrativeReportsRoutes } from './routes/administrative-reports-routes.js';
 import { handleDischargesRoutes } from './routes/discharges-routes.js';
 import { handleBillingRoutes } from './routes/billing-routes.js';
+import { handleExpensesCatalogRoutes } from './routes/expenses-catalog-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
 import { handleInventoryRoutes } from './routes/inventory-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
@@ -173,6 +174,7 @@ import {
   LabAnomalyDetectionService,
   OcrFiscalService
 } from '@cvg-his-v2/module-ml';
+import { MlTelemetryService } from './ml-telemetry.js';
 
 export interface ApiServerOptions {
   readonly appName: string;
@@ -180,6 +182,7 @@ export interface ApiServerOptions {
   readonly version: string;
   readonly corsAllowedOrigins?: readonly string[];
   readonly authSecret: string;
+  readonly authVerifierSecrets?: readonly string[];
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests?: number;
@@ -235,6 +238,8 @@ const DEFAULT_CORS_ALLOW_HEADERS =
   'accept, authorization, content-type, x-correlation-id, x-request-id';
 const DEFAULT_CORS_EXPOSE_HEADERS =
   'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
+const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const OIDC_STATE_TTL_MS = 10 * 60 * 1000;
 
 function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: string }): void {
   const alreadyRegistered = chaos.listExperiments().some((item) => item.id === experiment.id);
@@ -414,6 +419,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
+    authVerifierSecrets: options.authVerifierSecrets,
     accessTokenTtlSeconds: options.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
     enableMfa: options.enableMfa,
@@ -473,6 +479,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const demandForecasting = new DemandForecastingService();
   const labAnomalyDetection = new LabAnomalyDetectionService();
   const fiscal = new FiscalService();
+  const mlTelemetry = new MlTelemetryService();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -500,14 +507,26 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     fiscalBackofficeEnabled: false,
     notificationsWhatsappRemindersEnabled: false,
     notificationsWhatsappInboundActionsEnabled: false,
+    mlSmartSchedulingEnabled: true,
+    mlForecastingEnabled: true,
+    mlAnomalyDetectionEnabled: true,
+    mlOcrFiscalEnabled: true,
     provider: { name: 'unknown', evaluate: async () => ({ key: '', enabled: false, provider: 'unknown', reason: 'unknown', evaluatedAt: '', definition: {} as never, context: {} as never }) } as never
   };
 
   /**
    * Build ABAC actor attributes from the authenticated principal.
    */
-  function buildActorAttributes(principal: AuthenticatedPrincipal): ActorAttributes {
+  function buildActorAttributes(
+    principal: AuthenticatedPrincipal,
+    request?: IncomingMessage
+  ): ActorAttributes {
     const memberships = accessControl.listMemberships(principal.user.id as never);
+    const branchIdHeader = request?.headers['x-branch-id'];
+    const branchIds =
+      typeof branchIdHeader === 'string' && branchIdHeader.trim().length > 0
+        ? [branchIdHeader.trim()]
+        : [];
     return {
       userId: principal.user.id as never,
       accountId: principal.user.accountId as never,
@@ -515,6 +534,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       department: undefined,
       jobTitle: undefined,
       staffId: undefined,
+      branchIds,
       teamIds: memberships.teams.map((t) => t.id),
       sectorIds: memberships.sectors.map((s) => s.id),
       sectorCodes: memberships.sectors.map((s) => s.code),
@@ -547,7 +567,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     resource: ResourceAttributes,
     request: IncomingMessage
   ): void {
-    const actor = buildActorAttributes(principal);
+    const actor = buildActorAttributes(principal, request);
     const environment = buildEnvironmentAttributes(request);
     abacEngine.enforce(actionCode, actor, resource, environment);
   }
@@ -555,7 +575,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   // WebAuthn service (in-memory repository for dev; replace with DB repo in prod)
   const webauthnRepository = new InMemoryWebAuthnRepository();
   const webauthnService = new WebAuthnServiceImpl(webauthnRepository);
-  const webauthnChallenges = new Map<string, string>(); // challenge storage keyed by userId:purpose
+  const webauthnChallenges = new Map<string, { challenge: string; createdAt: number }>();
 
   // OIDC state storage:
   // - in-memory by default
@@ -563,7 +583,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const oidcStateStore = effectiveRuntimeDistributedStateEnabled
     ? createStatelessOidcStateStore(options.authSecret)
     : createInMemoryOidcStateStore();
-  const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   // OIDC configuration (configure via environment in production)
   const oidcConfig: OIDCConfig | null = (() => {
@@ -909,6 +928,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             webauthnService,
             webauthnChallenges,
             oidcConfig,
+            webauthnChallengeTtlMs: WEBAUTHN_CHALLENGE_TTL_MS,
             oidcStateStore,
             oidcStateTtlMs: OIDC_STATE_TTL_MS,
             requirePrincipal,
@@ -1593,6 +1613,26 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           return;
         }
 
+        if (pathname.startsWith('/encounters/') && request.method === 'DELETE') {
+          const principal = requirePrincipal(request, 'encounters.manage');
+          const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+          encounters.deleteEncounter(encounterId as never);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'encounters',
+            'delete',
+            'encounter',
+            encounterId,
+            `Encounter ${encounterId} deleted`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
+          return;
+        }
+
         if (pathname === '/triage' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'triage.read');
           const encounterId = url.searchParams.get('encounterId') ?? undefined;
@@ -2125,6 +2165,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           requirePrincipal
         })) { return; }
 
+        // --- Expenses Catalog (delegated) ---
+        if (await handleExpensesCatalogRoutes(pathname, request, response, correlationId, {
+          audit,
+          requirePrincipal
+        })) { return; }
+
         // --- Internal Events (delegated) ---
         if (handleInternalEventsRoutes(pathname, request, response, correlationId, {
           eventBus,
@@ -2201,7 +2247,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ocrFiscal,
           demandForecasting,
           labAnomalyDetection,
+          telemetry: mlTelemetry,
           audit,
+          featureFlags,
           requirePrincipal
         })) { return; }
 

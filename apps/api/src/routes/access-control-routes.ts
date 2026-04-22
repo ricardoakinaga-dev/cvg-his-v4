@@ -3,6 +3,7 @@
  * Extracted from server.ts as part of the controlled refactoring initiative (GAP-02).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { URL } from 'node:url';
 
 import type { AccessControlService } from '@cvg-his-v2/module-access-control';
 import type { AuditService } from '@cvg-his-v2/module-audit';
@@ -261,6 +262,22 @@ export async function handleAccessControlRoutes(
   // GET /audit/events
   if (pathname === '/audit/events' && request.method === 'GET') {
     const principal = rp(request, 'audit.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const moduleFilter = (url.searchParams.get('module') ?? '').trim().toLowerCase();
+    const entityFilter = (url.searchParams.get('entity') ?? '').trim().toLowerCase();
+    const correlationFilter = (url.searchParams.get('correlationId') ?? '').trim().toLowerCase();
+    const queryFilter = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+    const entityTypes = url.searchParams.getAll('entityType').map((value) => value.trim().toLowerCase()).filter(Boolean);
+    const limit = Math.max(1, Math.min(200, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100));
+    const items = audit
+      .list()
+      .filter((event) => event.accountId === principal.user.accountId)
+      .filter((event) => !moduleFilter || event.module.toLowerCase().includes(moduleFilter))
+      .filter((event) => !entityFilter || [event.entityType, event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(entityFilter)))
+      .filter((event) => !correlationFilter || event.correlationId.toLowerCase().includes(correlationFilter))
+      .filter((event) => entityTypes.length === 0 || entityTypes.includes(event.entityType.toLowerCase()))
+      .filter((event) => !queryFilter || [event.module, event.action, event.actorId, event.entityType, event.entityId, event.correlationId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(queryFilter)))
+      .slice(0, limit);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -268,12 +285,12 @@ export async function handleAccessControlRoutes(
       action: 'read',
       entityType: 'audit-event',
       entityId: 'all',
-      payloadSummary: 'Audit events inspected',
+      payloadSummary: `Audit events inspected module=${moduleFilter || '-'} entity=${entityFilter || '-'} correlation=${correlationFilter || '-'} q=${queryFilter || '-'} limit=${limit}`,
       riskLevel: 'high',
       correlationId
     });
     response.statusCode = 200;
-    response.end(JSON.stringify({ items: audit.list() }));
+    response.end(JSON.stringify({ items }));
     return true;
   }
 

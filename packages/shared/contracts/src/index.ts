@@ -100,6 +100,10 @@ export interface LogoutRequest {
   readonly refreshToken?: string;
 }
 
+export interface SessionListResponse {
+  readonly items: readonly SessionSummary[];
+}
+
 export interface UserListResponse {
   readonly items: readonly UserSummary[];
 }

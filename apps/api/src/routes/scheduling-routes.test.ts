@@ -9,6 +9,7 @@ import { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleSchedulingRoutes } from './scheduling-routes.js';
+import { MlTelemetryService } from '../ml-telemetry.js';
 
 class MockResponse extends Writable {
   public statusCode = 200;
@@ -440,4 +441,80 @@ test('handleSchedulingRoutes returns smart duration recommendation for appointme
   assert.ok(payload.suggestedBufferMinutes >= 0);
   assert.equal(payload.basedOn.visitType, 'scheduled');
   assert.ok(payload.basedOn.previousVisits >= 1);
+});
+
+test('handleSchedulingRoutes records smart scheduling adoption and overrides for operational telemetry', async () => {
+  const scheduling = createSchedulingService();
+  const telemetry = new MlTelemetryService();
+
+  const recommendationResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/scheduling/recommendations/duration',
+    createJsonRequest('POST', '/scheduling/recommendations/duration', {
+      patientId: 'patient_luna',
+      scheduledAt: '2026-03-25T12:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta com buffer',
+      specialty: 'Cardiologia'
+    }),
+    recommendationResponse as never,
+    'corr-scheduling-telemetry-rec',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      telemetry,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const recommendation = recommendationResponse.bodyJson<{ recommendationId: string; predictedDurationMinutes: number }>();
+
+  const createResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/appointments',
+    createJsonRequest('POST', '/appointments', {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-03-26T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta enterprise',
+      smartSchedulingRecommendationId: recommendation.recommendationId,
+      durationMinutes: recommendation.predictedDurationMinutes + 15
+    }),
+    createResponse as never,
+    'corr-scheduling-telemetry-apply',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      telemetry,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const report = telemetry.getReport({
+    accountId: 'acc_cvg_demo',
+    appointments: scheduling.listAppointments('acc_cvg_demo' as never),
+    featureFlags: {
+      providerName: 'test',
+      enabledKeys: ['ml.smart_scheduling.enabled'],
+      decisions: {},
+      authOidcEnabled: false,
+      authWebauthnEnabled: false,
+      runtimeDistributedStateEnabled: false,
+      fiscalBackofficeEnabled: false,
+      notificationsWhatsappRemindersEnabled: false,
+      notificationsWhatsappInboundActionsEnabled: false,
+      mlSmartSchedulingEnabled: true,
+      mlForecastingEnabled: true,
+      mlAnomalyDetectionEnabled: true,
+      mlOcrFiscalEnabled: true,
+      provider: { name: 'test', evaluate: async () => ({ key: '', enabled: true, provider: 'test', reason: 'default', evaluatedAt: '', definition: {} as never, context: {} as never }) } as never
+    }
+  });
+
+  assert.equal(report.smartScheduling.recommendations, 1);
+  assert.equal(report.smartScheduling.adopted, 1);
+  assert.equal(report.smartScheduling.overrides, 1);
 });

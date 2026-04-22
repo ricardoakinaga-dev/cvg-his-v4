@@ -29,6 +29,7 @@ export interface ActorAttributes {
   readonly department?: string;
   readonly jobTitle?: string;
   readonly staffId?: StaffId;
+  readonly branchIds: readonly string[];
   readonly teamIds: readonly string[];
   readonly sectorIds: readonly string[];
   readonly sectorCodes: readonly string[];
@@ -45,6 +46,7 @@ export interface ResourceAttributes {
   readonly accountId?: AccountId;
   readonly status?: string;
   readonly createdByUserId?: UserId;
+  readonly branchId?: string;
   /** Sector where the resource was created (e.g., triage, reception). */
   readonly sectorCode?: string;
 }
@@ -334,6 +336,22 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
         description: 'Deny access to owner if actor is not in the resource sector',
         conditions: [
           {
+            attribute: 'resource.branchId',
+            operator: 'regex',
+            value: '.+'
+          },
+          {
+            attribute: 'actor.branchIds',
+            operator: 'nhas',
+            value: '{{resource.branchId}}'
+          }
+        ],
+        effect: 'deny'
+      },
+      {
+        description: 'Deny access to owner if actor is not in the resource sector',
+        conditions: [
+          {
             attribute: 'resource.sectorCode',
             operator: 'neq',
             value: '' as unknown as string
@@ -347,7 +365,33 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
         effect: 'deny'
       },
       {
-        description: 'Permit access to owner when actor belongs to the requested sector',
+        description: 'Permit access to owner when actor belongs to the requested branch and sector',
+        conditions: [
+          {
+            attribute: 'resource.branchId',
+            operator: 'regex',
+            value: '.+'
+          },
+          {
+            attribute: 'actor.branchIds',
+            operator: 'has',
+            value: '{{resource.branchId}}'
+          },
+          {
+            attribute: 'resource.sectorCode',
+            operator: 'neq',
+            value: '' as unknown as string
+          },
+          {
+            attribute: 'actor.sectorCodes',
+            operator: 'has',
+            value: '{{resource.sectorCode}}'
+          }
+        ],
+        effect: 'permit'
+      },
+      {
+        description: 'Permit access to owner when only sector isolation applies',
         conditions: [
           {
             attribute: 'resource.sectorCode',
@@ -724,6 +768,14 @@ export class AbacEngine {
       return {
         permitted: false,
         reason: 'Actor is inactive',
+        evaluatedPolicies: []
+      };
+    }
+
+    if (resource.accountId && resource.accountId !== actor.accountId) {
+      return {
+        permitted: false,
+        reason: 'Cross-account ABAC access is not allowed',
         evaluatedPolicies: []
       };
     }

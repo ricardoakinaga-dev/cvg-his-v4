@@ -167,6 +167,7 @@ async function main() {
     version,
     corsAllowedOrigins: config.corsAllowedOrigins,
     authSecret: config.authSecret,
+    authVerifierSecrets: config.authVerifierSecrets,
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
     authRateLimitMaxRequests: config.authRateLimitMaxRequests,

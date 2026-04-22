@@ -14,7 +14,8 @@ import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
   LoginRequest,
   LogoutRequest,
-  RefreshSessionRequest
+  RefreshSessionRequest,
+  SessionListResponse
 } from '@cvg-his-v2/shared-contracts';
 import { toErrorResponse } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -59,6 +60,44 @@ interface OidcStateValue {
 export interface OidcStateStore {
   create(value: OidcStateValue): string;
   consume(state: string): OidcStateValue | null;
+}
+
+interface WebAuthnChallengeValue {
+  challenge: string;
+  createdAt: number;
+}
+
+function createWebAuthnChallengeValue(challenge: string): WebAuthnChallengeValue {
+  return {
+    challenge,
+    createdAt: Date.now()
+  };
+}
+
+function consumeWebAuthnChallenge(
+  store: Map<string, WebAuthnChallengeValue>,
+  key: string,
+  ttlMs: number
+): { ok: true; challenge: string } | { ok: false; code: 'INVALID_CHALLENGE' | 'CHALLENGE_EXPIRED'; message: string } {
+  const stored = store.get(key);
+  if (!stored) {
+    return {
+      ok: false,
+      code: 'INVALID_CHALLENGE',
+      message: 'No pending WebAuthn challenge'
+    };
+  }
+
+  store.delete(key);
+  if (Date.now() - stored.createdAt > ttlMs) {
+    return {
+      ok: false,
+      code: 'CHALLENGE_EXPIRED',
+      message: 'WebAuthn challenge has expired'
+    };
+  }
+
+  return { ok: true, challenge: stored.challenge };
 }
 
 export function createInMemoryOidcStateStore(): OidcStateStore {
@@ -137,7 +176,8 @@ export interface AuthRoutesHandlers {
     authWebauthnEnabled: boolean;
   };
   webauthnService?: WebAuthnService;
-  webauthnChallenges: Map<string, string>;
+  webauthnChallenges: Map<string, WebAuthnChallengeValue>;
+  webauthnChallengeTtlMs: number;
   oidcConfig: OIDCConfig | null;
   oidcStateStore: OidcStateStore;
   oidcStateTtlMs: number;
@@ -203,6 +243,7 @@ export async function handleAuthRoutes(
     featureFlags,
     webauthnService,
     webauthnChallenges,
+    webauthnChallengeTtlMs,
     oidcConfig,
     oidcStateStore,
     oidcStateTtlMs,
@@ -228,6 +269,23 @@ export async function handleAuthRoutes(
       access: principal.access,
       principal
     });
+  }
+
+  if (pathname === '/auth/sessions' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'auth.session.read');
+    const items = auth.listSessionsForUser(principal.user.id);
+    appendAudit(
+      principal.user.id,
+      principal.user.accountId,
+      'auth',
+      'session_list',
+      'session',
+      principal.session.sessionId,
+      `Listed ${items.length} sessions`,
+      'low',
+      correlationId
+    );
+    return sendJson(response, 200, { items } satisfies SessionListResponse);
   }
 
   if (pathname === '/auth/login' && request.method === 'POST') {
@@ -270,6 +328,49 @@ export async function handleAuthRoutes(
     response.statusCode = 204;
     response.end();
     return true;
+  }
+
+  if (pathname === '/auth/logout-all-others' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'auth.session.read');
+    const revoked = auth.revokeOtherSessions(principal.session.sessionId, correlationId);
+    appendAudit(
+      principal.user.id,
+      principal.user.accountId,
+      'auth',
+      'session_revoke_others',
+      'session',
+      principal.session.sessionId,
+      `Revoked ${revoked} other sessions`,
+      'medium',
+      correlationId
+    );
+    return sendJson(response, 200, { revokedSessions: revoked, keptSessionId: principal.session.sessionId });
+  }
+
+  const revokeSessionMatch = pathname.match(/^\/auth\/sessions\/([^/]+)\/revoke$/);
+  if (revokeSessionMatch && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'auth.session.read');
+    const targetSessionId = revokeSessionMatch[1] as never;
+    const revoked = auth.revokeSessionForUser(
+      principal.session.sessionId,
+      targetSessionId,
+      correlationId
+    );
+    appendAudit(
+      principal.user.id,
+      principal.user.accountId,
+      'auth',
+      'session_revoke',
+      'session',
+      String(targetSessionId),
+      revoked ? `Revoked session ${targetSessionId}` : `Session ${targetSessionId} already inactive`,
+      'medium',
+      correlationId
+    );
+    return sendJson(response, 200, {
+      revoked,
+      sessionId: targetSessionId
+    });
   }
 
   if (pathname === '/auth/login/mfa' && request.method === 'POST') {
@@ -386,7 +487,7 @@ export async function handleAuthRoutes(
         userName: principal.user.email
       }
     );
-    webauthnChallenges.set(`reg:${principal.user.id}`, challenge);
+    webauthnChallenges.set(`reg:${principal.user.id}`, createWebAuthnChallengeValue(challenge));
     return sendJson(response, 200, { publicKeyOptions, challenge });
   }
 
@@ -403,14 +504,20 @@ export async function handleAuthRoutes(
       attestationObject: string;
       clientDataJSON: string;
     };
-    const storedChallenge = webauthnChallenges.get(`reg:${principal.user.id}`);
-    if (!storedChallenge) {
+    const challengeResult = consumeWebAuthnChallenge(
+      webauthnChallenges,
+      `reg:${principal.user.id}`,
+      webauthnChallengeTtlMs
+    );
+    if (!challengeResult.ok) {
       return sendJson(response, 400, {
-        code: 'INVALID_CHALLENGE',
-        message: 'No pending WebAuthn registration'
+        code: challengeResult.code,
+        message:
+          challengeResult.code === 'INVALID_CHALLENGE'
+            ? 'No pending WebAuthn registration'
+            : challengeResult.message
       });
     }
-    webauthnChallenges.delete(`reg:${principal.user.id}`);
     const result = await webauthnService.verifyRegistration(
       principal.user.id,
       {
@@ -418,7 +525,7 @@ export async function handleAuthRoutes(
         attestationObject: payload.attestationObject,
         clientDataJSON: payload.clientDataJSON
       },
-      storedChallenge
+      challengeResult.challenge
     );
     appendAudit(
       principal.user.id,
@@ -453,7 +560,7 @@ export async function handleAuthRoutes(
         { id: payload.credentialId, type: 'public-key' }
       ];
     }
-    webauthnChallenges.set(`auth:${principal.user.id}`, challenge);
+    webauthnChallenges.set(`auth:${principal.user.id}`, createWebAuthnChallengeValue(challenge));
     return sendJson(response, 200, { publicKeyOptions, challenge });
   }
 
@@ -472,14 +579,20 @@ export async function handleAuthRoutes(
       signature: string;
       userHandle?: string;
     };
-    const storedChallenge = webauthnChallenges.get(`auth:${principal.user.id}`);
-    if (!storedChallenge) {
+    const challengeResult = consumeWebAuthnChallenge(
+      webauthnChallenges,
+      `auth:${principal.user.id}`,
+      webauthnChallengeTtlMs
+    );
+    if (!challengeResult.ok) {
       return sendJson(response, 400, {
-        code: 'INVALID_CHALLENGE',
-        message: 'No pending WebAuthn assertion'
+        code: challengeResult.code,
+        message:
+          challengeResult.code === 'INVALID_CHALLENGE'
+            ? 'No pending WebAuthn assertion'
+            : challengeResult.message
       });
     }
-    webauthnChallenges.delete(`auth:${principal.user.id}`);
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
     const result = await webauthnService.verifyAuthentication(
       payload.credentialId,
@@ -489,7 +602,7 @@ export async function handleAuthRoutes(
         signature: payload.signature,
         userHandle: payload.userHandle
       },
-      storedChallenge,
+      challengeResult.challenge,
       rpId
     );
     if (!result.success) {

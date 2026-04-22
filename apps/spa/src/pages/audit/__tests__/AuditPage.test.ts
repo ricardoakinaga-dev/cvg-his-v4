@@ -2,6 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 const mockListEvents = vi.fn();
+const mockRoute = vi.fn();
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
+  return {
+    ...actual,
+    useRoute: () => mockRoute()
+  };
+});
 
 vi.mock('@/services/audit', () => ({
   auditService: {
@@ -51,6 +60,7 @@ const auditEvents = [
 describe('AuditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.mockReturnValue({ query: {} });
     mockListEvents.mockResolvedValue(auditEvents);
   });
 
@@ -111,6 +121,28 @@ describe('AuditPage', () => {
     expect(wrapper.text()).toContain('Nenhum evento de auditoria encontrado');
   });
 
+  it('hydrates filters from route query for deep financial audit navigation', async () => {
+    mockRoute.mockReturnValueOnce({
+      query: {
+        q: 'role',
+        correlationId: 'corr-1',
+        entity: 'role-1',
+        origin: '/cost-centers?correlationId=corr-1',
+        originLabel: 'Voltar para Centros de Custo'
+      }
+    });
+
+    const AuditPage = (await import('../AuditPage.vue')).default;
+    const wrapper = mount(AuditPage);
+
+    await flushPromises();
+
+    expect((wrapper.find('input').element as HTMLInputElement).value).toBe('role');
+    expect(wrapper.text()).toContain('Permissões da role revisadas');
+    expect(wrapper.text()).not.toContain('Webhook sensível alterado');
+    expect(wrapper.text()).toContain('Voltar para Centros de Custo');
+  });
+
   it('shows service error when loading fails', async () => {
     mockListEvents.mockRejectedValueOnce(new Error('Falha ao carregar auditoria remota'));
 
@@ -122,3 +154,4 @@ describe('AuditPage', () => {
     expect(wrapper.text()).toContain('Falha ao carregar auditoria remota');
   });
 });
+

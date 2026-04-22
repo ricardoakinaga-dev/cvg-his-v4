@@ -47,9 +47,11 @@ export interface UpdateTriageRequest {
 }
 
 export interface TriageListResponse {
-  records: TriageSummary[];
+  records?: TriageSummary[];
+  items?: TriageSummary[];
 }
 
 export interface TriageHistoryResponse {
-  versions: TriageVersionSummary[];
+  versions?: TriageVersionSummary[];
+  items?: TriageVersionSummary[];
 }

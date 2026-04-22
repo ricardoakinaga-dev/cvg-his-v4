@@ -14,7 +14,11 @@ describe('api feature flags', () => {
       'runtime.distributed_state.enabled',
       'fiscal.backoffice.enabled',
       'notifications.whatsapp.reminders.enabled',
-      'notifications.whatsapp.inbound_actions.enabled'
+      'notifications.whatsapp.inbound_actions.enabled',
+      'ml.smart_scheduling.enabled',
+      'ml.forecasting.enabled',
+      'ml.anomaly_detection.enabled',
+      'ml.ocr_fiscal.enabled'
     ]);
   });
 
@@ -25,13 +29,25 @@ describe('api feature flags', () => {
     });
 
     expect(flags.providerName).toBe('env-bootstrap-with-rules');
-    expect(flags.enabledKeys).toEqual(['auth.oidc.enabled']);
+    expect(flags.enabledKeys).toEqual(
+      expect.arrayContaining([
+        'auth.oidc.enabled',
+        'ml.smart_scheduling.enabled',
+        'ml.forecasting.enabled',
+        'ml.anomaly_detection.enabled',
+        'ml.ocr_fiscal.enabled'
+      ])
+    );
     expect(flags.authOidcEnabled).toBe(true);
     expect(flags.authWebauthnEnabled).toBe(false);
     expect(flags.runtimeDistributedStateEnabled).toBe(false);
     expect(flags.fiscalBackofficeEnabled).toBe(false);
     expect(flags.notificationsWhatsappRemindersEnabled).toBe(false);
     expect(flags.notificationsWhatsappInboundActionsEnabled).toBe(false);
+    expect(flags.mlSmartSchedulingEnabled).toBe(true);
+    expect(flags.mlForecastingEnabled).toBe(true);
+    expect(flags.mlAnomalyDetectionEnabled).toBe(true);
+    expect(flags.mlOcrFiscalEnabled).toBe(true);
   });
 
   it('normalizes bootstrap env keys before evaluation', () => {
@@ -70,11 +86,13 @@ describe('api feature flags', () => {
     expect(flags.runtimeDistributedStateEnabled).toBe(true);
     expect(flags.notificationsWhatsappRemindersEnabled).toBe(true);
     expect(flags.notificationsWhatsappInboundActionsEnabled).toBe(false);
+    expect(flags.mlSmartSchedulingEnabled).toBe(true);
     expect(flags.enabledKeys).toEqual(
       expect.arrayContaining([
         'auth.oidc.enabled',
         'runtime.distributed_state.enabled',
-        'notifications.whatsapp.reminders.enabled'
+        'notifications.whatsapp.reminders.enabled',
+        'ml.smart_scheduling.enabled'
       ])
     );
   });
@@ -88,7 +106,15 @@ describe('api feature flags', () => {
     expect(flags.authOidcEnabled).toBe(false);
     expect(flags.fiscalBackofficeEnabled).toBe(false);
     expect(flags.notificationsWhatsappInboundActionsEnabled).toBe(true);
-    expect(flags.enabledKeys).toEqual(['notifications.whatsapp.inbound_actions.enabled']);
+    expect(flags.enabledKeys).toEqual(
+      expect.arrayContaining([
+        'notifications.whatsapp.inbound_actions.enabled',
+        'ml.smart_scheduling.enabled',
+        'ml.forecasting.enabled',
+        'ml.anomaly_detection.enabled',
+        'ml.ocr_fiscal.enabled'
+      ])
+    );
   });
 
   it('uses persisted overrides when account context is provided', async () => {

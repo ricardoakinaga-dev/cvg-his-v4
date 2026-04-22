@@ -3,6 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { SmartSchedulingService } from '@cvg-his-v2/module-ml';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
+import type { ApiFeatureFlagsSnapshot } from '../feature-flags.js';
+import type { MlTelemetryService } from '../ml-telemetry.js';
 import type {
   AppointmentListResponse,
   CheckInQueueRequest,
@@ -28,6 +30,8 @@ export interface SchedulingRoutesHandlers {
   scheduling: SchedulingService;
   smartScheduling: SmartSchedulingService;
   audit: AuditService;
+  featureFlags?: Pick<ApiFeatureFlagsSnapshot, 'mlSmartSchedulingEnabled'>;
+  telemetry?: MlTelemetryService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
 
@@ -57,7 +61,7 @@ export async function handleSchedulingRoutes(
   correlationId: string,
   handlers: SchedulingRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, smartScheduling, audit, requirePrincipal } = handlers;
+  const { scheduling, smartScheduling, audit, requirePrincipal, featureFlags, telemetry } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -95,6 +99,11 @@ export async function handleSchedulingRoutes(
     const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
     const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
     if (payload.smartSchedulingRecommendationId) {
+      telemetry?.recordSmartSchedulingApplication({
+        accountId: principal.user.accountId,
+        recommendationId: payload.smartSchedulingRecommendationId,
+        appliedDurationMinutes: payload.durationMinutes
+      });
       recordSmartSchedulingRecommendationApplied({
         visitType: payload.visitType ?? 'scheduled'
       });
@@ -114,6 +123,11 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/scheduling/recommendations/duration' && method === 'POST') {
+    if (featureFlags?.mlSmartSchedulingEnabled === false) {
+      response.statusCode = 404;
+      response.end(JSON.stringify({ error: 'feature_disabled', message: 'Smart scheduling is disabled' }));
+      return true;
+    }
     const principal = requirePrincipal(request, 'scheduling.read');
     const payload = (await readJsonBody(request)) as SmartSchedulingRecommendationRequest;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId');
@@ -153,6 +167,14 @@ export async function handleSchedulingRoutes(
         visitType
       }
     };
+
+    telemetry?.recordSmartSchedulingRecommendation({
+      accountId: principal.user.accountId,
+      recommendationId: recommendation.recommendationId,
+      visitType,
+      predictedDurationMinutes: recommendation.predictedDurationMinutes,
+      confidence: recommendation.confidence
+    });
 
     appendAudit(audit, {
       actorId: principal.user.id,

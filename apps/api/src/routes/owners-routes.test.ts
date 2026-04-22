@@ -127,6 +127,7 @@ function createAbacEnforcer(sectorCodes: readonly string[]) {
         userId: principal.user.id,
         accountId: principal.user.accountId,
         roleCodes: principal.access.roleCodes,
+        branchIds: [],
         teamIds: [],
         sectorIds: [],
         sectorCodes,

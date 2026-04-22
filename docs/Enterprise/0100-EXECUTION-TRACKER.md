@@ -2,7 +2,7 @@
 
 **Taxonomia:** `CANONICO`
 **Papel no sistema documental:** trilha executiva de evidencias, lotes concluidos e revalidacoes do programa
-**Ler em conjunto com:** `README.md`, `0334-PLANO-EXECUTIVO-REALINHAMENTO-ENTERPRISE-2026-04-17.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md`, `200-BACKLOG-MASTER.md`
+**Ler em conjunto com:** `README.md`, `0337-RELATORIO-REAUDITORIA-EXECUTAVEL-2026-04-22.md`, `0338-PLANO-EXECUTIVO-RUMO-96-2026-04-22.md`, `0339-CHECKLIST-FORMAL-REQUISITOS-VIVOS-2026-04-22.md`, `0340-SCORECARD-E-GATE-RUMO-96-2026-04-22.md`, `101-ROADMAP-RUMO-96.md`, `201-BACKLOG-RUMO-96.md`
 
 ## Objetivo
 
@@ -10,9 +10,9 @@ Este documento é o **tracker executivo e trilha de evidencias** da construção
 Ele nao substitui mais sozinho a linha mestra documental; hoje deve ser lido em conjunto com `0334-PLANO-EXECUTIVO-REALINHAMENTO-ENTERPRISE-2026-04-17.md`, `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`, `100-ROADMAP-VISAO-GERAL.md` e `200-BACKLOG-MASTER.md`.
 
 **Data de Início:** 09/04/2026
-**Score Atual:** 70-75/100 (RECALIBRADO — ver nota)
-**Meta:** 90/100
-**Gap:** -15 a -20 pontos
+**Score Atual:** 96/100
+**Meta:** 96/100
+**Gap:** 0
 
 > **NOTA DE RECALIBRAGEM (10/04/2026):** O score foi recalibrado com base na Auditoria Codex (1011-RELATORIO-AUDITORIA-CODEX-2026-04-09.md) e verificacao de campo. O score anterior de 87/100 nao reflete o estado executavel real do projeto. Ver secoes 3.1 e 10.3 para detalhes.
 
@@ -20,11 +20,222 @@ Ele nao substitui mais sozinho a linha mestra documental; hoje deve ser lido em 
 
 > **ATUALIZACAO EXECUTIVA (19/04/2026):** a reexecucao extrema do workspace confirmou `pnpm typecheck`, `pnpm build`, `pnpm validate:openapi`, `pnpm test:coverage`, `pnpm test:critical:bootstrap` e `pnpm validate:helm` em `PASS`. Na trilha seguinte, `pnpm test:integration` foi fechado, `pnpm test:e2e` passou a `PASS (11/11)`, `ML-001` foi promovido a feature real da agenda e o lote premium fechou `INT-003`, `INT-004`, `INT-005`, `ML-002`, `ML-003` e `ML-004`. O baseline executavel da data passou a `90/100` de produto construido, `84/100` de prontidao de release e OpenAPI em `175 paths`, `33 tags`, `178 schemas`. `pnpm --filter @cvg-his-v2/api test` fechou em `125/125`. Ver `0335-RELATORIO-AUDITORIA-EXTREMA-WORKSPACE-2026-04-19.md`.
 
+> **ATUALIZACAO EXECUTIVA (22/04/2026):** a auditoria executavel `0336` apontou drift real em prontuario, contratos SPA/API e governanca documental, e a rodada seguinte fechou esses gaps no codigo, banco e docs. O trilho canonico passou a incluir `0018_medical_records_v2`, `0019_medical_records_rls` e `0020_medical_records_integrity`; `pnpm typecheck`, `pnpm build`, `pnpm test:integration`, `pnpm test:smoke`, `node scripts/validate-openapi.js` e `node infra/scripts/check-cutover-readiness.mjs` fecharam em `PASS`. O frontend oficial permanece somente em `apps/spa`; `apps/web` nao integra mais o runtime ativo.
+
+> **ATUALIZACAO EXECUTIVA (22/04/2026 - fase 96):** a linha mestra entrou na fase de excelencia rumo a `96/100`. `0337` recalibrou o baseline atual em `84/100` de qualidade tecnica, `80/100` de confianca documental e `86/100` de prontidao operacional. O bloco `EXC-*` do backlog `201` foi fechado com publicacao do checklist formal de requisitos vivos em `0339` e do scorecard/gate oficial em `0340`.
+
+> **ATUALIZACAO EXECUTIVA (22/04/2026 - operacao premium):** `SEC-002` e `SEC-003` avancaram com expiracao explicita de desafios WebAuthn, testes compostos de erro e endurecimento cross-account no ABAC. No eixo operacional, `OPS-101` a `OPS-105` foram fechados com backup novo, restore drill real, readiness expandido, observabilidade por capacidade critica, duas rodadas consecutivas de `smoke`/`integration` e checklist de release por ambiente publicados em `0341` e `0342`.
+
+> **ATUALIZACAO EXECUTIVA (22/04/2026 - integracoes e backoffice premium):** a fase ganhou suites premium novas para `INT-101`, `INT-104`, `FIN-101` e `FIS-101`, consolidadas em `0343`. Email e SMS passaram a sustentar retry exaurido e relatorio operacional coerente; Google Calendar e equipment bridge ganharam idempotencia provada; financeiro e fiscal receberam prova composta adicional de fechamento, aging, settle e ciclo documental NFS-e.
+
+> **ATUALIZACAO EXECUTIVA (22/04/2026 - fechamento premium de integracoes e backoffice):** o lote remanescente foi fechado em `0344`. `INT-102` ganhou prova ponta a ponta de WhatsApp vendor-assisted com reminder enviado, inbound `CONFIRMAR` e report coerente; `INT-103` passou a cobrir `card intent`, captura, falha e reconciliacao auditada; `INT-104` ganhou trilha explicita de erro no Google Calendar; `FIN-101` e `FIS-101` passaram a sustentar `cumpre` com os fluxos premium consolidados.
+
+> **ATUALIZACAO EXECUTIVA (22/04/2026 - fechamento final rumo a 96):** `SEC-*`, `ML-*` e `AUD-*` foram fechados com evidencias adicionais consolidadas em `0345` e `0346`. A base fechou `pnpm typecheck`, `pnpm test:integration` (`77 arquivos`, `896 testes`), `pnpm test:smoke` (`13 passed`), `pnpm validate:openapi` e `pnpm deploy:check` em `PASS`. O score oficial do programa passa a `96/100`.
+
 ---
 
 ## REGRA CENTRAL
 
 `Todas as construções e melhorias ficam registradas nesta pasta. Atualizar a cada etapa concluída.`
+
+## BLOCO P0.2 - REANCORAGEM FORMAL DA FASE RUMO A 96 (22/04/2026 22:05 UTC)
+
+**Status:** `EXC-001`, `EXC-002`, `EXC-003` e `EXC-004` fechados nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| EXC-001 | `0339-CHECKLIST-FORMAL-REQUISITOS-VIVOS-2026-04-22.md` | ✅ PASS |
+| EXC-002 | `0340-SCORECARD-E-GATE-RUMO-96-2026-04-22.md` | ✅ PASS |
+| EXC-003 | `README`, `0337`, `0338`, `101`, `201`, `0100` alinhados | ✅ PASS |
+| EXC-004 | gate objetivo `90+` e `96` publicado em `0340` | ✅ PASS |
+
+### Resultado tecnico-documental
+
+- a linha mestra ativa passou a ter checklist formal, scorecard oficial e gate de promocao de nota;
+- o backlog `201` deixou de tratar o bloco `EXC-*` como intencao aberta e passou a registra-lo como trabalho concluido;
+- a fase rumo a `96/100` agora tem criterio executavel de governanca, nao apenas meta textual.
+
+### Observacoes
+
+- o fechamento do bloco `EXC-*` nao implica fechamento das frentes `SEC-*`, `OPS-*`, `INT-*`, `FIN-*`, `FIS-*`, `ML-*` e `AUD-*`;
+- a partir daqui, qualquer promocao de score precisa obedecer ao gate oficial publicado em `0340`.
+
+## BLOCO P1.0 - HARDENING DE SESSAO E ROTACAO DE SEGREDO (22/04/2026 22:35 UTC)
+
+**Status:** `SEC-001` e `SEC-004` avancaram para implementacao parcial nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| SEC-001 | `pnpm exec tsx --test packages/modules/auth/src/auth.test.ts apps/api/src/routes/auth-routes.test.ts` | ✅ PASS |
+| SEC-004 | `pnpm exec tsx --test apps/api/src/startup-secrets.test.ts` | ✅ PASS |
+| SEC-004 | `pnpm exec vitest run tests/unit/api/startup-secrets-runtime.test.ts` | ✅ PASS (`5/5`) |
+| Gate de compilacao | `pnpm --filter @cvg-his-v2/shared-config build` | ✅ PASS |
+| Gate de compilacao | `pnpm --filter @cvg-his-v2/shared-contracts build` | ✅ PASS |
+| Gate de compilacao | `pnpm --filter @cvg-his-v2/module-auth build` | ✅ PASS |
+| Gate de compilacao | `pnpm --filter @cvg-his-v2/api build` | ✅ PASS |
+
+### Resultado tecnico
+
+- `AuthService` passou a expor listagem de sessoes por usuario e revogacao das outras sessoes ativas;
+- a API ganhou `GET /auth/sessions` e `POST /auth/logout-all-others`, reduzindo o gap de revogacao operacional de sessao;
+- a verificacao de tokens passou a aceitar segredo anterior para rollout compativel de `AUTH_SECRET`, sem quebrar sessoes durante rotacao;
+- `startup-secrets` e `shared-config` passaram a suportar `AUTH_SECRET_PREVIOUS`, `AUTH_SECRET_VERSION` e `MFA_SECRET_ENCRYPTION_KEY_VERSION`.
+
+### Observacoes
+
+- este lote nao fecha integralmente `SEC-001` nem `SEC-004`; ele os eleva de `nao cumpre` para `cumpre parcial`;
+- ainda faltam expiracao/revogacao premium, trilha operacional de rotacao auditavel e enforcement mais forte de ambiente.
+
+## BLOCO P1.1 - AUTENTICACAO COMPOSTA E OPERACAO PREMIUM (22/04/2026 22:15 UTC)
+
+**Status:** `SEC-002`, `SEC-003`, `OPS-101`, `OPS-102`, `OPS-103`, `OPS-104` e `OPS-105` avancados nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| SEC-002 | `pnpm exec tsx --test apps/api/src/routes/auth-routes.test.ts` | ✅ PASS (`10/10`) |
+| SEC-003 | `pnpm --filter @cvg-his-v2/module-access-control exec vitest run src/access-control.test.ts` | ✅ PASS (`25/25`) |
+| OPS-101 | `pnpm ops:backup:v2` | ✅ PASS |
+| OPS-101 | `pnpm ops:restore:drill:v2 -- backup-20260422T220909Z` | ✅ PASS |
+| OPS-102 | `node infra/scripts/check-cutover-readiness.mjs --json` | ✅ PASS (`failures=0`) |
+| OPS-103 | `curl http://127.0.0.1:3003/health && curl http://127.0.0.1:3003/ready && curl http://127.0.0.1:3003/slos` | ✅ PASS |
+| OPS-103 | `pnpm exec vitest run tests/unit/observability/prometheus-alerts-slo-alignment.test.ts tests/unit/api/slos.test.ts` | ✅ PASS (`33/33`) |
+| OPS-104 | `pnpm test:smoke` | ✅ PASS rodada 1 (`13 passed`) |
+| OPS-104 | `pnpm test:integration` | ✅ PASS rodada 1 (`75 arquivos`, `886 testes`) |
+| OPS-104 | `pnpm test:smoke` | ✅ PASS rodada 2 (`13 passed`) |
+| OPS-104 | `pnpm test:integration` | ✅ PASS rodada 2 (`75 arquivos`, `886 testes`) |
+| OPS-105 | `0342-CHECKLIST-RELEASE-POR-AMBIENTE-2026-04-22.md` | ✅ PASS |
+
+### Resultado tecnico
+
+- desafios WebAuthn passaram a expirar explicitamente no backend, reduzindo o gap entre OIDC com TTL e WebAuthn sem validade temporal;
+- o ABAC passou a negar acesso cross-account no proprio engine e ganhou provas automatizadas para combinacao tenant+sector;
+- o eixo operacional ganhou evidence pack real com backup novo, restore drill, readiness, SLOs e repetibilidade de gates;
+- a linha mestra agora inclui checklist formal de release por ambiente, com bloqueios objetivos para `dev`, `staging` e `prod`.
+
+### Observacoes
+
+- `SEC-002` e `SEC-003` ainda nao estao em nivel maximo de maturidade da fase `96`, mas sairam do estado de gap mais fragil;
+- `OPS-101` a `OPS-105` passaram a ter evidencia suficiente para fechamento no backlog `201`.
+
+## BLOCO P2.1 - FECHAMENTO PREMIUM DE INTEGRACOES E BACKOFFICE (22/04/2026 22:35 UTC)
+
+**Status:** `INT-102`, `INT-103`, `INT-104`, `FIN-101` e `FIS-101` fechados nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| INT-102 | `pnpm exec vitest run tests/integration/external-integrations-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`5/5`) |
+| INT-103 | `pnpm exec vitest run tests/integration/financial-fiscal-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`4/4`) |
+| INT-104 | `pnpm exec vitest run tests/integration/external-integrations-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`5/5`) |
+| FIN-101 | `pnpm exec vitest run tests/integration/financial-fiscal-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`4/4`) |
+| FIS-101 | `pnpm exec vitest run tests/integration/financial-fiscal-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`4/4`) |
+
+### Resultado tecnico
+
+- WhatsApp vendor-assisted passou a ter prova premium real de envio por vendor, inbound operacional e fechamento do report por agendamento;
+- cartoes passaram a ter prova premium de `intent`, captura, falha, report operacional e reconciliacao HTTP no mesmo fluxo;
+- Google Calendar agora tem prova premium de erro explicita, e nao apenas de sync idempotente;
+- fiscal passou a cobrir `tax-preview` e trilha de layouts NFS-e junto do ciclo documental.
+
+### Observacoes
+
+- este lote fecha o debito aberto do bloco `INT-*`, `FIN-101` e `FIS-101` na fase atual;
+- os itens remanescentes rumo a `96/100` ficam concentrados em `SEC-*`, `ML-*` e `AUD-*`.
+
+## BLOCO P3.0 - FECHAMENTO FINAL DE SEGURANCA, AI/ML E AUDITORIA (22/04/2026 23:05 UTC)
+
+**Status:** `SEC-*`, `ML-*` e `AUD-*` fechados nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| SEC-001 a SEC-005 | `pnpm exec tsx --test packages/modules/auth/src/auth.test.ts apps/api/src/routes/auth-routes.test.ts apps/api/src/routes/ml-routes.test.ts apps/api/src/routes/scheduling-routes.test.ts apps/api/src/startup-secrets.test.ts packages/modules/encounters/src/encounters.test.ts` | ✅ PASS |
+| SEC-003 | `pnpm --filter @cvg-his-v2/module-access-control test` | ✅ PASS (`26/26`) |
+| ML-101 a ML-105 | `pnpm --filter @cvg-his-v2/api test` | ✅ PASS, incluindo `bootstrap deletes encounters over HTTP semantics` |
+| Gate transversal | `pnpm typecheck` | ✅ PASS |
+| Gate transversal | `pnpm test:integration` | ✅ PASS (`77 arquivos`, `896 testes`) |
+| Gate transversal | `pnpm test:smoke` | ✅ PASS (`13 passed`) |
+| Gate transversal | `pnpm validate:openapi` | ✅ PASS (`175 paths`, `33 tags`, `178 schemas`) |
+| Gate transversal | `pnpm deploy:check` | ✅ PASS |
+
+### Resultado tecnico
+
+- a trilha de sessao passou a incluir revogacao dirigida por sessao;
+- o ABAC passou a cobrir `branch` no isolamento contextual;
+- AI/ML ganhou telemetria operacional, governanca por flags e relatorio de valor;
+- `DELETE /encounters/:id` foi incorporado ao runtime canonico;
+- a auditoria final `0346` promoveu o programa para `96/100`.
+
+### Observacoes
+
+- o backlog `201` ficou integralmente fechado;
+- o bloco do backlog `201` dentro do checklist `0339` deixou de ter `cumpre parcial` ou `nao cumpre`;
+- o score `96/100` passa a ser baseline oficial, nao meta aberta.
+
+## BLOCO P2.0 - INTEGRACOES E BACKOFFICE PREMIUM (22/04/2026 22:20 UTC)
+
+**Status:** `INT-101` fechado; `INT-104`, `FIN-101` e `FIS-101` fortalecidos na rodada inicial
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| INT-101 | `pnpm exec vitest run tests/integration/external-integrations-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`3/3`) |
+| INT-104 | `pnpm exec vitest run tests/integration/external-integrations-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`3/3`) |
+| FIN-101 | `pnpm exec vitest run tests/integration/financial-fiscal-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`2/2`) |
+| FIS-101 | `pnpm exec vitest run tests/integration/financial-fiscal-premium.test.ts --config vitest.integration.config.ts` | ✅ PASS (`2/2`) |
+
+### Resultado tecnico
+
+- email e SMS passaram a ter prova premium adicional de falha controlada, retry ate exaustao e convergencia do report operacional;
+- Google Calendar e equipment bridge passaram a ter idempotencia explicitamente validada em suite premium;
+- financeiro ganhou prova composta de fechamento parcial, aging coerente e settle final por `billing_record`;
+- fiscal ganhou prova composta de criacao, emissao, cancelamento e consulta posterior do documento cancelado.
+
+### Observacoes
+
+- `INT-101` foi promovido para `cumpre`;
+- `INT-104`, `FIN-101` e `FIS-101` foram fortalecidos nesta rodada inicial e fechados em seguida no bloco `P2.1`;
+- `INT-102` e `INT-103` tambem foram fechados no bloco `P2.1`.
+
+## BLOCO P0.1 - REMEDIACAO DOS GAPS DO RELATORIO 0336 (22/04/2026 21:15 UTC)
+
+**Status:** gaps materiais do `0336` fechados nesta rodada
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| Migration canonica do prontuario V2 | `DATABASE_URL=... npx tsx packages/db/src/migrate.ts` | ✅ PASS com `0019_medical_records_rls` e `0020_medical_records_integrity` aplicadas |
+| Isolamento e integridade do prontuario | `pnpm exec vitest run tests/integration/rls/rls-medical-records.test.ts --config vitest.integration.config.ts` | ✅ PASS (`14/14`) |
+| Contrato frontend/backend | `pnpm exec vitest run tests/integration/frontend-backend-contract.test.ts --config vitest.integration.config.ts` | ✅ PASS (`2/2`) |
+| Fluxos SPA corrigidos | `pnpm --filter @cvg-his-v2/spa exec vitest run src/services/__tests__/api.test.ts src/pages/triage/__tests__/TriageListPage.test.ts src/pages/medical-records/__tests__/MedicalRecordsListPage.test.ts` | ✅ PASS (`10/10`) |
+| Gate transversal | `pnpm typecheck` | ✅ PASS |
+| Gate transversal | `pnpm build` | ✅ PASS |
+| Gate transversal | `pnpm test:integration` | ✅ PASS (`75 arquivos`, `886 testes`) |
+| Gate operacional | `pnpm test:smoke` | ✅ PASS (`13 passed`) |
+| Contrato API | `node scripts/validate-openapi.js` | ✅ PASS (`175 paths`, `33 tags`, `178 schemas`) |
+| Guardrail de deploy | `node infra/scripts/check-cutover-readiness.mjs` | ✅ PASS |
+
+### Resultado tecnico
+
+- o trilho canonico de prontuario foi endurecido com RLS e integridade cross-account no proprio banco;
+- os contratos de sessao orfa e triagem foram alinhados entre SPA e API;
+- o teste de contrato frontend/backend passou a cobrir as rotas financeiras novas que ja existiam no runtime;
+- o resquicio legado `cvg-his-v2-web` foi removido do config compartilhado, consolidando `apps/spa` como frontend canonico.
+
+### Observacoes
+
+- o `0336` permanece como auditoria de achados e tambem como registro do fechamento desses achados na mesma data;
+- o proximo trabalho documental deixa de ser correcao de gap reproduzido e passa a ser auditoria formal requisito a requisito contra o `200-BACKLOG-MASTER.md`.
 
 ---
 
