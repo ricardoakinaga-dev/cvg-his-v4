@@ -7,7 +7,13 @@
     role="application"
     aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
-    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
+    <aside
+      ref="sidebarEl"
+      class="sidebar"
+      :class="{ 'sidebar--scrolled': isSidebarScrolled }"
+      role="navigation"
+      aria-label="Navegacao principal"
+    >
       <div class="sidebar__brand">
         <div class="sidebar__brand-mark">
           <span class="sidebar__brand-mark-logo">V</span>
@@ -204,7 +210,7 @@
     </aside>
 
     <main class="workspace">
-      <header class="topbar" :class="{ 'topbar--scrolled': isTopbarScrolled }">
+      <header class="topbar">
         <div class="topbar__system-row">
           <div class="topbar__system-left">
             <div class="topbar__history-nav" aria-label="Navegação de histórico">
@@ -419,7 +425,8 @@ const commandInputEl = ref<HTMLInputElement | null>(null);
 const selectedIndex = ref(0);
 const historyPosition = ref(readHistoryPosition());
 const maxHistoryPosition = ref(readHistoryPosition());
-const isTopbarScrolled = ref(false);
+const sidebarEl = ref<HTMLElement | null>(null);
+const isSidebarScrolled = ref(false);
 
 interface CommandAction {
   id: string;
@@ -829,21 +836,20 @@ function isInInputField(): boolean {
   return tag === 'input' || tag === 'textarea' || active.getAttribute('contenteditable') === 'true';
 }
 
-function syncScrollState() {
-  if (typeof window === 'undefined') return;
-  isTopbarScrolled.value = window.scrollY > 12;
+function syncSidebarScrollState() {
+  isSidebarScrolled.value = (sidebarEl.value?.scrollTop ?? 0) > 12;
 }
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown);
-  window.addEventListener('scroll', syncScrollState, { passive: true });
+  sidebarEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
   syncHistoryPosition();
-  syncScrollState();
+  syncSidebarScrollState();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
-  window.removeEventListener('scroll', syncScrollState);
+  sidebarEl.value?.removeEventListener('scroll', syncSidebarScrollState);
 });
 
 watch(commandPaletteOpen, async (open) => {
@@ -920,6 +926,10 @@ function handleLogout() {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -928,6 +938,28 @@ function handleLogout() {
   background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  transition: box-shadow 0.18s ease;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar--scrolled {
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.85),
+    inset 0 10px 18px rgba(36, 49, 64, 0.04);
 }
 
 .sidebar__brand {
@@ -1318,25 +1350,12 @@ function handleLogout() {
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
   display: grid;
   gap: 0;
   border-bottom: 1px solid #dee4ea;
   background: rgba(248, 249, 251, 0.96);
   min-width: 0;
   backdrop-filter: blur(12px);
-  transition:
-    box-shadow 0.18s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.topbar--scrolled {
-  border-bottom-color: rgba(221, 228, 234, 0.98);
-  background: rgba(250, 251, 252, 0.98);
-  box-shadow: 0 10px 24px rgba(36, 49, 64, 0.08);
 }
 
 .topbar__system-row,
