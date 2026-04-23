@@ -64,3 +64,47 @@ export interface EncounterTimelineEventSummary {
 export interface EncounterTimelineResponse {
   items: EncounterTimelineEventSummary[];
 }
+
+export interface EncounterFinancialReceivableSummary {
+  id: string;
+  installmentLabel: string;
+  status: 'open' | 'settled';
+  amountOriginal: number;
+  amountPaid: number;
+  amountOutstanding: number;
+  dueAt?: string | null;
+}
+
+export interface EncounterFinancialSummary {
+  encounterId: string;
+  accountId: string;
+  encounterStatus: 'open' | 'closed';
+  financialStatus: 'pending' | 'partial' | 'paid';
+  financialClosed: boolean;
+  subtotal: number;
+  discountTotal: number;
+  total: number;
+  paidAmount: number;
+  balanceDue: number;
+  closedAt?: string | null;
+  closedByUserId?: string | null;
+  notes?: string | null;
+  receivables: EncounterFinancialReceivableSummary[];
+}
+
+export interface EncounterSummaryResponse {
+  encounter: EncounterSummary;
+  timeline: EncounterTimelineEventSummary[];
+  diagnostics: {
+    totalOrders: number;
+    pendingOrders: number;
+    releasedResults: number;
+    latestOrders: Array<{
+      id: string;
+      examType: string;
+      status: string;
+      createdAt: string;
+    }>;
+  };
+  financial: EncounterFinancialSummary | null;
+}

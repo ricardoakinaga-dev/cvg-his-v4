@@ -33,6 +33,14 @@
           <DsButton tag="a" :to="`/owners/${appointment.ownerId}`" variant="ghost">
             Ver tutor
           </DsButton>
+          <DsButton
+            v-if="canStartEncounter"
+            variant="primary"
+            :loading="startingEncounter"
+            @click="handleStartEncounter"
+          >
+            {{ startingEncounter ? 'Iniciando...' : 'Iniciar Atendimento' }}
+          </DsButton>
           <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
           </DsButton>
@@ -159,7 +167,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
 import { ownerService } from '@/services/owner';
@@ -174,8 +182,10 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const route = useRoute();
+const router = useRouter();
 const appointment = ref<AppointmentSummary | null>(null);
 const cancelling = ref(false);
+const startingEncounter = ref(false);
 const entityCache = useEntityCache();
 const owner = ref<OwnerSummary | null>(null);
 
@@ -211,6 +221,9 @@ const canCancel = computed(() => {
   );
 });
 const canGoToQueue = computed(() => appointment.value?.status === 'checked_in');
+const canStartEncounter = computed(() => {
+  return appointment.value && appointment.value.status !== 'cancelled' && appointment.value.status !== 'completed';
+});
 
 const whatsappContact = computed(() => {
   return owner.value?.contacts.find((contact) => contact.type === 'whatsapp' && contact.value.trim()) ?? null;
@@ -272,6 +285,19 @@ async function handleCancel() {
     alert(err instanceof Error ? err.message : 'Erro ao cancelar');
   } finally {
     cancelling.value = false;
+  }
+}
+
+async function handleStartEncounter() {
+  if (!appointment.value) return;
+  startingEncounter.value = true;
+  try {
+    const encounter = await appointmentService.startEncounter(appointment.value.id);
+    await router.push(`/encounters/${encounter.id}`);
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Erro ao iniciar atendimento');
+  } finally {
+    startingEncounter.value = false;
   }
 }
 

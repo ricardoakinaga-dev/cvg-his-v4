@@ -1,5 +1,54 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+function placeholderRoute(
+  path: string,
+  name: string,
+  title: string,
+  breadcrumbParent: string,
+  icon = '🧩'
+): RouteRecordRaw {
+  return {
+    path,
+    name,
+    component: () => import('@/pages/PlaceholderPage.vue'),
+    meta: {
+      title,
+      breadcrumb: title,
+      breadcrumbParent,
+      icon
+    }
+  };
+}
+
+const placeholderRoutes: RouteRecordRaw[] = [
+  placeholderRoute('sales', 'Sales', 'Vendas', 'Atendimento', '💸'),
+  placeholderRoute('packages', 'Packages', 'Pacotes', 'Atendimento', '📦'),
+  placeholderRoute('loyalty', 'Loyalty', 'Fidelidade', 'Atendimento', '🎯'),
+  placeholderRoute('breeds', 'Breeds', 'Raças', 'Cadastros', '🧬'),
+  placeholderRoute('species', 'Species', 'Espécies', 'Cadastros', '🦴'),
+  placeholderRoute('coat-colors', 'CoatColors', 'Cores', 'Cadastros', '🎨'),
+  placeholderRoute('laboratory/hemograms', 'LaboratoryHemograms', 'Hemogramas', 'Laboratório', '🩸'),
+  placeholderRoute('laboratory/urinalysis', 'LaboratoryUrinalysis', 'Urina', 'Laboratório', '💧'),
+  placeholderRoute('laboratory/biochemistry', 'LaboratoryBiochemistry', 'Bioquímico', 'Laboratório', '⚗️'),
+  placeholderRoute('inventory/nf', 'InventoryInvoices', 'NF', 'Estoque', '🧾'),
+  placeholderRoute('inventory/pharmacy', 'InventoryPharmacy', 'Farmácia', 'Estoque', '💊'),
+  placeholderRoute('inventory/audit', 'InventoryAudit', 'Auditoria', 'Estoque', '🧾'),
+  placeholderRoute('inventory/purchases', 'InventoryPurchases', 'Compras', 'Estoque', '🛒'),
+  placeholderRoute('inventory/transfers', 'InventoryTransfers', 'Transferências', 'Estoque', '🔄'),
+  placeholderRoute('fiscal/ipi', 'FiscalIpi', 'IPI', 'Fiscal', '🏷️'),
+  placeholderRoute('fiscal/ibs-cbs', 'FiscalIbsCbs', 'IBS/CBS', 'Fiscal', '🧮'),
+  placeholderRoute('finance/accounts-payable', 'AccountsPayable', 'Contas a Pagar', 'Financeiro', '💸'),
+  placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
+  placeholderRoute('finance/cheques', 'FinanceCheques', 'Cheques', 'Financeiro', '📄'),
+  placeholderRoute('finance/cash-flow', 'FinanceCashFlow', 'Fluxo de Caixa', 'Financeiro', '📈'),
+  placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
+  placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
+  placeholderRoute('rh/professions', 'RhProfessions', 'Profissões', 'RH', '🪪'),
+  placeholderRoute('reports/nf', 'ReportInvoices', 'NF', 'Relatórios', '🧾'),
+  placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
+  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Dashboards', '🏢')
+];
+
 export const routes: RouteRecordRaw[] = [
   {
     path: '/auth/mfa',
@@ -25,19 +74,41 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'Dashboard', breadcrumb: 'Dashboard', icon: '📊' }
       },
       {
+        path: 'dashboards/financial',
+        name: 'DashboardFinancial',
+        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        meta: {
+          title: 'Dashboard Financeiro',
+          breadcrumb: 'Financeiro',
+          breadcrumbParent: 'Dashboards',
+          icon: '💰'
+        }
+      },
+      {
+        path: 'dashboards/curve-abc',
+        name: 'DashboardCurveAbc',
+        component: () => import('@/pages/commercial-reports/CommercialReportsPage.vue'),
+        meta: {
+          title: 'Curva ABC',
+          breadcrumb: 'Curva ABC',
+          breadcrumbParent: 'Dashboards',
+          icon: '📈'
+        }
+      },
+      {
         path: 'owners',
         name: 'Owners',
         component: () => import('@/pages/owners/OwnersListPage.vue'),
-        meta: { title: 'Tutores', breadcrumb: 'Tutores', breadcrumbParent: 'Cadastros', icon: '👤' }
+        meta: { title: 'Clientes', breadcrumb: 'Clientes', breadcrumbParent: 'Cadastros', icon: '👤' }
       },
       {
         path: 'owners/new',
         name: 'OwnerNew',
         component: () => import('@/pages/owners/OwnerFormPage.vue'),
         meta: {
-          title: 'Novo Tutor',
-          breadcrumb: 'Novo Tutor',
-          breadcrumbParent: 'Tutores',
+          title: 'Novo Cliente',
+          breadcrumb: 'Novo Cliente',
+          breadcrumbParent: 'Clientes',
           icon: '👤'
         }
       },
@@ -46,9 +117,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'OwnerDetail',
         component: () => import('@/pages/owners/OwnerDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Tutor',
+          title: 'Detalhes do Cliente',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Tutores',
+          breadcrumbParent: 'Clientes',
           icon: '👤'
         }
       },
@@ -57,9 +128,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'OwnerEdit',
         component: () => import('@/pages/owners/OwnerFormPage.vue'),
         meta: {
-          title: 'Editar Tutor',
+          title: 'Editar Cliente',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Tutores',
+          breadcrumbParent: 'Clientes',
           icon: '👤'
         }
       },
@@ -68,8 +139,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'Patients',
         component: () => import('@/pages/patients/PatientsListPage.vue'),
         meta: {
-          title: 'Pacientes',
-          breadcrumb: 'Pacientes',
+          title: 'Animais',
+          breadcrumb: 'Animais',
           breadcrumbParent: 'Cadastros',
           icon: '🐾'
         }
@@ -79,9 +150,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientNew',
         component: () => import('@/pages/patients/PatientFormPage.vue'),
         meta: {
-          title: 'Novo Paciente',
-          breadcrumb: 'Novo Paciente',
-          breadcrumbParent: 'Pacientes',
+          title: 'Novo Animal',
+          breadcrumb: 'Novo Animal',
+          breadcrumbParent: 'Animais',
           icon: '🐾'
         }
       },
@@ -90,9 +161,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientDetail',
         component: () => import('@/pages/patients/PatientDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Paciente',
+          title: 'Detalhes do Animal',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Pacientes',
+          breadcrumbParent: 'Animais',
           icon: '🐾'
         }
       },
@@ -101,9 +172,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientEdit',
         component: () => import('@/pages/patients/PatientFormPage.vue'),
         meta: {
-          title: 'Editar Paciente',
+          title: 'Editar Animal',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Pacientes',
+          breadcrumbParent: 'Animais',
           icon: '🐾'
         }
       },
@@ -114,7 +185,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Atendimentos',
           breadcrumb: 'Atendimentos',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '🏥'
         }
       },
@@ -144,7 +215,29 @@ export const routes: RouteRecordRaw[] = [
         path: 'appointments',
         name: 'Appointments',
         component: () => import('@/pages/appointments/AppointmentsListPage.vue'),
-        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimentos', icon: '📅' }
+        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: '📅' }
+      },
+      {
+        path: 'appointments/availability',
+        name: 'AppointmentAvailability',
+        component: () => import('@/pages/appointments/AvailabilityPage.vue'),
+        meta: {
+          title: 'Disponibilidade',
+          breadcrumb: 'Disponibilidade',
+          breadcrumbParent: 'Agenda',
+          icon: '🕒'
+        }
+      },
+      {
+        path: 'appointments/types',
+        name: 'AppointmentTypes',
+        component: () => import('@/pages/appointments/AppointmentTypesPage.vue'),
+        meta: {
+          title: 'Tipos de Agendamento',
+          breadcrumb: 'Tipos',
+          breadcrumbParent: 'Agenda',
+          icon: '🧷'
+        }
       },
       {
         path: 'appointments/new',
@@ -175,7 +268,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Prontuário',
           breadcrumb: 'Prontuário',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '📋'
         }
       },
@@ -202,6 +295,28 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'exam-orders',
+        name: 'ExamOrdersApi',
+        component: () => import('@/pages/laboratory/ExamOrdersApiPage.vue'),
+        meta: {
+          title: 'Pedidos API',
+          breadcrumb: 'Pedidos API',
+          breadcrumbParent: 'Laboratório',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'exam-results',
+        name: 'ExamResultsApi',
+        component: () => import('@/pages/laboratory/ExamResultsApiPage.vue'),
+        meta: {
+          title: 'Resultados API',
+          breadcrumb: 'Resultados API',
+          breadcrumbParent: 'Laboratório',
+          icon: '🧪'
+        }
+      },
+      {
         path: 'laboratory',
         name: 'Laboratory',
         component: () => import('@/pages/laboratory/LaboratoryHubPage.vue'),
@@ -217,8 +332,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'LaboratoryOrders',
         component: () => import('@/pages/laboratory/LaboratoryOrdersPage.vue'),
         meta: {
-          title: 'Pedidos de Exame',
-          breadcrumb: 'Pedidos de Exame',
+          title: 'Exames',
+          breadcrumb: 'Exames',
           breadcrumbParent: 'Laboratório',
           icon: '🧪'
         }
@@ -228,8 +343,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'LaboratoryResults',
         component: () => import('@/pages/laboratory/LaboratoryResultsPage.vue'),
         meta: {
-          title: 'Resultados',
-          breadcrumb: 'Resultados',
+          title: 'Laudos',
+          breadcrumb: 'Laudos',
           breadcrumbParent: 'Laboratório',
           icon: '📋'
         }
@@ -274,7 +389,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Prescrições',
           breadcrumb: 'Prescrições',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '💊'
         }
       },
@@ -285,7 +400,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Execuções de Prescrição',
           breadcrumb: 'Execuções',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '🩺'
         }
       },
@@ -308,7 +423,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Cirurgias',
           breadcrumb: 'Cirurgias',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '🔪'
         }
       },
@@ -373,9 +488,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'Billing',
         component: () => import('@/pages/billing/BillingListPage.vue'),
         meta: {
-          title: 'Faturamento',
-          breadcrumb: 'Faturamento',
-          breadcrumbParent: 'Controles',
+          title: 'Contas a Receber',
+          breadcrumb: 'Contas a Receber',
+          breadcrumbParent: 'Financeiro',
           icon: '💰'
         }
       },
@@ -384,9 +499,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'BillingDetail',
         component: () => import('@/pages/billing/BillingDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Faturamento',
+          title: 'Detalhes da Conta a Receber',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Faturamento',
+          breadcrumbParent: 'Contas a Receber',
           icon: '💰'
         }
       },
@@ -397,7 +512,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Triagem',
           breadcrumb: 'Triagem',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '🏷️'
         }
       },
@@ -430,7 +545,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Usuários',
           breadcrumb: 'Usuários',
-          breadcrumbParent: 'Usuários',
+          breadcrumbParent: 'Administração',
           icon: '👤'
         }
       },
@@ -472,9 +587,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'AccessControl',
         component: () => import('@/pages/access-control/AccessControlPage.vue'),
         meta: {
-          title: 'Governança de Acesso',
-          breadcrumb: 'Governança de Acesso',
-          breadcrumbParent: 'Governança',
+          title: 'Grupos de Acesso',
+          breadcrumb: 'Grupos de Acesso',
+          breadcrumbParent: 'Administração',
           icon: '🔐'
         }
       },
@@ -543,6 +658,39 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Relatórios Financeiros',
           breadcrumbParent: 'Financeiro',
           icon: '💰'
+        }
+      },
+      {
+        path: 'reports/dre',
+        name: 'DreReports',
+        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        meta: {
+          title: 'DRE',
+          breadcrumb: 'DRE',
+          breadcrumbParent: 'Relatórios',
+          icon: '💰'
+        }
+      },
+      {
+        path: 'reports/accounts',
+        name: 'AccountsReports',
+        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        meta: {
+          title: 'Contas',
+          breadcrumb: 'Contas',
+          breadcrumbParent: 'Relatórios',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'reports/sales',
+        name: 'SalesReports',
+        component: () => import('@/pages/commercial-reports/CommercialReportsPage.vue'),
+        meta: {
+          title: 'Vendas',
+          breadcrumb: 'Vendas',
+          breadcrumbParent: 'Relatórios',
+          icon: '💸'
         }
       },
       {
@@ -627,9 +775,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'Notifications',
         component: () => import('@/pages/notifications/NotificationsPage.vue'),
         meta: {
-          title: 'Central de Notificações',
-          breadcrumb: 'Central de Notificações',
-          breadcrumbParent: 'Comunicação',
+          title: 'Campanhas',
+          breadcrumb: 'Campanhas',
+          breadcrumbParent: 'Marketing',
           icon: '🔔'
         }
       },
@@ -640,7 +788,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'WhatsApp Operacional',
           breadcrumb: 'WhatsApp',
-          breadcrumbParent: 'Notificações',
+          breadcrumbParent: 'Marketing',
           icon: '💬'
         }
       },
@@ -651,7 +799,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIX',
           breadcrumb: 'PIX',
-          breadcrumbParent: 'Maquininha de Cartão',
+          breadcrumbParent: 'Financeiro',
           icon: '💸'
         }
       },
@@ -663,7 +811,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Caixa',
           breadcrumb: 'Caixa',
-          breadcrumbParent: 'Gaveta',
+          breadcrumbParent: 'Financeiro',
           icon: '🧾'
         }
       },
@@ -674,7 +822,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Formas de Pagamento',
           breadcrumb: 'Formas de Pagamento',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'Financeiro',
           icon: '💳'
         }
       },
@@ -685,7 +833,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Bancos',
           breadcrumb: 'Bancos',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'Financeiro',
           icon: '🏦'
         }
       },
@@ -696,7 +844,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Centros de Custo',
           breadcrumb: 'Centros de Custo',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'Financeiro',
           icon: '📊'
         }
       },
@@ -707,7 +855,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Cartões',
           breadcrumb: 'Cartões',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'Financeiro',
           icon: '💳'
         }
       },
@@ -718,7 +866,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Custos e Despesas',
           breadcrumb: 'Custos e Despesas',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'Financeiro',
           icon: '🧾'
         }
       },
@@ -730,7 +878,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Comandas',
           breadcrumb: 'Comandas',
-          breadcrumbParent: 'Atendimentos',
+          breadcrumbParent: 'Atendimento',
           icon: '🧾'
         }
       },
@@ -742,7 +890,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Orçamentos',
           breadcrumb: 'Orçamentos',
-          breadcrumbParent: 'Controles',
+          breadcrumbParent: 'Atendimento',
           icon: '📝'
         }
       },
@@ -781,9 +929,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'Queue',
         component: () => import('@/pages/scheduling/QueuePage.vue'),
         meta: {
-          title: 'Fila Operacional',
-          breadcrumb: 'Fila Operacional',
-          breadcrumbParent: 'Atendimentos',
+          title: 'Esteira',
+          breadcrumb: 'Esteira',
+          breadcrumbParent: 'Atendimento',
           icon: '🏥'
         }
       },
@@ -794,7 +942,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Estoque',
           breadcrumb: 'Estoque',
-          breadcrumbParent: 'Controles',
+          breadcrumbParent: 'Estoque',
           icon: '📦'
         }
       },
@@ -805,7 +953,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Novo Item',
           breadcrumb: 'Novo Item',
-          breadcrumbParent: 'Controles',
+          breadcrumbParent: 'Estoque',
           icon: '📦'
         }
       },
@@ -816,7 +964,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Detalhes do Item',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Controles',
+          breadcrumbParent: 'Estoque',
           icon: '📦'
         }
       },
@@ -827,7 +975,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Editar Item',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Controles',
+          breadcrumbParent: 'Estoque',
           icon: '📦'
         }
       },
@@ -836,9 +984,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'InventoryMovements',
         component: () => import('@/pages/inventory/InventoryMovementsPage.vue'),
         meta: {
-          title: 'Movimentações',
-          breadcrumb: 'Movimentações',
-          breadcrumbParent: 'Controles',
+          title: 'Transações',
+          breadcrumb: 'Transações',
+          breadcrumbParent: 'Estoque',
           icon: '📥'
         }
       },
@@ -847,9 +995,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'InventoryValidity',
         component: () => import('@/pages/inventory/InventoryValidityPage.vue'),
         meta: {
-          title: 'Validade e Lotes',
-          breadcrumb: 'Validade de Produtos',
-          breadcrumbParent: 'Controles',
+          title: 'Validade',
+          breadcrumb: 'Validade',
+          breadcrumbParent: 'Estoque',
           icon: '📅'
         }
       },
@@ -858,9 +1006,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'Fiscal',
         component: () => import('@/pages/fiscal/FiscalConfigPage.vue'),
         meta: {
-          title: 'Fiscal',
+          title: 'Configuração Fiscal',
           breadcrumb: 'Fiscal',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '📋'
         }
       },
@@ -871,7 +1019,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'ICMS',
           breadcrumb: 'ICMS',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '📊'
         }
       },
@@ -882,8 +1030,30 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIS / COFINS',
           breadcrumb: 'PIS / COFINS',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '📈'
+        }
+      },
+      {
+        path: 'fiscal/pis',
+        name: 'FiscalPis',
+        component: () => import('@/pages/fiscal/FiscalPisCofinsPage.vue'),
+        meta: {
+          title: 'PIS',
+          breadcrumb: 'PIS',
+          breadcrumbParent: 'Fiscal',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'fiscal/cofins',
+        name: 'FiscalCofins',
+        component: () => import('@/pages/fiscal/FiscalPisCofinsPage.vue'),
+        meta: {
+          title: 'COFINS',
+          breadcrumb: 'COFINS',
+          breadcrumbParent: 'Fiscal',
+          icon: '📉'
         }
       },
       {
@@ -893,7 +1063,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'CFOP',
           breadcrumb: 'CFOP',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '🔢'
         }
       },
@@ -904,7 +1074,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'NFS-e',
           breadcrumb: 'NFS-e',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '📄'
         }
       },
@@ -915,7 +1085,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'IBPT / NCM',
           breadcrumb: 'IBPT / NCM',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '🏷️'
         }
       },
@@ -926,7 +1096,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Matriz ICMS',
           breadcrumb: 'Matriz ICMS',
-          breadcrumbParent: 'Configurações Fiscais',
+          breadcrumbParent: 'Fiscal',
           icon: '📊'
         }
       },
@@ -937,7 +1107,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Webhooks',
           breadcrumb: 'Webhooks',
-          breadcrumbParent: 'Dashboard',
+          breadcrumbParent: 'Cadastros',
           icon: '🔗'
         }
       },
@@ -981,7 +1151,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Produtos',
           breadcrumb: 'Produtos',
-          breadcrumbParent: 'Cadastrados',
+          breadcrumbParent: 'Estoque',
           icon: '📦'
         }
       },
@@ -992,7 +1162,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Fornecedores',
           breadcrumb: 'Fornecedores',
-          breadcrumbParent: 'Cadastrados',
+          breadcrumbParent: 'Cadastros',
           icon: '🚚'
         }
       },
@@ -1003,7 +1173,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Fabricantes',
           breadcrumb: 'Fabricantes',
-          breadcrumbParent: 'Cadastrados',
+          breadcrumbParent: 'Cadastros',
           icon: '🏭'
         }
       },
@@ -1014,7 +1184,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Grupos de Produto',
           breadcrumb: 'Grupos de Produto',
-          breadcrumbParent: 'Cadastrados',
+          breadcrumbParent: 'Cadastros',
           icon: '🗂️'
         }
       },
@@ -1025,7 +1195,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Estoques',
           breadcrumb: 'Estoques',
-          breadcrumbParent: 'Cadastrados',
+          breadcrumbParent: 'Cadastros',
           icon: '🏬'
         }
       },
@@ -1111,9 +1281,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'Staff',
         component: () => import('@/pages/staff/StaffListPage.vue'),
         meta: {
-          title: 'Equipe',
-          breadcrumb: 'Equipe',
-          breadcrumbParent: 'Usuários',
+          title: 'Profissionais',
+          breadcrumb: 'Profissionais',
+          breadcrumbParent: 'RH',
           icon: '👨‍⚕️'
         }
       },
@@ -1122,9 +1292,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'StaffNew',
         component: () => import('@/pages/staff/StaffFormPage.vue'),
         meta: {
-          title: 'Novo Membro',
-          breadcrumb: 'Novo Membro',
-          breadcrumbParent: 'Equipe',
+          title: 'Novo Profissional',
+          breadcrumb: 'Novo Profissional',
+          breadcrumbParent: 'Profissionais',
           icon: '👨‍⚕️'
         }
       },
@@ -1133,9 +1303,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'StaffDetail',
         component: () => import('@/pages/staff/StaffDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Membro',
+          title: 'Detalhes do Profissional',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Equipe',
+          breadcrumbParent: 'Profissionais',
           icon: '👨‍⚕️'
         }
       },
@@ -1144,9 +1314,9 @@ export const routes: RouteRecordRaw[] = [
         name: 'StaffEdit',
         component: () => import('@/pages/staff/StaffFormPage.vue'),
         meta: {
-          title: 'Editar Membro',
+          title: 'Editar Profissional',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Equipe',
+          breadcrumbParent: 'Profissionais',
           icon: '👨‍⚕️'
         }
       },
@@ -1179,10 +1349,11 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Folgas',
           breadcrumb: 'Folgas',
-          breadcrumbParent: 'Cadastros',
+          breadcrumbParent: 'RH',
           icon: '🌴'
         }
-      }
+      },
+      ...placeholderRoutes
     ]
   },
   {

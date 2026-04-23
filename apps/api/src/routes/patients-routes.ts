@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { EncountersService } from '@cvg-his-v2/module-encounters';
+import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
   CreateOwnerPatientLinkRequest,
@@ -14,6 +16,8 @@ import { readJsonBody } from '../helpers/common.js';
 
 export interface PatientsRoutesHandlers {
   patients: PatientsService;
+  owners?: OwnersService;
+  encounters?: EncountersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -32,7 +36,7 @@ export async function handlePatientsRoutes(
   correlationId: string,
   handlers: PatientsRoutesHandlers
 ): Promise<boolean> {
-  const { patients, audit, requirePrincipal } = handlers;
+  const { patients, owners, encounters, audit, requirePrincipal } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -54,6 +58,52 @@ export async function handlePatientsRoutes(
     });
 
     return json(response, 200, results);
+  }
+
+  if (pathname.match(/^\/patients\/[^/]+\/summary$/) && method === 'GET') {
+    const match = pathname.match(/^\/patients\/([^/]+)\/summary$/);
+    if (!match) return false;
+    if (!owners || !encounters) return false;
+
+    const principal = requirePrincipal(request, 'patients.read');
+    const patientId = match[1];
+    const patient = patients.getOrThrow(patientId as never);
+    const owner = owners.getOrThrow(patient.primaryOwnerId);
+    const relatedEncounters = encounters
+      .listAll()
+      .filter((encounter) => encounter.patientId === patient.id)
+      .sort((left, right) => right.openedAt.localeCompare(left.openedAt));
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'patients',
+      action: 'read_summary',
+      entityType: 'patient',
+      entityId: patient.id,
+      payloadSummary: `Patient summary generated for ${patient.name}`,
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, {
+      patient,
+      owner: {
+        id: owner.id,
+        fullName: owner.fullName,
+        phoneMain: owner.contacts[0]?.value ?? null,
+        email: owner.contacts.find((contact) => contact.type === 'email')?.value ?? null
+      },
+      stats: {
+        totalEncounters: relatedEncounters.length,
+        openEncounters: relatedEncounters.filter((encounter) => encounter.status !== 'closed').length
+      },
+      recentEncounters: relatedEncounters.slice(0, 5).map((encounter) => ({
+        id: encounter.id,
+        openedAt: encounter.openedAt,
+        status: encounter.status === 'closed' ? 'closed' : 'open'
+      }))
+    });
   }
 
   // GET /patients - List patients

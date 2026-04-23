@@ -8,10 +8,6 @@ import {
   navGroups
 } from './navigation';
 
-function findSectionLabels(groupId: string) {
-  return findGroup(groupId)?.sections.map((section) => section.label) ?? [];
-}
-
 function findGroup(groupId: string) {
   return navGroups.find((group) => group.id === groupId);
 }
@@ -21,24 +17,37 @@ function findGroupPaths(groupId: string) {
 }
 
 describe('navigation groups', () => {
-  it('keeps the official Vetus-aligned ERP shell groups', () => {
+  it('publishes the ERP modules in the vetus-like layout order', () => {
     expect(navGroups.map((group) => group.label)).toEqual([
-      'Início',
+      'Dashboards',
       'Atendimento',
+      'Cadastros',
       'Laboratório',
       'Estoque',
+      'Fiscal',
       'Financeiro',
       'Marketing',
       'RH',
-      'Relatórios'
+      'Relatórios',
+      'Administração'
     ]);
   });
 
-  it('finds the direct nav item for canonical routes', () => {
-    expect(findMatchingNavItem('/patients')?.label).toBe('Pacientes');
-    expect(findMatchingNavItem('/appointments')?.label).toBe('Agenda');
-    expect(findMatchingNavItem('/queue')?.label).toBe('Fila Operacional');
-    expect(findMatchingNavItem('/notifications')?.label).toBe('Central de Notificações');
+  it('finds direct nav items with the new labels exposed in the frontend', () => {
+    expect(findMatchingNavItem('/patients')?.label).toBe('Animais');
+    expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
+    expect(findMatchingNavItem('/queue')?.label).toBe('Esteira');
+    expect(findMatchingNavItem('/notifications')?.label).toBe('Campanhas');
+    expect(findMatchingNavItem('/access-control')?.label).toBe('Grupos de Acesso');
+    expect(findMatchingNavItem('/encounters')?.label).toBe('Atendimentos');
+    expect(findMatchingNavItem('/triage')?.label).toBe('Triagem');
+    expect(findMatchingNavItem('/appointments/availability')?.label).toBe('Disponibilidade');
+    expect(findMatchingNavItem('/appointments/types')?.label).toBe('Tipos de Agendamento');
+    expect(findMatchingNavItem('/prescriptions')?.label).toBe('Prescrições');
+    expect(findMatchingNavItem('/exam-orders')?.label).toBe('Pedidos API');
+    expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
+    expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
+    expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
   });
 
   it('keeps scheduling only as a legacy route outside the primary menu', () => {
@@ -46,9 +55,50 @@ describe('navigation groups', () => {
     expect(findGroupPaths('atendimento')).not.toContain('/scheduling');
   });
 
-  it('publishes the mandatory laboratory, inventory, atendimento e finance routes in the official map', () => {
+  it('exposes the requested items for each key module', () => {
+    expect(findGroupPaths('dashboards')).toEqual(
+      expect.arrayContaining(['/', '/dashboards/financial', '/dashboards/multifilial', '/dashboards/curve-abc'])
+    );
+
     expect(findGroupPaths('atendimento')).toEqual(
-      expect.arrayContaining(['/patients', '/owners', '/appointments', '/encounters', '/counter-sales'])
+      expect.arrayContaining([
+        '/appointments',
+        '/appointments/availability',
+        '/appointments/types',
+        '/counter-sales',
+        '/sales',
+        '/packages',
+        '/queue',
+        '/quotes',
+        '/loyalty',
+        '/inpatient',
+        '/encounters',
+        '/medical-records',
+        '/triage',
+        '/prescriptions',
+        '/prescription-executions',
+        '/surgery',
+        '/discharges',
+        '/inpatient/board',
+        '/sectors',
+        '/beds'
+      ])
+    );
+
+    expect(findGroupPaths('cadastros')).toEqual(
+      expect.arrayContaining([
+        '/patients',
+        '/owners',
+        '/services',
+        '/breeds',
+        '/species',
+        '/coat-colors',
+        '/webhooks',
+        '/suppliers',
+        '/manufacturers',
+        '/product-groups',
+        '/warehouses'
+      ])
     );
 
     expect(findGroupPaths('laboratorio')).toEqual(
@@ -56,24 +106,35 @@ describe('navigation groups', () => {
         '/laboratory',
         '/laboratory/orders',
         '/laboratory/results',
+        '/exam-orders',
+        '/exam-results',
+        '/laboratory/hemograms',
+        '/laboratory/urinalysis',
+        '/laboratory/biochemistry',
         '/laboratory/equipment',
+        '/diagnostics',
         '/laboratory/report-types',
-        '/laboratory/reference-values',
-        '/diagnostics'
+        '/laboratory/reference-values'
       ])
     );
 
     expect(findGroupPaths('estoque')).toEqual(
+      expect.arrayContaining(['/inventory', '/products', '/inventory/movements', '/inventory/validity'])
+    );
+
+    expect(findGroupPaths('fiscal')).toEqual(
       expect.arrayContaining([
-        '/inventory',
-        '/inventory/movements',
-        '/inventory/validity',
-        '/products',
-        '/suppliers',
-        '/manufacturers',
-        '/product-groups',
-        '/warehouses',
-        '/fiscal'
+        '/fiscal',
+        '/fiscal/icms',
+        '/fiscal/ipi',
+        '/fiscal/pis',
+        '/fiscal/cofins',
+        '/fiscal/cfop',
+        '/fiscal/nfse',
+        '/fiscal/ibs-cbs',
+        '/fiscal/pis-cofins',
+        '/fiscal/ncm',
+        '/fiscal/icms-matrix'
       ])
     );
 
@@ -81,14 +142,21 @@ describe('navigation groups', () => {
       expect.arrayContaining([
         '/billing',
         '/cash',
+        '/cards',
         '/pix',
-        '/quotes',
         '/payment-methods',
         '/banks',
         '/cost-centers',
-        '/cards',
         '/expenses'
       ])
+    );
+
+    expect(findGroupPaths('marketing')).toEqual(
+      expect.arrayContaining(['/notifications', '/notifications/whatsapp'])
+    );
+
+    expect(findGroupPaths('rh')).toEqual(
+      expect.arrayContaining(['/staff', '/commission-calculations', '/commission-rules', '/time-off'])
     );
 
     expect(findGroupPaths('relatorios')).toEqual(
@@ -98,45 +166,23 @@ describe('navigation groups', () => {
         '/reports/appointments',
         '/reports/encounters',
         '/reports/registers',
-        '/reports/inventory',
-        '/reports/production',
         '/administrative-reports'
       ])
     );
   });
 
-  it('prepares the official target subdomains for the next shell refactor', () => {
-    expect(findSectionLabels('atendimento')).toEqual(
-      expect.arrayContaining(['Atendimentos', 'Internação', 'Cadastros'])
-    );
-
-    expect(findSectionLabels('laboratorio')).toEqual(
-      expect.arrayContaining(['Atendimentos', 'Cadastrados'])
-    );
-
-    expect(findSectionLabels('estoque')).toEqual(
-      expect.arrayContaining(['Controles', 'Cadastrados', 'Configurações Fiscais'])
-    );
-
-    expect(findSectionLabels('financeiro')).toEqual(
-      expect.arrayContaining(['Gaveta', 'Controles', 'Maquininha de Cartão', 'Cadastros'])
-    );
-
-    expect(findSectionLabels('rh')).toEqual(
-      expect.arrayContaining(['Usuários', 'Comissões', 'Cadastros'])
-    );
-  });
-
-  it('matches nested routes back to their domain group', () => {
-    expect(findMatchingNavGroup('/patients/new')?.id).toBe('atendimento');
+  it('matches nested routes back to the new module group', () => {
+    expect(findMatchingNavGroup('/patients/new')?.id).toBe('cadastros');
     expect(findMatchingNavGroup('/appointments/123')?.id).toBe('atendimento');
-    expect(findMatchingNavGroup('/inventory/stock-adjustment')?.id).toBe('estoque');
-    expect(findMatchingNavGroup('/laboratory/results/export')?.id).toBe('laboratorio');
-    expect(findMatchingNavGroup('/fiscal/icms/rules')?.id).toBe('estoque');
-    expect(findMatchingNavGroup('/quotes/123')?.id).toBe('financeiro');
+    expect(findMatchingNavGroup('/inventory/transfers/manual')?.id).toBe('estoque');
+    expect(findMatchingNavGroup('/fiscal/icms/rules')?.id).toBe('fiscal');
+    expect(findMatchingNavGroup('/dashboards/financial/detail')?.id).toBe('dashboards');
+    expect(findMatchingNavGroup('/access-control/roles')?.id).toBe('administracao');
+    expect(findMatchingNavGroup('/prescription-executions/enc-1')?.id).toBe('atendimento');
+    expect(findMatchingNavGroup('/reports/appointments/monthly')?.id).toBe('relatorios');
   });
 
-  it('detects enterprise console routes outside the primary ERP navbar', () => {
+  it('keeps extra platform tools in the enterprise utility area', () => {
     const location = findMatchingNavLocation('/api-keys/new-token');
     expect(location?.area).toBe('enterprise');
     expect(location?.group.id).toBe(enterpriseConsole.id);

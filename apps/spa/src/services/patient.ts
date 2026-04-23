@@ -4,7 +4,8 @@ import type {
   CreatePatientRequest,
   UpdatePatientRequest,
   PatientsListResponse,
-  PatientListFilters
+  PatientListFilters,
+  PatientSummaryResponse
 } from '@/types/patient';
 
 export const patientService = {
@@ -43,6 +44,10 @@ export const patientService = {
 
   async getById(id: string): Promise<PatientSummary> {
     return apiRequest<PatientSummary>(`/patients/${id}`);
+  },
+
+  async getSummary(id: string): Promise<PatientSummaryResponse> {
+    return apiRequest<PatientSummaryResponse>(`/patients/${id}/summary`);
   },
 
   async create(payload: CreatePatientRequest): Promise<PatientSummary> {

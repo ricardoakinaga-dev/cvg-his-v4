@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { SmartSchedulingService } from '@cvg-his-v2/module-ml';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import type { ApiFeatureFlagsSnapshot } from '../feature-flags.js';
@@ -28,6 +29,7 @@ import {
 
 export interface SchedulingRoutesHandlers {
   scheduling: SchedulingService;
+  encounters?: EncountersService;
   smartScheduling: SmartSchedulingService;
   audit: AuditService;
   featureFlags?: Pick<ApiFeatureFlagsSnapshot, 'mlSmartSchedulingEnabled'>;
@@ -61,7 +63,7 @@ export async function handleSchedulingRoutes(
   correlationId: string,
   handlers: SchedulingRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, smartScheduling, audit, requirePrincipal, featureFlags, telemetry } = handlers;
+  const { scheduling, encounters, smartScheduling, audit, requirePrincipal, featureFlags, telemetry } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -227,6 +229,59 @@ export async function handleSchedulingRoutes(
       correlationId
     });
     return json(response, 200, cancelled);
+  }
+
+  if (
+    pathname.startsWith('/appointments/')
+    && pathname.endsWith('/start-encounter')
+    && method === 'POST'
+  ) {
+    if (!encounters) {
+      return false;
+    }
+    const principal = requirePrincipal(request, 'encounters.manage');
+    const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+    const existingEncounter = encounters
+      .listActive()
+      .find((encounter) => encounter.patientId === appointment.patientId);
+
+    if (existingEncounter) {
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'encounters',
+        action: 'start_from_appointment_reused',
+        entityType: 'encounter',
+        entityId: existingEncounter.id,
+        payloadSummary: `Existing encounter reused from appointment ${appointmentId}`,
+        riskLevel: 'medium',
+        correlationId
+      });
+      return json(response, 200, existingEncounter);
+    }
+
+    const encounter = encounters.openEncounter(principal.user.accountId, principal.user.id, {
+      patientId: appointment.patientId,
+      ownerId: appointment.ownerId,
+      appointmentId: appointment.id,
+      visitType: appointment.visitType,
+      origin: 'schedule',
+      reason: appointment.reason
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'encounters',
+      action: 'start_from_appointment',
+      entityType: 'encounter',
+      entityId: encounter.id,
+      payloadSummary: `Encounter started from appointment ${appointmentId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 201, encounter);
   }
 
   if (pathname === '/scheduling/overview' && method === 'GET') {

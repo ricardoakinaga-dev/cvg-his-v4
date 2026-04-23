@@ -339,6 +339,8 @@ interface Props {
   presetOwnerId?: string;
   presetPatientId?: string;
   presetScheduledAt?: string;
+  presetDurationMinutes?: number;
+  presetPractitionerStaffId?: string;
   professionals?: SchedulingProfessionalSummary[];
   hideOwnerSelection?: boolean;
   lockOwnerSelection?: boolean;
@@ -352,6 +354,8 @@ const props = withDefaults(defineProps<Props>(), {
   presetOwnerId: '',
   presetPatientId: '',
   presetScheduledAt: '',
+  presetDurationMinutes: 30,
+  presetPractitionerStaffId: '',
   hideOwnerSelection: false,
   lockOwnerSelection: false,
   restrictPatientsToOwner: false,
@@ -388,9 +392,9 @@ const form = reactive({
   ownerId: props.presetOwnerId,
   patientId: props.presetPatientId,
   scheduledAt: props.presetScheduledAt || new Date().toISOString().slice(0, 16),
-  durationMinutes: 30,
+  durationMinutes: props.presetDurationMinutes,
   visitType: 'scheduled' as AppointmentVisitType,
-  practitionerStaffId: '',
+  practitionerStaffId: props.presetPractitionerStaffId,
   serviceId: '',
   unit: '',
   specialty: '',
@@ -845,6 +849,31 @@ watch(
     if (patientId) {
       form.patientId = patientId;
     }
+  }
+);
+
+watch(
+  () => props.presetScheduledAt,
+  (scheduledAt) => {
+    if (scheduledAt) {
+      form.scheduledAt = scheduledAt;
+    }
+  }
+);
+
+watch(
+  () => props.presetDurationMinutes,
+  (durationMinutes) => {
+    if (typeof durationMinutes === 'number' && durationMinutes > 0) {
+      form.durationMinutes = durationMinutes;
+    }
+  }
+);
+
+watch(
+  () => props.presetPractitionerStaffId,
+  (practitionerStaffId) => {
+    form.practitionerStaffId = practitionerStaffId || '';
   }
 );
 

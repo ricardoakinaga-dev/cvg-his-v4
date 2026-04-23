@@ -68,3 +68,22 @@ export interface OwnerPatientLinkSummary {
   financialResponsible: boolean;
   createdAt: string;
 }
+
+export interface PatientSummaryResponse {
+  patient: PatientSummary;
+  owner: {
+    id: string;
+    fullName: string;
+    phoneMain?: string | null;
+    email?: string | null;
+  };
+  stats: {
+    totalEncounters: number;
+    openEncounters: number;
+  };
+  recentEncounters: Array<{
+    id: string;
+    openedAt: string;
+    status: 'open' | 'closed';
+  }>;
+}

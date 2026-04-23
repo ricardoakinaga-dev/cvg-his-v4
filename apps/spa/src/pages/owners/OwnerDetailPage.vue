@@ -122,6 +122,23 @@
             </div>
           </div>
         </DsCard>
+
+        <DsCard title="Resumo por endpoint">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Pacientes no summary</span>
+              <strong>{{ ownerSummary?.stats.totalPatients ?? patients.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Atendimentos no summary</span>
+              <strong>{{ ownerSummary?.stats.totalEncounters ?? recentEncounters.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Resumo exposto</span>
+              <strong>{{ ownerSummary ? 'Sim' : 'Fallback local' }}</strong>
+            </div>
+          </div>
+        </DsCard>
       </section>
 
       <section v-if="relatedWarnings.length > 0" class="hub-alerts">
@@ -359,6 +376,7 @@ import { encounterService } from '@/services/encounter';
 import { billingService } from '@/services/billing';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import type { OwnerSummary } from '@/types/owner';
+import type { OwnerSummaryResponse } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 import type { AppointmentSummary } from '@/types/appointment';
 import type { EncounterSummary } from '@/types/encounter';
@@ -379,6 +397,7 @@ const appointments = ref<AppointmentSummary[]>([]);
 const encounters = ref<EncounterSummary[]>([]);
 const billingRecords = ref<BillingRecordSummary[]>([]);
 const quotes = ref<QuoteSummary[]>([]);
+const ownerSummary = ref<OwnerSummaryResponse | null>(null);
 const relatedWarnings = ref<string[]>([]);
 const actionError = ref('');
 const actionMessage = ref('');
@@ -739,6 +758,13 @@ async function loadOwnerHub(ownerId: string) {
   encounters.value = encounterResponse.filter((encounter) => encounter.ownerId === ownerId);
 
   relatedWarnings.value = [];
+
+  try {
+    ownerSummary.value = await ownerService.getSummary(ownerId);
+  } catch {
+    ownerSummary.value = null;
+    relatedWarnings.value.push('owner-summary');
+  }
 
   const [billingResult, quotesResult] = await Promise.allSettled([
     billingService.list(),

@@ -43,7 +43,11 @@ function isDiagnosticsBridge(pathname: string): boolean {
     || pathname === '/diagnostics/report-types'
     || pathname === '/diagnostics/reference-values'
     || pathname === '/diagnostics/orders'
-    || pathname.startsWith('/diagnostics/orders/');
+    || pathname.startsWith('/diagnostics/orders/')
+    || pathname === '/exam-orders'
+    || pathname.startsWith('/exam-orders/')
+    || pathname === '/exam-results'
+    || pathname.startsWith('/exam-results/');
 }
 
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
@@ -124,6 +128,38 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, payload);
   }
 
+  if (pathname === '/exam-orders' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const encounterId = url.searchParams.get('encounterId') ?? undefined;
+    const items = await laboratory.listOrders(principal.user.accountId as never, encounterId);
+    return json(response, 200, {
+      items: items.map((order) => ({
+        id: order.id,
+        accountId: order.accountId,
+        patientId: order.patientId,
+        encounterId: order.encounterId,
+        category: 'laboratory',
+        examName: order.examType,
+        examCode: order.examCatalogId ?? null,
+        priority: 'routine',
+        status:
+          order.status === 'requested'
+            ? 'requested'
+            : order.status === 'collected'
+              ? 'collected'
+              : order.status === 'resulted'
+                ? 'completed'
+                : 'cancelled',
+        notes: order.reason,
+        requestedAt: order.createdAt,
+        completedAt: order.status === 'resulted' ? order.updatedAt : null,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      }))
+    });
+  }
+
   const orderRouteMatch = pathname.match(/^\/(?:laboratory|diagnostics)\/orders\/([^/]+)$/);
   if (orderRouteMatch && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
@@ -142,6 +178,35 @@ export async function handleLaboratoryRoutes(
       correlationId
     });
     return json(response, 200, payload);
+  }
+
+  const examOrderRouteMatch = pathname.match(/^\/exam-orders\/([^/]+)$/);
+  if (examOrderRouteMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const order = laboratory.getOrder(principal.user.accountId as never, examOrderRouteMatch[1] as never);
+    return json(response, 200, {
+      id: order.id,
+      accountId: order.accountId,
+      patientId: order.patientId,
+      encounterId: order.encounterId,
+      category: 'laboratory',
+      examName: order.examType,
+      examCode: order.examCatalogId ?? null,
+      priority: 'routine',
+      status:
+        order.status === 'requested'
+          ? 'requested'
+          : order.status === 'collected'
+            ? 'collected'
+            : order.status === 'resulted'
+              ? 'completed'
+              : 'cancelled',
+      notes: order.reason,
+      requestedAt: order.createdAt,
+      completedAt: order.status === 'resulted' ? order.updatedAt : null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    });
   }
 
   if ((pathname === '/laboratory/orders' || pathname === '/diagnostics/orders') && request.method === 'POST') {
@@ -164,6 +229,39 @@ export async function handleLaboratoryRoutes(
     return json(response, 201, order);
   }
 
+  if (
+    (pathname === '/exam-orders' || pathname.match(/^\/encounters\/[^/]+\/exam-orders$/))
+    && request.method === 'POST'
+  ) {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
+    const encounterIdFromPath = pathname.match(/^\/encounters\/([^/]+)\/exam-orders$/)?.[1];
+    const order = laboratory.createOrder({
+      encounterId: encounterIdFromPath ?? String(payload.encounterId ?? ''),
+      patientId: String(payload.patientId ?? ''),
+      examType: String(payload.examName ?? payload.examType ?? ''),
+      examCatalogId: typeof payload.examCode === 'string' ? payload.examCode : undefined,
+      reason: String(payload.notes ?? payload.reason ?? 'Pedido criado via surface enterprise')
+    });
+    handlers.onOrderCreated?.(order, principal.user.id);
+    return json(response, 201, {
+      id: order.id,
+      accountId: order.accountId,
+      patientId: order.patientId,
+      encounterId: order.encounterId,
+      category: 'laboratory',
+      examName: order.examType,
+      examCode: order.examCatalogId ?? null,
+      priority: 'routine',
+      status: 'requested',
+      notes: order.reason,
+      requestedAt: order.createdAt,
+      completedAt: null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    });
+  }
+
   if ((pathname === '/laboratory/results' || pathname === '/diagnostics/results') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
@@ -183,6 +281,67 @@ export async function handleLaboratoryRoutes(
       correlationId
     });
     return json(response, 200, payload);
+  }
+
+  if (pathname === '/exam-results' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const examType = url.searchParams.get('category') ?? url.searchParams.get('examType') ?? undefined;
+    const items = await laboratory.listResults(principal.user.accountId as never, examType);
+    return json(response, 200, {
+      items: items.map((order) => ({
+        id: order.id,
+        accountId: order.accountId,
+        patientId: order.patientId,
+        examOrderId: order.id,
+        category: 'laboratory',
+        examName: order.examType,
+        examCode: order.examCatalogId ?? null,
+        requestedAt: order.createdAt,
+        status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
+        findings: order.resultSummary ?? null,
+        interpretation: order.resultSummary ?? null,
+        resultValues: null,
+        normalRange: null,
+        performedByUserId: order.collectedByUserId ?? null,
+        performedAt: order.status === 'resulted' ? order.updatedAt : null,
+        reviewedByUserId: null,
+        reviewedAt: null,
+        releasedAt: order.status === 'resulted' ? order.updatedAt : null,
+        notes: order.reason ?? null,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      }))
+    });
+  }
+
+  const examResultRouteMatch = pathname.match(/^\/exam-results\/([^/]+)$/);
+  if (examResultRouteMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const order = laboratory.getOrder(principal.user.accountId as never, examResultRouteMatch[1] as never);
+    return json(response, 200, {
+      id: order.id,
+      accountId: order.accountId,
+      patientId: order.patientId,
+      examOrderId: order.id,
+      category: 'laboratory',
+      examName: order.examType,
+      examCode: order.examCatalogId ?? null,
+      requestedAt: order.createdAt,
+      status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
+      findings: order.resultSummary ?? null,
+      interpretation: order.resultSummary ?? null,
+      resultValues: null,
+      normalRange: null,
+      performedByUserId: order.collectedByUserId ?? null,
+      performedAt: order.status === 'resulted' ? order.updatedAt : null,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      releasedAt: order.status === 'resulted' ? order.updatedAt : null,
+      notes: order.reason ?? null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    });
   }
 
   const resultRouteMatch = pathname.match(
@@ -207,6 +366,69 @@ export async function handleLaboratoryRoutes(
       correlationId
     });
     return json(response, 200, order);
+  }
+
+  if (pathname.match(/^\/exam-results\/[^/]+$/) && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const orderId = requireNonEmptyString(pathname.split('/')[2], 'examResultId');
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
+    const status =
+      payload.status === 'released'
+        ? 'resulted'
+        : payload.status === 'cancelled'
+          ? 'cancelled'
+          : 'collected';
+    const order = laboratory.recordResult(orderId as never, {
+      status,
+      resultSummary:
+        typeof payload.findings === 'string'
+          ? payload.findings
+          : typeof payload.interpretation === 'string'
+            ? payload.interpretation
+            : undefined,
+      resultAttachmentId:
+        typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
+      collectedByUserId: principal.user.id
+    });
+    handlers.onOrderStatusChanged?.(
+      order,
+      {
+        status,
+        resultSummary:
+          typeof payload.findings === 'string'
+            ? payload.findings
+            : typeof payload.interpretation === 'string'
+              ? payload.interpretation
+              : undefined,
+        resultAttachmentId:
+          typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
+        collectedByUserId: principal.user.id
+      },
+      principal.user.id
+    );
+    return json(response, 200, {
+      id: order.id,
+      accountId: order.accountId,
+      patientId: order.patientId,
+      examOrderId: order.id,
+      category: 'laboratory',
+      examName: order.examType,
+      examCode: order.examCatalogId ?? null,
+      requestedAt: order.createdAt,
+      status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
+      findings: order.resultSummary ?? null,
+      interpretation: order.resultSummary ?? null,
+      resultValues: null,
+      normalRange: null,
+      performedByUserId: order.collectedByUserId ?? null,
+      performedAt: order.status === 'resulted' ? order.updatedAt : null,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      releasedAt: order.status === 'resulted' ? order.updatedAt : null,
+      notes: order.reason ?? null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    });
   }
 
   if ((pathname === '/laboratory/equipment' || pathname === '/diagnostics/equipment') && request.method === 'GET') {

@@ -230,6 +230,23 @@
             </div>
           </div>
         </DsCard>
+
+        <DsCard title="Resumo por endpoint">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Atendimentos no summary</span>
+              <strong>{{ patientSummary?.stats.totalEncounters ?? sortedEncounters.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Atendimentos abertos</span>
+              <strong>{{ patientSummary?.stats.openEncounters ?? activeEncounters.length }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Tutor no summary</span>
+              <strong>{{ patientSummary?.owner.fullName || ownerName }}</strong>
+            </div>
+          </div>
+        </DsCard>
       </section>
 
       <section class="patient-workspace-grid">
@@ -616,7 +633,7 @@ import type {
   MedicalRecordStatus
 } from '@/types/medicalRecords';
 import type { OwnerSummary } from '@/types/owner';
-import type { PatientSummary, PatientStatus } from '@/types/patient';
+import type { PatientSummary, PatientStatus, PatientSummaryResponse } from '@/types/patient';
 import type { TriagePriority, TriageSummary } from '@/types/triage';
 import {
   appointmentStatusLabel,
@@ -666,6 +683,7 @@ const loading = ref(true);
 const error = ref('');
 const relatedWarnings = ref<string[]>([]);
 const patient = ref<PatientSummary | null>(null);
+const patientSummary = ref<PatientSummaryResponse | null>(null);
 const ownerSnapshot = ref<OwnerSummary | null>(null);
 const ownerName = ref('—');
 const ownerBillingRecords = ref<BillingRecordSummary[]>([]);
@@ -1124,6 +1142,7 @@ function registerWarning(scope: string) {
 
 function resetRelatedState() {
   relatedWarnings.value = [];
+  patientSummary.value = null;
   ownerSnapshot.value = null;
   ownerBillingRecords.value = [];
   ownerQuotes.value = [];
@@ -1281,6 +1300,7 @@ async function loadPage() {
       encountersResult,
       appointmentsResult,
       recordsResult,
+      patientSummaryResult,
       ownerResult,
       ownerSnapshotResult,
       ownerBillingResult,
@@ -1289,6 +1309,7 @@ async function loadPage() {
       encounterService.list(),
       appointmentService.list(),
       medicalRecordsService.listAll(),
+      patientService.getSummary(loadedPatient.id),
       getOwnerName(loadedPatient.primaryOwnerId),
       ownerService.getById(loadedPatient.primaryOwnerId),
       billingService.list(),
@@ -1320,6 +1341,12 @@ async function loadPage() {
       );
     } else {
       registerWarning('prontuário');
+    }
+
+    if (patientSummaryResult.status === 'fulfilled') {
+      patientSummary.value = patientSummaryResult.value;
+    } else {
+      registerWarning('patient-summary');
     }
 
     if (ownerResult.status === 'fulfilled') {

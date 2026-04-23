@@ -4,7 +4,8 @@ import type {
   CreateOwnerRequest,
   UpdateOwnerRequest,
   OwnersListResponse,
-  OwnerListFilters
+  OwnerListFilters,
+  OwnerSummaryResponse
 } from '@/types/owner';
 
 export const ownerService = {
@@ -43,6 +44,10 @@ export const ownerService = {
 
   async getById(id: string): Promise<OwnerSummary> {
     return apiRequest<OwnerSummary>(`/owners/${id}`);
+  },
+
+  async getSummary(id: string): Promise<OwnerSummaryResponse> {
+    return apiRequest<OwnerSummaryResponse>(`/owners/${id}/summary`);
   },
 
   async create(payload: CreateOwnerRequest): Promise<OwnerSummary> {

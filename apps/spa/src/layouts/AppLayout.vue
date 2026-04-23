@@ -9,9 +9,12 @@
   >
     <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
       <div class="sidebar__brand">
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar__brand-copy">
-          <span class="sidebar__eyebrow">Menu</span>
-          <strong>Navegação operacional</strong>
+        <div class="sidebar__brand-mark">
+          <span class="sidebar__brand-mark-logo">V</span>
+          <div v-if="!appStore.sidebarCollapsed" class="sidebar__brand-copy">
+            <span class="sidebar__eyebrow">CVG HIS V2</span>
+            <strong>Menu operacional</strong>
+          </div>
         </div>
         <button
           class="sidebar__toggle"
@@ -42,7 +45,7 @@
           v-model="searchQuery"
           type="search"
           class="sidebar__search-input"
-          placeholder="Buscar módulo, rotina ou relatório..."
+          placeholder="Buscar"
           aria-label="Buscar módulo"
         />
       </div>
@@ -58,8 +61,9 @@
           <summary class="sidebar__group-summary">
             <span class="sidebar__group-summary-text">
               <span class="sidebar__group-icon">{{ group.icon }}</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-label">
-                {{ group.label }}
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-copy">
+                <span class="sidebar__group-label">{{ group.label }}</span>
+                <small class="sidebar__group-description">{{ group.description }}</small>
               </span>
             </span>
             <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
@@ -200,9 +204,33 @@
     </aside>
 
     <main class="workspace">
-      <header class="topbar">
+      <header class="topbar" :class="{ 'topbar--scrolled': isTopbarScrolled }">
         <div class="topbar__system-row">
           <div class="topbar__system-left">
+            <div class="topbar__history-nav" aria-label="Navegação de histórico">
+              <button
+                class="topbar__history-btn"
+                type="button"
+                title="Voltar"
+                aria-label="Voltar"
+                :disabled="!canGoBack"
+                @click="goBack"
+              >
+                ←
+              </button>
+
+              <button
+                class="topbar__history-btn"
+                type="button"
+                title="Avançar"
+                aria-label="Avançar"
+                :disabled="!canGoForward"
+                @click="goForward"
+              >
+                →
+              </button>
+            </div>
+
             <button
               class="topbar__collapse-btn"
               type="button"
@@ -217,8 +245,8 @@
             <div class="topbar__brand-pill">
               <div class="topbar__brand-logo">V</div>
               <div class="topbar__brand-copy">
-                <strong>CVG HIS</strong>
-                <span>Centro Veterinário Guarapiranga</span>
+                <strong>CVG HIS V2</strong>
+                <span>Shell operacional estilo Vetus</span>
               </div>
             </div>
 
@@ -274,7 +302,7 @@
             </div>
             <h1 class="topbar__title">{{ currentPageTitle }}</h1>
             <p class="topbar__subtitle">
-              {{ currentAreaLabel }} · Centro Veterinário Guarapiranga
+              {{ currentAreaLabel }} · Centro Veterinário Guarapiranga · Unidade principal
             </p>
           </div>
         </div>
@@ -389,6 +417,9 @@ const commandPaletteOpen = ref(false);
 const commandQuery = ref('');
 const commandInputEl = ref<HTMLInputElement | null>(null);
 const selectedIndex = ref(0);
+const historyPosition = ref(readHistoryPosition());
+const maxHistoryPosition = ref(readHistoryPosition());
+const isTopbarScrolled = ref(false);
 
 interface CommandAction {
   id: string;
@@ -653,6 +684,14 @@ const filteredRouteItems = computed(() => {
 });
 
 const totalItems = computed(() => filteredActionItems.value.length + filteredRouteItems.value.length);
+const canGoBack = computed(() => historyPosition.value > 0);
+const canGoForward = computed(() => historyPosition.value < maxHistoryPosition.value);
+
+function readHistoryPosition() {
+  if (typeof window === 'undefined') return 0;
+  const state = window.history.state as { position?: number } | null;
+  return typeof state?.position === 'number' ? state.position : 0;
+}
 
 function isActivePath(path: string): boolean {
   return route.path === path || route.path.startsWith(`${path}/`);
@@ -660,7 +699,7 @@ function isActivePath(path: string): boolean {
 
 function shouldOpenGroup(groupId: string): boolean {
   if (searchQuery.value.trim()) return true;
-  return matchingNavGroup.value?.id === groupId || groupId === 'inicio';
+  return matchingNavGroup.value?.id === groupId || groupId === 'dashboards';
 }
 
 function openPalette() {
@@ -678,6 +717,24 @@ function closePalette() {
 function navigateTo(path: string) {
   closePalette();
   void router.push(path);
+}
+
+function syncHistoryPosition() {
+  const nextPosition = readHistoryPosition();
+  historyPosition.value = nextPosition;
+  if (nextPosition > maxHistoryPosition.value) {
+    maxHistoryPosition.value = nextPosition;
+  }
+}
+
+function goBack() {
+  if (!canGoBack.value) return;
+  router.back();
+}
+
+function goForward() {
+  if (!canGoForward.value) return;
+  router.forward();
 }
 
 function executeAction(item: CommandAction) {
@@ -772,12 +829,21 @@ function isInInputField(): boolean {
   return tag === 'input' || tag === 'textarea' || active.getAttribute('contenteditable') === 'true';
 }
 
+function syncScrollState() {
+  if (typeof window === 'undefined') return;
+  isTopbarScrolled.value = window.scrollY > 12;
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown);
+  window.addEventListener('scroll', syncScrollState, { passive: true });
+  syncHistoryPosition();
+  syncScrollState();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('scroll', syncScrollState);
 });
 
 watch(commandPaletteOpen, async (open) => {
@@ -796,6 +862,13 @@ watch(totalItems, (nextTotal) => {
     selectedIndex.value = nextTotal - 1;
   }
 });
+
+watch(
+  () => route.fullPath,
+  () => {
+    syncHistoryPosition();
+  }
+);
 
 function handleLogout() {
   authStore.logout();
@@ -828,7 +901,18 @@ function handleLogout() {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
-  background: var(--color-bg, #f3f6f9);
+  background:
+    radial-gradient(circle at top left, rgba(241, 148, 54, 0.08), transparent 22%),
+    linear-gradient(180deg, #f6f7f9, #eef1f4 58%, #edf1f5);
+  font-family:
+    'Open Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 
 .app-layout--collapsed {
@@ -840,9 +924,10 @@ function handleLogout() {
   flex-direction: column;
   gap: 12px;
   padding: 16px 14px;
-  border-right: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
+  border-right: 1px solid #dfe4ea;
+  background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
 }
 
 .sidebar__brand {
@@ -851,6 +936,25 @@ function handleLogout() {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px 2px;
+}
+
+.sidebar__brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sidebar__brand-mark-logo {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f6a24f, #f19436);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 10px 18px rgba(241, 148, 54, 0.24);
 }
 
 .sidebar__brand-copy {
@@ -862,12 +966,12 @@ function handleLogout() {
 
 .sidebar__brand-copy strong {
   font-size: 13px;
-  color: var(--color-text, #0f172a);
+  color: #243140;
 }
 
 .sidebar__brand-copy span {
   font-size: 11px;
-  color: var(--color-primary-600, #2563eb);
+  color: #f19436;
 }
 
 .sidebar__toggle {
@@ -875,17 +979,17 @@ function handleLogout() {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid var(--color-border-strong, #cbd5e1);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid #d8dde6;
+  background: rgba(255, 255, 255, 0.88);
+  color: #6c757d;
   flex-shrink: 0;
 }
 
 .sidebar__company-context {
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(37, 99, 235, 0.12);
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(239, 246, 255, 0.92));
+  border: 1px solid #e0e5eb;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 249, 251, 0.96));
 }
 
 .sidebar__company-context--collapsed {
@@ -902,7 +1006,7 @@ function handleLogout() {
 
 .sidebar__company-switch {
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: #7b8794;
 }
 
 .sidebar__company-card {
@@ -912,8 +1016,8 @@ function handleLogout() {
   min-height: 48px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(37, 99, 235, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #eceff3;
 }
 
 .sidebar__company-icon {
@@ -930,23 +1034,23 @@ function handleLogout() {
 
 .sidebar__company-copy strong {
   font-size: 13px;
-  color: var(--color-text, #0f172a);
+  color: #243140;
 }
 
 .sidebar__company-copy span {
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+  color: #7b8794;
 }
 
 .sidebar__panel {
   padding: 12px;
   border-radius: 14px;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e2e8f0);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #e1e6ec;
 }
 
 .sidebar__panel--enterprise {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(37, 99, 235, 0.02));
+  background: linear-gradient(180deg, rgba(241, 148, 54, 0.08), rgba(255, 255, 255, 0.88));
 }
 
 .sidebar__panel-head {
@@ -962,12 +1066,12 @@ function handleLogout() {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-primary-600, #2563eb);
+  color: #f19436;
 }
 
 .sidebar__microcopy {
   font-size: 12px;
-  color: var(--color-text-muted, #94a3b8);
+  color: #8893a0;
 }
 
 .sidebar__search {
@@ -979,15 +1083,15 @@ function handleLogout() {
   min-height: 44px;
   padding: 0 14px;
   border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text, #0f172a);
+  border: 1px solid #dde3ea;
+  background: rgba(255, 255, 255, 0.92);
+  color: #243140;
   outline: none;
 }
 
 .sidebar__search-input:focus {
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: rgba(241, 148, 54, 0.55);
+  box-shadow: 0 0 0 3px rgba(241, 148, 54, 0.14);
 }
 
 .sidebar__utility-stack {
@@ -995,7 +1099,7 @@ function handleLogout() {
   gap: 8px;
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid rgba(220, 226, 233, 0.92);
 }
 
 .sidebar__utility-label {
@@ -1004,18 +1108,18 @@ function handleLogout() {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted, #94a3b8);
+  color: #9aa4af;
 }
 
 .sidebar__utility-group {
   border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid #e2e7ed;
   background: rgba(255, 255, 255, 0.82);
   overflow: hidden;
 }
 
 .sidebar__utility-group--enterprise {
-  background: rgba(248, 250, 252, 0.88);
+  background: rgba(255, 247, 239, 0.9);
 }
 
 .sidebar__utility-summary {
@@ -1040,14 +1144,14 @@ function handleLogout() {
 
 .sidebar__group {
   border-radius: 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1px solid #dfe4ea;
   background: rgba(255, 255, 255, 0.94);
   overflow: hidden;
 }
 
 .sidebar__group--active {
-  border-color: rgba(37, 99, 235, 0.22);
-  box-shadow: inset 3px 0 0 rgba(37, 99, 235, 0.9);
+  border-color: rgba(241, 148, 54, 0.38);
+  box-shadow: inset 3px 0 0 #f19436;
 }
 
 .sidebar__group-summary {
@@ -1061,7 +1165,7 @@ function handleLogout() {
 }
 
 .sidebar__group--active > .sidebar__group-summary {
-  background: rgba(239, 246, 255, 0.88);
+  background: linear-gradient(180deg, rgba(255, 243, 230, 0.96), rgba(255, 249, 244, 0.94));
 }
 
 .sidebar__group-summary::-webkit-details-marker {
@@ -1075,6 +1179,11 @@ function handleLogout() {
   min-width: 0;
 }
 
+.sidebar__group-copy {
+  display: grid;
+  min-width: 0;
+}
+
 .sidebar__group-icon {
   width: 24px;
   text-align: center;
@@ -1083,11 +1192,20 @@ function handleLogout() {
 .sidebar__group-label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--color-text, #0f172a);
+  color: #243140;
+}
+
+.sidebar__group-description {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #8a95a2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar__group-chevron {
-  color: var(--color-text-muted, #94a3b8);
+  color: #9aa4af;
 }
 
 .sidebar__group-body,
@@ -1098,7 +1216,7 @@ function handleLogout() {
 }
 
 .sidebar__group-body {
-  background: rgba(248, 250, 252, 0.74);
+  background: linear-gradient(180deg, rgba(246, 247, 249, 0.92), rgba(243, 245, 247, 0.9));
 }
 
 .sidebar__section {
@@ -1110,7 +1228,7 @@ function handleLogout() {
 
 .sidebar__section--active {
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(241, 148, 54, 0.14);
 }
 
 .sidebar__section-label {
@@ -1120,7 +1238,7 @@ function handleLogout() {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted, #94a3b8);
+  color: #9aa4af;
 }
 
 .sidebar__quick-links,
@@ -1139,7 +1257,7 @@ function handleLogout() {
   padding: 10px 10px;
   border-radius: 12px;
   border: 1px solid transparent;
-  color: var(--color-text-secondary, #475569);
+  color: #4e5b68;
   text-decoration: none;
   transition:
     transform 0.15s ease,
@@ -1151,22 +1269,22 @@ function handleLogout() {
 .sidebar__recent-link:hover,
 .sidebar__link:hover {
   transform: translateX(2px);
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.1);
+  background: rgba(241, 148, 54, 0.08);
+  border-color: rgba(241, 148, 54, 0.12);
   text-decoration: none;
 }
 
 .sidebar__quick-link--active,
 .sidebar__recent-link--active,
 .sidebar__link--active {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(13, 148, 136, 0.08));
-  border-color: rgba(37, 99, 235, 0.18);
-  color: var(--color-primary-700, #1d4ed8);
+  background: linear-gradient(135deg, rgba(255, 237, 218, 0.96), rgba(255, 247, 237, 0.92));
+  border-color: rgba(241, 148, 54, 0.22);
+  color: #b76516;
   font-weight: 600;
 }
 
 .sidebar__link--utility {
-  background: rgba(15, 23, 42, 0.02);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .sidebar__quick-link-icon,
@@ -1187,7 +1305,7 @@ function handleLogout() {
 .sidebar__ghost-btn {
   background: none;
   border: 0;
-  color: var(--color-primary-600, #2563eb);
+  color: #f19436;
   font-size: 12px;
   font-weight: 600;
   padding: 0;
@@ -1200,11 +1318,25 @@ function handleLogout() {
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: grid;
   gap: 0;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid #dee4ea;
+  background: rgba(248, 249, 251, 0.96);
   min-width: 0;
+  backdrop-filter: blur(12px);
+  transition:
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.topbar--scrolled {
+  border-bottom-color: rgba(221, 228, 234, 0.98);
+  background: rgba(250, 251, 252, 0.98);
+  box-shadow: 0 10px 24px rgba(36, 49, 64, 0.08);
 }
 
 .topbar__system-row,
@@ -1218,7 +1350,7 @@ function handleLogout() {
 }
 
 .topbar__system-row {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  border-bottom: 1px solid rgba(220, 226, 233, 0.96);
 }
 
 .topbar__system-left,
@@ -1238,6 +1370,36 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #e2e7ed;
+}
+
+.topbar__history-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar__history-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid #dde3ea;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5d6a76;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.topbar__history-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .topbar__brand-logo {
@@ -1259,12 +1421,12 @@ function handleLogout() {
 
 .topbar__brand-copy strong {
   font-size: 14px;
-  color: var(--color-text, #0f172a);
+  color: #243140;
 }
 
 .topbar__brand-copy span {
   font-size: 11px;
-  color: var(--color-text-muted, #64748b);
+  color: #7b8794;
 }
 
 .topbar__collapse-btn {
@@ -1272,9 +1434,9 @@ function handleLogout() {
   height: 38px;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid #dde3ea;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5d6a76;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1295,9 +1457,9 @@ function handleLogout() {
   max-width: 520px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid var(--color-border, #dbe3ee);
-  background: #ffffff;
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid #dde4ea;
+  background: rgba(255, 255, 255, 0.88);
+  color: #7a8794;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -1334,7 +1496,7 @@ function handleLogout() {
   flex-wrap: wrap;
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-muted, #64748b);
+  color: #7b8794;
 }
 
 .topbar__breadcrumb-item {
@@ -1344,14 +1506,14 @@ function handleLogout() {
 }
 
 .topbar__breadcrumb-separator {
-  color: var(--color-border-strong, #94a3b8);
+  color: #a0a9b4;
 }
 
 .topbar__title {
   margin: 0;
   font-size: 24px;
   line-height: 1.1;
-  color: var(--color-text, #0f172a);
+  color: #243140;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -1361,7 +1523,7 @@ function handleLogout() {
 .topbar__subtitle {
   margin: 0;
   font-size: 13px;
-  color: var(--color-text-muted, #64748b);
+  color: #7b8794;
 }
 
 .topbar__action-row {
@@ -1375,9 +1537,9 @@ function handleLogout() {
   min-height: 38px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid #dde4ea;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5d6a76;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1391,16 +1553,16 @@ function handleLogout() {
 .topbar__action-btn kbd,
 .command-palette__item-shortcut {
   font-size: 11px;
-  color: var(--color-text-muted, #94a3b8);
+  color: #98a1ab;
 }
 
 .topbar__icon-btn {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  border: 1px solid #dde4ea;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5d6a76;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1409,9 +1571,9 @@ function handleLogout() {
 .topbar__icon-btn--notifications,
 .topbar__icon-btn--support,
 .topbar__icon-btn--whatsapp {
-  color: var(--color-text-secondary, #475569);
-  border-color: rgba(226, 232, 240, 0.95);
-  background: var(--color-surface, #ffffff);
+  color: #5d6a76;
+  border-color: #dde4ea;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .topbar__icon-btn--whatsapp {
@@ -1435,33 +1597,34 @@ function handleLogout() {
   min-height: 38px;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.26);
-  background: linear-gradient(135deg, rgba(219, 234, 254, 0.72), rgba(255, 255, 255, 0.98));
+  border: 1px solid rgba(241, 148, 54, 0.24);
+  background: linear-gradient(135deg, rgba(255, 237, 218, 0.9), rgba(255, 255, 255, 0.98));
 }
 
 .topbar__profile strong {
   font-size: 13px;
-  color: var(--color-text, #0f172a);
+  color: #243140;
 }
 
 .topbar__profile span {
   font-size: 11px;
-  color: var(--color-primary-700, #1d4ed8);
+  color: #b76516;
 }
 
 .topbar__logout-btn {
   min-height: 38px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-danger-700, #b91c1c);
+  border: 1px solid rgba(241, 148, 54, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: #b76516;
   font-weight: 600;
 }
 
 .workspace__body {
   padding: 24px;
   min-width: 0;
+  background: transparent;
 }
 
 .command-palette {
@@ -1525,13 +1688,13 @@ function handleLogout() {
 }
 
 .command-palette__item:hover {
-  border-color: rgba(37, 99, 235, 0.24);
-  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(241, 148, 54, 0.24);
+  background: rgba(241, 148, 54, 0.06);
 }
 
 .command-palette__item--selected {
-  border-color: rgba(37, 99, 235, 0.45);
-  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(241, 148, 54, 0.45);
+  background: rgba(241, 148, 54, 0.1);
 }
 
 .command-palette__item-icon {
@@ -1567,6 +1730,7 @@ function handleLogout() {
 
   .sidebar__brand-copy,
   .sidebar__group-label,
+  .sidebar__group-description,
   .sidebar__link-label,
   .sidebar__quick-link-label,
   .sidebar__recent-link-label,

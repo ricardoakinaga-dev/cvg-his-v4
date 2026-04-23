@@ -60,3 +60,17 @@ export interface OwnerListFilters {
   page?: number;
   pageSize?: number;
 }
+
+export interface OwnerSummaryResponse {
+  owner: OwnerSummary;
+  patients: Array<{
+    id: string;
+    name: string;
+    species: string;
+    breed?: string | null;
+  }>;
+  stats: {
+    totalPatients: number;
+    totalEncounters: number;
+  };
+}

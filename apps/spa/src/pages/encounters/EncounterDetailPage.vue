@@ -28,6 +28,12 @@
           <DsButton variant="ghost" tag="a" :to="`/patients/${encounter.patientId}`">
             Ver paciente
           </DsButton>
+          <DsButton variant="secondary" :loading="financialLoading" @click="refreshEnterpriseSummary">
+            Atualizar resumo
+          </DsButton>
+          <DsButton v-if="encounter.status !== 'closed'" variant="secondary" @click="showFinancialCloseModal = true">
+            Fechar Financeiro
+          </DsButton>
           <DsButton v-if="canTransition" variant="secondary" @click="showTransitionModal = true">
             Transicionar Status
           </DsButton>
@@ -86,6 +92,36 @@
           </div>
         </DsCard>
 
+        <DsCard title="Resumo enterprise">
+          <div v-if="financialLoading && !encounterSummary" class="muted">Carregando resumo operacional...</div>
+          <div v-else class="detail-grid">
+            <div class="detail-row">
+              <span class="detail-row__label">Pedidos diagnósticos</span>
+              <span>{{ encounterSummary?.diagnostics.totalOrders ?? 0 }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Pedidos pendentes</span>
+              <span>{{ encounterSummary?.diagnostics.pendingOrders ?? 0 }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Resultados liberados</span>
+              <span>{{ encounterSummary?.diagnostics.releasedResults ?? 0 }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Total financeiro</span>
+              <span>{{ formatMoney(financialSummary?.total ?? 0) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Pago</span>
+              <span>{{ formatMoney(financialSummary?.paidAmount ?? 0) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Saldo</span>
+              <span>{{ formatMoney(financialSummary?.balanceDue ?? 0) }}</span>
+            </div>
+          </div>
+        </DsCard>
+
         <DsCard v-if="encounter.closeReason" title="Motivo do Fechamento">
           <p>{{ encounter.closeReason }}</p>
         </DsCard>
@@ -133,6 +169,35 @@
     </DsModal>
 
     <DsModal
+      :open="showFinancialCloseModal"
+      :teleport="false"
+      title="Fechar Financeiro"
+      size="md"
+      @close="showFinancialCloseModal = false"
+    >
+      <div class="form-field">
+        <label for="financialPaidAmount" class="form-field__label">Valor pago</label>
+        <DsInput id="financialPaidAmount" v-model.number="financialPaidAmount" type="number" />
+      </div>
+      <div class="form-field">
+        <label for="financialNotes" class="form-field__label">Notas</label>
+        <DsInput
+          id="financialNotes"
+          v-model="financialNotes"
+          type="textarea"
+          :rows="3"
+          placeholder="Observações do fechamento financeiro"
+        />
+      </div>
+      <template #footer>
+        <DsButton variant="primary" :loading="closingFinancial" @click="handleFinancialClose">
+          {{ closingFinancial ? 'Fechando...' : 'Confirmar fechamento' }}
+        </DsButton>
+        <DsButton variant="ghost" @click="showFinancialCloseModal = false">Cancelar</DsButton>
+      </template>
+    </DsModal>
+
+    <DsModal
       :open="showCloseModal"
       :teleport="false"
       title="Fechar Atendimento"
@@ -164,7 +229,12 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
 import { attachmentService } from '@/services/attachments';
-import type { EncounterSummary, EncounterTimelineEventSummary } from '@/types/encounter';
+import type {
+  EncounterSummary,
+  EncounterTimelineEventSummary,
+  EncounterFinancialSummary,
+  EncounterSummaryResponse
+} from '@/types/encounter';
 import {
   visitTypeLabel,
   encounterStatusLabel,
@@ -187,11 +257,16 @@ const encounter = ref<EncounterSummary | null>(null);
 const timeline = ref<EncounterTimelineEventSummary[]>([]);
 const loading = ref(true);
 const timelineLoading = ref(false);
+const financialLoading = ref(false);
 const error = ref('');
 const showTransitionModal = ref(false);
+const showFinancialCloseModal = ref(false);
 const showCloseModal = ref(false);
 const closeReason = ref('');
 const closing = ref(false);
+const closingFinancial = ref(false);
+const financialPaidAmount = ref(0);
+const financialNotes = ref('');
 const entityCache = useEntityCache();
 const attachments = ref<any[]>([]);
 const attachmentsLoading = ref(false);
@@ -200,6 +275,8 @@ const newAttachment = ref({ fileName: '', mimeType: 'application/pdf', checksum:
 
 const patientName = ref('');
 const ownerName = ref('');
+const financialSummary = ref<EncounterFinancialSummary | null>(null);
+const encounterSummary = ref<EncounterSummaryResponse | null>(null);
 
 const summaryCards = computed(() => [
   { icon: '🐾', label: 'Paciente', value: patientName.value || 'Carregando...' },
@@ -217,6 +294,13 @@ function encounterStatusVariant(s: string) {
     closed: 'neutral'
   };
   return (map[s] || 'default') as any;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
 }
 
 async function loadEntityNames(enc: EncounterSummary) {
@@ -279,6 +363,42 @@ async function loadTimeline() {
   }
 }
 
+async function refreshEnterpriseSummary() {
+  if (!encounter.value) return;
+  financialLoading.value = true;
+  try {
+    const summary = await encounterService.getSummary(encounter.value.id);
+    encounterSummary.value = summary;
+    financialSummary.value = summary.financial;
+  } catch {
+    try {
+      financialSummary.value = await encounterService.getFinancialSummary(encounter.value.id);
+    } catch {
+      financialSummary.value = null;
+    }
+  } finally {
+    financialLoading.value = false;
+  }
+}
+
+async function handleFinancialClose() {
+  if (!encounter.value) return;
+  closingFinancial.value = true;
+  try {
+    financialSummary.value = await encounterService.closeFinancial(encounter.value.id, {
+      paidAmount: Number(financialPaidAmount.value || 0),
+      notes: financialNotes.value.trim() || null
+    });
+    showFinancialCloseModal.value = false;
+    financialNotes.value = '';
+    await refreshEnterpriseSummary();
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Erro ao fechar financeiro');
+  } finally {
+    closingFinancial.value = false;
+  }
+}
+
 async function loadAttachments() {
   if (!encounter.value) return;
   attachmentsLoading.value = true;
@@ -318,7 +438,7 @@ onMounted(async () => {
     const enc = await encounterService.getById(id);
     encounter.value = enc;
     await loadEntityNames(enc);
-    await Promise.all([loadTimeline(), loadAttachments()]);
+    await Promise.all([loadTimeline(), loadAttachments(), refreshEnterpriseSummary()]);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimento';
   } finally {

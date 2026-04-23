@@ -274,12 +274,20 @@
                       :key="item.id"
                       type="button"
                       class="month-item"
-                      @click="goToDetail(item.id)"
+                      @click="openAppointmentDetails(item)"
                     >
                       <span>{{ timeLabel(item.scheduledAt) }}</span>
                       <strong>{{ patientName(item.patientId) }}</strong>
                       <small>{{ item.practitionerName || 'Sem profissional' }}</small>
                       <small>{{ operationalLabel(item) }}</small>
+                    </button>
+                    <button
+                      v-if="canManageScheduling"
+                      type="button"
+                      class="month-create-slot"
+                      @click="openSlotCreateFlow({ date: day.date })"
+                    >
+                      + Novo agendamento
                     </button>
                     <span v-if="appointmentsByDay(day.date).length > 5" class="month-item__more">
                       +{{ appointmentsByDay(day.date).length - 5 }} compromissos
@@ -331,7 +339,7 @@
                         type="button"
                         class="timeline-item"
                         :class="`timeline-item--${item.operational.stage}`"
-                        @click="goToDetail(item.id)"
+                        @click="openAppointmentDetails(item)"
                       >
                         <div class="timeline-item__head">
                           <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
@@ -345,6 +353,15 @@
                       </button>
                     </div>
 
+                    <button
+                      v-else-if="canManageScheduling"
+                      type="button"
+                      class="time-matrix__empty-button"
+                      :aria-label="`Criar agendamento em ${day.label} às ${formatHour(hour)}`"
+                      @click="openSlotCreateFlow({ date: day.date, hour })"
+                    >
+                      Disponível
+                    </button>
                     <span v-else class="time-matrix__empty">Disponível</span>
                   </div>
                 </template>
@@ -408,7 +425,7 @@
                         type="button"
                         class="timeline-item"
                         :class="`timeline-item--${item.operational.stage}`"
-                        @click="goToDetail(item.id)"
+                        @click="openAppointmentDetails(item)"
                       >
                         <div class="timeline-item__head">
                           <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
@@ -433,7 +450,7 @@
                         </div>
 
                         <div class="timeline-item__actions" @click.stop>
-                          <DsButton variant="ghost" size="sm" @click="goToDetail(item.id)">Ver</DsButton>
+                          <DsButton variant="ghost" size="sm" @click="openAppointmentDetails(item)">Ver</DsButton>
                           <DsButton
                             v-if="canCheckIn(item)"
                             variant="success"
@@ -473,6 +490,15 @@
                       </button>
                     </div>
 
+                    <button
+                      v-else-if="canManageScheduling"
+                      type="button"
+                      class="time-matrix__empty-button"
+                      :aria-label="slotAriaLabel(day.label, column.label, hour)"
+                      @click="openSlotCreateFlow({ date: day.date, hour, practitionerStaffId: column.id })"
+                    >
+                      Disponível
+                    </button>
                     <span v-else class="time-matrix__empty">Disponível</span>
                   </div>
                 </template>
@@ -499,7 +525,7 @@
 
     <AppointmentClientSelectorModal
       :open="showClientSelector"
-      @close="showClientSelector = false"
+      @close="closeClientSelector"
       @selected="handleClientSelected"
     />
 
@@ -517,10 +543,28 @@
         :lock-owner-selection="Boolean(selectedClient)"
         :restrict-patients-to-owner="Boolean(selectedClient)"
         :owner-snapshot="selectedClient"
+        :preset-scheduled-at="quickCreatePreset.scheduledAt"
+        :preset-duration-minutes="quickCreatePreset.durationMinutes"
+        :preset-practitioner-staff-id="quickCreatePreset.practitionerStaffId"
+        :professionals="overview?.professionals ?? []"
         @created="handleCreated"
         @cancel="closeQuickCreate"
       />
     </DsModal>
+
+    <AppointmentDetailsDrawer
+      :appointment="selectedAppointment"
+      :owner-name="selectedAppointmentOwnerName"
+      :patient-name="selectedAppointmentPatientName"
+      :can-check-in="selectedAppointment ? canCheckIn(selectedAppointment) : false"
+      :can-mark-no-show="selectedAppointment ? canMarkNoShow(selectedAppointment) : false"
+      :action-loading-id="actionLoadingId"
+      :action-kind="actionKind"
+      @close="selectedAppointment = null"
+      @check-in="checkIn"
+      @no-show="markNoShow"
+      @open-encounter="openEncounter"
+    />
   </div>
 </template>
 
@@ -536,6 +580,7 @@ import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppointmentClientSelectorModal from '@/components/appointments/AppointmentClientSelectorModal.vue';
+import AppointmentDetailsDrawer from '@/components/appointments/AppointmentDetailsDrawer.vue';
 import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
 import { apiRequest, ApiError } from '@/services/api';
 import { appointmentService } from '@/services/appointment';
@@ -565,6 +610,18 @@ interface CalendarDayCell {
   isToday: boolean;
 }
 
+interface AppointmentSlotPreset {
+  date: string;
+  hour?: number;
+  practitionerStaffId?: string;
+}
+
+interface QuickCreatePresetState {
+  scheduledAt: string;
+  practitionerStaffId: string;
+  durationMinutes: number;
+}
+
 const router = useRouter();
 const loading = ref(false);
 const error = ref('');
@@ -575,8 +632,10 @@ const demandForecast = ref<DemandForecastResponse | null>(null);
 const showClientSelector = ref(false);
 const showQuickCreate = ref(false);
 const selectedClient = ref<OwnerSummary | null>(null);
+const selectedAppointment = ref<SchedulingCockpitAppointmentSummary | null>(null);
 const actionLoadingId = ref('');
 const actionKind = ref<'checkin' | 'noshow' | ''>('');
+const pendingSlotPreset = ref<AppointmentSlotPreset | null>(null);
 
 const viewMode = ref<'day' | 'week' | 'month'>('day');
 const referenceDate = ref(new Date().toISOString().slice(0, 10));
@@ -594,6 +653,23 @@ const localFilters = ref({
 const selectedStatuses = ref<AppointmentStatus[]>([]);
 const ownerCache = ref<Record<string, string>>({});
 const patientCache = ref<Record<string, string>>({});
+const quickCreatePreset = computed<QuickCreatePresetState>(() => {
+  const slotPreset = pendingSlotPreset.value;
+  return {
+    scheduledAt: slotPreset ? buildSlotScheduledAt(slotPreset.date, slotPreset.hour) : '',
+    practitionerStaffId:
+      slotPreset?.practitionerStaffId && slotPreset.practitionerStaffId !== 'unassigned'
+        ? slotPreset.practitionerStaffId
+        : '',
+    durationMinutes: 30
+  };
+});
+const selectedAppointmentOwnerName = computed(() =>
+  selectedAppointment.value ? ownerName(selectedAppointment.value.ownerId) : ''
+);
+const selectedAppointmentPatientName = computed(() =>
+  selectedAppointment.value ? patientName(selectedAppointment.value.patientId) : ''
+);
 
 const viewOptions = [
   { value: 'month' as const, label: 'Mês' },
@@ -801,6 +877,17 @@ function formatHour(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`;
 }
 
+function buildSlotScheduledAt(date: string, hour?: number) {
+  if (typeof hour !== 'number') {
+    return `${date}T09:00`;
+  }
+  return `${date}T${String(hour).padStart(2, '0')}:00`;
+}
+
+function slotAriaLabel(dayLabel: string, columnLabel: string, hour: number) {
+  return `Criar agendamento em ${dayLabel}, ${columnLabel}, às ${formatHour(hour)}`;
+}
+
 function statusLabel(status: AppointmentStatus) {
   return {
     scheduled: 'Agendado',
@@ -1000,6 +1087,10 @@ async function loadOverview() {
     services.value = servicesResponse;
     demandForecast.value = forecastResponse;
     await loadReferenceData(overviewResponse.items);
+    if (selectedAppointment.value) {
+      selectedAppointment.value =
+        overviewResponse.items.find((item) => item.id === selectedAppointment.value?.id) ?? null;
+    }
   } catch (loadError) {
     if (loadError instanceof ApiError && loadError.status === 403) {
       permissionCodes.value = [];
@@ -1011,8 +1102,8 @@ async function loadOverview() {
   }
 }
 
-function goToDetail(appointmentId: string) {
-  router.push(`/appointments/${appointmentId}`);
+function openAppointmentDetails(item: SchedulingCockpitAppointmentSummary) {
+  selectedAppointment.value = item;
 }
 
 function canCheckIn(item: SchedulingCockpitAppointmentSummary) {
@@ -1079,6 +1170,15 @@ async function markNoShow(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function openCreateFlow() {
+  selectedAppointment.value = null;
+  pendingSlotPreset.value = null;
+  selectedClient.value = null;
+  showClientSelector.value = true;
+}
+
+function openSlotCreateFlow(slotPreset: AppointmentSlotPreset) {
+  selectedAppointment.value = null;
+  pendingSlotPreset.value = slotPreset;
   selectedClient.value = null;
   showClientSelector.value = true;
 }
@@ -1089,15 +1189,23 @@ function handleClientSelected(owner: OwnerSummary) {
   showQuickCreate.value = true;
 }
 
+function closeClientSelector() {
+  showClientSelector.value = false;
+  selectedClient.value = null;
+  pendingSlotPreset.value = null;
+}
+
 function closeQuickCreate() {
   showQuickCreate.value = false;
   selectedClient.value = null;
+  pendingSlotPreset.value = null;
 }
 
-function handleCreated(appointment: AppointmentSummary) {
+async function handleCreated(appointment: AppointmentSummary) {
   closeQuickCreate();
-  void loadOverview();
-  router.push(`/appointments/${appointment.id}`);
+  await loadOverview();
+  selectedAppointment.value =
+    overview.value?.items.find((item) => item.id === appointment.id) ?? null;
 }
 
 onMounted(async () => {
@@ -1417,6 +1525,32 @@ onMounted(async () => {
   font-size: 12px;
 }
 
+.month-create-slot,
+.time-matrix__empty-button {
+  width: 100%;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.month-create-slot {
+  min-height: 52px;
+  padding: 12px;
+  text-align: left;
+}
+
+.month-create-slot:hover,
+.month-create-slot:focus-visible,
+.time-matrix__empty-button:hover,
+.time-matrix__empty-button:focus-visible {
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(255, 237, 213, 0.6);
+  color: #c2410c;
+}
+
 .day-board {
   display: grid;
   gap: 12px;
@@ -1481,6 +1615,13 @@ onMounted(async () => {
 .time-matrix__empty {
   color: var(--color-text-muted, #94a3b8);
   font-size: 13px;
+}
+
+.time-matrix__empty-button {
+  min-height: 100%;
+  padding: 16px 12px;
+  font-size: 13px;
+  text-align: left;
 }
 
 .timeline-block {

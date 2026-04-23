@@ -55,7 +55,14 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/components/appointments/AppointmentQuickCreateForm.vue', () => ({
   default: {
-    template: '<div class="quick-create-stub">quick create</div>'
+    template: `
+      <div class="quick-create-stub">
+        quick create
+        <span class="scheduled-at">{{ presetScheduledAt }}</span>
+        <span class="practitioner-id">{{ presetPractitionerStaffId }}</span>
+      </div>
+    `,
+    props: ['presetScheduledAt', 'presetPractitionerStaffId']
   }
 }));
 
@@ -261,6 +268,63 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('quick create');
+  });
+
+  it('opens quick create from an empty slot with contextual presets', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const emptySlot = wrapper.findAll('button').find((button) => button.text().trim() === 'Disponível');
+    expect(emptySlot).toBeDefined();
+
+    await emptySlot!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.client-selector-stub').exists()).toBe(true);
+
+    await wrapper.find('.select-client').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.quick-create-stub').exists()).toBe(true);
+    expect(wrapper.find('.scheduled-at').text()).toBe('2026-04-12T07:00');
+    expect(wrapper.find('.practitioner-id').text()).toBe('');
+  });
+
+  it('opens appointment details in the drawer without leaving the agenda', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const appointmentButton = wrapper.findAll('button').find((button) =>
+      button.text().includes('Rex')
+    );
+    expect(appointmentButton).toBeDefined();
+
+    await appointmentButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Ver detalhe completo');
+    expect(wrapper.text()).toContain('Maria Silva');
+    expect(wrapper.text()).toContain('Rex');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('shows slot creation entry in month view', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const monthToggle = wrapper.findAll('button').find((button) => button.text().trim() === 'Mês');
+    expect(monthToggle).toBeDefined();
+
+    await monthToggle!.trigger('click');
+    await flushPromises();
+
+    const monthCreateButton = wrapper.findAll('button').find((button) =>
+      button.text().includes('Novo agendamento')
+    );
+    expect(monthCreateButton).toBeDefined();
   });
 
   it('shows access empty state when the session lacks scheduling.read', async () => {

@@ -2,7 +2,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
+import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
+import type { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
   CreateOwnerRequest,
   UpdateOwnerRequest
@@ -14,6 +16,8 @@ import { readJsonBody } from '../helpers/common.js';
 
 export interface OwnersRoutesHandlers {
   owners: OwnersService;
+  patients?: PatientsService;
+  encounters?: EncountersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
   enforceAbac?: (
@@ -38,7 +42,7 @@ export async function handleOwnersRoutes(
   correlationId: string,
   handlers: OwnersRoutesHandlers
 ): Promise<boolean> {
-  const { owners, audit, requirePrincipal, enforceAbac } = handlers;
+  const { owners, patients, encounters, audit, requirePrincipal, enforceAbac } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
   const sectorCodeHeader = request.headers['x-sector-code'];
@@ -129,6 +133,49 @@ export async function handleOwnersRoutes(
     });
 
     return json(response, 201, owner);
+  }
+
+  if (pathname.match(/^\/owners\/[^/]+\/summary$/) && method === 'GET') {
+    const match = pathname.match(/^\/owners\/([^/]+)\/summary$/);
+    if (!match) return false;
+    if (!patients || !encounters) return false;
+
+    const principal = requirePrincipal(request, 'owners.read');
+    const ownerId = match[1];
+    const owner = owners.getOrThrow(ownerId as never);
+    const relatedPatients = patients
+      .list()
+      .filter((patient) => patient.primaryOwnerId === owner.id)
+      .map((patient) => ({
+        id: patient.id,
+        name: patient.name,
+        species: patient.species,
+        breed: patient.breed ?? null
+      }));
+    const totalEncounters = encounters
+      .listAll()
+      .filter((encounter) => encounter.ownerId === owner.id).length;
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'owners',
+      action: 'read_summary',
+      entityType: 'owner',
+      entityId: owner.id,
+      payloadSummary: `Owner summary generated for ${owner.fullName}`,
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, {
+      owner,
+      patients: relatedPatients,
+      stats: {
+        totalPatients: relatedPatients.length,
+        totalEncounters
+      }
+    });
   }
 
   // GET /owners/:id - Get owner by ID

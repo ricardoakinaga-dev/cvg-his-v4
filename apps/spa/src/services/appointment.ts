@@ -68,5 +68,11 @@ export const appointmentService = {
       method: 'POST',
       body: JSON.stringify(reason ? { reason } : {})
     });
+  },
+
+  async startEncounter(id: string) {
+    return apiRequest<{ id: string }>(`/appointments/${id}/start-encounter`, {
+      method: 'POST'
+    });
   }
 };

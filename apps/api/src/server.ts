@@ -74,6 +74,7 @@ import { handleEmailRoutes } from './routes/email-routes.js';
 import { handleSmsRoutes } from './routes/sms-routes.js';
 import { handleFinancialRoutes } from './routes/financial-routes.js';
 import { handleSchedulingRoutes } from './routes/scheduling-routes.js';
+import { handleAgendaConfigRoutes } from './routes/agenda-config-routes.js';
 import { handleGoogleCalendarRoutes } from './routes/google-calendar-routes.js';
 import { handleLaboratoryIntegrationRoutes } from './routes/laboratory-integration-routes.js';
 import { handleMlRoutes } from './routes/ml-routes.js';
@@ -1029,7 +1030,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (
           await handleSchedulingRoutes(pathname, request, response, correlationId, {
             scheduling,
+            encounters,
             smartScheduling,
+            audit,
+            requirePrincipal
+          })
+        ) {
+          return;
+        }
+
+        if (
+          await handleAgendaConfigRoutes(pathname, request, response, correlationId, {
             audit,
             requirePrincipal
           })
@@ -1597,6 +1608,46 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           const principal = requirePrincipal(request, 'encounters.read');
           const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
           const encounter = encounters.getOrThrow(encounterId as never);
+
+          if (pathname.endsWith('/summary')) {
+            const timeline = await encounters.listTimelineAsync(encounterId as never);
+            const orders = diagnostics.list(encounterId as never);
+            let financial = null;
+
+            try {
+              financial = await encounterFinancial.getSummary(encounterId as never);
+            } catch {
+              financial = null;
+            }
+
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'encounters',
+              'read_summary',
+              'encounter',
+              encounter.id,
+              `Encounter ${encounter.id} summary inspected`,
+              'medium',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(
+              JSON.stringify({
+                encounter,
+                timeline,
+                diagnostics: {
+                  totalOrders: orders.length,
+                  pendingOrders: orders.filter((order) => order.status !== 'resulted').length,
+                  releasedResults: orders.filter((order) => order.status === 'resulted').length,
+                  latestOrders: orders.slice(0, 5)
+                },
+                financial
+              })
+            );
+            return;
+          }
+
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -1766,6 +1817,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (
           await handleOwnersRoutes(pathname, request, response, correlationId, {
             owners,
+            patients,
+            encounters,
             audit,
             requirePrincipal,
             enforceAbac
@@ -1777,6 +1830,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (
           await handlePatientsRoutes(pathname, request, response, correlationId, {
             patients,
+            owners,
+            encounters,
             audit,
             requirePrincipal
           })

@@ -5,7 +5,9 @@ import type {
   TransitionEncounterRequest,
   CloseEncounterRequest,
   EncountersListResponse,
-  EncounterTimelineResponse
+  EncounterTimelineResponse,
+  EncounterSummaryResponse,
+  EncounterFinancialSummary
 } from '@/types/encounter';
 
 export const encounterService = {
@@ -42,5 +44,27 @@ export const encounterService = {
   async getTimeline(id: string): Promise<EncounterTimelineResponse['items']> {
     const response = await apiRequest<EncounterTimelineResponse>(`/encounters/${id}/timeline`);
     return response.items ?? [];
+  },
+
+  async getSummary(id: string): Promise<EncounterSummaryResponse> {
+    return apiRequest<EncounterSummaryResponse>(`/encounters/${id}/summary`);
+  },
+
+  async getFinancialSummary(id: string): Promise<EncounterFinancialSummary> {
+    return apiRequest<EncounterFinancialSummary>(`/encounters/${id}/financial-summary`);
+  },
+
+  async closeFinancial(
+    id: string,
+    payload: {
+      paidAmount: number;
+      notes?: string | null;
+      installments?: Array<{ label?: string; amount: number; dueAt?: string | null; notes?: string | null }>;
+    }
+  ): Promise<EncounterFinancialSummary> {
+    return apiRequest<EncounterFinancialSummary>(`/encounters/${id}/financial-close`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 };
