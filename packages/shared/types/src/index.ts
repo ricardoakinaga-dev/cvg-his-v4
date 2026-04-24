@@ -238,12 +238,43 @@ export interface OwnerContact {
   readonly primary: boolean;
 }
 
+export interface OwnerAddress {
+  readonly zipCode?: string;
+  readonly street?: string;
+  readonly number?: string;
+  readonly complement?: string;
+  readonly state?: string;
+  readonly city?: string;
+  readonly district?: string;
+  readonly reference?: string;
+  readonly cityCode?: string;
+}
+
+export interface OwnerProfile {
+  readonly birthDate?: string;
+  readonly sex?: 'female' | 'male' | 'other' | 'unknown';
+  readonly group?: string;
+  readonly receiveSms?: boolean;
+  readonly personType?: 'individual' | 'company';
+  readonly rg?: string;
+}
+
+export interface OwnerFinancialProfile {
+  readonly allowedDebtLimit?: number;
+  readonly creditBalance?: number;
+  readonly availablePoints?: number;
+  readonly blockedPoints?: number;
+}
+
 export interface OwnerSummary {
   readonly id: OwnerId;
   readonly accountId: AccountId;
   readonly fullName: string;
   readonly documentId?: string;
   readonly contacts: readonly OwnerContact[];
+  readonly address?: OwnerAddress;
+  readonly profile?: OwnerProfile;
+  readonly financialProfile?: OwnerFinancialProfile;
   readonly financialResponsible: boolean;
   readonly administrativeNotes?: string;
   readonly status: 'active' | 'inactive';

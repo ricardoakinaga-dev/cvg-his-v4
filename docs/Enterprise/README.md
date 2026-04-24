@@ -4,9 +4,9 @@ Esta pasta contem apenas os documentos **ativos** e **usados na construcao atual
 
 **Taxonomia:** `CANONICO`
 **Papel no sistema documental:** indice de entrada da pasta ativa `docs/Enterprise`
-**Ler em conjunto com:** `0337-RELATORIO-REAUDITORIA-EXECUTAVEL-2026-04-22.md`, `0338-PLANO-EXECUTIVO-RUMO-96-2026-04-22.md`, `0339-CHECKLIST-FORMAL-REQUISITOS-VIVOS-2026-04-22.md`, `0340-SCORECARD-E-GATE-RUMO-96-2026-04-22.md`, `101-ROADMAP-RUMO-96.md`, `201-BACKLOG-RUMO-96.md`
+**Ler em conjunto com:** `0337-RELATORIO-REAUDITORIA-EXECUTAVEL-2026-04-22.md`, `0338-PLANO-EXECUTIVO-RUMO-96-2026-04-22.md`, `0339-CHECKLIST-FORMAL-REQUISITOS-VIVOS-2026-04-22.md`, `0340-SCORECARD-E-GATE-RUMO-96-2026-04-22.md`, `0347-RELATORIO-CICLO-VETUS-PARIDADE-COMERCIAL-2026-04-24.md`, `0348-RELATORIO-AUDITORIA-DOCS-VS-CODIGO-2026-04-24.md`, `0349-PLANO-EXECUTIVO-FECHAMENTO-GAP-96-2026-04-24.md`, `0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md`, `0351-BACKLOG-FECHAMENTO-GAP-96-2026-04-24.md`, `0352-RELATORIO-PARCIAL-ONDA-P2-VETUS-COMERCIAL-2026-04-24.md`, `101-ROADMAP-RUMO-96.md`, `201-BACKLOG-RUMO-96.md`
 
-**Estado atual:** a fase rumo a `96/100` foi concluida. O score oficial do programa agora e `96/100`, sustentado por `0339`, `0340`, `0345`, `0346`, `201` e `0100`, com `pnpm typecheck`, `pnpm test:integration`, `pnpm test:smoke`, `pnpm validate:openapi` e `pnpm deploy:check` em `PASS`.
+**Estado atual:** a fase rumo a `96/100` foi concluida e segue como baseline historico do programa. Em `2026-04-24`, a auditoria `0348` recalculou a nova frente expandida como `Enterprise core 92/100`, `Paridade Vetus comercial 51/100` e `Aderencia docs vs codigo 89/100`. O plano `0349`, o roadmap `0350` e o backlog `0351` passam a reger a subida dessas tres notas para `96/100`. A execucao posterior fechou todos os itens `P0` e `P1` do backlog `0351`, fechou parcialmente `P2` com relatorio operacional PDV e varredura de dados locais, e implementou spec E2E Vetus comercial. A promocao final ainda depende da execucao verde dos gates `P2` de e2e/integracao/smoke e auditoria final.
 
 ## Taxonomia ativa
 
@@ -28,6 +28,12 @@ Esta pasta contem apenas os documentos **ativos** e **usados na construcao atual
 - `0344-FECHAMENTO-INTEGRACOES-E-BACKOFFICE-PREMIUM-2026-04-22.md`
 - `0345-FECHAMENTO-SEC-ML-AUD-2026-04-22.md`
 - `0346-RELATORIO-AUDITORIA-FINAL-96-2026-04-22.md`
+- `0347-RELATORIO-CICLO-VETUS-PARIDADE-COMERCIAL-2026-04-24.md`
+- `0348-RELATORIO-AUDITORIA-DOCS-VS-CODIGO-2026-04-24.md`
+- `0349-PLANO-EXECUTIVO-FECHAMENTO-GAP-96-2026-04-24.md`
+- `0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md`
+- `0351-BACKLOG-FECHAMENTO-GAP-96-2026-04-24.md`
+- `0352-RELATORIO-PARCIAL-ONDA-P2-VETUS-COMERCIAL-2026-04-24.md`
 - `101-ROADMAP-RUMO-96.md`
 - `201-BACKLOG-RUMO-96.md`
 - `0336-RELATORIO-AUDITORIA-EXECUTAVEL-2026-04-22.md`

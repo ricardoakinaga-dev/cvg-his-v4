@@ -53,6 +53,29 @@
     </section>
 
     <section class="hub-section">
+      <h2 class="section-title">Arquitetura operacional do Laboratório</h2>
+      <div class="lab-flow-grid" aria-label="Fluxo diagnóstico laboratorial">
+        <article v-for="step in operationalFlow" :key="step.title" class="lab-flow-card">
+          <span>{{ step.eyebrow }}</span>
+          <strong>{{ step.title }}</strong>
+          <p>{{ step.description }}</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="hub-section">
+      <h2 class="section-title">Camadas do domínio</h2>
+      <div class="section-grid">
+        <DsCard v-for="layer in domainLayers" :key="layer.title" :title="layer.title" :icon="layer.icon">
+          <p class="card-description">{{ layer.description }}</p>
+          <DsButton v-if="layer.to" variant="secondary" tag="a" :to="layer.to" size="sm">
+            {{ layer.action }}
+          </DsButton>
+        </DsCard>
+      </div>
+    </section>
+
+    <section class="hub-section">
       <h2 class="section-title">Exames e Laudos</h2>
       <div class="section-grid">
         <DsCard title="Pedidos de Exame" icon="🧪">
@@ -136,6 +159,82 @@ const summary = ref<LaboratoryDashboardSummary>({
   releasedResults: 0,
   equipmentActive: 0
 });
+const operationalFlow = [
+  {
+    eyebrow: 'Entrada',
+    title: 'Requisição de exame',
+    description: 'A ordem nasce vinculada ao cliente, animal, data e necessidade assistencial.'
+  },
+  {
+    eyebrow: 'Fluxo',
+    title: 'Esteira de Exames',
+    description: 'Orquestra estados como Solicitado, Coletado, Em Análise, Laudado e Entregue.'
+  },
+  {
+    eyebrow: 'Operação',
+    title: 'Coleta',
+    description: 'Transforma a solicitação em amostra rastreável para execução técnica.'
+  },
+  {
+    eyebrow: 'Análise',
+    title: 'Resultado especializado',
+    description: 'Hemogramas, Urina e Bioquímico seguem modelos analíticos próprios.'
+  },
+  {
+    eyebrow: 'Documento',
+    title: 'Laudo',
+    description: 'Formaliza conclusão clínica com corpo, anexos, datas e valor.'
+  },
+  {
+    eyebrow: 'Saída',
+    title: 'Entrega',
+    description: 'Fecha o ciclo diagnóstico e devolve evidência ao atendimento.'
+  }
+];
+const domainLayers = [
+  {
+    icon: '🧪',
+    title: 'Exames',
+    description: 'Camada de ordem/fila operacional por cliente, animal e data.',
+    action: 'Abrir exames',
+    to: '/laboratory/orders'
+  },
+  {
+    icon: '📋',
+    title: 'Laudos',
+    description: 'Documento clínico final com data de entrada, finalização, valor e documentação fotográfica.',
+    action: 'Abrir laudos',
+    to: '/laboratory/results'
+  },
+  {
+    icon: '📄',
+    title: 'Tipos de Laudo',
+    description: 'Template com título e corpo para padronizar emissão diagnóstica.',
+    action: 'Abrir templates',
+    to: '/laboratory/report-types'
+  },
+  {
+    icon: '🩸',
+    title: 'Vlr. Ref. Hemograma',
+    description: 'Norma hematológica por espécie, parâmetro, unidade e faixa esperada.',
+    action: 'Abrir referências',
+    to: '/laboratory/reference-values'
+  },
+  {
+    icon: '⚗️',
+    title: 'Vlr. Ref. Bioquímico',
+    description: 'Norma bioquímica que transforma resultado numérico em interpretação clínica.',
+    action: 'Abrir referências',
+    to: '/laboratory/reference-values'
+  },
+  {
+    icon: '🔧',
+    title: 'Equipamentos',
+    description: 'Infraestrutura técnica, manutenção e calibração que sustentam confiabilidade da medição.',
+    action: 'Abrir equipamentos',
+    to: '/laboratory/equipment'
+  }
+];
 
 async function load() {
   loading.value = true;
@@ -198,6 +297,35 @@ onMounted(load);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
+}
+
+.lab-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.lab-flow-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+}
+
+.lab-flow-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.lab-flow-card p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
 }
 
 .card-description {

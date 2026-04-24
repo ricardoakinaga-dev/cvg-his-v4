@@ -1,9 +1,9 @@
 <template>
   <div class="list-page">
     <AppPageHeader
-      title="Serviços"
+      title="Cadastro de Serviços"
       :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços']"
-      subtitle="Catálogo de serviços cadastrados no sistema">
+      subtitle="Catálogo mestre que conecta agenda, comanda, faturamento e parametrização fiscal.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
         <DsButton variant="primary" @click="router.push('/services/new')">Novo Serviço</DsButton>
@@ -34,7 +34,7 @@
     </section>
 
     <section class="list-page__story">
-      <DsCard title="Leitura rápida">
+      <DsCard title="Leitura operacional Vetus">
         <div class="story-grid">
           <div v-for="card in storyCards" :key="card.label" class="story-card">
             <span class="story-card__label">{{ card.label }}</span>
@@ -45,28 +45,64 @@
       </DsCard>
     </section>
 
+    <section class="list-page__story">
+      <div class="service-flow-grid">
+        <article v-for="item in serviceFlow" :key="item.title" class="service-flow-card">
+          <span>{{ item.eyebrow }}</span>
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.description }}</p>
+        </article>
+      </div>
+    </section>
+
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
-    <div class="search-bar">
-      <DsInput v-model="searchQuery" label="" placeholder="Buscar por nome ou código..." @input="debouncedSearch" />
-    </div>
+    <DsCard title="Pesquisa">
+      <div class="legacy-filter-grid">
+        <DsInput v-model="legacyFilters.id" label="Id" placeholder="Id" />
+        <DsInput v-model="legacyFilters.description" label="Descrição" placeholder="Descrição" />
+        <label class="active-filter">
+          <input v-model="legacyFilters.activeOnly" type="checkbox" />
+          <span>Serviços Ativos</span>
+        </label>
+        <DsButton variant="secondary" :loading="loading" @click="loadData">
+          Pesquisar
+        </DsButton>
+      </div>
+    </DsCard>
+
+    <section class="list-page__story">
+      <div class="service-config-grid">
+        <DsCard title="Tabela de Preço">
+          <p>
+            O serviço aceita preço base e pode receber valores por tabela comercial, preservando a
+            diferença entre catálogo e venda.
+          </p>
+        </DsCard>
+        <DsCard title="Tabela Fiscal">
+          <p>
+            A parametrização fiscal por empresa vincula serviço a NFS-e, CFOP e regras tributárias.
+          </p>
+        </DsCard>
+      </div>
+    </section>
 
     <DataTable
       :columns="columns"
-      :rows="services"
+      :rows="filteredServices"
       :loading="loading"
       empty-icon="🛠️"
       empty-title="Nenhum serviço encontrado"
       empty-description="Cadastre o primeiro serviço para começar."
       variant="hoverable"
     >
+      <template #cell-id="{ row }">
+        <code>{{ (row as ServiceSummary).id }}</code>
+      </template>
       <template #cell-name="{ row }">
         {{ (row as ServiceSummary).name }}
-      </template>
-      <template #cell-code="{ row }">
-        {{ (row as ServiceSummary).code ?? '—' }}
       </template>
       <template #cell-basePrice="{ row }">
         {{ formatCurrency((row as ServiceSummary).basePrice) }}
@@ -79,7 +115,7 @@
       <template #cell-actions="{ row }">
         <div class="row-actions">
           <DsButton size="sm" variant="secondary" @click="router.push(`/services/${(row as ServiceSummary).id}`)">
-            Ver
+            Abrir
           </DsButton>
           <DsButton size="sm" variant="secondary" @click="router.push(`/services/${(row as ServiceSummary).id}/edit`)">
             Editar
@@ -91,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
@@ -101,31 +137,44 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { DataTableColumn } from '@/components/DataTable.vue';
-import { computed } from 'vue';
 
 const router = useRouter();
-const services = ref<any[]>([]);
+const services = ref<ServiceSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
-const searchQuery = ref('');
+const legacyFilters = ref({
+  id: '',
+  description: '',
+  activeOnly: false
+});
 
 const columns: DataTableColumn[] = [
-  { key: 'name', label: 'Nome' },
-  { key: 'code', label: 'Código' },
-  { key: 'basePrice', label: 'Preço Base' },
+  { key: 'id', label: 'Id' },
+  { key: 'name', label: 'Descrição' },
+  { key: 'basePrice', label: 'Valor' },
   { key: 'active', label: 'Status' },
-  { key: 'actions', label: 'Ações', class: 'table__actions-col' }
+  { key: 'actions', label: 'Abrir', class: 'table__actions-col' }
 ];
 
 const activeCount = computed(() => services.value.filter((service) => service.active).length);
 const inactiveCount = computed(() => services.value.filter((service) => !service.active).length);
+const filteredServices = computed(() => {
+  const id = normalizeSearch(legacyFilters.value.id);
+  const description = normalizeSearch(legacyFilters.value.description);
+
+  return services.value.filter((service) => {
+    const matchesId =
+      !id || normalizeSearch(`${service.id} ${service.code ?? ''}`).includes(id);
+    const matchesDescription =
+      !description ||
+      normalizeSearch(`${service.name} ${service.description ?? ''}`).includes(description);
+    const matchesActive = !legacyFilters.value.activeOnly || service.active;
+    return matchesId && matchesDescription && matchesActive;
+  });
+});
 const filteredCount = computed(
   () =>
-    services.value.filter((service) => {
-      const q = searchQuery.value.toLowerCase();
-      if (!q) return true;
-      return service.name.toLowerCase().includes(q) || (service.code ?? '').toLowerCase().includes(q);
-    }).length
+    filteredServices.value.length
 );
 const activeRate = computed(() => {
   if (!services.value.length) return '0%';
@@ -137,15 +186,39 @@ const storyCards = computed(() => [
   { label: 'Taxa ativa', value: activeRate.value, hint: 'Percentual operacional' },
   { label: 'Filtrados', value: filteredCount.value.toString(), hint: 'Resultados da busca' }
 ]);
+const serviceFlow = [
+  {
+    eyebrow: 'Agenda',
+    title: 'Agenda usa ativos agendáveis',
+    description: 'A agenda consome o subconjunto ativo e elegível para marcação.'
+  },
+  {
+    eyebrow: 'Comanda',
+    title: 'Comanda cobra execução',
+    description: 'Serviços executados entram na conta e impactam o fechamento.'
+  },
+  {
+    eyebrow: 'Fiscal',
+    title: 'Fiscal parametriza NFS-e',
+    description: 'A tabela fiscal direciona tributação e relatórios de serviços prestados.'
+  },
+  {
+    eyebrow: 'Governança',
+    title: 'Importação mantém master data',
+    description: 'O cadastro precisa ser controlado porque alimenta múltiplos módulos.'
+  }
+];
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-let debounceTimer: ReturnType<typeof setTimeout>;
-function debouncedSearch() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => loadData(searchQuery.value), 300);
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
 }
 
 async function loadData(search?: string) {
@@ -210,7 +283,8 @@ onMounted(loadData);
   gap: 12px;
 }
 
-.story-card {
+.story-card,
+.service-flow-card {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
@@ -241,8 +315,53 @@ onMounted(loadData);
   color: var(--color-text-muted, #64748b);
 }
 
-.search-bar {
-  max-width: 400px;
+.service-flow-grid,
+.service-config-grid,
+.legacy-filter-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.service-flow-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.service-config-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.service-config-grid p,
+.service-flow-card p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+}
+
+.service-flow-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.legacy-filter-grid {
+  grid-template-columns: minmax(120px, 0.3fr) minmax(220px, 1fr) auto auto;
+  align-items: end;
+}
+
+.active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #0f172a);
+}
+
+.active-filter input {
+  width: 18px;
+  height: 18px;
 }
 
 .row-actions {
@@ -266,5 +385,15 @@ onMounted(loadData);
 .status-badge--inactive {
   background: var(--color-neutral-100, #f1f5f9);
   color: var(--color-neutral-600, #475569);
+}
+
+code {
+  word-break: break-all;
+}
+
+@media (max-width: 760px) {
+  .legacy-filter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

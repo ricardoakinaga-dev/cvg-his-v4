@@ -128,6 +128,19 @@ export class ApiCall {
     return res.json();
   }
 
+  async patch(path: string, data: unknown) {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`API PATCH ${path} failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  }
+
   async get(path: string) {
     const res = await fetch(`${API_URL}${path}`, {
       headers: { Authorization: `Bearer ${this.token}` }

@@ -13,11 +13,11 @@
       aria-modal="true"
       aria-labelledby="appointment-details-drawer-title"
     >
-      <DsCard class="appointment-details-card">
+      <DsCard class="appointment-details-card appointment-details-card--from-agenda">
         <template #title>
           <div class="appointment-details-card__title">
             <div>
-              <p class="appointment-details-card__eyebrow">Agendamento selecionado</p>
+              <p class="appointment-details-card__eyebrow">Aberto a partir da grade da agenda</p>
               <strong id="appointment-details-drawer-title">
                 {{ patientName || 'Paciente em carregamento' }}
               </strong>
@@ -34,6 +34,9 @@
         </template>
 
         <div class="appointment-details-card__stack">
+          <div class="appointment-details-card__origin-badge">
+            Aberto a partir da grade da agenda
+          </div>
           <div class="appointment-details-card__headline">
             <span class="status-pill" :class="`status-pill--${appointment.operational.stage}`">
               {{ appointment.operational.label }}
@@ -104,6 +107,17 @@
             <DsButton variant="secondary" tag="a" :href="`/appointments/${appointment.id}`">
               Ver detalhe completo
             </DsButton>
+            <DsButton variant="secondary" tag="a" :href="editHref">
+              Editar
+            </DsButton>
+            <DsButton
+              v-if="canCancel"
+              variant="danger"
+              :loading="actionLoadingId === appointment.id && actionKind === 'cancel'"
+              @click="emit('cancel', appointment)"
+            >
+              Cancelar Agendamento
+            </DsButton>
             <DsButton
               v-if="canCheckIn"
               variant="success"
@@ -154,14 +168,16 @@ const props = withDefaults(
     appointment: SchedulingCockpitAppointmentSummary | null;
     ownerName?: string;
     patientName?: string;
+    canCancel?: boolean;
     canCheckIn?: boolean;
     canMarkNoShow?: boolean;
     actionLoadingId?: string;
-    actionKind?: 'checkin' | 'noshow' | '';
+    actionKind?: 'cancel' | 'checkin' | 'noshow' | '';
   }>(),
   {
     ownerName: '',
     patientName: '',
+    canCancel: false,
     canCheckIn: false,
     canMarkNoShow: false,
     actionLoadingId: '',
@@ -171,6 +187,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   close: [];
+  cancel: [appointment: SchedulingCockpitAppointmentSummary];
   'check-in': [appointment: SchedulingCockpitAppointmentSummary];
   'no-show': [appointment: SchedulingCockpitAppointmentSummary];
   'open-encounter': [appointment: SchedulingCockpitAppointmentSummary];
@@ -183,6 +200,26 @@ const encounterLabel = computed(() =>
 const showQueueAction = computed(() =>
   props.appointment ? ['checked_in', 'called'].includes(props.appointment.operational.stage) : false
 );
+const editHref = computed(() => {
+  if (!props.appointment) return '/appointments/new';
+
+  const params = new URLSearchParams({
+    appointmentId: props.appointment.id,
+    ownerId: props.appointment.ownerId,
+    patientId: props.appointment.patientId,
+    scheduledAt: props.appointment.scheduledAt,
+    durationMinutes: String(props.appointment.durationMinutes || 30),
+    visitType: props.appointment.visitType,
+    practitionerStaffId: props.appointment.practitionerStaffId || '',
+    serviceId: props.appointment.serviceId || '',
+    unit: props.appointment.unit || '',
+    specialty: props.appointment.specialty || '',
+    resourceLabel: props.appointment.resourceLabel || '',
+    reason: props.appointment.reason || ''
+  });
+
+  return `/appointments/new?${params.toString()}`;
+});
 </script>
 
 <style scoped>
@@ -214,6 +251,16 @@ const showQueueAction = computed(() =>
 .appointment-details-card {
   height: 100%;
   overflow: auto;
+}
+
+.appointment-details-card--from-agenda {
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  background:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.98) 18%),
+    #fff;
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .appointment-details-card__title,
@@ -253,6 +300,19 @@ const showQueueAction = computed(() =>
 .appointment-details-card__stack {
   display: grid;
   gap: 16px;
+}
+
+.appointment-details-card__origin-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-primary-700, #1d4ed8);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .appointment-details-card__headline {

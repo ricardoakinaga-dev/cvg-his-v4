@@ -7,13 +7,7 @@
     role="application"
     aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
-    <aside
-      ref="sidebarEl"
-      class="sidebar"
-      :class="{ 'sidebar--scrolled': isSidebarScrolled }"
-      role="navigation"
-      aria-label="Navegacao principal"
-    >
+    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
       <div class="sidebar__brand">
         <div class="sidebar__brand-mark">
           <span class="sidebar__brand-mark-logo">V</span>
@@ -56,69 +50,40 @@
         />
       </div>
 
-      <nav class="sidebar__nav" aria-label="Navegação principal">
-        <details
-          v-for="group in filteredGroups"
-          :key="group.id"
-          class="sidebar__group"
-          :class="{ 'sidebar__group--active': matchingNavGroup?.id === group.id }"
-          :open="shouldOpenGroup(group.id)"
-        >
-          <summary class="sidebar__group-summary">
-            <span class="sidebar__group-summary-text">
-              <span class="sidebar__group-icon">{{ group.icon }}</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-copy">
-                <span class="sidebar__group-label">{{ group.label }}</span>
-                <small class="sidebar__group-description">{{ group.description }}</small>
-              </span>
-            </span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
-          </summary>
-
-          <div class="sidebar__group-body">
-            <section
-              v-for="section in group.sections"
-              :key="section.id"
-              class="sidebar__section"
-              :class="{ 'sidebar__section--active': currentLocation?.section.id === section.id }"
-            >
-              <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
-                {{ section.label }}
-              </p>
-              <router-link
-                v-for="item in section.items"
-                :key="item.path"
-                :to="item.path"
-                class="sidebar__link"
-                :class="{ 'sidebar__link--active': isActivePath(item.path) }"
-                :title="item.label"
-              >
-                <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
-                <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
-                  {{ item.label }}
+      <div
+        ref="sidebarNavEl"
+        class="sidebar__content"
+        :class="{
+          'sidebar__content--scrolled': isSidebarScrolled,
+          'sidebar__content--top-fade': isSidebarScrolled,
+          'sidebar__content--bottom-fade': !isSidebarNearBottom
+        }"
+      >
+        <nav class="sidebar__nav" aria-label="Navegação principal">
+          <details
+            v-for="group in filteredGroups"
+            :key="group.id"
+            class="sidebar__group"
+            :class="{ 'sidebar__group--active': matchingNavGroup?.id === group.id }"
+            :open="shouldOpenGroup(group.id)"
+          >
+            <summary class="sidebar__group-summary">
+              <span class="sidebar__group-summary-text">
+                <span class="sidebar__group-icon">{{ group.icon }}</span>
+                <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-copy">
+                  <span class="sidebar__group-label">{{ group.label }}</span>
+                  <small class="sidebar__group-description">{{ group.description }}</small>
                 </span>
-              </router-link>
-            </section>
-          </div>
-        </details>
-      </nav>
+              </span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
+            </summary>
 
-      <section class="sidebar__utility-stack">
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar__utility-label">Utilitários</div>
-        <details
-          v-if="filteredEnterpriseSections.length"
-          class="sidebar__utility-group sidebar__utility-group--enterprise"
-        >
-          <summary class="sidebar__utility-summary">
-            <span class="sidebar__eyebrow">Console Enterprise</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
-          </summary>
-          <div class="sidebar__panel sidebar__panel--enterprise">
-            <div class="sidebar__enterprise-groups">
+            <div class="sidebar__group-body">
               <section
-                v-for="section in filteredEnterpriseSections"
+                v-for="section in group.sections"
                 :key="section.id"
                 class="sidebar__section"
+                :class="{ 'sidebar__section--active': currentLocation?.section.id === section.id }"
               >
                 <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
                   {{ section.label }}
@@ -127,7 +92,7 @@
                   v-for="item in section.items"
                   :key="item.path"
                   :to="item.path"
-                  class="sidebar__link sidebar__link--utility"
+                  class="sidebar__link"
                   :class="{ 'sidebar__link--active': isActivePath(item.path) }"
                   :title="item.label"
                 >
@@ -138,75 +103,114 @@
                 </router-link>
               </section>
             </div>
-          </div>
-        </details>
+          </details>
+        </nav>
 
-        <details v-if="favoriteLinks.length" class="sidebar__utility-group">
-          <summary class="sidebar__utility-summary">
-            <span class="sidebar__eyebrow">Favoritos</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Atalhos pessoais</span>
-          </summary>
-          <section class="sidebar__panel">
-            <div class="sidebar__panel-head">
-              <button
-                v-if="!appStore.sidebarCollapsed"
-                class="sidebar__ghost-btn"
-                type="button"
-                @click="toggleCurrentFavoriteRoute()"
-              >
-                {{ isCurrentRouteFavorite ? 'Desfavoritar atual' : 'Favoritar atual' }}
-              </button>
+        <section class="sidebar__utility-stack">
+          <div v-if="!appStore.sidebarCollapsed" class="sidebar__utility-label">Utilitários</div>
+          <details
+            v-if="filteredEnterpriseSections.length"
+            class="sidebar__utility-group sidebar__utility-group--enterprise"
+          >
+            <summary class="sidebar__utility-summary">
+              <span class="sidebar__eyebrow">Console Enterprise</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
+            </summary>
+            <div class="sidebar__panel sidebar__panel--enterprise">
+              <div class="sidebar__enterprise-groups">
+                <section
+                  v-for="section in filteredEnterpriseSections"
+                  :key="section.id"
+                  class="sidebar__section"
+                >
+                  <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+                    {{ section.label }}
+                  </p>
+                  <router-link
+                    v-for="item in section.items"
+                    :key="item.path"
+                    :to="item.path"
+                    class="sidebar__link sidebar__link--utility"
+                    :class="{ 'sidebar__link--active': isActivePath(item.path) }"
+                    :title="item.label"
+                  >
+                    <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+                    <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                      {{ item.label }}
+                    </span>
+                  </router-link>
+                </section>
+              </div>
             </div>
-            <div class="sidebar__quick-links">
-              <router-link
-                v-for="item in favoriteLinks"
-                :key="item.path"
-                :to="item.path"
-                class="sidebar__quick-link"
-                :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
-              >
-                <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
-                <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
-                  {{ item.label }}
-                </span>
-              </router-link>
-            </div>
-          </section>
-        </details>
+          </details>
 
-        <details v-if="recentLinks.length" class="sidebar__utility-group">
-          <summary class="sidebar__utility-summary">
-            <span class="sidebar__eyebrow">Recentes</span>
-            <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Histórico de navegação</span>
-          </summary>
-          <section class="sidebar__panel sidebar__panel--recent">
-            <div class="sidebar__panel-head">
-              <button
-                v-if="!appStore.sidebarCollapsed"
-                class="sidebar__ghost-btn"
-                type="button"
-                @click="appStore.clearRecentRoutes()"
-              >
-                Limpar
-              </button>
-            </div>
-            <div class="sidebar__recent-list">
-              <router-link
-                v-for="item in recentLinks"
-                :key="item.path"
-                :to="item.path"
-                class="sidebar__recent-link"
-                :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
-              >
-                <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
-                <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
-                  {{ item.label }}
-                </span>
-              </router-link>
-            </div>
-          </section>
-        </details>
-      </section>
+          <details v-if="favoriteLinks.length" class="sidebar__utility-group">
+            <summary class="sidebar__utility-summary">
+              <span class="sidebar__eyebrow">Favoritos</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Atalhos pessoais</span>
+            </summary>
+            <section class="sidebar__panel">
+              <div class="sidebar__panel-head">
+                <button
+                  v-if="!appStore.sidebarCollapsed"
+                  class="sidebar__ghost-btn"
+                  type="button"
+                  @click="toggleCurrentFavoriteRoute()"
+                >
+                  {{ isCurrentRouteFavorite ? 'Desfavoritar atual' : 'Favoritar atual' }}
+                </button>
+              </div>
+              <div class="sidebar__quick-links">
+                <router-link
+                  v-for="item in favoriteLinks"
+                  :key="item.path"
+                  :to="item.path"
+                  class="sidebar__quick-link"
+                  :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
+                >
+                  <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
+                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
+                    {{ item.label }}
+                  </span>
+                </router-link>
+              </div>
+            </section>
+          </details>
+
+          <details v-if="recentLinks.length" class="sidebar__utility-group">
+            <summary class="sidebar__utility-summary">
+              <span class="sidebar__eyebrow">Recentes</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Histórico de navegação</span>
+            </summary>
+            <section class="sidebar__panel sidebar__panel--recent">
+              <div class="sidebar__panel-head">
+                <button
+                  v-if="!appStore.sidebarCollapsed"
+                  class="sidebar__ghost-btn"
+                  type="button"
+                  @click="appStore.clearRecentRoutes()"
+                >
+                  Limpar
+                </button>
+              </div>
+              <div class="sidebar__recent-list">
+                <router-link
+                  v-for="item in recentLinks"
+                  :key="item.path"
+                  :to="item.path"
+                  class="sidebar__recent-link"
+                  :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
+                >
+                  <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
+                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
+                    {{ item.label }}
+                  </span>
+                </router-link>
+              </div>
+            </section>
+          </details>
+        </section>
+      </div>
     </aside>
 
     <main class="workspace">
@@ -425,8 +429,9 @@ const commandInputEl = ref<HTMLInputElement | null>(null);
 const selectedIndex = ref(0);
 const historyPosition = ref(readHistoryPosition());
 const maxHistoryPosition = ref(readHistoryPosition());
-const sidebarEl = ref<HTMLElement | null>(null);
+const sidebarNavEl = ref<HTMLElement | null>(null);
 const isSidebarScrolled = ref(false);
+const isSidebarNearBottom = ref(false);
 
 interface CommandAction {
   id: string;
@@ -837,19 +842,48 @@ function isInInputField(): boolean {
 }
 
 function syncSidebarScrollState() {
-  isSidebarScrolled.value = (sidebarEl.value?.scrollTop ?? 0) > 12;
+  const container = sidebarNavEl.value;
+  const scrollTop = container?.scrollTop ?? 0;
+  const clientHeight = container?.clientHeight ?? 0;
+  const scrollHeight = container?.scrollHeight ?? 0;
+
+  isSidebarScrolled.value = scrollTop > 12;
+  isSidebarNearBottom.value = scrollTop + clientHeight >= scrollHeight - 12;
 }
 
-onMounted(() => {
+function scrollActiveSidebarItemIntoView() {
+  const container = sidebarNavEl.value;
+  if (!container) return;
+
+  const activeItem = container.querySelector<HTMLElement>(
+    '.sidebar__link--active, .sidebar__quick-link--active, .sidebar__recent-link--active'
+  );
+
+  if (!activeItem) {
+    syncSidebarScrollState();
+    return;
+  }
+
+  activeItem.closest('details')?.setAttribute('open', 'true');
+
+  window.requestAnimationFrame(() => {
+    activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    syncSidebarScrollState();
+  });
+}
+
+onMounted(async () => {
   window.addEventListener('keydown', onKeydown);
-  sidebarEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
+  sidebarNavEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
   syncHistoryPosition();
+  await nextTick();
+  scrollActiveSidebarItemIntoView();
   syncSidebarScrollState();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
-  sidebarEl.value?.removeEventListener('scroll', syncSidebarScrollState);
+  sidebarNavEl.value?.removeEventListener('scroll', syncSidebarScrollState);
 });
 
 watch(commandPaletteOpen, async (open) => {
@@ -871,8 +905,11 @@ watch(totalItems, (nextTotal) => {
 
 watch(
   () => route.fullPath,
-  () => {
+  async () => {
     syncHistoryPosition();
+    await nextTick();
+    scrollActiveSidebarItemIntoView();
+    syncSidebarScrollState();
   }
 );
 
@@ -928,8 +965,7 @@ function handleLogout() {
 .sidebar {
   position: sticky;
   top: 0;
-  max-height: 100vh;
-  overflow-y: auto;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -938,28 +974,6 @@ function handleLogout() {
   background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-  transition: box-shadow 0.18s ease;
-}
-
-.sidebar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.35);
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar--scrolled {
-  box-shadow:
-    inset -1px 0 0 rgba(255, 255, 255, 0.85),
-    inset 0 10px 18px rgba(36, 49, 64, 0.04);
 }
 
 .sidebar__brand {
@@ -1126,10 +1140,82 @@ function handleLogout() {
   box-shadow: 0 0 0 3px rgba(241, 148, 54, 0.14);
 }
 
+.sidebar__content {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 138, 156, 0.42) transparent;
+  transition: box-shadow 0.18s ease;
+}
+
+.sidebar__content::before,
+.sidebar__content::after {
+  content: '';
+  position: sticky;
+  left: 0;
+  right: 0;
+  display: block;
+  height: 18px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.sidebar__content::before {
+  top: 0;
+  margin-bottom: -18px;
+  background: linear-gradient(180deg, rgba(241, 243, 246, 0.98), rgba(241, 243, 246, 0));
+}
+
+.sidebar__content::after {
+  bottom: 0;
+  margin-top: -18px;
+  background: linear-gradient(0deg, rgba(241, 243, 246, 0.98), rgba(241, 243, 246, 0));
+}
+
+.sidebar__content--top-fade::before,
+.sidebar__content--bottom-fade::after {
+  opacity: 1;
+}
+
+.sidebar__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar__content::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(136, 153, 170, 0.72), rgba(115, 133, 151, 0.54));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.sidebar__content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(118, 136, 154, 0.84), rgba(97, 116, 135, 0.66));
+}
+
+.sidebar__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar__content--scrolled {
+  box-shadow: inset 0 10px 14px rgba(36, 49, 64, 0.035);
+}
+
+.sidebar__nav {
+  display: grid;
+  gap: 10px;
+  min-height: auto;
+}
+
 .sidebar__utility-stack {
   display: grid;
   gap: 8px;
-  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(220, 226, 233, 0.92);
 }
@@ -1166,12 +1252,6 @@ function handleLogout() {
 
 .sidebar__utility-summary::-webkit-details-marker {
   display: none;
-}
-
-.sidebar__nav {
-  display: grid;
-  gap: 10px;
-  min-height: 0;
 }
 
 .sidebar__group {

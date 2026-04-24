@@ -5,12 +5,43 @@ export interface OwnerContact {
   primary: boolean;
 }
 
+export interface OwnerAddress {
+  zipCode?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  reference?: string;
+  cityCode?: string;
+}
+
+export interface OwnerProfile {
+  birthDate?: string;
+  sex?: 'female' | 'male' | 'other' | 'unknown';
+  group?: string;
+  receiveSms?: boolean;
+  personType?: 'individual' | 'company';
+  rg?: string;
+}
+
+export interface OwnerFinancialProfile {
+  allowedDebtLimit?: number;
+  creditBalance?: number;
+  availablePoints?: number;
+  blockedPoints?: number;
+}
+
 export interface OwnerSummary {
   id: string;
   accountId: string;
   fullName: string;
   documentId?: string;
   contacts: OwnerContact[];
+  address?: OwnerAddress;
+  profile?: OwnerProfile;
+  financialProfile?: OwnerFinancialProfile;
   financialResponsible: boolean;
   administrativeNotes?: string;
   status: 'active' | 'inactive';
@@ -27,6 +58,9 @@ export interface CreateOwnerRequest {
     type: 'phone' | 'email' | 'whatsapp';
     primary?: boolean;
   }[];
+  address?: OwnerAddress;
+  profile?: OwnerProfile;
+  financialProfile?: OwnerFinancialProfile;
   financialResponsible: boolean;
   administrativeNotes?: string;
 }
@@ -40,6 +74,9 @@ export interface UpdateOwnerRequest {
     type: 'phone' | 'email' | 'whatsapp';
     primary?: boolean;
   }[];
+  address?: OwnerAddress;
+  profile?: OwnerProfile;
+  financialProfile?: OwnerFinancialProfile;
   financialResponsible?: boolean;
   administrativeNotes?: string;
   status?: 'active' | 'inactive';

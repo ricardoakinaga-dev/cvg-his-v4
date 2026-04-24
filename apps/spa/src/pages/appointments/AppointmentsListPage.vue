@@ -96,6 +96,8 @@
                 @change="loadOverview"
               />
 
+              <div class="filter-panel__eyebrow">Filtrar por...</div>
+
               <DsInput
                 id="clientFilter"
                 v-model="localFilters.clientSearch"
@@ -205,6 +207,28 @@
               </div>
             </div>
           </DsCard>
+
+          <DsCard v-if="availabilityCards.length > 0" title="Disponibilidade" class="sidebar-card availability-card">
+            <div class="availability-card__list">
+              <article
+                v-for="card in availabilityCards"
+                :key="card.id"
+                class="availability-card__item"
+              >
+                <div class="availability-card__header">
+                  <strong>{{ card.label }}</strong>
+                  <span>{{ card.availableSlots }} livres</span>
+                </div>
+                <div class="availability-card__meter" aria-hidden="true">
+                  <span :style="{ width: `${card.occupancyPercent}%` }"></span>
+                </div>
+                <p>
+                  {{ card.appointmentCount }} agendamentos · {{ card.blockCount }} bloqueios/folgas ·
+                  {{ card.occupancyPercent }}% ocupado
+                </p>
+              </article>
+            </div>
+          </DsCard>
         </aside>
 
         <section class="appointments-cockpit__main">
@@ -241,11 +265,11 @@
           <EmptyState
             v-else-if="!overview || filteredItems.length === 0"
             icon="📅"
-            title="Nenhum agendamento no período"
-            description="Ajuste filtros, troque a visão ou abra o fluxo de criação para registrar o primeiro compromisso."
+            :title="emptyStateCopy.title"
+            :description="emptyStateCopy.description"
           >
             <template v-if="canManageScheduling" #action>
-              <DsButton variant="primary" @click="openCreateFlow">+ Criar agendamento</DsButton>
+              <DsButton variant="primary" @click="openCreateFlow">{{ emptyStateCopy.actionLabel }}</DsButton>
             </template>
           </EmptyState>
 
@@ -269,6 +293,15 @@
                     <span>{{ appointmentsByDay(day.date).length }}</span>
                   </button>
                   <div class="month-cell__body">
+                    <button
+                      v-if="canManageScheduling"
+                      type="button"
+                      class="month-cell__empty-surface"
+                      :aria-label="`Criar agendamento em ${day.date}`"
+                      @click="openSlotCreateFlow({ date: day.date })"
+                    >
+                      Criar no dia {{ day.dayNumber }}
+                    </button>
                     <button
                       v-for="item in appointmentsByDay(day.date).slice(0, 5)"
                       :key="item.id"
@@ -334,11 +367,14 @@
 
                     <div v-if="appointmentsByWeekSlot(day.date, hour).length" class="timeline-items">
                       <button
-                        v-for="item in appointmentsByWeekSlot(day.date, hour)"
+                        v-for="item in visibleAppointmentsByWeekSlot(day.date, hour)"
                         :key="item.id"
                         type="button"
                         class="timeline-item"
-                        :class="`timeline-item--${item.operational.stage}`"
+                        :class="{
+                          [`timeline-item--${item.operational.stage}`]: true,
+                          'timeline-item--dense': isDenseWeekSlot(day.date, hour)
+                        }"
                         @click="openAppointmentDetails(item)"
                       >
                         <div class="timeline-item__head">
@@ -348,9 +384,15 @@
                           </span>
                         </div>
                         <strong>{{ patientName(item.patientId) }}</strong>
-                        <span>{{ ownerName(item.ownerId) }}</span>
-                        <small>{{ item.serviceName || item.specialty || item.reason }}</small>
+                        <span v-if="!isDenseWeekSlot(day.date, hour)">{{ ownerName(item.ownerId) }}</span>
+                        <small v-if="!isDenseWeekSlot(day.date, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
                       </button>
+                      <span
+                        v-if="hiddenWeekSlotCount(day.date, hour) > 0"
+                        class="timeline-slot-summary"
+                      >
+                        +{{ hiddenWeekSlotCount(day.date, hour) }} adicionais
+                      </span>
                     </div>
 
                     <button
@@ -420,11 +462,14 @@
 
                     <div v-if="appointmentsBySlot(day.date, column.id, hour).length" class="timeline-items">
                       <button
-                        v-for="item in appointmentsBySlot(day.date, column.id, hour)"
+                        v-for="item in visibleAppointmentsBySlot(day.date, column.id, hour)"
                         :key="item.id"
                         type="button"
                         class="timeline-item"
-                        :class="`timeline-item--${item.operational.stage}`"
+                        :class="{
+                          [`timeline-item--${item.operational.stage}`]: true,
+                          'timeline-item--dense': isDenseSlot(day.date, column.id, hour)
+                        }"
                         @click="openAppointmentDetails(item)"
                       >
                         <div class="timeline-item__head">
@@ -434,13 +479,13 @@
                           </span>
                         </div>
                         <strong>{{ patientName(item.patientId) }}</strong>
-                        <span>{{ ownerName(item.ownerId) }}</span>
-                        <small>{{ item.serviceName || item.specialty || item.reason }}</small>
-                        <small class="timeline-item__meta">
+                        <span v-if="!isDenseSlot(day.date, column.id, hour)">{{ ownerName(item.ownerId) }}</span>
+                        <small v-if="!isDenseSlot(day.date, column.id, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
+                        <small v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__meta">
                           Agenda: {{ statusLabel(item.status) }} · {{ item.practitionerName || 'Sem profissional' }}
                         </small>
 
-                        <div v-if="item.conflicts.length" class="timeline-item__conflicts">
+                        <div v-if="!isDenseSlot(day.date, column.id, hour) && item.conflicts.length" class="timeline-item__conflicts">
                           <span
                             v-for="conflict in item.conflicts.slice(0, 2)"
                             :key="`${item.id}-${conflict.type}-${conflict.startsAt}`"
@@ -449,7 +494,7 @@
                           </span>
                         </div>
 
-                        <div class="timeline-item__actions" @click.stop>
+                        <div v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__actions" @click.stop>
                           <DsButton variant="ghost" size="sm" @click="openAppointmentDetails(item)">Ver</DsButton>
                           <DsButton
                             v-if="canCheckIn(item)"
@@ -488,6 +533,12 @@
                           </DsButton>
                         </div>
                       </button>
+                      <span
+                        v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
+                        class="timeline-slot-summary"
+                      >
+                        +{{ hiddenSlotCount(day.date, column.id, hour) }} adicionais
+                      </span>
                     </div>
 
                     <button
@@ -518,6 +569,10 @@
                 {{ item.label }}
               </span>
             </div>
+            <p class="appointments-legend__hint">
+              Referência Vetus: Folga, Aberto, Confirmado, Executado, Cancelado, Não compareceu,
+              Vacina, Vermífugo e Retorno.
+            </p>
           </section>
         </section>
       </div>
@@ -556,11 +611,13 @@
       :appointment="selectedAppointment"
       :owner-name="selectedAppointmentOwnerName"
       :patient-name="selectedAppointmentPatientName"
+      :can-cancel="selectedAppointment ? canCancelFromAgenda(selectedAppointment) : false"
       :can-check-in="selectedAppointment ? canCheckIn(selectedAppointment) : false"
       :can-mark-no-show="selectedAppointment ? canMarkNoShow(selectedAppointment) : false"
       :action-loading-id="actionLoadingId"
       :action-kind="actionKind"
       @close="selectedAppointment = null"
+      @cancel="cancelAppointmentFromAgenda"
       @check-in="checkIn"
       @no-show="markNoShow"
       @open-encounter="openEncounter"
@@ -622,6 +679,15 @@ interface QuickCreatePresetState {
   durationMinutes: number;
 }
 
+interface AvailabilityCard {
+  id: string;
+  label: string;
+  appointmentCount: number;
+  blockCount: number;
+  availableSlots: number;
+  occupancyPercent: number;
+}
+
 const router = useRouter();
 const loading = ref(false);
 const error = ref('');
@@ -634,7 +700,7 @@ const showQuickCreate = ref(false);
 const selectedClient = ref<OwnerSummary | null>(null);
 const selectedAppointment = ref<SchedulingCockpitAppointmentSummary | null>(null);
 const actionLoadingId = ref('');
-const actionKind = ref<'checkin' | 'noshow' | ''>('');
+const actionKind = ref<'cancel' | 'checkin' | 'noshow' | ''>('');
 const pendingSlotPreset = ref<AppointmentSlotPreset | null>(null);
 
 const viewMode = ref<'day' | 'week' | 'month'>('day');
@@ -679,6 +745,7 @@ const viewOptions = [
 
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const timelineHours = Array.from({ length: 13 }, (_, index) => 7 + index);
+const maxVisibleAppointmentsPerSlot = 2;
 
 const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
 const canManageScheduling = computed(() => permissionCodes.value?.includes('scheduling.manage') ?? false);
@@ -785,6 +852,43 @@ const markerOptions = computed(() =>
     a.localeCompare(b, 'pt-BR')
   )
 );
+const emptyStateCopy = computed(() => {
+  const date = new Date(`${referenceDate.value}T00:00:00`);
+
+  if (viewMode.value === 'day') {
+    const dayLabel = date.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long'
+    });
+
+    return {
+      title: `Nenhum agendamento em ${dayLabel}`,
+      description: `Não há compromissos visíveis para ${dayLabel} na visão Dia. Você pode abrir um novo agendamento já ancorado nesta data.`,
+      actionLabel: `Criar agendamento para ${dayLabel}`
+    };
+  }
+
+  if (viewMode.value === 'week') {
+    const start = new Date(`${visibleDays.value[0]?.date ?? referenceDate.value}T00:00:00`);
+    const end = new Date(`${visibleDays.value[visibleDays.value.length - 1]?.date ?? referenceDate.value}T00:00:00`);
+    const rangeLabel = `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} a ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`;
+
+    return {
+      title: `Nenhum agendamento na semana de ${rangeLabel}`,
+      description: `A semana selecionada está sem compromissos visíveis com os filtros atuais. Ajuste os filtros ou inicie um novo agendamento dentro desta janela.`,
+      actionLabel: 'Criar agendamento nesta semana'
+    };
+  }
+
+  const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return {
+    title: `Nenhum agendamento em ${monthLabel}`,
+    description: `O mês selecionado está sem compromissos visíveis na agenda. Você pode cadastrar o primeiro agendamento deste período ou revisar os filtros ativos.`,
+    actionLabel: `Criar agendamento em ${monthLabel}`
+  };
+});
+
 const legendItems = computed(() => {
   const statusLegend = selectedStatuses.value.length
     ? selectedStatuses.value
@@ -805,6 +909,34 @@ const legendItems = computed(() => {
       tone: 'marker'
     }))
   ];
+});
+const availabilityCards = computed<AvailabilityCard[]>(() => {
+  if (!overview.value) return [];
+
+  const totalSlots = Math.max(visibleDays.value.length * timelineHours.length, 1);
+  return professionalColumns.value.map((column) => {
+    const appointmentCount = visibleDays.value.reduce(
+      (count, day) => count + appointmentsByColumn(day.date, column.id).length,
+      0
+    );
+    const blockCount =
+      column.id === 'unassigned'
+        ? 0
+        : visibleDays.value.reduce(
+            (count, day) => count + blocksByColumn(day.date, column.id).length,
+            0
+          );
+    const occupiedSlots = Math.min(appointmentCount + blockCount, totalSlots);
+
+    return {
+      id: column.id,
+      label: column.label,
+      appointmentCount,
+      blockCount,
+      availableSlots: Math.max(totalSlots - occupiedSlots, 0),
+      occupancyPercent: Math.round((occupiedSlots / totalSlots) * 100)
+    };
+  });
 });
 
 function startOfMonth(dateString: string) {
@@ -920,6 +1052,18 @@ function appointmentsBySlot(date: string, columnId: string, hour: number) {
   );
 }
 
+function visibleAppointmentsBySlot(date: string, columnId: string, hour: number) {
+  return appointmentsBySlot(date, columnId, hour).slice(0, maxVisibleAppointmentsPerSlot);
+}
+
+function hiddenSlotCount(date: string, columnId: string, hour: number) {
+  return Math.max(appointmentsBySlot(date, columnId, hour).length - maxVisibleAppointmentsPerSlot, 0);
+}
+
+function isDenseSlot(date: string, columnId: string, hour: number) {
+  return appointmentsBySlot(date, columnId, hour).length > maxVisibleAppointmentsPerSlot;
+}
+
 function blocksByColumn(date: string, columnId: string) {
   return (overview.value?.blocks ?? []).filter((block) => {
     if (block.startsAt.slice(0, 10) !== date) return false;
@@ -944,6 +1088,18 @@ function appointmentsByWeekSlot(date: string, hour: number) {
   return appointmentsByDay(date)
     .filter((item) => new Date(item.scheduledAt).getHours() === hour)
     .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+}
+
+function visibleAppointmentsByWeekSlot(date: string, hour: number) {
+  return appointmentsByWeekSlot(date, hour).slice(0, maxVisibleAppointmentsPerSlot);
+}
+
+function hiddenWeekSlotCount(date: string, hour: number) {
+  return Math.max(appointmentsByWeekSlot(date, hour).length - maxVisibleAppointmentsPerSlot, 0);
+}
+
+function isDenseWeekSlot(date: string, hour: number) {
+  return appointmentsByWeekSlot(date, hour).length > maxVisibleAppointmentsPerSlot;
 }
 
 function deriveMarkers(item: SchedulingCockpitAppointmentSummary) {
@@ -1110,6 +1266,10 @@ function canCheckIn(item: SchedulingCockpitAppointmentSummary) {
   return item.operational.stage === 'scheduled' && canManageScheduling.value;
 }
 
+function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
+  return ['scheduled', 'checked_in'].includes(item.status) && canManageScheduling.value;
+}
+
 function canMarkNoShow(item: SchedulingCockpitAppointmentSummary) {
   return item.operational.stage === 'scheduled' && canManageScheduling.value;
 }
@@ -1163,6 +1323,22 @@ async function markNoShow(item: SchedulingCockpitAppointmentSummary) {
     await loadOverview();
   } catch (actionError) {
     error.value = actionError instanceof Error ? actionError.message : 'Erro ao registrar no-show';
+  } finally {
+    actionLoadingId.value = '';
+    actionKind.value = '';
+  }
+}
+
+async function cancelAppointmentFromAgenda(item: SchedulingCockpitAppointmentSummary) {
+  actionLoadingId.value = item.id;
+  actionKind.value = 'cancel';
+  error.value = '';
+
+  try {
+    await appointmentService.cancel(item.id, 'Cancelado pela agenda operacional');
+    await loadOverview();
+  } catch (actionError) {
+    error.value = actionError instanceof Error ? actionError.message : 'Erro ao cancelar agendamento';
   } finally {
     actionLoadingId.value = '';
     actionKind.value = '';
@@ -1242,7 +1418,49 @@ onMounted(async () => {
 }
 
 .metric-card {
+  position: relative;
   min-height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.4);
+}
+
+.metric-card--summary:nth-child(1)::before {
+  background: linear-gradient(180deg, #2563eb, #60a5fa);
+}
+
+.metric-card--summary:nth-child(2)::before {
+  background: linear-gradient(180deg, #f59e0b, #fbbf24);
+}
+
+.metric-card--summary:nth-child(3)::before {
+  background: linear-gradient(180deg, #f97316, #fb923c);
+}
+
+.metric-card--summary:nth-child(4)::before {
+  background: linear-gradient(180deg, #10b981, #34d399);
+}
+
+.metric-card--summary:nth-child(5)::before {
+  background: linear-gradient(180deg, #ef4444, #f87171);
+}
+
+.metric-card--summary:nth-child(6)::before {
+  background: linear-gradient(180deg, #64748b, #94a3b8);
+}
+
+.metric-card--forecast::before {
+  background: linear-gradient(180deg, #8b5cf6, #a78bfa);
 }
 
 .metric-card :deep(.ds-card__body) {
@@ -1330,10 +1548,27 @@ onMounted(async () => {
 .appointments-cockpit__sidebar {
   position: sticky;
   top: 24px;
+  display: grid;
+  gap: 12px;
 }
 
 .sidebar-card {
   overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  background: linear-gradient(180deg, rgba(250, 251, 253, 0.98), rgba(244, 247, 250, 0.96));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.sidebar-card :deep(.ds-card__title) {
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.sidebar-card :deep(.ds-card__body) {
+  background: transparent;
 }
 
 .sidebar-stack {
@@ -1341,11 +1576,80 @@ onMounted(async () => {
   gap: 14px;
 }
 
+.filter-panel__eyebrow {
+  margin: 2px 0 -4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.availability-card__list {
+  display: grid;
+  gap: 12px;
+}
+
+.availability-card__item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.availability-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.availability-card__header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.availability-card__header span {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.availability-card__meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.availability-card__meter span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f97316, #ef4444);
+}
+
+.availability-card__item p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .mini-calendar {
   display: grid;
-  gap: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .mini-calendar__header,
@@ -1388,9 +1692,21 @@ onMounted(async () => {
   aspect-ratio: 1;
   border: 1px solid transparent;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.03);
+  background: rgba(255, 255, 255, 0.76);
   color: var(--color-text, #0f172a);
   cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.mini-calendar__day:hover {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(191, 219, 254, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.06);
 }
 
 .mini-calendar__day--muted {
@@ -1411,21 +1727,38 @@ onMounted(async () => {
 .view-toggle {
   display: inline-grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.92);
 }
 
 .view-toggle__button {
-  border: 1px solid var(--color-border, #cbd5e1);
-  background: var(--color-surface, #fff);
+  border: 1px solid transparent;
+  background: transparent;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.view-toggle__button:hover {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text, #0f172a);
 }
 
 .view-toggle__button--active {
-  border-color: rgba(249, 115, 22, 0.3);
-  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.22);
+  background: linear-gradient(180deg, rgba(255, 237, 213, 0.96), rgba(255, 247, 237, 0.92));
   color: #c2410c;
+  box-shadow: 0 10px 22px rgba(249, 115, 22, 0.14);
 }
 
 .status-chips {
@@ -1435,28 +1768,56 @@ onMounted(async () => {
 }
 
 .status-chip {
-  border: 1px solid var(--color-border, #cbd5e1);
-  background: var(--color-surface, #fff);
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  background: rgba(255, 255, 255, 0.88);
   padding: 8px 12px;
   border-radius: 999px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.status-chip:hover {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(148, 163, 184, 0.46);
+  color: var(--color-text, #0f172a);
 }
 
 .status-chip--active {
   background: rgba(14, 165, 233, 0.08);
   border-color: rgba(14, 165, 233, 0.3);
   color: #0369a1;
+  transform: translateY(-1px);
 }
 
 .sidebar-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
 .board-toolbar {
+  position: sticky;
+  top: 20px;
+  z-index: 3;
   justify-content: space-between;
   margin-bottom: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.board-toolbar__group:first-child strong {
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--color-text, #0f172a);
 }
 
 .board-toolbar__group--right {
@@ -1477,14 +1838,27 @@ onMounted(async () => {
   min-height: 180px;
   display: grid;
   gap: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.month-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
 }
 
 .month-cell--muted {
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 .month-cell--selected {
   border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 16px 30px rgba(249, 115, 22, 0.1);
 }
 
 .month-cell__header {
@@ -1506,6 +1880,52 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.timeline-items {
+  align-content: start;
+}
+
+.timeline-slot-summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.96);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.month-cell__empty-surface {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.88));
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.month-cell__empty-surface:hover {
+  border-color: rgba(59, 130, 246, 0.38);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(219, 234, 254, 0.88));
+  color: var(--color-primary-700, #1d4ed8);
+  transform: translateY(-1px);
+}
+
 .month-item,
 .timeline-item {
   display: grid;
@@ -1518,6 +1938,19 @@ onMounted(async () => {
   background: linear-gradient(180deg, #fff, #f8fafc);
   padding: 12px;
   cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.month-item:hover,
+.timeline-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.08);
+  border-color: rgba(191, 219, 254, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.96));
 }
 
 .month-item__more {
@@ -1610,6 +2043,12 @@ onMounted(async () => {
   display: grid;
   align-content: start;
   gap: 8px;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.time-matrix__slot:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85);
 }
 
 .time-matrix__empty {
@@ -1656,6 +2095,27 @@ onMounted(async () => {
 
 .timeline-item--cancelled {
   border-left-color: #94a3b8;
+}
+
+.timeline-item--dense {
+  gap: 4px;
+  padding: 10px 10px 9px;
+  border-radius: 12px;
+}
+
+.timeline-item--dense .timeline-item__head {
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.timeline-item--dense .timeline-item__head span:first-child {
+  font-size: 11px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.timeline-item--dense strong {
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 .status-pill {
@@ -1723,6 +2183,15 @@ onMounted(async () => {
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 16px;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.appointments-legend > strong {
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
 }
 
 .appointments-legend__items {
@@ -1769,6 +2238,13 @@ onMounted(async () => {
   background: rgba(249, 115, 22, 0.08);
   border-color: rgba(249, 115, 22, 0.18);
   color: #c2410c;
+}
+
+.appointments-legend__hint {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .agenda-cta {

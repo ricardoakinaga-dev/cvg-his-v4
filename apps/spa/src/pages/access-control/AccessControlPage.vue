@@ -23,8 +23,12 @@
           <span class="overview-card__label">Permissões ativas</span>
         </div>
         <div class="overview-card">
+          <span class="overview-card__value">{{ routineRows.length }}</span>
+          <span class="overview-card__label">Rotinas mapeadas</span>
+        </div>
+        <div class="overview-card">
           <span class="overview-card__value">{{ catalog?.teams.length ?? 0 }}</span>
-          <span class="overview-card__label">Equipes</span>
+          <span class="overview-card__label">Grupos de Acesso</span>
         </div>
         <div class="overview-card">
           <span class="overview-card__value">{{ catalog?.sectors.length ?? 0 }}</span>
@@ -61,6 +65,25 @@
     </DsAlert>
 
     <section v-if="!loading && catalog && activeTab === 'summary'" class="access-control-page__section">
+      <DsCard title="Mapa Vetus IAM" class="panel">
+        <div class="governance-grid">
+          <article v-for="layer in governanceLayers" :key="layer.title" class="governance-card">
+            <span class="governance-card__eyebrow">{{ layer.scope }}</span>
+            <strong>{{ layer.title }}</strong>
+            <p>{{ layer.description }}</p>
+          </article>
+        </div>
+      </DsCard>
+
+      <DsCard title="Permissão por rotina" class="panel">
+        <div class="routine-grid">
+          <article v-for="control in securityControls" :key="control.title" class="routine-card">
+            <strong>{{ control.title }}</strong>
+            <p>{{ control.description }}</p>
+          </article>
+        </div>
+      </DsCard>
+
       <DsCard title="Catálogo de permissões" class="panel">
         <div class="panel__toolbar">
           <DsInput v-model="permissionQuery" placeholder="Filtrar permissões por código, módulo ou descrição" />
@@ -119,6 +142,23 @@
           </table>
         </div>
       </DsCard>
+
+      <DsCard title="Governança Enterprise" class="panel">
+        <div class="enterprise-grid">
+          <div>
+            <strong>RH operacional</strong>
+            <p>Usuários, profissionais e grupos ficam descobríveis para o dia a dia administrativo.</p>
+          </div>
+          <div>
+            <strong>Console Enterprise</strong>
+            <p>MFA, auditoria, sessões, API keys e compliance mantêm a camada técnica separada.</p>
+          </div>
+          <div>
+            <strong>Tenant e auditoria</strong>
+            <p>Cada decisão de acesso deve ser isolada por organização e rastreável por usuário, entidade e ação.</p>
+          </div>
+        </div>
+      </DsCard>
     </section>
 
     <section v-else-if="!loading && catalog && activeTab === 'users'" class="access-control-page__section">
@@ -145,6 +185,14 @@
                 {{ selectedUser.status }}
               </DsBadge>
               <DsBadge variant="warning" size="sm">{{ selectedUser.roleCode }}</DsBadge>
+            </div>
+          </div>
+
+          <div class="identity-grid" aria-label="Governança da identidade">
+            <div v-for="item in selectedUserGovernance" :key="item.label" class="identity-card">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <p>{{ item.hint }}</p>
             </div>
           </div>
 
@@ -288,6 +336,44 @@
     </section>
 
     <section v-else-if="!loading && catalog && activeTab === 'matrix'" class="access-control-page__section">
+      <DsCard title="Cobertura CRUD por rotina" class="panel">
+        <p class="section-hint">
+          Leitura operacional Vetus: o poder efetivo deve ser auditável por rotina e por ação clássica
+          Consultar, Inserir, Alterar e Excluir.
+        </p>
+        <div class="matrix-wrapper">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>Rotina</th>
+                <th v-for="action in routineActions" :key="action.key">{{ action.label }}</th>
+                <th>Permissões</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="routine in routineRows" :key="routine.module">
+                <td>
+                  <strong>{{ routine.module }}</strong>
+                  <div class="muted">{{ routine.permissions.length }} permissão(ões)</div>
+                </td>
+                <td v-for="action in routineActions" :key="`${routine.module}:${action.key}`">
+                  <DsBadge :variant="routine.actions[action.key] ? 'success' : 'neutral'" size="sm">
+                    {{ routine.actions[action.key] ? 'Sim' : 'Não' }}
+                  </DsBadge>
+                </td>
+                <td>
+                  <div class="source-list">
+                    <span v-for="permission in routine.permissions" :key="permission" class="source-chip">
+                      {{ permission }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </DsCard>
+
       <DsCard title="Matriz de permissões" class="panel">
         <div class="subject-toolbar">
           <label class="field">
@@ -370,6 +456,7 @@ import type { EffectivePermissionSummary, PermissionDefinition } from '@cvg-his-
 
 type TabKey = 'summary' | 'users' | 'teams' | 'sectors' | 'matrix';
 type MatrixSubjectType = 'user' | 'team' | 'sector';
+type RoutineActionKey = 'consult' | 'insert' | 'update' | 'delete';
 
 const tabs: Array<{ value: TabKey; label: string }> = [
   { value: 'summary', label: 'Resumo' },
@@ -398,6 +485,60 @@ const sectorForm = reactive({ code: '', name: '', description: '' });
 const draftRoleCodes = ref<string[]>([]);
 const draftTeamIds = ref<string[]>([]);
 const draftSectorIds = ref<string[]>([]);
+
+const governanceLayers = [
+  {
+    scope: 'Identidade',
+    title: 'Usuário autenticável',
+    description: 'Conta operacional com status, vínculo humano e contexto da organização.'
+  },
+  {
+    scope: 'Autorização',
+    title: 'Grupo de Acesso',
+    description: 'Política reaplicável para onboarding, troca de função e revisão periódica.'
+  },
+  {
+    scope: 'Capacidade',
+    title: 'Rotina',
+    description: 'Catálogo explícito do que pode ser consultado, inserido, alterado ou excluído.'
+  },
+  {
+    scope: 'Segurança',
+    title: 'Sessão',
+    description: 'Uso autenticado rastreável, com expiração e base para revogação.'
+  },
+  {
+    scope: 'Compliance',
+    title: 'Auditoria',
+    description: 'Registro de quem fez o quê, em qual entidade, tenant e contexto técnico.'
+  }
+];
+
+const securityControls = [
+  {
+    title: 'Consultar',
+    description: 'Permite ler registros e navegar pela rotina sem alterar dados.'
+  },
+  {
+    title: 'Inserir',
+    description: 'Autoriza criação de novos registros na rotina selecionada.'
+  },
+  {
+    title: 'Alterar',
+    description: 'Autoriza edição, transição operacional e manutenção de registros.'
+  },
+  {
+    title: 'Excluir',
+    description: 'Operação sensível que deve ser concedida explicitamente e auditada.'
+  }
+];
+
+const routineActions: Array<{ key: RoutineActionKey; label: string }> = [
+  { key: 'consult', label: 'Consultar' },
+  { key: 'insert', label: 'Inserir' },
+  { key: 'update', label: 'Alterar' },
+  { key: 'delete', label: 'Excluir' }
+];
 
 const filteredPermissions = computed(() => {
   const needle = permissionQuery.value.trim().toLowerCase();
@@ -428,9 +569,62 @@ const filteredPermissionGroups = computed(() => {
     .sort((a, b) => a.module.localeCompare(b.module));
 });
 
+const routineRows = computed(() => {
+  const grouped = new Map<
+    string,
+    { module: string; permissions: string[]; actions: Record<RoutineActionKey, boolean> }
+  >();
+
+  for (const permission of catalog.value?.permissions ?? []) {
+    const module = permission.module || permission.code.split('.')[0] || 'outros';
+    const current =
+      grouped.get(module) ??
+      ({
+        module,
+        permissions: [],
+        actions: { consult: false, insert: false, update: false, delete: false }
+      } satisfies { module: string; permissions: string[]; actions: Record<RoutineActionKey, boolean> });
+
+    current.permissions.push(permission.code);
+    for (const action of resolvePermissionActions(permission.code)) {
+      current.actions[action] = true;
+    }
+    grouped.set(module, current);
+  }
+
+  return [...grouped.values()].sort((a, b) => a.module.localeCompare(b.module));
+});
+
 const selectedUser = computed(() =>
   (catalog.value?.users ?? []).find((user) => user.id === selectedUserId.value) ?? null
 );
+
+const selectedUserGovernance = computed(() => {
+  const user = selectedUser.value;
+  if (!user) return [];
+  return [
+    {
+      label: 'Identidade operacional',
+      value: user.username,
+      hint: 'Usuário autenticável separado do profissional de agenda.'
+    },
+    {
+      label: 'Último login',
+      value: user.updatedAt ? formatDateTime(user.updatedAt) : 'Não informado',
+      hint: 'Indicador operacional até existir histórico dedicado de sessão.'
+    },
+    {
+      label: 'MFA',
+      value: 'Governança Enterprise',
+      hint: 'Controle preservado no Console Enterprise para política sensível.'
+    },
+    {
+      label: 'Tenant',
+      value: user.accountId || 'Contexto atual',
+      hint: 'Permissões e auditoria devem permanecer isoladas por organização.'
+    }
+  ];
+});
 
 const matrixSubjects = computed(() => {
   if (!catalog.value) return [];
@@ -467,6 +661,37 @@ function showSuccess(message: string) {
   setTimeout(() => {
     if (successMessage.value === message) successMessage.value = '';
   }, 5000);
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Não informado';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+function resolvePermissionActions(code: string): RoutineActionKey[] {
+  const normalized = code.toLowerCase();
+  if (normalized.includes('.admin') || normalized.includes('.manage')) {
+    return ['consult', 'insert', 'update', 'delete'];
+  }
+  const actions = new Set<RoutineActionKey>();
+  if (normalized.includes('.read') || normalized.includes('.view') || normalized.includes('.consult')) {
+    actions.add('consult');
+  }
+  if (normalized.includes('.write') || normalized.includes('.create') || normalized.includes('.insert')) {
+    actions.add('insert');
+    actions.add('update');
+  }
+  if (normalized.includes('.update') || normalized.includes('.edit')) {
+    actions.add('update');
+  }
+  if (normalized.includes('.delete') || normalized.includes('.remove')) {
+    actions.add('delete');
+  }
+  return actions.size ? [...actions] : ['consult'];
 }
 
 function defaultUserDrafts() {
@@ -698,7 +923,11 @@ onMounted(loadCatalog);
 .module-grid,
 .role-grid,
 .entity-list,
-.creation-grid {
+.creation-grid,
+.governance-grid,
+.routine-grid,
+.enterprise-grid,
+.identity-grid {
   display: grid;
   gap: 12px;
 }
@@ -708,7 +937,10 @@ onMounted(loadCatalog);
 }
 
 .role-grid,
-.entity-list {
+.entity-list,
+.governance-grid,
+.routine-grid,
+.enterprise-grid {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
@@ -718,11 +950,46 @@ onMounted(loadCatalog);
 
 .module-card,
 .role-card,
-.entity-card {
+.entity-card,
+.governance-card,
+.routine-card,
+.identity-card,
+.enterprise-grid > div {
   padding: 14px;
   border-radius: 16px;
   border: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface, #ffffff);
+}
+
+.governance-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(14, 165, 233, 0.08));
+}
+
+.governance-card__eyebrow,
+.identity-card span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.governance-card p,
+.routine-card p,
+.identity-card p,
+.enterprise-grid p,
+.section-hint {
+  margin: 8px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.identity-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 12px;
 }
 
 .module-card__header,

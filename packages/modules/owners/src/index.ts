@@ -1,6 +1,14 @@
 import type { CreateOwnerRequest, UpdateOwnerRequest } from '@cvg-his-v2/shared-contracts';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
-import type { AccountId, OwnerContact, OwnerId, OwnerSummary } from '@cvg-his-v2/shared-types';
+import type {
+  AccountId,
+  OwnerAddress,
+  OwnerContact,
+  OwnerFinancialProfile,
+  OwnerId,
+  OwnerProfile,
+  OwnerSummary
+} from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import {
   requireBoolean,
@@ -33,6 +41,66 @@ function normalizeContacts(contacts: CreateOwnerRequest['contacts']): readonly O
   }
 
   return normalized;
+}
+
+function normalizeAddress(address?: CreateOwnerRequest['address']): OwnerAddress | undefined {
+  if (!address) return undefined;
+
+  const normalized: OwnerAddress = {
+    zipCode: requireOptionalString(address.zipCode),
+    street: requireOptionalString(address.street),
+    number: requireOptionalString(address.number),
+    complement: requireOptionalString(address.complement),
+    state: requireOptionalString(address.state),
+    city: requireOptionalString(address.city),
+    district: requireOptionalString(address.district),
+    reference: requireOptionalString(address.reference),
+    cityCode: requireOptionalString(address.cityCode)
+  };
+
+  return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
+}
+
+function normalizeProfile(profile?: CreateOwnerRequest['profile']): OwnerProfile | undefined {
+  if (!profile) return undefined;
+
+  const normalized: OwnerProfile = {
+    birthDate: requireOptionalString(profile.birthDate),
+    sex: profile.sex,
+    group: requireOptionalString(profile.group),
+    receiveSms: profile.receiveSms,
+    personType: profile.personType,
+    rg: requireOptionalString(profile.rg)
+  };
+
+  return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
+}
+
+function normalizeFinancialProfile(
+  financialProfile?: CreateOwnerRequest['financialProfile']
+): OwnerFinancialProfile | undefined {
+  if (!financialProfile) return undefined;
+
+  const normalized: OwnerFinancialProfile = {
+    allowedDebtLimit:
+      typeof financialProfile.allowedDebtLimit === 'number'
+        ? financialProfile.allowedDebtLimit
+        : undefined,
+    creditBalance:
+      typeof financialProfile.creditBalance === 'number'
+        ? financialProfile.creditBalance
+        : undefined,
+    availablePoints:
+      typeof financialProfile.availablePoints === 'number'
+        ? financialProfile.availablePoints
+        : undefined,
+    blockedPoints:
+      typeof financialProfile.blockedPoints === 'number'
+        ? financialProfile.blockedPoints
+        : undefined
+  };
+
+  return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
 }
 
 function createSeedOwners(): OwnerSummary[] {
@@ -165,6 +233,9 @@ export class OwnersService {
       fullName,
       documentId,
       contacts: normalizeContacts(payload.contacts),
+      address: normalizeAddress(payload.address),
+      profile: normalizeProfile(payload.profile),
+      financialProfile: normalizeFinancialProfile(payload.financialProfile),
       financialResponsible: requireBoolean(payload.financialResponsible, 'financialResponsible'),
       administrativeNotes: requireOptionalString(payload.administrativeNotes),
       status: 'active',
@@ -198,6 +269,12 @@ export class OwnersService {
           : current.documentId,
       contacts:
         payload.contacts !== undefined ? normalizeContacts(payload.contacts) : current.contacts,
+      address: payload.address !== undefined ? normalizeAddress(payload.address) : current.address,
+      profile: payload.profile !== undefined ? normalizeProfile(payload.profile) : current.profile,
+      financialProfile:
+        payload.financialProfile !== undefined
+          ? normalizeFinancialProfile(payload.financialProfile)
+          : current.financialProfile,
       financialResponsible:
         payload.financialResponsible !== undefined
           ? requireBoolean(payload.financialResponsible, 'financialResponsible')

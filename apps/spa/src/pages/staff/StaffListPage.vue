@@ -1,12 +1,12 @@
 <template>
   <div class="list-page">
     <AppPageHeader
-      title="Equipe"
-      :breadcrumbs="['RH', 'Usuários', 'Equipe']"
-      subtitle="Profissionais, departamentos, cargos e capacidade operacional do quadro de RH">
+      title="Profissionais"
+      :breadcrumbs="['RH', 'Cadastros', 'Profissionais']"
+      subtitle="Cadastro beta de profissionais, funções, disponibilidade e produção operacional">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
-        <DsButton variant="primary" @click="router.push('/staff/new')">Novo Membro</DsButton>
+        <DsButton variant="primary" @click="router.push('/staff/new')">+ Incluir Novo Profissional</DsButton>
       </template>
     </AppPageHeader>
 
@@ -15,7 +15,7 @@
         <div class="overview-grid">
           <div class="overview-metric">
             <span class="overview-metric__value">{{ staff.length }}</span>
-            <span class="overview-metric__label">Membros cadastrados</span>
+            <span class="overview-metric__label">Profissionais cadastrados</span>
           </div>
           <div class="overview-metric">
             <span class="overview-metric__value">{{ activeStaff }}</span>
@@ -30,10 +30,16 @@
             <span class="overview-metric__label">Cargos distintos</span>
           </div>
           <div class="overview-metric">
-            <span class="overview-metric__value">{{ emptyDepartmentCount }}</span>
-            <span class="overview-metric__label">Sem departamento</span>
+            <span class="overview-metric__value">{{ filteredStaff.length }}</span>
+            <span class="overview-metric__label">Resultados atuais</span>
           </div>
         </div>
+      </DsCard>
+    </section>
+
+    <section class="list-page__toolbar">
+      <DsCard title="Busca por ID ou nome" variant="compact">
+        <DsInput v-model="search" placeholder="Buscar por ID, nome, cargo ou departamento" />
       </DsCard>
     </section>
 
@@ -50,11 +56,21 @@
     </section>
 
     <section class="list-page__actions">
-      <DsCard title="Ações rápidas — RH" variant="compact">
+      <DsCard title="Integrações do profissional" variant="compact">
+        <div class="integration-grid">
+          <article v-for="integration in integrations" :key="integration.title" class="integration-card">
+            <span>{{ integration.scope }}</span>
+            <strong>{{ integration.title }}</strong>
+            <p>{{ integration.description }}</p>
+          </article>
+        </div>
         <div class="quick-actions">
-          <DsButton tag="a" to="/users" variant="primary">Usuários</DsButton>
-          <DsButton tag="a" to="/access-control" variant="secondary">Governança de Acesso</DsButton>
-          <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
+          <DsButton tag="a" to="/appointments" variant="primary">Agenda</DsButton>
+          <DsButton tag="a" to="/time-off" variant="secondary">Folgas</DsButton>
+          <DsButton tag="a" to="/commission-calculations" variant="secondary">Comissões</DsButton>
+          <DsButton tag="a" to="/commission-rules" variant="secondary">Regras de Comissão</DsButton>
+          <DsButton tag="a" to="/users" variant="secondary">Usuários</DsButton>
+          <DsButton tag="a" to="/access-control" variant="secondary">Grupos de Acesso</DsButton>
         </div>
       </DsCard>
     </section>
@@ -69,7 +85,7 @@
       :loading="loading"
       empty-icon="👨‍⚕️"
       empty-title="Nenhum membro encontrado"
-      empty-description="Cadastre o primeiro membro da equipe."
+      empty-description="Cadastre o primeiro profissional ou ajuste os filtros."
       variant="hoverable"
     >
       <template #cell-fullName="{ row }">
@@ -111,6 +127,7 @@ import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { staffService } from '@/services/staff';
 import type { StaffSummary } from '@cvg-his-v2/shared-types';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
@@ -119,6 +136,7 @@ const router = useRouter();
 const staff = ref<StaffSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
+const search = ref('');
 
 const columns: DataTableColumn[] = [
   { key: 'fullName', label: 'Nome' },
@@ -130,15 +148,21 @@ const columns: DataTableColumn[] = [
 ];
 
 const activeStaff = computed(() => staff.value.filter((member) => member.status === 'active').length);
-const staffRows = computed(() => staff.value as unknown as DataTableRow[]);
+const filteredStaff = computed(() => {
+  const needle = search.value.trim().toLowerCase();
+  if (!needle) return staff.value;
+  return staff.value.filter((member) =>
+    [member.id, member.employeeCode, member.fullName, member.department, member.jobTitle].some((value) =>
+      String(value ?? '').toLowerCase().includes(needle)
+    )
+  );
+});
+const staffRows = computed(() => filteredStaff.value as unknown as DataTableRow[]);
 const departmentsCount = computed(
   () => new Set(staff.value.map((member) => member.department).filter(Boolean)).size
 );
 const jobTitlesCount = computed(
   () => new Set(staff.value.map((member) => member.jobTitle).filter(Boolean)).size
-);
-const emptyDepartmentCount = computed(
-  () => staff.value.filter((member) => !member.department || !member.department.trim()).length
 );
 const storyCards = computed(() => [
   {
@@ -162,6 +186,29 @@ const storyCards = computed(() => [
     hint: 'Percentual de membros ativos'
   }
 ]);
+
+const integrations = [
+  {
+    scope: 'Disponibilidade',
+    title: 'Agenda',
+    description: 'Profissional define alocação, agenda por coluna e execução clínica.'
+  },
+  {
+    scope: 'Escala',
+    title: 'Folgas',
+    description: 'Indisponibilidades formais impactam agenda e cobertura operacional.'
+  },
+  {
+    scope: 'Produtividade',
+    title: 'Comissões',
+    description: 'Cálculo usa profissional, regra vigente e fatos de produção.'
+  },
+  {
+    scope: 'Cadastro mestre',
+    title: 'Profissões',
+    description: 'Classifica função, filtra relatórios e sustenta regras por papel.'
+  }
+];
 
 async function loadData() {
   loading.value = true;
@@ -194,6 +241,10 @@ function staffRow(row: unknown): StaffSummary {
 }
 
 .list-page__story {
+  margin-bottom: 4px;
+}
+
+.list-page__toolbar {
   margin-bottom: 4px;
 }
 
@@ -268,11 +319,42 @@ function staffRow(row: unknown): StaffSummary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 12px;
 }
 
 .row-actions {
   display: flex;
   gap: 8px;
+}
+
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.integration-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+}
+
+.integration-card span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+}
+
+.integration-card p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-muted, #64748b);
 }
 
 .status-badge {

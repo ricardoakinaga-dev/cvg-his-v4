@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { createRouter, createWebHistory } from 'vue-router';
-import { routes } from '@/router/routes';
+import { createRouter, createMemoryHistory } from 'vue-router';
 import UsersListPage from '@/pages/users/UsersListPage.vue';
 import { userService } from '@/services/user';
 import type { UserSummary } from '@/types/user';
@@ -50,14 +49,19 @@ const mockUsers: UserSummary[] = [
 
 function createRouterInstance() {
   return createRouter({
-    history: createWebHistory(),
-    routes
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/users', component: UsersListPage },
+      { path: '/users/new', component: { template: '<div />' } },
+      { path: '/users/:id', component: { template: '<div />' } },
+      { path: '/users/:id/edit', component: { template: '<div />' } }
+    ]
   });
 }
 
 function mountComponent() {
   const router = createRouterInstance();
-  router.push('/');
+  router.push('/users');
   const wrapper = mount(UsersListPage, {
     global: {
       plugins: [router],

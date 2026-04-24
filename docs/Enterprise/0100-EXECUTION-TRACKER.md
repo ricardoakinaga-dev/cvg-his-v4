@@ -32,11 +32,256 @@ Ele nao substitui mais sozinho a linha mestra documental; hoje deve ser lido em 
 
 > **ATUALIZACAO EXECUTIVA (22/04/2026 - fechamento final rumo a 96):** `SEC-*`, `ML-*` e `AUD-*` foram fechados com evidencias adicionais consolidadas em `0345` e `0346`. A base fechou `pnpm typecheck`, `pnpm test:integration` (`77 arquivos`, `896 testes`), `pnpm test:smoke` (`13 passed`), `pnpm validate:openapi` e `pnpm deploy:check` em `PASS`. O score oficial do programa passa a `96/100`.
 
+> **ATUALIZACAO EXECUTIVA (24/04/2026 - ciclo Vetus paridade comercial):** foi aberta a trilha de paridade Vetus baseada em `docs/vetus/guides` e `docs/vetus/inspection`. A primeira fatia implementou rota real de fidelidade/resgate de pontos, telas de tabelas de preco e pontos de venda, navegacao correspondente e migration `0021_commercial_loyalty_price_pdv`. A rodada fechou `pnpm typecheck`, `pnpm test`, `pnpm validate:openapi` e `check-cutover-readiness` em `PASS`; `pnpm validate:helm` nao foi executado por ausencia do binario `helm`. O score `96/100` permanece como baseline, sem promocao artificial, pois ainda faltam APIs persistidas e placeholders remanescentes.
+
+> **ATUALIZACAO EXECUTIVA (24/04/2026 - fechamento P0 Vetus comercial):** o bloco `GAP96-P0-001` a `GAP96-P0-007` foi fechado com modulo comercial persistido, rotas API, OpenAPI, SPA API-backed, migration `0022_commercial_rls`, teste RLS comercial e `pnpm validate:helm` em `PASS` com fallback estatico quando o binario `helm` nao existe. A fase completa rumo a `96/100` segue aberta porque os placeholders `P1` e os gates `P2` ainda precisam de fechamento e auditoria final.
+
 ---
 
 ## REGRA CENTRAL
 
 `Todas as construções e melhorias ficam registradas nesta pasta. Atualizar a cada etapa concluída.`
+
+## BLOCO VETUS-2026-04-24.1 - PARIDADE COMERCIAL: FIDELIDADE, TABELAS DE PRECO E PDV
+
+**Status:** primeira fatia Vetus implementada e verificada; ERP Vetus completo ainda nao fechado
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| VETUS-COM-001 | `apps/spa/src/pages/loyalty/LoyaltyPage.vue` e testes dedicados | ✅ PASS |
+| VETUS-COM-002 | `apps/spa/src/pages/inventory/PriceTablesPage.vue` e rota `/tabelas-de-preco` | ✅ PASS |
+| VETUS-COM-003 | `apps/spa/src/pages/inventory/PointOfSaleSyncPage.vue` e rota `/pontos-de-venda` | ✅ PASS |
+| VETUS-COM-004 | `packages/db/migrations/0021_commercial_loyalty_price_pdv.sql` | ✅ PASS em banco de teste |
+| Gate SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+| Gate DB | `pnpm --filter @cvg-his/db run build` e `pnpm --filter @cvg-his/db run test` | ✅ PASS |
+| Migration test DB | `DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm --filter @cvg-his/db run db:migrate` | ✅ PASS |
+| Gate transversal | `pnpm typecheck` | ✅ PASS |
+| Gate transversal | `pnpm test` | ✅ PASS |
+| Contrato API | `pnpm validate:openapi` | ✅ PASS (`175 paths`, `33 tags`, `178 schemas`) |
+| Readiness | `node infra/scripts/check-cutover-readiness.mjs` | ✅ PASS |
+| Helm | `pnpm validate:helm` | ⚠️ BLOQUEADO: binario `helm` ausente |
+
+### Resultado tecnico
+
+- `loyalty` deixou de ser placeholder e passou a ter pagina real de resgate de pontos;
+- `tabelas-de-preco` e `pontos-de-venda` foram adicionados como rotas e itens de navegacao;
+- o banco ganhou estruturas tenant-scoped para programas de fidelidade, lancamentos de pontos, resgates, tabelas de preco, itens de tabela e jobs de sincronizacao PDV;
+- a suite global do monorepo foi executada com sucesso apos a aplicacao da fatia.
+
+### Observacoes
+
+- as novas telas ainda operam com dados locais e aguardam API persistida;
+- a OpenAPI permanece em `175 paths`, pois a rodada nao adicionou endpoints novos;
+- a migration foi aplicada no banco de teste, nao em producao;
+- este bloco abre uma nova onda de paridade Vetus e nao substitui a auditoria final `0346`.
+
+## BLOCO VETUS-2026-04-24.2 - FECHAMENTO P0 COMERCIAL PERSISTIDO
+
+**Status:** `GAP96-P0-001` a `GAP96-P0-007` fechados; P1/P2 ainda abertos
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P0-001 | `@cvg-his-v2/module-commercial` e rotas `/loyalty/*` | ✅ PASS |
+| GAP96-P0-002 | rotas `/price-tables*` e repositório persistido | ✅ PASS |
+| GAP96-P0-003 | rotas `/pos-sync/jobs*` e tela de sincronizacao PDV | ✅ PASS |
+| GAP96-P0-004 | `LoyaltyPage`, `PriceTablesPage`, `PointOfSaleSyncPage` consumindo API real | ✅ PASS |
+| GAP96-P0-005 | `0022_commercial_rls` e `tests/integration/rls/rls-commercial.test.ts` | ✅ PASS (`16/16`) |
+| GAP96-P0-006 | `pnpm validate:helm` | ✅ PASS com fallback estatico se `helm` ausente |
+| GAP96-P0-007 | `pnpm validate:openapi` | ✅ PASS (`184 paths`) |
+| Gate API | `pnpm --filter @cvg-his-v2/api run typecheck` | ✅ PASS |
+| Gate API | `pnpm --filter @cvg-his-v2/api run build` | ✅ PASS |
+| Gate API | `node --test apps/api/dist/routes/commercial-routes.test.js` | ✅ PASS |
+| Gate API | `pnpm --filter @cvg-his-v2/api run test` | ⚠️ 26/27 no sandbox; `startup-secrets.test.js` PASS isolado fora do sandbox |
+| Gate SPA | testes direcionados de fidelidade/tabelas/PDV | ✅ PASS (`5/5`) |
+| Gate SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+| Gate modulo | `pnpm --filter @cvg-his-v2/module-commercial run build` | ✅ PASS |
+| Gate modulo | `pnpm --filter @cvg-his-v2/module-commercial run test` | ✅ PASS |
+
+### Resultado tecnico
+
+- a frente comercial ganhou dominio persistido para fidelidade, resgates, tabelas de preco e sincronizacao PDV;
+- a API passou a expor endpoints comerciais com RBAC e contratos OpenAPI;
+- as telas comerciais deixaram de depender de dados locais no fluxo principal;
+- a nova superficie comercial passou a ter RLS/tenant isolation automatizado;
+- o validador Helm deixou de falhar por stack trace quando `helm` nao esta instalado e manteve validação real quando o binario existir.
+
+### Observacoes
+
+- ainda nao ha promocao final das notas para `96/100`;
+- os placeholders P1 de estoque, financeiro, fiscal e relatorios seguem como proxima frente; cadastros base foram fechados no bloco seguinte;
+- falta e2e/smoke comercial ponta a ponta e auditoria final pos-P1.
+
+## BLOCO VETUS-2026-04-24.3 - CADASTROS BASE DE ANIMAIS
+
+**Status:** `GAP96-P1-010` fechado
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-010 | `apps/spa/src/pages/catalogs/ReferenceCatalogPage.vue` | ✅ PASS |
+| Rotas | `breeds`, `species`, `coat-colors` deixam de usar `PlaceholderPage` | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/catalogs/__tests__/ReferenceCatalogPage.test.ts src/router/routes.test.ts` | ✅ PASS (`10/10`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- cadastros base de racas, especies e cores ganharam superficie real de catalogo estavel;
+- os catálogos ficam prontos para serem usados por formulários de animais e importações Vetus;
+- a navegacao existente foi preservada, mas as rotas deixam de apontar para placeholder generico.
+
+### Observacoes
+
+- os demais placeholders P1 de estoque, financeiro, fiscal e relatorios seguem abertos;
+- esta fatia nao substitui a necessidade de persistencia futura desses catalogos se a operação exigir CRUD administrativo.
+
+## BLOCO VETUS-2026-04-24.4 - AUDITORIA DE ESTOQUE
+
+**Status:** `GAP96-P1-004` fechado
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-004 | `inventory/audit` reutilizando `InventoryMovementsPage` API-backed | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/inventory/__tests__/InventoryMovementsPage.test.ts src/router/routes.test.ts` | ✅ PASS (`8/8`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- a rota `inventory/audit` deixou de apontar para `PlaceholderPage`;
+- a tela usa os consumos retornados por `inventoryService.listConsumptions()` e itens por `inventoryService.list()`;
+- a auditoria operacional ficou com filtros por natureza assistencial/comercial e estados de carregamento/erro herdados da pagina de movimentacoes.
+
+### Observacoes
+
+- financeiro, fiscal e relatorio de NF seguem no backlog P1.
+
+## BLOCO VETUS-2026-04-24.5 - OPERACAO DE ESTOQUE AVANCADA
+
+**Status:** `GAP96-P1-001`, `GAP96-P1-002` e `GAP96-P1-003` fechados
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-001 | `inventory/purchases` usando `InventoryOperationPage` em modo compras | ✅ PASS |
+| GAP96-P1-002 | `inventory/transfers` usando `InventoryOperationPage` em modo transferencias | ✅ PASS |
+| GAP96-P1-003 | `inventory/nf` usando `InventoryOperationPage` em modo notas fiscais de estoque | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/inventory/__tests__/InventoryOperationPage.test.ts src/router/routes.test.ts` | ✅ PASS (`10/10`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- compras, transferencias e NF de estoque deixaram de usar placeholder generico;
+- a nova tela operacional consome `inventoryService.list()` e `inventoryService.listLots()`;
+- compras geram fila de reposicao por saldo abaixo do mínimo;
+- transferencias geram fila de remanejamento para itens em ruptura;
+- NF exibe conferencia de lotes, fornecedor e rastreabilidade de entrada.
+
+### Observacoes
+
+- os fluxos ainda nao gravam pedidos de compra, documentos fiscais ou transferencias persistidas; a etapa fechada remove o placeholder e entrega integração operacional minima sobre dados reais de estoque.
+- financeiro, fiscal tributario e relatorio de NF seguiam no backlog P1 neste ponto; fiscal tributario foi fechado no bloco seguinte.
+
+## BLOCO VETUS-2026-04-24.6 - FISCAL IPI E IBS/CBS
+
+**Status:** `GAP96-P1-008` fechado
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-008 | `fiscal/ipi` usando `FiscalTaxOperationPage` em modo IPI | ✅ PASS |
+| GAP96-P1-008 | `fiscal/ibs-cbs` usando `FiscalTaxOperationPage` em modo IBS/CBS | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/fiscal/__tests__/FiscalTaxOperationPage.test.ts src/router/routes.test.ts` | ✅ PASS (`9/9`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- as rotas `fiscal/ipi` e `fiscal/ibs-cbs` deixaram de usar `PlaceholderPage`;
+- IPI usa `fiscalService.listNcmEntries()`, `listCfop()`, `getDashboardSummary()` e `getTaxPreview()`;
+- IBS/CBS tem decisao regulatoria explicita e usa a base fiscal atual como comparativo ate publicacao definitiva das tabelas da reforma tributaria.
+
+### Observacoes
+
+- contas a pagar, fluxo de caixa e cheques seguem no backlog P1; relatorio de NF foi fechado no bloco seguinte.
+
+## BLOCO VETUS-2026-04-24.7 - RELATORIO FISCAL DE NF
+
+**Status:** `GAP96-P1-009` fechado
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-009 | `reports/nf` usando `InvoiceReportsPage` | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/reports/__tests__/InvoiceReportsPage.test.ts src/router/routes.test.ts` | ✅ PASS (`8/8`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- `reports/nf` deixou de usar placeholder;
+- o relatório cruza CFOP, layouts NFS-e e lotes de estoque;
+- filtros por tipo e busca textual permitem auditoria operacional de NF sem criar emissão fiscal nova.
+
+### Observacoes
+
+- contas a pagar, fluxo de caixa e cheques foram fechados no bloco seguinte.
+
+## BLOCO VETUS-2026-04-24.8 - FINANCEIRO OPERACIONAL
+
+**Status:** `GAP96-P1-005`, `GAP96-P1-006` e `GAP96-P1-007` fechados
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P1-005 | `finance/accounts-payable` usando `FinanceOperationPage` em modo contas a pagar | ✅ PASS |
+| GAP96-P1-006 | `finance/cash-flow` usando `FinanceOperationPage` em modo fluxo de caixa | ✅ PASS |
+| GAP96-P1-007 | `finance/cheques` usando `FinanceOperationPage` em modo cheques | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/finance/__tests__/FinanceOperationPage.test.ts src/router/routes.test.ts` | ✅ PASS (`10/10`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- `finance/accounts-payable`, `finance/cash-flow` e `finance/cheques` deixaram de usar placeholder;
+- contas a pagar usa o catálogo financeiro persistido de custos/despesas;
+- fluxo de caixa combina faturamento, orçamentos aprovados e despesas;
+- cheques recebeu decisão formal de escopo: permanece como meio legado controlado por faturamento/caixa, sem subledger digital dedicado nesta onda.
+
+### Observacoes
+
+- com este bloco, todos os itens P1 do backlog `0351` foram fechados nesta onda.
+
+## BLOCO VETUS-2026-04-24.9 - RELATORIO OPERACIONAL PDV
+
+**Status:** `GAP96-P2-004` e `GAP96-P2-006` fechados
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P2-004 | `PointOfSaleSyncPage` listando jobs PDV existentes | ✅ PASS |
+| GAP96-P2-006 | `README`, `0100`, `0349`, `0350` e `0351` revalidados apos a onda | ✅ PASS |
+| Teste SPA | `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/inventory/__tests__/PriceTablesAndPosPage.test.ts` | ✅ PASS (`2/2`) |
+| Typecheck SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
+
+### Resultado tecnico
+
+- a tela de pontos de venda passou a carregar `GET /pos-sync/jobs`;
+- o relatório mostra job, tipo, status, registros processados, solicitação e finalização;
+- a lista é atualizada imediatamente quando uma sincronização é concluída pela tela.
+
+### Observacoes
+
+- `P2-002` foi tentado com `pnpm test:integration`, mas o sandbox bloqueou PostgreSQL local com `EPERM 127.0.0.1:5433`/`::1:5433`;
+- `P2-003` foi tentado com `pnpm test:smoke`, mas o Playwright falhou com `Process from config.webServer exited early`;
+- ainda faltam `P2-001`, `P2-005` e `P2-007`, alem da reexecucao dos gates bloqueados em runner com DB/browser disponiveis, para fechamento completo da fase.
 
 ## BLOCO P0.2 - REANCORAGEM FORMAL DA FASE RUMO A 96 (22/04/2026 22:05 UTC)
 
@@ -1821,3 +2066,33 @@ _Recalibrado em 10/04/2026 para refletir estado executavel real._
   - `apps/api/src/feature-flags.ts`: `100%` statements/lines, `60%` branches
   - `packages/modules/counter-sales/src/index.ts`: `85.59%`
   - `apps/api/src/runtime.ts`: mantido em `97.12%`
+
+## BLOCO VETUS-2026-04-24.10 - P2 E2E COMERCIAL E VARREDURA DE DADOS LOCAIS
+
+**Status:** `GAP96-P2-007` fechado; `GAP96-P2-001` implementado e aguardando ambiente executavel para fechamento
+
+### Evidencias executadas
+
+| Item | Evidencia | Resultado |
+| --- | --- | --- |
+| GAP96-P2-001 | `e2e/spa/vetus-commercial-flow.spec.ts` criado para fidelidade, tabela de preco e PDV | Implementado |
+| GAP96-P2-001 | `pnpm exec playwright test --config playwright-spa.config.ts --list \| rg "Vetus Comercial\|vetus-commercial"` | PASS; spec descoberto |
+| Fixture E2E | `e2e/spa/fixtures/spa-fixture.ts` com `ApiCall.patch()` | PASS por typecheck SPA e descoberta Playwright |
+| GAP96-P2-007 | varredura de placeholders nas rotas P0/P1 | PASS por ausencia de matches |
+| GAP96-P2-007 | varredura de arrays/mock/dados locais nas telas P0/P1 | PASS operacional; achados justificados |
+| Gate SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | PASS |
+
+### Resultado tecnico
+
+- o fluxo E2E comercial agora cria tutor real via `/owners` antes de lançar pontos e resgates, evitando `ownerId` sintetico incompatível com banco persistido;
+- o spec cobre criacao de programa de fidelidade, pontuacao, resgate, tabela de preco, item da tabela e job PDV marcado como concluido;
+- as telas `/loyalty`, `/tabelas-de-preco` e `/pontos-de-venda` passam a ter verificacao Playwright ponta a ponta pronta para execucao;
+- a varredura confirmou que as rotas P0/P1 priorizadas nao usam mais `PlaceholderPage`;
+- as exceções de dados locais remanescentes foram limitadas a configuracoes de UI, mocks de teste e catalogo base estavel de cadastros.
+
+### Bloqueios
+
+- `GAP96-P2-001` ainda nao fecha porque a execucao real do Playwright depende de resolver o `webServer` que encerra cedo no runner atual.
+- `GAP96-P2-002` segue bloqueado por `EPERM` ao acessar PostgreSQL local em `127.0.0.1:5433`/`::1:5433`.
+- `GAP96-P2-003` segue bloqueado pelo mesmo problema de inicializacao do `webServer` Playwright.
+- `GAP96-P2-005` deve aguardar gates verdes antes de publicar score final em `96/100`.

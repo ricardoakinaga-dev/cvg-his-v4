@@ -67,6 +67,9 @@
               Agendar
             </DsButton>
             <DsButton tag="a" to="/patients" variant="ghost" icon="🧾">Animais</DsButton>
+            <DsButton tag="a" to="/counter-sales" variant="secondary" icon="🧾">
+              Abrir comanda
+            </DsButton>
             <DsButton
               v-if="whatsappContact"
               :href="whatsappContact"
@@ -102,6 +105,37 @@
           <p v-if="owner.administrativeNotes" class="note-box">{{ owner.administrativeNotes }}</p>
         </DsCard>
 
+        <DsCard title="Identificação do cliente">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Tipo</span>
+              <strong>{{ personTypeLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Sexo</span>
+              <strong>{{ ownerSexLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Nascimento</span>
+              <strong>
+                {{ owner.profile?.birthDate ? formatDate(owner.profile.birthDate) : 'Não informado' }}
+              </strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">RG</span>
+              <strong>{{ owner.profile?.rg || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Grupo</span>
+              <strong>{{ owner.profile?.group || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Recebe SMS?</span>
+              <strong>{{ owner.profile?.receiveSms ? 'Sim' : 'Não' }}</strong>
+            </div>
+          </div>
+        </DsCard>
+
         <DsCard title="Relacionamento">
           <div class="detail-grid">
             <div class="detail-item">
@@ -119,6 +153,48 @@
             <div class="detail-item">
               <span class="detail-item__label">Atendimentos recentes</span>
               <strong>{{ recentEncounters.length }}</strong>
+            </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Endereço e contato">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">CEP</span>
+              <strong>{{ owner.address?.zipCode || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Endereço</span>
+              <strong>{{ ownerAddressLine }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Bairro</span>
+              <strong>{{ owner.address?.district || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Cidade/UF</span>
+              <strong>{{ ownerCityState }}</strong>
+            </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Resgate de pontos e limite">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Pontos disponíveis</span>
+              <strong>{{ owner.financialProfile?.availablePoints ?? 0 }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Pontos bloqueados</span>
+              <strong>{{ owner.financialProfile?.blockedPoints ?? 0 }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Saldo em crédito</span>
+              <strong>{{ formatCurrency(owner.financialProfile?.creditBalance ?? 0) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Pode dever até</span>
+              <strong>{{ formatCurrency(owner.financialProfile?.allowedDebtLimit ?? 0) }}</strong>
             </div>
           </div>
         </DsCard>
@@ -445,6 +521,32 @@ const loyaltyPoints = computed(
     )
 );
 const redeemableValue = computed(() => Math.floor(loyaltyPoints.value / 100) * 25);
+
+const personTypeLabel = computed(() => {
+  if (owner.value?.profile?.personType === 'company') return 'Jurídica';
+  if (owner.value?.profile?.personType === 'individual') return 'Física';
+  return 'Não informado';
+});
+
+const ownerSexLabel = computed(() => {
+  const sex = owner.value?.profile?.sex;
+  if (sex === 'female') return 'Feminino';
+  if (sex === 'male') return 'Masculino';
+  if (sex === 'other') return 'Outro';
+  return 'Não informado';
+});
+
+const ownerAddressLine = computed(() => {
+  const address = owner.value?.address;
+  if (!address?.street) return 'Não informado';
+  return [address.street, address.number, address.complement].filter(Boolean).join(', ');
+});
+
+const ownerCityState = computed(() => {
+  const address = owner.value?.address;
+  const cityState = [address?.city, address?.state].filter(Boolean).join('/');
+  return cityState || 'Não informado';
+});
 
 const loyaltyTier = computed(() => {
   if (loyaltyPoints.value >= 300) return { label: 'Platinum', variant: 'success' as const };

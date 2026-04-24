@@ -10,6 +10,8 @@ import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
 import type { SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
+import { CommercialService } from '@cvg-his-v2/module-commercial';
+import type { CommercialRepository } from '@cvg-his-v2/module-commercial';
 import {
   EncounterFinancialService,
   InMemoryEncounterFinancialRepository,
@@ -156,6 +158,7 @@ export interface RuntimeRepositories {
   readonly prescriptionExecution?: PrescriptionExecutionRepository;
   readonly administrationEvent?: AdministrationEventRepository;
   readonly billing?: BillingRepository;
+  readonly commercial?: CommercialRepository;
   readonly inventory?: InventoryRepository;
   readonly scheduling?: SchedulingRepository;
   readonly triage?: TriageRepository;
@@ -554,6 +557,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       repository: repos.inventory
     }
   );
+  const commercial = new CommercialService({ repository: repos.commercial });
   const notifications = new NotificationsService({
     encounters,
     patients,
@@ -686,6 +690,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     laboratory,
     billing,
     encounterFinancial,
+    commercial,
     inventory,
     notifications,
     audit,
@@ -730,6 +735,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             accessControl.hydrateFromDatabase(bootstrapAccountId),
             diagnostics.hydrateFromDatabase(bootstrapAccountId),
             laboratory.hydrateCatalog(bootstrapAccountId),
+            commercial.hydrateFromDatabase(bootstrapAccountId),
             inventory.hydrateFromDatabase(bootstrapAccountId),
             scheduling.hydrateFromDatabase(bootstrapAccountId),
             triage.hydrateFromDatabase(bootstrapAccountId),

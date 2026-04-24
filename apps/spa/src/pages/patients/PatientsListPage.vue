@@ -1,9 +1,9 @@
 <template>
   <div class="patients-list-page">
     <AppPageHeader
-      title="Animais e Pacientes"
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes']"
-      subtitle="Atendimento > Cadastrados > Animais. Base clínica do hospital, conectada a agenda, atendimento, prontuário e internação."
+      title="Animais"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Animais']"
+      subtitle="Cadastro clínico-operacional com busca por animal, cliente, raça e atalhos para comanda, agenda e atendimento."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
@@ -143,10 +143,6 @@
 
         <div class="patient-card__facts">
           <div class="fact-row">
-            <span class="fact-row__label">Tutor</span>
-            <span>{{ ownerName(patient.primaryOwnerId) }}</span>
-          </div>
-          <div class="fact-row">
             <span class="fact-row__label">Sexo</span>
             <span>{{ sexLabel(patient.sex) }}</span>
           </div>
@@ -160,9 +156,34 @@
           </div>
         </div>
 
+        <details class="patient-card__owner">
+          <summary>Informações do cliente</summary>
+          <div class="owner-snapshot">
+            <div class="fact-row">
+              <span class="fact-row__label">Cliente</span>
+              <span>{{ ownerName(patient.primaryOwnerId) }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">CPF/CNPJ</span>
+              <span>{{ ownerDocument(patient.primaryOwnerId) }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">Celular</span>
+              <span>{{ ownerPhone(patient.primaryOwnerId) }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">E-mail</span>
+              <span>{{ ownerEmail(patient.primaryOwnerId) }}</span>
+            </div>
+          </div>
+        </details>
+
         <div class="patient-card__actions">
           <DsButton tag="a" :to="`/patients/${patient.id}`" variant="secondary" size="sm">
             Detalhes
+          </DsButton>
+          <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
+            Abrir comanda
           </DsButton>
           <DsButton
             tag="a"
@@ -194,8 +215,8 @@
         Cadastre o primeiro animal para abastecer agenda, atendimento, prontuário e internação.
       </p>
       <div class="empty-state__actions">
-        <DsButton tag="a" to="/patients/new" variant="primary">+ Novo Paciente</DsButton>
-        <DsButton tag="a" to="/owners" variant="secondary">👤 Ver Tutores</DsButton>
+        <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar Novo Animal</DsButton>
+        <DsButton tag="a" to="/owners" variant="secondary">Ver Clientes</DsButton>
       </div>
     </DsCard>
   </div>
@@ -203,7 +224,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
+import type { OwnerContact, OwnerSummary } from '@/types/owner';
 import type { PatientSex, PatientSummary } from '@/types/patient';
 import {
   speciesLabel,
@@ -211,7 +234,6 @@ import {
   patientStatusLabel,
   patientSizeLabel
 } from '@/utils/labels';
-import { useEntityCache } from '@/composables/useEntityCache';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -221,12 +243,11 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 
 type SortMode = 'recent' | 'name' | 'weight';
 
-const entityCache = useEntityCache();
 const loading = ref(false);
 const error = ref('');
 const showAdvanced = ref(false);
 const patients = ref<PatientSummary[]>([]);
-const ownerNames = ref<Record<string, string>>({});
+const owners = ref<OwnerSummary[]>([]);
 
 const filters = reactive({
   search: '',
@@ -238,6 +259,25 @@ const filters = reactive({
 
 const displayedPatients = computed(() => {
   let items = [...patients.value];
+  const search = filters.search.trim().toLowerCase();
+
+  if (search) {
+    items = items.filter((patient) => {
+      const owner = ownerMap.value.get(patient.primaryOwnerId);
+      const ownerContactMatch = owner?.contacts.some((contact) =>
+        contact.value.toLowerCase().includes(search)
+      );
+
+      return (
+        patient.name.toLowerCase().includes(search) ||
+        patient.species.toLowerCase().includes(search) ||
+        patient.breed?.toLowerCase().includes(search) ||
+        owner?.fullName.toLowerCase().includes(search) ||
+        owner?.documentId?.toLowerCase().includes(search) ||
+        ownerContactMatch
+      );
+    });
+  }
 
   if (filters.sex !== 'all') {
     items = items.filter((patient) => patient.sex === filters.sex);
@@ -258,6 +298,14 @@ const displayedPatients = computed(() => {
 
 const highlightedPatient = computed(() => displayedPatients.value[0] ?? null);
 
+const ownerMap = computed(() => {
+  const map = new Map<string, OwnerSummary>();
+  for (const owner of owners.value) {
+    map.set(owner.id, owner);
+  }
+  return map;
+});
+
 const summaryCards = computed(() => {
   const total = patients.value.length;
   const active = patients.value.filter((patient) => patient.status === 'active').length;
@@ -275,7 +323,7 @@ const summaryCards = computed(() => {
 const headerSecondaryActions = computed(() => [
   {
     key: 'view-owners',
-    label: 'Ver tutores',
+    label: 'Ver clientes',
     variant: 'secondary' as const,
     to: '/owners'
   },
@@ -290,7 +338,7 @@ const headerSecondaryActions = computed(() => [
 
 const headerPrimaryAction = computed(() => ({
   key: 'new-patient',
-  label: '+ Novo Paciente',
+  label: '+ Cadastrar Novo Animal',
   variant: 'primary' as const,
   to: '/patients/new'
 }));
@@ -302,7 +350,31 @@ function statusVariant(status: string) {
 }
 
 function ownerName(ownerId: string): string {
-  return ownerNames.value[ownerId] || `Tutor ${ownerId.slice(0, 8)}...`;
+  return ownerMap.value.get(ownerId)?.fullName || `Cliente ${ownerId.slice(0, 8)}...`;
+}
+
+function ownerDocument(ownerId: string): string {
+  return ownerMap.value.get(ownerId)?.documentId || 'Não informado';
+}
+
+function ownerPrimaryContact(
+  ownerId: string,
+  predicate: (contact: OwnerContact) => boolean
+): string {
+  const owner = ownerMap.value.get(ownerId);
+  const contact = owner?.contacts.find(predicate);
+  return contact?.value || 'Não informado';
+}
+
+function ownerPhone(ownerId: string): string {
+  return ownerPrimaryContact(
+    ownerId,
+    (contact) => contact.type === 'whatsapp' || contact.type === 'phone'
+  );
+}
+
+function ownerEmail(ownerId: string): string {
+  return ownerPrimaryContact(ownerId, (contact) => contact.type === 'email');
 }
 
 function formatWeight(weight?: number): string {
@@ -336,20 +408,16 @@ async function load() {
   error.value = '';
 
   try {
-    const items = await patientService.list({
-      search: filters.search || undefined,
-      species: filters.species || undefined,
-      status: filters.status
-    });
+    const [patientItems, ownerItems] = await Promise.all([
+      patientService.list({
+        species: filters.species || undefined,
+        status: filters.status
+      }),
+      ownerService.list({ pageSize: 500, status: 'all' })
+    ]);
 
-    patients.value = items;
-
-    const ownerIds = [...new Set(items.map((patient) => patient.primaryOwnerId))];
-    await Promise.all(
-      ownerIds.map(async (id) => {
-        ownerNames.value[id] = await entityCache.getOwnerName(id);
-      })
-    );
+    patients.value = patientItems;
+    owners.value = ownerItems;
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar pacientes';
   } finally {
@@ -541,6 +609,27 @@ onMounted(load);
 .patient-card__facts {
   display: grid;
   gap: 10px;
+}
+
+.patient-card__owner {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 14px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.patient-card__owner summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #075985;
+}
+
+.owner-snapshot {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
 }
 
 .fact-row {

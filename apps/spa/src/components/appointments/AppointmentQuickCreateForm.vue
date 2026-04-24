@@ -341,6 +341,12 @@ interface Props {
   presetScheduledAt?: string;
   presetDurationMinutes?: number;
   presetPractitionerStaffId?: string;
+  presetVisitType?: AppointmentVisitType;
+  presetServiceId?: string;
+  presetUnit?: string;
+  presetSpecialty?: string;
+  presetResourceLabel?: string;
+  presetReason?: string;
   professionals?: SchedulingProfessionalSummary[];
   hideOwnerSelection?: boolean;
   lockOwnerSelection?: boolean;
@@ -356,6 +362,12 @@ const props = withDefaults(defineProps<Props>(), {
   presetScheduledAt: '',
   presetDurationMinutes: 30,
   presetPractitionerStaffId: '',
+  presetVisitType: 'scheduled',
+  presetServiceId: '',
+  presetUnit: '',
+  presetSpecialty: '',
+  presetResourceLabel: '',
+  presetReason: '',
   hideOwnerSelection: false,
   lockOwnerSelection: false,
   restrictPatientsToOwner: false,
@@ -393,13 +405,13 @@ const form = reactive({
   patientId: props.presetPatientId,
   scheduledAt: props.presetScheduledAt || new Date().toISOString().slice(0, 16),
   durationMinutes: props.presetDurationMinutes,
-  visitType: 'scheduled' as AppointmentVisitType,
+  visitType: props.presetVisitType,
   practitionerStaffId: props.presetPractitionerStaffId,
-  serviceId: '',
-  unit: '',
-  specialty: '',
-  resourceLabel: '',
-  reason: '',
+  serviceId: props.presetServiceId,
+  unit: props.presetUnit,
+  specialty: props.presetSpecialty,
+  resourceLabel: props.presetResourceLabel,
+  reason: props.presetReason,
   smartSchedulingRecommendationId: ''
 });
 

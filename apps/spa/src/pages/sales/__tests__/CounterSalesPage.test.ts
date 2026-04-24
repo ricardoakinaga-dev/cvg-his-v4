@@ -391,6 +391,16 @@ describe('CounterSalesPage', () => {
     expect(wrapper.text()).toContain('Relatório executivo próprio');
     expect(wrapper.text()).toContain('Prontuário ativo');
     expect(wrapper.text()).toContain('Em atendimento');
+    expect(wrapper.text()).toContain('Informações do cliente');
+    expect(wrapper.text()).toContain('Serviços / Produtos');
+    expect(wrapper.text()).toContain('Animais Vinculados na Comanda');
+    expect(wrapper.text()).toContain('Observações Gerais');
+    expect(wrapper.text()).toContain('Histórico de Esteira');
+    expect(wrapper.text()).toContain('Resumo da Conta');
+    expect(wrapper.text()).toContain('Ver Informações de Contato');
+    expect(wrapper.text()).toContain('Incluir Despesa Extra');
+    expect(wrapper.text()).toContain('Incluir Desconto');
+    expect(wrapper.text()).toContain('Encaminhar Esteira');
 
     const addItemButton = wrapper
       .findAll('button')
@@ -418,6 +428,43 @@ describe('CounterSalesPage', () => {
       'cs-1',
       expect.objectContaining({
         amount: 100
+      })
+    );
+  });
+
+  it('lança despesa extra e desconto pelo resumo da conta', async () => {
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+
+    await flushPromises();
+
+    const expenseButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Incluir Despesa Extra'));
+    expect(expenseButton).toBeTruthy();
+    await expenseButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesAddItem).toHaveBeenCalledWith(
+      'cs-1',
+      expect.objectContaining({
+        nameSnapshot: 'Despesa extra',
+        unitPrice: 10
+      })
+    );
+
+    const discountButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Incluir Desconto'));
+    expect(discountButton).toBeTruthy();
+    await discountButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesAddItem).toHaveBeenCalledWith(
+      'cs-1',
+      expect.objectContaining({
+        nameSnapshot: 'Desconto operacional',
+        discountAmount: 10
       })
     );
   });

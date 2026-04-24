@@ -21,30 +21,11 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('sales', 'Sales', 'Vendas', 'Atendimento', '💸'),
-  placeholderRoute('packages', 'Packages', 'Pacotes', 'Atendimento', '📦'),
-  placeholderRoute('loyalty', 'Loyalty', 'Fidelidade', 'Atendimento', '🎯'),
-  placeholderRoute('breeds', 'Breeds', 'Raças', 'Cadastros', '🧬'),
-  placeholderRoute('species', 'Species', 'Espécies', 'Cadastros', '🦴'),
-  placeholderRoute('coat-colors', 'CoatColors', 'Cores', 'Cadastros', '🎨'),
-  placeholderRoute('laboratory/hemograms', 'LaboratoryHemograms', 'Hemogramas', 'Laboratório', '🩸'),
-  placeholderRoute('laboratory/urinalysis', 'LaboratoryUrinalysis', 'Urina', 'Laboratório', '💧'),
-  placeholderRoute('laboratory/biochemistry', 'LaboratoryBiochemistry', 'Bioquímico', 'Laboratório', '⚗️'),
-  placeholderRoute('inventory/nf', 'InventoryInvoices', 'NF', 'Estoque', '🧾'),
   placeholderRoute('inventory/pharmacy', 'InventoryPharmacy', 'Farmácia', 'Estoque', '💊'),
-  placeholderRoute('inventory/audit', 'InventoryAudit', 'Auditoria', 'Estoque', '🧾'),
-  placeholderRoute('inventory/purchases', 'InventoryPurchases', 'Compras', 'Estoque', '🛒'),
-  placeholderRoute('inventory/transfers', 'InventoryTransfers', 'Transferências', 'Estoque', '🔄'),
-  placeholderRoute('fiscal/ipi', 'FiscalIpi', 'IPI', 'Fiscal', '🏷️'),
-  placeholderRoute('fiscal/ibs-cbs', 'FiscalIbsCbs', 'IBS/CBS', 'Fiscal', '🧮'),
-  placeholderRoute('finance/accounts-payable', 'AccountsPayable', 'Contas a Pagar', 'Financeiro', '💸'),
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
-  placeholderRoute('finance/cheques', 'FinanceCheques', 'Cheques', 'Financeiro', '📄'),
-  placeholderRoute('finance/cash-flow', 'FinanceCashFlow', 'Fluxo de Caixa', 'Financeiro', '📈'),
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
   placeholderRoute('rh/professions', 'RhProfessions', 'Profissões', 'RH', '🪪'),
-  placeholderRoute('reports/nf', 'ReportInvoices', 'NF', 'Relatórios', '🧾'),
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Dashboards', '🏢')
 ];
@@ -178,6 +159,46 @@ export const routes: RouteRecordRaw[] = [
           icon: '🐾'
         }
       },
+      {
+        path: 'breeds',
+        name: 'Breeds',
+        alias: ['/racas', '/raças', '/cadastros/racas', '/cadastros/raças', '/cadastro/racas', '/cadastro/raças'],
+        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
+        props: { kind: 'breeds' },
+        meta: { title: 'Raças', breadcrumb: 'Raças', breadcrumbParent: 'Cadastros', icon: '🧬' }
+      },
+      {
+        path: 'species',
+        name: 'Species',
+        alias: ['/especies', '/espécies', '/cadastros/especies', '/cadastros/espécies', '/cadastro/especies', '/cadastro/espécies'],
+        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
+        props: { kind: 'species' },
+        meta: { title: 'Espécies', breadcrumb: 'Espécies', breadcrumbParent: 'Cadastros', icon: '🦴' }
+      },
+      {
+        path: 'coat-colors',
+        name: 'CoatColors',
+        alias: ['/cores', '/cadastros/cores', '/cadastro/cores'],
+        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
+        props: { kind: 'coat-colors' },
+        meta: { title: 'Cores', breadcrumb: 'Cores', breadcrumbParent: 'Cadastros', icon: '🎨' }
+      },
+      { path: 'cadastros/racas', redirect: '/breeds' },
+      { path: 'cadastros/raças', redirect: '/breeds' },
+      { path: 'cadastro/racas', redirect: '/breeds' },
+      { path: 'cadastro/raças', redirect: '/breeds' },
+      { path: 'cadastros/especies', redirect: '/species' },
+      { path: 'cadastros/espécies', redirect: '/species' },
+      { path: 'cadastro/especies', redirect: '/species' },
+      { path: 'cadastro/espécies', redirect: '/species' },
+      { path: 'cadastros/species', redirect: '/species' },
+      { path: 'cadastro/species', redirect: '/species' },
+      { path: 'cadastros/cores', redirect: '/coat-colors' },
+      { path: 'cadastro/cores', redirect: '/coat-colors' },
+      { path: 'cadastros/coat-colors', redirect: '/coat-colors' },
+      { path: 'cadastro/coat-colors', redirect: '/coat-colors' },
+      { path: 'cadastros/pelagens', redirect: '/coat-colors' },
+      { path: 'cadastro/pelagens', redirect: '/coat-colors' },
       {
         path: 'encounters',
         name: 'Encounters',
@@ -330,6 +351,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/orders',
         name: 'LaboratoryOrders',
+        alias: ['/laboratorio/exames', '/laboratorio/pedidos-de-exame', '/laboratorio/atendimentos/pedidos-de-exame'],
         component: () => import('@/pages/laboratory/LaboratoryOrdersPage.vue'),
         meta: {
           title: 'Exames',
@@ -347,6 +369,41 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Laudos',
           breadcrumbParent: 'Laboratório',
           icon: '📋'
+        }
+      },
+      {
+        path: 'laboratory/hemograms',
+        name: 'LaboratoryHemograms',
+        alias: ['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/exames/hemogramas'],
+        component: () => import('@/pages/laboratory/LaboratoryHemogramsPage.vue'),
+        meta: {
+          title: 'Hemogramas',
+          breadcrumb: 'Hemogramas',
+          breadcrumbParent: 'Laboratório',
+          icon: '🩸'
+        }
+      },
+      {
+        path: 'laboratory/urinalysis',
+        name: 'LaboratoryUrinalysis',
+        alias: ['/urina', '/urinanalise', '/urinálise', '/laboratorio/urina', '/laboratorio/exames/urina'],
+        component: () => import('@/pages/laboratory/LaboratoryUrinalysisPage.vue'),
+        meta: {
+          title: 'Urina',
+          breadcrumb: 'Urina',
+          breadcrumbParent: 'Laboratório',
+          icon: '💧'
+        }
+      },
+      {
+        path: 'laboratory/biochemistry',
+        name: 'LaboratoryBiochemistry',
+        component: () => import('@/pages/laboratory/LaboratoryBiochemistryPage.vue'),
+        meta: {
+          title: 'Bioquímico',
+          breadcrumb: 'Bioquímico',
+          breadcrumbParent: 'Laboratório',
+          icon: '⚗️'
         }
       },
       {
@@ -503,6 +560,42 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Contas a Receber',
           icon: '💰'
+        }
+      },
+      {
+        path: 'finance/accounts-payable',
+        name: 'AccountsPayable',
+        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
+        props: { mode: 'accounts-payable' },
+        meta: {
+          title: 'Contas a Pagar',
+          breadcrumb: 'Contas a Pagar',
+          breadcrumbParent: 'Financeiro',
+          icon: '💸'
+        }
+      },
+      {
+        path: 'finance/cash-flow',
+        name: 'FinanceCashFlow',
+        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
+        props: { mode: 'cash-flow' },
+        meta: {
+          title: 'Fluxo de Caixa',
+          breadcrumb: 'Fluxo de Caixa',
+          breadcrumbParent: 'Financeiro',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'finance/cheques',
+        name: 'FinanceCheques',
+        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
+        props: { mode: 'cheques' },
+        meta: {
+          title: 'Cheques',
+          breadcrumb: 'Cheques',
+          breadcrumbParent: 'Financeiro',
+          icon: '📄'
         }
       },
       {
@@ -738,6 +831,17 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'reports/nf',
+        name: 'ReportInvoices',
+        component: () => import('@/pages/reports/InvoiceReportsPage.vue'),
+        meta: {
+          title: 'NF',
+          breadcrumb: 'NF',
+          breadcrumbParent: 'Relatórios',
+          icon: '🧾'
+        }
+      },
+      {
         path: 'reports/production',
         name: 'ProductionReports',
         component: () => import('@/pages/reports/ProductionReportsPage.vue'),
@@ -871,6 +975,18 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'sales',
+        name: 'Sales',
+        alias: ['/vendas', '/atendimento/vendas'],
+        component: () => import('@/pages/sales/SalesPage.vue'),
+        meta: {
+          title: 'Vendas',
+          breadcrumb: 'Vendas',
+          breadcrumbParent: 'Atendimento',
+          icon: '💸'
+        }
+      },
+      {
         path: 'counter-sales',
         name: 'CounterSales',
         alias: ['/comandas'],
@@ -892,6 +1008,18 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Orçamentos',
           breadcrumbParent: 'Atendimento',
           icon: '📝'
+        }
+      },
+      {
+        path: 'packages',
+        name: 'Packages',
+        alias: ['/pacotes', '/atendimento/pacotes'],
+        component: () => import('@/pages/sales/PackagesPage.vue'),
+        meta: {
+          title: 'Pacotes',
+          breadcrumb: 'Pacotes',
+          breadcrumbParent: 'Atendimento',
+          icon: '📦'
         }
       },
       {
@@ -991,6 +1119,58 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'inventory/audit',
+        name: 'InventoryAudit',
+        component: () => import('@/pages/inventory/InventoryMovementsPage.vue'),
+        props: {
+          title: 'Auditoria de Estoque',
+          subtitle: 'Rastreabilidade operacional de consumos assistenciais e comerciais com filtros por natureza.',
+          breadcrumb: 'Auditoria'
+        },
+        meta: {
+          title: 'Auditoria',
+          breadcrumb: 'Auditoria',
+          breadcrumbParent: 'Estoque',
+          icon: '🧾'
+        }
+      },
+      {
+        path: 'inventory/purchases',
+        name: 'InventoryPurchases',
+        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
+        props: { mode: 'purchases' },
+        meta: {
+          title: 'Compras',
+          breadcrumb: 'Compras',
+          breadcrumbParent: 'Estoque',
+          icon: '🛒'
+        }
+      },
+      {
+        path: 'inventory/transfers',
+        name: 'InventoryTransfers',
+        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
+        props: { mode: 'transfers' },
+        meta: {
+          title: 'Transferências',
+          breadcrumb: 'Transferências',
+          breadcrumbParent: 'Estoque',
+          icon: '🔄'
+        }
+      },
+      {
+        path: 'inventory/nf',
+        name: 'InventoryInvoices',
+        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
+        props: { mode: 'invoices' },
+        meta: {
+          title: 'NF',
+          breadcrumb: 'NF',
+          breadcrumbParent: 'Estoque',
+          icon: '🧾'
+        }
+      },
+      {
         path: 'inventory/validity',
         name: 'InventoryValidity',
         component: () => import('@/pages/inventory/InventoryValidityPage.vue'),
@@ -999,6 +1179,28 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Validade',
           breadcrumbParent: 'Estoque',
           icon: '📅'
+        }
+      },
+      {
+        path: 'tabelas-de-preco',
+        name: 'PriceTables',
+        component: () => import('@/pages/inventory/PriceTablesPage.vue'),
+        meta: {
+          title: 'Tabelas de Preço',
+          breadcrumb: 'Tabelas de Preço',
+          breadcrumbParent: 'Estoque',
+          icon: '🏷️'
+        }
+      },
+      {
+        path: 'pontos-de-venda',
+        name: 'PointOfSaleSync',
+        component: () => import('@/pages/inventory/PointOfSaleSyncPage.vue'),
+        meta: {
+          title: 'Pontos de venda',
+          breadcrumb: 'Pontos de venda',
+          breadcrumbParent: 'Estoque',
+          icon: '🧾'
         }
       },
       {
@@ -1021,6 +1223,30 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'ICMS',
           breadcrumbParent: 'Fiscal',
           icon: '📊'
+        }
+      },
+      {
+        path: 'fiscal/ipi',
+        name: 'FiscalIpi',
+        component: () => import('@/pages/fiscal/FiscalTaxOperationPage.vue'),
+        props: { mode: 'ipi' },
+        meta: {
+          title: 'IPI',
+          breadcrumb: 'IPI',
+          breadcrumbParent: 'Fiscal',
+          icon: '🏷️'
+        }
+      },
+      {
+        path: 'fiscal/ibs-cbs',
+        name: 'FiscalIbsCbs',
+        component: () => import('@/pages/fiscal/FiscalTaxOperationPage.vue'),
+        props: { mode: 'ibs-cbs' },
+        meta: {
+          title: 'IBS/CBS',
+          breadcrumb: 'IBS/CBS',
+          breadcrumbParent: 'Fiscal',
+          icon: '🧮'
         }
       },
       {
@@ -1274,6 +1500,18 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Serviços',
           icon: '🛠️'
+        }
+      },
+      {
+        path: 'loyalty',
+        name: 'Loyalty',
+        alias: ['/fidelidade', '/atendimento/fidelidade'],
+        component: () => import('@/pages/loyalty/LoyaltyPage.vue'),
+        meta: {
+          title: 'Resgate de Pontos',
+          breadcrumb: 'Fidelidade',
+          breadcrumbParent: 'Atendimento',
+          icon: '🎯'
         }
       },
       {

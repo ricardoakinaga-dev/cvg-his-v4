@@ -99,6 +99,22 @@ describe('QuotesPage', () => {
       createdAt: '2026-04-10T00:00:00Z',
       updatedAt: '2026-04-10T00:00:00Z'
     });
+    mockAddItem.mockResolvedValue({
+      id: 'qi-2',
+      quoteId: 'qt-1',
+      accountId: 'acc-1',
+      itemType: 'service',
+      catalogItemId: null,
+      nameSnapshot: 'Taxa administrativa',
+      codeSnapshot: 'OUTROS',
+      unitPrice: 20,
+      quantity: 1,
+      discountAmount: 0,
+      lineTotal: 20,
+      notes: 'Item livre de orçamento',
+      createdAt: '2026-04-10T00:00:00Z',
+      updatedAt: '2026-04-10T00:00:00Z'
+    });
     mockConvert.mockResolvedValue({ counterSaleId: 'cs-1', quoteId: 'qt-1' });
     mockPrint.mockResolvedValue('<html></html>');
   });
@@ -109,6 +125,10 @@ describe('QuotesPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('QT-000001');
+    expect(wrapper.text()).toContain('Montar orçamento');
+    expect(wrapper.text()).toContain('Serviços, produtos e outros');
+    expect(wrapper.text()).toContain('Valor do Orçamento');
+    expect(wrapper.text()).toContain('Inclusão de Serviço, Inclusão de Produto e Inserir Outros');
 
     const convertButton = wrapper
       .findAll('button')
@@ -119,5 +139,30 @@ describe('QuotesPage', () => {
 
     expect(mockConvert).toHaveBeenCalledWith('qt-1');
     expect(wrapper.text()).toContain('cs-1');
+  });
+
+  it('adiciona item livre como Outros compatível com o backend de serviços', async () => {
+    const QuotesPage = (await import('../QuotesPage.vue')).default;
+    const wrapper = mount(QuotesPage);
+
+    await flushPromises();
+
+    await wrapper.find('#item-type').setValue('other');
+    await wrapper.find('#item-name').setValue('Taxa administrativa');
+    await wrapper.find('#item-price').setValue('20');
+    await wrapper.find('#item-qty').setValue('1');
+
+    await wrapper.find('form.item-form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(mockAddItem).toHaveBeenCalledWith(
+      'qt-1',
+      expect.objectContaining({
+        itemType: 'service',
+        nameSnapshot: 'Taxa administrativa',
+        codeSnapshot: 'OUTROS',
+        notes: 'Item livre de orçamento'
+      })
+    );
   });
 });

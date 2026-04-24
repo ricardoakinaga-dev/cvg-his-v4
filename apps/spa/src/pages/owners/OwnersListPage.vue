@@ -1,9 +1,9 @@
 <template>
   <div class="owners-list-page">
     <AppPageHeader
-      title="Clientes e Tutores"
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores']"
-      subtitle="Atendimento > Cadastrados > Clientes. Hub relacional que conecta pacientes, agenda, atendimento e operação financeira."
+      title="Clientes"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes']"
+      subtitle="Hub operacional com busca rápida, resumo recente e atalhos para detalhar ou cadastrar novos clientes."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
@@ -101,94 +101,134 @@
       </DsCard>
     </section>
 
-    <section v-if="displayedOwners.length > 0" class="owners-grid">
-      <DsCard
-        v-for="owner in displayedOwners"
-        :key="owner.id"
-        variant="elevated"
-        class="owner-card"
-      >
-        <div class="owner-card__header">
-          <div class="owner-card__avatar">{{ initials(owner.fullName) }}</div>
-          <div class="owner-card__identity">
-            <div class="owner-card__badges">
-              <StatusBadge
-                :label="ownerStatusLabel(owner.status)"
-                :variant="owner.status === 'active' ? 'success' : 'danger'"
-              />
-              <StatusBadge v-if="owner.financialResponsible" label="Financeiro" variant="info" />
+    <section v-if="displayedOwners.length > 0" class="owners-list-page__recent">
+      <div class="owners-list-page__section-head">
+        <h2>Últimos clientes cadastrados</h2>
+        <p>Visão rápida dos clientes mais recentes, com documento, contato principal e vínculos.</p>
+      </div>
+
+      <div class="owners-grid">
+        <DsCard
+          v-for="owner in displayedOwners"
+          :key="owner.id"
+          variant="elevated"
+          class="owner-card"
+        >
+          <div class="owner-card__header">
+            <div class="owner-card__avatar">{{ initials(owner.fullName) }}</div>
+            <div class="owner-card__identity">
+              <div class="owner-card__badges">
+                <StatusBadge
+                  :label="ownerStatusLabel(owner.status)"
+                  :variant="owner.status === 'active' ? 'success' : 'danger'"
+                />
+                <StatusBadge v-if="owner.financialResponsible" label="Financeiro" variant="info" />
+              </div>
+              <h3 class="owner-card__name">{{ owner.fullName }}</h3>
+              <p class="owner-card__id">ID {{ owner.id }}</p>
             </div>
-            <h3 class="owner-card__name">{{ owner.fullName }}</h3>
-            <p class="owner-card__id">ID {{ owner.id }}</p>
           </div>
-        </div>
 
-        <div class="owner-card__facts">
-          <div class="fact-row">
-            <span class="fact-row__label">Documento</span>
-            <span>{{ owner.documentId || '—' }}</span>
+          <div class="owner-card__facts">
+            <div class="fact-row">
+              <span class="fact-row__label">CPF/CNPJ</span>
+              <span>{{ owner.documentId || '—' }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">Contato principal</span>
+              <span>{{ primaryContact(owner) }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">Animais do cliente</span>
+              <span>{{ patientsByOwner(owner.id).length }}</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-row__label">Cadastro</span>
+              <span>{{ formatDate(owner.createdAt) }}</span>
+            </div>
           </div>
-          <div class="fact-row">
-            <span class="fact-row__label">Contato principal</span>
-            <span>{{ primaryContact(owner) }}</span>
-          </div>
-          <div class="fact-row">
-            <span class="fact-row__label">Pacientes</span>
-            <span>{{ patientsByOwner(owner.id).length }}</span>
-          </div>
-          <div class="fact-row">
-            <span class="fact-row__label">Cadastro</span>
-            <span>{{ formatDate(owner.createdAt) }}</span>
-          </div>
-        </div>
 
-        <div v-if="patientsByOwner(owner.id).length > 0" class="owner-card__patients">
-          <span
-            v-for="patient in patientsByOwner(owner.id).slice(0, 3)"
-            :key="patient.id"
-            class="patient-pill"
-          >
-            {{ patient.name }}
-          </span>
-          <span v-if="patientsByOwner(owner.id).length > 3" class="patient-pill patient-pill--more">
-            +{{ patientsByOwner(owner.id).length - 3 }}
-          </span>
-        </div>
+          <details class="owner-card__details">
+            <summary>Informações de Contato</summary>
+            <div class="owner-card__detail-body">
+              <div v-if="owner.contacts.length" class="owner-contact-list">
+                <div v-for="contact in owner.contacts" :key="`${owner.id}-${contact.label}-${contact.value}`" class="fact-row">
+                  <span class="fact-row__label">{{ contact.label }}</span>
+                  <span>{{ contact.value }}</span>
+                </div>
+              </div>
+              <p v-else class="owner-card__empty">Nenhum contato cadastrado.</p>
+            </div>
+          </details>
 
-        <p v-if="owner.administrativeNotes" class="owner-card__notes">
-          {{ owner.administrativeNotes }}
-        </p>
+          <details class="owner-card__details">
+            <summary>Animais do Cliente</summary>
+            <div class="owner-card__detail-body">
+              <div v-if="patientsByOwner(owner.id).length" class="owner-animal-list">
+                <div
+                  v-for="patient in patientsByOwner(owner.id).slice(0, 4)"
+                  :key="patient.id"
+                  class="owner-animal-row"
+                >
+                  <div>
+                    <strong>{{ patient.name }}</strong>
+                    <p>
+                      {{ patient.breed || patient.species }}
+                      <span v-if="patient.birthDateApproximate">· {{ formatDate(patient.birthDateApproximate) }}</span>
+                    </p>
+                  </div>
+                  <div class="owner-animal-row__actions">
+                    <DsButton tag="a" :to="`/patients/${patient.id}`" variant="ghost" size="sm">
+                      Ver Detalhes
+                    </DsButton>
+                    <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
+                      Abrir Comanda
+                    </DsButton>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="owner-card__empty">Nenhum animal vinculado.</p>
+            </div>
+          </details>
 
-        <div class="owner-card__actions">
-          <DsButton tag="a" :to="`/owners/${owner.id}`" variant="secondary" size="sm">
-            Detalhes
-          </DsButton>
-          <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
-            Novo Animal
-          </DsButton>
-          <DsButton
-            tag="a"
-            :to="`/appointments/new?ownerId=${owner.id}`"
-            variant="ghost"
-            size="sm"
-          >
-            Agendar
-          </DsButton>
-          <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="ghost" size="sm">
-            Editar
-          </DsButton>
-        </div>
-      </DsCard>
+          <p v-if="owner.administrativeNotes" class="owner-card__notes">
+            {{ owner.administrativeNotes }}
+          </p>
+
+          <div class="owner-card__actions">
+            <DsButton tag="a" :to="`/owners/${owner.id}`" variant="secondary" size="sm">
+              Detalhes
+            </DsButton>
+            <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
+              Abrir comanda
+            </DsButton>
+            <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
+              Novo Animal
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="`/appointments/new?ownerId=${owner.id}`"
+              variant="ghost"
+              size="sm"
+            >
+              Agendar
+            </DsButton>
+            <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="ghost" size="sm">
+              Editar
+            </DsButton>
+          </div>
+        </DsCard>
+      </div>
     </section>
 
     <DsCard v-else class="empty-state" variant="elevated">
       <div class="empty-state__icon">👥</div>
-      <h2 class="empty-state__title">Nenhum tutor encontrado</h2>
+      <h2 class="empty-state__title">Nenhum cliente encontrado</h2>
       <p class="empty-state__description">
         Cadastre o primeiro cliente para vincular pacientes e sustentar agenda, atendimento e prontuário.
       </p>
       <div class="empty-state__actions">
-        <DsButton tag="a" to="/owners/new" variant="primary">+ Novo Tutor</DsButton>
+        <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar Novo Cliente</DsButton>
         <DsButton tag="a" to="/patients/new" variant="secondary">+ Novo Animal</DsButton>
       </div>
     </DsCard>
@@ -291,7 +331,7 @@ const headerSecondaryActions = computed(() => [
 
 const headerPrimaryAction = computed(() => ({
   key: 'new-owner',
-  label: '+ Novo Tutor',
+  label: '+ Cadastrar Novo Cliente',
   variant: 'primary' as const,
   to: '/owners/new'
 }));
@@ -336,7 +376,7 @@ async function load() {
     owners.value = ownersResponse;
     patients.value = patientsResponse;
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar tutores';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar clientes';
   } finally {
     loading.value = false;
   }
@@ -428,6 +468,23 @@ onMounted(load);
 
 .owners-list-page__featured {
   margin-top: 4px;
+}
+
+.owners-list-page__recent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.owners-list-page__section-head h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--color-text, #0f172a);
+}
+
+.owners-list-page__section-head p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
 }
 
 .featured-owner {
@@ -549,10 +606,68 @@ onMounted(load);
   color: var(--color-text-muted, #64748b);
 }
 
-.owner-card__patients {
+.owner-card__patients,
+.owner-contact-list,
+.owner-animal-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.owner-contact-list,
+.owner-animal-list {
+  flex-direction: column;
+}
+
+.owner-card__details {
+  overflow: hidden;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.owner-card__details summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #075985;
+}
+
+.owner-card__detail-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.owner-animal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.owner-animal-row:first-child {
+  border-top: 0;
+}
+
+.owner-animal-row p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
+}
+
+.owner-animal-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.owner-card__empty {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
 }
 
 .patient-pill {

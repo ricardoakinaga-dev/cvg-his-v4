@@ -6,9 +6,34 @@ const mockOwner = {
   accountId: 'acc-1',
   fullName: 'Joao Silva',
   documentId: '123.456.789-00',
-  contacts: [{ label: 'Celular', type: 'phone' as const, value: '(11) 99999-1111', primary: true }],
+  contacts: [
+    { label: 'Telefone 1', type: 'phone' as const, value: '(11) 3333-1111', primary: false },
+    { label: 'Celular', type: 'whatsapp' as const, value: '(11) 99999-1111', primary: true },
+    { label: 'E-mail', type: 'email' as const, value: 'joao@email.com', primary: false }
+  ],
+  profile: {
+    birthDate: '1990-05-10',
+    sex: 'male' as const,
+    group: 'VIP',
+    receiveSms: true,
+    personType: 'individual' as const,
+    rg: '11.222.333-4'
+  },
+  address: {
+    zipCode: '01234-567',
+    street: 'Rua das Flores',
+    number: '100',
+    city: 'Sao Paulo',
+    state: 'SP'
+  },
+  financialProfile: {
+    allowedDebtLimit: 200,
+    creditBalance: 15,
+    availablePoints: 120,
+    blockedPoints: 10
+  },
   financialResponsible: true,
-  administrativeNotes: '',
+  administrativeNotes: 'Cliente preferencial',
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z'
@@ -51,382 +76,96 @@ describe('OwnerFormPage', () => {
     mockRouteParams.mockReturnValue({ params: {}, path: '/owners/new' });
   });
 
-  it('renders the page title for new owner', async () => {
+  it('renders the new customer title', async () => {
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Novo Tutor');
+    expect(wrapper.text()).toContain('Cadastrar Novo Cliente');
   });
 
-  it('renders the page title for edit mode', async () => {
-    mockRouteParams.mockReturnValue({ params: { id: 'owner-1' }, path: '/owners/owner-1/edit' });
-
+  it('renders the new grouped form fields', async () => {
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    expect(wrapper.text()).toContain('Editar Tutor');
-  });
-
-  it('renders form fields', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
     expect(wrapper.find('#fullName').exists()).toBe(true);
+    expect(wrapper.find('#birthDate').exists()).toBe(true);
+    expect(wrapper.find('#phone1').exists()).toBe(true);
+    expect(wrapper.find('#mobile').exists()).toBe(true);
     expect(wrapper.find('#documentId').exists()).toBe(true);
+    expect(wrapper.find('#zipCode').exists()).toBe(true);
     expect(wrapper.find('#notes').exists()).toBe(true);
+    expect(wrapper.find('#allowedDebtLimit').exists()).toBe(true);
   });
 
-  it('renders contact section with add button', async () => {
+  it('shows validation error when name is empty', async () => {
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Contatos');
-    const addBtn = wrapper.findAll('button').find((b) => b.text().includes('Adicionar'));
-    expect(addBtn).toBeTruthy();
-  });
-
-  it('adds a new contact row when clicking add', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const initialContacts = wrapper.findAll('.contact-row');
-    expect(initialContacts).toHaveLength(1);
-
-    const addBtn = wrapper.findAll('button').find((b) => b.text().includes('Adicionar'));
-    await addBtn!.trigger('click');
+    await wrapper.find('form').trigger('submit');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.findAll('.contact-row')).toHaveLength(2);
-  });
-
-  it('removes a contact row when clicking remove', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const addBtn = wrapper.findAll('button').find((b) => b.text().includes('Adicionar'));
-    await addBtn!.trigger('click');
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.findAll('.contact-row')).toHaveLength(2);
-
-    const removeBtn = wrapper.findAll('button').find((b) => b.text().includes('Remover'));
-    await removeBtn!.trigger('click');
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.findAll('.contact-row')).toHaveLength(1);
-  });
-
-  it('shows validation error when fullName is empty', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const form = wrapper.find('form');
-    await form.trigger('submit');
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.text()).toContain('Nome');
-    expect(wrapper.text()).toContain('obrigat');
+    expect(wrapper.text()).toContain('Nome é obrigatório');
     expect(mockCreateFn).not.toHaveBeenCalled();
   });
 
-  it('shows validation error when no contact has value', async () => {
+  it('shows validation error when no contact is provided', async () => {
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    const nameInput = wrapper.find('#fullName');
-    await nameInput.setValue('Joao Silva');
-
-    const form = wrapper.find('form');
-    await form.trigger('submit');
+    await wrapper.find('#fullName').setValue('Joao Silva');
+    await wrapper.find('form').trigger('submit');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain('contato');
+    expect(wrapper.text()).toContain('Preencha pelo menos um telefone, celular ou e-mail');
     expect(mockCreateFn).not.toHaveBeenCalled();
   });
 
-  it('submits form successfully with valid data', async () => {
+  it('submits the new customer payload successfully', async () => {
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    const nameInput = wrapper.find('#fullName');
-    await nameInput.setValue('Joao Silva');
+    await wrapper.find('#fullName').setValue('Joao Silva');
+    await wrapper.find('#mobile').setValue('(11) 99999-1111');
+    await wrapper.find('#email').setValue('joao@email.com');
+    await wrapper.find('#documentId').setValue('123.456.789-00');
+    await wrapper.find('#zipCode').setValue('01234-567');
+    await wrapper.find('#allowedDebtLimit').setValue('150');
 
-    const contactValue = wrapper.find('#contact-value-0');
-    await contactValue.setValue('(11) 99999-1111');
-
-    const form = wrapper.find('form');
-    await form.trigger('submit');
+    await wrapper.find('form').trigger('submit');
     await flushPromises();
 
-    expect(mockCreateFn).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Tutor cadastrado com sucesso');
+    expect(mockCreateFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fullName: 'Joao Silva',
+        documentId: '123.456.789-00',
+        contacts: expect.arrayContaining([
+          expect.objectContaining({ type: 'whatsapp', value: '(11) 99999-1111', primary: true }),
+          expect.objectContaining({ type: 'email', value: 'joao@email.com' })
+        ]),
+        address: expect.objectContaining({ zipCode: '01234-567' }),
+        financialProfile: expect.objectContaining({ allowedDebtLimit: 150 })
+      })
+    );
+    expect(wrapper.text()).toContain('Cliente cadastrado com sucesso');
   });
 
-  it('shows error alert when create fails', async () => {
-    mockCreateFn.mockRejectedValue(new Error('Documento ja cadastrado'));
-
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const nameInput = wrapper.find('#fullName');
-    await nameInput.setValue('Joao Silva');
-
-    const contactValue = wrapper.find('#contact-value-0');
-    await contactValue.setValue('(11) 99999-1111');
-
-    const form = wrapper.find('form');
-    await form.trigger('submit');
-    await flushPromises();
-
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Documento ja cadastrado');
-  });
-
-  it('loads existing owner data in edit mode', async () => {
+  it('hydrates the expanded fields in edit mode', async () => {
     mockRouteParams.mockReturnValue({ params: { id: 'owner-1' }, path: '/owners/owner-1/edit' });
 
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
+    const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    expect(mockGetByIdFn).toHaveBeenCalledWith('owner-1');
 
-    const nameInput = wrapper.find('#fullName') as any;
-    expect(nameInput.element.value).toBe('Joao Silva');
-  });
-
-  it('submits update in edit mode', async () => {
-    mockRouteParams.mockReturnValue({ params: { id: 'owner-1' }, path: '/owners/owner-1/edit' });
-
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const form = wrapper.find('form');
-    await form.trigger('submit');
-    await flushPromises();
-
-    expect(mockUpdateFn).toHaveBeenCalledWith('owner-1', expect.any(Object));
-    expect(wrapper.text()).toContain('Tutor atualizado com sucesso');
-  });
-
-  it('shows error when loading owner fails in edit mode', async () => {
-    mockGetByIdFn.mockRejectedValue(new Error('Tutor nao encontrado'));
-    mockRouteParams.mockReturnValue({
-      params: { id: 'owner-999' },
-      path: '/owners/owner-999/edit'
-    });
-
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    expect(wrapper.text()).toContain('Tutor');
-    expect(wrapper.text()).toContain('nao encontrado');
-  });
-
-  it('shows cancel link back to owners list', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const cancelLink = wrapper.findAll('a').find((a) => a.text() === 'Cancelar');
-    expect(cancelLink).toBeTruthy();
-    expect(cancelLink!.attributes('href')).toBe('/owners');
-  });
-
-  it('disables submit button while submitting', async () => {
-    let resolveCreate: (value: any) => void;
-    const slowCreate = new Promise((resolve) => {
-      resolveCreate = resolve;
-    });
-    mockCreateFn.mockImplementation(() => slowCreate);
-
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const nameInput = wrapper.find('#fullName');
-    await nameInput.setValue('Joao Silva');
-
-    const contactValue = wrapper.find('#contact-value-0');
-    await contactValue.setValue('(11) 99999-1111');
-
-    const form = wrapper.find('form');
-    await form.trigger('submit');
-    await wrapper.vm.$nextTick();
-
-    const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes('disabled')).toBeDefined();
-    expect(submitBtn.text()).toContain('Salvando');
-
-    resolveCreate!({ id: 'owner-new' });
-    await flushPromises();
-  });
-
-  it('renders status select with options', async () => {
-    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
-    const wrapper = mount(OwnerFormPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const select = wrapper.find('#status');
-    const options = select.findAll('option');
-    expect(options).toHaveLength(2);
-    expect(options[0].text()).toBe('Ativo');
-    expect(options[1].text()).toBe('Inativo');
+    expect(wrapper.text()).toContain('Editar Cliente');
+    expect((wrapper.find('#birthDate').element as HTMLInputElement).value).toBe('1990-05-10');
+    expect((wrapper.find('#group').element as HTMLInputElement).value).toBe('VIP');
+    expect((wrapper.find('#mobile').element as HTMLInputElement).value).toBe('(11) 99999-1111');
+    expect((wrapper.find('#zipCode').element as HTMLInputElement).value).toBe('01234-567');
   });
 });

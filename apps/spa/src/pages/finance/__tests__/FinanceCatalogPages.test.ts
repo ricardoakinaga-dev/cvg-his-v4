@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} })
+}));
 
 const pages = [
   {

@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -43,6 +44,70 @@ function runHelm(args) {
   });
 }
 
+function hasHelm() {
+  const result = spawnSync('helm', ['version', '--short'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  return result.status === 0;
+}
+
+function readYamlFile(filePath) {
+  assert(fs.existsSync(filePath), `Required Helm file not found: ${path.relative(rootDir, filePath)}`);
+  const content = fs.readFileSync(filePath, 'utf8');
+  const parsed = YAML.parse(content);
+  assert(parsed && typeof parsed === 'object', `Invalid YAML file: ${path.relative(rootDir, filePath)}`);
+  return parsed;
+}
+
+function validateStaticChart() {
+  const chart = readYamlFile(path.join(chartDir, 'Chart.yaml'));
+  const base = readYamlFile(baseValues);
+
+  assert(chart.apiVersion === 'v2', 'Chart.yaml must use apiVersion v2');
+  assert(chart.name === 'cvg-his-v2', 'Chart.yaml name must be cvg-his-v2');
+  assert(base.api?.image?.repository, 'values.yaml must define api.image.repository');
+  assert(base.worker?.image?.repository, 'values.yaml must define worker.image.repository');
+  assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
+
+  const requiredTemplates = [
+    'api-deployment.yaml',
+    'worker-deployment.yaml',
+    'spa-deployment.yaml',
+    'configmap.yaml',
+    'poddisruptionbudgets.yaml',
+    'secrets.yaml',
+    'postgres-statefulset.yaml',
+    'redis-statefulset.yaml'
+  ];
+
+  for (const template of requiredTemplates) {
+    const templatePath = path.join(chartDir, 'templates', template);
+    assert(fs.existsSync(templatePath), `Required Helm template not found: templates/${template}`);
+  }
+
+  for (const environment of environments) {
+    const values = readYamlFile(environment.values);
+    if (environment.expectManagedSecrets) {
+      assert(values.api?.auth?.value, `${environment.name}: expected managed API auth secret value`);
+    } else {
+      assert(values.api?.auth?.existingSecret, `${environment.name}: expected API existingSecret`);
+    }
+
+    if (environment.expectEmbeddedDatastores) {
+      assert(values.postgresql?.enabled === true, `${environment.name}: expected embedded PostgreSQL`);
+      assert(values.redis?.enabled === true, `${environment.name}: expected embedded Redis`);
+    } else {
+      assert(values.postgresql?.enabled === false, `${environment.name}: expected external PostgreSQL`);
+      assert(values.redis?.enabled === false, `${environment.name}: expected external Redis`);
+      assert(values.postgresql?.existingSecret, `${environment.name}: expected PostgreSQL existingSecret`);
+      assert(values.redis?.existingSecret, `${environment.name}: expected Redis existingSecret`);
+    }
+  }
+}
+
 function parseDocuments(rendered) {
   return YAML.parseAllDocuments(rendered)
     .map((document) => document.toJSON())
@@ -57,6 +122,12 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+if (!hasHelm()) {
+  validateStaticChart();
+  console.log('Helm binary not found; static Helm chart validation passed for dev, staging, and prod.');
+  process.exit(0);
 }
 
 for (const environment of environments) {

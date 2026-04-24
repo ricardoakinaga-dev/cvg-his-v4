@@ -66,6 +66,18 @@
 | INT-004 | Google Calendar | Baixo | Fechado | sincronizacao outbound de appointments, relatorio operacional e contrato OpenAPI publicados (19/04/2026) |
 | INT-005 | HL7/FHIR ou integracao de equipamentos | Baixo | Fechado | trilha de integracao de equipamentos laboratoriais entregue como recorte operacional do item, com import idempotente e report operacional (19/04/2026) |
 
+## P3.5 - Paridade Vetus comercial
+
+| ID | Item | Impacto | Status | Criterio de aceite |
+|---|---|---|---|---|
+| VETUS-COM-001 | Implementar superficie de fidelidade e resgate de pontos | Medio | Fechado parcial | rota `/loyalty`, pagina SPA e testes verdes; pendente API persistida |
+| VETUS-COM-002 | Implementar cadastro operacional de tabelas de preco | Medio | Fechado parcial | rota `/tabelas-de-preco`, pagina SPA, navegacao e testes verdes; pendente API persistida |
+| VETUS-COM-003 | Implementar superficie de pontos de venda e sincronizacao | Medio | Fechado parcial | rota `/pontos-de-venda`, pagina SPA, navegacao e testes verdes; pendente worker/API real de sync |
+| VETUS-COM-004 | Criar base relacional para fidelidade, precos e PDV | Alto | Fechado | migration `0021_commercial_loyalty_price_pdv` aplicada no banco de teste |
+| VETUS-COM-005 | Publicar API/OpenAPI para fidelidade, tabelas de preco e jobs PDV | Alto | Aberto | endpoints, contratos, handlers, testes e persistencia em runtime |
+| VETUS-COM-006 | Substituir dados locais por integracao real nas telas novas | Alto | Aberto | SPA consumindo API com estados de loading, erro, vazio e sucesso |
+| VETUS-COM-007 | Validar Helm no ambiente da rodada Vetus | Medio | Aberto | `pnpm validate:helm` PASS em runner com binario `helm` disponivel |
+
 ## P4 - IA e inteligencia aplicada
 
 | ID | Item | Impacto | Status | Criterio de aceite |
@@ -103,6 +115,19 @@
 - Leitura executiva correta apos essa rodada:
   - os itens do backlog continuam `Fechados`
   - o fechamento agora voltou a estar sustentado por evidencia executavel atualizada e registrada na linha mestra documental
+
+## Atualizacao operacional 24/04/2026 - ciclo Vetus paridade comercial
+
+- A pasta `docs/vetus/guides` e `docs/vetus/inspection` passou a alimentar uma nova frente de paridade funcional.
+- A primeira fatia implementada fechou a superficie SPA de `Resgate de Pontos`, `Tabelas de Preco` e `Pontos de venda`.
+- A migration `0021_commercial_loyalty_price_pdv` criou a base de dados para fidelidade, pontos, resgates, tabelas de preco, itens de tabela e jobs PDV.
+- Evidencias da rodada:
+  - `pnpm typecheck` -> `PASS`
+  - `pnpm test` -> `PASS`
+  - `pnpm validate:openapi` -> `PASS` (`175 paths`, `33 tags`, `178 schemas`)
+  - `node infra/scripts/check-cutover-readiness.mjs` -> `PASS`
+  - migration aplicada no banco de teste `cvg_his_v2_test`
+- Limite registrado: as novas telas ainda precisam de API persistida e o `validate:helm` ficou bloqueado por falta do binario `helm`.
 
 ## Atualizacao operacional 19/04/2026 - lote premium de integracoes e ML aplicado
 

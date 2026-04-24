@@ -159,6 +159,14 @@ describe('AccessControlPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Catálogo de permissões');
+    expect(wrapper.text()).toContain('Mapa Vetus IAM');
+    expect(wrapper.text()).toContain('Permissão por rotina');
+    expect(wrapper.text()).toContain('Usuário autenticável');
+    expect(wrapper.text()).toContain('Grupo de Acesso');
+    expect(wrapper.text()).toContain('Rotina');
+    expect(wrapper.text()).toContain('Sessão');
+    expect(wrapper.text()).toContain('Auditoria');
+    expect(wrapper.text()).toContain('Governança Enterprise');
     expect(wrapper.text()).toContain('PATIENTS');
     expect(wrapper.text()).toContain('patients.read');
     expect(wrapper.text()).toContain('Administrador');
@@ -185,7 +193,29 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('Maria Vet');
     expect(wrapper.text()).toContain('Permissões efetivas');
     expect(wrapper.text()).toContain('Permitido');
+    expect(wrapper.text()).toContain('Identidade operacional');
+    expect(wrapper.text()).toContain('Último login');
+    expect(wrapper.text()).toContain('MFA');
+    expect(wrapper.text()).toContain('Tenant');
     expect(mockGetEffectivePermissions).toHaveBeenCalledWith('user-1');
+  });
+
+  it('renders routine action coverage in the matrix tab', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    const matrixTab = wrapper.findAll('button').find((button) => button.text() === 'Matriz');
+    expect(matrixTab).toBeTruthy();
+    await matrixTab!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Cobertura CRUD por rotina');
+    expect(wrapper.text()).toContain('Consultar');
+    expect(wrapper.text()).toContain('Inserir');
+    expect(wrapper.text()).toContain('Alterar');
+    expect(wrapper.text()).toContain('Excluir');
+    expect(wrapper.text()).toContain('patients');
   });
 
   it('switches to the matrix tab and updates a grant', async () => {

@@ -165,6 +165,8 @@ export const navGroups: AppNavGroup[] = [
         items: [
           { label: 'Estoque', path: '/inventory', icon: '📦', keywords: ['estoque', 'inventario'] },
           { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['produtos', 'catalogo'] },
+          { label: 'Tabelas de Preço', path: '/tabelas-de-preco', icon: '🏷️', keywords: ['precos', 'tabelas de preco'] },
+          { label: 'Pontos de Venda', path: '/pontos-de-venda', icon: '🧾', keywords: ['pdv', 'pontos de venda', 'sincronizacao'] },
           { label: 'NF', path: '/inventory/nf', icon: '🧾', keywords: ['nf', 'nota fiscal'] },
           { label: 'Transações', path: '/inventory/movements', icon: '📥', keywords: ['transacoes', 'movimentacoes'] },
           { label: 'Farmácia', path: '/inventory/pharmacy', icon: '💊', keywords: ['farmacia', 'medicamentos'] },

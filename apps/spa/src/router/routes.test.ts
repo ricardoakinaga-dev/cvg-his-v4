@@ -43,9 +43,16 @@ describe('router convergence', () => {
 
   it('adds concrete placeholder routes for the new menu items that do not have modules yet', () => {
     expect(findChildRoute('packages')?.name).toBe('Packages');
-    expect(findChildRoute('loyalty')?.meta?.breadcrumbParent).toBe('Atendimento');
-    expect(findChildRoute('breeds')?.meta?.breadcrumbParent).toBe('Cadastros');
     expect(findChildRoute('laboratory/hemograms')?.meta?.breadcrumbParent).toBe('Laboratório');
+    expect(findChildRoute('laboratory/hemograms')?.alias).toEqual(
+      expect.arrayContaining(['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/exames/hemogramas'])
+    );
+    expect(findChildRoute('laboratory/urinalysis')?.alias).toEqual(
+      expect.arrayContaining(['/urina', '/laboratorio/urina', '/laboratorio/exames/urina'])
+    );
+    expect(findChildRoute('laboratory/orders')?.alias).toEqual(
+      expect.arrayContaining(['/laboratorio/exames', '/laboratorio/pedidos-de-exame'])
+    );
     expect(findChildRoute('exam-orders')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('exam-results')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('inventory/pharmacy')?.meta?.breadcrumbParent).toBe('Estoque');
@@ -53,6 +60,72 @@ describe('router convergence', () => {
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
     expect(findChildRoute('dashboards/multifilial')?.meta?.breadcrumbParent).toBe('Dashboards');
+  });
+
+  it('uses concrete routes for cadastro auxiliary animal catalogs', () => {
+    const breedsRoute = findChildRoute('breeds');
+    const speciesRoute = findChildRoute('species');
+    const coatColorsRoute = findChildRoute('coat-colors');
+
+    expect(breedsRoute?.name).toBe('Breeds');
+    expect(breedsRoute?.component).toBeTruthy();
+    expect(breedsRoute?.meta?.title).toBe('Raças');
+    expect(breedsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(breedsRoute?.alias).toEqual(
+      expect.arrayContaining(['/racas', '/raças', '/cadastros/racas', '/cadastros/raças'])
+    );
+
+    expect(speciesRoute?.name).toBe('Species');
+    expect(speciesRoute?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(speciesRoute?.alias).toEqual(expect.arrayContaining(['/especies', '/cadastros/especies']));
+    expect(findChildRoute('cadastros/especies')?.redirect).toBe('/species');
+    expect(findChildRoute('cadastro/especies')?.redirect).toBe('/species');
+    expect(findChildRoute('cadastros/species')?.redirect).toBe('/species');
+
+    expect(coatColorsRoute?.name).toBe('CoatColors');
+    expect(coatColorsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(coatColorsRoute?.alias).toEqual(expect.arrayContaining(['/cores', '/cadastros/cores']));
+    expect(findChildRoute('cadastros/cores')?.redirect).toBe('/coat-colors');
+    expect(findChildRoute('cadastro/cores')?.redirect).toBe('/coat-colors');
+    expect(findChildRoute('cadastros/coat-colors')?.redirect).toBe('/coat-colors');
+    expect(findChildRoute('cadastros/pelagens')?.redirect).toBe('/coat-colors');
+  });
+
+  it('uses a concrete loyalty route for Vetus points redemption', () => {
+    const loyaltyRoute = findChildRoute('loyalty');
+
+    expect(loyaltyRoute?.name).toBe('Loyalty');
+    expect(loyaltyRoute?.component).not.toBe(findChildRoute('breeds')?.component);
+    expect(loyaltyRoute?.meta?.title).toBe('Resgate de Pontos');
+    expect(loyaltyRoute?.meta?.breadcrumbParent).toBe('Atendimento');
+    expect(loyaltyRoute?.alias).toEqual(expect.arrayContaining(['/fidelidade', '/atendimento/fidelidade']));
+  });
+
+  it('uses concrete routes for beta price tables and point-of-sale sync', () => {
+    expect(findChildRoute('tabelas-de-preco')?.meta?.title).toBe('Tabelas de Preço');
+    expect(findChildRoute('tabelas-de-preco')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('pontos-de-venda')?.meta?.title).toBe('Pontos de venda');
+    expect(findChildRoute('pontos-de-venda')?.meta?.breadcrumbParent).toBe('Estoque');
+  });
+
+  it('uses a concrete route for atendimento vendas', () => {
+    const salesRoute = findChildRoute('sales');
+
+    expect(salesRoute?.name).toBe('Sales');
+    expect(salesRoute?.component).toBeTruthy();
+    expect(salesRoute?.meta?.title).toBe('Vendas');
+    expect(salesRoute?.meta?.breadcrumbParent).toBe('Atendimento');
+    expect(salesRoute?.alias).toEqual(expect.arrayContaining(['/vendas', '/atendimento/vendas']));
+  });
+
+  it('uses a concrete route for atendimento pacotes', () => {
+    const packagesRoute = findChildRoute('packages');
+
+    expect(packagesRoute?.name).toBe('Packages');
+    expect(packagesRoute?.component).toBeTruthy();
+    expect(packagesRoute?.meta?.title).toBe('Pacotes');
+    expect(packagesRoute?.meta?.breadcrumbParent).toBe('Atendimento');
+    expect(packagesRoute?.alias).toEqual(expect.arrayContaining(['/pacotes', '/atendimento/pacotes']));
   });
 
   it('reuses existing report surfaces for the requested reporting and dashboard entries', () => {

@@ -51,13 +51,65 @@
     </section>
 
     <section class="billing-story">
-      <DsCard title="Leitura financeira do dia">
+      <DsCard title="Dashboard Financeiro">
         <div class="story-grid">
           <div v-for="card in storyCards" :key="card.label" class="story-card">
             <span class="story-card__label">{{ card.label }}</span>
             <strong class="story-card__value">{{ card.value }}</strong>
             <span class="story-card__hint">{{ card.hint }}</span>
           </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="finance-domain-map">
+      <DsCard title="Camadas financeiras Vetus">
+        <div class="finance-layer-grid">
+          <article v-for="layer in financeLayers" :key="layer.title" class="finance-layer-card">
+            <span>{{ layer.eyebrow }}</span>
+            <strong>{{ layer.title }}</strong>
+            <p>{{ layer.description }}</p>
+          </article>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="finance-legacy-grid">
+      <article v-for="operation in legacyOperations" :key="operation.title" class="legacy-operation-card">
+        <span>{{ operation.route }}</span>
+        <strong>{{ operation.title }}</strong>
+        <p>{{ operation.description }}</p>
+        <small>{{ operation.fields }}</small>
+      </article>
+    </section>
+
+    <section class="finance-dashboard-grid">
+      <DsCard title="Contas a Receber">
+        <div class="receivable-summary">
+          <div class="story-card">
+            <span class="story-card__label">Total</span>
+            <strong class="story-card__value">{{ totalAmountFormatted }}</strong>
+            <span class="story-card__hint">Títulos emitidos no recorte carregado</span>
+          </div>
+          <div class="story-card">
+            <span class="story-card__label">Recebido</span>
+            <strong class="story-card__value">{{ receivedAmountFormatted }}</strong>
+            <span class="story-card__hint">Registros quitados</span>
+          </div>
+          <div class="story-card">
+            <span class="story-card__label">A receber</span>
+            <strong class="story-card__value">{{ outstandingAmountFormatted }}</strong>
+            <span class="story-card__hint">Saldo em aberto</span>
+          </div>
+        </div>
+      </DsCard>
+
+      <DsCard title="Gaveta por Forma de Pagamento">
+        <div class="payment-method-grid">
+          <article v-for="method in paymentMethodSnapshot" :key="method.label" class="payment-method-card">
+            <strong>{{ method.label }}</strong>
+            <span>{{ method.description }}</span>
+          </article>
         </div>
       </DsCard>
     </section>
@@ -202,11 +254,85 @@ const averageTicket = computed(() =>
     : formatCurrency(0)
 );
 const storyCards = computed(() => [
-  { label: 'Cobrança aberta', value: openRate.value, hint: 'Percentual da carteira em aberto' },
-  { label: 'Recebido', value: String(settledCount.value), hint: 'Registros já liquidados' },
+  { label: 'Recebidos', value: receivedAmountFormatted.value, hint: 'Valor liquidado no contas a receber' },
+  { label: 'Previsão', value: outstandingAmountFormatted.value, hint: 'Saldo previsto ainda em aberto' },
+  { label: 'A receber', value: openRate.value, hint: 'Percentual da carteira em aberto' },
+  { label: 'Pagos', value: String(settledCount.value), hint: 'Registros já liquidados' },
   { label: 'Ticket médio', value: averageTicket.value, hint: 'Valor médio por faturamento' },
   { label: 'Base ativa', value: String(items.value.length), hint: 'Registros sob acompanhamento' }
 ]);
+const receivedAmount = computed(() =>
+  items.value
+    .filter((record) => record.status === 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0)
+);
+const outstandingAmount = computed(() =>
+  items.value
+    .filter((record) => record.status !== 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0)
+);
+const receivedAmountFormatted = computed(() => formatCurrency(receivedAmount.value));
+const outstandingAmountFormatted = computed(() => formatCurrency(outstandingAmount.value));
+
+const financeLayers = [
+  {
+    eyebrow: 'Origem',
+    title: 'Comanda e vendas',
+    description: 'Geram a obrigação econômica que sobe para o cliente financeiro.'
+  },
+  {
+    eyebrow: 'Títulos',
+    title: 'Contas a receber / pagar',
+    description: 'Organizam total, recebido/pago e saldo pendente por cliente ou fornecedor.'
+  },
+  {
+    eyebrow: 'Liquidação',
+    title: 'Gaveta e cartões',
+    description: 'Registram entrada, saída, forma de pagamento, origem e responsável.'
+  },
+  {
+    eyebrow: 'Gestão',
+    title: 'Dashboard Financeiro',
+    description: 'Resume recebidos, previsão, fluxo de caixa, estoque, serviços e clientes.'
+  }
+];
+
+const legacyOperations = [
+  {
+    title: 'Gaveta',
+    route: 'Financeiro/Gaveta.htm',
+    description: 'Último fechamento, entradas, saídas, total em gaveta e extrato cronológico.',
+    fields: 'Forma de Pagamento · Valor · Tipo · Origem · Responsável'
+  },
+  {
+    title: 'Contas a Receber',
+    route: 'Financeiro/ContasAReceber.htm',
+    description: 'Títulos por cliente com total, recebido, saldo, vencimento e status.',
+    fields: 'Cliente · Vencimento · Total · Recebido · A Receber'
+  },
+  {
+    title: 'Contas a Pagar',
+    route: 'Financeiro/ContasAPagar.htm',
+    description: 'Obrigações por fornecedor com total, pago, saldo e origem da despesa.',
+    fields: 'Fornecedor · Vencimento · Total · Pago · A Pagar'
+  },
+  {
+    title: 'Transações de Cartão',
+    route: 'Financeiro/Transacoes.htm',
+    description: 'Esteira de adquirência com valor bruto, líquido, parcelas e status.',
+    fields: 'Cliente · Parcelas · Tipo · Valor · Líquido · Status'
+  }
+];
+
+const paymentMethodSnapshot = [
+  { label: 'DINHEIRO', description: 'Liquidação presencial e fechamento de gaveta.' },
+  { label: 'PIX', description: 'Pagamento instantâneo com conferência operacional.' },
+  { label: 'BOLETO', description: 'Título a prazo conectado ao contas a receber.' },
+  { label: 'CARTÃO DE DÉBITO', description: 'Transação conciliável em adquirência.' },
+  { label: 'CARTÃO DE CRÉDITO', description: 'À vista ou parcelado com valor líquido.' },
+  { label: 'LINK DE PAGAMENTO', description: 'Cobrança remota e rastreável.' },
+  { label: 'DESCONTO OFERECIDO', description: 'Ajuste econômico visível na malha financeira.' }
+];
 
 interface BillingAlert {
   variant: 'warning' | 'danger' | 'info';
@@ -289,6 +415,58 @@ function billingRow(row: unknown): BillingRecordSummary {
   margin-bottom: 0;
 }
 
+.finance-domain-map,
+.finance-dashboard-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.finance-layer-grid,
+.finance-legacy-grid,
+.payment-method-grid,
+.receivable-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.finance-layer-card,
+.legacy-operation-card,
+.payment-method-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+}
+
+.finance-layer-card span,
+.legacy-operation-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.finance-layer-card p,
+.legacy-operation-card p,
+.legacy-operation-card small,
+.payment-method-card span {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+}
+
+.legacy-operation-card small,
+.payment-method-card span {
+  font-size: 12px;
+}
+
+.finance-dashboard-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+}
+
 .quick-actions {
   display: flex;
   flex-wrap: wrap;
@@ -340,13 +518,10 @@ function billingRow(row: unknown): BillingRecordSummary {
 .encounter-link:hover {
   text-decoration: underline;
 }
-.encounter-link {
-  color: var(--color-primary-600, #2563eb);
-  text-decoration: none;
-  font-weight: 500;
-}
 
-.encounter-link:hover {
-  text-decoration: underline;
+@media (max-width: 920px) {
+  .finance-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

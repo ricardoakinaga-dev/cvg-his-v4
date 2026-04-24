@@ -91,6 +91,8 @@ tags:
     description: Financial operations, receivables, reconciliation and admin controls
   - name: Inventory
     description: Inventory and stock management
+  - name: Commercial
+    description: Loyalty, price table and point-of-sale synchronization operations
   - name: Notifications
     description: Notification management
   - name: Webhooks
@@ -2604,6 +2606,347 @@ paths:
           description: Item updated
         '404':
           description: Item not found
+
+  /loyalty/summary:
+    get:
+      operationId: getLoyaltySummary
+      summary: Get loyalty balance summary
+      tags: [Commercial]
+      parameters:
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Loyalty balance summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ownerId, availablePoints, blockedPoints, redeemedPoints, redemptionCount]
+                properties:
+                  ownerId:
+                    type: string
+                    nullable: true
+                  availablePoints:
+                    type: integer
+                  blockedPoints:
+                    type: integer
+                  redeemedPoints:
+                    type: integer
+                  redemptionCount:
+                    type: integer
+
+  /loyalty/programs:
+    get:
+      operationId: listLoyaltyPrograms
+      summary: List loyalty programs
+      tags: [Commercial]
+      responses:
+        '200':
+          description: Loyalty programs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+    post:
+      operationId: createLoyaltyProgram
+      summary: Create loyalty program
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                pointsPerReal:
+                  type: number
+                redemptionRules:
+                  type: object
+                isActive:
+                  type: boolean
+      responses:
+        '201':
+          description: Loyalty program created
+
+  /loyalty/points:
+    post:
+      operationId: awardLoyaltyPoints
+      summary: Award loyalty points
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerId, points]
+              properties:
+                ownerId:
+                  type: string
+                points:
+                  type: integer
+                programId:
+                  type: string
+                  nullable: true
+                sourceType:
+                  type: string
+                  enum: [purchase, bonus, adjustment, package, counter_sale]
+                sourceId:
+                  type: string
+                  nullable: true
+                isBlocked:
+                  type: boolean
+      responses:
+        '201':
+          description: Loyalty points awarded
+
+  /loyalty/redemptions:
+    get:
+      operationId: listLoyaltyRedemptions
+      summary: List loyalty redemptions
+      tags: [Commercial]
+      parameters:
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Loyalty redemptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+    post:
+      operationId: redeemLoyaltyPoints
+      summary: Redeem loyalty points
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerId, pointsUsed, rewardDescription]
+              properties:
+                ownerId:
+                  type: string
+                pointsUsed:
+                  type: integer
+                rewardDescription:
+                  type: string
+                productQuantity:
+                  type: integer
+                serviceQuantity:
+                  type: integer
+      responses:
+        '201':
+          description: Loyalty points redeemed
+        '409':
+          description: Insufficient points
+
+  /price-tables:
+    get:
+      operationId: listPriceTables
+      summary: List price tables
+      tags: [Commercial]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Price tables
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+    post:
+      operationId: createPriceTable
+      summary: Create price table
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description]
+              properties:
+                legacyId:
+                  type: string
+                  nullable: true
+                description:
+                  type: string
+                context:
+                  type: string
+                  nullable: true
+                isActive:
+                  type: boolean
+                startsAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                endsAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '201':
+          description: Price table created
+
+  /price-tables/{priceTableId}:
+    get:
+      operationId: getPriceTable
+      summary: Get price table with items
+      tags: [Commercial]
+      parameters:
+        - name: priceTableId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Price table detail
+        '404':
+          description: Price table not found
+
+  /price-tables/{priceTableId}/items:
+    post:
+      operationId: addPriceTableItem
+      summary: Add price table item
+      tags: [Commercial]
+      parameters:
+        - name: priceTableId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemKind, itemId, price]
+              properties:
+                itemKind:
+                  type: string
+                  enum: [product, service]
+                itemId:
+                  type: string
+                price:
+                  type: number
+      responses:
+        '201':
+          description: Price table item added
+
+  /pos-sync/jobs:
+    get:
+      operationId: listPosSyncJobs
+      summary: List POS synchronization jobs
+      tags: [Commercial]
+      parameters:
+        - name: syncKind
+          in: query
+          schema:
+            type: string
+            enum: [stock, clients]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [queued, running, completed, failed]
+      responses:
+        '200':
+          description: POS synchronization jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+    post:
+      operationId: createPosSyncJob
+      summary: Create POS synchronization job
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [syncKind]
+              properties:
+                syncKind:
+                  type: string
+                  enum: [stock, clients]
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: POS synchronization job created
+
+  /pos-sync/jobs/{jobId}:
+    patch:
+      operationId: updatePosSyncJob
+      summary: Update POS synchronization job
+      tags: [Commercial]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [queued, running, completed, failed]
+                processedCount:
+                  type: integer
+                errorMessage:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: POS synchronization job updated
 
   /notifications:
     get:

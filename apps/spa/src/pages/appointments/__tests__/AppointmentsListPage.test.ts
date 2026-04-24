@@ -231,7 +231,12 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Intervalo operacional');
     expect(wrapper.text()).toContain('Em triagem');
     expect(wrapper.text()).toContain('Cliente/Tutor');
+    expect(wrapper.text()).toContain('Filtrar por...');
+    expect(wrapper.text()).toContain('Disponibilidade');
+    expect(wrapper.text()).toContain('10 livres');
+    expect(wrapper.text()).toContain('2 agendamentos · 1 bloqueios/folgas');
     expect(wrapper.text()).toContain('Legenda operacional');
+    expect(wrapper.text()).toContain('Referência Vetus');
   });
 
   it('reloads the overview when switching to week view', async () => {
@@ -307,7 +312,33 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Ver detalhe completo');
     expect(wrapper.text()).toContain('Maria Silva');
     expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Aberto a partir da grade da agenda');
+    expect(wrapper.find('.appointment-details-card--from-agenda').exists()).toBe(true);
     expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('allows cancelling a scheduled appointment from the drawer', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const appointmentButton = wrapper.findAll('button').find((button) =>
+      button.text().includes('Rex')
+    );
+    expect(appointmentButton).toBeDefined();
+
+    await appointmentButton!.trigger('click');
+    await flushPromises();
+
+    const cancelButton = wrapper.findAll('button').find((button) =>
+      button.text().includes('Cancelar Agendamento')
+    );
+    expect(cancelButton).toBeDefined();
+
+    await cancelButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCancelAppointment).toHaveBeenCalledWith('appt-1', 'Cancelado pela agenda operacional');
   });
 
   it('shows slot creation entry in month view', async () => {
@@ -325,6 +356,141 @@ describe('AppointmentsListPage', () => {
       button.text().includes('Novo agendamento')
     );
     expect(monthCreateButton).toBeDefined();
+  });
+
+  it('opens quick create when clicking the empty month surface', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const monthToggle = wrapper.findAll('button').find((button) => button.text().trim() === 'Mês');
+    expect(monthToggle).toBeDefined();
+
+    await monthToggle!.trigger('click');
+    await flushPromises();
+
+    const emptyMonthSurface = wrapper.find('.month-cell__empty-surface');
+    expect(emptyMonthSurface.exists()).toBe(true);
+
+    await emptyMonthSurface.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.client-selector-stub').exists()).toBe(true);
+  });
+
+  it('shows edit action in the drawer with prefilled full-form link', async () => {
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    const appointmentButton = wrapper.findAll('button').find((button) =>
+      button.text().includes('Rex')
+    );
+    expect(appointmentButton).toBeDefined();
+
+    await appointmentButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Editar');
+    expect(wrapper.html()).toContain('/appointments/new?appointmentId=appt-1');
+    expect(wrapper.html()).toContain('scheduledAt=2026-04-12T09%3A00%3A00.000Z');
+    expect(wrapper.html()).toContain('practitionerStaffId=staff_vet');
+  });
+
+  it('shows contextual empty state for the selected day when there are no appointments', async () => {
+    mockGetSchedulingOverview.mockResolvedValue({
+      ...overviewPayload,
+      items: [],
+      stats: {
+        ...overviewPayload.stats,
+        total: 0,
+        scheduled: 0,
+        checkedIn: 0,
+        conflicts: 0
+      }
+    });
+
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Nenhum agendamento em domingo, 12 de abril');
+    expect(wrapper.text()).toContain('Não há compromissos visíveis para domingo, 12 de abril na visão Dia.');
+    expect(wrapper.text()).toContain('Criar agendamento para domingo, 12 de abril');
+  });
+
+  it('compacts dense slots and shows a summary for additional appointments', async () => {
+    mockGetSchedulingOverview.mockResolvedValue({
+      ...overviewPayload,
+      items: [
+        ...overviewPayload.items,
+        {
+          id: 'appt-3',
+          accountId: 'acc-1',
+          patientId: 'pat-3',
+          ownerId: 'owner-3',
+          scheduledAt: '2026-04-12T09:05:00.000Z',
+          endsAt: '2026-04-12T09:35:00.000Z',
+          durationMinutes: 30,
+          visitType: 'scheduled',
+          reason: 'Revisão rápida',
+          practitionerStaffId: 'staff_vet',
+          practitionerName: 'Veterinário Responsável',
+          unit: 'Clinica',
+          specialty: 'Clínico geral',
+          status: 'scheduled',
+          conflicts: [],
+          operational: {
+            stage: 'scheduled',
+            label: 'Agendado',
+            source: 'appointment',
+            updatedAt: '2026-04-12T08:10:00.000Z'
+          },
+          createdAt: '2026-04-12T08:10:00.000Z',
+          updatedAt: '2026-04-12T08:10:00.000Z'
+        },
+        {
+          id: 'appt-4',
+          accountId: 'acc-1',
+          patientId: 'pat-4',
+          ownerId: 'owner-4',
+          scheduledAt: '2026-04-12T09:10:00.000Z',
+          endsAt: '2026-04-12T09:40:00.000Z',
+          durationMinutes: 30,
+          visitType: 'scheduled',
+          reason: 'Vacinação',
+          practitionerStaffId: 'staff_vet',
+          practitionerName: 'Veterinário Responsável',
+          unit: 'Clinica',
+          specialty: 'Clínico geral',
+          status: 'scheduled',
+          conflicts: [],
+          operational: {
+            stage: 'scheduled',
+            label: 'Agendado',
+            source: 'appointment',
+            updatedAt: '2026-04-12T08:20:00.000Z'
+          },
+          createdAt: '2026-04-12T08:20:00.000Z',
+          updatedAt: '2026-04-12T08:20:00.000Z'
+        }
+      ]
+    });
+    mockOwnerGetById.mockImplementation(async (id: string) => ({
+      id,
+      fullName: ({ 'owner-1': 'Maria Silva', 'owner-2': 'João Costa', 'owner-3': 'Ana Lima', 'owner-4': 'Paulo Reis' } as Record<string, string>)[id] || id
+    }));
+    mockPatientGetById.mockImplementation(async (id: string) => ({
+      id,
+      name: ({ 'pat-1': 'Rex', 'pat-2': 'Luna', 'pat-3': 'Mel', 'pat-4': 'Thor' } as Record<string, string>)[id] || id
+    }));
+
+    const wrapper = await mountPage();
+
+    await flushPromises();
+
+    expect(wrapper.findAll('.timeline-item--dense').length).toBeGreaterThan(0);
+    expect(wrapper.text()).toContain('+1 adicionais');
   });
 
   it('shows access empty state when the session lacks scheduling.read', async () => {

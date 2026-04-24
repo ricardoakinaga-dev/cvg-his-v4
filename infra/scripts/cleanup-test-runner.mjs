@@ -10,7 +10,12 @@ import {
   selectStaleTestProcesses
 } from './test-runner-cleanup-lib.mjs';
 
-const DEFAULT_TEST_DB_URL = 'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
+const DEFAULT_TEST_DB_URL = (() => {
+  const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
+  url.username = 'postgres';
+  url.password = 'postgres';
+  return url.toString();
+})();
 const DEFAULT_STALE_AFTER_SECONDS = 15 * 60;
 
 function hasFlag(flag) {

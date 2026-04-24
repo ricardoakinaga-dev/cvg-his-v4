@@ -1,9 +1,9 @@
 <template>
   <div class="inventory-movements-page">
     <AppPageHeader
-      title="Ledger de Consumo"
-      :breadcrumbs="['Estoque', 'Controles', 'Movimentações']"
-      subtitle="Histórico transacional de saídas assistenciais e comerciais do estoque"
+      :title="title"
+      :breadcrumbs="['Estoque', 'Controles', breadcrumb]"
+      :subtitle="subtitle"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
@@ -67,6 +67,16 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryConsumptionSummary, InventoryItemSummary } from '@/types/inventory';
+
+withDefaults(defineProps<{
+  title?: string;
+  subtitle?: string;
+  breadcrumb?: string;
+}>(), {
+  title: 'Ledger de Consumo',
+  subtitle: 'Histórico transacional de saídas assistenciais e comerciais do estoque',
+  breadcrumb: 'Movimentações'
+});
 
 interface InventoryMovementRow {
   readonly id: string;

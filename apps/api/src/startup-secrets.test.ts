@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
 
 import {
   buildApiManagedSecretDescriptors,
@@ -8,73 +7,68 @@ import {
   resolveApiStartup
 } from './startup-secrets.js';
 
-async function startMockVaultServer(): Promise<{
+function installMockVaultFetch(): {
   readonly baseUrl: string;
   readonly requests: string[];
-  close(): Promise<void>;
-}> {
+  close(): void;
+} {
+  const originalFetch = globalThis.fetch;
   const requests: string[] = [];
-  const server = createServer((request, response) => {
-    requests.push(`${request.method} ${request.url}`);
+  const baseUrl = 'https://vault.test';
+  const payloads: Record<string, Record<string, string>> = {
+    '/v1/secret/data/cvg-his-v2/production/api': {
+      AUTH_SECRET: 'vault-auth-token-key-with-more-than-32-characters'
+    },
+    '/v1/secret/data/cvg-his-v2/production/api_previous': {
+      AUTH_SECRET_PREVIOUS: 'vault-previous-auth-token-key-with-more-than-32-characters'
+    },
+    '/v1/secret/data/cvg-his-v2/production/api_version': {
+      AUTH_SECRET_VERSION: '2026-q2'
+    },
+    '/v1/secret/data/cvg-his-v2/production/database': {
+      DATABASE_URL: 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2'
+    },
+    '/v1/secret/data/cvg-his-v2/production/pagarme': {
+      PAGARME_API_KEY: 'vault-pagarme-api-key',
+      PAGARME_PIX_KEY: 'vault-pagarme-pix-key'
+    }
+  };
 
-    if (request.method === 'POST' && request.url === '/v1/auth/approle/login') {
-      response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+    requests.push(`${method} ${url.pathname}`);
+
+    if (method === 'POST' && url.pathname === '/v1/auth/approle/login') {
+      return Response.json({
         auth: {
           client_token: 'vault-token',
           lease_duration: 3600
         }
-      }));
-      return;
+      });
     }
 
-    const payloads: Record<string, Record<string, string>> = {
-      '/v1/secret/data/cvg-his-v2/production/api': {
-        AUTH_SECRET: 'vault-auth-token-key-with-more-than-32-characters'
-      },
-      '/v1/secret/data/cvg-his-v2/production/api_previous': {
-        AUTH_SECRET_PREVIOUS: 'vault-previous-auth-token-key-with-more-than-32-characters'
-      },
-      '/v1/secret/data/cvg-his-v2/production/api_version': {
-        AUTH_SECRET_VERSION: '2026-q2'
-      },
-      '/v1/secret/data/cvg-his-v2/production/database': {
-        DATABASE_URL: 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2'
-      },
-      '/v1/secret/data/cvg-his-v2/production/pagarme': {
-        PAGARME_API_KEY: 'vault-pagarme-api-key',
-        PAGARME_PIX_KEY: 'vault-pagarme-pix-key'
-      }
-    };
-
-    const payload = request.url ? payloads[request.url] : undefined;
-    if (request.method === 'GET' && payload) {
-      response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({
+    const payload = payloads[url.pathname];
+    if (method === 'GET' && payload) {
+      return Response.json({
         data: {
           data: payload,
           metadata: {
             version: 1
           }
         }
-      }));
-      return;
+      });
     }
 
-    response.writeHead(404, { 'content-type': 'application/json' });
-    response.end(JSON.stringify({ error: 'not found' }));
-  });
-
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
-  const address = server.address();
-  if (!address || typeof address === 'string') {
-    throw new Error('failed to bind mock Vault server');
-  }
+    return Response.json({ error: 'not found' }, { status: 404 });
+  };
 
   return {
-    baseUrl: `http://127.0.0.1:${address.port}`,
+    baseUrl,
     requests,
-    close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+    close: () => {
+      globalThis.fetch = originalFetch;
+    }
   };
 }
 
@@ -101,7 +95,7 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
 });
 
 test('resolveApiStartup resolves managed secrets from Vault before validating API config', async () => {
-  const vault = await startMockVaultServer();
+  const vault = installMockVaultFetch();
   try {
     const startup = await resolveApiStartup({
       NODE_ENV: 'production',
@@ -135,12 +129,12 @@ test('resolveApiStartup resolves managed secrets from Vault before validating AP
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api_previous'));
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/database'));
   } finally {
-    await vault.close();
+    vault.close();
   }
 });
 
 test('resolveApiStartup preserves explicit env secrets instead of overriding them from Vault', async () => {
-  const vault = await startMockVaultServer();
+  const vault = installMockVaultFetch();
   try {
     const startup = await resolveApiStartup({
       NODE_ENV: 'production',
@@ -167,7 +161,7 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api'), false);
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/database'), false);
   } finally {
-    await vault.close();
+    vault.close();
   }
 });
 

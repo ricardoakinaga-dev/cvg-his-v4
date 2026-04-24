@@ -87,6 +87,7 @@ import { handleBillingRoutes } from './routes/billing-routes.js';
 import { handleExpensesCatalogRoutes } from './routes/expenses-catalog-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
 import { handleInventoryRoutes } from './routes/inventory-routes.js';
+import { handleCommercialRoutes } from './routes/commercial-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
 import { handleAccessControlRoutes } from './routes/access-control-routes.js';
@@ -399,6 +400,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     laboratory,
     billing,
     encounterFinancial,
+    commercial,
     inventory,
     notifications,
     audit,
@@ -1807,6 +1809,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (
           await handleCounterSalesRoutes(pathname, request, response, correlationId, {
             counterSales,
+            audit,
+            requirePrincipal
+          })
+        ) {
+          return;
+        }
+
+        if (
+          await handleCommercialRoutes(pathname, request, response, correlationId, {
+            commercial,
             audit,
             requirePrincipal
           })

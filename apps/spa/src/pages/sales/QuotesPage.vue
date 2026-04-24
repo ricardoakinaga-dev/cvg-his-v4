@@ -52,10 +52,13 @@
     </section>
 
     <DsAlert v-if="listError" variant="danger" dismissible @dismiss="listError = ''">
+      {{ listError }}
     </DsAlert>
     <DsAlert v-if="detailError" variant="danger" dismissible @dismiss="detailError = ''">
+      {{ detailError }}
     </DsAlert>
     <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
+      {{ formError }}
     </DsAlert>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
@@ -72,6 +75,14 @@
         </div>
       </DsCard>
 
+      <section class="quote-flow-grid">
+        <article v-for="step in quoteFlow" :key="step.title" class="quote-flow-card">
+          <span>{{ step.eyebrow }}</span>
+          <strong>{{ step.title }}</strong>
+          <p>{{ step.description }}</p>
+        </article>
+      </section>
+
       <div class="workspace-grid">
         <DsCard title="Novo orçamento">
           <form class="form-grid" @submit.prevent="createQuote">
@@ -85,18 +96,23 @@
         </DsCard>
 
         <DsCard title="Lista de orçamentos">
+          <div class="legacy-filter-grid">
+            <DsInput v-model="legacyFilters.id" label="ID" placeholder="Número ou ID" />
+            <DsInput v-model="legacyFilters.client" label="Cliente" placeholder="Owner ID ou cliente" />
+            <DsInput v-model="legacyFilters.date" type="date" label="Data" />
+          </div>
           <div class="toolbar">
             <DsInput
               v-model="search"
               type="search"
-              placeholder="Buscar por número ou observação"
+              placeholder="Buscar por ID, cliente, data, número ou observação"
               @keyup.enter="loadQuotes"
             />
             <DsButton variant="secondary" @click="loadQuotes">Buscar</DsButton>
           </div>
           <DataTable
             :columns="quoteColumns"
-            :rows="quoteRows"
+            :rows="filteredQuoteRows"
             :loading="listLoading"
             empty-icon="📝"
             empty-title="Nenhum orçamento encontrado"
@@ -131,10 +147,34 @@
           <template v-else-if="selectedQuote">
             <div class="detail-grid">
               <div><strong>Número:</strong> {{ selectedQuote.number }}</div>
+              <div><strong>Cliente:</strong> {{ selectedQuote.ownerId ?? '—' }}</div>
               <div><strong>Status:</strong> {{ quoteStatusLabel(selectedQuote.status) }}</div>
               <div><strong>Total:</strong> {{ formatCurrency(selectedQuote.total) }}</div>
               <div><strong>Validade:</strong> {{ formatDate(selectedQuote.validUntil ?? '') || '—' }}</div>
               <div><strong>Venda:</strong> {{ selectedQuote.convertedToSaleId ?? '—' }}</div>
+            </div>
+
+            <div class="quote-total-grid">
+              <div class="summary-card">
+                <span class="summary-card__label">Serviços</span>
+                <strong class="summary-card__value">{{ formatCurrency(selectedServicesTotal) }}</strong>
+                <span class="summary-card__hint">Descrição do Serviço</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card__label">Produtos</span>
+                <strong class="summary-card__value">{{ formatCurrency(selectedProductsTotal) }}</strong>
+                <span class="summary-card__hint">Qtd, código de barras e produto</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card__label">Outros</span>
+                <strong class="summary-card__value">{{ formatCurrency(selectedOtherTotal) }}</strong>
+                <span class="summary-card__hint">Descrição e valor livre</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card__label">Valor do Orçamento</span>
+                <strong class="summary-card__value">{{ formatCurrency(selectedQuote.total) }}</strong>
+                <span class="summary-card__hint">Total comercial consolidado</span>
+              </div>
             </div>
 
             <div class="action-row">
@@ -177,13 +217,15 @@
 
             <form class="item-form" @submit.prevent="addItem">
               <h3 class="section-title">Adicionar item</h3>
+              <p class="muted">Composição Vetus: Inclusão de Serviço, Inclusão de Produto e Inserir Outros.</p>
               <div class="item-grid">
                 <DsInput id="item-type" v-model="itemForm.itemType" type="select" label="Tipo">
-                  <option value="product">Produto</option>
                   <option value="service">Serviço</option>
+                  <option value="product">Produto</option>
+                  <option value="other">Outros</option>
                 </DsInput>
-                <DsInput id="item-name" v-model="itemForm.nameSnapshot" label="Nome" required />
-                <DsInput id="item-code" v-model="itemForm.codeSnapshot" label="Código" />
+                <DsInput id="item-name" v-model="itemForm.nameSnapshot" :label="itemNameLabel" required />
+                <DsInput id="item-code" v-model="itemForm.codeSnapshot" :label="itemCodeLabel" />
                 <DsInput
                   id="item-price"
                   v-model.number="itemForm.unitPrice"
@@ -227,6 +269,8 @@ import { quoteService, type QuoteItemSummary, type QuoteSummary } from '@/servic
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import { computed } from 'vue';
 
+type QuoteFormItemType = 'product' | 'service' | 'other';
+
 const quoteColumns: DataTableColumn[] = [
   { key: 'number', label: 'Número' },
   { key: 'status', label: 'Status' },
@@ -254,7 +298,7 @@ const successMessage = ref('');
 const creatingQuote = ref(false);
 const actionLoading = ref('');
 const printPreview = ref('');
-const quoteRows = computed(() => quotes.value as unknown as DataTableRow[]);
+const filteredQuoteRows = computed(() => filteredQuotes.value as unknown as DataTableRow[]);
 const quoteItemRows = computed(() => selectedItems.value as unknown as DataTableRow[]);
 const quoteForm = ref({
   ownerId: '',
@@ -262,7 +306,7 @@ const quoteForm = ref({
   notes: ''
 });
 const itemForm = ref({
-  itemType: 'service' as const,
+  itemType: 'service' as QuoteFormItemType,
   nameSnapshot: '',
   codeSnapshot: '',
   unitPrice: 0,
@@ -270,12 +314,79 @@ const itemForm = ref({
   discountAmount: 0,
   notes: ''
 });
+const legacyFilters = ref({
+  id: '',
+  client: '',
+  date: ''
+});
 
 const approvedCount = computed(() => quotes.value.filter((q) => q.status === 'approved').length);
 const convertedCount = computed(() => quotes.value.filter((q) => q.convertedToSaleId).length);
 const totalVolumeFormatted = computed(() =>
   formatCurrency(quotes.value.reduce((sum, q) => sum + q.total, 0))
 );
+const filteredQuotes = computed(() => {
+  const id = normalizeSearch(legacyFilters.value.id);
+  const client = normalizeSearch(legacyFilters.value.client);
+  const date = legacyFilters.value.date;
+
+  return quotes.value.filter((quote) => {
+    const matchesId =
+      !id || normalizeSearch(`${quote.id} ${quote.number}`).includes(id);
+    const matchesClient =
+      !client || normalizeSearch(quote.ownerId ?? '').includes(client);
+    const quoteDate = quote.createdAt.slice(0, 10);
+    const validDate = quote.validUntil ?? '';
+    const matchesDate = !date || quoteDate === date || validDate === date;
+    return matchesId && matchesClient && matchesDate;
+  });
+});
+const selectedProductItems = computed(() =>
+  selectedItems.value.filter((item) => item.itemType === 'product')
+);
+const selectedOtherItems = computed(() => selectedItems.value.filter((item) => isOtherQuoteItem(item)));
+const selectedServiceItems = computed(() =>
+  selectedItems.value.filter((item) => item.itemType === 'service' && !isOtherQuoteItem(item))
+);
+const selectedProductsTotal = computed(() =>
+  selectedProductItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
+);
+const selectedServicesTotal = computed(() =>
+  selectedServiceItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
+);
+const selectedOtherTotal = computed(() =>
+  selectedOtherItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
+);
+const itemNameLabel = computed(() => {
+  if (itemForm.value.itemType === 'product') return 'Ou Descrição do Produto';
+  if (itemForm.value.itemType === 'other') return 'Descrição';
+  return 'Descrição do Serviço';
+});
+const itemCodeLabel = computed(() =>
+  itemForm.value.itemType === 'product' ? 'Pesquisar Cod. Barras' : 'Código'
+);
+const quoteFlow = [
+  {
+    eyebrow: 'Proposta',
+    title: 'Montar orçamento',
+    description: 'Cliente, validade e observações criam a proposta comercial inicial.'
+  },
+  {
+    eyebrow: 'Composição',
+    title: 'Serviços, produtos e outros',
+    description: 'Itens heterogêneos consolidam o valor do orçamento.'
+  },
+  {
+    eyebrow: 'Decisão',
+    title: 'Aprovar ou rejeitar',
+    description: 'A proposta sai de rascunho antes de virar execução.'
+  },
+  {
+    eyebrow: 'Conversão',
+    title: 'Comanda, venda ou pacote',
+    description: 'A conversão materializa a negociação em fluxo operacional ou comercial.'
+  }
+];
 
 interface QuoteAlert {
   variant: 'warning' | 'danger' | 'info';
@@ -376,13 +487,19 @@ async function addItem() {
   formError.value = '';
   try {
     await quoteService.addItem(selectedQuoteId.value, {
-      itemType: itemForm.value.itemType,
+      itemType: itemForm.value.itemType === 'other' ? 'service' : itemForm.value.itemType,
       nameSnapshot: itemForm.value.nameSnapshot.trim(),
-      codeSnapshot: itemForm.value.codeSnapshot.trim() || null,
+      codeSnapshot:
+        itemForm.value.itemType === 'other'
+          ? 'OUTROS'
+          : itemForm.value.codeSnapshot.trim() || null,
       unitPrice: Number(itemForm.value.unitPrice),
       quantity: Number(itemForm.value.quantity),
       discountAmount: Number(itemForm.value.discountAmount) || 0,
-      notes: itemForm.value.notes.trim() || null
+      notes:
+        itemForm.value.itemType === 'other'
+          ? itemForm.value.notes.trim() || 'Item livre de orçamento'
+          : itemForm.value.notes.trim() || null
     });
     itemForm.value = {
       itemType: 'service',
@@ -478,6 +595,18 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isOtherQuoteItem(item: QuoteItemSummary): boolean {
+  return item.codeSnapshot === 'OUTROS' || item.notes?.toLowerCase().includes('item livre') === true;
+}
+
 onMounted(() => {
   void loadQuotes();
 });
@@ -501,6 +630,36 @@ function quoteItemRow(row: unknown): QuoteItemSummary {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.quote-flow-grid,
+.quote-total-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.quote-flow-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+}
+
+.quote-flow-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.quote-flow-card p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
 }
 
 .hub-kpis {
@@ -534,9 +693,15 @@ function quoteItemRow(row: unknown): QuoteItemSummary {
 }
 
 .form-grid,
-.item-grid {
+.item-grid,
+.legacy-filter-grid {
   display: grid;
   gap: 12px;
+}
+
+.legacy-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
 }
 
 .item-grid {
@@ -598,5 +763,12 @@ code {
   margin-top: 4px;
   font-size: 12px;
   color: var(--color-text-muted, #64748b);
+}
+
+@media (max-width: 760px) {
+  .legacy-filter-grid,
+  .item-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

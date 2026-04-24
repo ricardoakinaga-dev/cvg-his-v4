@@ -99,6 +99,9 @@ importers:
       '@cvg-his-v2/module-cash':
         specifier: workspace:*
         version: link:../../packages/modules/cash
+      '@cvg-his-v2/module-commercial':
+        specifier: workspace:*
+        version: link:../../packages/modules/commercial
       '@cvg-his-v2/module-counter-sales':
         specifier: workspace:*
         version: link:../../packages/modules/counter-sales
@@ -331,18 +334,6 @@ importers:
       workbox-strategies:
         specifier: ^7.4.0
         version: 7.4.0
-
-  apps/web:
-    dependencies:
-      '@cvg-his-v2/shared-auth-sdk':
-        specifier: workspace:*
-        version: link:../../packages/shared/auth-sdk
-      '@cvg-his-v2/shared-config':
-        specifier: workspace:*
-        version: link:../../packages/shared/config
-      '@cvg-his-v2/shared-logging':
-        specifier: workspace:*
-        version: link:../../packages/shared/logging
 
   apps/worker:
     dependencies:
@@ -701,6 +692,24 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
+
+  packages/modules/commercial:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
       '@cvg-his-v2/tenant-context':
         specifier: workspace:*
         version: link:../../tenant-context

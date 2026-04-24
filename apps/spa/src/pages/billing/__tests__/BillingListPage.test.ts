@@ -139,6 +139,13 @@ describe('BillingListPage', () => {
     expect(wrapper.text()).toContain('Mimi');
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Maria Santos');
+    expect(wrapper.text()).toContain('Dashboard Financeiro');
+    expect(wrapper.text()).toContain('Camadas financeiras Vetus');
+    expect(wrapper.text()).toContain('Gaveta');
+    expect(wrapper.text()).toContain('Contas a Receber');
+    expect(wrapper.text()).toContain('Contas a Pagar');
+    expect(wrapper.text()).toContain('Transações de Cartão');
+    expect(wrapper.text()).toContain('DESCONTO OFERECIDO');
   });
 
   it('shows billing status labels', async () => {

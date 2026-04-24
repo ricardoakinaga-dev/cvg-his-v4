@@ -204,6 +204,20 @@ const mockQuotes = [
 ];
 
 const mockGetPatientById = vi.fn().mockResolvedValue(mockPatient);
+const mockGetPatientSummary = vi.fn().mockResolvedValue({
+  patient: mockPatient,
+  owner: {
+    id: mockOwner.id,
+    fullName: mockOwner.fullName,
+    phoneMain: '(11) 99999-1111',
+    email: null
+  },
+  stats: {
+    totalEncounters: 1,
+    openEncounters: 1
+  },
+  recentEncounters: [{ id: 'enc-1', openedAt: '2024-01-03T09:00:00Z', status: 'open' as const }]
+});
 const mockGetOwnerById = vi.fn().mockResolvedValue(mockOwner);
 const mockEncounterList = vi.fn().mockResolvedValue(mockEncounters);
 const mockEncounterTimelineList = vi.fn().mockResolvedValue(mockEncounterTimeline);
@@ -224,7 +238,8 @@ const mockGetOwnerName = vi.fn().mockResolvedValue('João Silva');
 
 vi.mock('@/services/patient', () => ({
   patientService: {
-    getById: (...args: unknown[]) => mockGetPatientById(...args)
+    getById: (...args: unknown[]) => mockGetPatientById(...args),
+    getSummary: (...args: unknown[]) => mockGetPatientSummary(...args)
   }
 }));
 
@@ -294,6 +309,22 @@ describe('PatientDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetPatientById.mockResolvedValue(mockPatient);
+    mockGetPatientSummary.mockResolvedValue({
+      patient: mockPatient,
+      owner: {
+        id: mockOwner.id,
+        fullName: mockOwner.fullName,
+        phoneMain: '(11) 99999-1111',
+        email: null
+      },
+      stats: {
+        totalEncounters: 1,
+        openEncounters: 1
+      },
+      recentEncounters: [
+        { id: 'enc-1', openedAt: '2024-01-03T09:00:00Z', status: 'open' as const }
+      ]
+    });
     mockGetOwnerById.mockResolvedValue(mockOwner);
     mockEncounterList.mockResolvedValue(mockEncounters);
     mockEncounterTimelineList.mockResolvedValue(mockEncounterTimeline);
@@ -334,6 +365,11 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Cockpit operacional atual');
     expect(wrapper.text()).toContain('Prontuário do atendimento atual');
     expect(wrapper.text()).toContain('Agendar retorno');
+    expect(wrapper.text()).toContain('Abrir Nova Comanda');
+    expect(wrapper.text()).toContain('Ver cadastro do cliente');
+    expect(wrapper.text()).toContain('Segurança clínica do animal');
+    expect(wrapper.text()).toContain('Doença crônica');
+    expect(wrapper.text()).toContain('Informações de contato do cliente');
     expect(wrapper.text()).toContain('Claudicação em membro anterior');
     expect(wrapper.text()).toContain('UTI / B-02');
     expect(wrapper.text()).toContain('Prescrição adicionada');

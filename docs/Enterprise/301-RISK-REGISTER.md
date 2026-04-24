@@ -23,3 +23,6 @@
 | R-15 | Observabilidade parcial sem OTel dificulta RCA e auditoria | Alta | Alto | 5 | OpenTelemetry com OTLP exporter e runbooks de tracing |
 | R-16 | Rate limiter local não escala horizontalmente | Média | Alto | 5 | Redis central para limiter, testes de concorrência e fallback seguro |
 | R-17 | Ausência de estratégia Kubernetes/Helm trava operação enterprise multiambiente | Média | Médio | 5 | Helm charts mínimos, ADR de runtime e plano progressivo de adoção |
+| R-18 | Paridade Vetus documentada avança mais rapido que APIs persistidas | Alta | Alto | Vetus | Quebrar por fatias verificaveis, registrar limites em `0347`, exigir OpenAPI/testes antes de declarar modulo fechado |
+| R-19 | Telas novas com dados locais serem confundidas com capacidade operacional final | Media | Alto | Vetus | Marcar status como `Fechado parcial`, priorizar serviços/API e substituir mocks por integração real |
+| R-20 | Validacao Helm nao reexecutavel no ambiente local por falta do binario | Media | Medio | Plataforma | Instalar `helm` no runner ou mover `validate:helm` para ambiente com toolchain completo |

@@ -97,6 +97,12 @@ describe('InventoryListPage', () => {
     expect(wrapper.text()).toContain('Dipirona Injetavel');
     expect(wrapper.text()).toContain('Gaze Esteril');
     expect(wrapper.text()).toContain('MED-001');
+    expect(wrapper.text()).toContain('Cadastro mestre');
+    expect(wrapper.text()).toContain('Movimentação real');
+    expect(wrapper.text()).toContain('Consulta de Preços e Saldo');
+    expect(wrapper.text()).toContain('Entrada de Nota Fiscal');
+    expect(wrapper.text()).toContain('Transferência entre Estoques');
+    expect(wrapper.text()).toContain('Geladeira Vacinas');
   });
 
   it('shows stock quantity and unit', async () => {
@@ -123,7 +129,7 @@ describe('InventoryListPage', () => {
     await flushPromises();
     const searchInput = wrapper.find('input[type="search"]');
     expect(searchInput.exists()).toBe(true);
-    expect(searchInput.attributes('placeholder')).toBe('Buscar por SKU, nome ou unidade...');
+    expect(searchInput.attributes('placeholder')).toBe('Buscar por SKU, código de barras, nome ou unidade...');
   });
 
   it('has a Buscar button', async () => {

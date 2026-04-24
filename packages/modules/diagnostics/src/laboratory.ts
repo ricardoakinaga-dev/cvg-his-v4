@@ -112,7 +112,6 @@ export class LaboratoryService {
     accountId: AccountId,
     encounterId?: string
   ): Promise<readonly DiagnosticOrderSummary[]> {
-    await this.hydrateCatalog(accountId);
     const items = encounterId
       ? this.#diagnostics.list(encounterId).filter((order) => order.accountId === accountId)
       : this.#diagnostics.listByAccount(accountId);
@@ -187,8 +186,14 @@ export class LaboratoryService {
       );
     }
 
-    await this.#catalogRepository.ensureSeedData(accountId);
-    return this.#catalogRepository.listEquipment(accountId);
+    try {
+      await this.#catalogRepository.ensureSeedData(accountId);
+      return this.#catalogRepository.listEquipment(accountId);
+    } catch {
+      return [...DEFAULT_LABORATORY_EQUIPMENT].sort((left, right) =>
+        left.name.localeCompare(right.name)
+      );
+    }
   }
 
   public async listReportTypes(
@@ -200,8 +205,14 @@ export class LaboratoryService {
       );
     }
 
-    await this.#catalogRepository.ensureSeedData(accountId);
-    return this.#catalogRepository.listReportTypes(accountId);
+    try {
+      await this.#catalogRepository.ensureSeedData(accountId);
+      return this.#catalogRepository.listReportTypes(accountId);
+    } catch {
+      return [...DEFAULT_LABORATORY_REPORT_TYPES].sort((left, right) =>
+        left.name.localeCompare(right.name)
+      );
+    }
   }
 
   public async listReferenceValues(
@@ -215,7 +226,14 @@ export class LaboratoryService {
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
 
-    await this.#catalogRepository.ensureSeedData(accountId);
-    return this.#catalogRepository.listReferenceValues(accountId, filterExam);
+    try {
+      await this.#catalogRepository.ensureSeedData(accountId);
+      return this.#catalogRepository.listReferenceValues(accountId, filterExam);
+    } catch {
+      const normalizedFilter = normalizeText(filterExam);
+      return [...DEFAULT_LABORATORY_REFERENCE_VALUES]
+        .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+        .sort((left, right) => left.parameter.localeCompare(right.parameter));
+    }
   }
 }

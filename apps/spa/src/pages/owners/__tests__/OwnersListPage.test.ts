@@ -110,7 +110,7 @@ describe('OwnersListPage', () => {
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Clientes e Tutores');
+    expect(wrapper.text()).toContain('Clientes');
   });
 
   it('loads owners and linked patients on mount', async () => {
@@ -121,6 +121,7 @@ describe('OwnersListPage', () => {
     expect(mockListFn).toHaveBeenCalled();
     expect(mockPatientListFn).toHaveBeenCalled();
     expect(wrapper.text()).toContain('Cliente em destaque');
+    expect(wrapper.text()).toContain('Últimos clientes cadastrados');
   });
 
   it('shows error state when API fails', async () => {
@@ -140,7 +141,7 @@ describe('OwnersListPage', () => {
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum tutor encontrado');
+    expect(wrapper.text()).toContain('Nenhum cliente encontrado');
   });
 
   it('renders owner data in cards', async () => {
@@ -215,7 +216,7 @@ describe('OwnersListPage', () => {
     });
 
     await flushPromises();
-    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Novo Tutor'));
+    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar Novo Cliente'));
     expect(newLink).toBeTruthy();
     expect(newLink!.attributes('href')).toBe('/owners/new');
   });
@@ -247,5 +248,17 @@ describe('OwnersListPage', () => {
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Novo Animal');
     expect(wrapper.text()).toContain('Agendar');
+  });
+
+  it('shows Vetus-like disclosure sections for contact and linked animals', async () => {
+    const OwnersListPage = (await import('../OwnersListPage.vue')).default;
+    const wrapper = mount(OwnersListPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Informações de Contato');
+    expect(wrapper.text()).toContain('Animais do Cliente');
+    expect(wrapper.text()).toContain('Ver Detalhes');
+    expect(wrapper.text()).toContain('Abrir Comanda');
   });
 });

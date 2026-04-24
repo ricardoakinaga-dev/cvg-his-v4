@@ -269,6 +269,7 @@
 
               <div class="counter-sale-card__meta">
                 <span>{{ formatDateTime(sale.createdAt) }}</span>
+                <span v-if="sale.closedAt">Fechamento {{ formatDateTime(sale.closedAt) }}</span>
                 <span>{{ ownerPrimaryContactLabel(sale.ownerId) }}</span>
                 <span>{{ ownerPatientsLabel(sale.ownerId) }}</span>
                 <span>{{ openedByLabel(sale.openedByUserId) }}</span>
@@ -292,9 +293,27 @@
 
               <p v-if="sale.notes" class="counter-sale-card__notes">{{ sale.notes }}</p>
 
+              <details class="counter-sale-card__details">
+                <summary>Informações do cliente</summary>
+                <div class="counter-sale-card__details-grid">
+                  <span>{{ ownerName(sale.ownerId) }}</span>
+                  <span>{{ ownerPrimaryContactLabel(sale.ownerId) }}</span>
+                  <span>{{ ownerPatientsLabel(sale.ownerId) }}</span>
+                </div>
+              </details>
+
+              <details class="counter-sale-card__details">
+                <summary>Serviços / Produtos</summary>
+                <div class="counter-sale-card__details-grid">
+                  <span>{{ saleItemsCountLabel(sale) }}</span>
+                  <span>Produtos: {{ formatCurrency(saleItemsTotal(sale, 'product')) }}</span>
+                  <span>Serviços: {{ formatCurrency(saleItemsTotal(sale, 'service')) }}</span>
+                </div>
+              </details>
+
               <div class="counter-sale-card__actions">
                 <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">
-                  {{ sale.id === selectedSaleId ? 'Atualizar workspace' : 'Abrir workspace' }}
+                  {{ sale.id === selectedSaleId ? 'Atualizar comanda' : 'Ver comanda' }}
                 </DsButton>
                 <DsButton
                   v-if="sale.ownerId"
@@ -319,8 +338,11 @@
                 <header class="workbench-section__header">
                   <div>
                     <span class="workbench-section__eyebrow">Contexto assistencial</span>
-                    <h3>Animais vinculados ao tutor</h3>
+                    <h3>Animais Vinculados na Comanda</h3>
                   </div>
+                  <span class="workbench-section__hint">
+                    {{ selectedPatientContexts.length }} animal(is)
+                  </span>
                   <DsButton
                     v-if="selectedSale.ownerId"
                     size="sm"
@@ -505,9 +527,20 @@
                 <header class="workbench-section__header">
                   <div>
                     <span class="workbench-section__eyebrow">Painel esquerdo</span>
-                    <h3>Itens lançados</h3>
+                    <h3>Produtos e Serviços</h3>
                   </div>
                 </header>
+
+                <div class="item-total-grid">
+                  <div class="summary-card">
+                    <span class="summary-card__label">Produtos</span>
+                    <strong class="summary-card__value">{{ formatCurrency(selectedProductsTotal) }}</strong>
+                  </div>
+                  <div class="summary-card">
+                    <span class="summary-card__label">Serviços</span>
+                    <strong class="summary-card__value">{{ formatCurrency(selectedServicesTotal) }}</strong>
+                  </div>
+                </div>
 
                 <div v-if="selectedSale.items.length > 0" class="item-list">
                   <article
@@ -573,6 +606,39 @@
                   Nenhum item lançado ainda. Use o catálogo acima para montar a cobrança.
                 </div>
               </section>
+
+              <section class="workbench-section">
+                <header class="workbench-section__header">
+                  <div>
+                    <span class="workbench-section__eyebrow">chat</span>
+                    <h3>Observações Gerais</h3>
+                  </div>
+                  <span class="workbench-section__hint">{{ selectedSaleNotesLength }} / 1000</span>
+                </header>
+                <p class="counter-sale-observations">
+                  {{ selectedSale.notes || 'Esta comanda ainda não possui observações gerais.' }}
+                </p>
+              </section>
+
+              <section class="workbench-section">
+                <header class="workbench-section__header">
+                  <div>
+                    <span class="workbench-section__eyebrow">medical_services</span>
+                    <h3>Histórico de Esteira</h3>
+                  </div>
+                </header>
+                <div v-if="selectedTimelineItems.length > 0" class="timeline-stack">
+                  <article
+                    v-for="event in selectedTimelineItems"
+                    :key="event.key"
+                    class="timeline-card"
+                  >
+                    <strong>{{ event.title }}</strong>
+                    <span>{{ event.description }}</span>
+                  </article>
+                </div>
+                <div v-else class="counter-sales-empty">Nenhum registro de esteira para esta comanda.</div>
+              </section>
             </div>
 
             <aside class="workbench-sidebar">
@@ -580,7 +646,7 @@
                 <div class="sidebar-summary">
                   <div class="sidebar-summary__header">
                     <div>
-                      <span class="workbench-section__eyebrow">Fechamento</span>
+                      <span class="workbench-section__eyebrow">Resumo da Conta</span>
                       <h3>{{ selectedSale.number }}</h3>
                     </div>
                     <DsBadge :variant="statusBadgeVariant(selectedSale.status)">
@@ -608,7 +674,7 @@
                       </strong>
                     </div>
                     <div class="summary-card">
-                      <span class="summary-card__label">Saldo</span>
+                      <span class="summary-card__label">Total a pagar</span>
                       <strong class="summary-card__value">
                         {{ formatCurrency(selectedSale.balanceDue) }}
                       </strong>
@@ -627,6 +693,10 @@
                       <span>{{ openedByLabel(selectedSale.openedByUserId) }}</span>
                       <span>{{ accountLabel(selectedSale.accountId) }}</span>
                     </div>
+                    <details class="sidebar-contact">
+                      <summary>Ver Informações de Contato</summary>
+                      <p>{{ ownerContactsSummary(selectedSale.ownerId) }}</p>
+                    </details>
                     <div class="sidebar-owner__actions">
                       <DsButton
                         v-if="selectedSale.ownerId"
@@ -645,10 +715,29 @@
                       >
                         Impressão operacional
                       </DsButton>
+                      <DsButton size="sm" variant="ghost" tag="a" to="/queue">
+                        Encaminhar Esteira
+                      </DsButton>
                     </div>
                   </div>
 
                   <div class="sidebar-actions">
+                    <DsButton
+                      v-if="selectedSale.status === 'open'"
+                      variant="secondary"
+                      :disabled="savingItem"
+                      @click="applySaleAdjustment('expense')"
+                    >
+                      Incluir Despesa Extra
+                    </DsButton>
+                    <DsButton
+                      v-if="selectedSale.status === 'open'"
+                      variant="secondary"
+                      :disabled="savingItem"
+                      @click="applySaleAdjustment('discount')"
+                    >
+                      Incluir Desconto
+                    </DsButton>
                     <DsButton
                       v-if="selectedSale.status === 'open'"
                       variant="primary"
@@ -1004,6 +1093,12 @@ interface SelectedPatientContext {
   medicalRecord: MedicalRecordListSummary | null;
 }
 
+interface TimelineItem {
+  key: string;
+  title: string;
+  description: string;
+}
+
 const loadingPage = ref(false);
 const loadingDashboard = ref(false);
 const creatingSale = ref(false);
@@ -1095,6 +1190,19 @@ const selectedOwnerQuotes = computed(() => {
   if (!ownerId) return [];
   return quotes.value.filter((quote) => quote.ownerId === ownerId);
 });
+const selectedProductItems = computed(() =>
+  selectedSale.value?.items.filter((item) => item.itemType === 'product') ?? []
+);
+const selectedServiceItems = computed(() =>
+  selectedSale.value?.items.filter((item) => item.itemType === 'service') ?? []
+);
+const selectedProductsTotal = computed(() =>
+  selectedProductItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
+);
+const selectedServicesTotal = computed(() =>
+  selectedServiceItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
+);
+const selectedSaleNotesLength = computed(() => selectedSale.value?.notes?.length ?? 0);
 
 const selectedPatientContexts = computed<SelectedPatientContext[]>(() => {
   const recordByEncounterId = new Map(
@@ -1121,6 +1229,26 @@ const selectedPatientContexts = computed<SelectedPatientContext[]>(() => {
       medicalRecord: encounter ? recordByEncounterId.get(encounter.id) ?? null : null
     };
   });
+});
+const selectedTimelineItems = computed<TimelineItem[]>(() => {
+  const sale = selectedSale.value;
+  if (!sale) return [];
+
+  const patientEvents = selectedPatientContexts.value.map((context) => ({
+    key: `patient-${context.patient.id}`,
+    title: `${context.patient.name} · ${context.encounter ? encounterStatusLabel(context.encounter.status) : 'Aguardando entrada'}`,
+    description: context.encounter
+      ? `Entrada: ${formatDateTime(context.encounter.openedAt)} · Setor receptor: Atendimento`
+      : 'Urgência: Aguardando · Setor receptor: Clínica'
+  }));
+
+  const paymentEvents = sale.payments.map((payment) => ({
+    key: `payment-${payment.id}`,
+    title: `Pagamento ${paymentMethodLabel(payment.method)}`,
+    description: `${formatCurrency(payment.amount)} registrado em ${formatDateTime(payment.createdAt)}`
+  }));
+
+  return [...patientEvents, ...paymentEvents];
 });
 
 const inventoryBySku = computed(
@@ -1477,6 +1605,18 @@ function ownerContactsSummary(ownerId: string | null) {
   return owner.contacts.map((contact) => `${contact.label}: ${contact.value}`).join(' · ');
 }
 
+function saleItemsCountLabel(sale: CounterSaleDetail) {
+  const products = sale.items.filter((item) => item.itemType === 'product').length;
+  const services = sale.items.filter((item) => item.itemType === 'service').length;
+  return `${products} produto(s) · ${services} serviço(s)`;
+}
+
+function saleItemsTotal(sale: CounterSaleDetail, type: CounterSaleItemSummary['itemType']) {
+  return sale.items
+    .filter((item) => item.itemType === type)
+    .reduce((sum, item) => sum + item.lineTotal, 0);
+}
+
 function openedByLabel(userId: string) {
   return `Operador ${userId}`;
 }
@@ -1614,6 +1754,33 @@ async function applyDefaultDiscount(item: CounterSaleItemSummary) {
     await selectSale(selectedSale.value.id);
   } catch (actionError) {
     error.value = actionError instanceof Error ? actionError.message : 'Erro ao aplicar desconto';
+  } finally {
+    savingItem.value = false;
+  }
+}
+
+async function applySaleAdjustment(kind: 'expense' | 'discount') {
+  if (!selectedSale.value) return;
+
+  savingItem.value = true;
+  error.value = '';
+  try {
+    await counterSalesService.addItem(selectedSale.value.id, {
+      itemType: 'service',
+      catalogItemId: null,
+      nameSnapshot: kind === 'expense' ? 'Despesa extra' : 'Desconto operacional',
+      codeSnapshot: kind === 'expense' ? 'AJUSTE-DESPESA' : 'AJUSTE-DESCONTO',
+      unitPrice: kind === 'expense' ? 10 : 0,
+      quantity: 1,
+      discountAmount: kind === 'expense' ? 0 : 10,
+      notes: kind === 'expense' ? 'Ajuste lançado pelo resumo da conta' : 'Desconto lançado pelo resumo da conta'
+    });
+    successMessage.value =
+      kind === 'expense' ? 'Despesa extra incluída na comanda.' : 'Desconto incluído na comanda.';
+    await selectSale(selectedSale.value.id);
+  } catch (actionError) {
+    error.value =
+      actionError instanceof Error ? actionError.message : 'Erro ao lançar ajuste na comanda';
   } finally {
     savingItem.value = false;
   }
@@ -2347,6 +2514,7 @@ function formatDateTime(value: string): string {
 .counter-sale-card__grid,
 .sidebar-summary__grid,
 .summary-grid,
+.item-total-grid,
 .patient-context-grid,
 .create-sale-modal__new-grid {
   display: grid;
@@ -2376,9 +2544,43 @@ function formatDateTime(value: string): string {
 }
 
 .counter-sale-card__notes,
-.catalog-card__hint {
+.catalog-card__hint,
+.counter-sale-observations {
   margin: 0;
   color: var(--color-text-muted, #64748b);
+}
+
+.counter-sale-card__details,
+.sidebar-contact {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.counter-sale-card__details summary,
+.sidebar-contact summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.counter-sale-card__details-grid {
+  display: grid;
+  gap: 6px;
+  padding: 0 12px 12px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+}
+
+.sidebar-contact p {
+  margin: 0;
+  padding: 0 12px 12px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
 }
 
 .counter-sale-card__actions,
@@ -2411,8 +2613,15 @@ function formatDateTime(value: string): string {
   gap: 12px;
 }
 
+.workbench-section__hint {
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .patient-context-card,
-.patient-context-card__journey {
+.patient-context-card__journey,
+.timeline-stack {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2452,6 +2661,20 @@ function formatDateTime(value: string): string {
   border-radius: 14px;
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.timeline-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-left: 4px solid rgba(14, 165, 233, 0.7);
+  border-radius: 14px;
+  background: rgba(240, 249, 255, 0.76);
+}
+
+.timeline-card span {
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
 }
 
 .catalog-toolbar,

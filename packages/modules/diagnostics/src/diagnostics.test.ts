@@ -342,6 +342,38 @@ test('LaboratoryService falls back to default catalogs when repository is not co
   assert.equal(referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')), true);
 });
 
+test('LaboratoryService keeps order listing available when catalog repository is unavailable', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: {
+      async ensureSeedData() {
+        throw new Error('relation "laboratory_report_types" does not exist');
+      },
+      async listEquipment() {
+        throw new Error('relation "laboratory_equipment" does not exist');
+      },
+      async listReportTypes() {
+        throw new Error('relation "laboratory_report_types" does not exist');
+      },
+      async listReferenceValues() {
+        throw new Error('relation "laboratory_reference_values" does not exist');
+      }
+    }
+  });
+
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Backlog de coleta'
+  });
+
+  const orders = await laboratory.listOrders('acc_test' as never);
+
+  assert.equal(orders.length, 1);
+  assert.equal(orders[0].id, order.id);
+});
+
 test('LaboratoryService listResults filters only released or evidenced orders', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);

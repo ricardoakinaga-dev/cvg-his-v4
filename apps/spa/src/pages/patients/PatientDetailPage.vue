@@ -35,6 +35,9 @@
           <span class="muted">{{ patient.id }}</span>
         </template>
         <template #actions>
+          <DsButton tag="a" to="/counter-sales" variant="primary">
+            Abrir Nova Comanda
+          </DsButton>
           <DsButton
             tag="a"
             :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
@@ -55,6 +58,9 @@
             variant="secondary"
           >
             Prontuário
+          </DsButton>
+          <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary">
+            Ver cadastro do cliente
           </DsButton>
           <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost">Editar</DsButton>
         </template>
@@ -168,6 +174,17 @@
             >
               Financeiro
             </DsButton>
+            <DsButton tag="a" to="/counter-sales" variant="secondary" icon="🧾">
+              Abrir comanda
+            </DsButton>
+            <DsButton
+              v-if="ownerWhatsAppLink"
+              :href="ownerWhatsAppLink"
+              variant="ghost"
+              icon="💬"
+            >
+              Enviar mensagem
+            </DsButton>
           </div>
         </DsCard>
       </section>
@@ -245,6 +262,62 @@
               <span class="detail-item__label">Tutor no summary</span>
               <strong>{{ patientSummary?.owner.fullName || ownerName }}</strong>
             </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Segurança clínica do animal">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Doença crônica</span>
+              <strong>{{ chronicDiseaseLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Alergia</span>
+              <strong>{{ allergyLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Temperamento</span>
+              <strong>{{ temperamentLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Observações gerais do animal</span>
+              <strong>{{ animalNotesLabel }}</strong>
+            </div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Informações de contato do cliente">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Cliente</span>
+              <strong>{{ ownerSnapshot?.fullName || ownerName }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">CPF/CNPJ</span>
+              <strong>{{ ownerSnapshot?.documentId || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Celular</span>
+              <strong>{{ ownerPhoneLabel }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">E-mail</span>
+              <strong>{{ ownerEmailLabel }}</strong>
+            </div>
+          </div>
+
+          <div class="quick-actions">
+            <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary" size="sm">
+              Ver cadastro do cliente
+            </DsButton>
+            <DsButton
+              v-if="ownerWhatsAppLink"
+              :href="ownerWhatsAppLink"
+              variant="ghost"
+              size="sm"
+            >
+              Enviar Mensagem
+            </DsButton>
           </div>
         </DsCard>
       </section>
@@ -829,6 +902,29 @@ const ownerPrimaryContact = computed(() => {
   );
 });
 
+const ownerPhoneLabel = computed(() => {
+  if (!ownerSnapshot.value) {
+    return 'Não informado';
+  }
+
+  return (
+    ownerSnapshot.value.contacts.find(
+      (contact) => contact.type === 'whatsapp' || contact.type === 'phone'
+    )?.value || 'Não informado'
+  );
+});
+
+const ownerEmailLabel = computed(() => {
+  if (!ownerSnapshot.value) {
+    return 'Não informado';
+  }
+
+  return (
+    ownerSnapshot.value.contacts.find((contact) => contact.type === 'email')?.value ||
+    'Não informado'
+  );
+});
+
 const ownerWhatsAppLink = computed(() => {
   if (!ownerSnapshot.value) {
     return null;
@@ -842,6 +938,18 @@ const ownerWhatsAppLink = computed(() => {
   const normalized = whatsappContact.value.replace(/\D/g, '');
   return `https://wa.me/${normalized}`;
 });
+
+const chronicDiseaseLabel = computed(() => 'Não informado');
+
+const allergyLabel = computed(() => {
+  const alerts = focalTriage.value?.alerts ?? [];
+  const allergies = alerts.filter((alert) => /alerg/i.test(alert));
+  return allergies.length > 0 ? allergies.join(', ') : 'Não informado';
+});
+
+const temperamentLabel = computed(() => 'Não informado');
+
+const animalNotesLabel = computed(() => focalTriage.value?.initialNotes || 'Não informado');
 
 const ownerOpenBillingAmount = computed(() =>
   ownerBillingRecords.value

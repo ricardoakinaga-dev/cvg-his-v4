@@ -158,6 +158,31 @@ export interface CreateOwnerRequest {
     readonly type: 'phone' | 'email' | 'whatsapp';
     readonly primary?: boolean;
   }[];
+  readonly address?: {
+    readonly zipCode?: string;
+    readonly street?: string;
+    readonly number?: string;
+    readonly complement?: string;
+    readonly state?: string;
+    readonly city?: string;
+    readonly district?: string;
+    readonly reference?: string;
+    readonly cityCode?: string;
+  };
+  readonly profile?: {
+    readonly birthDate?: string;
+    readonly sex?: 'female' | 'male' | 'other' | 'unknown';
+    readonly group?: string;
+    readonly receiveSms?: boolean;
+    readonly personType?: 'individual' | 'company';
+    readonly rg?: string;
+  };
+  readonly financialProfile?: {
+    readonly allowedDebtLimit?: number;
+    readonly creditBalance?: number;
+    readonly availablePoints?: number;
+    readonly blockedPoints?: number;
+  };
   readonly financialResponsible: boolean;
   readonly administrativeNotes?: string;
 }
@@ -171,6 +196,31 @@ export interface UpdateOwnerRequest {
     readonly type: 'phone' | 'email' | 'whatsapp';
     readonly primary?: boolean;
   }[];
+  readonly address?: {
+    readonly zipCode?: string;
+    readonly street?: string;
+    readonly number?: string;
+    readonly complement?: string;
+    readonly state?: string;
+    readonly city?: string;
+    readonly district?: string;
+    readonly reference?: string;
+    readonly cityCode?: string;
+  };
+  readonly profile?: {
+    readonly birthDate?: string;
+    readonly sex?: 'female' | 'male' | 'other' | 'unknown';
+    readonly group?: string;
+    readonly receiveSms?: boolean;
+    readonly personType?: 'individual' | 'company';
+    readonly rg?: string;
+  };
+  readonly financialProfile?: {
+    readonly allowedDebtLimit?: number;
+    readonly creditBalance?: number;
+    readonly availablePoints?: number;
+    readonly blockedPoints?: number;
+  };
   readonly financialResponsible?: boolean;
   readonly administrativeNotes?: string;
   readonly status?: 'active' | 'inactive';

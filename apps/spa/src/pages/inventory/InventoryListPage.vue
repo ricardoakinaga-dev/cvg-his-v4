@@ -55,28 +55,83 @@
     </section>
 
     <section class="hub-sections">
-      <DsCard title="Controles Operacionais" variant="compact">
+      <DsCard title="Cadastros beta" variant="compact">
         <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/inventory/movements">Entrada, saída e transferência</DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory/validity">Fila de validade e revisão</DsButton>
-        </div>
-      </DsCard>
-      <DsCard title="Cadastros" variant="compact">
-        <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/products">Catálogo de produtos</DsButton>
+          <DsButton variant="secondary" tag="a" to="/products">Produtos</DsButton>
+          <DsButton variant="secondary" tag="a" to="/warehouses">Estoques</DsButton>
           <DsButton variant="secondary" tag="a" to="/suppliers">Fornecedores e despesas</DsButton>
           <DsButton variant="secondary" tag="a" to="/manufacturers">Fabricantes</DsButton>
           <DsButton variant="secondary" tag="a" to="/product-groups">Grupos de produto</DsButton>
-          <DsButton variant="secondary" tag="a" to="/warehouses">Estoques cadastrados</DsButton>
-          <DsButton variant="secondary" tag="a" to="/quotes">Orçamentos vinculados</DsButton>
         </div>
       </DsCard>
-      <DsCard title="Fiscal" variant="compact">
+      <DsCard title="Operação legacy mapeada" variant="compact">
         <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/fiscal">Parâmetros fiscais</DsButton>
-          <DsButton variant="secondary" tag="a" to="/fiscal/cfop">CFOP e operações</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/movements">Transação no estoque</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/movements">Transferência entre estoques</DsButton>
+          <DsButton variant="secondary" tag="a" to="/fiscal">Entrada de nota fiscal</DsButton>
+          <DsButton variant="secondary" tag="a" to="/quotes">Compras e orçamentos</DsButton>
         </div>
       </DsCard>
+      <DsCard title="Consulta balcão" variant="compact">
+        <div class="hub-links">
+          <DsButton variant="secondary" tag="a" to="/products">Consulta de preços</DsButton>
+          <DsButton variant="secondary" tag="a" to="/counter-sales">Consumir em comanda</DsButton>
+          <DsButton variant="secondary" tag="a" to="/billing">Reflexo financeiro</DsButton>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="inventory-domain-map">
+      <DsCard title="Cadeia operacional do estoque">
+        <div class="domain-flow">
+          <article v-for="step in domainFlow" :key="step.title" class="domain-flow__card">
+            <span>{{ step.eyebrow }}</span>
+            <strong>{{ step.title }}</strong>
+            <p>{{ step.description }}</p>
+          </article>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="inventory-operations-grid">
+      <DsCard title="Consulta de Preços e Saldo">
+        <div v-if="items.length === 0" class="inventory-empty-inline">
+          Nenhum item carregado para consulta operacional.
+        </div>
+        <div v-else class="price-lookup-list">
+          <article v-for="item in priceLookupItems" :key="item.id" class="price-lookup-card">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <span>SKU/Cód. barras: {{ item.sku }}</span>
+            </div>
+            <div class="price-lookup-card__metrics">
+              <span>Saldo em Estoque: {{ item.onHandQuantity }} {{ item.unit }}</span>
+              <span>Custo Unitário: {{ formatCurrency(item.unitCostAmount) }}</span>
+              <span :class="{ 'text-danger': isLowStock(item) }">
+                {{ isLowStock(item) ? 'Abaixo do ponto de reposição' : 'Saldo operacional' }}
+              </span>
+            </div>
+          </article>
+        </div>
+      </DsCard>
+
+      <DsCard title="Estoques físicos e setoriais">
+        <div class="stock-location-grid">
+          <article v-for="location in stockLocations" :key="location.name" class="stock-location-card">
+            <strong>{{ location.name }}</strong>
+            <span>{{ location.role }}</span>
+          </article>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="legacy-operation-grid">
+      <article v-for="operation in legacyOperations" :key="operation.title" class="legacy-operation-card">
+        <span>{{ operation.route }}</span>
+        <strong>{{ operation.title }}</strong>
+        <p>{{ operation.description }}</p>
+        <small>{{ operation.fields }}</small>
+      </article>
     </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -87,7 +142,7 @@
       <DsInput
         v-model="search"
         type="search"
-        placeholder="Buscar por SKU, nome ou unidade..."
+        placeholder="Buscar por SKU, código de barras, nome ou unidade..."
         @keyup.enter="load"
       />
       <DsButton variant="secondary" @click="load">Buscar</DsButton>
@@ -161,11 +216,70 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
 
+const domainFlow = [
+  {
+    eyebrow: 'Beta',
+    title: 'Cadastro mestre',
+    description: 'Produtos, estoques, fornecedores, fabricantes e grupos estruturam o catálogo.'
+  },
+  {
+    eyebrow: 'Legacy',
+    title: 'Movimentação real',
+    description: 'Nota fiscal, compra, estocagem manual e transferência alteram saldo e custo.'
+  },
+  {
+    eyebrow: 'Operação',
+    title: 'Preço e disponibilidade',
+    description: 'Consulta de preço/saldo apoia balcão, comanda, venda e atendimento.'
+  },
+  {
+    eyebrow: 'Financeiro',
+    title: 'Reflexo monetário',
+    description: 'Compra gera custo/contas a pagar; venda e comanda geram receita.'
+  }
+];
+
+const stockLocations = [
+  { name: 'Geladeira Vacinas', role: 'Cadeia fria e vacinas' },
+  { name: 'Farmácia', role: 'Medicamentos e controlados' },
+  { name: 'Centro Cirúrgico', role: 'Insumos cirúrgicos' },
+  { name: 'Laboratório', role: 'Materiais diagnósticos' },
+  { name: 'Recepção/Escritório', role: 'Balcão e consumo administrativo' }
+];
+
+const legacyOperations = [
+  {
+    title: 'Entrada de Nota Fiscal',
+    route: 'EntradaNotaFiscal.htm',
+    description: 'Registra fornecedor, nota, data de entrada, quantidade e valor unitário.',
+    fields: 'Nota Fiscal · Data da Entrada · Fornecedor · Produto · Unidade'
+  },
+  {
+    title: 'Transação no Estoque',
+    route: 'TransacaoNoEstoque.htm',
+    description: 'Estocagem manual com estoque alvo, saldo atual, quantidade e observação.',
+    fields: 'Estoque · Código de Barras · Produto · Quantidade a Estocar'
+  },
+  {
+    title: 'Transferência entre Estoques',
+    route: 'TransferenciaEntreEstoques.htm',
+    description: 'Move saldo entre locais físicos com leitura de origem e destino.',
+    fields: 'Estoque Origem · Estoque Destino · Saldo Origem · Saldo Destino'
+  },
+  {
+    title: 'Compras',
+    route: 'Compras.htm',
+    description: 'Planeja e registra aquisição antes da entrada fiscal efetiva.',
+    fields: 'Fornecedor · Data · Compras fechadas · Abrir'
+  }
+];
+
 const lowStockCount = computed(() => items.value.filter((item) => isLowStock(item)).length);
 const totalQuantity = computed(() => items.value.reduce((sum, item) => sum + item.onHandQuantity, 0));
 const totalValueFormatted = computed(() =>
   formatCurrency(items.value.reduce((sum, item) => sum + item.onHandQuantity * item.unitCostAmount, 0))
 );
+const priceLookupItems = computed(() => items.value.slice(0, 5));
 interface InventoryAlert {
   variant: 'warning' | 'danger' | 'info';
   title: string;
@@ -236,6 +350,86 @@ const { items, loading, error, search, load } = useListData<InventoryItemSummary
   gap: 12px;
 }
 
+.inventory-domain-map,
+.inventory-operations-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.domain-flow,
+.legacy-operation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.domain-flow__card,
+.legacy-operation-card,
+.price-lookup-card,
+.stock-location-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  padding: 14px;
+}
+
+.domain-flow__card,
+.legacy-operation-card {
+  display: grid;
+  gap: 8px;
+}
+
+.domain-flow__card span,
+.legacy-operation-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #64748b);
+}
+
+.domain-flow__card p,
+.legacy-operation-card p,
+.legacy-operation-card small {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+}
+
+.legacy-operation-card small {
+  font-size: 12px;
+}
+
+.inventory-operations-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+}
+
+.price-lookup-list,
+.stock-location-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.price-lookup-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.price-lookup-card > div,
+.price-lookup-card__metrics,
+.stock-location-card {
+  display: grid;
+  gap: 5px;
+}
+
+.price-lookup-card span,
+.stock-location-card span,
+.inventory-empty-inline {
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+}
+
 .hub-links {
   display: flex;
   flex-wrap: wrap;
@@ -255,5 +449,15 @@ const { items, loading, error, search, load } = useListData<InventoryItemSummary
 .row-actions {
   display: flex;
   gap: 8px;
+}
+
+@media (max-width: 920px) {
+  .inventory-operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-lookup-card {
+    flex-direction: column;
+  }
 }
 </style>

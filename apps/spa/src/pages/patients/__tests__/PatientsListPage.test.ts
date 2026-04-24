@@ -34,7 +34,40 @@ const mockPatients = [
   }
 ];
 
+const mockOwners = [
+  {
+    id: 'owner-1',
+    accountId: 'acc-1',
+    fullName: 'João Silva',
+    documentId: '123.456.789-00',
+    contacts: [
+      { label: 'Celular', type: 'whatsapp' as const, value: '(11) 99999-1111', primary: true },
+      { label: 'Email', type: 'email' as const, value: 'joao@email.com', primary: false }
+    ],
+    financialResponsible: true,
+    administrativeNotes: '',
+    status: 'active' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'owner-2',
+    accountId: 'acc-1',
+    fullName: 'Maria Santos',
+    documentId: '',
+    contacts: [
+      { label: 'Celular', type: 'phone' as const, value: '(11) 88888-2222', primary: true }
+    ],
+    financialResponsible: false,
+    administrativeNotes: '',
+    status: 'active' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
+
 const mockListFn = vi.fn().mockResolvedValue(mockPatients);
+const mockOwnerListFn = vi.fn().mockResolvedValue(mockOwners);
 const mockGetOwnerName = vi
   .fn()
   .mockImplementation((id: string) =>
@@ -45,6 +78,14 @@ vi.mock('@/services/patient', () => ({
   patientService: {
     get list() {
       return mockListFn;
+    }
+  }
+}));
+
+vi.mock('@/services/owner', () => ({
+  ownerService: {
+    get list() {
+      return mockOwnerListFn;
     }
   }
 }));
@@ -63,6 +104,7 @@ describe('PatientsListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue(mockPatients);
+    mockOwnerListFn.mockResolvedValue(mockOwners);
     mockGetOwnerName.mockImplementation((id: string) =>
       Promise.resolve(id === 'owner-1' ? 'João Silva' : 'Maria Santos')
     );
@@ -73,7 +115,7 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Animais e Pacientes');
+    expect(wrapper.text()).toContain('Animais');
   });
 
   it('loads patients on mount', async () => {
@@ -82,6 +124,7 @@ describe('PatientsListPage', () => {
 
     await flushPromises();
     expect(mockListFn).toHaveBeenCalled();
+    expect(mockOwnerListFn).toHaveBeenCalled();
     expect(wrapper.text()).toContain('Paciente em destaque');
   });
 
@@ -148,6 +191,37 @@ describe('PatientsListPage', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Maria Santos');
+    expect(wrapper.text()).toContain('123.456.789-00');
+    expect(wrapper.text()).toContain('joao@email.com');
+  });
+
+  it('filters animals by owner email locally', async () => {
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+    await wrapper.find('input[type="search"]').setValue('joao@email.com');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).not.toContain('Mimi');
+    expect(mockListFn).toHaveBeenLastCalledWith({
+      species: undefined,
+      status: 'all'
+    });
+  });
+
+  it('shows the owner disclosure block in animal cards', async () => {
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Informações do cliente');
+    expect(wrapper.text()).toContain('CPF/CNPJ');
+    expect(wrapper.text()).toContain('Celular');
+    expect(wrapper.text()).toContain('E-mail');
   });
 
   it('shows navigation links to detail and edit pages', async () => {
@@ -193,7 +267,7 @@ describe('PatientsListPage', () => {
     });
 
     await flushPromises();
-    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Novo Paciente'));
+    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar Novo Animal'));
     expect(newLink).toBeTruthy();
     expect(newLink!.attributes('href')).toBe('/patients/new');
   });
@@ -224,6 +298,7 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
+    expect(wrapper.text()).toContain('Abrir comanda');
     expect(wrapper.text()).toContain('Abrir atendimento');
     expect(wrapper.text()).toContain('Agendar');
   });
