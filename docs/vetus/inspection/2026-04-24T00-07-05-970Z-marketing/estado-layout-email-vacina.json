@@ -1,0 +1,5 @@
+{
+  "url": "https://erp.vetus.com.br/Sistema/Vacina/VacinaLayoutEmail.htm",
+  "title": "Vetus - Email de Vacinas",
+  "bodyText": "vetus\nId. 220319\nSuporte\nEmpresa:\n\nCentro Veterinário Guarapiranga\n\nInício\nAtendimento\nLaboratório\nEstoque\nFinanceiro\nMarketing\nRH\nRelatórios\nLayout de e-mail de vacina\nTítulo do Email\nCorpo do Email\nChaves: @ESPECIE@, @RACA@, @COR@, @SEXO@, @IDADE@, @NOME@, @DATAEHORAATUAL@, @DIAATUAL@, @MESATUAL@, @ANOATUAL@ , @CLIENTE@, @ENDERECO@, @CIDADE@, @DATADAVACINA@, @VACINA@, @NOMEDACLINICA@, @ENDERECODACLINICA@, @TELEFONE1DACLINICA@, @TELEFONE2DACLINICA@, @LOGOTIPO@\nSalvar\n\nVetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24\n\nAv. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}

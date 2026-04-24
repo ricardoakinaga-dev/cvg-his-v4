@@ -1,0 +1,140 @@
+{
+  "url": "https://erp-beta.vetus.com.br/login",
+  "title": "Vetus - Sistema para Clínica Veterinária e Pet Shops",
+  "headings": [
+    "Acessar a Vetus",
+    "Olá! Identifique-se para entrar no sistema."
+  ],
+  "tables": [],
+  "forms": [
+    {
+      "action": null,
+      "method": "GET",
+      "fields": [
+        "Vetus ID",
+        "Insira seu ID Vetus",
+        "Usuário",
+        "Insira seu usuário",
+        "Senha",
+        "Insira sua senha",
+        "Lembrar-me"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "text": "Live Pet",
+      "href": "https://erp.vetus.com.br/Sistema/LivePet/Login.htm"
+    },
+    {
+      "text": "Live Lab",
+      "href": "https://erp.vetus.com.br/Sistema/LiveLab/Login.htm"
+    }
+  ],
+  "buttons": [
+    "Entrar"
+  ],
+  "badges": [],
+  "scripts": [
+    {
+      "src": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64m2",
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.clarity.ms/tag/h90bc01cbe",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://script.hotjar.com/browser-perf.8417c6bba72228fa2e29.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    }
+  ],
+  "stylesheets": [
+    "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+    "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+    "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+    "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+    "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+    "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css"
+  ],
+  "storage": {
+    "localStorageKeys": [],
+    "sessionStorageKeys": [
+      "_cltk"
+    ]
+  },
+  "bodyTextSample": "Acessar a Vetus Olá! Identifique-se para entrar no sistema. Vetus ID Usuário Senha Entrar Lembrar-me © 2012-2026 Vetus - Todos os direitos reservados.Live PetLive Lab sentiment_satisfied"
+}

@@ -1,0 +1,641 @@
+{
+  "url": "https://erp.vetus.com.br/Sistema/Internacao/Internacao.htm",
+  "title": "Vetus - Internação",
+  "headings": [],
+  "buttons": [
+    "vetus Id. 220319",
+    "Configurações da Empresa",
+    "Trocar Empresa",
+    "Alterar Senha",
+    "Faturas",
+    "Sair",
+    "Empresa:",
+    "Início",
+    "Atendimento",
+    "Agenda",
+    "Comandas",
+    "Vendas",
+    "Pacotes",
+    "Esteira",
+    "Esteira de Exames",
+    "Vacinas e Vermífugos",
+    "Orçamentos",
+    "Resgate de Pontos",
+    "Vendas (beta)",
+    "Internação",
+    "Animais",
+    "Clientes",
+    "Serviços",
+    "Importar Dados Serviços",
+    "Termos de Responsabilidad...",
+    "Raças",
+    "Espécies",
+    "Cores",
+    "Grupos de Clientes",
+    "Boxes de Internação",
+    "Webhooks",
+    "Laboratório",
+    "Exames",
+    "Laudos",
+    "Hemogramas",
+    "Urina",
+    "Bioquímico",
+    "Equipamentos",
+    "Tipos de Laudo",
+    "Vlr. Ref. Hemograma",
+    "Vlr. Ref. Bioquímico",
+    "Estoque",
+    "Consulta de Preços",
+    "Entrada de Nota Fiscal",
+    "Transação no Estoque",
+    "Requisição à Farmácia",
+    "Validade de Produtos",
+    "Auditoria de Estoque",
+    "Auditoria de Preços",
+    "Transferência entre Estoq...",
+    "Compras",
+    "Reajuste de Preços",
+    "Coletores de Dados",
+    "Produtos",
+    "Importar Dados Produtos",
+    "Fornecedores e Despesas",
+    "Estoques",
+    "Fabricantes",
+    "Grupos de Produtos",
+    "Setores da Empresa",
+    "Unidades de Medida",
+    "Tabelas de Preço",
+    "Ponto de Venda",
+    "Tabela ICMS",
+    "Tabela IPI",
+    "Tabela PIS",
+    "Tabela COFINS",
+    "Tabela CFOP",
+    "Tabela NFS-e",
+    "Matriz Estado ICMS",
+    "Tabela IBS/CBS",
+    "Financeiro",
+    "Gaveta",
+    "Contas a Receber",
+    "Contas a Pagar",
+    "Pagamento Antecipado",
+    "Contas Adm. Cartão",
+    "Cheques",
+    "Fluxo de Caixa",
+    "Curva ABC Clientes",
+    "Curva ABC Produtos",
+    "DashBoard do Multifilial",
+    "Dashboard Financeiro",
+    "Linha do Tempo",
+    "Configuração do Split",
+    "Maquininhas",
+    "Simulador de Split",
+    "Transações de Cartão",
+    "Exportador de Split",
+    "Habilitar Pagamento",
+    "Pagamento Dashboard",
+    "Formas de Pagamento",
+    "Centros de Custo",
+    "Custos e Despesas",
+    "Cartões Débito/Crédito",
+    "Bancos",
+    "Marketing",
+    "Envio de SMS Simples",
+    "Campanhas de SMS Marketin...",
+    "Layout de Email de Vacina",
+    "Configurações de SMS",
+    "RH",
+    "Usuários",
+    "Grupos de Acesso",
+    "Cálculo de Comissões",
+    "Profissionais",
+    "Regras de Comissão",
+    "Folgas",
+    "Profissões",
+    "Relatórios",
+    "Auditoria de Agendamentos",
+    "DRE - Demonstrativo de Re...",
+    "Contas Recebidas",
+    "Contas Pagas",
+    "Comandas/Vendas",
+    "Produtos/Serviços Produzi...",
+    "Produção",
+    "Atendimento por Profissio...",
+    "Relatório de NF de Serviç...",
+    "Fornecedores",
+    "Exclusão de Vendas e Coma...",
+    "Movimentações no Estoque",
+    "Entrada de NF",
+    "Relatório de Produtos",
+    "Animais Internados",
+    "Mapa de Medicamentos",
+    "ui-button",
+    "Abrir a Comanda",
+    "F",
+    "P",
+    "1",
+    "N",
+    "E",
+    "Imprimir Mapa",
+    "Salvar",
+    "Finalizar",
+    "Adicionar Evento",
+    "Salvar e Fechar",
+    "Incluir Evento",
+    "Aplicar",
+    "Ok, Entendi",
+    "Sim",
+    "Não"
+  ],
+  "forms": [
+    {
+      "id": "formMenu",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formMenu",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:0",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "j_idt14",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "j_idt14",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:1",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "j_idt24",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "j_idt24",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "j_idt24:j_idt61",
+          "id": "j_idt24:j_idt61",
+          "placeholder": "Buscar...",
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "j_idt24:j_idt63",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:2",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "menuform",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "menuform",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:4",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "formPrincipal",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formPrincipal",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formPrincipal:tab:dataEmTela_input",
+          "id": "formPrincipal:tab:dataEmTela_input",
+          "placeholder": null,
+          "value": "23/04/2026"
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formPrincipal:tab_activeIndex",
+          "id": "formPrincipal:tab_activeIndex",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:5",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "formDialogs",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formDialogs",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:internacaoBox_input",
+          "id": "formDialogs:internacaoBox_input",
+          "placeholder": null,
+          "value": ""
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formDialogs:internacaoBox_hinput",
+          "id": "formDialogs:internacaoBox_hinput",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:estado_focus",
+          "id": "formDialogs:estado_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:estado_input",
+          "id": "formDialogs:estado_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formDialogs:tbEventoItem_selection",
+          "id": "formDialogs:tbEventoItem_selection",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:j_idt205_input",
+          "id": "formDialogs:j_idt205_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:profissionalEvento_input",
+          "id": "formDialogs:profissionalEvento_input",
+          "placeholder": null,
+          "value": ""
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formDialogs:profissionalEvento_hinput",
+          "id": "formDialogs:profissionalEvento_hinput",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:peso",
+          "id": "formDialogs:peso",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:temperatura",
+          "id": "formDialogs:temperatura",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:frequenciaCardiaca",
+          "id": "formDialogs:frequenciaCardiaca",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:frequenciaRespiratoria",
+          "id": "formDialogs:frequenciaRespiratoria",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:comportamento_focus",
+          "id": "formDialogs:comportamento_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:comportamento_input",
+          "id": "formDialogs:comportamento_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:apetite_focus",
+          "id": "formDialogs:apetite_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:apetite_input",
+          "id": "formDialogs:apetite_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:dor_focus",
+          "id": "formDialogs:dor_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:dor_input",
+          "id": "formDialogs:dor_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:pasPam",
+          "id": "formDialogs:pasPam",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:glicemia",
+          "id": "formDialogs:glicemia",
+          "placeholder": null,
+          "value": "0,00"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:pulsoArterial_focus",
+          "id": "formDialogs:pulsoArterial_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:pulsoArterial_input",
+          "id": "formDialogs:pulsoArterial_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:emese_focus",
+          "id": "formDialogs:emese_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:emese_input",
+          "id": "formDialogs:emese_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:fezes_focus",
+          "id": "formDialogs:fezes_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:fezes_input",
+          "id": "formDialogs:fezes_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:mucosas_focus",
+          "id": "formDialogs:mucosas_focus",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "name": "formDialogs:mucosas_input",
+          "id": "formDialogs:mucosas_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": null,
+          "name": "formDialogs:observacao",
+          "id": "formDialogs:observacao",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:profissionalAplicacao_input",
+          "id": "formDialogs:profissionalAplicacao_input",
+          "placeholder": null,
+          "value": ""
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "formDialogs:profissionalAplicacao_hinput",
+          "id": "formDialogs:profissionalAplicacao_hinput",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": "formDialogs:dataHoraAplicacao_input",
+          "id": "formDialogs:dataHoraAplicacao_input",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": null,
+          "name": "formDialogs:observacaoItemAplicacao",
+          "id": "formDialogs:observacaoItemAplicacao",
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:6",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "j_idt287",
+      "action": "/Sistema/Internacao/Internacao.htm",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "j_idt287",
+          "id": null,
+          "placeholder": null,
+          "value": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "hidden",
+          "name": "javax.faces.ViewState",
+          "id": "j_id1:javax.faces.ViewState:7",
+          "placeholder": null,
+          "value": null
+        }
+      ]
+    }
+  ],
+  "tableHeaders": [
+    "Animal",
+    "00",
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "Data/Hora",
+    "Observação",
+    "Peso",
+    "Profissional",
+    "Abrir",
+    "Excluir",
+    "Medicamento",
+    "Status",
+    "Via",
+    "Quantidade",
+    "Aplicar"
+  ],
+  "bodyText": "vetus Id. 220319 Suporte Empresa: Centro Veterinário Guarapiranga Início Atendimento Laboratório Estoque Financeiro Marketing RH Relatórios Internação Animais Internados Mapa de Medicamentos Jessica Conceição da Silva Laion , PINSCHER ui-button ui-button Abrir a Comanda (1 of 1) 1 Vetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24 Av. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}

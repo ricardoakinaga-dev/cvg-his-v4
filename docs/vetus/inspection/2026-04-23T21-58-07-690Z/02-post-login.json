@@ -1,0 +1,169 @@
+{
+  "url": "https://erp-beta.vetus.com.br/inicio",
+  "title": "Vetus - Sistema para Clínica Veterinária e Pet Shops",
+  "headings": [],
+  "tables": [],
+  "forms": [],
+  "links": [
+    {
+      "text": "",
+      "href": "https://petlove-vetus.zendesk.com/hc/pt-br"
+    },
+    {
+      "text": "",
+      "href": "https://api.whatsapp.com/send?phone=551148001131"
+    },
+    {
+      "text": "home Início",
+      "href": "/inicio"
+    },
+    {
+      "text": "",
+      "href": "https://facebook.com/plataformavetus"
+    },
+    {
+      "text": "",
+      "href": "https://www.instagram.com/vetuserp/"
+    },
+    {
+      "text": "",
+      "href": "https://linkedin.com/plataformavetus"
+    },
+    {
+      "text": "",
+      "href": "https://youtube.com/plataformavetus"
+    }
+  ],
+  "buttons": [
+    "Empresa: swap_horiz Centro Veterinário Guarapiranga",
+    "Atualizar",
+    "1",
+    "2",
+    "3"
+  ],
+  "badges": [
+    "notifications",
+    "R$ 242,61",
+    "R$ 0,00",
+    "R$ 139,00",
+    "R$ 400,00",
+    "R$ 339,21"
+  ],
+  "scripts": [
+    {
+      "src": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64m2",
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.clarity.ms/tag/h90bc01cbe",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://script.hotjar.com/browser-perf.8417c6bba72228fa2e29.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": "https://survey.solucx.com.br/widget.js",
+      "type": null,
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    },
+    {
+      "src": null,
+      "type": "text/javascript",
+      "id": null
+    }
+  ],
+  "stylesheets": [
+    "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+    "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+    "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+    "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+    "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+    "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+    "https://erp-beta.vetus.com.br/css/7668.7dce1e83.css"
+  ],
+  "storage": {
+    "localStorageKeys": [
+      "company",
+      "vuex",
+      "accessGroup",
+      "user",
+      "accessToken",
+      "refreshToken",
+      "otherAccess",
+      "solucxWidgetLog-22031947"
+    ],
+    "sessionStorageKeys": [
+      "_cltk"
+    ]
+  },
+  "bodyTextSample": "search notifications Suporte person vetus expand_more Id. 220319 Empresa: swap_horiz Centro Veterinário Guarapiranga home Início person_outline Atendimento expand_more science Laboratório expand_more inventory_2 Estoque expand_more paid Financeiro expand_more campaign Marketing expand_more group RH expand_more bar_chart Relatórios expand_more Início Olá, vetus Centro Veterinário Guarapiranga Comandas Clientes Animais Agenda Produtos Vendas Comandas abertas Atualizar Últimos 30 dias Criação: 23/04/2026 Nome do Cliente: Laercio da Silva Almeida Total a pagar: R$ 242,61 Criação: 23/04/2026 Nome do Cliente: Angelo Moreira de Oliveira Total a pagar: R$ 0,00 Criação: 23/04/2026 Nome do Cliente: Claudineia Araujo Pereira Cardoso Total a pagar: R$ 139,00 Criação: 23/04/2026 Nome do Cliente: Gabriel Giovane da Silva Total a pagar: R$ 400,00 Criação: 22/04/2026 Nome do Cliente: Laercio da Silva Almeida Total a pagar: R$ 339,21 Lembretes 23/04/2026 Nenhum lembrete para hoje. Aniversariantes do dia 23/04 Cliente: André Bispo E-mail do Cliente: andredjbispo23@hotmail.com Cliente: Brenda Silva Ferreira Celular do Cliente: 11980436351 Animal: CINDY Cliente: ANDRE LESINSKY DE OLIVEIRA Celular do Cliente: 11949348393 Animal: CINDY Cliente: MARIA APARECIDA DOS SANTOS Celular do Cliente: 11966931237 Animal: FRED Cliente: Daisy Ricardo Faria de Oliveira Celular do Cliente: 11948637261 Cliente: Gleyce moreira da silva E-mail do Cliente: gleycehee@gmail.com Cliente: Juliana Andrade Ramos Celular do Cliente: 11968678536 Animal: LOKI Cliente: MARCIA DA SILVA RIBEIRO LUCAS Celular do Cliente: 11981776463 Animal: Loki Cliente: LARISSA LOPES RIBEIRO Celular do Cliente: 11972724772 Animal: Lolla Cliente: Talita Aruda de Alburquerque Celular do Cliente: 11932087894 123 Vetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24 Av. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}

@@ -1,0 +1,1015 @@
+{
+  "url": "https://erp-beta.vetus.com.br/vendas",
+  "title": "Vetus - Sistema para Clínica Veterinária e Pet Shops",
+  "headings": [
+    "Venda de Produtos"
+  ],
+  "buttons": [
+    "menu",
+    "Empresa: swap_horiz Centro Veterinário Guarapiranga",
+    "home Início",
+    "person_outline Atendimento expand_more",
+    "Atendimentosexpand_more",
+    "Agenda",
+    "Comandas",
+    "Vendas",
+    "Pacotes",
+    "Esteira",
+    "Esteira de Exames",
+    "Vacinas e Vermífugos",
+    "Orçamentos",
+    "Resgate de Pontos",
+    "Vendas (beta)",
+    "Internaçãoexpand_more",
+    "Internação",
+    "Cadastrosexpand_more",
+    "Animais",
+    "Clientes",
+    "Serviços",
+    "Importar Dados Serviços",
+    "Termos de Responsabilidade",
+    "Raças",
+    "Espécies",
+    "Cores",
+    "Grupos de Clientes",
+    "Boxes de Internação",
+    "Webhooks",
+    "science Laboratório expand_more",
+    "Exames",
+    "Laudos",
+    "Hemogramas",
+    "Urina",
+    "Bioquímico",
+    "Equipamentos",
+    "Tipos de Laudo",
+    "Vlr. Ref. Hemograma",
+    "Vlr. Ref. Bioquímico",
+    "inventory_2 Estoque expand_more",
+    "Controlesexpand_more",
+    "Consulta de Preços",
+    "Entrada de Nota Fiscal",
+    "Transação no Estoque",
+    "Requisição à Farmácia",
+    "Validade de Produtos",
+    "Auditoria de Estoque",
+    "Auditoria de Preços",
+    "Transferência entre Estoques",
+    "Compras",
+    "Reajuste de Preços",
+    "Coletores de Dados",
+    "Produtos",
+    "Importar Dados Produtos",
+    "Fornecedores e Despesas",
+    "Estoques",
+    "Fabricantes",
+    "Grupos de Produtos",
+    "Setores da Empresa",
+    "Unidades de Medida",
+    "Tabelas de Preço",
+    "Ponto de Venda",
+    "Configurações Fiscaisexpand_more",
+    "Tabela ICMS",
+    "Tabela IPI",
+    "Tabela PIS",
+    "Tabela COFINS",
+    "Tabela CFOP",
+    "Tabela NFS-e",
+    "Matriz Estado ICMS",
+    "Tabela IBS/CBS",
+    "paid Financeiro expand_more",
+    "Gavetaexpand_more",
+    "Gaveta",
+    "Contas a Receber",
+    "Contas a Pagar",
+    "Pagamento Antecipado",
+    "Contas Adm. Cartão",
+    "Cheques",
+    "Fluxo de Caixa",
+    "Curva ABC Clientes",
+    "Curva ABC Produtos",
+    "DashBoard do Multifilial",
+    "Dashboard Financeiro",
+    "Linha do Tempo",
+    "Maquininha de Cartãoexpand_more",
+    "Configuração do Split",
+    "Maquininhas",
+    "Simulador de Split",
+    "Transações de Cartão",
+    "Exportador de Split",
+    "Habilitar Pagamento",
+    "Pagamento Dashboard",
+    "Formas de Pagamento",
+    "Centros de Custo",
+    "Custos e Despesas",
+    "Cartões Débito/Crédito",
+    "Bancos",
+    "campaign Marketing expand_more",
+    "Enviosexpand_more",
+    "Envio de SMS Simples",
+    "Campanhas de SMS Marketing",
+    "Configuraçõesexpand_more",
+    "Layout de Email de Vacina",
+    "Configurações de SMS",
+    "group RH expand_more",
+    "Usuáriosexpand_more",
+    "Usuários",
+    "Grupos de Acesso",
+    "Comissõesexpand_more",
+    "Cálculo de Comissões",
+    "Profissionais",
+    "Regras de Comissão",
+    "Folgas",
+    "Profissões",
+    "bar_chart Relatórios expand_more",
+    "Relatórios de Auditoriasexpand_more",
+    "Auditoria de Agendamentos",
+    "Relatórios Financeirosexpand_more",
+    "DRE - Demonstrativo de Resultados",
+    "Contas Recebidas",
+    "Contas Pagas",
+    "Relatórios de Atendimentosexpand_more",
+    "Comandas/Vendas",
+    "Produtos/Serviços Produzidos",
+    "Produção",
+    "Atendimento por Profissional",
+    "Relatórios Personalizadosexpand_more",
+    "Relatório de NF de Serviços Prestados",
+    "Relatórios de Cadastrosexpand_more",
+    "Fornecedores",
+    "Exclusão de Vendas e Comandas",
+    "Relatórios de Estoqueexpand_more",
+    "Estoque",
+    "Movimentações no Estoque",
+    "Entrada de NF",
+    "Relatório de Produtos",
+    "Atendimentos",
+    "filter_alt Filtrar",
+    "add Nova Venda",
+    "1",
+    "addNova Venda"
+  ],
+  "forms": [
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": null,
+      "id": null,
+      "placeholder": "Buscar...",
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": null,
+      "id": null,
+      "placeholder": "Buscar",
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": null,
+      "id": null,
+      "placeholder": "Busque por ID, ID no PDV, Nome ou CPF do Cliente",
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": null,
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": null,
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": null,
+      "id": null,
+      "placeholder": null,
+      "value": null
+    }
+  ],
+  "tableHeaders": [],
+  "links": [
+    {
+      "text": "",
+      "href": "https://petlove-vetus.zendesk.com/hc/pt-br",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://api.whatsapp.com/send?phone=551148001131",
+      "onclick": null
+    },
+    {
+      "text": "home Início",
+      "href": "/inicio",
+      "onclick": null
+    },
+    {
+      "text": "person_outline Atendimento expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Atendimentosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Agenda",
+      "href": "/agenda",
+      "onclick": null
+    },
+    {
+      "text": "Comandas",
+      "href": "/comandas",
+      "onclick": null
+    },
+    {
+      "text": "Vendas",
+      "href": "https://erp.vetus.com.br/Sistema/Atendimento/Vendas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pacotes",
+      "href": "/pacotes",
+      "onclick": null
+    },
+    {
+      "text": "Esteira",
+      "href": "https://erp.vetus.com.br/Sistema/Atendimento/Esteira.htm",
+      "onclick": null
+    },
+    {
+      "text": "Esteira de Exames",
+      "href": "https://erp.vetus.com.br/Sistema/Atendimento/EsteiraExames.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vacinas e Vermífugos",
+      "href": "https://erp.vetus.com.br/Sistema/Vacina/Vacinas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Orçamentos",
+      "href": "https://erp.vetus.com.br/Sistema/Atendimento/Orcamentos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Resgate de Pontos",
+      "href": "https://erp.vetus.com.br/Sistema/Atendimento/PontuacaoResgate.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vendas (beta)",
+      "href": "/vendas",
+      "onclick": null
+    },
+    {
+      "text": "Internaçãoexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Internação",
+      "href": "https://erp.vetus.com.br/Sistema/Internacao/Internacao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Animais",
+      "href": "/cadastro/animais",
+      "onclick": null
+    },
+    {
+      "text": "Clientes",
+      "href": "/cadastro/clientes",
+      "onclick": null
+    },
+    {
+      "text": "Serviços",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Importar Dados Serviços",
+      "href": "/importar-dados-servicos",
+      "onclick": null
+    },
+    {
+      "text": "Termos de Responsabilidade",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Termos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Raças",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Racas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Espécies",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Especies.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cores",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Cores.htm",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Clientes",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/GrupoClientes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Boxes de Internação",
+      "href": "https://erp.vetus.com.br/Sistema/Internacao/InternacaoBox.htm",
+      "onclick": null
+    },
+    {
+      "text": "Webhooks",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Webhooks.htm",
+      "onclick": null
+    },
+    {
+      "text": "science Laboratório expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Atendimentosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Exames",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Exames.htm",
+      "onclick": null
+    },
+    {
+      "text": "Laudos",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Laudos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Hemogramas",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Hemogramas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Urina",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Urina.htm",
+      "onclick": null
+    },
+    {
+      "text": "Bioquímico",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Bioquimico.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Equipamentos",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/Equipamentos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Tipos de Laudo",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/TiposDeLaudo.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vlr. Ref. Hemograma",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/ReferenciasHemograma.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vlr. Ref. Bioquímico",
+      "href": "https://erp.vetus.com.br/Sistema/Laboratorio/ReferenciasBioquimico.htm",
+      "onclick": null
+    },
+    {
+      "text": "inventory_2 Estoque expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Controlesexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Consulta de Preços",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/ConsultaDePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Entrada de Nota Fiscal",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/EntradaNotaFiscal.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transação no Estoque",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/TransacaoNoEstoque.htm",
+      "onclick": null
+    },
+    {
+      "text": "Requisição à Farmácia",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/RequisicaoFarmacia.htm",
+      "onclick": null
+    },
+    {
+      "text": "Validade de Produtos",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/ValidadeDeProdutos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Estoque",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/AuditoriaDeEstoque.htm",
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Preços",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/AuditoriaDePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transferência entre Estoques",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/TransferenciaEntreEstoques.htm",
+      "onclick": null
+    },
+    {
+      "text": "Compras",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/Compras.htm",
+      "onclick": null
+    },
+    {
+      "text": "Reajuste de Preços",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/ReajustePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Coletores de Dados",
+      "href": "https://erp.vetus.com.br/Sistema/Estoque/ColetoresDeDados.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Produtos",
+      "href": "/produtos",
+      "onclick": null
+    },
+    {
+      "text": "Importar Dados Produtos",
+      "href": "/importar-dados-produtos",
+      "onclick": null
+    },
+    {
+      "text": "Fornecedores e Despesas",
+      "href": "/fornecedores-e-despesas",
+      "onclick": null
+    },
+    {
+      "text": "Estoques",
+      "href": "/estoques",
+      "onclick": null
+    },
+    {
+      "text": "Fabricantes",
+      "href": "/fabricantes",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Produtos",
+      "href": "/grupos-de-produto",
+      "onclick": null
+    },
+    {
+      "text": "Setores da Empresa",
+      "href": "/setores",
+      "onclick": null
+    },
+    {
+      "text": "Unidades de Medida",
+      "href": "/unidades-de-medida",
+      "onclick": null
+    },
+    {
+      "text": "Tabelas de Preço",
+      "href": "/tabelas-de-preco",
+      "onclick": null
+    },
+    {
+      "text": "Ponto de Venda",
+      "href": "/pontos-de-venda",
+      "onclick": null
+    },
+    {
+      "text": "Configurações Fiscaisexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Tabela ICMS",
+      "href": "/icms",
+      "onclick": null
+    },
+    {
+      "text": "Tabela IPI",
+      "href": "/ipi",
+      "onclick": null
+    },
+    {
+      "text": "Tabela PIS",
+      "href": "/pis",
+      "onclick": null
+    },
+    {
+      "text": "Tabela COFINS",
+      "href": "/cofins",
+      "onclick": null
+    },
+    {
+      "text": "Tabela CFOP",
+      "href": "/cfop",
+      "onclick": null
+    },
+    {
+      "text": "Tabela NFS-e",
+      "href": "/tabela-fiscal-nfse",
+      "onclick": null
+    },
+    {
+      "text": "Matriz Estado ICMS",
+      "href": "/matriz-icms",
+      "onclick": null
+    },
+    {
+      "text": "Tabela IBS/CBS",
+      "href": "/pacote-ibs-cbs",
+      "onclick": null
+    },
+    {
+      "text": "paid Financeiro expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Gavetaexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Gaveta",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/Gaveta.htm",
+      "onclick": null
+    },
+    {
+      "text": "Controlesexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Contas a Receber",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/ContasAReceber.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Pagar",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/ContasAPagar.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Antecipado",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/PagamentoAntecipado.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Adm. Cartão",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/ContasAReceberCartao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cheques",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/Cheques.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fluxo de Caixa",
+      "href": "https://erp.vetus.com.br/Sistema/Grafico/FluxoDeCaixaGrafico.htm",
+      "onclick": null
+    },
+    {
+      "text": "Curva ABC Clientes",
+      "href": "https://erp.vetus.com.br/Sistema/Grafico/CurvaABCClientes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Curva ABC Produtos",
+      "href": "https://erp.vetus.com.br/Sistema/Grafico/CurvaABCProdutos.htm",
+      "onclick": null
+    },
+    {
+      "text": "DashBoard do Multifilial",
+      "href": "https://erp.vetus.com.br/Sistema/DashboardMultiFilial.htm",
+      "onclick": null
+    },
+    {
+      "text": "Dashboard Financeiro",
+      "href": "/dashboard-financeiro",
+      "onclick": null
+    },
+    {
+      "text": "Linha do Tempo",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/LinhaDoTempo.htm",
+      "onclick": null
+    },
+    {
+      "text": "Maquininha de Cartãoexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Configuração do Split",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/SplitConfig.htm",
+      "onclick": null
+    },
+    {
+      "text": "Maquininhas",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Maquininhas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Simulador de Split",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/SplitSimulador.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transações de Cartão",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/Transacoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Exportador de Split",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/SplitExport.htm",
+      "onclick": null
+    },
+    {
+      "text": "Habilitar Pagamento",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/HabilitaPagamento.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Dashboard",
+      "href": "https://erp.vetus.com.br/Sistema/Financeiro/PagamentosDashboard.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Formas de Pagamento",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/FormasDePagamento.htm",
+      "onclick": null
+    },
+    {
+      "text": "Centros de Custo",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/CentrosDeCusto.htm",
+      "onclick": null
+    },
+    {
+      "text": "Custos e Despesas",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/CustosDespesas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cartões Débito/Crédito",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Cartoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Bancos",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Bancos.htm",
+      "onclick": null
+    },
+    {
+      "text": "campaign Marketing expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Enviosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Envio de SMS Simples",
+      "href": "https://erp.vetus.com.br/Sistema/Marketing/SMSSimples.htm",
+      "onclick": null
+    },
+    {
+      "text": "Campanhas de SMS Marketing",
+      "href": "https://erp.vetus.com.br/Sistema/Marketing/SMSCampanhaP.htm",
+      "onclick": null
+    },
+    {
+      "text": "Configuraçõesexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Layout de Email de Vacina",
+      "href": "https://erp.vetus.com.br/Sistema/Vacina/VacinaLayoutEmail.htm",
+      "onclick": null
+    },
+    {
+      "text": "Configurações de SMS",
+      "href": "https://erp.vetus.com.br/Sistema/Marketing/SMSConfiguracao.htm",
+      "onclick": null
+    },
+    {
+      "text": "group RH expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Usuáriosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Usuários",
+      "href": "https://erp.vetus.com.br/Sistema/Usuarios/Usuarios.htm",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Acesso",
+      "href": "https://erp.vetus.com.br/Sistema/Usuarios/GruposDeAcesso.htm",
+      "onclick": null
+    },
+    {
+      "text": "Comissõesexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Cálculo de Comissões",
+      "href": "https://erp.vetus.com.br/Sistema/Comissoes/CalculoDeComissoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Profissionais",
+      "href": "/cadastro/profissionais",
+      "onclick": null
+    },
+    {
+      "text": "Regras de Comissão",
+      "href": "https://erp.vetus.com.br/Sistema/Comissoes/RegrasDeComissao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Folgas",
+      "href": "https://erp.vetus.com.br/Sistema/Agenda/Folgas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Profissões",
+      "href": "https://erp.vetus.com.br/Sistema/Cadastros/Profissoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "bar_chart Relatórios expand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Relatórios de Auditoriasexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Agendamentos",
+      "href": "/relatorios/auditoria/agendamentos",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios Financeirosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Gaveta",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/GavetaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fluxo de Caixa",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/FluxoDeCaixaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "DRE - Demonstrativo de Resultados",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/DRE.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pacotes",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/PacoteRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Receber",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ContasAReceberRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Recebidas",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ContasRecebidasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Pagar",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ContasAPagarRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Pagas",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ContasPagasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cheques",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ChequesRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Antecipado",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/PagamentoAntecipadoRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios de Atendimentosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Comandas/Vendas",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ComandasVendasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Produtos/Serviços Produzidos",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ProdutosEServicosProduzidos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Produção",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ProducaoRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Agenda",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/AgendaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Atendimento por Profissional",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/AtendimentoPorProfissional.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios Personalizadosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Relatório de NF de Serviços Prestados",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/RelatoriosDinamicosExecutor.htm?id=1",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios de Cadastrosexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Serviços",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ServicosRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Clientes",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ClientesRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Animais",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/AnimaisRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fornecedores",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/FornecedoresRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Exclusão de Vendas e Comandas",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios de Estoqueexpand_more",
+      "href": null,
+      "onclick": null
+    },
+    {
+      "text": "Estoque",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/EstoqueRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Movimentações no Estoque",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Entrada de NF",
+      "href": "https://erp.vetus.com.br/Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatório de Produtos",
+      "href": "/relatorios/estoque/produtos",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "/inicio",
+      "onclick": null
+    },
+    {
+      "text": "Atendimentos",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Atendimentos",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Vendas",
+      "href": "/vendas",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://facebook.com/plataformavetus",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://www.instagram.com/vetuserp/",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://linkedin.com/plataformavetus",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://youtube.com/plataformavetus",
+      "onclick": null
+    }
+  ],
+  "bodyText": "search notifications Suporte person vetus expand_more Id. 220319 Empresa: swap_horiz Centro Veterinário Guarapiranga home Início person_outline Atendimento expand_more science Laboratório expand_more inventory_2 Estoque expand_more paid Financeiro expand_more campaign Marketing expand_more group RH expand_more bar_chart Relatórios expand_more Atendimentos Atendimentos Vendas Venda de Produtos filter_alt Filtrar Ordenar add Nova Venda Selecionar Tudo Mostrando 1 - 1 pág. de 0 resultados 20 resultados por página Você ainda não tem vendas cadastradas Crie a sua primeira venda para começar a utilizar todas as facilidades da plataforma Vetus Vetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24 Av. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}

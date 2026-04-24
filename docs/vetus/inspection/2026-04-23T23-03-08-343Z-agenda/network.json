@@ -1,0 +1,195 @@
+{
+  "finalUrl": "https://erp-beta.vetus.com.br/agenda",
+  "dorylusRequests": [
+    {
+      "method": "POST",
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.382Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.692Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.784Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.071Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.071Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.071Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.071Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:45.003Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.263Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/service?active=true&hasSchedule=true",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.264Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/professional/basic",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.264Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/schedule?startDateTime=2026-04-23T00:00:00&endDateTime=2026-04-23T23:59:00",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.264Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/agenda/marcadores",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.264Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/schedule/profissional/disponibilidades?diaDaSemana=FRIDAY&profissionalIds=120,29,115,141,38,143,14,150,156,137,130",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.407Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:51.095Z"
+    }
+  ],
+  "dorylusResponses": [
+    {
+      "method": "POST",
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "status": 201,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.683Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.766Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:39.862Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.270Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.277Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.295Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:40.324Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:45.046Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/agenda/marcadores",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.346Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/professional/basic",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.407Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.407Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/schedule?startDateTime=2026-04-23T00:00:00&endDateTime=2026-04-23T23:59:00",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.407Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/service?active=true&hasSchedule=true",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.444Z"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/schedule/profissional/disponibilidades?diaDaSemana=FRIDAY&profissionalIds=120,29,115,141,38,143,14,150,156,137,130",
+      "status": 200,
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:03:46.535Z"
+    }
+  ]
+}

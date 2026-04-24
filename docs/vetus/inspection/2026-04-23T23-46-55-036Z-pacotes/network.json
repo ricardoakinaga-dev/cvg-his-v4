@@ -1,0 +1,2060 @@
+{
+  "finalUrl": "https://erp-beta.vetus.com.br/pacotes",
+  "detailOpened": true,
+  "extraActions": [],
+  "allRequests": [
+    {
+      "url": "https://erp-beta.vetus.com.br/login",
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:46:55.723Z"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.789Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.806Z"
+    },
+    {
+      "url": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.806Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/h90bc01cbe",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.806Z"
+    },
+    {
+      "url": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.878Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.882Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64n0h2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.230Z"
+    },
+    {
+      "url": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.232Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:56.232Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.537Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:56.537Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.537Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/eye-slash.b5dd7bcb.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:56.596Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:56.629Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:56.630Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/materialsymbolsoutlined/v332/kJEhBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oFsI.woff2",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:56.630Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGA&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=1&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_fv=1&_nsi=1&_ss=1&tfd=989",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:56.748Z"
+    },
+    {
+      "url": "https://stats.g.doubleclick.net/g/collect?v=2&tid=G-K76CN0SZLT&cid=60006062.1776988017&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115616985~115938465~115938469~117266401~117512543",
+      "method": "POST",
+      "resourceType": "ping",
+      "ts": "2026-04-23T23:46:56.748Z"
+    },
+    {
+      "url": "https://www.google.com.br/ads/ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-K76CN0SZLT&cid=60006062.1776988017&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115616985~115938465~115938469~117266401~117512543&z=475055726",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:56.748Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=2&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=global_variables&_et=43&tfd=1091",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:56.806Z"
+    },
+    {
+      "url": "https://c.clarity.ms/c.gif",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.316Z"
+    },
+    {
+      "url": "https://c.bing.com/c.gif?ctsa=mr&CtsSyncId=EC767EE0632F4D019195C3E38D4E50C3&RedC=c.clarity.ms&MXFR=2FDFC228187E6C020101D56C1C7E6277",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.456Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:57.509Z"
+    },
+    {
+      "url": "https://c.clarity.ms/c.gif?ctsa=mr&CtsSyncId=EC767EE0632F4D019195C3E38D4E50C3&MUID=08E00D3AF4CE68B313A61A7EF57F69C8",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.600Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.456Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.765Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=3&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=29&tfd=3132",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:58.853Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/menu",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.853Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/8772.e6619cef.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.936Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/53.d7ddeca2.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.936Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/7668.7dce1e83.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:58.936Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7668.e0f39cb4.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.936Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "ping",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.086Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/money.06dd4b16.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/profile_white.2d565464.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/white_paws.175d0e43.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/white_calendar.0b0e473f.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/shopping_cart.0cefba30.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/credit_card.d6c10458.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/refresh-pumpkin.33622405.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/cake_24px.484afbc2.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/empty-search.e21b73f5.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.088Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget/a38bc3029cb530b55e36babafc52ee3a/?name=vetus&client_id=22031947&email=vetguarapiranga@gmail.com&transaction_id=47npsvetusQ1&store_id=nps_vetus&journey=nps_vetus&",
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:46:59.197Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/migration-interceptor.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.319Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/solucx-survey.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.319Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/animation.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.319Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/app.a7ae23fe.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.322Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/chunk-vendors.7773c287.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.322Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/app.5278e58e.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.322Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/chunk-vendors.bcf57539.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.322Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/profile_gray.44c5851f.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.345Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/paws.d6e1454f.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.345Z"
+    },
+    {
+      "url": "https://temporal-count-service.gke-prd.solucx.com.br/set?id=654&key=/widget/a38bc3029cb530b55e36babafc52ee3a/%3Fname%3Dvetus%26client_id%3D22031947%26email%3Dvetguarapiranga%40gmail.com%26transaction_id%3D47npsvetusQ1%26store_id%3Dnps_vetus%26journey%3Dnps_vetus%26",
+      "method": "GET",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:59.396Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-WR27BK9",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.396Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.396Z"
+    },
+    {
+      "url": "https://app-api.solucx.com.br/rating/form/?transaction_id=47npsvetusQ1&client_id=22031947&store_id=nps_vetus&name=vetus&email=vetguarapiranga@gmail.com&amount=0&journey=nps_vetus&source=widget&transactionId=NaN&attemptId=NaN",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.534Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.544Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-FESQC9B7YX&cx=c&gtm=4e64n0h2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.767Z"
+    },
+    {
+      "url": "https://www.google-analytics.com/analytics.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.768Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/ro2eer4tun?ref=gtm2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.768Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.785Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.940Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=4&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=login&ep.login_result=sucesso&_et=2039&tfd=4308",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:00.028Z"
+    },
+    {
+      "url": "https://app-api.preview.solucx.com.br/rating/widget/?transactionId=24809397",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:00.370Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:01.222Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:03.096Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:03.218Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:04.040Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=5&tag_exp=0~115616985~115938465~115938469~117266401~117512543&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&sid=1776988016&sct=1&seg=1&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_et=1168&tfd=9310",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:05.020Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/pacotes",
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:47:05.497Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=6&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=user_engagement&_et=5519&tfd=9831",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:05.557Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "ping",
+      "ts": "2026-04-23T23:47:05.557Z"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.577Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.578Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.585Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/h90bc01cbe",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.585Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64n0h2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.606Z"
+    },
+    {
+      "url": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.607Z"
+    },
+    {
+      "url": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.609Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/materialsymbolsoutlined/v332/kJEhBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oFsI.woff2",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:05.741Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:05.743Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988025562&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=15&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115938466~115938468~117266400~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Fpacotes&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=225",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:05.746Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.761Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:05.867Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/4610.3e157132.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.205Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7649.4782be46.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.205Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/4170.af729bf7.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.205Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/5498.a6cff1d4.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.205Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/5498.f1b22886.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.205Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.491Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.491Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.491Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.496Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.496Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:06.496Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:06.496Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/list?size=10&page=0&sort=id,desc",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:06.496Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget/a38bc3029cb530b55e36babafc52ee3a/?name=vetus&client_id=22031947&email=vetguarapiranga@gmail.com&transaction_id=47npsvetusQ1&store_id=nps_vetus&journey=nps_vetus&",
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:47:06.525Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/migration-interceptor.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.649Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/solucx-survey.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.649Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/animation.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.649Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/app.a7ae23fe.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.649Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/chunk-vendors.7773c287.css",
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.649Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/app.5278e58e.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.658Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/chunk-vendors.bcf57539.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.658Z"
+    },
+    {
+      "url": "https://temporal-count-service.gke-prd.solucx.com.br/set?id=114&key=/widget/a38bc3029cb530b55e36babafc52ee3a/%3Fname%3Dvetus%26client_id%3D22031947%26email%3Dvetguarapiranga%40gmail.com%26transaction_id%3D47npsvetusQ1%26store_id%3Dnps_vetus%26journey%3Dnps_vetus%26",
+      "method": "GET",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:06.880Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-WR27BK9",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.880Z"
+    },
+    {
+      "url": "https://app-api.solucx.com.br/rating/form/?transaction_id=47npsvetusQ1&client_id=22031947&store_id=nps_vetus&name=vetus&email=vetguarapiranga@gmail.com&amount=0&journey=nps_vetus&source=widget&transactionId=NaN&attemptId=NaN",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.073Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.216Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-FESQC9B7YX&cx=c&gtm=4e64n0h2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.217Z"
+    },
+    {
+      "url": "https://www.google-analytics.com/analytics.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.217Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/ro2eer4tun?ref=gtm2",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.217Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.405Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.547Z"
+    },
+    {
+      "url": "https://app-api.preview.solucx.com.br/rating/widget/?transactionId=24809397",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.639Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:09.069Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.039Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988025562&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=15&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938468~117266400~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Fpacotes&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=57&tfd=5227",
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:10.735Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/emptySearch.009e4399.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:10.847Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/3",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.847Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/animals/client/47?size=100",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.959Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.423Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.252Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.297Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:16.420Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.868Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.912Z"
+    }
+  ],
+  "allResponses": [
+    {
+      "url": "https://erp-beta.vetus.com.br/login",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:46:55.770Z"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.819Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.831Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:55.840Z"
+    },
+    {
+      "url": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.873Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/h90bc01cbe",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.882Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.906Z"
+    },
+    {
+      "url": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:55.940Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:56.048Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.075Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:56.075Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.175Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.373Z"
+    },
+    {
+      "url": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.552Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:56.553Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.555Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.569Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/eye-slash.b5dd7bcb.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:56.634Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:56.686Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64n0h2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:56.687Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:56.748Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:56.837Z"
+    },
+    {
+      "url": "https://www.google.com.br/ads/ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-K76CN0SZLT&cid=60006062.1776988017&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115616985~115938465~115938469~117266401~117512543&z=475055726",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:56.953Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=2&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=global_variables&_et=43&tfd=1091",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:57.047Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGA&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=1&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_fv=1&_nsi=1&_ss=1&tfd=989",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:57.050Z"
+    },
+    {
+      "url": "https://stats.g.doubleclick.net/g/collect?v=2&tid=G-K76CN0SZLT&cid=60006062.1776988017&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&rcb=5&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=0~115616985~115938465~115938469~117266401~117512543",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "ping",
+      "ts": "2026-04-23T23:46:57.124Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/materialsymbolsoutlined/v332/kJEhBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oFsI.woff2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:46:57.296Z"
+    },
+    {
+      "url": "https://c.clarity.ms/c.gif",
+      "status": 302,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.456Z"
+    },
+    {
+      "url": "https://c.bing.com/c.gif?ctsa=mr&CtsSyncId=EC767EE0632F4D019195C3E38D4E50C3&RedC=c.clarity.ms&MXFR=2FDFC228187E6C020101D56C1C7E6277",
+      "status": 302,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.600Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:57.625Z"
+    },
+    {
+      "url": "https://c.clarity.ms/c.gif?ctsa=mr&CtsSyncId=EC767EE0632F4D019195C3E38D4E50C3&MUID=08E00D3AF4CE68B313A61A7EF57F69C8",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:57.722Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "status": 201,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.758Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.853Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=3&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=29&tfd=3132",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:58.904Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/menu",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:58.936Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/8772.e6619cef.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.959Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/7668.7dce1e83.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:58.972Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/53.d7ddeca2.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.983Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7668.e0f39cb4.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:58.993Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.091Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.091Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.197Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "ping",
+      "ts": "2026-04-23T23:46:59.197Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.198Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/white_calendar.0b0e473f.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.198Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/money.06dd4b16.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.198Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/credit_card.d6c10458.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.209Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/cake_24px.484afbc2.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.209Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/empty-search.e21b73f5.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.209Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/refresh-pumpkin.33622405.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.209Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/profile_white.2d565464.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.210Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/white_paws.175d0e43.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.210Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.210Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/shopping_cart.0cefba30.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.211Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget/a38bc3029cb530b55e36babafc52ee3a/?name=vetus&client_id=22031947&email=vetguarapiranga@gmail.com&transaction_id=47npsvetusQ1&store_id=nps_vetus&journey=nps_vetus&",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:46:59.211Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.266Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.277Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.318Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.341Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/animation.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.354Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/chunk-vendors.7773c287.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.366Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/app.a7ae23fe.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.392Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/solucx-survey.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:46:59.392Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/migration-interceptor.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.392Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/paws.d6e1454f.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.396Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/profile_gray.44c5851f.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:46:59.397Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/app.5278e58e.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.422Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/chunk-vendors.bcf57539.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.436Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.501Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-WR27BK9",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.711Z"
+    },
+    {
+      "url": "https://temporal-count-service.gke-prd.solucx.com.br/set?id=654&key=/widget/a38bc3029cb530b55e36babafc52ee3a/%3Fname%3Dvetus%26client_id%3D22031947%26email%3Dvetguarapiranga%40gmail.com%26transaction_id%3D47npsvetusQ1%26store_id%3Dnps_vetus%26journey%3Dnps_vetus%26",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:46:59.770Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/ro2eer4tun?ref=gtm2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.783Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.808Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:46:59.885Z"
+    },
+    {
+      "url": "https://www.google-analytics.com/analytics.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.926Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-FESQC9B7YX&cx=c&gtm=4e64n0h2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:46:59.982Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=4&tag_exp=0~115616985~115938465~115938469~117266401~117512543&sid=1776988016&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=login&ep.login_result=sucesso&_et=2039&tfd=4308",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:00.103Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:00.302Z"
+    },
+    {
+      "url": "https://app-api.solucx.com.br/rating/form/?transaction_id=47npsvetusQ1&client_id=22031947&store_id=nps_vetus&name=vetus&email=vetguarapiranga@gmail.com&amount=0&journey=nps_vetus&source=widget&transactionId=NaN&attemptId=NaN",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:00.365Z"
+    },
+    {
+      "url": "https://app-api.preview.solucx.com.br/rating/widget/?transactionId=24809397",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:01.048Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:01.331Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:03.216Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:03.344Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:04.084Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988015786&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=5&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&_s=5&tag_exp=0~115616985~115938465~115938469~117266401~117512543&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&sid=1776988016&sct=1&seg=1&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_et=1168&tfd=9310",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:05.079Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/pacotes",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:47:05.530Z"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.577Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-5ZV9KZ9",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.579Z"
+    },
+    {
+      "url": "https://static.hotjar.com/c/hotjar-2769328.js?sv=6",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.585Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-K76CN0SZLT&cx=c&gtm=4e64n0h2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.606Z"
+    },
+    {
+      "url": "https://cdn.inlinemanual.com/embed/player.f4a0b63ab013dbab43c4631046b55208.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.607Z"
+    },
+    {
+      "url": "https://script.hotjar.com/modules.6a0f3932cb1341a35c18.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.609Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.695Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:05.702Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/h90bc01cbe",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.702Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/materialsymbolsoutlined/v332/kJEhBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oFsI.woff2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:05.743Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:05.746Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.746Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:05.761Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901z8837959623za20gzb837959623zd837959623&_p=1776988025562&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=15&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115938466~115938468~117266400~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Fpacotes&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=225",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:05.780Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:05.988Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.161Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/4610.3e157132.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.238Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/4170.af729bf7.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.251Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/css/5498.a6cff1d4.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.262Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/5498.f1b22886.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.295Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/js/7649.4782be46.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.298Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.497Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.505Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.505Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:06.505Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget.js",
+      "status": 304,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.506Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/widget/a38bc3029cb530b55e36babafc52ee3a/?name=vetus&client_id=22031947&email=vetguarapiranga@gmail.com&transaction_id=47npsvetusQ1&store_id=nps_vetus&journey=nps_vetus&",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "document",
+      "ts": "2026-04-23T23:47:06.620Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/list?size=10&page=0&sort=id,desc",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:06.667Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "font",
+      "ts": "2026-04-23T23:47:06.692Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:06.693Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/solucx-survey.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.721Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/animation.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.767Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/app.a7ae23fe.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.767Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/css/chunk-vendors.7773c287.css",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "stylesheet",
+      "ts": "2026-04-23T23:47:06.793Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/migration-interceptor.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.804Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/app.5278e58e.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.881Z"
+    },
+    {
+      "url": "https://survey.solucx.com.br/js/chunk-vendors.bcf57539.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:06.881Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-WR27BK9",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.083Z"
+    },
+    {
+      "url": "https://temporal-count-service.gke-prd.solucx.com.br/set?id=114&key=/widget/a38bc3029cb530b55e36babafc52ee3a/%3Fname%3Dvetus%26client_id%3D22031947%26email%3Dvetguarapiranga%40gmail.com%26transaction_id%3D47npsvetusQ1%26store_id%3Dnps_vetus%26journey%3Dnps_vetus%26",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:07.083Z"
+    },
+    {
+      "url": "https://www.google-analytics.com/analytics.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.221Z"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-FESQC9B7YX&cx=c&gtm=4e64n0h2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.233Z"
+    },
+    {
+      "url": "https://www.clarity.ms/tag/ro2eer4tun?ref=gtm2",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.251Z"
+    },
+    {
+      "url": "https://scripts.clarity.ms/0.8.59/clarity.js",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "script",
+      "ts": "2026-04-23T23:47:07.422Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.450Z"
+    },
+    {
+      "url": "https://app-api.solucx.com.br/rating/form/?transaction_id=47npsvetusQ1&client_id=22031947&store_id=nps_vetus&name=vetus&email=vetguarapiranga@gmail.com&amount=0&journey=nps_vetus&source=widget&transactionId=NaN&attemptId=NaN",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.639Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:07.665Z"
+    },
+    {
+      "url": "https://app-api.preview.solucx.com.br/rating/widget/?transactionId=24809397",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:08.035Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:09.191Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.159Z"
+    },
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988025562&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=15&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938468~117266400~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Fpacotes&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=57&tfd=5227",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:10.796Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/emptySearch.009e4399.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:10.884Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/3",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.929Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/animals/client/47?size=100",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.027Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.466Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.369Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.415Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:16.485Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.985Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:18.036Z"
+    }
+  ],
+  "detailRequests": [
+    {
+      "url": "https://erp-beta.vetus.com.br/img/emptySearch.009e4399.svg",
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:10.847Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/3",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.847Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/animals/client/47?size=100",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.959Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.423Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.252Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.297Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:16.420Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.868Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.912Z"
+    }
+  ],
+  "detailResponses": [
+    {
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64n0h2v876182901za20gzb837959623zd837959623&_p=1776988025562&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=60006062.1776988017&frm=0&pscdl=noapi&rcb=15&sr=1600x1200&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938468~117266400~117512543&sid=1776988016&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Fpacotes&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=57&tfd=5227",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "fetch",
+      "ts": "2026-04-23T23:47:10.796Z"
+    },
+    {
+      "url": "https://erp-beta.vetus.com.br/img/emptySearch.009e4399.svg",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "image",
+      "ts": "2026-04-23T23:47:10.884Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/packages/3",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:10.929Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/animals/client/47?size=100",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.027Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:11.466Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.369Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:13.415Z"
+    },
+    {
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "method": "GET",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:16.485Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:17.985Z"
+    },
+    {
+      "url": "https://a.clarity.ms/collect",
+      "status": 204,
+      "method": "POST",
+      "resourceType": "xhr",
+      "ts": "2026-04-23T23:47:18.036Z"
+    }
+  ]
+}

@@ -1,0 +1,1182 @@
+{
+  "finalUrl": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+  "finalTitle": "Vetus - Serviços",
+  "requests": [
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/login",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "type": "script"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGA&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=1&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_fv=1&_nsi=1&_ss=1&tfd=859",
+      "type": "fetch"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=global_variables&_et=41&tfd=921",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/eye-slash.b5dd7bcb.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "type": "font"
+    },
+    {
+      "method": "POST",
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "type": "xhr"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=3&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=6&tfd=1661",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/8772.e6619cef.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/53.d7ddeca2.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7668.7dce1e83.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7668.e0f39cb4.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/money.06dd4b16.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/profile_white.2d565464.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/white_paws.175d0e43.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/white_calendar.0b0e473f.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/shopping_cart.0cefba30.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/credit_card.d6c10458.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/refresh-pumpkin.33622405.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/cake_24px.484afbc2.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/empty-search.e21b73f5.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/profile_gray.44c5851f.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/paws.d6e1454f.svg",
+      "type": "image"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=4&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=login&ep.login_result=sucesso&_et=735&tfd=2845",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "type": "xhr"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=5&tag_exp=0~115938466~115938468~117266400~117512542~117625641&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&sid=1776986270&sct=1&seg=1&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_et=1179&tfd=7846",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/login?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FNewLogin.htm%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FSistema%252FCadastros%252FServicos.htm",
+      "type": "document"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=6&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=user_engagement&_et=5497&tfd=8346",
+      "type": "fetch"
+    },
+    {
+      "method": "POST",
+      "url": "https://www.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=3&_s=6&tag_exp=0%7E115938466%7E115938468%7E117266400%7E117512542%7E117625641&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus+-+Sistema+para+Cl%C3%ADnica+Veterin%C3%A1ria+e+Pet+Shops&en=user_engagement&_et=5497&tfd=8346",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986277967&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=16&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115616986~115938466~115938469~117266400~117384405~117512542~118487544&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=201",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/auth/me",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/selecionarEmpresa?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FNewLogin.htm%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FSistema%252FCadastros%252FServicos.htm",
+      "type": "document"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986277967&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=16&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115616986~115938466~115938469~117266400~117384405~117512542~118487544&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=29&tfd=903",
+      "type": "fetch"
+    },
+    {
+      "method": "POST",
+      "url": "https://www.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986277967&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=16&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=3&_s=2&tag_exp=0%7E115616986%7E115938466%7E115938469%7E117266400%7E117384405%7E117512542%7E118487544&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus+-+Sistema+para+Cl%C3%ADnica+Veterin%C3%A1ria+e+Pet+Shops&en=scroll&epn.percent_scrolled=90&_et=29&tfd=903",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986278812&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=4&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115938466~115938469~117266400~117512542&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2FselecionarEmpresa%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=133",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/8203.91eea5bb.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/8203.f3ac4ac3.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/NewLogin.htm?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FSistema%2FCadastros%2FServicos.htm&accessToken=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ2ZXR1cyIsInZldHVzaWQiOiIyMjAzMTkiLCJoYXNoIjoiWEZNWGNRRjFSSUpOR0J4SFBtWEVOUEo2L01hWkh2Rko5SVhSSGFtSi9wY0NuVW5XSWVuQ2dnPT0iLCJzZXNzaW9uSWQiOiIxMzlmOWNmMi00YjJiLTRjYjktODExOS02NzA2MDUzMGIwNWUiLCJpYXQiOjE3NzY5ODYyNzEsImV4cCI6MTc3Njk4Njg3MX0.FsI3qXX1AHz6MySLONv0AVE55ZcXpPu153J7ytteNV5CwgctL0uTvhdHqJoSwNM3uWmLhHELO1rdV8uPhyJOvQ&companyId=1",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/EscolherEmpresa.htm?companyId=1&returnUrl=https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "type": "document"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986278812&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=4&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938469~117266400~117512542&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2FselecionarEmpresa%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=21&tfd=1090",
+      "type": "fetch"
+    },
+    {
+      "method": "POST",
+      "url": "https://www.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986278812&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=4&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=3&_s=2&tag_exp=0%7E115938466%7E115938469%7E117266400%7E117512542&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2FselecionarEmpresa%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus+-+Sistema+para+Cl%C3%ADnica+Veterin%C3%A1ria+e+Pet+Shops&en=scroll&epn.percent_scrolled=90&_et=21&tfd=1090",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/theme.css.htm?ln=primefaces-avalon-blue",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/fa/font-awesome.css.htm?ln=primefaces&v=8.0",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/components.css.htm?ln=primefaces&v=8.0",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/jquery/jquery.js.htm?ln=primefaces&v=8.0",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/jquery/jquery-plugins.js.htm?ln=primefaces&v=8.0",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/core.js.htm?ln=primefaces&v=8.0",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/components.js.htm?ln=primefaces&v=8.0",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/touch/touchswipe.js.htm?ln=primefaces&v=8.0",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/mega-menu.css.htm?ln=css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/avalon.css.htm?ln=css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/nanoscroller.css.htm?ln=avalon-layout",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/animate.css.htm?ln=avalon-layout",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/layout-amber.css.htm?ln=avalon-layout",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/js/nanoscroller.js.htm?ln=avalon-layout",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/js/layout.js.htm?ln=avalon-layout",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/Funcoes.js.htm?ln=js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/mega-menu.js.htm?ln=js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/vetus-logo.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/hamburguer-menu.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/vetus-logo-short.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/arrow_left.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/duvida.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/whatsapp-logo.png.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/perfil.svg.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/pipe-logo.png.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Home_icon.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Atendimento_icon.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Laboratorio.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Estoque.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Financeiro.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Marketing.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/RH.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Relatorios.svg",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/credit-card-machine.gif.htm?ln=imagens",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/fa/fontawesome-webfont.woff2.htm?ln=primefaces&v=6.2?v=4.7.0",
+      "type": "font"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/layout-amber.css.htm?ln=avalon-layout",
+      "type": "font"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/theme.css.htm?ln=primefaces-avalon-blue",
+      "type": "font"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986280051&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=2&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&tag_exp=0~115616985~115938466~115938468~117266401~117512542~117884344~118167060&uid=220319-47&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp.vetus.com.br%2FSistema%2FCadastros%2FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2F&dt=Vetus%20-%20Servi%C3%A7os&_s=1&tfd=1217",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/imagens/favicon.ico?v1",
+      "type": "other"
+    }
+  ],
+  "responses": [
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/login",
+      "status": 200,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/eye-slash.b5dd7bcb.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=2&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=global_variables&_et=41&tfd=921",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGA&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=1&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_fv=1&_nsi=1&_ss=1&tfd=859",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/fonts/primeicons.5f5d08cd.ttf",
+      "status": 200,
+      "type": "font"
+    },
+    {
+      "method": "POST",
+      "url": "https://dorylus.vetus.com.br/auth/v1/login",
+      "status": 201,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/users/47/access-groups",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=3&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=scroll&epn.percent_scrolled=90&_et=6&tfd=1661",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/8772.e6619cef.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7668.7dce1e83.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/53.d7ddeca2.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7668.e0f39cb4.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/search.f8b136d2.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/whatsapp_green.a48dd548.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/arrow_left_orange.21dd816a.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/help_outline.f32dcb69.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/credit_card.d6c10458.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/money.06dd4b16.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/refresh-pumpkin.33622405.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/cake_24px.484afbc2.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/empty-search.e21b73f5.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/white_calendar.0b0e473f.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/white_paws.175d0e43.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/profile_white.2d565464.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/shopping_cart.0cefba30.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/commands/open?",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/reminder",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/home/birthdays?",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/paws.d6e1454f.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/img/profile_gray.44c5851f.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=4&tag_exp=0~115938466~115938468~117266400~117512542~117625641&sid=1776986270&sct=1&seg=0&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=login&ep.login_result=sucesso&_et=735&tfd=2845",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/notificacoes/contagens/47",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901za20gzb837959623zd837959623&_p=1776986269689&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAGQ&ae=a&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=19&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&_s=5&tag_exp=0~115938466~115938468~117266400~117512542~117625641&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Finicio&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin&sid=1776986270&sct=1&seg=1&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&en=page_view&_et=1179&tfd=7846",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "status": 302,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/login?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FNewLogin.htm%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FSistema%252FCadastros%252FServicos.htm",
+      "status": 200,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986277967&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=16&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115616986~115938466~115938469~117266400~117384405~117512542~118487544&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=201",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/7952.cd2f5c99.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/7952.566dcdca.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/281.9f9e007c.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/auth/me",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/selecionarEmpresa?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FNewLogin.htm%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FSistema%252FCadastros%252FServicos.htm",
+      "status": 200,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/chunk-vendors.3a8a9821.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/app.5d31d72e.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/app.20065a61.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986278812&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=4&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&gaf=2&tag_exp=0~115938466~115938469~117266400~117512542&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp-beta.vetus.com.br%2FselecionarEmpresa%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2Flogin%3FreturnUrl%3Dhttps%253A%252F%252Ferp.vetus.com.br%252FNewLogin.htm%253FreturnUrl%253Dhttps%25253A%25252F%25252Ferp.vetus.com.br%25252FSistema%25252FCadastros%25252FServicos.htm&dt=Vetus%20-%20Sistema%20para%20Cl%C3%ADnica%20Veterin%C3%A1ria%20e%20Pet%20Shops&_s=1&tfd=133",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/chunk-vendors.ae2675a3.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/css/8203.91eea5bb.css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp-beta.vetus.com.br/js/8203.f3ac4ac3.js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://dorylus.vetus.com.br/menu",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/NewLogin.htm?returnUrl=https%3A%2F%2Ferp.vetus.com.br%2FSistema%2FCadastros%2FServicos.htm&accessToken=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ2ZXR1cyIsInZldHVzaWQiOiIyMjAzMTkiLCJoYXNoIjoiWEZNWGNRRjFSSUpOR0J4SFBtWEVOUEo2L01hWkh2Rko5SVhSSGFtSi9wY0NuVW5XSWVuQ2dnPT0iLCJzZXNzaW9uSWQiOiIxMzlmOWNmMi00YjJiLTRjYjktODExOS02NzA2MDUzMGIwNWUiLCJpYXQiOjE3NzY5ODYyNzEsImV4cCI6MTc3Njk4Njg3MX0.FsI3qXX1AHz6MySLONv0AVE55ZcXpPu153J7ytteNV5CwgctL0uTvhdHqJoSwNM3uWmLhHELO1rdV8uPhyJOvQ&companyId=1",
+      "status": 302,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/EscolherEmpresa.htm?companyId=1&returnUrl=https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "status": 302,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+      "status": 200,
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/avalon.css.htm?ln=css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/mega-menu.js.htm?ln=js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/theme.css.htm?ln=primefaces-avalon-blue",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/mega-menu.css.htm?ln=css",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/components.css.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/nanoscroller.css.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/js/layout.js.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/Funcoes.js.htm?ln=js",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/fa/font-awesome.css.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/core.js.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/layout-amber.css.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/animate.css.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/touch/touchswipe.js.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/js/nanoscroller.js.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/jquery/jquery.js.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/vetus-logo.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/hamburguer-menu.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/jquery/jquery-plugins.js.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/components.js.htm?ln=primefaces&v=8.0",
+      "status": 200,
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/arrow_left.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/vetus-logo-short.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Atendimento_icon.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Home_icon.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/whatsapp-logo.png.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/perfil.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/pipe-logo.png.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/duvida.svg.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Estoque.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Laboratorio.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/css/layout-amber.css.htm?ln=avalon-layout",
+      "status": 200,
+      "type": "font"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/RH.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Relatorios.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Financeiro.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/icons/Marketing.svg",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/credit-card-machine.gif.htm?ln=imagens",
+      "status": 200,
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/fa/fontawesome-webfont.woff2.htm?ln=primefaces&v=6.2?v=4.7.0",
+      "status": 200,
+      "type": "font"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/javax.faces.resource/theme.css.htm?ln=primefaces-avalon-blue",
+      "status": 200,
+      "type": "font"
+    },
+    {
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-K76CN0SZLT&gtm=45je64m2v876182901z8837959623za20gzb837959623zd837959623&_p=1776986280051&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQ&are=1&cid=229076368.1776986270&frm=0&pscdl=noapi&rcb=2&sr=1400x1000&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=pt-br&tag_exp=0~115616985~115938466~115938468~117266401~117512542~117884344~118167060&uid=220319-47&sid=1776986270&sct=1&seg=1&dl=https%3A%2F%2Ferp.vetus.com.br%2FSistema%2FCadastros%2FServicos.htm&dr=https%3A%2F%2Ferp-beta.vetus.com.br%2F&dt=Vetus%20-%20Servi%C3%A7os&_s=1&tfd=1217",
+      "status": 204,
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://erp.vetus.com.br/resources/imagens/favicon.ico?v1",
+      "status": 200,
+      "type": "other"
+    }
+  ]
+}

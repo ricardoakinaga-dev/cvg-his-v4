@@ -1,0 +1,576 @@
+{
+  "url": "https://erp.vetus.com.br/Sistema/Estoque/EntradaNotaFiscal.htm",
+  "title": "Vetus - Entrada de Nota Fiscal",
+  "headings": [],
+  "buttons": [
+    "vetus Id. 220319",
+    "Configurações da Empresa",
+    "Trocar Empresa",
+    "Alterar Senha",
+    "Faturas",
+    "Sair",
+    "Empresa:",
+    "Início",
+    "Atendimento",
+    "Agenda",
+    "Comandas",
+    "Vendas",
+    "Pacotes",
+    "Esteira",
+    "Esteira de Exames",
+    "Vacinas e Vermífugos",
+    "Orçamentos",
+    "Resgate de Pontos",
+    "Vendas (beta)",
+    "Internação",
+    "Animais",
+    "Clientes",
+    "Serviços",
+    "Importar Dados Serviços",
+    "Termos de Responsabilidad...",
+    "Raças",
+    "Espécies",
+    "Cores",
+    "Grupos de Clientes",
+    "Boxes de Internação",
+    "Webhooks",
+    "Laboratório",
+    "Exames",
+    "Laudos",
+    "Hemogramas",
+    "Urina",
+    "Bioquímico",
+    "Equipamentos",
+    "Tipos de Laudo",
+    "Vlr. Ref. Hemograma",
+    "Vlr. Ref. Bioquímico",
+    "Estoque",
+    "Consulta de Preços",
+    "Entrada de Nota Fiscal",
+    "Transação no Estoque",
+    "Requisição à Farmácia",
+    "Validade de Produtos",
+    "Auditoria de Estoque",
+    "Auditoria de Preços",
+    "Transferência entre Estoq...",
+    "Compras",
+    "Reajuste de Preços",
+    "Coletores de Dados",
+    "Produtos",
+    "Importar Dados Produtos",
+    "Fornecedores e Despesas",
+    "Estoques",
+    "Fabricantes",
+    "Grupos de Produtos",
+    "Setores da Empresa",
+    "Unidades de Medida",
+    "Tabelas de Preço",
+    "Ponto de Venda",
+    "Tabela ICMS",
+    "Tabela IPI",
+    "Tabela PIS",
+    "Tabela COFINS",
+    "Tabela CFOP",
+    "Tabela NFS-e",
+    "Matriz Estado ICMS",
+    "Tabela IBS/CBS",
+    "Financeiro",
+    "Gaveta",
+    "Contas a Receber",
+    "Contas a Pagar",
+    "Pagamento Antecipado",
+    "Contas Adm. Cartão",
+    "Cheques",
+    "Fluxo de Caixa",
+    "Curva ABC Clientes",
+    "Curva ABC Produtos",
+    "DashBoard do Multifilial",
+    "Dashboard Financeiro",
+    "Linha do Tempo",
+    "Configuração do Split",
+    "Maquininhas",
+    "Simulador de Split",
+    "Transações de Cartão",
+    "Exportador de Split",
+    "Habilitar Pagamento",
+    "Pagamento Dashboard",
+    "Formas de Pagamento",
+    "Centros de Custo",
+    "Custos e Despesas",
+    "Cartões Débito/Crédito",
+    "Bancos",
+    "Marketing",
+    "Envio de SMS Simples",
+    "Campanhas de SMS Marketin...",
+    "Layout de Email de Vacina",
+    "Configurações de SMS",
+    "RH",
+    "Usuários",
+    "Grupos de Acesso",
+    "Cálculo de Comissões",
+    "Profissionais",
+    "Regras de Comissão",
+    "Folgas",
+    "Profissões",
+    "Relatórios",
+    "Auditoria de Agendamentos",
+    "DRE - Demonstrativo de Re...",
+    "Contas Recebidas",
+    "Contas Pagas",
+    "Comandas/Vendas",
+    "Produtos/Serviços Produzi...",
+    "Produção",
+    "Atendimento por Profissio...",
+    "Relatório de NF de Serviç...",
+    "Fornecedores",
+    "Exclusão de Vendas e Coma...",
+    "Movimentações no Estoque",
+    "Entrada de NF",
+    "Relatório de Produtos",
+    "Incluir",
+    "Pesquisar",
+    "Incluir Produto",
+    "Estocar e cadastrar produtos sem cadastro",
+    "Estocar somente os produtos cadastrados",
+    "Estocar e cadastrar produtos",
+    "Gerar Pagamentos",
+    "Escolher Arquivo",
+    "Ok, Entendi",
+    "Sim",
+    "Não"
+  ],
+  "forms": [
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formMenu",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:0",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt14",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:1",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt24",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "j_idt24:j_idt61",
+      "id": "j_idt24:j_idt61",
+      "placeholder": "Buscar...",
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt24:j_idt63",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:2",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:3",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "menuform",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:4",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formPrincipal",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formPrincipal:j_idt87",
+      "id": "formPrincipal:j_idt87",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formPrincipal:j_idt90_input",
+      "id": "formPrincipal:j_idt90_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formPrincipal:j_idt93",
+      "id": "formPrincipal:j_idt93",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formPrincipal:j_idt96_input",
+      "id": "formPrincipal:j_idt96_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formPrincipal:tbPesq_selection",
+      "id": "formPrincipal:tbPesq_selection",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:5",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formDialog",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:quantidadeInclusao",
+      "id": "formDialog:quantidadeInclusao",
+      "placeholder": null,
+      "value": "0,000"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:codigoDeBarrasInclusao",
+      "id": "formDialog:codigoDeBarrasInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:produtoInclusao_input",
+      "id": "formDialog:produtoInclusao_input",
+      "placeholder": null,
+      "value": ""
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formDialog:produtoInclusao_hinput",
+      "id": "formDialog:produtoInclusao_hinput",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:valorUnitarioInclusao",
+      "id": "formDialog:valorUnitarioInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:unidadeInclusao",
+      "id": "formDialog:unidadeInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:ncmInclusao",
+      "id": "formDialog:ncmInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:cfopInclusao",
+      "id": "formDialog:cfopInclusao",
+      "placeholder": null,
+      "value": "0"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsOrigemInclusao",
+      "id": "formDialog:icmsOrigemInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsCSTInclusao",
+      "id": "formDialog:icmsCSTInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsBaseDeCalculoInclusao",
+      "id": "formDialog:icmsBaseDeCalculoInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsAliquotaInclusao",
+      "id": "formDialog:icmsAliquotaInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsValorInclusao",
+      "id": "formDialog:icmsValorInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsBaseDeCalculoSTInclusao",
+      "id": "formDialog:icmsBaseDeCalculoSTInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsAliquotaSTInclusao",
+      "id": "formDialog:icmsAliquotaSTInclusao",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:icmsValorSTInclusao",
+      "id": "formDialog:icmsValorSTInclusao",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:sku",
+      "id": "formDialog:sku",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:pPis",
+      "id": "formDialog:pPis",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:PCofins",
+      "id": "formDialog:PCofins",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:estoque_input",
+      "id": "formDialog:estoque_input",
+      "placeholder": null,
+      "value": ""
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formDialog:estoque_hinput",
+      "id": "formDialog:estoque_hinput",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formDialog:j_idt355_input",
+      "id": "formDialog:j_idt355_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formDialog:j_idt357_input",
+      "id": "formDialog:j_idt357_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:formaDePagamento_focus",
+      "id": "formDialog:formaDePagamento_focus",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "SELECT",
+      "type": null,
+      "name": "formDialog:formaDePagamento_input",
+      "id": "formDialog:formaDePagamento_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:valorPagamento",
+      "id": "formDialog:valorPagamento",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:numeroParcelasPagamento",
+      "id": "formDialog:numeroParcelasPagamento",
+      "placeholder": null,
+      "value": "0"
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:primeiroVencimento_input",
+      "id": "formDialog:primeiroVencimento_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formDialog:cadastrarFornecedor_input",
+      "id": "formDialog:cadastrarFornecedor_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formDialog:armazenarXML_input",
+      "id": "formDialog:armazenarXML_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "file",
+      "name": "formDialog:j_idt444_input",
+      "id": "formDialog:j_idt444_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:6",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt448",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:7",
+      "placeholder": null,
+      "value": null
+    }
+  ],
+  "tableHeaders": [
+    "Id",
+    "Nota Fiscal",
+    "Data da Entrada",
+    "Fornecedor",
+    "Abrir"
+  ],
+  "bodyText": "vetus Id. 220319 Suporte Empresa: Centro Veterinário Guarapiranga Início Atendimento Laboratório Estoque Financeiro Marketing RH Relatórios Entrada de Nota Fiscal Incluir Nota Fiscal Data da Entrada Fornecedor Pesquisar NFe fechadas Pesquisar Id Nota Fiscal Data da Entrada Fornecedor Abrir Nenhum registro encontrado Vetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24 Av. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}

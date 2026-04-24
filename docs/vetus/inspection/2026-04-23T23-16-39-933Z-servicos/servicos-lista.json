@@ -1,0 +1,1143 @@
+{
+  "url": "https://erp.vetus.com.br/Sistema/Cadastros/Servicos.htm",
+  "title": "Vetus - Serviços",
+  "headings": [],
+  "buttons": [
+    "vetus Id. 220319",
+    "Configurações da Empresa",
+    "Trocar Empresa",
+    "Alterar Senha",
+    "Faturas",
+    "Sair",
+    "Empresa:",
+    "Início",
+    "Atendimento",
+    "Agenda",
+    "Comandas",
+    "Vendas",
+    "Pacotes",
+    "Esteira",
+    "Esteira de Exames",
+    "Vacinas e Vermífugos",
+    "Orçamentos",
+    "Resgate de Pontos",
+    "Vendas (beta)",
+    "Internação",
+    "Animais",
+    "Clientes",
+    "Serviços",
+    "Importar Dados Serviços",
+    "Termos de Responsabilidad...",
+    "Raças",
+    "Espécies",
+    "Cores",
+    "Grupos de Clientes",
+    "Boxes de Internação",
+    "Webhooks",
+    "Laboratório",
+    "Exames",
+    "Laudos",
+    "Hemogramas",
+    "Urina",
+    "Bioquímico",
+    "Equipamentos",
+    "Tipos de Laudo",
+    "Vlr. Ref. Hemograma",
+    "Vlr. Ref. Bioquímico",
+    "Estoque",
+    "Consulta de Preços",
+    "Entrada de Nota Fiscal",
+    "Transação no Estoque",
+    "Requisição à Farmácia",
+    "Validade de Produtos",
+    "Auditoria de Estoque",
+    "Auditoria de Preços",
+    "Transferência entre Estoq...",
+    "Compras",
+    "Reajuste de Preços",
+    "Coletores de Dados",
+    "Produtos",
+    "Importar Dados Produtos",
+    "Fornecedores e Despesas",
+    "Estoques",
+    "Fabricantes",
+    "Grupos de Produtos",
+    "Setores da Empresa",
+    "Unidades de Medida",
+    "Tabelas de Preço",
+    "Ponto de Venda",
+    "Tabela ICMS",
+    "Tabela IPI",
+    "Tabela PIS",
+    "Tabela COFINS",
+    "Tabela CFOP",
+    "Tabela NFS-e",
+    "Matriz Estado ICMS",
+    "Tabela IBS/CBS",
+    "Financeiro",
+    "Gaveta",
+    "Contas a Receber",
+    "Contas a Pagar",
+    "Pagamento Antecipado",
+    "Contas Adm. Cartão",
+    "Cheques",
+    "Fluxo de Caixa",
+    "Curva ABC Clientes",
+    "Curva ABC Produtos",
+    "DashBoard do Multifilial",
+    "Dashboard Financeiro",
+    "Linha do Tempo",
+    "Configuração do Split",
+    "Maquininhas",
+    "Simulador de Split",
+    "Transações de Cartão",
+    "Exportador de Split",
+    "Habilitar Pagamento",
+    "Pagamento Dashboard",
+    "Formas de Pagamento",
+    "Centros de Custo",
+    "Custos e Despesas",
+    "Cartões Débito/Crédito",
+    "Bancos",
+    "Marketing",
+    "Envio de SMS Simples",
+    "Campanhas de SMS Marketin...",
+    "Layout de Email de Vacina",
+    "Configurações de SMS",
+    "RH",
+    "Usuários",
+    "Grupos de Acesso",
+    "Cálculo de Comissões",
+    "Profissionais",
+    "Regras de Comissão",
+    "Folgas",
+    "Profissões",
+    "Relatórios",
+    "Auditoria de Agendamentos",
+    "DRE - Demonstrativo de Re...",
+    "Contas Recebidas",
+    "Contas Pagas",
+    "Comandas/Vendas",
+    "Produtos/Serviços Produzi...",
+    "Produção",
+    "Atendimento por Profissio...",
+    "Relatório de NF de Serviç...",
+    "Fornecedores",
+    "Exclusão de Vendas e Coma...",
+    "Movimentações no Estoque",
+    "Entrada de NF",
+    "Relatório de Produtos",
+    "Incluir",
+    "Pesquisar",
+    "Salvar",
+    "Ok, Entendi",
+    "Sim",
+    "Não"
+  ],
+  "forms": [
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formMenu",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:0",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt14",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:1",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt24",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "j_idt24:j_idt61",
+      "id": "j_idt24:j_idt61",
+      "placeholder": "Buscar...",
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt24:j_idt63",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:2",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:3",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "menuform",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:4",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formPrincipal",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formPrincipal:j_idt87",
+      "id": "formPrincipal:j_idt87",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formPrincipal:j_idt90",
+      "id": "formPrincipal:j_idt90",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "checkbox",
+      "name": "formPrincipal:j_idt93_input",
+      "id": "formPrincipal:j_idt93_input",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formPrincipal:tbPesq_selection",
+      "id": "formPrincipal:tbPesq_selection",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:5",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formDialog",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:tabelaPreco_input",
+      "id": "formDialog:tabelaPreco_input",
+      "placeholder": null,
+      "value": ""
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formDialog:tabelaPreco_hinput",
+      "id": "formDialog:tabelaPreco_hinput",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formDialog:valorDeVenda",
+      "id": "formDialog:valorDeVenda",
+      "placeholder": null,
+      "value": "0,00"
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:6",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formServicoTabelaFiscalDialog",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formServicoTabelaFiscalDialog:empresa_input",
+      "id": "formServicoTabelaFiscalDialog:empresa_input",
+      "placeholder": null,
+      "value": ""
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formServicoTabelaFiscalDialog:empresa_hinput",
+      "id": "formServicoTabelaFiscalDialog:empresa_hinput",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "text",
+      "name": "formServicoTabelaFiscalDialog:tabelaFiscalServico_input",
+      "id": "formServicoTabelaFiscalDialog:tabelaFiscalServico_input",
+      "placeholder": null,
+      "value": ""
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "formServicoTabelaFiscalDialog:tabelaFiscalServico_hinput",
+      "id": "formServicoTabelaFiscalDialog:tabelaFiscalServico_hinput",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:7",
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "j_idt225",
+      "id": null,
+      "placeholder": null,
+      "value": null
+    },
+    {
+      "tag": "INPUT",
+      "type": "hidden",
+      "name": "javax.faces.ViewState",
+      "id": "j_id1:javax.faces.ViewState:8",
+      "placeholder": null,
+      "value": null
+    }
+  ],
+  "tableHeaders": [
+    "Id",
+    "Descrição",
+    "Valor",
+    "Abrir"
+  ],
+  "links": [
+    {
+      "text": "",
+      "href": "#",
+      "onclick": "PrimeFaces.addSubmitParam('j_idt14',{'j_idt14:j_idt15':'j_idt14:j_idt15'}).submit('j_idt14');return false;"
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://petlove-vetus.zendesk.com/hc/pt-br",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://api.whatsapp.com/send?phone=551148001131",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "vetus Id. 220319",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Configurações da Empresa",
+      "href": "/Sistema/Arquivo/Empresas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Trocar Empresa",
+      "href": "#",
+      "onclick": "PrimeFaces.ab({s:\"j_idt24:j_idt37\",f:\"j_idt24\"});return false;"
+    },
+    {
+      "text": "Alterar Senha",
+      "href": "/Sistema/Usuarios/AlterarSenha.htm",
+      "onclick": null
+    },
+    {
+      "text": "Faturas",
+      "href": "/Sistema/Financeiro/Faturas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Sair",
+      "href": "#",
+      "onclick": "PrimeFaces.ab({s:\"j_idt24:j_idt46\",f:\"j_idt24\"});return false;"
+    },
+    {
+      "text": "",
+      "href": "https://petlove-vetus.zendesk.com/hc/pt-br",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://api.whatsapp.com/send?phone=551148001131",
+      "onclick": null
+    },
+    {
+      "text": "Empresa:",
+      "href": "#",
+      "onclick": "PrimeFaces.ab({s:\"menuform:j_idt70\",f:\"menuform\"});return false;"
+    },
+    {
+      "text": "Início",
+      "href": "https://erp-beta.vetus.com.br/inicio",
+      "onclick": null
+    },
+    {
+      "text": "Atendimento",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Agenda",
+      "href": "https://erp-beta.vetus.com.br/agenda",
+      "onclick": null
+    },
+    {
+      "text": "Comandas",
+      "href": "https://erp-beta.vetus.com.br/comandas",
+      "onclick": null
+    },
+    {
+      "text": "Vendas",
+      "href": "/Sistema/Atendimento/Vendas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pacotes",
+      "href": "https://erp-beta.vetus.com.br/pacotes",
+      "onclick": null
+    },
+    {
+      "text": "Esteira",
+      "href": "/Sistema/Atendimento/Esteira.htm",
+      "onclick": null
+    },
+    {
+      "text": "Esteira de Exames",
+      "href": "/Sistema/Atendimento/EsteiraExames.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vacinas e Vermífugos",
+      "href": "/Sistema/Vacina/Vacinas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Orçamentos",
+      "href": "/Sistema/Atendimento/Orcamentos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Resgate de Pontos",
+      "href": "/Sistema/Atendimento/PontuacaoResgate.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vendas (beta)",
+      "href": "https://erp-beta.vetus.com.br/vendas",
+      "onclick": null
+    },
+    {
+      "text": "Internação",
+      "href": "/Sistema/Internacao/Internacao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Animais",
+      "href": "https://erp-beta.vetus.com.br/cadastro/animais",
+      "onclick": null
+    },
+    {
+      "text": "Clientes",
+      "href": "https://erp-beta.vetus.com.br/cadastro/clientes/",
+      "onclick": null
+    },
+    {
+      "text": "Serviços",
+      "href": "/Sistema/Cadastros/Servicos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Importar Dados Serviços",
+      "href": "https://erp-beta.vetus.com.br/importar-dados-servicos",
+      "onclick": null
+    },
+    {
+      "text": "Termos de Responsabilidad...",
+      "href": "/Sistema/Cadastros/Termos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Raças",
+      "href": "/Sistema/Cadastros/Racas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Espécies",
+      "href": "/Sistema/Cadastros/Especies.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cores",
+      "href": "/Sistema/Cadastros/Cores.htm",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Clientes",
+      "href": "/Sistema/Cadastros/GrupoClientes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Boxes de Internação",
+      "href": "/Sistema/Internacao/InternacaoBox.htm",
+      "onclick": null
+    },
+    {
+      "text": "Webhooks",
+      "href": "/Sistema/Cadastros/Webhooks.htm",
+      "onclick": null
+    },
+    {
+      "text": "Laboratório",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Exames",
+      "href": "/Sistema/Laboratorio/Exames.htm",
+      "onclick": null
+    },
+    {
+      "text": "Laudos",
+      "href": "/Sistema/Laboratorio/Laudos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Hemogramas",
+      "href": "/Sistema/Laboratorio/Hemogramas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Urina",
+      "href": "/Sistema/Laboratorio/Urina.htm",
+      "onclick": null
+    },
+    {
+      "text": "Bioquímico",
+      "href": "/Sistema/Laboratorio/Bioquimico.htm",
+      "onclick": null
+    },
+    {
+      "text": "Equipamentos",
+      "href": "/Sistema/Laboratorio/Equipamentos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Tipos de Laudo",
+      "href": "/Sistema/Laboratorio/TiposDeLaudo.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vlr. Ref. Hemograma",
+      "href": "/Sistema/Laboratorio/ReferenciasHemograma.htm",
+      "onclick": null
+    },
+    {
+      "text": "Vlr. Ref. Bioquímico",
+      "href": "/Sistema/Laboratorio/ReferenciasBioquimico.htm",
+      "onclick": null
+    },
+    {
+      "text": "Estoque",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Consulta de Preços",
+      "href": "/Sistema/Estoque/ConsultaDePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Entrada de Nota Fiscal",
+      "href": "/Sistema/Estoque/EntradaNotaFiscal.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transação no Estoque",
+      "href": "/Sistema/Estoque/TransacaoNoEstoque.htm",
+      "onclick": null
+    },
+    {
+      "text": "Requisição à Farmácia",
+      "href": "/Sistema/Estoque/RequisicaoFarmacia.htm",
+      "onclick": null
+    },
+    {
+      "text": "Validade de Produtos",
+      "href": "/Sistema/Estoque/ValidadeDeProdutos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Estoque",
+      "href": "/Sistema/Estoque/AuditoriaDeEstoque.htm",
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Preços",
+      "href": "/Sistema/Estoque/AuditoriaDePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transferência entre Estoq...",
+      "href": "/Sistema/Estoque/TransferenciaEntreEstoques.htm",
+      "onclick": null
+    },
+    {
+      "text": "Compras",
+      "href": "/Sistema/Estoque/Compras.htm",
+      "onclick": null
+    },
+    {
+      "text": "Reajuste de Preços",
+      "href": "/Sistema/Estoque/ReajustePrecos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Coletores de Dados",
+      "href": "/Sistema/Estoque/ColetoresDeDados.htm",
+      "onclick": null
+    },
+    {
+      "text": "Produtos",
+      "href": "https://erp-beta.vetus.com.br/produtos",
+      "onclick": null
+    },
+    {
+      "text": "Importar Dados Produtos",
+      "href": "https://erp-beta.vetus.com.br/importar-dados-produtos",
+      "onclick": null
+    },
+    {
+      "text": "Fornecedores e Despesas",
+      "href": "https://erp-beta.vetus.com.br/fornecedores-e-despesas",
+      "onclick": null
+    },
+    {
+      "text": "Estoques",
+      "href": "https://erp-beta.vetus.com.br/estoques",
+      "onclick": null
+    },
+    {
+      "text": "Fabricantes",
+      "href": "https://erp-beta.vetus.com.br/fabricantes",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Produtos",
+      "href": "https://erp-beta.vetus.com.br/grupos-de-produto",
+      "onclick": null
+    },
+    {
+      "text": "Setores da Empresa",
+      "href": "https://erp-beta.vetus.com.br/setores",
+      "onclick": null
+    },
+    {
+      "text": "Unidades de Medida",
+      "href": "https://erp-beta.vetus.com.br/unidades-de-medida",
+      "onclick": null
+    },
+    {
+      "text": "Tabelas de Preço",
+      "href": "https://erp-beta.vetus.com.br/tabelas-de-preco",
+      "onclick": null
+    },
+    {
+      "text": "Ponto de Venda",
+      "href": "https://erp-beta.vetus.com.br/pontos-de-venda",
+      "onclick": null
+    },
+    {
+      "text": "Tabela ICMS",
+      "href": "https://erp-beta.vetus.com.br/icms",
+      "onclick": null
+    },
+    {
+      "text": "Tabela IPI",
+      "href": "https://erp-beta.vetus.com.br/ipi",
+      "onclick": null
+    },
+    {
+      "text": "Tabela PIS",
+      "href": "https://erp-beta.vetus.com.br/pis",
+      "onclick": null
+    },
+    {
+      "text": "Tabela COFINS",
+      "href": "https://erp-beta.vetus.com.br/cofins",
+      "onclick": null
+    },
+    {
+      "text": "Tabela CFOP",
+      "href": "https://erp-beta.vetus.com.br/cfop",
+      "onclick": null
+    },
+    {
+      "text": "Tabela NFS-e",
+      "href": "https://erp-beta.vetus.com.br/tabela-fiscal-nfse",
+      "onclick": null
+    },
+    {
+      "text": "Matriz Estado ICMS",
+      "href": "https://erp-beta.vetus.com.br/matriz-icms",
+      "onclick": null
+    },
+    {
+      "text": "Tabela IBS/CBS",
+      "href": "https://erp-beta.vetus.com.br/pacote-ibs-cbs",
+      "onclick": null
+    },
+    {
+      "text": "Financeiro",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Gaveta",
+      "href": "/Sistema/Financeiro/Gaveta.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Receber",
+      "href": "/Sistema/Financeiro/ContasAReceber.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Pagar",
+      "href": "/Sistema/Financeiro/ContasAPagar.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Antecipado",
+      "href": "/Sistema/Financeiro/PagamentoAntecipado.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Adm. Cartão",
+      "href": "/Sistema/Financeiro/ContasAReceberCartao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cheques",
+      "href": "/Sistema/Financeiro/Cheques.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fluxo de Caixa",
+      "href": "/Sistema/Grafico/FluxoDeCaixaGrafico.htm",
+      "onclick": null
+    },
+    {
+      "text": "Curva ABC Clientes",
+      "href": "/Sistema/Grafico/CurvaABCClientes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Curva ABC Produtos",
+      "href": "/Sistema/Grafico/CurvaABCProdutos.htm",
+      "onclick": null
+    },
+    {
+      "text": "DashBoard do Multifilial",
+      "href": "/Sistema/DashboardMultiFilial.htm",
+      "onclick": null
+    },
+    {
+      "text": "Dashboard Financeiro",
+      "href": "https://erp-beta.vetus.com.br/dashboard-financeiro",
+      "onclick": null
+    },
+    {
+      "text": "Linha do Tempo",
+      "href": "/Sistema/Financeiro/LinhaDoTempo.htm",
+      "onclick": null
+    },
+    {
+      "text": "Configuração do Split",
+      "href": "/Sistema/Financeiro/SplitConfig.htm",
+      "onclick": null
+    },
+    {
+      "text": "Maquininhas",
+      "href": "/Sistema/Cadastros/Maquininhas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Simulador de Split",
+      "href": "/Sistema/Financeiro/SplitSimulador.htm",
+      "onclick": null
+    },
+    {
+      "text": "Transações de Cartão",
+      "href": "/Sistema/Financeiro/Transacoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Exportador de Split",
+      "href": "/Sistema/Financeiro/SplitExport.htm",
+      "onclick": null
+    },
+    {
+      "text": "Habilitar Pagamento",
+      "href": "/Sistema/Cadastros/HabilitaPagamento.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Dashboard",
+      "href": "/Sistema/Financeiro/PagamentosDashboard.htm",
+      "onclick": null
+    },
+    {
+      "text": "Formas de Pagamento",
+      "href": "/Sistema/Cadastros/FormasDePagamento.htm",
+      "onclick": null
+    },
+    {
+      "text": "Centros de Custo",
+      "href": "/Sistema/Cadastros/CentrosDeCusto.htm",
+      "onclick": null
+    },
+    {
+      "text": "Custos e Despesas",
+      "href": "/Sistema/Cadastros/CustosDespesas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cartões Débito/Crédito",
+      "href": "/Sistema/Cadastros/Cartoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Bancos",
+      "href": "/Sistema/Cadastros/Bancos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Marketing",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Envio de SMS Simples",
+      "href": "/Sistema/Marketing/SMSSimples.htm",
+      "onclick": null
+    },
+    {
+      "text": "Campanhas de SMS Marketin...",
+      "href": "/Sistema/Marketing/SMSCampanhaP.htm",
+      "onclick": null
+    },
+    {
+      "text": "Layout de Email de Vacina",
+      "href": "/Sistema/Vacina/VacinaLayoutEmail.htm",
+      "onclick": null
+    },
+    {
+      "text": "Configurações de SMS",
+      "href": "/Sistema/Marketing/SMSConfiguracao.htm",
+      "onclick": null
+    },
+    {
+      "text": "RH",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Usuários",
+      "href": "/Sistema/Usuarios/Usuarios.htm",
+      "onclick": null
+    },
+    {
+      "text": "Grupos de Acesso",
+      "href": "/Sistema/Usuarios/GruposDeAcesso.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cálculo de Comissões",
+      "href": "/Sistema/Comissoes/CalculoDeComissoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Profissionais",
+      "href": "https://erp-beta.vetus.com.br/cadastro/profissionais",
+      "onclick": null
+    },
+    {
+      "text": "Regras de Comissão",
+      "href": "/Sistema/Comissoes/RegrasDeComissao.htm",
+      "onclick": null
+    },
+    {
+      "text": "Folgas",
+      "href": "/Sistema/Agenda/Folgas.htm",
+      "onclick": null
+    },
+    {
+      "text": "Profissões",
+      "href": "/Sistema/Cadastros/Profissoes.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatórios",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "Auditoria de Agendamentos",
+      "href": "https://erp-beta.vetus.com.br/relatorios/auditoria/agendamentos",
+      "onclick": null
+    },
+    {
+      "text": "Gaveta",
+      "href": "/Sistema/Relatorio/GavetaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fluxo de Caixa",
+      "href": "/Sistema/Relatorio/FluxoDeCaixaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "DRE - Demonstrativo de Re...",
+      "href": "/Sistema/Relatorio/DRE.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pacotes",
+      "href": "/Sistema/Relatorio/PacoteRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Receber",
+      "href": "/Sistema/Relatorio/ContasAReceberRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Recebidas",
+      "href": "/Sistema/Relatorio/ContasRecebidasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas a Pagar",
+      "href": "/Sistema/Relatorio/ContasAPagarRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Contas Pagas",
+      "href": "/Sistema/Relatorio/ContasPagasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Cheques",
+      "href": "/Sistema/Relatorio/ChequesRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Pagamento Antecipado",
+      "href": "/Sistema/Relatorio/PagamentoAntecipadoRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Comandas/Vendas",
+      "href": "/Sistema/Relatorio/ComandasVendasRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Produtos/Serviços Produzi...",
+      "href": "/Sistema/Relatorio/ProdutosEServicosProduzidos.htm",
+      "onclick": null
+    },
+    {
+      "text": "Produção",
+      "href": "/Sistema/Relatorio/ProducaoRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Agenda",
+      "href": "/Sistema/Relatorio/AgendaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Atendimento por Profissio...",
+      "href": "/Sistema/Relatorio/AtendimentoPorProfissional.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatório de NF de Serviç...",
+      "href": "/Sistema/Relatorio/RelatoriosDinamicosExecutor.htm?id=1",
+      "onclick": null
+    },
+    {
+      "text": "Serviços",
+      "href": "/Sistema/Relatorio/ServicosRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Clientes",
+      "href": "/Sistema/Relatorio/ClientesRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Animais",
+      "href": "/Sistema/Relatorio/AnimaisRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Fornecedores",
+      "href": "/Sistema/Relatorio/FornecedoresRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Exclusão de Vendas e Coma...",
+      "href": "/Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Estoque",
+      "href": "/Sistema/Relatorio/EstoqueRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Movimentações no Estoque",
+      "href": "/Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Entrada de NF",
+      "href": "/Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm",
+      "onclick": null
+    },
+    {
+      "text": "Relatório de Produtos",
+      "href": "https://erp-beta.vetus.com.br/relatorios/estoque/produtos",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://facebook.com/plataformavetus",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://www.instagram.com/vetuserp/",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://youtube.com/plataformavetus",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "https://linkedin.com/company/plataformavetus",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    },
+    {
+      "text": "",
+      "href": "#",
+      "onclick": null
+    }
+  ],
+  "bodyText": "vetus Id. 220319 Suporte Empresa: Centro Veterinário Guarapiranga Início Atendimento Laboratório Estoque Financeiro Marketing RH Relatórios Cadastro de Serviços Incluir Id Descrição Serviços Ativos Pesquisar Id Descrição Valor Abrir Nenhum registro encontrado Vetus Tecnologia Ltda. | CNPJ: 33.924.771/0001-24 Av. das Nações Unidas 12901 - 11º andar, Brooklin Paulista, São Paulo - SP, 04578-910"
+}
