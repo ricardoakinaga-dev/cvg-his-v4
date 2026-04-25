@@ -43,7 +43,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('services/import', 'ServicesImport', 'Importar Dados Serviços', 'Cadastros', '⬆️'),
   placeholderRoute('responsibility-terms', 'ResponsibilityTerms', 'Termos de Responsabilidade', 'Cadastros', '📄'),
   placeholderRoute('customer-groups', 'CustomerGroups', 'Grupos de Clientes', 'Cadastros', '👥'),
   placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
@@ -1532,6 +1531,17 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Novo Serviço',
           breadcrumbParent: 'Serviços',
           icon: '🛠️'
+        }
+      },
+      {
+        path: 'services/import',
+        name: 'ServicesImport',
+        component: () => import('@/pages/services/ServicesImportPage.vue'),
+        meta: {
+          title: 'Importar Dados Serviços',
+          breadcrumb: 'Importar Dados Serviços',
+          breadcrumbParent: 'Serviços',
+          icon: '⬆️'
         }
       },
       {
