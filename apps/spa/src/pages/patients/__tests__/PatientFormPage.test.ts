@@ -109,7 +109,7 @@ describe('PatientFormPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Novo Paciente');
+    expect(wrapper.text()).toContain('Cadastrar Novo Animal');
   });
 
   it('renders the page title for edit mode', async () => {
@@ -128,7 +128,7 @@ describe('PatientFormPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Editar Paciente');
+    expect(wrapper.text()).toContain('Editar Animal');
   });
 
   it('renders form fields', async () => {
@@ -170,6 +170,39 @@ describe('PatientFormPage', () => {
     expect(mockOwnerListFn).toHaveBeenCalled();
   });
 
+  it('requires selecting a client before the new animal flow is ready to save', async () => {
+    const PatientFormPage = (await import('../PatientFormPage.vue')).default;
+    const wrapper = mount(PatientFormPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          },
+          SearchSelect: {
+            template:
+              '<input :id="id" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+            props: ['id', 'modelValue', 'options', 'loading', 'placeholder'],
+            emits: ['update:modelValue']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Necessário vincular o animal a um Cliente');
+    expect(wrapper.text()).toContain('Vincular Cliente');
+    expect(wrapper.find('#ownerSearch').attributes('placeholder')).toBe('Buscar por Nome, CPF, E-mail ou ID');
+
+    await wrapper.findAll('button.client-option')[0].trigger('click');
+    await wrapper.findAll('button').find((button) => button.text() === 'Vincular Cliente')!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain('Joao Silva');
+    expect(wrapper.find('.client-link-card').exists()).toBe(false);
+  });
+
   it('shows error when owner list fails to load', async () => {
     mockOwnerListFn.mockRejectedValue(new Error('Erro ao carregar lista de tutores'));
 
@@ -186,7 +219,7 @@ describe('PatientFormPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Erro ao carregar lista de tutores');
+    expect(wrapper.text()).toContain('Erro ao carregar lista de clientes');
   });
 
   it('shows validation error when name is empty', async () => {
@@ -300,7 +333,7 @@ describe('PatientFormPage', () => {
     await form.trigger('submit');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain('tutor');
+    expect(wrapper.text()).toContain('cliente');
     expect(wrapper.text()).toContain('respons');
     expect(mockPatientCreateFn).not.toHaveBeenCalled();
   });
@@ -342,7 +375,7 @@ describe('PatientFormPage', () => {
     await flushPromises();
 
     expect(mockPatientCreateFn).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Paciente cadastrado com sucesso');
+    expect(wrapper.text()).toContain('Animal cadastrado com sucesso');
   });
 
   it('shows error alert when create fails', async () => {
@@ -430,7 +463,7 @@ describe('PatientFormPage', () => {
     await flushPromises();
 
     expect(mockPatientUpdateFn).toHaveBeenCalledWith('pat-1', expect.any(Object));
-    expect(wrapper.text()).toContain('Paciente atualizado com sucesso');
+    expect(wrapper.text()).toContain('Animal atualizado com sucesso');
   });
 
   it('shows error when loading patient fails in edit mode', async () => {

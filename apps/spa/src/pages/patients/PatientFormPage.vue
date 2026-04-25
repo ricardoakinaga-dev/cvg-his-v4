@@ -1,26 +1,25 @@
 <template>
   <div class="patient-form-page">
     <AppPageHeader
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes', isEdit ? 'Editar Paciente' : 'Novo Paciente']"
-      title="Cadastro de paciente"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Animais', isEdit ? 'Editar Animal' : 'Cadastrar Novo Animal']"
+      title="Cadastro de animal"
       :subtitle="
         isEdit
-          ? 'Atendimento > Cadastrados. Atualize a ficha clínica e o vínculo com o tutor.'
-          : 'Atendimento > Cadastrados. Cadastre o animal e deixe a jornada pronta para agenda, atendimento e prontuário.'
+          ? 'Atendimento > Cadastros. Atualize a ficha do animal e o vínculo com o cliente.'
+          : 'Atendimento > Cadastros. Vincule o cliente antes de preencher a ficha do animal.'
       "
     >
       <template #title>
-        {{ isEdit ? 'Editar Paciente' : 'Novo Paciente' }}
+        {{ isEdit ? 'Editar Animal' : 'Cadastrar Novo Animal' }}
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" to="/owners">Ver tutores</DsButton>
+        <DsButton variant="secondary" tag="a" to="/owners">Ir para Cadastro de Clientes</DsButton>
         <DsButton variant="secondary" tag="a" to="/patients">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
     <DsAlert variant="info">
-      Preencha primeiro a identificação do animal, depois o vínculo com o tutor e, por fim, os
-      dados clínicos que sustentam agenda, atendimento, prontuário e internação.
+      Necessário vincular o animal a um Cliente antes de salvar o cadastro.
     </DsAlert>
 
     <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
@@ -28,13 +27,61 @@
 
     <div class="patient-form-page__layout">
       <form class="patient-form" @submit.prevent="onSubmit">
+        <DsCard v-if="showClientLinkStep" class="client-link-card">
+          <template #title>👤 Vincular Cliente</template>
+          <div class="client-link-card__header">
+            <div>
+              <p class="client-link-card__copy">
+                Busque por nome, CPF, e-mail ou ID e selecione o cliente responsável.
+              </p>
+              <DsButton tag="a" to="/owners/new" variant="secondary" size="sm">
+                Ir para Cadastro de Clientes
+              </DsButton>
+            </div>
+            <DsButton
+              type="button"
+              variant="primary"
+              :disabled="!selectedOwnerCandidate"
+              @click="linkSelectedOwner"
+            >
+              Vincular Cliente
+            </DsButton>
+          </div>
+
+          <div class="client-link-card__search">
+            <DsInput
+              id="ownerSearch"
+              v-model="ownerSearch"
+              type="search"
+              placeholder="Buscar por Nome, CPF, E-mail ou ID"
+            />
+            <DsButton type="button" variant="secondary">Filtrar</DsButton>
+          </div>
+
+          <div class="client-options" role="listbox" aria-label="Clientes">
+            <button
+              v-for="owner in filteredOwnerCandidates"
+              :key="owner.id"
+              class="client-option"
+              :class="{ 'client-option--selected': stagedOwnerId === owner.id }"
+              type="button"
+              @click="stagedOwnerId = owner.id"
+            >
+              <span class="client-option__status">Ativo</span>
+              <strong>{{ owner.fullName }}</strong>
+              <span>ID {{ owner.id }} - CPF/CNPJ {{ owner.documentId || 'Não informado' }}</span>
+              <span>E-mail: {{ ownerEmailByOwner(owner) }}</span>
+            </button>
+          </div>
+        </DsCard>
+
         <DsCard>
           <template #title>🐾 Identificação</template>
           <div class="form-row">
             <DsInput
               id="name"
               v-model="form.name"
-              label="Nome do Paciente"
+              label="Nome do Animal"
               placeholder="Nome do animal"
               :error="errors.name"
               required
@@ -86,15 +133,15 @@
         </DsCard>
 
         <DsCard>
-          <template #title>👤 Tutor Responsável *</template>
+          <template #title>👤 Cliente Responsável *</template>
           <div class="form-field">
-            <label for="primaryOwnerId" class="form-field__label">Selecione o tutor</label>
+            <label for="primaryOwnerId" class="form-field__label">Selecione o cliente</label>
             <SearchSelect
               id="primaryOwnerId"
               v-model="form.primaryOwnerId"
               :options="ownerOptions"
               :loading="ownersLoading"
-              placeholder="Buscar tutor por nome..."
+              placeholder="Buscar cliente por nome..."
             />
             <span v-if="errors.primaryOwnerId" class="form-field__error">{{
               errors.primaryOwnerId
@@ -103,7 +150,7 @@
         </DsCard>
 
         <DsCard>
-          <template #title>🩺 Dados Clínicos</template>
+          <template #title>🩺 Dados complementares</template>
           <div class="form-row form-row--3">
             <DsInput
               id="baseWeightKg"
@@ -130,7 +177,7 @@
 
         <div class="form-actions">
           <DsButton type="submit" variant="primary" :disabled="submitting">
-            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Paciente' }}
+            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Animal' }}
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/patients">Cancelar</DsButton>
         </div>
@@ -194,15 +241,37 @@ const form = reactive({
 
 const owners = ref<OwnerSummary[]>([]);
 const ownersLoading = ref(false);
+const ownerSearch = ref('');
+const stagedOwnerId = ref('');
 
 const ownerOptions = computed(() => owners.value.map((o) => ({ label: o.fullName, value: o.id })));
 const selectedOwnerName = computed(
   () => owners.value.find((owner) => owner.id === form.primaryOwnerId)?.fullName || '—'
 );
+const showClientLinkStep = computed(() => !isEdit.value && !form.primaryOwnerId);
+const selectedOwnerCandidate = computed(() =>
+  owners.value.find((owner) => owner.id === stagedOwnerId.value)
+);
+const filteredOwnerCandidates = computed(() => {
+  const search = ownerSearch.value.trim().toLowerCase();
+  const items = search
+    ? owners.value.filter((owner) => {
+        const contacts = owner.contacts.map((contact) => contact.value.toLowerCase()).join(' ');
+        return (
+          owner.id.toLowerCase().includes(search) ||
+          owner.fullName.toLowerCase().includes(search) ||
+          owner.documentId?.toLowerCase().includes(search) ||
+          contacts.includes(search)
+        );
+      })
+    : owners.value;
+
+  return items.slice(0, 10);
+});
 const summaryCards = computed(() => [
-  { label: 'Paciente', value: form.name.trim() || '—', hint: 'Nome em cadastro' },
+  { label: 'Animal', value: form.name.trim() || '—', hint: 'Nome em cadastro' },
   { label: 'Espécie', value: form.species || '—', hint: 'Classificação clínica' },
-  { label: 'Tutor', value: selectedOwnerName.value, hint: 'Responsável vinculado' },
+  { label: 'Cliente', value: selectedOwnerName.value, hint: 'Responsável vinculado' },
   {
     label: 'Status',
     value:
@@ -216,7 +285,7 @@ const validation = useFormValidation({
     name: [(v: unknown) => (!(v as string)?.trim() ? 'Nome é obrigatório' : null)],
     species: [(v: unknown) => (!v ? 'Espécie é obrigatória' : null)],
     sex: [(v: unknown) => (!v ? 'Sexo é obrigatório' : null)],
-    primaryOwnerId: [(v: unknown) => (!v ? 'Selecione um tutor responsável' : null)]
+    primaryOwnerId: [(v: unknown) => (!v ? 'Selecione um cliente responsável' : null)]
   }
 });
 
@@ -253,30 +322,40 @@ async function onSubmit() {
 
     if (isEdit.value) {
       await patientService.update(patientId.value, payload as UpdatePatientRequest);
-      successMessage.value = 'Paciente atualizado com sucesso!';
+      successMessage.value = 'Animal atualizado com sucesso!';
       setTimeout(() => router.push(`/patients/${patientId.value}`), 1000);
     } else {
       const created = await patientService.create(payload as CreatePatientRequest);
-      successMessage.value = 'Paciente cadastrado com sucesso!';
+      successMessage.value = 'Animal cadastrado com sucesso!';
       setTimeout(() => router.push(`/patients/${created.id}`), 1000);
     }
   } catch (err: unknown) {
-    formError.value = err instanceof Error ? err.message : 'Erro ao salvar paciente';
+    formError.value = err instanceof Error ? err.message : 'Erro ao salvar animal';
   } finally {
     submitting.value = false;
   }
+}
+
+function linkSelectedOwner() {
+  if (!selectedOwnerCandidate.value) return;
+  form.primaryOwnerId = selectedOwnerCandidate.value.id;
+}
+
+function ownerEmailByOwner(owner: OwnerSummary): string {
+  return owner.contacts.find((contact) => contact.type === 'email')?.value || 'Não informado';
 }
 
 onMounted(async () => {
   ownersLoading.value = true;
   try {
     owners.value = await ownerService.list();
-    const ownerIdFromQuery = typeof route.query.ownerId === 'string' ? route.query.ownerId : '';
+    const ownerIdFromQuery = typeof route.query?.ownerId === 'string' ? route.query.ownerId : '';
     if (ownerIdFromQuery) {
       form.primaryOwnerId = ownerIdFromQuery;
+      stagedOwnerId.value = ownerIdFromQuery;
     }
   } catch {
-    formError.value = 'Erro ao carregar lista de tutores';
+    formError.value = 'Erro ao carregar lista de clientes';
   } finally {
     ownersLoading.value = false;
   }
@@ -294,7 +373,7 @@ onMounted(async () => {
       form.primaryOwnerId = patient.primaryOwnerId;
       form.status = patient.status;
     } catch (err: unknown) {
-      formError.value = err instanceof Error ? err.message : 'Erro ao carregar paciente';
+      formError.value = err instanceof Error ? err.message : 'Erro ao carregar animal';
     }
   }
 });
@@ -325,6 +404,72 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.client-link-card {
+  border-color: #bfdbfe;
+}
+
+.client-link-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.client-link-card__copy {
+  margin: 0 0 10px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 14px;
+}
+
+.client-link-card__search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.client-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.client-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+  text-align: left;
+  cursor: pointer;
+}
+
+.client-option:hover,
+.client-option--selected {
+  border-color: var(--color-primary-500, #2563eb);
+  background: var(--color-primary-50, #eff6ff);
+}
+
+.client-option span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.client-option__status {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534 !important;
+  font-weight: 700;
 }
 
 .patient-form-page__aside {
@@ -390,6 +535,14 @@ onMounted(async () => {
 
   .patient-form-page__aside {
     position: static;
+  }
+
+  .client-link-card__header {
+    flex-direction: column;
+  }
+
+  .client-link-card__search {
+    grid-template-columns: 1fr;
   }
 }
 .form-row--3 {
