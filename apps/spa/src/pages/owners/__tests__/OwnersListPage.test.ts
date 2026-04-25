@@ -120,8 +120,8 @@ describe('OwnersListPage', () => {
     await flushPromises();
     expect(mockListFn).toHaveBeenCalled();
     expect(mockPatientListFn).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Cliente em destaque');
-    expect(wrapper.text()).toContain('Últimos clientes cadastrados');
+    expect(wrapper.text()).toContain('Clientes');
+    expect(wrapper.text()).toContain('Mostrando 1 - 2 de 2 resultados');
   });
 
   it('shows error state when API fails', async () => {
@@ -228,15 +228,15 @@ describe('OwnersListPage', () => {
     await flushPromises();
     const searchInput = wrapper.find('input[type="search"]');
     expect(searchInput.exists()).toBe(true);
-    expect(searchInput.attributes('placeholder')).toBe('Buscar por nome, documento ou contato...');
+    expect(searchInput.attributes('placeholder')).toBe('Buscar por Nome, CPF, E-mail ou ID');
   });
 
-  it('has a Buscar button', async () => {
+  it('has a Filtrar button', async () => {
     const OwnersListPage = (await import('../OwnersListPage.vue')).default;
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    const searchBtn = wrapper.findAll('button').find((b) => b.text() === 'Buscar');
+    const searchBtn = wrapper.findAll('button').find((b) => b.text() === 'Filtrar');
     expect(searchBtn).toBeTruthy();
   });
 
@@ -246,7 +246,7 @@ describe('OwnersListPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Rex');
-    expect(wrapper.text()).toContain('Novo Animal');
+    expect(wrapper.text()).toContain('Cadastrar Novo Animal');
     expect(wrapper.text()).toContain('Agendar');
   });
 

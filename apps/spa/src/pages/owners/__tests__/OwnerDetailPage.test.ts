@@ -182,9 +182,9 @@ describe('OwnerDetailPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('João Silva');
-    expect(wrapper.text()).toContain('Atendimento > Cadastrados');
-    expect(wrapper.text()).toContain('Novo Paciente');
-    expect(wrapper.text()).toContain('Pacientes vinculados');
+    expect(wrapper.text()).toContain('Atendimento > Cadastros');
+    expect(wrapper.text()).toContain('Cadastrar Novo Animal');
+    expect(wrapper.text()).toContain('Animais Cadastrados');
     expect(wrapper.text()).toContain('Documento ausente');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Agenda vinculada');

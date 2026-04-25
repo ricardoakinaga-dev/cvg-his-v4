@@ -97,6 +97,11 @@ describe('OwnerFormPage', () => {
     expect(wrapper.find('#zipCode').exists()).toBe(true);
     expect(wrapper.find('#notes').exists()).toBe(true);
     expect(wrapper.find('#allowedDebtLimit').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Identificação do Cliente');
+    expect(wrapper.text()).toContain('Informações de Contato');
+    expect(wrapper.text()).toContain('Documentação do Cliente');
+    expect(wrapper.text()).toContain('Endereço do Cliente');
+    expect(wrapper.text()).toContain('Observações Gerais');
   });
 
   it('shows validation error when name is empty', async () => {

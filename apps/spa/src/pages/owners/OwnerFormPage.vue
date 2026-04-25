@@ -5,7 +5,7 @@
         {{ isEdit ? 'Editar Cliente' : 'Cadastrar Novo Cliente' }}
       </template>
       <template #subtitle>
-        Cadastro operacional de clientes com identificação, contatos, endereço, observações e limites financeiros.
+        Cadastro de cliente com identificação, informações de contato, documentação, endereço e observações.
       </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
@@ -22,7 +22,7 @@
     <div class="owner-form-page__layout">
       <form class="owner-form" @submit.prevent="onSubmit">
         <details open class="owner-section">
-          <summary class="owner-section__summary">Dados principais</summary>
+          <summary class="owner-section__summary">Identificação do Cliente</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--2">
               <DsInput
@@ -62,7 +62,7 @@
         </details>
 
         <details open class="owner-section">
-          <summary class="owner-section__summary">Contatos</summary>
+          <summary class="owner-section__summary">Informações de Contato</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--2">
               <DsInput
@@ -103,7 +103,7 @@
         </details>
 
         <details open class="owner-section">
-          <summary class="owner-section__summary">Documentação</summary>
+          <summary class="owner-section__summary">Documentação do Cliente</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--3">
               <DsInput id="personType" v-model="form.personType" label="Física ou Jurídica" type="select">
@@ -122,7 +122,7 @@
         </details>
 
         <details open class="owner-section">
-          <summary class="owner-section__summary">Endereço</summary>
+          <summary class="owner-section__summary">Endereço do Cliente</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--3">
               <DsInput id="zipCode" v-model="form.zipCode" label="CEP" placeholder="xxxxx-xxx" />
@@ -146,7 +146,7 @@
         </details>
 
         <details open class="owner-section">
-          <summary class="owner-section__summary">Observações</summary>
+          <summary class="owner-section__summary">Observações Gerais</summary>
           <div class="owner-section__body">
             <DsInput
               id="notes"
@@ -238,10 +238,10 @@
 
         <DsCard title="Guia de cadastro">
           <ul class="guide-list">
-            <li>Preencha pelo menos um contato principal para agenda, recepção e confirmação.</li>
-            <li>Use CPF/CNPJ e RG quando houver dado documental confiável.</li>
-            <li>Endereço e observações ajudam em entrega, cobrança e relacionamento.</li>
-            <li>Limites financeiros e pontos devem refletir a política real da unidade.</li>
+            <li>Preencha identificação, contato e documentação antes de vincular animais.</li>
+            <li>Use CPF/CNPJ, RG e endereço para financeiro, comandas e comunicação.</li>
+            <li>Observações gerais devem registrar preferências e restrições operacionais.</li>
+            <li>Pontos, crédito e limite financeiro sustentam resgate e situação financeira.</li>
           </ul>
         </DsCard>
       </aside>

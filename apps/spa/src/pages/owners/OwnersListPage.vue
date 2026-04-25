@@ -3,21 +3,10 @@
     <AppPageHeader
       title="Clientes"
       :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes']"
-      subtitle="Hub operacional com busca rápida, resumo recente e atalhos para detalhar ou cadastrar novos clientes."
+      subtitle="Cadastro central de relacionamento, contato, animais vinculados, comandas e financeiro."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
-
-    <section class="summary-grid">
-      <DsCard v-for="card in summaryCards" :key="card.label" variant="elevated" class="summary-card">
-        <div class="summary-card__icon">{{ card.icon }}</div>
-        <div class="summary-card__body">
-          <span class="summary-card__value">{{ card.value }}</span>
-          <span class="summary-card__label">{{ card.label }}</span>
-          <span class="summary-card__hint">{{ card.hint }}</span>
-        </div>
-      </DsCard>
-    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -28,11 +17,11 @@
         <DsInput
           v-model="filters.search"
           type="search"
-          placeholder="Buscar por nome, documento ou contato..."
+          placeholder="Buscar por Nome, CPF, E-mail ou ID"
         />
-        <DsButton type="submit" variant="secondary" :loading="loading">Buscar</DsButton>
+        <DsButton type="submit" variant="secondary" :loading="loading">Filtrar</DsButton>
         <DsButton type="button" variant="ghost" @click="showAdvanced = !showAdvanced">
-          {{ showAdvanced ? 'Ocultar busca avançada' : 'Busca avançada' }}
+          {{ showAdvanced ? 'Ocultar filtros' : 'Filtrar e ordenar' }}
         </DsButton>
       </div>
 
@@ -50,61 +39,15 @@
         <DsInput v-model="filters.sort" label="Ordenação" type="select">
           <option value="recent">Mais recentes</option>
           <option value="name">Nome A-Z</option>
-          <option value="patients">Mais pacientes</option>
+          <option value="patients">Mais animais</option>
         </DsInput>
       </div>
     </form>
 
-    <section v-if="highlightedOwner" class="owners-list-page__featured">
-      <DsCard title="Cliente em destaque" variant="elevated">
-        <div class="featured-owner">
-          <div class="featured-owner__identity">
-            <div class="featured-owner__avatar">
-              {{ initials(highlightedOwner.fullName) }}
-            </div>
-            <div>
-              <div class="featured-owner__badges">
-                <StatusBadge
-                  :label="ownerStatusLabel(highlightedOwner.status)"
-                  :variant="highlightedOwner.status === 'active' ? 'success' : 'danger'"
-                />
-                <StatusBadge
-                  v-if="highlightedOwner.financialResponsible"
-                  label="Financeiro"
-                  variant="info"
-                />
-              </div>
-              <h2 class="featured-owner__name">{{ highlightedOwner.fullName }}</h2>
-              <p class="featured-owner__meta">
-                {{ highlightedOwner.documentId || 'Documento não informado' }}
-                ·
-                {{ primaryContact(highlightedOwner) }}
-              </p>
-            </div>
-          </div>
-
-          <div class="featured-owner__metrics">
-            <div class="metric-chip">
-              <strong>{{ patientsByOwner(highlightedOwner.id).length }}</strong>
-              <span>animais vinculados</span>
-            </div>
-            <div class="metric-chip">
-              <strong>{{ activePatientsByOwner(highlightedOwner.id) }}</strong>
-              <span>pacientes ativos</span>
-            </div>
-            <div class="metric-chip">
-              <strong>{{ highlightedOwner.contacts.length }}</strong>
-              <span>contatos cadastrados</span>
-            </div>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
     <section v-if="displayedOwners.length > 0" class="owners-list-page__recent">
       <div class="owners-list-page__section-head">
-        <h2>Últimos clientes cadastrados</h2>
-        <p>Visão rápida dos clientes mais recentes, com documento, contato principal e vínculos.</p>
+        <h2>Clientes</h2>
+        <p>{{ resultSummary }}</p>
       </div>
 
       <div class="owners-grid">
@@ -125,11 +68,14 @@
                 <StatusBadge v-if="owner.financialResponsible" label="Financeiro" variant="info" />
               </div>
               <h3 class="owner-card__name">{{ owner.fullName }}</h3>
-              <p class="owner-card__id">ID {{ owner.id }}</p>
             </div>
           </div>
 
           <div class="owner-card__facts">
+            <div class="fact-row">
+              <span class="fact-row__label">ID</span>
+              <span>{{ owner.id }}</span>
+            </div>
             <div class="fact-row">
               <span class="fact-row__label">CPF/CNPJ</span>
               <span>{{ owner.documentId || '—' }}</span>
@@ -203,7 +149,7 @@
               Abrir comanda
             </DsButton>
             <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
-              Novo Animal
+              Cadastrar Novo Animal
             </DsButton>
             <DsButton
               tag="a"
@@ -225,7 +171,7 @@
       <div class="empty-state__icon">👥</div>
       <h2 class="empty-state__title">Nenhum cliente encontrado</h2>
       <p class="empty-state__description">
-        Cadastre o primeiro cliente para vincular pacientes e sustentar agenda, atendimento e prontuário.
+        Cadastre o primeiro cliente para vincular animais e sustentar agenda, atendimento e prontuário.
       </p>
       <div class="empty-state__actions">
         <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar Novo Cliente</DsButton>
@@ -297,26 +243,16 @@ const displayedOwners = computed(() => {
   return items;
 });
 
-const highlightedOwner = computed(() => displayedOwners.value[0] ?? null);
-
-const summaryCards = computed(() => {
-  const total = owners.value.length;
-  const active = owners.value.filter((owner) => owner.status === 'active').length;
-  const financial = owners.value.filter((owner) => owner.financialResponsible).length;
-  const withPatients = owners.value.filter((owner) => patientsByOwner(owner.id).length > 0).length;
-
-  return [
-    { icon: '👥', label: 'Clientes cadastrados', value: String(total), hint: 'Base relacional ativa' },
-    { icon: '✅', label: 'Ativos', value: String(active), hint: 'Disponíveis na operação' },
-    { icon: '💰', label: 'Resp. financeiros', value: String(financial), hint: 'Contas centrais' },
-    { icon: '🐾', label: 'Com animais', value: String(withPatients), hint: 'Relacionamento ativo' }
-  ];
+const resultSummary = computed(() => {
+  const first = displayedOwners.value.length > 0 ? 1 : 0;
+  const last = displayedOwners.value.length;
+  return `Mostrando ${first} - ${last} de ${owners.value.length} resultados`;
 });
 
 const headerSecondaryActions = computed(() => [
   {
     key: 'view-patients',
-    label: 'Ver pacientes',
+    label: 'Ver animais',
     variant: 'secondary' as const,
     to: '/patients'
   },
@@ -338,10 +274,6 @@ const headerPrimaryAction = computed(() => ({
 
 function patientsByOwner(ownerId: string): PatientSummary[] {
   return ownerPatientMap.value.get(ownerId) ?? [];
-}
-
-function activePatientsByOwner(ownerId: string): number {
-  return patientsByOwner(ownerId).filter((patient) => patient.status === 'active').length;
 }
 
 function primaryContact(owner: OwnerSummary): string {
@@ -392,52 +324,6 @@ onMounted(load);
   gap: 16px;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.summary-card {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  padding: 18px;
-}
-
-.summary-card__icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: rgba(37, 99, 235, 0.08);
-  font-size: 22px;
-}
-
-.summary-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.summary-card__value {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-text, #0f172a);
-  line-height: 1;
-}
-
-.summary-card__label {
-  font-size: 13px;
-  color: var(--color-text, #0f172a);
-}
-
-.summary-card__hint {
-  font-size: 12px;
-  color: var(--color-text-muted, #64748b);
-}
-
 .search-shell {
   display: flex;
   flex-direction: column;
@@ -466,10 +352,6 @@ onMounted(load);
   background: linear-gradient(180deg, #fff, #f8fafc);
 }
 
-.owners-list-page__featured {
-  margin-top: 4px;
-}
-
 .owners-list-page__recent {
   display: flex;
   flex-direction: column;
@@ -487,20 +369,6 @@ onMounted(load);
   color: var(--color-text-muted, #64748b);
 }
 
-.featured-owner {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: center;
-}
-
-.featured-owner__identity {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.featured-owner__avatar,
 .owner-card__avatar {
   width: 56px;
   height: 56px;
@@ -512,47 +380,11 @@ onMounted(load);
   background: linear-gradient(135deg, #dbeafe, #bfdbfe);
 }
 
-.featured-owner__badges,
 .owner-card__badges {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
-}
-
-.featured-owner__name {
-  margin: 0;
-  font-size: 24px;
-  color: var(--color-text, #0f172a);
-}
-
-.featured-owner__meta {
-  margin: 6px 0 0;
-  color: var(--color-text-muted, #64748b);
-}
-
-.featured-owner__metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.metric-chip {
-  padding: 14px;
-  border-radius: 16px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-}
-
-.metric-chip strong {
-  display: block;
-  font-size: 20px;
-  color: #1d4ed8;
-}
-
-.metric-chip span {
-  font-size: 12px;
-  color: #475569;
 }
 
 .owners-grid {
@@ -721,13 +553,4 @@ onMounted(load);
   color: var(--color-text-muted, #64748b);
 }
 
-@media (max-width: 960px) {
-  .featured-owner {
-    grid-template-columns: 1fr;
-  }
-
-  .featured-owner__metrics {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

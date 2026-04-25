@@ -14,7 +14,7 @@
     </DsAlert>
 
     <template v-else-if="owner">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores', owner.fullName]">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes', owner.fullName]">
         <template #title>{{ owner.fullName }}</template>
         <template #subtitle>
           <StatusBadge
@@ -22,20 +22,21 @@
             :variant="owner.status === 'active' ? 'success' : 'danger'"
           />
           <StatusBadge v-if="owner.financialResponsible" label="Resp. Financeiro" variant="info" />
-          <span class="muted">Atendimento &gt; Cadastrados</span>
+          <span class="muted">Atendimento &gt; Cadastros</span>
           <span class="muted">{{ owner.id }}</span>
         </template>
         <template #actions>
+          <DsButton tag="a" to="/counter-sales" variant="primary">Abrir Nova Comanda</DsButton>
           <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary">
-            Novo Paciente
+            Cadastrar Novo Animal
           </DsButton>
-          <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="secondary">Editar</DsButton>
+          <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="secondary">Editar Cadastro</DsButton>
           <DsButton tag="a" to="/owners" variant="ghost">Voltar</DsButton>
         </template>
       </AppPageHeader>
 
       <section class="hub-kpis">
-        <DsStatCard :label="`${patients.length} paciente(s)`" value="" icon="🐾" />
+        <DsStatCard :label="`${patients.length} animal(is)`" value="" icon="🐾" />
         <DsStatCard :label="`${upcomingAppointments.length} agendamento(s)`" value="" icon="📅" />
         <DsStatCard :label="`${activeEncounters.length} atendimento(s) ativo(s)`" value="" icon="🩺" />
         <DsStatCard :label="primaryContact(owner)" value="" icon="📞" />
@@ -56,7 +57,7 @@
         <DsCard title="Ações rápidas" variant="compact">
           <div class="quick-actions">
             <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary" icon="🐾">
-              Novo Paciente
+              Cadastrar Novo Animal
             </DsButton>
             <DsButton
               tag="a"
@@ -66,9 +67,9 @@
             >
               Agendar
             </DsButton>
-            <DsButton tag="a" to="/patients" variant="ghost" icon="🧾">Animais</DsButton>
+            <DsButton tag="a" to="/patients" variant="ghost" icon="🧾">Animais Cadastrados</DsButton>
             <DsButton tag="a" to="/counter-sales" variant="secondary" icon="🧾">
-              Abrir comanda
+              Abrir Comanda
             </DsButton>
             <DsButton
               v-if="whatsappContact"
@@ -139,7 +140,7 @@
         <DsCard title="Relacionamento">
           <div class="detail-grid">
             <div class="detail-item">
-              <span class="detail-item__label">Pacientes ativos</span>
+              <span class="detail-item__label">Animais ativos</span>
               <strong>{{ activePatientsCount }}</strong>
             </div>
             <div class="detail-item">
@@ -199,10 +200,10 @@
           </div>
         </DsCard>
 
-        <DsCard title="Resumo por endpoint">
+        <DsCard title="Resumo do cadastro">
           <div class="detail-grid">
             <div class="detail-item">
-              <span class="detail-item__label">Pacientes no summary</span>
+              <span class="detail-item__label">Animais no resumo</span>
               <strong>{{ ownerSummary?.stats.totalPatients ?? patients.length }}</strong>
             </div>
             <div class="detail-item">
@@ -257,7 +258,7 @@
           </p>
         </DsCard>
 
-        <DsCard title="Financeiro e orçamentos">
+        <DsCard title="Comandas e Vendas">
           <div class="detail-grid">
             <div class="detail-item">
               <span class="detail-item__label">Faturamentos</span>
@@ -319,7 +320,7 @@
           <p v-else class="muted">Nenhum contato cadastrado</p>
         </DsCard>
 
-        <DsCard title="Pacientes vinculados">
+        <DsCard title="Animais Cadastrados">
           <div v-if="patients.length" class="patient-list">
             <div v-for="patient in patients" :key="patient.id" class="patient-list__item">
               <div>
@@ -336,12 +337,15 @@
                   size="sm"
                 />
                 <DsButton tag="a" :to="`/patients/${patient.id}`" size="sm" variant="ghost">
-                  Ver
+                  Detalhes
+                </DsButton>
+                <DsButton tag="a" to="/counter-sales" size="sm" variant="secondary">
+                  Abrir Comanda
                 </DsButton>
               </div>
             </div>
           </div>
-          <p v-else class="muted">Nenhum paciente vinculado.</p>
+          <p v-else class="muted">Nenhum animal cadastrado.</p>
         </DsCard>
       </section>
 
@@ -616,7 +620,7 @@ const packageRecommendations = computed<SuggestedPackage[]>(() => {
       id: 'multi-pet',
       title: 'Pacote Multi Animal',
       description: 'Agrupa rotina preventiva, agenda recorrente e acompanhamento centralizado.',
-      reason: 'Cliente com mais de um paciente cadastrado.',
+      reason: 'Cliente com mais de um animal cadastrado.',
       referenceValue: 590
     });
   }
@@ -626,7 +630,7 @@ const packageRecommendations = computed<SuggestedPackage[]>(() => {
       id: 'canine-preventive',
       title: 'Pacote Preventivo Canino',
       description: 'Consultas de rotina, janela vacinal e follow-up de peso.',
-      reason: 'Há pacientes caninos ativos no relacionamento.',
+      reason: 'Há animais caninos ativos no relacionamento.',
       referenceValue: 360
     });
   }
@@ -636,7 +640,7 @@ const packageRecommendations = computed<SuggestedPackage[]>(() => {
       id: 'feline-care',
       title: 'Pacote Cuidado Felino',
       description: 'Retornos estruturados, revisão clínica e lembretes de prevenção.',
-      reason: 'Há pacientes felinos ativos no relacionamento.',
+      reason: 'Há animais felinos ativos no relacionamento.',
       referenceValue: 340
     });
   }
@@ -645,7 +649,7 @@ const packageRecommendations = computed<SuggestedPackage[]>(() => {
     recommendations.push({
       id: 'continuity',
       title: 'Pacote Continuidade Clínica',
-      description: 'Indicador para pacientes com recorrência de atendimento e monitoramento frequente.',
+      description: 'Indicador para animais com recorrência de atendimento e monitoramento frequente.',
       reason: 'Relacionamento com histórico clínico recorrente.',
       referenceValue: 720
     });
@@ -715,7 +719,7 @@ const contextualMessages = computed<ContextualMessage[]>(() => {
       preview: `Relacionamento estável. Envie uma mensagem de acompanhamento e fidelização.`,
       href: contactBase
         ? buildWhatsAppLink(
-            `Olá, ${owner.value?.fullName}. Passando para acompanhar como estão os pacientes e se podemos apoiar em algo mais.`
+            `Olá, ${owner.value?.fullName}. Passando para acompanhar como estão os animais e se podemos apoiar em algo mais.`
           )
         : null
     });
@@ -754,7 +758,7 @@ const ownerAlerts = computed<OwnerAlert[]>(() => {
   if (owner.value.status === 'inactive') {
     alerts.push({
       variant: 'danger',
-      title: 'Tutor inativo',
+      title: 'Cliente inativo',
       message: 'Este cadastro está fora da operação ativa.'
     });
   }
@@ -762,8 +766,8 @@ const ownerAlerts = computed<OwnerAlert[]>(() => {
   if (patients.value.length === 0) {
     alerts.push({
       variant: 'info',
-      title: 'Sem pacientes vinculados',
-      message: 'Vincule animais para completar a jornada assistencial.'
+      title: 'Sem animais cadastrados',
+      message: 'Cadastre animais para completar a jornada assistencial.'
     });
   }
 
@@ -894,7 +898,7 @@ onMounted(async () => {
   try {
     await loadOwnerHub(ownerId);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar tutor';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
   } finally {
     loading.value = false;
   }
