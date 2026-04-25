@@ -60,29 +60,14 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Vacinas e Vermífugos', path: '/vaccines-dewormers', icon: '💉', keywords: ['vacinas', 'vermifugos'] },
           { label: 'Orçamentos', path: '/quotes', icon: '📝', keywords: ['orcamentos', 'quotes'] },
           { label: 'Resgate de Pontos', path: '/loyalty', icon: '🎯', keywords: ['fidelidade', 'pontos', 'resgate'] },
-          { label: 'Vendas (beta)', path: '/sales', icon: '💸', keywords: ['vendas beta'] }
-        ]
-      },
-      {
-        id: 'atendimento-assistencial',
-        label: 'Fluxo Assistencial',
-        items: [
-          { label: 'Atendimentos', path: '/encounters', icon: '🏥', keywords: ['atendimentos', 'encounters', 'consulta'] },
-          { label: 'Prontuário', path: '/medical-records', icon: '📋', keywords: ['prontuario', 'medical records'] },
-          { label: 'Triagem', path: '/triage', icon: '🏷️', keywords: ['triagem', 'classificacao'] },
-          { label: 'Prescrições', path: '/prescriptions', icon: '💊', keywords: ['prescricoes', 'medicacao'] },
-          { label: 'Execuções', path: '/prescription-executions', icon: '🩺', keywords: ['execucoes', 'prescricao'] },
-          { label: 'Cirurgias', path: '/surgery', icon: '🔪', keywords: ['cirurgias', 'centro cirurgico'] },
-          { label: 'Altas', path: '/discharges', icon: '🏠', keywords: ['altas', 'desospitalizacao'] }
+          { label: 'Vendas (beta)', path: '/sales/beta', icon: '💸', keywords: ['vendas beta'] }
         ]
       },
       {
         id: 'atendimento-internacao',
         label: 'Internação',
         items: [
-          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] },
-          { label: 'Mapa de Leitos', path: '/inpatient/board', icon: '🗺️', keywords: ['mapa de leitos', 'bed board'] },
-          { label: 'Boxes de Internação', path: '/beds', icon: '🛏️', keywords: ['boxes', 'leitos', 'camas'] }
+          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] }
         ]
       },
       {
@@ -98,7 +83,22 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Espécies', path: '/species', icon: '🦴', keywords: ['especies', 'species'] },
           { label: 'Cores', path: '/coat-colors', icon: '🎨', keywords: ['cores', 'pelagem'] },
           { label: 'Grupos de Clientes', path: '/customer-groups', icon: '👥', keywords: ['grupos de clientes'] },
+          { label: 'Boxes de Internação', path: '/beds', icon: '🛏️', keywords: ['boxes', 'leitos', 'camas'] },
           { label: 'Webhooks', path: '/webhooks', icon: '🔗', keywords: ['webhooks', 'integracoes'] }
+        ]
+      },
+      {
+        id: 'atendimento-cvg-assistencial',
+        label: 'Fluxo Assistencial CVG',
+        items: [
+          { label: 'Atendimentos', path: '/encounters', icon: '🏥', keywords: ['atendimentos', 'encounters', 'consulta'] },
+          { label: 'Prontuário', path: '/medical-records', icon: '📋', keywords: ['prontuario', 'medical records'] },
+          { label: 'Triagem', path: '/triage', icon: '🏷️', keywords: ['triagem', 'classificacao'] },
+          { label: 'Prescrições', path: '/prescriptions', icon: '💊', keywords: ['prescricoes', 'medicacao'] },
+          { label: 'Execuções', path: '/prescription-executions', icon: '🩺', keywords: ['execucoes', 'prescricao'] },
+          { label: 'Cirurgias', path: '/surgery', icon: '🔪', keywords: ['cirurgias', 'centro cirurgico'] },
+          { label: 'Altas', path: '/discharges', icon: '🏠', keywords: ['altas', 'desospitalizacao'] },
+          { label: 'Mapa de Leitos', path: '/inpatient/board', icon: '🗺️', keywords: ['mapa de leitos', 'bed board'] }
         ]
       }
     ]
@@ -117,8 +117,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Laudos', path: '/laboratory/results', icon: '📋', keywords: ['laudos', 'resultados'] },
           { label: 'Hemogramas', path: '/laboratory/hemograms', icon: '🩸', keywords: ['hemogramas', 'hematologia'] },
           { label: 'Urina', path: '/laboratory/urinalysis', icon: '💧', keywords: ['urina', 'urinario'] },
-          { label: 'Bioquímico', path: '/laboratory/biochemistry', icon: '⚗️', keywords: ['bioquimico', 'bioquimica'] },
-          { label: 'Central Diagnóstica', path: '/diagnostics', icon: '🧫', keywords: ['diagnostica', 'diagnosticos'] }
+          { label: 'Bioquímico', path: '/laboratory/biochemistry', icon: '⚗️', keywords: ['bioquimico', 'bioquimica'] }
         ]
       },
       {
@@ -133,11 +132,12 @@ export const navGroups: AppNavGroup[] = [
       },
       {
         id: 'laboratorio-integracoes',
-        label: 'Integrações',
+        label: 'Integrações CVG',
         items: [
           { label: 'Hub do Laboratório', path: '/laboratory', icon: '🔬', keywords: ['hub', 'laboratorio'] },
           { label: 'Pedidos API', path: '/exam-orders', icon: '🧾', keywords: ['exam-orders', 'pedidos api'] },
-          { label: 'Resultados API', path: '/exam-results', icon: '🧪', keywords: ['exam-results', 'resultados api'] }
+          { label: 'Resultados API', path: '/exam-results', icon: '🧪', keywords: ['exam-results', 'resultados api'] },
+          { label: 'Central Diagnóstica', path: '/diagnostics', icon: '🧫', keywords: ['diagnostica', 'diagnosticos'] }
         ]
       }
     ]
@@ -248,7 +248,13 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Centros de Custo', path: '/cost-centers', icon: '📊', keywords: ['centros de custo', 'rateio'] },
           { label: 'Custos e Despesas', path: '/expenses', icon: '🧾', keywords: ['despesas', 'custos'] },
           { label: 'Cartões Débito/Crédito', path: '/cards', icon: '💳', keywords: ['cartoes', 'maquininha'] },
-          { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] },
+          { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] }
+        ]
+      },
+      {
+        id: 'financeiro-cvg-pagamentos',
+        label: 'Pagamentos CVG',
+        items: [
           { label: 'PIX', path: '/pix', icon: '💸', keywords: ['pix', 'qr code'] }
         ]
       }
@@ -265,8 +271,7 @@ export const navGroups: AppNavGroup[] = [
         label: 'Envios',
         items: [
           { label: 'Envio de SMS Simples', path: '/marketing/sms', icon: '📱', keywords: ['sms'] },
-          { label: 'Campanhas de SMS Marketing', path: '/notifications', icon: '🔔', keywords: ['campanhas', 'notificacoes', 'sms marketing'] },
-          { label: 'WhatsApp Operacional', path: '/notifications/whatsapp', icon: '💬', keywords: ['whatsapp', 'mensageria'] }
+          { label: 'Campanhas de SMS Marketing', path: '/notifications', icon: '🔔', keywords: ['campanhas', 'notificacoes', 'sms marketing'] }
         ]
       },
       {
@@ -275,6 +280,13 @@ export const navGroups: AppNavGroup[] = [
         items: [
           { label: 'Layout de Email de Vacina', path: '/marketing/vaccine-email', icon: '📧', keywords: ['email', 'vacina'] },
           { label: 'Configurações de SMS', path: '/marketing/sms-settings', icon: '⚙️', keywords: ['configuracoes sms'] }
+        ]
+      },
+      {
+        id: 'marketing-cvg-canais',
+        label: 'Canais CVG',
+        items: [
+          { label: 'WhatsApp Operacional', path: '/notifications/whatsapp', icon: '💬', keywords: ['whatsapp', 'mensageria'] }
         ]
       }
     ]
@@ -382,7 +394,7 @@ export const navGroups: AppNavGroup[] = [
       },
       {
         id: 'relatorios-hub',
-        label: 'Hubs',
+        label: 'Hubs CVG',
         items: [
           { label: 'Visão por Domínio', path: '/reports', icon: '📈', keywords: ['relatorios por dominio', 'hub'] },
           { label: 'Hubs Administrativos', path: '/administrative-reports', icon: '📊', keywords: ['administrative reports', 'commercial reports'] }

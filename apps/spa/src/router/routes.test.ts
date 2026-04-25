@@ -126,6 +126,7 @@ describe('router convergence', () => {
     expect(salesRoute?.meta?.title).toBe('Vendas');
     expect(salesRoute?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(salesRoute?.alias).toEqual(expect.arrayContaining(['/vendas', '/atendimento/vendas']));
+    expect(findChildRoute('sales/beta')?.redirect).toBe('/sales');
   });
 
   it('uses a concrete route for atendimento pacotes', () => {

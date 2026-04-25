@@ -1028,6 +1028,7 @@ export const routes: RouteRecordRaw[] = [
           icon: '💸'
         }
       },
+      { path: 'sales/beta', redirect: '/sales' },
       {
         path: 'counter-sales',
         name: 'CounterSales',

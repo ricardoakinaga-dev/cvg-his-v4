@@ -16,6 +16,14 @@ function findGroupPaths(groupId: string) {
   return findGroup(groupId)?.sections.flatMap((section) => section.items.map((item) => item.path)) ?? [];
 }
 
+function findSectionLabels(groupId: string) {
+  return findGroup(groupId)?.sections.map((section) => section.label) ?? [];
+}
+
+function findSectionItemLabels(groupId: string, sectionLabel: string) {
+  return findGroup(groupId)?.sections.find((section) => section.label === sectionLabel)?.items.map((item) => item.label) ?? [];
+}
+
 describe('navigation groups', () => {
   it('publishes the ERP modules in the vetus-like layout order', () => {
     expect(navGroups.map((group) => group.label)).toEqual([
@@ -31,6 +39,71 @@ describe('navigation groups', () => {
     ]);
   });
 
+  it('keeps the Vetus atendimento structure before CVG-specific assistential tools', () => {
+    expect(findSectionLabels('atendimento')).toEqual([
+      'Atendimentos',
+      'Internação',
+      'Cadastros',
+      'Fluxo Assistencial CVG'
+    ]);
+    expect(findSectionItemLabels('atendimento', 'Atendimentos')).toEqual([
+      'Agenda',
+      'Comandas',
+      'Vendas',
+      'Pacotes',
+      'Esteira',
+      'Esteira de Exames',
+      'Vacinas e Vermífugos',
+      'Orçamentos',
+      'Resgate de Pontos',
+      'Vendas (beta)'
+    ]);
+    expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação']);
+    expect(findSectionItemLabels('atendimento', 'Cadastros')).toEqual([
+      'Animais',
+      'Clientes',
+      'Serviços',
+      'Importar Dados Serviços',
+      'Termos de Responsabilidade',
+      'Raças',
+      'Espécies',
+      'Cores',
+      'Grupos de Clientes',
+      'Boxes de Internação',
+      'Webhooks'
+    ]);
+  });
+
+  it('keeps Vetus laboratory, finance and marketing sections separate from CVG extras', () => {
+    expect(findSectionLabels('laboratorio')).toEqual(['Atendimentos', 'Cadastros', 'Integrações CVG']);
+    expect(findSectionItemLabels('laboratorio', 'Atendimentos')).toEqual([
+      'Exames',
+      'Laudos',
+      'Hemogramas',
+      'Urina',
+      'Bioquímico'
+    ]);
+    expect(findSectionLabels('financeiro')).toEqual([
+      'Gaveta',
+      'Controles',
+      'Maquininha de Cartão',
+      'Cadastros',
+      'Pagamentos CVG'
+    ]);
+    expect(findSectionItemLabels('financeiro', 'Cadastros')).toEqual([
+      'Formas de Pagamento',
+      'Centros de Custo',
+      'Custos e Despesas',
+      'Cartões Débito/Crédito',
+      'Bancos'
+    ]);
+    expect(findSectionLabels('marketing')).toEqual(['Envios', 'Configurações', 'Canais CVG']);
+    expect(findSectionItemLabels('marketing', 'Envios')).toEqual([
+      'Envio de SMS Simples',
+      'Campanhas de SMS Marketing'
+    ]);
+  });
+
   it('finds direct nav items with the new labels exposed in the frontend', () => {
     expect(findMatchingNavItem('/patients')?.label).toBe('Animais');
     expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
@@ -42,6 +115,7 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/prescriptions')?.label).toBe('Prescrições');
     expect(findMatchingNavItem('/exam-orders')?.label).toBe('Esteira de Exames');
     expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
+    expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas (beta)');
     expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
     expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
   });
@@ -65,6 +139,7 @@ describe('navigation groups', () => {
         '/vaccines-dewormers',
         '/quotes',
         '/loyalty',
+        '/sales/beta',
         '/inpatient',
         '/encounters',
         '/medical-records',
