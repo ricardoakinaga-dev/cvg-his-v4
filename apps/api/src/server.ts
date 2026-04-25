@@ -44,6 +44,7 @@ import type {
 import {
   AuthenticationError,
   ForbiddenError,
+  NotFoundError,
   ValidationError,
   toErrorResponse
 } from '@cvg-his-v2/shared-errors';
@@ -375,6 +376,82 @@ function applyCorsPolicy(
   return { allowed: true };
 }
 
+type ResponsibilityTermUsageContext =
+  | 'atendimento'
+  | 'internacao'
+  | 'procedimento'
+  | 'autorizacao'
+  | 'outro';
+
+interface ResponsibilityTermSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly title: string;
+  readonly code: string | null;
+  readonly usageContext: ResponsibilityTermUsageContext;
+  readonly content: string;
+  readonly active: boolean;
+  readonly requiresOwnerSignature: boolean;
+  readonly requiresWitnessSignature: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+interface ResponsibilityTermInput {
+  readonly title?: string;
+  readonly code?: string | null;
+  readonly usageContext?: ResponsibilityTermUsageContext;
+  readonly content?: string;
+  readonly active?: boolean;
+  readonly requiresOwnerSignature?: boolean;
+  readonly requiresWitnessSignature?: boolean;
+}
+
+const responsibilityTermUsageContexts = new Set<ResponsibilityTermUsageContext>([
+  'atendimento',
+  'internacao',
+  'procedimento',
+  'autorizacao',
+  'outro'
+]);
+const responsibilityTermMaxTitleLength = 160;
+const responsibilityTermMaxCodeLength = 80;
+const responsibilityTermMaxContentLength = 20000;
+
+function normalizeResponsibilityTermUsageContext(
+  value: ResponsibilityTermUsageContext | undefined
+): ResponsibilityTermUsageContext {
+  if (!value) return 'atendimento';
+  if (!responsibilityTermUsageContexts.has(value)) {
+    throw new ValidationError('usageContext is invalid');
+  }
+  return value;
+}
+
+function normalizeResponsibilityTermTitle(value: string | undefined): string {
+  const title = requireNonEmptyString(value, 'title').trim();
+  if (title.length > responsibilityTermMaxTitleLength) {
+    throw new ValidationError(`title must have at most ${responsibilityTermMaxTitleLength} characters`);
+  }
+  return title;
+}
+
+function normalizeResponsibilityTermCode(value: string | null | undefined): string | null {
+  const code = value?.trim() || null;
+  if (code && code.length > responsibilityTermMaxCodeLength) {
+    throw new ValidationError(`code must have at most ${responsibilityTermMaxCodeLength} characters`);
+  }
+  return code;
+}
+
+function normalizeResponsibilityTermContent(value: string | undefined): string {
+  const content = requireNonEmptyString(value, 'content').trim();
+  if (content.length > responsibilityTermMaxContentLength) {
+    throw new ValidationError(`content must have at most ${responsibilityTermMaxContentLength} characters`);
+  }
+  return content;
+}
+
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
@@ -483,6 +560,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const labAnomalyDetection = new LabAnomalyDetectionService();
   const fiscal = new FiscalService();
   const mlTelemetry = new MlTelemetryService();
+  const responsibilityTerms = new Map<string, ResponsibilityTermSummary>();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -2099,6 +2177,126 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           return;
         }
 
+        if (pathname === '/responsibility-terms' && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const search = url.searchParams.get('search') ?? undefined;
+          const activeParam = url.searchParams.get('active');
+          const usageContext = url.searchParams.get('usageContext') ?? undefined;
+          const active =
+            activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
+          const items = listResponsibilityTerms(principal.user.accountId, {
+            search,
+            active,
+            usageContext
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'responsibility-terms',
+            'list',
+            'responsibility-term',
+            search ?? 'all',
+            'Responsibility terms inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/responsibility-terms' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'service.write');
+          const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
+          const term = createResponsibilityTerm(principal.user.accountId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'responsibility-terms',
+            'create',
+            'responsibility-term',
+            term.id,
+            `Responsibility term ${term.title} created`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(term));
+          return;
+        }
+
+        if (pathname.startsWith('/responsibility-terms/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
+          const term = getResponsibilityTermOrThrow(termId);
+          if (term.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Responsibility term not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'responsibility-terms',
+            'read',
+            'responsibility-term',
+            term.id,
+            `Responsibility term ${term.title} inspected`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(term));
+          return;
+        }
+
+        if (pathname.startsWith('/responsibility-terms/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'service.write');
+          const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
+          const existingTerm = getResponsibilityTermOrThrow(termId);
+          if (existingTerm.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Responsibility term not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
+          const term = updateResponsibilityTerm(termId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'responsibility-terms',
+            'update',
+            'responsibility-term',
+            term.id,
+            `Responsibility term ${term.title} updated`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(term));
+          return;
+        }
+
+        if (pathname.startsWith('/responsibility-terms/') && request.method === 'DELETE') {
+          const principal = requirePrincipal(request, 'service.write');
+          const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
+          const existingTerm = getResponsibilityTermOrThrow(termId);
+          if (existingTerm.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Responsibility term not found for current account');
+          }
+          responsibilityTerms.delete(termId);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'responsibility-terms',
+            'delete',
+            'responsibility-term',
+            termId,
+            `Responsibility term ${existingTerm.title} deleted`,
+            'high',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
+          return;
+        }
+
         // --- Access Control + Audit (delegated) ---
         if (await handleAccessControlRoutes(pathname, request, response, correlationId, {
           accessControl,
@@ -2432,6 +2630,93 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       riskLevel,
       correlationId
     });
+  }
+
+  function createResponsibilityTerm(
+    accountId: string,
+    input: ResponsibilityTermInput
+  ): ResponsibilityTermSummary {
+    const now = new Date().toISOString();
+    const title = normalizeResponsibilityTermTitle(input.title);
+    const content = normalizeResponsibilityTermContent(input.content);
+    const term: ResponsibilityTermSummary = {
+      id: createCorrelationId('term'),
+      accountId,
+      title,
+      code: normalizeResponsibilityTermCode(input.code),
+      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
+      content,
+      active: input.active ?? true,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    responsibilityTerms.set(term.id, term);
+    return term;
+  }
+
+  function updateResponsibilityTerm(
+    termId: string,
+    input: ResponsibilityTermInput
+  ): ResponsibilityTermSummary {
+    const existing = getResponsibilityTermOrThrow(termId);
+    const updated: ResponsibilityTermSummary = {
+      ...existing,
+      title: input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
+      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
+      usageContext:
+        input.usageContext !== undefined
+          ? normalizeResponsibilityTermUsageContext(input.usageContext)
+          : existing.usageContext,
+      content:
+        input.content !== undefined
+          ? normalizeResponsibilityTermContent(input.content)
+          : existing.content,
+      active: input.active ?? existing.active,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
+      updatedAt: new Date().toISOString()
+    };
+
+    responsibilityTerms.set(updated.id, updated);
+    return updated;
+  }
+
+  function getResponsibilityTermOrThrow(termId: string): ResponsibilityTermSummary {
+    const term = responsibilityTerms.get(termId);
+    if (!term) {
+      throw new NotFoundError('Responsibility term not found', { termId });
+    }
+    return term;
+  }
+
+  function listResponsibilityTerms(
+    accountId: string,
+    filters: { search?: string; active?: boolean; usageContext?: string }
+  ): ResponsibilityTermSummary[] {
+    let items = Array.from(responsibilityTerms.values()).filter((term) => term.accountId === accountId);
+
+    if (filters.active !== undefined) {
+      items = items.filter((term) => term.active === filters.active);
+    }
+
+    if (filters.usageContext && responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)) {
+      items = items.filter((term) => term.usageContext === filters.usageContext);
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (term) =>
+          term.title.toLowerCase().includes(search) ||
+          (term.code?.toLowerCase().includes(search) ?? false) ||
+          term.content.toLowerCase().includes(search)
+      );
+    }
+
+    return items.sort((a, b) => a.title.localeCompare(b.title));
   }
 }
 

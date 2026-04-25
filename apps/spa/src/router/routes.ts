@@ -43,7 +43,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('responsibility-terms', 'ResponsibilityTerms', 'Termos de Responsabilidade', 'Cadastros', '📄'),
   placeholderRoute('customer-groups', 'CustomerGroups', 'Grupos de Clientes', 'Cadastros', '👥'),
   placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
   placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
@@ -1542,6 +1541,51 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Importar Dados Serviços',
           breadcrumbParent: 'Serviços',
           icon: '⬆️'
+        }
+      },
+      {
+        path: 'responsibility-terms',
+        name: 'ResponsibilityTerms',
+        alias: ['/termos-de-responsabilidade', '/cadastros/termos-de-responsabilidade'],
+        component: () => import('@/pages/responsibility-terms/ResponsibilityTermsListPage.vue'),
+        meta: {
+          title: 'Termos de Responsabilidade',
+          breadcrumb: 'Termos de Responsabilidade',
+          breadcrumbParent: 'Cadastros',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'responsibility-terms/new',
+        name: 'ResponsibilityTermNew',
+        component: () => import('@/pages/responsibility-terms/ResponsibilityTermFormPage.vue'),
+        meta: {
+          title: 'Incluir Termo de Responsabilidade',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Termos de Responsabilidade',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'responsibility-terms/:id',
+        name: 'ResponsibilityTermDetail',
+        component: () => import('@/pages/responsibility-terms/ResponsibilityTermDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Termo',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Termos de Responsabilidade',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'responsibility-terms/:id/edit',
+        name: 'ResponsibilityTermEdit',
+        component: () => import('@/pages/responsibility-terms/ResponsibilityTermFormPage.vue'),
+        meta: {
+          title: 'Editar Termo de Responsabilidade',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Termos de Responsabilidade',
+          icon: '📄'
         }
       },
       {

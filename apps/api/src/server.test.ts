@@ -1131,6 +1131,58 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'), true);
   assert.equal(activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'), false);
 
+  const createTermResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/responsibility-terms',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      title: 'Termo de Internacao',
+      code: 'TERM-INTERNACAO-001',
+      usageContext: 'internacao',
+      content: 'Responsavel ciente dos riscos da internacao.',
+      active: true,
+      requiresOwnerSignature: true,
+      requiresWitnessSignature: false
+    }
+  });
+  assert.equal(createTermResponse.statusCode, 201);
+  const createdTerm = createTermResponse.bodyJson<{ id: string; code: string | null; usageContext: string }>();
+  assert.equal(createdTerm.code, 'TERM-INTERNACAO-001');
+  assert.equal(createdTerm.usageContext, 'internacao');
+
+  const termsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/responsibility-terms?search=TERM-INTERNACAO-001&active=true&usageContext=internacao',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(termsResponse.statusCode, 200);
+  const terms = termsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(terms.items.length, 1);
+  assert.equal(terms.items[0]?.code, 'TERM-INTERNACAO-001');
+
+  const updateTermResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/responsibility-terms/${createdTerm.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      title: 'Termo de Internacao Revisado',
+      active: false
+    }
+  });
+  assert.equal(updateTermResponse.statusCode, 200);
+  assert.equal(updateTermResponse.bodyJson<{ active: boolean; title: string }>().active, false);
+
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
     url: '/inventory?search=MED-001',
