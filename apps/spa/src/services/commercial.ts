@@ -19,6 +19,15 @@ export interface LoyaltyRedemptionSummary {
   redeemedAt: string;
 }
 
+export interface RedeemLoyaltyPointsPayload {
+  ownerId: string;
+  pointsUsed: number;
+  rewardDescription: string;
+  productQuantity?: number;
+  serviceQuantity?: number;
+  status?: LoyaltyRedemptionSummary['status'];
+}
+
 export interface PriceTableSummary {
   id: string;
   legacyId: string | null;
@@ -50,6 +59,13 @@ export async function listLoyaltyRedemptions(ownerId?: string): Promise<readonly
   const suffix = params.toString() ? `?${params.toString()}` : '';
   const payload = await apiRequest<{ items: LoyaltyRedemptionSummary[] }>(`/loyalty/redemptions${suffix}`);
   return payload.items;
+}
+
+export async function redeemLoyaltyPoints(payload: RedeemLoyaltyPointsPayload): Promise<LoyaltyRedemptionSummary> {
+  return apiRequest<LoyaltyRedemptionSummary>('/loyalty/redemptions', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function listPriceTables(filters?: { search?: string; active?: boolean }): Promise<readonly PriceTableSummary[]> {

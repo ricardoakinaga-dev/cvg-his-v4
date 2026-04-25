@@ -1,8 +1,10 @@
 <template>
   <div class="queue-page">
-    <AppPageHeader title="🏥 Fila Operacional">
+    <AppPageHeader title="Esteira de Atendimento">
       <template #subtitle>
-        <span class="muted">Atendimento &gt; Fila. Pacientes aguardando chamada, triagem ou início do atendimento.</span>
+        <span class="muted">
+          Atendimento &gt; Esteira. Controle por setor, responsável, paciente, urgência, atendimento e comanda.
+        </span>
         <span v-if="lastRefresh" class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
         <DsSpinner v-if="isRefreshing" size="sm" inline label="Atualizando..." />
       </template>
@@ -28,11 +30,50 @@
       <DsSpinner size="md" />
     </div>
 
+    <form v-else class="queue-filters" @submit.prevent="applyFilters">
+      <div class="queue-filters__field">
+        <label for="queue-sector">Setor Atual</label>
+        <select id="queue-sector" v-model="draftFilters.sector">
+          <option value="">Todas</option>
+          <option v-for="sector in sectorOptions" :key="sector" :value="sector">
+            {{ sector }}
+          </option>
+        </select>
+      </div>
+      <div class="queue-filters__field">
+        <label for="queue-responsible">Profissional Responsável</label>
+        <input
+          id="queue-responsible"
+          v-model="draftFilters.responsible"
+          type="search"
+          placeholder="Nome ou equipe"
+        />
+      </div>
+      <div class="queue-filters__field">
+        <label for="queue-client">Cliente</label>
+        <input id="queue-client" v-model="draftFilters.client" type="search" placeholder="Tutor" />
+      </div>
+      <div class="queue-filters__field">
+        <label for="queue-animal">ID Animal</label>
+        <input
+          id="queue-animal"
+          v-model="draftFilters.patientId"
+          type="search"
+          placeholder="ID ou parte do ID"
+        />
+      </div>
+      <label class="queue-filters__check">
+        <input v-model="draftFilters.includeTerminal" type="checkbox" />
+        <span>Todas</span>
+      </label>
+      <DsButton variant="primary" type="submit">Pesquisar</DsButton>
+    </form>
+
     <EmptyState
-      v-else-if="entries.length === 0"
+      v-if="!loading && filteredRows.length === 0"
       icon="🏥"
-      title="Fila operacional vazia"
-      description="Nenhum paciente aguardando. Use a agenda para confirmar presença ou faça um check-in rápido para alimentar a esteira."
+      title="Nenhuma comanda nesta esteira"
+      description="Nenhum paciente encontrado para os filtros atuais. Use Todas para incluir finalizados e cancelados ou faça um check-in rápido."
     >
       <template #action>
         <div class="queue-page__empty-actions">
@@ -42,74 +83,112 @@
       </template>
     </EmptyState>
 
-    <div v-else class="table-wrapper">
+    <div v-else-if="!loading" class="table-wrapper table-wrapper--wide">
       <table class="data-table">
         <caption class="sr-only">
-          Fila operacional de pacientes
+          Esteira operacional de pacientes
         </caption>
         <thead>
           <tr>
-            <th>Prioridade</th>
-            <th>Paciente</th>
-            <th>Check-in</th>
-            <th>Status</th>
-            <th>Tempo de Espera</th>
+            <th>Setor Atual</th>
+            <th>Recebido em</th>
+            <th>Enviado por</th>
+            <th>Cliente</th>
+            <th>Animal</th>
+            <th>Em atendimento com</th>
+            <th>Atendimento</th>
+            <th>Urgência</th>
+            <th>Comanda</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in sortedEntries" :key="entry.id">
+          <tr v-for="row in filteredRows" :key="row.entry.id">
             <td>
-              <DsBadge :variant="priorityVariant(entry.priority)" size="sm">
-                {{ priorityLabel(entry.priority) }}
-              </DsBadge>
+              <div class="queue-sector">
+                <strong>{{ row.sector }}</strong>
+                <span>{{ queueStatusLabel(row.entry.status) }}</span>
+              </div>
             </td>
             <td>
-              <span v-if="patientNameCache[entry.patientId]">{{
-                patientNameCache[entry.patientId]
-              }}</span>
+              <span>{{ formatTime(row.entry.checkedInAt) }}</span>
+              <small>{{ waitTime(row.entry.checkedInAt) }}</small>
+            </td>
+            <td>{{ row.sentBy }}</td>
+            <td>
+              <span v-if="ownerNameCache[row.entry.ownerId]">{{ ownerNameCache[row.entry.ownerId] }}</span>
               <DsSpinner v-else size="sm" inline />
             </td>
-            <td>{{ formatTime(entry.checkedInAt) }}</td>
             <td>
-              <DsBadge :variant="queueStatusVariant(entry.status)" size="sm">
-                {{ queueStatusLabel(entry.status) }}
+              <div class="queue-patient">
+                <strong v-if="patientNameCache[row.entry.patientId]">{{
+                  patientNameCache[row.entry.patientId]
+                }}</strong>
+                <DsSpinner v-else size="sm" inline />
+                <span>{{ row.entry.patientId }}</span>
+              </div>
+            </td>
+            <td>{{ row.responsible }}</td>
+            <td>
+              <a
+                v-if="row.entry.encounterId"
+                class="queue-link"
+                :href="`/encounters/${row.entry.encounterId}`"
+              >
+                Abrir
+              </a>
+              <span v-else>—</span>
+            </td>
+            <td>
+              <DsBadge :variant="priorityVariant(row.entry.priority)" size="sm">
+                {{ priorityLabel(row.entry.priority) }}
               </DsBadge>
             </td>
-            <td>{{ waitTime(entry.checkedInAt) }}</td>
+            <td>
+              <a class="queue-link" href="/counter-sales">Comandas</a>
+            </td>
             <td class="table__actions-col">
               <div class="actions-group">
                 <DsButton
-                  v-if="entry.status === 'waiting'"
+                  v-if="row.entry.status === 'waiting'"
                   variant="primary"
                   size="sm"
-                  :loading="callingId === entry.id"
-                  :disabled="callingId === entry.id"
-                  @click="handleCall(entry.id)"
+                  :loading="callingId === row.entry.id"
+                  :disabled="callingId === row.entry.id"
+                  @click="handleCall(row.entry.id)"
                 >
-                  {{ callingId === entry.id ? 'Chamando...' : 'Chamar' }}
+                  {{ callingId === row.entry.id ? 'Chamando...' : 'Chamar' }}
                 </DsButton>
                 <DsButton
-                  v-if="canHandleEncounter(entry)"
+                  v-if="canHandleEncounter(row.entry)"
                   variant="success"
                   size="sm"
-                  :loading="startingCareId === entry.id"
-                  :disabled="startingCareId === entry.id"
-                  @click="handleEncounterFlow(entry)"
+                  :loading="startingCareId === row.entry.id"
+                  :disabled="startingCareId === row.entry.id"
+                  @click="handleEncounterFlow(row.entry)"
                 >
                   {{
-                    startingCareId === entry.id ? 'Processando...' : encounterActionLabel(entry)
+                    startingCareId === row.entry.id ? 'Processando...' : encounterActionLabel(row.entry)
                   }}
                 </DsButton>
                 <DsButton
-                  v-if="canNoShow(entry.status)"
+                  v-if="row.entry.encounterId"
+                  tag="a"
+                  :href="`/medical-records/${row.entry.encounterId}`"
+                  variant="secondary"
+                  size="sm"
+                >
+                  Prontuário
+                </DsButton>
+                <DsButton
+                  v-if="canNoShow(row.entry.status)"
                   variant="danger"
                   size="sm"
-                  :loading="noShowId === entry.id"
-                  :disabled="noShowId === entry.id"
-                  @click="openNoShowConfirm(entry.id)"
+                  :loading="noShowId === row.entry.id"
+                  :disabled="noShowId === row.entry.id"
+                  @click="openNoShowConfirm(row.entry.id)"
                 >
-                  {{ noShowId === entry.id ? 'Registrando...' : 'No-Show' }}
+                  {{ noShowId === row.entry.id ? 'Registrando...' : 'No-Show' }}
                 </DsButton>
               </div>
             </td>
@@ -236,6 +315,49 @@ const currentInterval = ref(baseInterval);
 const pollTimer = ref<ReturnType<typeof setInterval> | null>(null);
 
 const patientNameCache = ref<Record<string, string>>({});
+const ownerNameCache = ref<Record<string, string>>({});
+
+interface QueueFilters {
+  sector: string;
+  responsible: string;
+  client: string;
+  patientId: string;
+  includeTerminal: boolean;
+}
+
+interface EsteiraRow {
+  entry: QueueEntrySummary;
+  sector: string;
+  sentBy: string;
+  responsible: string;
+}
+
+const VETUS_SECTORS = [
+  'Não Definido',
+  'ADMINISTRAÇÃO',
+  'BANHO E TOSA',
+  'CIRURGIA',
+  'CLINICA',
+  'DIAGNOSTICO POR IMAGEM',
+  'ESPECIALISTAS',
+  'Estoque geral',
+  'Farmacia',
+  'INTERNAÇÃO',
+  'LABORATÓRIO',
+  'MANUTENÇÃO (LIMPEZA/COPA)',
+  'RECEPÇÃO'
+];
+
+const emptyFilters = (): QueueFilters => ({
+  sector: '',
+  responsible: '',
+  client: '',
+  patientId: '',
+  includeTerminal: true
+});
+
+const draftFilters = ref<QueueFilters>(emptyFilters());
+const appliedFilters = ref<QueueFilters>(emptyFilters());
 
 const PRIORITY_ORDER: Record<QueuePriority, number> = {
   critical: 0,
@@ -251,6 +373,105 @@ const sortedEntries = computed(() => {
     return new Date(a.checkedInAt).getTime() - new Date(b.checkedInAt).getTime();
   });
 });
+
+const esteiraRows = computed<EsteiraRow[]>(() =>
+  sortedEntries.value.map((entry) => ({
+    entry,
+    sector: sectorForEntry(entry),
+    sentBy: sentByForEntry(entry),
+    responsible: responsibleForEntry(entry)
+  }))
+);
+
+const sectorOptions = computed(() => {
+  const used = esteiraRows.value.map((row) => row.sector);
+  return [...new Set([...VETUS_SECTORS, ...used])];
+});
+
+const filteredRows = computed(() => {
+  const filters = appliedFilters.value;
+  const responsibleQuery = normalizeSearch(filters.responsible);
+  const clientQuery = normalizeSearch(filters.client);
+  const patientQuery = normalizeSearch(filters.patientId);
+
+  return esteiraRows.value.filter((row) => {
+    if (!filters.includeTerminal && ['completed', 'cancelled'].includes(row.entry.status)) {
+      return false;
+    }
+
+    if (filters.sector && row.sector !== filters.sector) {
+      return false;
+    }
+
+    if (responsibleQuery && !normalizeSearch(row.responsible).includes(responsibleQuery)) {
+      return false;
+    }
+
+    const ownerName = ownerNameCache.value[row.entry.ownerId] ?? '';
+    if (clientQuery && !normalizeSearch(ownerName).includes(clientQuery)) {
+      return false;
+    }
+
+    const patientName = patientNameCache.value[row.entry.patientId] ?? '';
+    const patientHaystack = normalizeSearch(`${row.entry.patientId} ${patientName}`);
+    if (patientQuery && !patientHaystack.includes(patientQuery)) {
+      return false;
+    }
+
+    return true;
+  });
+});
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function applyFilters() {
+  appliedFilters.value = { ...draftFilters.value };
+}
+
+function sectorForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: 'RECEPÇÃO',
+    called: 'RECEPÇÃO',
+    in_triage: 'CLINICA',
+    in_care: 'CLINICA',
+    observation: 'INTERNAÇÃO',
+    completed: 'Não Definido',
+    cancelled: 'Não Definido'
+  };
+  return map[entry.status] ?? 'Não Definido';
+}
+
+function sentByForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: 'Recepção',
+    called: 'Recepção',
+    in_triage: 'Recepção',
+    in_care: 'Triagem',
+    observation: 'Clínica',
+    completed: 'Clínica',
+    cancelled: 'Recepção'
+  };
+  return map[entry.status] ?? 'Recepção';
+}
+
+function responsibleForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: '—',
+    called: 'Equipe de triagem',
+    in_triage: 'Equipe de triagem',
+    in_care: 'Equipe clínica',
+    observation: 'Equipe de internação',
+    completed: '—',
+    cancelled: '—'
+  };
+  return map[entry.status] ?? '—';
+}
 
 function queueStatusLabel(status: QueueStatus): string {
   return QUEUE_STATUS_LABELS[status] || status;
@@ -545,6 +766,9 @@ async function loadQueue(background = false) {
             entry.patientId
           );
         }
+        if (!ownerNameCache.value[entry.ownerId]) {
+          ownerNameCache.value[entry.ownerId] = await entityCache.getOwnerName(entry.ownerId);
+        }
       })
     );
     lastRefresh.value = new Date();
@@ -616,6 +840,84 @@ defineExpose({
 .queue-page {
   max-width: 1280px;
 }
+
+.queue-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) repeat(3, minmax(150px, 1fr)) auto auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.queue-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.queue-filters__field label,
+.queue-filters__check {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary, #475569);
+}
+
+.queue-filters__field input,
+.queue-filters__field select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 6px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+}
+
+.queue-filters__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.table-wrapper--wide {
+  overflow-x: auto;
+}
+
+.queue-sector,
+.queue-patient {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 128px;
+}
+
+.queue-sector strong,
+.queue-patient strong {
+  font-size: 13px;
+  color: var(--color-text, #0f172a);
+}
+
+.queue-sector span,
+.queue-patient span,
+td small {
+  font-size: 12px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.queue-link {
+  font-weight: 700;
+  color: var(--color-primary, #2563eb);
+  text-decoration: none;
+}
+
+.queue-link:hover {
+  text-decoration: underline;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -647,5 +949,17 @@ defineExpose({
   font-size: 14px;
   line-height: 1.6;
   color: var(--color-text-secondary, #475569);
+}
+
+@media (max-width: 1100px) {
+  .queue-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .queue-filters {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

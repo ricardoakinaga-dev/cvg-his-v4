@@ -81,6 +81,20 @@ const mockMedicalRecords = [
 
 const mockMedicalRecordEntries = [
   {
+    id: 'entry-0',
+    accountId: 'acc-1',
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    entryType: 'anamnesis' as const,
+    title: 'Anamnese ortopédica',
+    content: 'Tutor relata claudicação após passeio.',
+    authoredByUserId: 'usr-1',
+    version: 1,
+    createdAt: '2024-01-03T09:06:00Z',
+    updatedAt: '2024-01-03T09:06:00Z'
+  },
+  {
     id: 'entry-1',
     accountId: 'acc-1',
     medicalRecordId: 'mr-1',
@@ -107,6 +121,20 @@ const mockMedicalRecordEntries = [
     version: 1,
     createdAt: '2024-01-03T09:20:00Z',
     updatedAt: '2024-01-03T09:20:00Z'
+  },
+  {
+    id: 'entry-3',
+    accountId: 'acc-1',
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    entryType: 'progress_note' as const,
+    title: 'Histórico clínico longitudinal',
+    content: 'Paciente com histórico ortopédico recorrente.',
+    authoredByUserId: 'usr-1',
+    version: 1,
+    createdAt: '2024-01-03T09:30:00Z',
+    updatedAt: '2024-01-03T09:30:00Z'
   }
 ];
 
@@ -234,6 +262,44 @@ const mockQuoteCreate = vi.fn().mockResolvedValue({
   id: 'quote-2',
   number: 'Q-101'
 });
+const mockPrescriptionListByPatient = vi.fn().mockResolvedValue([
+  {
+    ...mockMedicalRecordEntries[1],
+    medicationName: 'Anti-inflamatório',
+    dosage: '1 comprimido',
+    frequency: '12/12h'
+  }
+]);
+const mockAttachmentList = vi.fn().mockResolvedValue([
+  {
+    id: 'att-1',
+    accountId: 'acc-1',
+    linkedEntityType: 'medical_record',
+    linkedEntityId: 'mr-1',
+    category: 'image',
+    fileName: 'lesao-pata.png',
+    storageKey: 'local/lesao-pata.png',
+    mimeType: 'image/png',
+    checksum: 'sha256:image',
+    source: 'upload',
+    uploadedByUserId: 'usr-1',
+    createdAt: '2024-01-03T09:25:00Z'
+  },
+  {
+    id: 'att-2',
+    accountId: 'acc-1',
+    linkedEntityType: 'medical_record',
+    linkedEntityId: 'mr-1',
+    category: 'lab',
+    fileName: 'hemograma.pdf',
+    storageKey: 'local/hemograma.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'sha256:lab',
+    source: 'upload',
+    uploadedByUserId: 'usr-1',
+    createdAt: '2024-01-03T09:26:00Z'
+  }
+]);
 const mockGetOwnerName = vi.fn().mockResolvedValue('João Silva');
 
 vi.mock('@/services/patient', () => ({
@@ -293,6 +359,18 @@ vi.mock('@/services/quotes', () => ({
   }
 }));
 
+vi.mock('@/services/prescriptions', () => ({
+  prescriptionsService: {
+    listByPatient: (...args: unknown[]) => mockPrescriptionListByPatient(...args)
+  }
+}));
+
+vi.mock('@/services/attachments', () => ({
+  attachmentService: {
+    list: (...args: unknown[]) => mockAttachmentList(...args)
+  }
+}));
+
 vi.mock('@/composables/useEntityCache', () => ({
   useEntityCache: () => ({
     getOwnerName: (...args: unknown[]) => mockGetOwnerName(...args)
@@ -341,6 +419,44 @@ describe('PatientDetailPage', () => {
       id: 'quote-2',
       number: 'Q-101'
     });
+    mockPrescriptionListByPatient.mockResolvedValue([
+      {
+        ...mockMedicalRecordEntries[1],
+        medicationName: 'Anti-inflamatório',
+        dosage: '1 comprimido',
+        frequency: '12/12h'
+      }
+    ]);
+    mockAttachmentList.mockResolvedValue([
+      {
+        id: 'att-1',
+        accountId: 'acc-1',
+        linkedEntityType: 'medical_record',
+        linkedEntityId: 'mr-1',
+        category: 'image',
+        fileName: 'lesao-pata.png',
+        storageKey: 'local/lesao-pata.png',
+        mimeType: 'image/png',
+        checksum: 'sha256:image',
+        source: 'upload',
+        uploadedByUserId: 'usr-1',
+        createdAt: '2024-01-03T09:25:00Z'
+      },
+      {
+        id: 'att-2',
+        accountId: 'acc-1',
+        linkedEntityType: 'medical_record',
+        linkedEntityId: 'mr-1',
+        category: 'lab',
+        fileName: 'hemograma.pdf',
+        storageKey: 'local/hemograma.pdf',
+        mimeType: 'application/pdf',
+        checksum: 'sha256:lab',
+        source: 'upload',
+        uploadedByUserId: 'usr-1',
+        createdAt: '2024-01-03T09:26:00Z'
+      }
+    ]);
     mockGetOwnerName.mockResolvedValue('João Silva');
   });
 
@@ -376,6 +492,25 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Snapshot CRM do tutor');
     expect(wrapper.text()).toContain('Pacote ativo sugerido');
     expect(wrapper.text()).toContain('Mensagens contextuais por animal');
+    expect(wrapper.text()).toContain('Anamneses');
+    expect(wrapper.text()).toContain('Anamnese ortopédica');
+    expect(wrapper.text()).toContain('Vacinas e Vermífugos');
+    expect(wrapper.text()).toContain('Agenda');
+    expect(wrapper.text()).toContain('Exames');
+    expect(wrapper.text()).toContain('hemograma.pdf');
+    expect(wrapper.text()).toContain('Internação');
+    expect(wrapper.text()).toContain('Receituário');
+    expect(wrapper.text()).toContain('Anti-inflamatório');
+    expect(wrapper.text()).toContain('Gráfico de peso');
+    expect(wrapper.text()).toContain('Peso atual: 30.5 kg');
+    expect(wrapper.text()).toContain('Imagens');
+    expect(wrapper.text()).toContain('lesao-pata.png');
+    expect(wrapper.text()).toContain('Histórico Clínico');
+    expect(wrapper.text()).toContain('Paciente com histórico ortopédico recorrente.');
+
+    expect(mockMedicalRecordEntriesList).toHaveBeenCalledWith('enc-1');
+    expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
+    expect(mockAttachmentList).toHaveBeenCalledWith('medical_record', 'mr-1');
 
     const newEncounterLink = wrapper
       .findAll('a')

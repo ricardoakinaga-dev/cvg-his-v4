@@ -137,6 +137,7 @@ const executionsLoading = ref(false);
 const submitting = ref(false);
 const error = ref('');
 const successMessage = ref('');
+const workflowContext = readWorkflowContext();
 
 const form = ref({
   medicationName: '',
@@ -194,7 +195,10 @@ async function loadData() {
     const loadedEncounters = await encounterService.list();
     encounters.value = loadedEncounters;
     if (!selectedEncounterId.value && encounters.value.length > 0) {
-      selectedEncounterId.value = encounters.value[0].id;
+      selectedEncounterId.value =
+        encounters.value.find((encounter) => encounter.id === workflowContext.encounterId)?.id ??
+        encounters.value.find((encounter) => encounter.patientId === workflowContext.patientId)?.id ??
+        encounters.value[0].id;
     }
     await refreshEncounterData();
   } catch (err: unknown) {
@@ -257,6 +261,19 @@ async function submitPrescription() {
 }
 
 onMounted(loadData);
+
+function readWorkflowContext() {
+  if (typeof window === 'undefined') {
+    return { encounterId: '', patientId: '', ownerId: '' };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    encounterId: params.get('encounterId')?.trim() || '',
+    patientId: params.get('patientId')?.trim() || '',
+    ownerId: params.get('ownerId')?.trim() || ''
+  };
+}
 </script>
 
 <style scoped>

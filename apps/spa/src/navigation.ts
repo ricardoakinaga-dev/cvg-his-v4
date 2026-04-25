@@ -27,19 +27,16 @@ export interface AppNavLocation {
 
 export const navGroups: AppNavGroup[] = [
   {
-    id: 'dashboards',
-    label: 'Dashboards',
-    icon: '📊',
-    description: 'Painéis executivos, indicadores e visões consolidadas do negócio',
+    id: 'inicio',
+    label: 'Início',
+    icon: '🏠',
+    description: 'Entrada operacional, atalhos e indicadores de abertura do dia',
     sections: [
       {
-        id: 'dashboards-paineis',
-        label: 'Painéis',
+        id: 'inicio-principal',
+        label: 'Início',
         items: [
-          { label: 'Dashboard Geral', path: '/', icon: '🏠', keywords: ['inicio', 'home', 'painel'] },
-          { label: 'Financeiro', path: '/dashboards/financial', icon: '💰', keywords: ['dashboard financeiro', 'kpi'] },
-          { label: 'Multifilial', path: '/dashboards/multifilial', icon: '🏢', keywords: ['multifilial', 'filiais'] },
-          { label: 'Curva ABC', path: '/dashboards/curve-abc', icon: '📈', keywords: ['curva abc', 'abc'] }
+          { label: 'Início', path: '/', icon: '🏠', keywords: ['inicio', 'home', 'painel'] }
         ]
       }
     ]
@@ -55,15 +52,15 @@ export const navGroups: AppNavGroup[] = [
         label: 'Atendimentos',
         items: [
           { label: 'Agenda', path: '/appointments', icon: '📅', keywords: ['agenda', 'agendamentos'] },
-          { label: 'Disponibilidade', path: '/appointments/availability', icon: '🕒', keywords: ['availability', 'disponibilidade'] },
-          { label: 'Tipos de Agendamento', path: '/appointments/types', icon: '🧷', keywords: ['appointment types', 'tipos de agendamento'] },
           { label: 'Comandas', path: '/counter-sales', icon: '🧾', keywords: ['comandas', 'pdv', 'balcao'] },
           { label: 'Vendas', path: '/sales', icon: '💸', keywords: ['vendas', 'comercial'] },
           { label: 'Pacotes', path: '/packages', icon: '📦', keywords: ['pacotes', 'bundles'] },
           { label: 'Esteira', path: '/queue', icon: '🏥', keywords: ['esteira', 'fila', 'operacional'] },
+          { label: 'Esteira de Exames', path: '/exam-orders', icon: '🧪', keywords: ['esteira de exames', 'exames'] },
+          { label: 'Vacinas e Vermífugos', path: '/vaccines-dewormers', icon: '💉', keywords: ['vacinas', 'vermifugos'] },
           { label: 'Orçamentos', path: '/quotes', icon: '📝', keywords: ['orcamentos', 'quotes'] },
-          { label: 'Fidelidade', path: '/loyalty', icon: '🎯', keywords: ['fidelidade', 'pontos'] },
-          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] }
+          { label: 'Resgate de Pontos', path: '/loyalty', icon: '🎯', keywords: ['fidelidade', 'pontos', 'resgate'] },
+          { label: 'Vendas (beta)', path: '/sales', icon: '💸', keywords: ['vendas beta'] }
         ]
       },
       {
@@ -81,42 +78,27 @@ export const navGroups: AppNavGroup[] = [
       },
       {
         id: 'atendimento-internacao',
-        label: 'Hospital',
+        label: 'Internação',
         items: [
+          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] },
           { label: 'Mapa de Leitos', path: '/inpatient/board', icon: '🗺️', keywords: ['mapa de leitos', 'bed board'] },
-          { label: 'Setores', path: '/sectors', icon: '🏢', keywords: ['setores', 'alas'] },
-          { label: 'Leitos', path: '/beds', icon: '🛏️', keywords: ['leitos', 'camas'] }
+          { label: 'Boxes de Internação', path: '/beds', icon: '🛏️', keywords: ['boxes', 'leitos', 'camas'] }
         ]
-      }
-    ]
-  },
-  {
-    id: 'cadastros',
-    label: 'Cadastros',
-    icon: '🗂️',
-    description: 'Cadastros mestres e tabelas auxiliares do ERP',
-    sections: [
+      },
       {
-        id: 'cadastros-principais',
+        id: 'atendimento-cadastros',
         label: 'Cadastros',
         items: [
           { label: 'Animais', path: '/patients', icon: '🐾', keywords: ['animais', 'pets', 'pacientes'] },
           { label: 'Clientes', path: '/owners', icon: '👤', keywords: ['clientes', 'tutores'] },
           { label: 'Serviços', path: '/services', icon: '🛠️', keywords: ['servicos', 'catalogo'] },
+          { label: 'Importar Dados Serviços', path: '/services/import', icon: '⬆️', keywords: ['importar servicos'] },
+          { label: 'Termos de Responsabilidade', path: '/responsibility-terms', icon: '📄', keywords: ['termos', 'responsabilidade'] },
           { label: 'Raças', path: '/breeds', icon: '🧬', keywords: ['racas', 'breed'] },
           { label: 'Espécies', path: '/species', icon: '🦴', keywords: ['especies', 'species'] },
           { label: 'Cores', path: '/coat-colors', icon: '🎨', keywords: ['cores', 'pelagem'] },
+          { label: 'Grupos de Clientes', path: '/customer-groups', icon: '👥', keywords: ['grupos de clientes'] },
           { label: 'Webhooks', path: '/webhooks', icon: '🔗', keywords: ['webhooks', 'integracoes'] }
-        ]
-      },
-      {
-        id: 'cadastros-estoque',
-        label: 'Cadastros Auxiliares',
-        items: [
-          { label: 'Fornecedores', path: '/suppliers', icon: '🚚', keywords: ['fornecedores', 'compras'] },
-          { label: 'Fabricantes', path: '/manufacturers', icon: '🏭', keywords: ['fabricantes', 'marcas'] },
-          { label: 'Grupos de Produto', path: '/product-groups', icon: '🗂️', keywords: ['grupos de produto', 'categorias'] },
-          { label: 'Estoques', path: '/warehouses', icon: '🏬', keywords: ['estoques', 'almoxarifado', 'depositos'] }
         ]
       }
     ]
@@ -133,12 +115,9 @@ export const navGroups: AppNavGroup[] = [
         items: [
           { label: 'Exames', path: '/laboratory/orders', icon: '🧪', keywords: ['exames', 'pedidos'] },
           { label: 'Laudos', path: '/laboratory/results', icon: '📋', keywords: ['laudos', 'resultados'] },
-          { label: 'Pedidos API', path: '/exam-orders', icon: '🧾', keywords: ['exam-orders', 'pedidos api'] },
-          { label: 'Resultados API', path: '/exam-results', icon: '🧪', keywords: ['exam-results', 'resultados api'] },
           { label: 'Hemogramas', path: '/laboratory/hemograms', icon: '🩸', keywords: ['hemogramas', 'hematologia'] },
           { label: 'Urina', path: '/laboratory/urinalysis', icon: '💧', keywords: ['urina', 'urinario'] },
           { label: 'Bioquímico', path: '/laboratory/biochemistry', icon: '⚗️', keywords: ['bioquimico', 'bioquimica'] },
-          { label: 'Equipamentos', path: '/laboratory/equipment', icon: '🔧', keywords: ['equipamentos', 'analisadores'] },
           { label: 'Central Diagnóstica', path: '/diagnostics', icon: '🧫', keywords: ['diagnostica', 'diagnosticos'] }
         ]
       },
@@ -146,9 +125,19 @@ export const navGroups: AppNavGroup[] = [
         id: 'laboratorio-configuracao',
         label: 'Cadastros',
         items: [
-          { label: 'Hub do Laboratório', path: '/laboratory', icon: '🔬', keywords: ['hub', 'laboratorio'] },
+          { label: 'Equipamentos', path: '/laboratory/equipment', icon: '🔧', keywords: ['equipamentos', 'analisadores'] },
           { label: 'Tipos de Laudo', path: '/laboratory/report-types', icon: '📄', keywords: ['tipos de laudo', 'templates'] },
-          { label: 'Valores de Referência', path: '/laboratory/reference-values', icon: '📈', keywords: ['referencia', 'faixas'] }
+          { label: 'Vlr. Ref. Hemograma', path: '/laboratory/hemogram-reference-values', icon: '📈', keywords: ['referencia hemograma'] },
+          { label: 'Vlr. Ref. Bioquímico', path: '/laboratory/biochemistry-reference-values', icon: '⚗️', keywords: ['referencia bioquimico'] }
+        ]
+      },
+      {
+        id: 'laboratorio-integracoes',
+        label: 'Integrações',
+        items: [
+          { label: 'Hub do Laboratório', path: '/laboratory', icon: '🔬', keywords: ['hub', 'laboratorio'] },
+          { label: 'Pedidos API', path: '/exam-orders', icon: '🧾', keywords: ['exam-orders', 'pedidos api'] },
+          { label: 'Resultados API', path: '/exam-results', icon: '🧪', keywords: ['exam-results', 'resultados api'] }
         ]
       }
     ]
@@ -163,48 +152,47 @@ export const navGroups: AppNavGroup[] = [
         id: 'estoque-operacao',
         label: 'Controles',
         items: [
-          { label: 'Estoque', path: '/inventory', icon: '📦', keywords: ['estoque', 'inventario'] },
-          { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['produtos', 'catalogo'] },
-          { label: 'Tabelas de Preço', path: '/tabelas-de-preco', icon: '🏷️', keywords: ['precos', 'tabelas de preco'] },
-          { label: 'Pontos de Venda', path: '/pontos-de-venda', icon: '🧾', keywords: ['pdv', 'pontos de venda', 'sincronizacao'] },
-          { label: 'NF', path: '/inventory/nf', icon: '🧾', keywords: ['nf', 'nota fiscal'] },
-          { label: 'Transações', path: '/inventory/movements', icon: '📥', keywords: ['transacoes', 'movimentacoes'] },
-          { label: 'Farmácia', path: '/inventory/pharmacy', icon: '💊', keywords: ['farmacia', 'medicamentos'] },
-          { label: 'Validade', path: '/inventory/validity', icon: '📅', keywords: ['validade', 'lotes'] },
-          { label: 'Auditoria', path: '/inventory/audit', icon: '🧾', keywords: ['auditoria', 'inventario'] },
+          { label: 'Consulta de Preços', path: '/inventory/price-consultation', icon: '🔎', keywords: ['consulta de precos'] },
+          { label: 'Entrada de Nota Fiscal', path: '/inventory/nf', icon: '🧾', keywords: ['nf', 'nota fiscal'] },
+          { label: 'Transação no Estoque', path: '/inventory/movements', icon: '📥', keywords: ['transacoes', 'movimentacoes'] },
+          { label: 'Requisição à Farmácia', path: '/inventory/pharmacy', icon: '💊', keywords: ['farmacia', 'medicamentos'] },
+          { label: 'Validade de Produtos', path: '/inventory/validity', icon: '📅', keywords: ['validade', 'lotes'] },
+          { label: 'Auditoria de Estoque', path: '/inventory/audit', icon: '🧾', keywords: ['auditoria', 'inventario'] },
+          { label: 'Auditoria de Preços', path: '/inventory/price-audit', icon: '🏷️', keywords: ['auditoria de precos'] },
+          { label: 'Transferência entre Estoques', path: '/inventory/transfers', icon: '🔄', keywords: ['transferencias'] },
           { label: 'Compras', path: '/inventory/purchases', icon: '🛒', keywords: ['compras', 'pedidos'] },
-          { label: 'Transferências', path: '/inventory/transfers', icon: '🔄', keywords: ['transferencias'] }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'fiscal',
-    label: 'Fiscal',
-    icon: '📋',
-    description: 'Tributação, tabelas fiscais e conformidade documental',
-    sections: [
-      {
-        id: 'fiscal-tributos',
-        label: 'Tributos',
-        items: [
-          { label: 'Hub Fiscal', path: '/fiscal', icon: '📋', keywords: ['hub fiscal', 'fiscal'] },
-          { label: 'ICMS', path: '/fiscal/icms', icon: '📊', keywords: ['icms'] },
-          { label: 'IPI', path: '/fiscal/ipi', icon: '🏷️', keywords: ['ipi'] },
-          { label: 'PIS', path: '/fiscal/pis', icon: '📈', keywords: ['pis'] },
-          { label: 'COFINS', path: '/fiscal/cofins', icon: '📉', keywords: ['cofins'] },
-          { label: 'CFOP', path: '/fiscal/cfop', icon: '🔢', keywords: ['cfop'] },
-          { label: 'NFS-e', path: '/fiscal/nfse', icon: '📄', keywords: ['nfse'] },
-          { label: 'IBS/CBS', path: '/fiscal/ibs-cbs', icon: '🧮', keywords: ['ibs', 'cbs'] }
+          { label: 'Reajuste de Preços', path: '/inventory/price-adjustments', icon: '📈', keywords: ['reajuste de precos'] },
+          { label: 'Coletores de Dados', path: '/inventory/data-collectors', icon: '📟', keywords: ['coletores'] }
         ]
       },
       {
-        id: 'fiscal-avancado',
-        label: 'Cadastros Fiscais',
+        id: 'estoque-cadastros',
+        label: 'Cadastros',
         items: [
-          { label: 'PIS / COFINS', path: '/fiscal/pis-cofins', icon: '📈', keywords: ['pis cofins', 'fiscal consolidado'] },
-          { label: 'IBPT / NCM', path: '/fiscal/ncm', icon: '🏷️', keywords: ['ncm', 'ibpt'] },
-          { label: 'Matriz ICMS', path: '/fiscal/icms-matrix', icon: '🧮', keywords: ['matriz icms', 'regras'] }
+          { label: 'Produtos', path: '/products', icon: '🏷️', keywords: ['produtos', 'catalogo'] },
+          { label: 'Importar Dados Produtos', path: '/products/import', icon: '⬆️', keywords: ['importar produtos'] },
+          { label: 'Fornecedores e Despesas', path: '/suppliers', icon: '🚚', keywords: ['fornecedores', 'despesas'] },
+          { label: 'Estoques', path: '/warehouses', icon: '🏬', keywords: ['estoques', 'almoxarifado', 'depositos'] },
+          { label: 'Fabricantes', path: '/manufacturers', icon: '🏭', keywords: ['fabricantes', 'marcas'] },
+          { label: 'Grupos de Produtos', path: '/product-groups', icon: '🗂️', keywords: ['grupos de produto', 'categorias'] },
+          { label: 'Setores da Empresa', path: '/company-sectors', icon: '🏢', keywords: ['setores da empresa'] },
+          { label: 'Unidades de Medida', path: '/measurement-units', icon: '📏', keywords: ['unidades de medida'] },
+          { label: 'Tabelas de Preço', path: '/tabelas-de-preco', icon: '🏷️', keywords: ['precos', 'tabelas de preco'] },
+          { label: 'Ponto de Venda', path: '/pontos-de-venda', icon: '🧾', keywords: ['pdv', 'pontos de venda', 'sincronizacao'] }
+        ]
+      },
+      {
+        id: 'estoque-fiscal',
+        label: 'Configurações Fiscais',
+        items: [
+          { label: 'Tabela ICMS', path: '/fiscal/icms', icon: '📊', keywords: ['icms'] },
+          { label: 'Tabela IPI', path: '/fiscal/ipi', icon: '🏷️', keywords: ['ipi'] },
+          { label: 'Tabela PIS', path: '/fiscal/pis', icon: '📈', keywords: ['pis'] },
+          { label: 'Tabela COFINS', path: '/fiscal/cofins', icon: '📉', keywords: ['cofins'] },
+          { label: 'Tabela CFOP', path: '/fiscal/cfop', icon: '🔢', keywords: ['cfop'] },
+          { label: 'Tabela NFS-e', path: '/fiscal/nfse', icon: '📄', keywords: ['nfse'] },
+          { label: 'Matriz Estado ICMS', path: '/fiscal/icms-matrix', icon: '🧮', keywords: ['matriz icms', 'regras'] },
+          { label: 'Tabela IBS/CBS', path: '/fiscal/ibs-cbs', icon: '🧮', keywords: ['ibs', 'cbs'] }
         ]
       }
     ]
@@ -216,27 +204,52 @@ export const navGroups: AppNavGroup[] = [
     description: 'Recebíveis, pagamentos, caixa e fluxo financeiro',
     sections: [
       {
-        id: 'financeiro-operacao',
-        label: 'Operação Financeira',
+        id: 'financeiro-gaveta',
+        label: 'Gaveta',
+        items: [
+          { label: 'Gaveta', path: '/cash', icon: '🧾', keywords: ['caixa', 'gaveta'] }
+        ]
+      },
+      {
+        id: 'financeiro-controles',
+        label: 'Controles',
         items: [
           { label: 'Contas a Receber', path: '/billing', icon: '💵', keywords: ['receber', 'recebiveis', 'billing'] },
           { label: 'Contas a Pagar', path: '/finance/accounts-payable', icon: '💸', keywords: ['pagar', 'fornecedores'] },
-          { label: 'Caixa', path: '/cash', icon: '🧾', keywords: ['caixa', 'gaveta'] },
-          { label: 'Split', path: '/finance/split', icon: '🧩', keywords: ['split', 'repasse'] },
-          { label: 'Cartões', path: '/cards', icon: '💳', keywords: ['cartoes', 'maquininha'] },
+          { label: 'Pagamento Antecipado', path: '/finance/advance-payments', icon: '⏩', keywords: ['pagamento antecipado'] },
+          { label: 'Contas Adm. Cartão', path: '/finance/card-accounts', icon: '💳', keywords: ['contas cartao'] },
           { label: 'Cheques', path: '/finance/cheques', icon: '📄', keywords: ['cheques'] },
-          { label: 'Fluxo de Caixa', path: '/finance/cash-flow', icon: '📈', keywords: ['fluxo de caixa', 'tesouraria'] }
+          { label: 'Fluxo de Caixa', path: '/finance/cash-flow', icon: '📈', keywords: ['fluxo de caixa', 'tesouraria'] },
+          { label: 'Curva ABC Clientes', path: '/dashboards/curve-abc-clients', icon: '📊', keywords: ['curva abc clientes'] },
+          { label: 'Curva ABC Produtos', path: '/dashboards/curve-abc', icon: '📈', keywords: ['curva abc produtos'] },
+          { label: 'DashBoard do Multifilial', path: '/dashboards/multifilial', icon: '🏢', keywords: ['multifilial', 'filiais'] },
+          { label: 'Dashboard Financeiro', path: '/dashboards/financial', icon: '💰', keywords: ['dashboard financeiro', 'kpi'] },
+          { label: 'Linha do Tempo', path: '/finance/timeline', icon: '🕒', keywords: ['linha do tempo'] }
+        ]
+      },
+      {
+        id: 'financeiro-maquininha',
+        label: 'Maquininha de Cartão',
+        items: [
+          { label: 'Configuração do Split', path: '/finance/split', icon: '🧩', keywords: ['split', 'configuracao'] },
+          { label: 'Maquininhas', path: '/finance/card-machines', icon: '💳', keywords: ['maquininhas'] },
+          { label: 'Simulador de Split', path: '/finance/split/simulator', icon: '🧮', keywords: ['simulador split'] },
+          { label: 'Transações de Cartão', path: '/finance/card-transactions', icon: '💳', keywords: ['transacoes cartao'] },
+          { label: 'Exportador de Split', path: '/finance/split/export', icon: '📤', keywords: ['exportador split'] },
+          { label: 'Habilitar Pagamento', path: '/finance/payment-enablement', icon: '✅', keywords: ['habilitar pagamento'] },
+          { label: 'Pagamento Dashboard', path: '/finance/payments-dashboard', icon: '📊', keywords: ['pagamento dashboard'] }
         ]
       },
       {
         id: 'financeiro-governanca',
-        label: 'Cadastros Financeiros',
+        label: 'Cadastros',
         items: [
-          { label: 'PIX', path: '/pix', icon: '💸', keywords: ['pix', 'qr code'] },
           { label: 'Formas de Pagamento', path: '/payment-methods', icon: '💳', keywords: ['formas de pagamento', 'meios'] },
-          { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] },
           { label: 'Centros de Custo', path: '/cost-centers', icon: '📊', keywords: ['centros de custo', 'rateio'] },
-          { label: 'Custos e Despesas', path: '/expenses', icon: '🧾', keywords: ['despesas', 'custos'] }
+          { label: 'Custos e Despesas', path: '/expenses', icon: '🧾', keywords: ['despesas', 'custos'] },
+          { label: 'Cartões Débito/Crédito', path: '/cards', icon: '💳', keywords: ['cartoes', 'maquininha'] },
+          { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] },
+          { label: 'PIX', path: '/pix', icon: '💸', keywords: ['pix', 'qr code'] }
         ]
       }
     ]
@@ -248,13 +261,20 @@ export const navGroups: AppNavGroup[] = [
     description: 'Relacionamento, campanhas e comunicação automatizada',
     sections: [
       {
-        id: 'marketing-canais',
-        label: 'Comunicação',
+        id: 'marketing-envios',
+        label: 'Envios',
         items: [
-          { label: 'SMS', path: '/marketing/sms', icon: '📱', keywords: ['sms'] },
-          { label: 'Campanhas', path: '/notifications', icon: '🔔', keywords: ['campanhas', 'notificacoes'] },
-          { label: 'WhatsApp Operacional', path: '/notifications/whatsapp', icon: '💬', keywords: ['whatsapp', 'mensageria'] },
-          { label: 'Email de Vacina', path: '/marketing/vaccine-email', icon: '📧', keywords: ['email', 'vacina'] }
+          { label: 'Envio de SMS Simples', path: '/marketing/sms', icon: '📱', keywords: ['sms'] },
+          { label: 'Campanhas de SMS Marketing', path: '/notifications', icon: '🔔', keywords: ['campanhas', 'notificacoes', 'sms marketing'] },
+          { label: 'WhatsApp Operacional', path: '/notifications/whatsapp', icon: '💬', keywords: ['whatsapp', 'mensageria'] }
+        ]
+      },
+      {
+        id: 'marketing-configuracoes',
+        label: 'Configurações',
+        items: [
+          { label: 'Layout de Email de Vacina', path: '/marketing/vaccine-email', icon: '📧', keywords: ['email', 'vacina'] },
+          { label: 'Configurações de SMS', path: '/marketing/sms-settings', icon: '⚙️', keywords: ['configuracoes sms'] }
         ]
       }
     ]
@@ -266,11 +286,25 @@ export const navGroups: AppNavGroup[] = [
     description: 'Pessoas, comissões e governança operacional da equipe',
     sections: [
       {
-        id: 'rh-pessoas',
-        label: 'Cadastros e Regras',
+        id: 'rh-usuarios',
+        label: 'Usuários',
+        items: [
+          { label: 'Usuários', path: '/users', icon: '👤', keywords: ['usuarios', 'login'] },
+          { label: 'Grupos de Acesso', path: '/access-control', icon: '🔐', keywords: ['acesso', 'rbac', 'grupos'] }
+        ]
+      },
+      {
+        id: 'rh-comissoes',
+        label: 'Comissões',
+        items: [
+          { label: 'Cálculo de Comissões', path: '/commission-calculations', icon: '🧮', keywords: ['comissoes', 'repasse'] }
+        ]
+      },
+      {
+        id: 'rh-cadastros',
+        label: 'Cadastros',
         items: [
           { label: 'Profissionais', path: '/staff', icon: '🩺', keywords: ['profissionais', 'equipe'] },
-          { label: 'Comissões', path: '/commission-calculations', icon: '🧮', keywords: ['comissoes', 'repasse'] },
           { label: 'Regras de Comissão', path: '/commission-rules', icon: '📐', keywords: ['regras de comissao', 'parametrizacao'] },
           { label: 'Folgas', path: '/time-off', icon: '🌴', keywords: ['folgas', 'escala'] },
           { label: 'Profissões', path: '/rh/professions', icon: '🪪', keywords: ['profissoes', 'funcoes'] }
@@ -285,26 +319,72 @@ export const navGroups: AppNavGroup[] = [
     description: 'Análises por domínio e visão gerencial da operação',
     sections: [
       {
-        id: 'relatorios-principais',
-        label: 'Indicadores',
+        id: 'relatorios-auditorias',
+        label: 'Relatórios de Auditorias',
         items: [
-          { label: 'Visão por Domínio', path: '/reports', icon: '📈', keywords: ['relatorios por dominio', 'hub'] },
-          { label: 'DRE', path: '/reports/dre', icon: '💰', keywords: ['dre', 'resultado'] },
-          { label: 'Contas', path: '/reports/accounts', icon: '🧾', keywords: ['contas', 'financeiro'] },
-          { label: 'Vendas', path: '/reports/sales', icon: '💸', keywords: ['vendas', 'comercial'] },
-          { label: 'Produção', path: '/reports/production', icon: '🏭', keywords: ['producao'] },
-          { label: 'Estoque', path: '/reports/inventory', icon: '📦', keywords: ['estoque'] },
-          { label: 'NF', path: '/reports/nf', icon: '🧾', keywords: ['nf', 'nota fiscal'] }
+          { label: 'Auditoria de Agendamentos', path: '/reports/audit/appointments', icon: '🧾', keywords: ['auditoria agendamentos'] }
         ]
       },
       {
-        id: 'relatorios-avancados',
-        label: 'Analíticos',
+        id: 'relatorios-financeiros',
+        label: 'Relatórios Financeiros',
         items: [
-          { label: 'Financeiro', path: '/reports/financial', icon: '💰', keywords: ['relatorios financeiros', 'financeiro'] },
+          { label: 'Gaveta', path: '/reports/cash-drawer', icon: '🧾', keywords: ['gaveta', 'caixa'] },
+          { label: 'Fluxo de Caixa', path: '/reports/financial', icon: '📈', keywords: ['fluxo de caixa'] },
+          { label: 'DRE - Demonstrativo de Resultados', path: '/reports/dre', icon: '💰', keywords: ['dre', 'resultado'] },
+          { label: 'Pacotes', path: '/reports/packages', icon: '📦', keywords: ['pacotes'] },
+          { label: 'Contas a Receber', path: '/reports/accounts-receivable', icon: '💵', keywords: ['contas a receber'] },
+          { label: 'Contas Recebidas', path: '/reports/received-accounts', icon: '✅', keywords: ['contas recebidas'] },
+          { label: 'Contas a Pagar', path: '/reports/accounts-payable', icon: '💸', keywords: ['contas a pagar'] },
+          { label: 'Contas Pagas', path: '/reports/paid-accounts', icon: '✅', keywords: ['contas pagas'] },
+          { label: 'Cheques', path: '/reports/cheques', icon: '📄', keywords: ['cheques'] },
+          { label: 'Pagamento Antecipado', path: '/reports/advance-payments', icon: '⏩', keywords: ['pagamento antecipado'] }
+        ]
+      },
+      {
+        id: 'relatorios-atendimentos',
+        label: 'Relatórios de Atendimentos',
+        items: [
+          { label: 'Comandas/Vendas', path: '/reports/sales', icon: '💸', keywords: ['comandas', 'vendas'] },
+          { label: 'Produtos/Serviços Produzidos', path: '/reports/produced-items', icon: '🛠️', keywords: ['produtos servicos produzidos'] },
+          { label: 'Produção', path: '/reports/production', icon: '🏭', keywords: ['producao'] },
           { label: 'Agenda', path: '/reports/appointments', icon: '📅', keywords: ['relatorios agenda', 'appointments'] },
-          { label: 'Atendimento', path: '/reports/encounters', icon: '🩺', keywords: ['relatorios atendimento', 'encounters'] },
-          { label: 'Cadastros', path: '/reports/registers', icon: '📋', keywords: ['relatorios cadastros', 'registers'] },
+          { label: 'Atendimento por Profissional', path: '/reports/professional-care', icon: '🩺', keywords: ['atendimento profissional'] }
+        ]
+      },
+      {
+        id: 'relatorios-personalizados',
+        label: 'Relatórios Personalizados',
+        items: [
+          { label: 'Relatório de NF de Serviços Prestados', path: '/reports/nf', icon: '🧾', keywords: ['nf servicos prestados'] }
+        ]
+      },
+      {
+        id: 'relatorios-cadastros',
+        label: 'Relatórios de Cadastros',
+        items: [
+          { label: 'Serviços', path: '/reports/registers/services', icon: '🛠️', keywords: ['servicos'] },
+          { label: 'Clientes', path: '/reports/registers/owners', icon: '👤', keywords: ['clientes'] },
+          { label: 'Animais', path: '/reports/registers/patients', icon: '🐾', keywords: ['animais'] },
+          { label: 'Fornecedores', path: '/reports/registers/suppliers', icon: '🚚', keywords: ['fornecedores'] },
+          { label: 'Exclusão de Vendas e Comandas', path: '/reports/deleted-sales-counter-sales', icon: '🧾', keywords: ['exclusao vendas comandas'] }
+        ]
+      },
+      {
+        id: 'relatorios-estoque',
+        label: 'Relatórios de Estoque',
+        items: [
+          { label: 'Estoque', path: '/reports/inventory', icon: '📦', keywords: ['estoque'] },
+          { label: 'Movimentações no Estoque', path: '/reports/inventory-movements', icon: '📥', keywords: ['movimentacoes estoque'] },
+          { label: 'Entrada de NF', path: '/reports/inventory-invoices', icon: '🧾', keywords: ['entrada nf'] },
+          { label: 'Relatório de Produtos', path: '/reports/inventory-products', icon: '🏷️', keywords: ['relatorio produtos'] }
+        ]
+      },
+      {
+        id: 'relatorios-hub',
+        label: 'Hubs',
+        items: [
+          { label: 'Visão por Domínio', path: '/reports', icon: '📈', keywords: ['relatorios por dominio', 'hub'] },
           { label: 'Hubs Administrativos', path: '/administrative-reports', icon: '📊', keywords: ['administrative reports', 'commercial reports'] }
         ]
       }
@@ -314,14 +394,12 @@ export const navGroups: AppNavGroup[] = [
     id: 'administracao',
     label: 'Administração',
     icon: '⚙️',
-    description: 'Usuários, acessos e configurações administrativas do sistema',
+    description: 'Configurações administrativas fora da operação Vetus-like',
     sections: [
       {
         id: 'administracao-governanca',
-        label: 'Segurança e Configuração',
+        label: 'Configuração',
         items: [
-          { label: 'Usuários', path: '/users', icon: '👤', keywords: ['usuarios', 'login'] },
-          { label: 'Grupos de Acesso', path: '/access-control', icon: '🔐', keywords: ['acesso', 'rbac', 'grupos'] },
           { label: 'Configurações', path: '/administration/settings', icon: '⚙️', keywords: ['configuracoes', 'parametros'] }
         ]
       }

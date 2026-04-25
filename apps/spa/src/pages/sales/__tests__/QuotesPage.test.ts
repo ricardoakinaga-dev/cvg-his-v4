@@ -124,6 +124,13 @@ describe('QuotesPage', () => {
     const wrapper = mount(QuotesPage);
 
     await flushPromises();
+    expect(wrapper.text()).toContain('Atendimento > Orçamentos');
+    expect(wrapper.text()).toContain('Incluir');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Id');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('Data');
+    expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('QT-000001');
     expect(wrapper.text()).toContain('Montar orçamento');
     expect(wrapper.text()).toContain('Serviços, produtos e outros');

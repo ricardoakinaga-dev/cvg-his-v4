@@ -1,7 +1,8 @@
 <template>
   <div class="quotes-page">
-    <AppPageHeader title="Orçamentos" subtitle="Pipeline comercial com reflexo em atendimento, caixa e faturamento.">
+    <AppPageHeader title="Orçamentos" subtitle="Atendimento > Orçamentos. Propostas comerciais por ID, cliente e data antes de virar venda ou comanda.">
       <template #actions>
+        <DsButton variant="primary" @click="focusNewQuote">Incluir</DsButton>
         <DsButton variant="secondary" :loading="listLoading" @click="loadQuotes">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/counter-sales" variant="secondary">🛒 Vendas Assistidas</DsButton>
         <DsButton tag="a" to="/appointments" variant="ghost">📅 Ver Agenda</DsButton>
@@ -84,18 +85,18 @@
       </section>
 
       <div class="workspace-grid">
-        <DsCard title="Novo orçamento">
-          <form class="form-grid" @submit.prevent="createQuote">
-            <DsInput id="quote-owner" v-model="quoteForm.ownerId" label="Owner ID" placeholder="opcional" />
+        <DsCard title="Incluir">
+          <form ref="newQuoteFormRef" class="form-grid" @submit.prevent="createQuote">
+            <DsInput id="quote-owner" v-model="quoteForm.ownerId" label="Cliente" placeholder="ID do tutor" />
             <DsInput id="quote-valid-until" v-model="quoteForm.validUntil" type="date" label="Validade" />
             <DsInput id="quote-notes" v-model="quoteForm.notes" type="textarea" label="Observações" :rows="3" />
             <div class="form-actions">
-              <DsButton variant="primary" :loading="creatingQuote">Criar orçamento</DsButton>
+              <DsButton variant="primary" :loading="creatingQuote">Incluir</DsButton>
             </div>
           </form>
         </DsCard>
 
-        <DsCard title="Lista de orçamentos">
+        <DsCard title="Orçamentos">
           <div class="legacy-filter-grid">
             <DsInput v-model="legacyFilters.id" label="ID" placeholder="Número ou ID" />
             <DsInput v-model="legacyFilters.client" label="Cliente" placeholder="Owner ID ou cliente" />
@@ -108,7 +109,7 @@
               placeholder="Buscar por ID, cliente, data, número ou observação"
               @keyup.enter="loadQuotes"
             />
-            <DsButton variant="secondary" @click="loadQuotes">Buscar</DsButton>
+            <DsButton variant="secondary" @click="loadQuotes">Pesquisar</DsButton>
           </div>
           <DataTable
             :columns="quoteColumns"
@@ -119,20 +120,11 @@
             empty-description="Crie um orçamento para iniciar a trilha comercial."
             variant="hoverable"
           >
-            <template #cell-status="{ row }">
-              <StatusBadge
-                :label="quoteStatusLabel(quoteRow(row).status)"
-                :variant="quoteStatusVariant(quoteRow(row).status)"
-              />
+            <template #cell-ownerId="{ row }">
+              {{ quoteRow(row).ownerId ?? '—' }}
             </template>
-            <template #cell-total="{ row }">
-              {{ formatCurrency(quoteRow(row).total) }}
-            </template>
-            <template #cell-convertedToSaleId="{ row }">
-              <code v-if="quoteRow(row).convertedToSaleId">{{
-                quoteRow(row).convertedToSaleId
-              }}</code>
-              <span v-else class="muted">—</span>
+            <template #cell-createdAt="{ row }">
+              {{ formatDate(quoteRow(row).createdAt) }}
             </template>
             <template #cell-actions="{ row }">
               <DsButton size="sm" variant="secondary" @click="selectQuote(quoteRow(row).id)">
@@ -272,11 +264,10 @@ import { computed } from 'vue';
 type QuoteFormItemType = 'product' | 'service' | 'other';
 
 const quoteColumns: DataTableColumn[] = [
-  { key: 'number', label: 'Número' },
-  { key: 'status', label: 'Status' },
-  { key: 'total', label: 'Total' },
-  { key: 'convertedToSaleId', label: 'Venda' },
-  { key: 'actions', label: 'Ações' }
+  { key: 'id', label: 'Id' },
+  { key: 'ownerId', label: 'Cliente' },
+  { key: 'createdAt', label: 'Data' },
+  { key: 'actions', label: 'Abrir', class: 'table__actions-col' }
 ];
 
 const itemColumns: DataTableColumn[] = [
@@ -298,6 +289,7 @@ const successMessage = ref('');
 const creatingQuote = ref(false);
 const actionLoading = ref('');
 const printPreview = ref('');
+const newQuoteFormRef = ref<HTMLFormElement | null>(null);
 const filteredQuoteRows = computed(() => filteredQuotes.value as unknown as DataTableRow[]);
 const quoteItemRows = computed(() => selectedItems.value as unknown as DataTableRow[]);
 const quoteForm = ref({
@@ -305,6 +297,7 @@ const quoteForm = ref({
   validUntil: '',
   notes: ''
 });
+const workflowContext = readWorkflowContext();
 const itemForm = ref({
   itemType: 'service' as QuoteFormItemType,
   nameSnapshot: '',
@@ -471,7 +464,11 @@ async function createQuote() {
       notes: quoteForm.value.notes.trim() || null
     });
     successMessage.value = `Orçamento ${quote.number} criado com sucesso.`;
-    quoteForm.value = { ownerId: '', validUntil: '', notes: '' };
+    quoteForm.value = {
+      ownerId: workflowContext.ownerId || '',
+      validUntil: '',
+      notes: workflowContext.encounterId ? `Atendimento ${workflowContext.encounterId}` : ''
+    };
     await loadQuotes();
     await selectQuote(quote.id);
   } catch (err: unknown) {
@@ -479,6 +476,12 @@ async function createQuote() {
   } finally {
     creatingQuote.value = false;
   }
+}
+
+function focusNewQuote() {
+  newQuoteFormRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const input = newQuoteFormRef.value?.querySelector<HTMLInputElement>('input');
+  input?.focus();
 }
 
 async function addItem() {
@@ -608,8 +611,27 @@ function isOtherQuoteItem(item: QuoteItemSummary): boolean {
 }
 
 onMounted(() => {
+  if (workflowContext.ownerId && !quoteForm.value.ownerId) {
+    quoteForm.value.ownerId = workflowContext.ownerId;
+  }
+  if (workflowContext.encounterId && !quoteForm.value.notes) {
+    quoteForm.value.notes = `Atendimento ${workflowContext.encounterId}`;
+  }
   void loadQuotes();
 });
+
+function readWorkflowContext() {
+  if (typeof window === 'undefined') {
+    return { encounterId: '', patientId: '', ownerId: '' };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    encounterId: params.get('encounterId')?.trim() || '',
+    patientId: params.get('patientId')?.trim() || '',
+    ownerId: params.get('ownerId')?.trim() || ''
+  };
+}
 
 function quoteRow(row: unknown): QuoteSummary {
   return row as QuoteSummary;

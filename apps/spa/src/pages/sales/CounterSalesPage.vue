@@ -2,13 +2,11 @@
   <div class="counter-sales-page">
     <AppPageHeader
       title="🧾 Comandas"
-      :breadcrumbs="['Atendimento', 'Atendimentos', 'Comandas']"
-      subtitle="Workbench premium de balcão para abrir, compor, cobrar, imprimir e conectar a venda à jornada assistencial."
+      :breadcrumbs="['Início', 'Comandas']"
+      subtitle="Início > Comandas. Cards operacionais para localizar, abrir, compor, encaminhar e finalizar a cobrança do atendimento."
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loadingPage" @click="loadPage">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" to="/quotes">🧾 Orçamentos</DsButton>
-        <DsButton variant="ghost" tag="a" to="/queue">🏥 Fila</DsButton>
         <DsButton variant="primary" @click="openCreateModal">+ Abrir Nova Comanda</DsButton>
       </template>
     </AppPageHeader>
@@ -20,7 +18,11 @@
       <DsStatCard :label="formatCurrency(grossSalesTotal)" value="" icon="📈" />
     </section>
 
-    <section class="counter-sales-report">
+    <details class="counter-sales-report">
+      <summary class="counter-sales-report__summary">
+        <span>Relatório executivo próprio</span>
+        <small>Indicadores e análise ficam recolhidos para não disputar atenção com a comanda.</small>
+      </summary>
       <DsCard title="Relatório executivo próprio">
         <div class="report-toolbar">
           <DsInput v-model="reportFilters.dateFrom" type="date" label="Recorte de" />
@@ -171,7 +173,7 @@
           O relatório executivo não está disponível neste momento.
         </div>
       </DsCard>
-    </section>
+    </details>
 
     <section v-if="integrationWarnings.length > 0" class="counter-sales-alerts">
       <DsAlert
@@ -212,7 +214,7 @@
         v-model="filters.search"
         type="search"
         label="Buscar comanda"
-        placeholder="Número, tutor, contato ou observação"
+        placeholder="Buscar por Nome, CPF, E-mail ou ID"
       />
       <DsInput v-model="filters.status" type="select" label="Status">
         <option value="all">Todos</option>
@@ -224,7 +226,7 @@
       <DsInput v-model="filters.dateTo" type="date" label="até" />
       <div class="counter-sales-toolbar__actions">
         <DsButton variant="secondary" :loading="loadingPage" @click="loadPage">
-          Aplicar filtros
+          Filtrar
         </DsButton>
       </div>
     </section>
@@ -241,7 +243,7 @@
 
     <div class="counter-sales-layout">
       <section class="counter-sales-list">
-        <DsCard title="Comandas ativas e histórico recente">
+        <DsCard title="Comandas">
           <div v-if="loadingPage" class="counter-sales-empty">Carregando comandas...</div>
           <EmptyState
             v-else-if="filteredSales.length === 0"
@@ -258,18 +260,35 @@
               :class="{ 'counter-sale-card--selected': sale.id === selectedSaleId }"
             >
               <div class="counter-sale-card__header">
-                <div>
-                  <div class="counter-sale-card__eyebrow">Comanda {{ sale.number }}</div>
-                  <h3>{{ ownerName(sale.ownerId) }}</h3>
-                </div>
                 <DsBadge :variant="statusBadgeVariant(sale.status)">
                   {{ statusLabel(sale.status) }}
                 </DsBadge>
+                <div class="counter-sale-card__field">
+                  <span>ID da Comanda:</span>
+                  <strong>{{ sale.number }}</strong>
+                </div>
+                <div class="counter-sale-card__field">
+                  <span>Abertura:</span>
+                  <strong>{{ formatDateTime(sale.createdAt) }}</strong>
+                </div>
+                <div class="counter-sale-card__field">
+                  <span>Fechamento:</span>
+                  <strong>{{ sale.closedAt ? formatDateTime(sale.closedAt) : '-' }}</strong>
+                </div>
+                <div class="counter-sale-card__field">
+                  <span>Cliente:</span>
+                  <strong>{{ ownerName(sale.ownerId) }}</strong>
+                </div>
+                <div class="counter-sale-card__field counter-sale-card__field--total">
+                  <span>Valor Total:</span>
+                  <strong>{{ formatCurrency(sale.total) }}</strong>
+                </div>
+                <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">
+                  Ver comanda
+                </DsButton>
               </div>
 
-              <div class="counter-sale-card__meta">
-                <span>{{ formatDateTime(sale.createdAt) }}</span>
-                <span v-if="sale.closedAt">Fechamento {{ formatDateTime(sale.closedAt) }}</span>
+              <div class="counter-sale-card__mobile-context">
                 <span>{{ ownerPrimaryContactLabel(sale.ownerId) }}</span>
                 <span>{{ ownerPatientsLabel(sale.ownerId) }}</span>
                 <span>{{ openedByLabel(sale.openedByUserId) }}</span>
@@ -331,7 +350,7 @@
       </section>
 
       <section class="counter-sales-workbench">
-        <DsCard v-if="selectedSale" :title="`Workbench ${selectedSale.number}`">
+        <DsCard v-if="selectedSale" title="Detalhes da Comanda">
           <div class="workbench-shell">
             <div class="workbench-main">
               <section class="workbench-section">
@@ -421,8 +440,52 @@
               <section class="workbench-section">
                 <header class="workbench-section__header">
                   <div>
+                    <span class="workbench-section__eyebrow">Execução assistencial</span>
+                    <h3>Serviços</h3>
+                  </div>
+                  <span class="workbench-section__hint">
+                    Total: {{ formatCurrency(selectedServicesTotal) }}
+                  </span>
+                </header>
+
+                <div v-if="selectedPatientContexts.length > 0" class="service-patient-list">
+                  <article
+                    v-for="context in selectedPatientContexts"
+                    :key="`service-${context.patient.id}`"
+                    class="service-patient-card"
+                  >
+                    <div>
+                      <strong>{{ context.patient.name }}</strong>
+                      <div class="patient-context-card__meta">
+                        {{ context.patient.species }}
+                        <span v-if="context.patient.breed">· {{ context.patient.breed }}</span>
+                      </div>
+                    </div>
+                    <div class="service-patient-card__actions">
+                      <DsButton
+                        size="sm"
+                        variant="ghost"
+                        tag="a"
+                        :to="`/patients/${context.patient.id}`"
+                      >
+                        Ver Detalhes do Animal
+                      </DsButton>
+                      <DsButton size="sm" variant="primary" @click="focusCatalogType('service')">
+                        Incluir Serviços
+                      </DsButton>
+                    </div>
+                  </article>
+                </div>
+                <div v-else class="counter-sales-empty">
+                  Vincule um animal para lançar serviços contextualizados na comanda.
+                </div>
+              </section>
+
+              <section class="workbench-section">
+                <header class="workbench-section__header">
+                  <div>
                     <span class="workbench-section__eyebrow">Lançamento operacional</span>
-                    <h3>Adicionar produtos e serviços</h3>
+                    <h3>Produtos</h3>
                   </div>
                 </header>
 
@@ -467,7 +530,7 @@
                     min="1"
                   />
                   <DsButton variant="primary" :loading="savingItem" @click="addItemByBarcode">
-                    Lançar por código
+                    Adicionar Produtos
                   </DsButton>
                 </div>
 
@@ -527,7 +590,7 @@
                 <header class="workbench-section__header">
                   <div>
                     <span class="workbench-section__eyebrow">Painel esquerdo</span>
-                    <h3>Produtos e Serviços</h3>
+                    <h3>Serviços / Produtos</h3>
                   </div>
                 </header>
 
@@ -584,7 +647,7 @@
                         :disabled="savingItem"
                         @click="applyDefaultDiscount(item)"
                       >
-                        Aplicar desconto
+                        Editar desconto
                       </DsButton>
                       <DsButton
                         size="sm"
@@ -647,7 +710,7 @@
                   <div class="sidebar-summary__header">
                     <div>
                       <span class="workbench-section__eyebrow">Resumo da Conta</span>
-                      <h3>{{ selectedSale.number }}</h3>
+                      <h3>Comanda ID: {{ selectedSale.number }}</h3>
                     </div>
                     <DsBadge :variant="statusBadgeVariant(selectedSale.status)">
                       {{ statusLabel(selectedSale.status) }}
@@ -690,7 +753,7 @@
                       <span>{{ ownerPrimaryContactLabel(selectedSale.ownerId) }}</span>
                       <span>ID {{ selectedSale.id }}</span>
                       <span>Abertura {{ formatDateTime(selectedSale.createdAt) }}</span>
-                      <span>{{ openedByLabel(selectedSale.openedByUserId) }}</span>
+                      <span>Aberta por: {{ openedByLabel(selectedSale.openedByUserId) }}</span>
                       <span>{{ accountLabel(selectedSale.accountId) }}</span>
                     </div>
                     <details class="sidebar-contact">
@@ -877,6 +940,26 @@
                 </div>
               </section>
             </aside>
+          </div>
+
+          <div class="command-bottom-actions">
+            <DsButton variant="ghost" @click="selectedSaleId = ''">
+              Voltar para Comandas
+            </DsButton>
+            <DsButton variant="secondary" tag="a" to="/queue">
+              Encaminhar Esteira
+            </DsButton>
+            <DsButton variant="secondary" :loading="printingSale" @click="printSelectedSale">
+              Imprimir
+            </DsButton>
+            <DsButton
+              v-if="selectedSale.status === 'open'"
+              variant="primary"
+              :loading="transitioningSale"
+              @click="closeSale"
+            >
+              Finalizar Comanda
+            </DsButton>
           </div>
         </DsCard>
 
@@ -1113,6 +1196,7 @@ const dashboardWarning = ref('');
 
 const sales = ref<CounterSaleDetail[]>([]);
 const selectedSaleId = ref('');
+const workflowContext = readWorkflowContext();
 
 const ownerMap = ref<Record<string, OwnerSummary>>({});
 const patientMap = ref<Record<string, PatientSummary[]>>({});
@@ -1497,8 +1581,14 @@ async function loadPage() {
 
     await loadExecutiveDashboard();
 
+    const contextualSale = workflowContext.ownerId
+      ? sales.value.find((sale) => sale.ownerId === workflowContext.ownerId)
+      : null;
+
     if (selectedSaleId.value) {
       await selectSale(selectedSaleId.value);
+    } else if (contextualSale) {
+      await selectSale(contextualSale.id);
     } else if (sales.value[0]) {
       await selectSale(sales.value[0].id);
     }
@@ -1690,6 +1780,11 @@ async function addCatalogOption(option: CatalogOption) {
   } finally {
     savingItem.value = false;
   }
+}
+
+function focusCatalogType(type: Exclude<CatalogItemType, 'all'>) {
+  catalogForm.itemType = type;
+  catalogForm.search = '';
 }
 
 async function addItemByBarcode() {
@@ -1890,7 +1985,7 @@ async function convertQuote(quoteId: string) {
 function openCreateModal() {
   createModalOpen.value = true;
   createModalTab.value = 'registered';
-  ownerSearch.value = '';
+  ownerSearch.value = workflowContext.ownerId || '';
   createSaleNotes.value = '';
   selectedOwnerId.value = '';
   expandedOwnerId.value = '';
@@ -2281,6 +2376,19 @@ function normalizeCatalogCode(value: string) {
   return value.trim().toLowerCase();
 }
 
+function readWorkflowContext() {
+  if (typeof window === 'undefined') {
+    return { encounterId: '', patientId: '', ownerId: '' };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    encounterId: params.get('encounterId')?.trim() || '',
+    patientId: params.get('patientId')?.trim() || '',
+    ownerId: params.get('ownerId')?.trim() || ''
+  };
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -2322,6 +2430,24 @@ function formatDateTime(value: string): string {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px 180px 180px max-content;
   gap: 12px;
+}
+
+.counter-sales-report__summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.counter-sales-report__summary small {
+  color: var(--color-text-muted, #64748b);
+  font-weight: 500;
 }
 
 .counter-sales-toolbar__actions {
@@ -2429,10 +2555,9 @@ function formatDateTime(value: string): string {
 }
 
 .counter-sales-layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: start;
 }
 
 .counter-sales-cards,
@@ -2465,7 +2590,39 @@ function formatDateTime(value: string): string {
   box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
 }
 
-.counter-sale-card__header,
+.counter-sale-card__header {
+  display: grid;
+  grid-template-columns: 110px minmax(120px, 0.85fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1.35fr) minmax(130px, 0.8fr) max-content;
+  align-items: center;
+}
+
+.counter-sale-card__field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.counter-sale-card__field span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.counter-sale-card__field strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  color: var(--color-text, #0f172a);
+}
+
+.counter-sale-card__field--total strong {
+  font-weight: 800;
+}
+
+.counter-sale-card__mobile-context {
+  display: none;
+}
+
 .catalog-card__header,
 .line-item-card__header,
 .payment-card__header,
@@ -2627,6 +2784,30 @@ function formatDateTime(value: string): string {
   gap: 12px;
 }
 
+.service-patient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.service-patient-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.service-patient-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .patient-context-card__badges {
   display: flex;
   flex-wrap: wrap;
@@ -2782,10 +2963,31 @@ function formatDateTime(value: string): string {
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
 }
 
+.command-bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.92);
+}
+
 @media (max-width: 1100px) {
-  .counter-sales-layout,
   .workbench-shell {
     grid-template-columns: 1fr;
+  }
+
+  .counter-sale-card__header {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .counter-sale-card__mobile-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    color: var(--color-text-muted, #64748b);
+    font-size: 13px;
   }
 }
 
@@ -2796,6 +2998,16 @@ function formatDateTime(value: string): string {
   .create-sale-modal__search,
   .report-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .service-patient-card,
+  .command-bottom-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .service-patient-card__actions {
+    justify-content: flex-start;
   }
 }
 </style>

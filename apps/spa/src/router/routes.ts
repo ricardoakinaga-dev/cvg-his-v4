@@ -22,12 +22,54 @@ function placeholderRoute(
 
 const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('inventory/pharmacy', 'InventoryPharmacy', 'Farmácia', 'Estoque', '💊'),
+  placeholderRoute('inventory/price-consultation', 'InventoryPriceConsultation', 'Consulta de Preços', 'Estoque', '🔎'),
+  placeholderRoute('inventory/price-audit', 'InventoryPriceAudit', 'Auditoria de Preços', 'Estoque', '🏷️'),
+  placeholderRoute('inventory/price-adjustments', 'InventoryPriceAdjustments', 'Reajuste de Preços', 'Estoque', '📈'),
+  placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
+  placeholderRoute('finance/advance-payments', 'FinanceAdvancePayments', 'Pagamento Antecipado', 'Financeiro', '⏩'),
+  placeholderRoute('finance/card-accounts', 'FinanceCardAccounts', 'Contas Adm. Cartão', 'Financeiro', '💳'),
+  placeholderRoute('finance/timeline', 'FinanceTimeline', 'Linha do Tempo', 'Financeiro', '🕒'),
+  placeholderRoute('finance/card-machines', 'FinanceCardMachines', 'Maquininhas', 'Financeiro', '💳'),
+  placeholderRoute('finance/split/simulator', 'FinanceSplitSimulator', 'Simulador de Split', 'Financeiro', '🧮'),
+  placeholderRoute('finance/card-transactions', 'FinanceCardTransactions', 'Transações de Cartão', 'Financeiro', '💳'),
+  placeholderRoute('finance/split/export', 'FinanceSplitExport', 'Exportador de Split', 'Financeiro', '📤'),
+  placeholderRoute('finance/payment-enablement', 'FinancePaymentEnablement', 'Habilitar Pagamento', 'Financeiro', '✅'),
+  placeholderRoute('finance/payments-dashboard', 'FinancePaymentsDashboard', 'Pagamento Dashboard', 'Financeiro', '📊'),
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
+  placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
   placeholderRoute('rh/professions', 'RhProfessions', 'Profissões', 'RH', '🪪'),
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
-  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Dashboards', '🏢')
+  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
+  placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
+  placeholderRoute('services/import', 'ServicesImport', 'Importar Dados Serviços', 'Cadastros', '⬆️'),
+  placeholderRoute('responsibility-terms', 'ResponsibilityTerms', 'Termos de Responsabilidade', 'Cadastros', '📄'),
+  placeholderRoute('customer-groups', 'CustomerGroups', 'Grupos de Clientes', 'Cadastros', '👥'),
+  placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
+  placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
+  placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
+  placeholderRoute('laboratory/hemogram-reference-values', 'LaboratoryHemogramReferenceValues', 'Vlr. Ref. Hemograma', 'Laboratório', '📈'),
+  placeholderRoute('laboratory/biochemistry-reference-values', 'LaboratoryBiochemistryReferenceValues', 'Vlr. Ref. Bioquímico', 'Laboratório', '⚗️'),
+  placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
+  placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
+  placeholderRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', '📦'),
+  placeholderRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', '💵'),
+  placeholderRoute('reports/received-accounts', 'ReportsReceivedAccounts', 'Contas Recebidas', 'Relatórios Financeiros', '✅'),
+  placeholderRoute('reports/accounts-payable', 'ReportsAccountsPayable', 'Contas a Pagar', 'Relatórios Financeiros', '💸'),
+  placeholderRoute('reports/paid-accounts', 'ReportsPaidAccounts', 'Contas Pagas', 'Relatórios Financeiros', '✅'),
+  placeholderRoute('reports/cheques', 'ReportsCheques', 'Cheques', 'Relatórios Financeiros', '📄'),
+  placeholderRoute('reports/advance-payments', 'ReportsAdvancePayments', 'Pagamento Antecipado', 'Relatórios Financeiros', '⏩'),
+  placeholderRoute('reports/produced-items', 'ReportsProducedItems', 'Produtos/Serviços Produzidos', 'Relatórios de Atendimentos', '🛠️'),
+  placeholderRoute('reports/professional-care', 'ReportsProfessionalCare', 'Atendimento por Profissional', 'Relatórios de Atendimentos', '🩺'),
+  placeholderRoute('reports/registers/services', 'ReportsRegisterServices', 'Serviços', 'Relatórios de Cadastros', '🛠️'),
+  placeholderRoute('reports/registers/owners', 'ReportsRegisterOwners', 'Clientes', 'Relatórios de Cadastros', '👤'),
+  placeholderRoute('reports/registers/patients', 'ReportsRegisterPatients', 'Animais', 'Relatórios de Cadastros', '🐾'),
+  placeholderRoute('reports/registers/suppliers', 'ReportsRegisterSuppliers', 'Fornecedores', 'Relatórios de Cadastros', '🚚'),
+  placeholderRoute('reports/deleted-sales-counter-sales', 'ReportsDeletedSalesCounterSales', 'Exclusão de Vendas e Comandas', 'Relatórios de Cadastros', '🧾'),
+  placeholderRoute('reports/inventory-movements', 'ReportsInventoryMovements', 'Movimentações no Estoque', 'Relatórios de Estoque', '📥'),
+  placeholderRoute('reports/inventory-invoices', 'ReportsInventoryInvoices', 'Entrada de NF', 'Relatórios de Estoque', '🧾'),
+  placeholderRoute('reports/inventory-products', 'ReportsInventoryProducts', 'Relatório de Produtos', 'Relatórios de Estoque', '🏷️')
 ];
 
 export const routes: RouteRecordRaw[] = [
@@ -52,7 +94,7 @@ export const routes: RouteRecordRaw[] = [
         path: '',
         name: 'Dashboard',
         component: () => import('@/pages/DashboardPage.vue'),
-        meta: { title: 'Dashboard', breadcrumb: 'Dashboard', icon: '📊' }
+        meta: { title: 'Início', breadcrumb: 'Início', icon: '🏠' }
       },
       {
         path: 'dashboards/financial',
@@ -61,7 +103,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Dashboard Financeiro',
           breadcrumb: 'Financeiro',
-          breadcrumbParent: 'Dashboards',
+          breadcrumbParent: 'Financeiro',
           icon: '💰'
         }
       },
@@ -72,7 +114,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Curva ABC',
           breadcrumb: 'Curva ABC',
-          breadcrumbParent: 'Dashboards',
+          breadcrumbParent: 'Financeiro',
           icon: '📈'
         }
       },
@@ -320,10 +362,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'ExamOrdersApi',
         component: () => import('@/pages/laboratory/ExamOrdersApiPage.vue'),
         meta: {
-          title: 'Pedidos API',
-          breadcrumb: 'Pedidos API',
-          breadcrumbParent: 'Laboratório',
-          icon: '🧾'
+          title: 'Esteira de Exames',
+          breadcrumb: 'Esteira de Exames',
+          breadcrumbParent: 'Atendimento',
+          icon: '🧪'
         }
       },
       {
@@ -638,7 +680,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Usuários',
           breadcrumb: 'Usuários',
-          breadcrumbParent: 'Administração',
+          breadcrumbParent: 'RH',
           icon: '👤'
         }
       },
@@ -682,7 +724,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Grupos de Acesso',
           breadcrumb: 'Grupos de Acesso',
-          breadcrumbParent: 'Administração',
+          breadcrumbParent: 'RH',
           icon: '🔐'
         }
       },
@@ -1064,6 +1106,17 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'vaccines-dewormers',
+        name: 'VaccinesDewormers',
+        component: () => import('@/pages/preventive/VaccinesDewormersPage.vue'),
+        meta: {
+          title: 'Vacinas e Vermífugos',
+          breadcrumb: 'Vacinas e Vermífugos',
+          breadcrumbParent: 'Atendimento',
+          icon: '💉'
+        }
+      },
+      {
         path: 'inventory',
         name: 'Inventory',
         component: () => import('@/pages/inventory/InventoryListPage.vue'),
@@ -1210,7 +1263,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Configuração Fiscal',
           breadcrumb: 'Fiscal',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📋'
         }
       },
@@ -1221,7 +1274,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'ICMS',
           breadcrumb: 'ICMS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }
       },
@@ -1233,7 +1286,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'IPI',
           breadcrumb: 'IPI',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🏷️'
         }
       },
@@ -1245,7 +1298,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'IBS/CBS',
           breadcrumb: 'IBS/CBS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🧮'
         }
       },
@@ -1256,7 +1309,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIS / COFINS',
           breadcrumb: 'PIS / COFINS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📈'
         }
       },
@@ -1267,7 +1320,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'PIS',
           breadcrumb: 'PIS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📈'
         }
       },
@@ -1278,7 +1331,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'COFINS',
           breadcrumb: 'COFINS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📉'
         }
       },
@@ -1289,7 +1342,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'CFOP',
           breadcrumb: 'CFOP',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🔢'
         }
       },
@@ -1300,7 +1353,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'NFS-e',
           breadcrumb: 'NFS-e',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📄'
         }
       },
@@ -1311,7 +1364,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'IBPT / NCM',
           breadcrumb: 'IBPT / NCM',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '🏷️'
         }
       },
@@ -1322,7 +1375,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Matriz ICMS',
           breadcrumb: 'Matriz ICMS',
-          breadcrumbParent: 'Fiscal',
+          breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }
       },

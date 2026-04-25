@@ -7,9 +7,13 @@
     >
       <template #actions>
         <DsButton variant="secondary" @click="resetFilters">Limpar filtros</DsButton>
-        <DsButton variant="primary">Incluir</DsButton>
+        <DsButton variant="primary" @click="openCreateDialog">Incluir</DsButton>
       </template>
     </AppPageHeader>
+
+    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
+      {{ successMessage }}
+    </DsAlert>
 
     <section class="loyalty-page__overview">
       <DsCard v-for="metric in metrics" :key="metric.label" class="metric-card">
@@ -37,11 +41,10 @@
                 <th>Cliente</th>
                 <th>Data</th>
                 <th>Pontos</th>
-                <th>Benefício</th>
                 <th>Abrir</th>
               </tr>
             </thead>
-        <tbody>
+            <tbody>
               <tr v-for="redemption in filteredRedemptions" :key="redemption.id">
                 <td>{{ redemption.id }}</td>
                 <td>
@@ -50,12 +53,6 @@
                 </td>
                 <td>{{ formatDate(redemption.redeemedAt) }}</td>
                 <td>{{ redemption.pointsUsed }}</td>
-                <td>
-                  <DsBadge :variant="redemption.productQuantity > 0 ? 'info' : 'success'" size="sm">
-                    {{ redemption.productQuantity > 0 ? 'Produto' : 'Serviço' }}
-                  </DsBadge>
-                  <div class="muted">{{ redemption.rewardDescription }}</div>
-                </td>
                 <td>
                   <DsButton size="sm" variant="secondary" @click="selectedRedemptionId = redemption.id">
                     Abrir
@@ -66,7 +63,7 @@
           </table>
         </div>
         <div v-if="filteredRedemptions.length === 0" class="empty-state">
-          Nenhum registro encontrado para os filtros selecionados.
+          Nenhum registro encontrado
         </div>
         <div v-if="isLoading" class="empty-state">Carregando resgates...</div>
         <div v-if="errorMessage" class="empty-state">{{ errorMessage }}</div>
@@ -105,6 +102,95 @@
         </article>
       </div>
     </DsCard>
+
+    <DsModal
+      :open="isCreateOpen"
+      title="Incluir Resgate"
+      size="lg"
+      :teleport="false"
+      @close="closeCreateDialog"
+    >
+      <form class="redemption-form" @submit.prevent="submitRedemption">
+        <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
+          {{ formError }}
+        </DsAlert>
+
+        <div class="form-grid">
+          <DsInput
+            id="redemption-owner"
+            v-model="form.ownerId"
+            label="Cliente"
+            placeholder="Cliente"
+            :error="formErrors.ownerId"
+            required
+          />
+          <DsInput
+            id="redemption-points"
+            v-model.number="form.pointsUsed"
+            type="number"
+            label="Pontos"
+            placeholder="0"
+            min="1"
+            :error="formErrors.pointsUsed"
+            required
+          />
+          <DsInput
+            id="redemption-reward"
+            v-model="form.rewardDescription"
+            class="form-grid__wide"
+            label="Benefício"
+            placeholder="Produto ou serviço concedido"
+            :error="formErrors.rewardDescription"
+            required
+          />
+        </div>
+
+        <div class="legacy-actions">
+          <section class="legacy-action">
+            <div>
+              <strong>Adicionar Produto</strong>
+              <span>Quantidade</span>
+            </div>
+            <DsInput
+              id="redemption-product-quantity"
+              v-model.number="form.productQuantity"
+              type="number"
+              label="Quantidade"
+              placeholder="0"
+              min="0"
+            />
+            <DsButton type="button" variant="secondary" @click="addProductReward">Adicionar</DsButton>
+          </section>
+
+          <section class="legacy-action">
+            <div>
+              <strong>Adicionar Serviço</strong>
+              <span>Quantidade</span>
+            </div>
+            <DsInput
+              id="redemption-service-quantity"
+              v-model.number="form.serviceQuantity"
+              type="number"
+              label="Quantidade"
+              placeholder="0"
+              min="0"
+            />
+            <DsButton type="button" variant="secondary" @click="addServiceReward">Adicionar</DsButton>
+          </section>
+        </div>
+
+        <p v-if="formErrors.rewardQuantity" class="form-error">{{ formErrors.rewardQuantity }}</p>
+
+        <div class="form-actions">
+          <DsButton type="button" variant="secondary" :disabled="isSaving" @click="closeCreateDialog">
+            Cancelar
+          </DsButton>
+          <DsButton type="submit" variant="primary" :loading="isSaving">
+            Salvar
+          </DsButton>
+        </div>
+      </form>
+    </DsModal>
   </div>
 </template>
 
@@ -114,15 +200,30 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import {
   getLoyaltySummary,
   listLoyaltyRedemptions,
+  redeemLoyaltyPoints,
   type LoyaltyBalanceSummary,
   type LoyaltyRedemptionSummary
 } from '@/services/commercial';
-import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const filters = reactive({ client: '', date: '' });
+const form = reactive({
+  ownerId: '',
+  pointsUsed: '',
+  rewardDescription: '',
+  productQuantity: 0,
+  serviceQuantity: 0
+});
+const formErrors = reactive({
+  ownerId: '',
+  pointsUsed: '',
+  rewardDescription: '',
+  rewardQuantity: ''
+});
 const selectedRedemptionId = ref('');
 const redemptions = ref<readonly LoyaltyRedemptionSummary[]>([]);
 const balance = ref<LoyaltyBalanceSummary>({
@@ -133,7 +234,11 @@ const balance = ref<LoyaltyBalanceSummary>({
   redemptionCount: 0
 });
 const isLoading = ref(false);
+const isSaving = ref(false);
+const isCreateOpen = ref(false);
 const errorMessage = ref('');
+const formError = ref('');
+const successMessage = ref('');
 
 const integrations = [
   {
@@ -206,6 +311,67 @@ function resetFilters() {
   filters.date = '';
 }
 
+function openCreateDialog() {
+  resetForm();
+  formError.value = '';
+  isCreateOpen.value = true;
+}
+
+function closeCreateDialog() {
+  if (isSaving.value) return;
+  isCreateOpen.value = false;
+}
+
+function resetForm() {
+  form.ownerId = '';
+  form.pointsUsed = '';
+  form.rewardDescription = '';
+  form.productQuantity = 0;
+  form.serviceQuantity = 0;
+  clearFormErrors();
+}
+
+function clearFormErrors() {
+  formErrors.ownerId = '';
+  formErrors.pointsUsed = '';
+  formErrors.rewardDescription = '';
+  formErrors.rewardQuantity = '';
+}
+
+function normalizeQuantity(value: string | number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+}
+
+function addProductReward() {
+  form.productQuantity = normalizeQuantity(form.productQuantity) + 1;
+}
+
+function addServiceReward() {
+  form.serviceQuantity = normalizeQuantity(form.serviceQuantity) + 1;
+}
+
+function validateRedemption() {
+  clearFormErrors();
+  const pointsUsed = normalizeQuantity(form.pointsUsed);
+  const productQuantity = normalizeQuantity(form.productQuantity);
+  const serviceQuantity = normalizeQuantity(form.serviceQuantity);
+
+  if (!form.ownerId.trim()) formErrors.ownerId = 'Informe o cliente.';
+  if (pointsUsed <= 0) formErrors.pointsUsed = 'Informe uma quantidade de pontos maior que zero.';
+  if (!form.rewardDescription.trim()) formErrors.rewardDescription = 'Informe o benefício.';
+  if (productQuantity + serviceQuantity <= 0) {
+    formErrors.rewardQuantity = 'Adicione pelo menos um produto ou serviço ao resgate.';
+  }
+
+  return {
+    isValid: !formErrors.ownerId && !formErrors.pointsUsed && !formErrors.rewardDescription && !formErrors.rewardQuantity,
+    pointsUsed,
+    productQuantity,
+    serviceQuantity
+  };
+}
+
 async function loadLoyaltyData() {
   isLoading.value = true;
   errorMessage.value = '';
@@ -221,6 +387,32 @@ async function loadLoyaltyData() {
     errorMessage.value = 'Não foi possível carregar os resgates de pontos.';
   } finally {
     isLoading.value = false;
+  }
+}
+
+async function submitRedemption() {
+  const validation = validateRedemption();
+  if (!validation.isValid) return;
+
+  isSaving.value = true;
+  formError.value = '';
+  successMessage.value = '';
+  try {
+    const redemption = await redeemLoyaltyPoints({
+      ownerId: form.ownerId.trim(),
+      pointsUsed: validation.pointsUsed,
+      rewardDescription: form.rewardDescription.trim(),
+      productQuantity: validation.productQuantity,
+      serviceQuantity: validation.serviceQuantity
+    });
+    await loadLoyaltyData();
+    selectedRedemptionId.value = redemption.id;
+    successMessage.value = 'Resgate de pontos incluído com sucesso.';
+    isCreateOpen.value = false;
+  } catch (error) {
+    formError.value = error instanceof Error ? error.message : 'Não foi possível incluir o resgate de pontos.';
+  } finally {
+    isSaving.value = false;
   }
 }
 
@@ -244,7 +436,9 @@ onMounted(() => {
 .loyalty-page__overview,
 .loyalty-page__content,
 .integration-grid,
-.reward-grid {
+.reward-grid,
+.form-grid,
+.legacy-actions {
   display: grid;
   gap: 12px;
 }
@@ -258,7 +452,7 @@ onMounted(() => {
 }
 
 .panel {
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .metric-card,
@@ -266,7 +460,7 @@ onMounted(() => {
 .reward-card,
 .selected-card {
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid var(--color-border, #e2e8f0);
   background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
 }
@@ -349,10 +543,64 @@ onMounted(() => {
   margin-top: 12px;
 }
 
+.redemption-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.legacy-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.legacy-action {
+  display: grid;
+  grid-template-columns: 1fr minmax(96px, 128px) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.legacy-action strong,
+.legacy-action span {
+  display: block;
+}
+
+.legacy-action span {
+  margin-top: 4px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--color-danger, #dc2626);
+  font-size: 13px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (max-width: 960px) {
   .loyalty-page__content,
   .filters-grid,
-  .reward-grid {
+  .reward-grid,
+  .form-grid,
+  .legacy-actions,
+  .legacy-action {
     grid-template-columns: 1fr;
   }
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
-import { EventBusService } from './event-bus.service.js';
+import { DatabaseOutboxRepository, EventBusService } from './event-bus.service.js';
 
 const mockCorrelationId = 'corr_test_123' as CorrelationId;
 const mockModuleName = 'notifications' as ModuleName;
@@ -64,6 +64,28 @@ test('EventBusService publish with custom maxAttempts', async () => {
   });
 
   assert.equal(result.maxAttempts, 5);
+});
+
+test('DatabaseOutboxRepository maps jsonb payload objects returned by pg', () => {
+  const repository = new DatabaseOutboxRepository();
+  const now = new Date();
+
+  const mapped = (repository as any).mapRow({
+    id: 'evt_1',
+    correlation_id: mockCorrelationId,
+    module_name: mockModuleName,
+    event_type: 'test.jsonb',
+    payload: { nested: { ok: true } },
+    status: 'pending',
+    attempts: 0,
+    max_attempts: 3,
+    scheduled_at: now,
+    processed_at: null,
+    error: null,
+    created_at: now
+  });
+
+  assert.deepEqual(mapped.payload, { nested: { ok: true } });
 });
 
 test('EventBusService processPending marks events as completed', async () => {

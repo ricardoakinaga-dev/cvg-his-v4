@@ -388,11 +388,20 @@ describe('CounterSalesPage', () => {
     expect(wrapper.text()).toContain('Maria Costa');
     expect(wrapper.text()).toContain('Thor');
     expect(wrapper.text()).toContain('Consulta clínica');
+    expect(wrapper.text()).toContain('ID da Comanda:');
+    expect(wrapper.text()).toContain('Abertura:');
+    expect(wrapper.text()).toContain('Fechamento:');
+    expect(wrapper.text()).toContain('Cliente:');
+    expect(wrapper.text()).toContain('Valor Total:');
+    expect(wrapper.text()).toContain('Detalhes da Comanda');
     expect(wrapper.text()).toContain('Relatório executivo próprio');
     expect(wrapper.text()).toContain('Prontuário ativo');
     expect(wrapper.text()).toContain('Em atendimento');
     expect(wrapper.text()).toContain('Informações do cliente');
     expect(wrapper.text()).toContain('Serviços / Produtos');
+    expect(wrapper.text()).toContain('Serviços');
+    expect(wrapper.text()).toContain('Ver Detalhes do Animal');
+    expect(wrapper.text()).toContain('Incluir Serviços');
     expect(wrapper.text()).toContain('Animais Vinculados na Comanda');
     expect(wrapper.text()).toContain('Observações Gerais');
     expect(wrapper.text()).toContain('Histórico de Esteira');
@@ -401,6 +410,9 @@ describe('CounterSalesPage', () => {
     expect(wrapper.text()).toContain('Incluir Despesa Extra');
     expect(wrapper.text()).toContain('Incluir Desconto');
     expect(wrapper.text()).toContain('Encaminhar Esteira');
+    expect(wrapper.text()).toContain('Voltar para Comandas');
+    expect(wrapper.text()).toContain('Imprimir');
+    expect(wrapper.find('input[placeholder="Buscar por Nome, CPF, E-mail ou ID"]').exists()).toBe(true);
 
     const addItemButton = wrapper
       .findAll('button')
@@ -497,7 +509,7 @@ describe('CounterSalesPage', () => {
 
     const barcodeButton = wrapper
       .findAll('button')
-      .find((button) => button.text().includes('Lançar por código'));
+      .find((button) => button.text().includes('Adicionar Produtos'));
     expect(barcodeButton).toBeTruthy();
     await barcodeButton!.trigger('click');
     await flushPromises();

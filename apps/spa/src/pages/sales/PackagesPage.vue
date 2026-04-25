@@ -2,10 +2,11 @@
   <div class="packages-page">
     <AppPageHeader
       title="Pacotes"
-      subtitle="Contrato de consumo futuro com cliente, animal, serviços, validade e pagamento."
+      :breadcrumbs="['Início', 'Pacotes']"
+      subtitle="Início > Pacotes. Contrato de consumo futuro com cliente, animal, serviços, validade e pagamento."
     >
       <template #actions>
-        <DsButton tag="a" to="/quotes" variant="secondary">Criar orçamento do pacote</DsButton>
+        <DsButton tag="a" to="/quotes" variant="primary">+ Incluir Novo Pacote</DsButton>
         <DsButton tag="a" to="/counter-sales" variant="secondary">Comandas abertas</DsButton>
         <DsButton tag="a" to="/appointments" variant="ghost">Agenda</DsButton>
       </template>
@@ -49,6 +50,7 @@
               <option value="expired">Expirado</option>
             </DsInput>
             <DsInput v-model="filters.period" type="date" label="Emissão ou validade" />
+            <DsButton variant="secondary" @click="loadPackages">Filtrar</DsButton>
           </div>
 
           <div v-if="filteredPackages.length === 0" class="package-empty">
@@ -64,9 +66,9 @@
             >
               <div class="package-card__header">
                 <div>
-                  <span class="package-card__eyebrow">Cliente e animal</span>
+                  <span class="package-card__eyebrow">Cliente:</span>
                   <h3>{{ pkg.customer }}</h3>
-                  <p>{{ pkg.animal }}</p>
+                  <p><strong>Animal:</strong> {{ pkg.animal }}</p>
                 </div>
                 <StatusBadge :label="statusLabel(pkg.status)" :variant="statusVariant(pkg.status)" />
               </div>
@@ -106,8 +108,8 @@
               </details>
 
               <div class="package-actions">
-                <DsButton size="sm" variant="primary" @click="selectPackage(pkg.id)">Ver detalhes</DsButton>
                 <DsButton size="sm" tag="a" to="/billing" variant="secondary">Pagar pacote</DsButton>
+                <DsButton size="sm" variant="primary" @click="selectPackage(pkg.id)">Ver detalhes</DsButton>
               </div>
             </article>
           </div>
@@ -173,9 +175,11 @@
               </section>
 
               <div class="package-actions package-actions--wide">
-                <DsButton tag="a" to="/billing" variant="primary">Pagar Pacote</DsButton>
+                <DsButton variant="danger">Excluir</DsButton>
                 <DsButton tag="a" to="/quotes" variant="secondary">Imprimir</DsButton>
-                <DsButton variant="secondary">Salvar</DsButton>
+                <DsButton tag="a" to="/billing" variant="primary">Pagar Pacote</DsButton>
+                <DsButton variant="secondary">Cancelar</DsButton>
+                <DsButton variant="primary">Salvar</DsButton>
               </div>
             </div>
           </template>
@@ -473,9 +477,10 @@ function toIsoDate(value: string): string {
 
 .package-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.35fr) minmax(160px, 0.35fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.35fr) minmax(160px, 0.35fr) max-content;
   gap: 12px;
   margin-bottom: 14px;
+  align-items: end;
 }
 
 .package-card--selected {

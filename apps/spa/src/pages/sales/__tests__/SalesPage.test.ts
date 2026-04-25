@@ -81,6 +81,9 @@ describe('SalesPage', () => {
     expect(wrapper.text()).toContain('Vendas abertas');
     expect(wrapper.text()).toContain('Nova Venda');
     expect(wrapper.text()).toContain('Busque por ID, ID no PDV, Nome ou CPF do Cliente');
+    expect(wrapper.text()).toContain('Selecionar Tudo');
+    expect(wrapper.text()).toContain('Mostrando 1 - 1 pág. de 1 resultados');
+    expect(wrapper.text()).toContain('20 resultados por página');
     expect(wrapper.text()).toContain('Produtos Vendidos');
     expect(wrapper.text()).toContain('Observações');
     expect(wrapper.text()).toContain('Pagamentos');
@@ -92,6 +95,9 @@ describe('SalesPage', () => {
     expect(wrapper.text()).toContain('Incluir Produto');
     expect(wrapper.text()).toContain('Fechar');
     expect(wrapper.text()).toContain('Imprimir');
+    expect(wrapper.text()).toContain('Insert: Inserir Produto');
+    expect(wrapper.text()).toContain('End: Salvar/Fechar Venda');
+    expect(wrapper.text()).toContain('Esc: Fechar Inclusão Itens');
     expect(wrapper.text()).toContain('Antipulgas 10kg');
     expect(mockCounterSalesList).toHaveBeenCalledWith({ status: 'all' });
     expect(mockCounterSalesGetById).toHaveBeenCalledWith('cs-1');

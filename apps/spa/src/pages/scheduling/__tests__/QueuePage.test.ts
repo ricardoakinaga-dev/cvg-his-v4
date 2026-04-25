@@ -99,6 +99,13 @@ const mockGetPatientName = vi
       id === 'pat-1' ? 'Rex' : id === 'pat-2' ? 'Mimi' : id === 'pat-3' ? 'Buddy' : 'Unknown'
     )
   );
+const mockGetOwnerName = vi
+  .fn()
+  .mockImplementation((id: string) =>
+    Promise.resolve(
+      id === 'owner-1' ? 'Maria Silva' : id === 'owner-2' ? 'João Costa' : 'Tutor Desconhecido'
+    )
+  );
 
 const mockPatients = [
   { id: 'pat-1', name: 'Rex', species: 'canine', primaryOwnerId: 'owner-1' },
@@ -137,7 +144,7 @@ vi.mock('@/services/patient', () => ({
 vi.mock('@/composables/useEntityCache', () => ({
   useEntityCache: () => ({
     getPatientName: mockGetPatientName,
-    getOwnerName: vi.fn().mockResolvedValue(''),
+    getOwnerName: mockGetOwnerName,
     getUserName: vi.fn().mockResolvedValue(''),
     preloadUserNames: vi.fn().mockResolvedValue(undefined),
     loading: new Set()
@@ -197,7 +204,7 @@ describe('QueuePage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Fila Operacional');
+    expect(wrapper.text()).toContain('Esteira de Atendimento');
   });
 
   it('shows loading state initially', async () => {
@@ -271,7 +278,7 @@ describe('QueuePage', () => {
             props: ['open', 'title', 'size']
           },
           EmptyState: {
-            template: '<div class="empty-state-stub">Fila operacional vazia.</div>',
+            template: '<div class="empty-state-stub">Nenhuma comanda nesta esteira</div>',
             props: ['icon', 'title', 'description', 'size']
           }
         }
@@ -279,7 +286,43 @@ describe('QueuePage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Fila operacional vazia');
+    expect(wrapper.text()).toContain('Nenhuma comanda nesta esteira');
+  });
+
+  it('renders the Vetus-like filter bar and operational table columns', async () => {
+    const QueuePage = (await import('../QueuePage.vue')).default;
+    const wrapper = mount(QueuePage, {
+      global: {
+        stubs: {
+          DsButton: { template: '<button><slot /></button>' },
+          DsBadge: { template: '<span><slot /></span>' },
+          DsAlert: { template: '<div><slot /></div>' },
+          DsSpinner: { template: '<div class="ds-spinner-stub" />' },
+          DsModal: {
+            template: '<div><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          },
+          EmptyState: { template: '<div class="empty-state-stub" />' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Setor Atual');
+    expect(wrapper.text()).toContain('Profissional Responsável');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('ID Animal');
+    expect(wrapper.text()).toContain('Todas');
+    expect(wrapper.text()).toContain('Recebido em');
+    expect(wrapper.text()).toContain('Enviado por');
+    expect(wrapper.text()).toContain('Em atendimento com');
+    expect(wrapper.text()).toContain('Atendimento');
+    expect(wrapper.text()).toContain('Urgência');
+    expect(wrapper.text()).toContain('Comanda');
+    expect(wrapper.text()).toContain('Prontuário');
+    expect(wrapper.text()).toContain('Maria Silva');
+    expect(wrapper.text()).toContain('RECEPÇÃO');
   });
 
   it('renders queue entries with status badges for all lifecycle states', async () => {
@@ -310,10 +353,10 @@ describe('QueuePage', () => {
     expect(badgeTexts).toContain('Média');
     expect(badgeTexts).toContain('Baixa');
 
-    expect(badgeTexts).toContain('Aguardando');
-    expect(badgeTexts).toContain('Chamado');
-    expect(badgeTexts).toContain('Em Atendimento');
-    expect(badgeTexts).toContain('Cancelado');
+    expect(wrapper.text()).toContain('Aguardando');
+    expect(wrapper.text()).toContain('Chamado');
+    expect(wrapper.text()).toContain('Em Atendimento');
+    expect(wrapper.text()).toContain('Cancelado');
   });
 
   it('shows call button only for waiting entries', async () => {

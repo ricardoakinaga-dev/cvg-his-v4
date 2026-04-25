@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import LoyaltyPage from './LoyaltyPage.vue';
-import { getLoyaltySummary, listLoyaltyRedemptions } from '@/services/commercial';
+import { getLoyaltySummary, listLoyaltyRedemptions, redeemLoyaltyPoints } from '@/services/commercial';
 
 vi.mock('@/services/commercial', () => ({
   getLoyaltySummary: vi.fn(),
-  listLoyaltyRedemptions: vi.fn()
+  listLoyaltyRedemptions: vi.fn(),
+  redeemLoyaltyPoints: vi.fn()
 }));
 
 const redemptions = [
@@ -39,6 +40,7 @@ async function flush() {
 
 describe('LoyaltyPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(getLoyaltySummary).mockResolvedValue({
       ownerId: null,
       availablePoints: 420,
@@ -47,6 +49,16 @@ describe('LoyaltyPage', () => {
       redemptionCount: 2
     });
     vi.mocked(listLoyaltyRedemptions).mockResolvedValue([...redemptions]);
+    vi.mocked(redeemLoyaltyPoints).mockResolvedValue({
+      id: 'red-103',
+      ownerId: 'Mariana Rocha',
+      pointsUsed: 90,
+      rewardDescription: 'Brinde loja',
+      productQuantity: 1,
+      serviceQuantity: 0,
+      status: 'completed',
+      redeemedAt: '2026-04-20T00:00:00.000Z'
+    });
   });
 
   it('renders the Vetus points redemption workflow', async () => {
@@ -58,6 +70,7 @@ describe('LoyaltyPage', () => {
     expect(wrapper.text()).toContain('Data');
     expect(wrapper.text()).toContain('Pontos');
     expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).not.toContain('BenefícioAbrir');
     expect(wrapper.text()).toContain('Produto');
     expect(wrapper.text()).toContain('Serviço');
     expect(wrapper.text()).toContain('Saldo disponível');
@@ -83,5 +96,36 @@ describe('LoyaltyPage', () => {
     expect(wrapper.text()).toContain('Comandas');
     expect(wrapper.text()).toContain('Pacotes');
     expect(wrapper.text()).toContain('Clientes');
+  });
+
+  it('includes a redemption with product or service quantity', async () => {
+    const wrapper = mount(LoyaltyPage);
+    await flush();
+
+    const includeButton = wrapper.findAll('button').find((button) => button.text() === 'Incluir');
+    expect(includeButton).toBeTruthy();
+    await includeButton?.trigger('click');
+    await nextTick();
+
+    expect(wrapper.text()).toContain('Incluir Resgate');
+    expect(wrapper.text()).toContain('Adicionar Produto');
+    expect(wrapper.text()).toContain('Adicionar Serviço');
+
+    await wrapper.find('#redemption-owner').setValue('Mariana Rocha');
+    await wrapper.find('#redemption-points').setValue('90');
+    await wrapper.find('#redemption-reward').setValue('Brinde loja');
+    await wrapper.find('#redemption-product-quantity').setValue('1');
+    await wrapper.find('form').trigger('submit');
+    await flush();
+
+    expect(redeemLoyaltyPoints).toHaveBeenCalledWith({
+      ownerId: 'Mariana Rocha',
+      pointsUsed: 90,
+      rewardDescription: 'Brinde loja',
+      productQuantity: 1,
+      serviceQuantity: 0
+    });
+    expect(listLoyaltyRedemptions).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain('Resgate de pontos incluído com sucesso.');
   });
 });

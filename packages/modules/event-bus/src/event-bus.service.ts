@@ -46,6 +46,18 @@ function computeBackoffDelay(attempt: number, opts: BackoffOptions): number {
   return Math.min(opts.baseMs * Math.pow(2, attempt), opts.maxMs);
 }
 
+function parseOutboxPayload(payload: unknown): Record<string, unknown> {
+  if (typeof payload === 'string') {
+    return JSON.parse(payload) as Record<string, unknown>;
+  }
+
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    return payload as Record<string, unknown>;
+  }
+
+  return {};
+}
+
 interface OutboxTraceMeta {
   readonly traceparent?: string;
   readonly sourceService?: string;
@@ -225,7 +237,7 @@ export class DatabaseOutboxRepository implements OutboxRepository {
       correlationId: row.correlation_id as CorrelationId,
       moduleName: row.module_name as ModuleName,
       eventType: row.event_type as string,
-      payload: JSON.parse(row.payload as string) as Record<string, unknown>,
+      payload: parseOutboxPayload(row.payload),
       status: row.status as OutboxEvent['status'],
       attempts: row.attempts as number,
       maxAttempts: row.max_attempts as number,

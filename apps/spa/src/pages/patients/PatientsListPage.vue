@@ -256,10 +256,15 @@ const filters = reactive({
   sex: 'all' as PatientSex | 'all',
   sort: 'recent' as SortMode
 });
+const ownerIdFilter = readOwnerIdFilter();
 
 const displayedPatients = computed(() => {
   let items = [...patients.value];
   const search = filters.search.trim().toLowerCase();
+
+  if (ownerIdFilter) {
+    items = items.filter((patient) => patient.primaryOwnerId === ownerIdFilter);
+  }
 
   if (search) {
     items = items.filter((patient) => {
@@ -340,8 +345,13 @@ const headerPrimaryAction = computed(() => ({
   key: 'new-patient',
   label: '+ Cadastrar Novo Animal',
   variant: 'primary' as const,
-  to: '/patients/new'
+  to: ownerIdFilter ? `/patients/new?ownerId=${encodeURIComponent(ownerIdFilter)}` : '/patients/new'
 }));
+
+function readOwnerIdFilter(): string {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('ownerId')?.trim() || '';
+}
 
 function statusVariant(status: string) {
   if (status === 'active') return 'success';

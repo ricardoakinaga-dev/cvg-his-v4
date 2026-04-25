@@ -81,7 +81,11 @@ describe('PackagesPage', () => {
 
     expect(wrapper.text()).toContain('Pacotes');
     expect(wrapper.text()).toContain('Contrato de consumo futuro');
+    expect(wrapper.text()).toContain('Incluir Novo Pacote');
+    expect(wrapper.text()).toContain('Filtrar');
     expect(wrapper.text()).toContain('Cliente e animal');
+    expect(wrapper.text()).toContain('Cliente:');
+    expect(wrapper.text()).toContain('Animal:');
     expect(wrapper.text()).toContain('Pagar pacote');
     expect(wrapper.text()).toContain('Ver serviços');
     expect(wrapper.text()).toContain('Observações gerais sobre o pacote');
@@ -89,6 +93,11 @@ describe('PackagesPage', () => {
     expect(wrapper.text()).toContain('Agenda consome sessões');
     expect(wrapper.text()).toContain('Comanda materializa consumo');
     expect(wrapper.text()).toContain('Financeiro recebe pacote');
+    expect(wrapper.text()).toContain('Excluir');
+    expect(wrapper.text()).toContain('Imprimir');
+    expect(wrapper.text()).toContain('Pagar Pacote');
+    expect(wrapper.text()).toContain('Cancelar');
+    expect(wrapper.text()).toContain('Salvar');
     expect(wrapper.text()).toContain('Cliente owner-1');
     expect(mockQuoteList).toHaveBeenCalledWith();
     expect(mockQuoteGet).toHaveBeenCalledWith('qt-1');

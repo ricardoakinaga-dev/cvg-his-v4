@@ -62,6 +62,13 @@ export const prescriptionsService = {
     return response.items ?? [];
   },
 
+  async listByPatient(patientId: string): Promise<PrescriptionSummary[]> {
+    const response = await apiRequest<PrescriptionListResponse>(
+      `/prescriptions?patientId=${encodeURIComponent(patientId)}`
+    );
+    return response.items ?? [];
+  },
+
   async create(payload: Omit<CreateClinicalEntryRequest, 'entryType'>): Promise<PrescriptionSummary> {
     const { record } = await medicalRecordsService.getByEncounter(payload.encounterId);
     const parsed = parsePrescriptionContent(payload.title, payload.content);

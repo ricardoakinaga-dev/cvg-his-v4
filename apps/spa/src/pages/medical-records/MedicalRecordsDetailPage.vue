@@ -219,11 +219,12 @@ import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const route = useRoute();
 const router = useRouter();
-const encounterId = route.params.id as string;
+const routeRecordId = String(route.params.id ?? '');
 
 const record = ref<MedicalRecordSummary | null>(null);
 const entries = ref<ClinicalEntrySummary[]>([]);
 const timeline = ref<ClinicalTimelineEventSummary[]>([]);
+const resolvedEncounterId = ref('');
 const loading = ref(true);
 const timelineLoading = ref(false);
 const error = ref('');
@@ -340,19 +341,61 @@ function closeEntryModal() {
 
 async function loadRecord() {
   try {
-    const response = await medicalRecordsService.getByEncounter(encounterId);
+    const response = await loadRecordByRouteId(routeRecordId);
     record.value = response.record;
     entries.value = response.entries;
+    resolvedEncounterId.value = response.record.encounterId;
     patientName.value = await entityCache.getPatientName(response.record.patientId);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar prontuário';
+    error.value = getLoadRecordErrorMessage(err);
+  }
+}
+
+function getLoadRecordErrorMessage(err: unknown) {
+  if (!(err instanceof Error)) {
+    return 'Erro ao carregar prontuário';
+  }
+
+  if (err.message === 'Unexpected error') {
+    return 'Não foi possível carregar este prontuário. Tente voltar para a lista e abrir o atendimento novamente.';
+  }
+
+  return err.message;
+}
+
+async function loadRecordByRouteId(id: string) {
+  try {
+    return await medicalRecordsService.getByEncounter(id);
+  } catch (err: unknown) {
+    if (!(err instanceof Error) || err.message !== 'Unexpected error') {
+      throw err;
+    }
+
+    const records = await medicalRecordsService.listAll();
+    const matchedRecord = records.find(
+      (item) => item.record.id === id || item.record.encounterId === id
+    )?.record;
+
+    if (!matchedRecord) {
+      throw new Error('Prontuário não encontrado para este identificador.');
+    }
+
+    return {
+      record: matchedRecord,
+      entries: await medicalRecordsService.listEntries(matchedRecord.encounterId)
+    };
   }
 }
 
 async function loadTimeline() {
   timelineLoading.value = true;
   try {
-    timeline.value = await medicalRecordsService.getTimeline(encounterId);
+    if (!resolvedEncounterId.value) {
+      timeline.value = [];
+      return;
+    }
+
+    timeline.value = await medicalRecordsService.getTimeline(resolvedEncounterId.value);
   } catch {
     // Non-critical
   } finally {

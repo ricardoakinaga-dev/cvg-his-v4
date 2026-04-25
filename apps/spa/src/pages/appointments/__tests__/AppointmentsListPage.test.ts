@@ -230,13 +230,23 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Conflitos');
     expect(wrapper.text()).toContain('Intervalo operacional');
     expect(wrapper.text()).toContain('Em triagem');
-    expect(wrapper.text()).toContain('Cliente/Tutor');
+    expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Filtrar por...');
+    expect(wrapper.text()).toContain('Status:');
+    expect(wrapper.text()).toContain('Pesquisar Profissional');
+    expect(wrapper.text()).toContain('Marcador');
     expect(wrapper.text()).toContain('Disponibilidade');
     expect(wrapper.text()).toContain('10 livres');
     expect(wrapper.text()).toContain('2 agendamentos · 1 bloqueios/folgas');
     expect(wrapper.text()).toContain('Legenda operacional');
-    expect(wrapper.text()).toContain('Referência Vetus');
+    expect(wrapper.text()).toContain('Folga');
+    expect(wrapper.text()).toContain('Aberto');
+    expect(wrapper.text()).toContain('Confirmado');
+    expect(wrapper.text()).toContain('Executado');
+    expect(wrapper.text()).toContain('Não compareceu');
+    expect(wrapper.text()).toContain('Vacina');
+    expect(wrapper.text()).toContain('Vermífugo');
+    expect(wrapper.text()).toContain('Retorno');
   });
 
   it('reloads the overview when switching to week view', async () => {

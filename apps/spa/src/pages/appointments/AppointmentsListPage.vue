@@ -1,14 +1,14 @@
 <template>
   <div class="appointments-cockpit">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Agenda']">
+    <AppPageHeader :breadcrumbs="['Início', 'Agenda']">
       <template #title>📅 Agenda</template>
       <template #subtitle>
-        Atendimento &gt; Agenda. Cockpit multiprofissional com mini calendário lateral, filtros
-        operacionais e visões de mês, semana e dia alinhadas ao fluxo ambulatorial.
+        Início &gt; Agenda. Grade operacional por profissional, data, serviço, cliente, status e
+        marcador, com visões de mês, semana e dia no padrão Vetus.
       </template>
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadOverview">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" href="/queue">Fila operacional</DsButton>
+        <DsButton variant="secondary" tag="a" href="/queue">Esteira de atendimento</DsButton>
         <DsButton
           v-if="canManageScheduling"
           variant="primary"
@@ -57,7 +57,7 @@
 
       <div class="appointments-cockpit__layout">
         <aside class="appointments-cockpit__sidebar">
-          <DsCard title="Filtro e contexto" class="sidebar-card">
+          <DsCard title="Filtrar por..." class="sidebar-card">
             <div class="sidebar-stack">
               <section class="mini-calendar">
                 <div class="mini-calendar__header">
@@ -88,118 +88,148 @@
                 </div>
               </section>
 
-              <DsInput
-                id="referenceDate"
-                v-model="referenceDate"
-                type="date"
-                label="Data base"
-                @change="loadOverview"
-              />
+              <div class="agenda-filter-block">
+                <DsInput
+                  id="referenceDate"
+                  v-model="referenceDate"
+                  type="date"
+                  label="Data base"
+                  @change="loadOverview"
+                />
+              </div>
 
-              <div class="filter-panel__eyebrow">Filtrar por...</div>
-
-              <DsInput
-                id="clientFilter"
-                v-model="localFilters.clientSearch"
-                type="search"
-                label="Cliente/Tutor"
-                placeholder="Pesquisar tutor ou paciente"
-              />
-
-              <DsInput
-                id="practitionerFilter"
-                v-model="filters.practitionerStaffId"
-                type="select"
-                label="Profissional"
-                @change="loadOverview"
-              >
-                <option value="">Todos</option>
-                <option value="unassigned">Sem profissional</option>
-                <option
-                  v-for="professional in overview?.professionals ?? []"
-                  :key="professional.id"
-                  :value="professional.id"
-                >
-                  {{ professional.fullName }}
-                </option>
-              </DsInput>
-
-              <DsInput
-                id="serviceFilter"
-                v-model="filters.serviceId"
-                type="select"
-                label="Serviço"
-                @change="loadOverview"
-              >
-                <option value="">Todos</option>
-                <option v-for="service in services" :key="service.id" :value="service.id">
-                  {{ service.name }}
-                </option>
-              </DsInput>
-
-              <DsInput
-                id="unitFilter"
-                v-model="filters.unit"
-                type="select"
-                label="Unidade/Setor"
-                @change="loadOverview"
-              >
-                <option value="">Todas</option>
-                <option v-for="unit in overview?.filterOptions.units ?? []" :key="unit" :value="unit">
-                  {{ unit }}
-                </option>
-              </DsInput>
-
-              <DsInput
-                id="specialtyFilter"
-                v-model="filters.specialty"
-                type="select"
-                label="Especialidade"
-                @change="loadOverview"
-              >
-                <option value="">Todas</option>
-                <option
-                  v-for="specialty in overview?.filterOptions.specialties ?? []"
-                  :key="specialty"
-                  :value="specialty"
-                >
-                  {{ specialty }}
-                </option>
-              </DsInput>
-
-              <DsInput
-                id="search"
-                v-model="filters.search"
-                type="search"
-                label="Busca geral"
-                placeholder="Tutor, paciente, sala, motivo..."
-                @keyup.enter="loadOverview"
-              />
-
-              <DsInput
-                id="markerFilter"
-                v-model="localFilters.marker"
-                type="select"
-                label="Marcador"
-              >
-                <option value="">Todos</option>
-                <option v-for="marker in markerOptions" :key="marker" :value="marker">
-                  {{ marker }}
-                </option>
-              </DsInput>
-
-              <div class="status-chips">
-                <button
-                  v-for="status in overview?.filterOptions.statuses ?? []"
-                  :key="status"
-                  type="button"
-                  class="status-chip"
-                  :class="{ 'status-chip--active': selectedStatuses.includes(status) }"
-                  @click="toggleStatus(status)"
-                >
-                  {{ statusLabel(status) }}
+              <div class="agenda-filter-block">
+                <div class="agenda-filter-block__title">Status:</div>
+                <div class="status-chips">
+                  <button
+                    v-for="status in overview?.filterOptions.statuses ?? []"
+                    :key="status"
+                    type="button"
+                    class="status-chip"
+                    :class="{ 'status-chip--active': selectedStatuses.includes(status) }"
+                    @click="toggleStatus(status)"
+                  >
+                    {{ statusLabel(status) }}
+                  </button>
+                </div>
+                <button type="button" class="agenda-filter-block__clear" @click="clearStatusFilters">
+                  Limpar filtros
                 </button>
               </div>
+
+              <div class="agenda-filter-block">
+                <DsInput
+                  id="practitionerFilter"
+                  v-model="filters.practitionerStaffId"
+                  type="select"
+                  label="Profissional"
+                  @change="loadOverview"
+                >
+                  <option value="">Pesquisar Profissional</option>
+                  <option value="unassigned">Sem profissional</option>
+                  <option
+                    v-for="professional in overview?.professionals ?? []"
+                    :key="professional.id"
+                    :value="professional.id"
+                  >
+                    {{ professional.fullName }}
+                  </option>
+                </DsInput>
+                <button type="button" class="agenda-filter-block__clear" @click="clearPractitionerFilter">
+                  Limpar filtros
+                </button>
+              </div>
+
+              <div class="agenda-filter-block">
+                <DsInput
+                  id="serviceFilter"
+                  v-model="filters.serviceId"
+                  type="select"
+                  label="Serviço"
+                  @change="loadOverview"
+                >
+                  <option value="">Serviço</option>
+                  <option v-for="service in services" :key="service.id" :value="service.id">
+                    {{ service.name }}
+                  </option>
+                </DsInput>
+                <button type="button" class="agenda-filter-block__clear" @click="clearServiceFilter">
+                  Limpar filtros
+                </button>
+              </div>
+
+              <div class="agenda-filter-block">
+                <DsInput
+                  id="clientFilter"
+                  v-model="localFilters.clientSearch"
+                  type="search"
+                  label="Cliente"
+                  placeholder="Pesquisar Cliente"
+                />
+                <button type="button" class="agenda-filter-block__clear" @click="clearClientFilter">
+                  Limpar filtros
+                </button>
+              </div>
+
+              <div class="agenda-filter-block">
+                <DsInput
+                  id="markerFilter"
+                  v-model="localFilters.marker"
+                  type="select"
+                  label="Marcador"
+                >
+                  <option value="">Marcador</option>
+                  <option v-for="marker in markerOptions" :key="marker" :value="marker">
+                    {{ marker }}
+                  </option>
+                </DsInput>
+                <button type="button" class="agenda-filter-block__clear" @click="clearMarkerFilter">
+                  Limpar filtros
+                </button>
+              </div>
+
+              <details class="agenda-filter-block agenda-filter-block--advanced">
+                <summary>Filtros avançados CVG</summary>
+
+                <DsInput
+                  id="unitFilter"
+                  v-model="filters.unit"
+                  type="select"
+                  label="Unidade/Setor"
+                  @change="loadOverview"
+                >
+                  <option value="">Todas</option>
+                  <option v-for="unit in overview?.filterOptions.units ?? []" :key="unit" :value="unit">
+                    {{ unit }}
+                  </option>
+                </DsInput>
+
+                <DsInput
+                  id="specialtyFilter"
+                  v-model="filters.specialty"
+                  type="select"
+                  label="Especialidade"
+                  @change="loadOverview"
+                >
+                  <option value="">Todas</option>
+                  <option
+                    v-for="specialty in overview?.filterOptions.specialties ?? []"
+                    :key="specialty"
+                    :value="specialty"
+                  >
+                    {{ specialty }}
+                  </option>
+                </DsInput>
+
+                <DsInput
+                  id="search"
+                  v-model="filters.search"
+                  type="search"
+                  label="Busca geral"
+                  placeholder="Tutor, paciente, sala, motivo..."
+                  @keyup.enter="loadOverview"
+                />
+              </details>
 
               <div class="sidebar-actions">
                 <DsButton variant="primary" @click="loadOverview">Aplicar</DsButton>
@@ -564,15 +594,11 @@
                 v-for="item in legendItems"
                 :key="item.label"
                 class="appointments-legend__pill"
-                :class="item.kind === 'status' ? `appointments-legend__pill--${item.tone}` : 'appointments-legend__pill--marker'"
+                :class="`appointments-legend__pill--${item.tone}`"
               >
                 {{ item.label }}
               </span>
             </div>
-            <p class="appointments-legend__hint">
-              Referência Vetus: Folga, Aberto, Confirmado, Executado, Cancelado, Não compareceu,
-              Vacina, Vermífugo e Retorno.
-            </p>
           </section>
         </section>
       </div>
@@ -743,6 +769,18 @@ const viewOptions = [
   { value: 'day' as const, label: 'Dia' }
 ];
 
+const vetusLegendItems = [
+  { label: 'Folga', tone: 'time_off' },
+  { label: 'Aberto', tone: 'scheduled' },
+  { label: 'Confirmado', tone: 'checked_in' },
+  { label: 'Executado', tone: 'completed' },
+  { label: 'Cancelado', tone: 'cancelled' },
+  { label: 'Não compareceu', tone: 'no_show' },
+  { label: 'Vacina', tone: 'vaccine' },
+  { label: 'Vermífugo', tone: 'deworming' },
+  { label: 'Retorno', tone: 'return' }
+];
+
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const timelineHours = Array.from({ length: 13 }, (_, index) => 7 + index);
 const maxVisibleAppointmentsPerSlot = 2;
@@ -889,27 +927,7 @@ const emptyStateCopy = computed(() => {
   };
 });
 
-const legendItems = computed(() => {
-  const statusLegend = selectedStatuses.value.length
-    ? selectedStatuses.value
-    : (overview.value?.filterOptions.statuses ?? []);
-  const markerLegend = localFilters.value.marker
-    ? [localFilters.value.marker]
-    : markerOptions.value.slice(0, 6);
-
-  return [
-    ...statusLegend.map((status) => ({
-      label: statusLabel(status),
-      kind: 'status' as const,
-      tone: status
-    })),
-    ...markerLegend.map((marker) => ({
-      label: marker,
-      kind: 'marker' as const,
-      tone: 'marker'
-    }))
-  ];
-});
+const legendItems = computed(() => vetusLegendItems);
 const availabilityCards = computed<AvailabilityCard[]>(() => {
   if (!overview.value) return [];
 
@@ -1022,9 +1040,9 @@ function slotAriaLabel(dayLabel: string, columnLabel: string, hour: number) {
 
 function statusLabel(status: AppointmentStatus) {
   return {
-    scheduled: 'Agendado',
-    checked_in: 'Check-in',
-    completed: 'Concluído',
+    scheduled: 'Aberto',
+    checked_in: 'Confirmado',
+    completed: 'Executado',
     cancelled: 'Cancelado'
   }[status];
 }
@@ -1184,6 +1202,29 @@ function resetFilters() {
   void loadOverview();
 }
 
+function clearStatusFilters() {
+  selectedStatuses.value = [];
+  void loadOverview();
+}
+
+function clearPractitionerFilter() {
+  filters.value.practitionerStaffId = '';
+  void loadOverview();
+}
+
+function clearServiceFilter() {
+  filters.value.serviceId = '';
+  void loadOverview();
+}
+
+function clearClientFilter() {
+  localFilters.value.clientSearch = '';
+}
+
+function clearMarkerFilter() {
+  localFilters.value.marker = '';
+}
+
 async function loadReferenceData(items: SchedulingCockpitAppointmentSummary[]) {
   const ownerIds = [...new Set(items.map((item) => item.ownerId))];
   const patientIds = [...new Set(items.map((item) => item.patientId))];
@@ -1252,7 +1293,7 @@ async function loadOverview() {
       permissionCodes.value = [];
       return;
     }
-    error.value = loadError instanceof Error ? loadError.message : 'Erro ao carregar agenda premium';
+    error.value = loadError instanceof Error ? loadError.message : 'Erro ao carregar agenda';
   } finally {
     loading.value = false;
   }
@@ -1319,7 +1360,7 @@ async function markNoShow(item: SchedulingCockpitAppointmentSummary) {
   error.value = '';
 
   try {
-    await appointmentService.cancel(item.id, 'No-show registrado pela agenda premium');
+    await appointmentService.cancel(item.id, 'No-show registrado pela agenda');
     await loadOverview();
   } catch (actionError) {
     error.value = actionError instanceof Error ? actionError.message : 'Erro ao registrar no-show';
@@ -1576,15 +1617,6 @@ onMounted(async () => {
   gap: 14px;
 }
 
-.filter-panel__eyebrow {
-  margin: 2px 0 -4px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
-}
-
 .availability-card__list {
   display: grid;
   gap: 12px;
@@ -1765,6 +1797,51 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.agenda-filter-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.agenda-filter-block__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary, #475569);
+}
+
+.agenda-filter-block__clear {
+  min-height: 32px;
+  border: 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.agenda-filter-block__clear:hover {
+  color: #c2410c;
+}
+
+.agenda-filter-block--advanced {
+  gap: 12px;
+}
+
+.agenda-filter-block--advanced summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary, #475569);
+}
+
+.agenda-filter-block--advanced[open] {
+  align-content: start;
 }
 
 .status-chip {
@@ -2232,6 +2309,37 @@ onMounted(async () => {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.18);
   color: #b91c1c;
+}
+
+.appointments-legend__pill--time_off {
+  background: rgba(226, 232, 240, 0.9);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #475569;
+}
+
+.appointments-legend__pill--no_show {
+  background: rgba(255, 247, 237, 0.92);
+  border-color: rgba(251, 146, 60, 0.35);
+  color: #c2410c;
+  text-decoration: line-through;
+}
+
+.appointments-legend__pill--vaccine {
+  background: rgba(254, 249, 195, 0.95);
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #854d0e;
+}
+
+.appointments-legend__pill--deworming {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.24);
+  color: #4338ca;
+}
+
+.appointments-legend__pill--return {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.24);
+  color: #7e22ce;
 }
 
 .appointments-legend__pill--marker {

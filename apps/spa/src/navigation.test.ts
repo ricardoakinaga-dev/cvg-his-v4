@@ -19,12 +19,10 @@ function findGroupPaths(groupId: string) {
 describe('navigation groups', () => {
   it('publishes the ERP modules in the vetus-like layout order', () => {
     expect(navGroups.map((group) => group.label)).toEqual([
-      'Dashboards',
+      'Início',
       'Atendimento',
-      'Cadastros',
       'Laboratório',
       'Estoque',
-      'Fiscal',
       'Financeiro',
       'Marketing',
       'RH',
@@ -37,14 +35,12 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/patients')?.label).toBe('Animais');
     expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
     expect(findMatchingNavItem('/queue')?.label).toBe('Esteira');
-    expect(findMatchingNavItem('/notifications')?.label).toBe('Campanhas');
+    expect(findMatchingNavItem('/notifications')?.label).toBe('Campanhas de SMS Marketing');
     expect(findMatchingNavItem('/access-control')?.label).toBe('Grupos de Acesso');
     expect(findMatchingNavItem('/encounters')?.label).toBe('Atendimentos');
     expect(findMatchingNavItem('/triage')?.label).toBe('Triagem');
-    expect(findMatchingNavItem('/appointments/availability')?.label).toBe('Disponibilidade');
-    expect(findMatchingNavItem('/appointments/types')?.label).toBe('Tipos de Agendamento');
     expect(findMatchingNavItem('/prescriptions')?.label).toBe('Prescrições');
-    expect(findMatchingNavItem('/exam-orders')?.label).toBe('Pedidos API');
+    expect(findMatchingNavItem('/exam-orders')?.label).toBe('Esteira de Exames');
     expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
     expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
     expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
@@ -56,19 +52,17 @@ describe('navigation groups', () => {
   });
 
   it('exposes the requested items for each key module', () => {
-    expect(findGroupPaths('dashboards')).toEqual(
-      expect.arrayContaining(['/', '/dashboards/financial', '/dashboards/multifilial', '/dashboards/curve-abc'])
-    );
+    expect(findGroupPaths('inicio')).toEqual(expect.arrayContaining(['/']));
 
     expect(findGroupPaths('atendimento')).toEqual(
       expect.arrayContaining([
         '/appointments',
-        '/appointments/availability',
-        '/appointments/types',
         '/counter-sales',
         '/sales',
         '/packages',
         '/queue',
+        '/exam-orders',
+        '/vaccines-dewormers',
         '/quotes',
         '/loyalty',
         '/inpatient',
@@ -80,24 +74,17 @@ describe('navigation groups', () => {
         '/surgery',
         '/discharges',
         '/inpatient/board',
-        '/sectors',
-        '/beds'
-      ])
-    );
-
-    expect(findGroupPaths('cadastros')).toEqual(
-      expect.arrayContaining([
+        '/beds',
         '/patients',
         '/owners',
         '/services',
+        '/services/import',
+        '/responsibility-terms',
         '/breeds',
         '/species',
         '/coat-colors',
-        '/webhooks',
-        '/suppliers',
-        '/manufacturers',
-        '/product-groups',
-        '/warehouses'
+        '/customer-groups',
+        '/webhooks'
       ])
     );
 
@@ -114,17 +101,34 @@ describe('navigation groups', () => {
         '/laboratory/equipment',
         '/diagnostics',
         '/laboratory/report-types',
-        '/laboratory/reference-values'
+        '/laboratory/hemogram-reference-values',
+        '/laboratory/biochemistry-reference-values'
       ])
     );
 
     expect(findGroupPaths('estoque')).toEqual(
-      expect.arrayContaining(['/inventory', '/products', '/inventory/movements', '/inventory/validity'])
-    );
-
-    expect(findGroupPaths('fiscal')).toEqual(
       expect.arrayContaining([
-        '/fiscal',
+        '/inventory/price-consultation',
+        '/inventory/nf',
+        '/inventory/movements',
+        '/inventory/pharmacy',
+        '/inventory/validity',
+        '/inventory/audit',
+        '/inventory/price-audit',
+        '/inventory/transfers',
+        '/inventory/purchases',
+        '/inventory/price-adjustments',
+        '/inventory/data-collectors',
+        '/products',
+        '/products/import',
+        '/suppliers',
+        '/warehouses',
+        '/manufacturers',
+        '/product-groups',
+        '/company-sectors',
+        '/measurement-units',
+        '/tabelas-de-preco',
+        '/pontos-de-venda',
         '/fiscal/icms',
         '/fiscal/ipi',
         '/fiscal/pis',
@@ -132,8 +136,6 @@ describe('navigation groups', () => {
         '/fiscal/cfop',
         '/fiscal/nfse',
         '/fiscal/ibs-cbs',
-        '/fiscal/pis-cofins',
-        '/fiscal/ncm',
         '/fiscal/icms-matrix'
       ])
     );
@@ -141,7 +143,24 @@ describe('navigation groups', () => {
     expect(findGroupPaths('financeiro')).toEqual(
       expect.arrayContaining([
         '/billing',
+        '/finance/accounts-payable',
+        '/finance/advance-payments',
+        '/finance/card-accounts',
         '/cash',
+        '/finance/cheques',
+        '/finance/cash-flow',
+        '/dashboards/curve-abc-clients',
+        '/dashboards/curve-abc',
+        '/dashboards/multifilial',
+        '/dashboards/financial',
+        '/finance/timeline',
+        '/finance/split',
+        '/finance/card-machines',
+        '/finance/split/simulator',
+        '/finance/card-transactions',
+        '/finance/split/export',
+        '/finance/payment-enablement',
+        '/finance/payments-dashboard',
         '/cards',
         '/pix',
         '/payment-methods',
@@ -152,32 +171,35 @@ describe('navigation groups', () => {
     );
 
     expect(findGroupPaths('marketing')).toEqual(
-      expect.arrayContaining(['/notifications', '/notifications/whatsapp'])
+      expect.arrayContaining(['/marketing/sms', '/notifications', '/notifications/whatsapp', '/marketing/vaccine-email', '/marketing/sms-settings'])
     );
 
     expect(findGroupPaths('rh')).toEqual(
-      expect.arrayContaining(['/staff', '/commission-calculations', '/commission-rules', '/time-off'])
+      expect.arrayContaining(['/users', '/access-control', '/staff', '/commission-calculations', '/commission-rules', '/time-off'])
     );
 
     expect(findGroupPaths('relatorios')).toEqual(
       expect.arrayContaining([
         '/reports',
         '/reports/financial',
+        '/reports/dre',
         '/reports/appointments',
-        '/reports/encounters',
-        '/reports/registers',
+        '/reports/professional-care',
+        '/reports/registers/services',
+        '/reports/inventory',
+        '/reports/inventory-products',
         '/administrative-reports'
       ])
     );
   });
 
   it('matches nested routes back to the new module group', () => {
-    expect(findMatchingNavGroup('/patients/new')?.id).toBe('cadastros');
+    expect(findMatchingNavGroup('/patients/new')?.id).toBe('atendimento');
     expect(findMatchingNavGroup('/appointments/123')?.id).toBe('atendimento');
     expect(findMatchingNavGroup('/inventory/transfers/manual')?.id).toBe('estoque');
-    expect(findMatchingNavGroup('/fiscal/icms/rules')?.id).toBe('fiscal');
-    expect(findMatchingNavGroup('/dashboards/financial/detail')?.id).toBe('dashboards');
-    expect(findMatchingNavGroup('/access-control/roles')?.id).toBe('administracao');
+    expect(findMatchingNavGroup('/fiscal/icms/rules')?.id).toBe('estoque');
+    expect(findMatchingNavGroup('/dashboards/financial/detail')?.id).toBe('financeiro');
+    expect(findMatchingNavGroup('/access-control/roles')?.id).toBe('rh');
     expect(findMatchingNavGroup('/prescription-executions/enc-1')?.id).toBe('atendimento');
     expect(findMatchingNavGroup('/reports/appointments/monthly')?.id).toBe('relatorios');
   });

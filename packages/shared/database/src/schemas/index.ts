@@ -109,9 +109,9 @@ export const encounterTimeline = pgTable('encounter_timeline', {
 
 export const medicalRecords = pgTable('medical_records', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('open'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
@@ -119,17 +119,17 @@ export const medicalRecords = pgTable('medical_records', {
 
 export const clinicalEntries = pgTable('clinical_entries', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
   medicalRecordId: varchar('medical_record_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  authorUserId: varchar('author_user_id', { length: 255 }).notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
+  authorUserId: uuid('author_user_id').notNull(),
   entryType: varchar('entry_type', { length: 50 }).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   content: varchar('content', { length: 10000 }).notNull(),
   version: integer('version').notNull().default(1),
   deletedAt: timestamp('deleted_at'),
-  deletedByUserId: varchar('deleted_by_user_id', { length: 255 }),
+  deletedByUserId: uuid('deleted_by_user_id'),
   deleteReason: varchar('delete_reason', { length: 1000 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
@@ -141,21 +141,21 @@ export const entryRevisions = pgTable('entry_revisions', {
   version: integer('version').notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   content: varchar('content', { length: 10000 }).notNull(),
-  authorUserId: varchar('author_user_id', { length: 255 }).notNull(),
+  authorUserId: uuid('author_user_id').notNull(),
   reason: varchar('reason', { length: 1000 }),
   createdAt: timestamp('created_at').notNull()
 });
 
 export const clinicalTimeline = pgTable('clinical_timeline', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
   medicalRecordId: varchar('medical_record_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
+  encounterId: uuid('encounter_id').notNull(),
   eventType: varchar('event_type', { length: 100 }).notNull(),
   summary: varchar('summary', { length: 500 }),
-  actorUserId: varchar('actor_user_id', { length: 255 }),
+  actorUserId: uuid('actor_user_id'),
   clinicalEntryId: varchar('clinical_entry_id', { length: 255 }),
-  attachmentId: varchar('attachment_id', { length: 255 }),
+  attachmentId: uuid('attachment_id'),
   occurredAt: timestamp('occurred_at').notNull()
 });
 

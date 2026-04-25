@@ -53,9 +53,12 @@ const mockTimeline = [
   }
 ];
 
+let mockRouteId = 'enc-1';
 const mockGetByEncounterFn = vi
   .fn()
   .mockResolvedValue({ record: mockRecord, entries: mockEntries });
+const mockListAllFn = vi.fn().mockResolvedValue([{ record: mockRecord, entryCount: mockEntries.length }]);
+const mockListEntriesFn = vi.fn().mockResolvedValue(mockEntries);
 const mockGetTimelineFn = vi.fn().mockResolvedValue(mockTimeline);
 const mockCreateEntryFn = vi.fn().mockResolvedValue({});
 const mockUpdateEntryFn = vi.fn().mockResolvedValue({});
@@ -66,6 +69,12 @@ vi.mock('@/services/medicalRecords', () => ({
   medicalRecordsService: {
     get getByEncounter() {
       return mockGetByEncounterFn;
+    },
+    get listAll() {
+      return mockListAllFn;
+    },
+    get listEntries() {
+      return mockListEntriesFn;
     },
     get getTimeline() {
       return mockGetTimelineFn;
@@ -94,8 +103,8 @@ vi.mock('@/composables/useEntityCache', () => ({
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({
-    params: { id: 'enc-1' },
-    path: '/medical-records/enc-1'
+    params: { id: mockRouteId },
+    path: `/medical-records/${mockRouteId}`
   }),
   useRouter: () => ({
     push: vi.fn()
@@ -105,7 +114,10 @@ vi.mock('vue-router', () => ({
 describe('MedicalRecordsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRouteId = 'enc-1';
     mockGetByEncounterFn.mockResolvedValue({ record: mockRecord, entries: mockEntries });
+    mockListAllFn.mockResolvedValue([{ record: mockRecord, entryCount: mockEntries.length }]);
+    mockListEntriesFn.mockResolvedValue(mockEntries);
     mockGetTimelineFn.mockResolvedValue(mockTimeline);
     mockCreateEntryFn.mockResolvedValue({});
     mockUpdateEntryFn.mockResolvedValue({});
@@ -129,6 +141,37 @@ describe('MedicalRecordsDetailPage', () => {
     await flushPromises();
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Prontuario nao encontrado');
+  });
+
+  it('loads the record when the route id is a medical record id instead of an encounter id', async () => {
+    mockRouteId = 'mr-1';
+    mockGetByEncounterFn.mockRejectedValue(new Error('Unexpected error'));
+
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Evolucao do dia');
+    expect(mockListAllFn).toHaveBeenCalled();
+    expect(mockListEntriesFn).toHaveBeenCalledWith('enc-1');
+    expect(mockGetTimelineFn).toHaveBeenCalledWith('enc-1');
+  });
+
+  it('does not expose the generic backend error when record loading fails unexpectedly', async () => {
+    mockGetByEncounterFn.mockRejectedValue(new Error('Unexpected error'));
+    mockListAllFn.mockRejectedValue(new Error('Unexpected error'));
+
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Não foi possível carregar este prontuário');
+    expect(wrapper.text()).not.toContain('Unexpected error');
   });
 
   it('renders record details when loaded', async () => {

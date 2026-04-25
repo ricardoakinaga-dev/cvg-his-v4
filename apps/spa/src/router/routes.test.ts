@@ -35,10 +35,10 @@ describe('router convergence', () => {
     expect(findChildRoute('cash')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('cards')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('pix')?.meta?.breadcrumbParent).toBe('Financeiro');
-    expect(findChildRoute('fiscal')?.meta?.breadcrumbParent).toBe('Fiscal');
-    expect(findChildRoute('fiscal/icms')?.meta?.breadcrumbParent).toBe('Fiscal');
+    expect(findChildRoute('fiscal')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
+    expect(findChildRoute('fiscal/icms')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
     expect(findChildRoute('access-control')?.meta?.title).toBe('Grupos de Acesso');
-    expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('Administração');
+    expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('RH');
   });
 
   it('adds concrete placeholder routes for the new menu items that do not have modules yet', () => {
@@ -53,13 +53,23 @@ describe('router convergence', () => {
     expect(findChildRoute('laboratory/orders')?.alias).toEqual(
       expect.arrayContaining(['/laboratorio/exames', '/laboratorio/pedidos-de-exame'])
     );
-    expect(findChildRoute('exam-orders')?.meta?.breadcrumbParent).toBe('Laboratório');
+    expect(findChildRoute('exam-orders')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('exam-results')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('inventory/pharmacy')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('inventory/price-consultation')?.meta?.title).toBe('Consulta de Preços');
+    expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
+    expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
+    expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
+    expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
-    expect(findChildRoute('dashboards/multifilial')?.meta?.breadcrumbParent).toBe('Dashboards');
+    expect(findChildRoute('dashboards/multifilial')?.meta?.breadcrumbParent).toBe('Financeiro');
+    expect(findChildRoute('vaccines-dewormers')?.meta?.breadcrumbParent).toBe('Atendimento');
+    expect(findChildRoute('responsibility-terms')?.meta?.title).toBe('Termos de Responsabilidade');
+    expect(findChildRoute('customer-groups')?.meta?.title).toBe('Grupos de Clientes');
+    expect(findChildRoute('laboratory/hemogram-reference-values')?.meta?.title).toBe('Vlr. Ref. Hemograma');
+    expect(findChildRoute('laboratory/biochemistry-reference-values')?.meta?.title).toBe('Vlr. Ref. Bioquímico');
   });
 
   it('uses concrete routes for cadastro auxiliary animal catalogs', () => {
@@ -135,7 +145,10 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/sales')?.meta?.title).toBe('Vendas');
     expect(findChildRoute('reports/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('reports/production')?.meta?.breadcrumbParent).toBe('Produção');
-    expect(findChildRoute('dashboards/financial')?.meta?.breadcrumbParent).toBe('Dashboards');
+    expect(findChildRoute('dashboards/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC');
+    expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');
+    expect(findChildRoute('reports/registers/services')?.meta?.title).toBe('Serviços');
+    expect(findChildRoute('reports/inventory-products')?.meta?.title).toBe('Relatório de Produtos');
   });
 });

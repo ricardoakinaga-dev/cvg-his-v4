@@ -513,7 +513,76 @@
       </section>
 
       <section class="patient-workspace-grid">
-        <DsCard title="Agenda futura">
+        <DsCard title="Anamneses">
+          <div v-if="anamnesisEntries.length" class="record-list">
+            <div
+              v-for="entry in anamnesisEntries.slice(0, 3)"
+              :key="entry.id"
+              class="record-list__item record-list__item--stacked"
+            >
+              <div>
+                <strong>{{ entry.title }}</strong>
+                <p>{{ entry.content }}</p>
+              </div>
+              <span>{{ formatDateTime(entry.updatedAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal ainda não possui anamneses registradas.</p>
+
+          <div class="quick-actions">
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
+              variant="secondary"
+              size="sm"
+            >
+              Ver mais Anamneses
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
+              variant="ghost"
+              size="sm"
+            >
+              Incluir Nova Anamnese
+            </DsButton>
+          </div>
+        </DsCard>
+
+        <DsCard title="Vacinas e Vermífugos">
+          <div v-if="preventiveEvents.length" class="timeline-list">
+            <div
+              v-for="item in preventiveEvents.slice(0, 4)"
+              :key="item.id"
+              class="timeline-list__item"
+            >
+              <div>
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.description }}</p>
+              </div>
+              <span>{{ formatDateTime(item.occurredAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal ainda não possui vacinas ou vermífugos cadastrados.</p>
+
+          <div class="quick-actions">
+            <DsButton tag="a" to="/appointments" variant="secondary" size="sm">
+              Ver Mais Vacinas/Vermífugos
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
+              variant="ghost"
+              size="sm"
+            >
+              Incluir Nova Vacina/Vermífugo
+            </DsButton>
+          </div>
+        </DsCard>
+      </section>
+
+      <section class="patient-workspace-grid">
+        <DsCard title="Agenda">
           <div v-if="upcomingAppointments.length" class="timeline-list">
             <div
               v-for="appointment in upcomingAppointments.slice(0, 5)"
@@ -527,7 +596,7 @@
               <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
             </div>
           </div>
-          <p v-else class="muted">Nenhum agendamento futuro para este paciente.</p>
+          <p v-else class="muted">Este animal ainda não possui agendamentos cadastrados.</p>
         </DsCard>
 
         <DsCard title="Últimos atendimentos">
@@ -545,6 +614,209 @@
             </div>
           </div>
           <p v-else class="muted">Nenhum atendimento encontrado para este paciente.</p>
+        </DsCard>
+      </section>
+
+      <section class="patient-workspace-grid">
+        <DsCard title="Exames">
+          <div v-if="examItems.length" class="record-list">
+            <div
+              v-for="item in examItems.slice(0, 4)"
+              :key="item.id"
+              class="record-list__item record-list__item--stacked"
+            >
+              <div>
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.description }}</p>
+              </div>
+              <span>{{ item.meta }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal não possui exames registrados.</p>
+
+          <div class="quick-actions">
+            <DsButton tag="a" to="/diagnostics" variant="secondary" size="sm">
+              Ver mais Exames
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
+              variant="ghost"
+              size="sm"
+            >
+              Upload de Exame PDF
+            </DsButton>
+          </div>
+        </DsCard>
+
+        <DsCard title="Internação">
+          <div v-if="focalInpatientStay" class="workspace-stack">
+            <div class="workspace-highlight">
+              <div>
+                <span class="detail-item__label">Leito atual</span>
+                <strong>{{ focalInpatientStay.ward }} / {{ focalInpatientStay.bed }}</strong>
+              </div>
+              <StatusBadge :label="inpatientStatusLabel(focalInpatientStay.status)" variant="warning" />
+            </div>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-item__label">Unidade</span>
+                <strong>{{ focalInpatientStay.unit }}</strong>
+              </div>
+              <div class="detail-item">
+                <span class="detail-item__label">Admissão</span>
+                <strong>{{ formatDateTime(focalInpatientStay.admittedAt) }}</strong>
+              </div>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal não possui internações registradas.</p>
+          <DsButton
+            tag="a"
+            :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
+            variant="secondary"
+            size="sm"
+          >
+            Ver internação
+          </DsButton>
+        </DsCard>
+      </section>
+
+      <section class="patient-workspace-grid">
+        <DsCard title="Receituário">
+          <div v-if="patientPrescriptions.length" class="record-list">
+            <div
+              v-for="prescription in patientPrescriptions.slice(0, 4)"
+              :key="prescription.id"
+              class="record-list__item record-list__item--stacked"
+            >
+              <div>
+                <strong>{{ prescription.medicationName || prescription.title }}</strong>
+                <p>{{ prescription.dosage || prescription.content }}</p>
+              </div>
+              <span>{{ formatDateTime(prescription.updatedAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal não possui receitas registradas.</p>
+
+          <div class="quick-actions">
+            <DsButton tag="a" to="/prescriptions" variant="secondary" size="sm">
+              Ver mais Receitas
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/prescriptions?encounterId=${focalEncounter.id}` : '/prescriptions'"
+              variant="ghost"
+              size="sm"
+            >
+              Incluir Nova Receita
+            </DsButton>
+          </div>
+        </DsCard>
+
+        <DsCard title="Gráfico de peso">
+          <div class="weight-card">
+            <div class="weight-card__header">
+              <strong>Peso atual: {{ currentWeightLabel }}</strong>
+              <div class="segmented-control" aria-label="Período do gráfico de peso">
+                <button
+                  v-for="option in weightWindowOptions"
+                  :key="option.months"
+                  type="button"
+                  :class="{ active: weightWindowMonths === option.months }"
+                  @click="weightWindowMonths = option.months"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+            <svg class="weight-chart" viewBox="0 0 320 120" role="img" aria-label="Evolução de peso do animal">
+              <polyline
+                :points="weightChartPoints"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle
+                v-for="point in weightChartPointList"
+                :key="`${point.x}-${point.y}`"
+                :cx="point.x"
+                :cy="point.y"
+                r="4"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <div class="quick-actions">
+            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="secondary" size="sm">
+              Ver mais Pesos
+            </DsButton>
+            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost" size="sm">
+              Atualizar peso
+            </DsButton>
+          </div>
+        </DsCard>
+      </section>
+
+      <section class="patient-workspace-grid">
+        <DsCard title="Imagens">
+          <div v-if="imageAttachments.length" class="record-list">
+            <div
+              v-for="attachment in imageAttachments.slice(0, 4)"
+              :key="attachment.id"
+              class="record-list__item"
+            >
+              <div>
+                <strong>{{ attachment.fileName }}</strong>
+                <p>{{ attachment.mimeType }}</p>
+              </div>
+              <span>{{ formatDateTime(attachment.createdAt) }}</span>
+            </div>
+          </div>
+          <p v-else class="muted">Esse animal não possui imagens registradas.</p>
+          <DsButton
+            tag="a"
+            :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
+            variant="secondary"
+            size="sm"
+          >
+            Ver mais Imagens
+          </DsButton>
+        </DsCard>
+
+        <DsCard title="Histórico Clínico">
+          <p v-if="clinicalHistoryDraft.trim()" class="clinical-history-preview">
+            {{ clinicalHistoryDraft }}
+          </p>
+          <textarea
+            v-model="clinicalHistoryDraft"
+            class="clinical-history-field"
+            placeholder="Escreva aqui o histórico clínico do animal"
+            :disabled="!focalEncounter"
+          />
+          <p v-if="!focalEncounter" class="muted">
+            Abra um atendimento para registrar o histórico clínico longitudinal.
+          </p>
+          <div class="quick-actions">
+            <DsButton
+              variant="secondary"
+              size="sm"
+              :loading="savingClinicalHistory"
+              :disabled="!focalEncounter"
+              @click="saveClinicalHistory"
+            >
+              Salvar Histórico Clínico
+            </DsButton>
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
+              variant="ghost"
+              size="sm"
+            >
+              Abrir histórico completo
+            </DsButton>
+          </div>
         </DsCard>
       </section>
 
@@ -682,15 +954,18 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { appointmentService } from '@/services/appointment';
+import { attachmentService } from '@/services/attachments';
 import { billingService } from '@/services/billing';
 import { encounterService } from '@/services/encounter';
 import { inpatientService } from '@/services/inpatient';
 import { medicalRecordsService } from '@/services/medicalRecords';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
+import { prescriptionsService } from '@/services/prescriptions';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import { listTriageRecords } from '@/services/triage';
 import { useEntityCache } from '@/composables/useEntityCache';
+import type { AttachmentSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
 import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
 import type {
@@ -749,6 +1024,26 @@ interface ContextualMessage {
   href: string | null;
 }
 
+interface ExamFeedItem {
+  id: string;
+  title: string;
+  description: string;
+  meta: string;
+}
+
+interface PreventiveFeedItem {
+  id: string;
+  title: string;
+  description: string;
+  occurredAt: string;
+}
+
+type PatientPrescription = ClinicalEntrySummary & {
+  medicationName?: string;
+  dosage?: string;
+  frequency?: string;
+};
+
 const route = useRoute();
 const { getOwnerName } = useEntityCache();
 
@@ -765,14 +1060,26 @@ const patientAppointments = ref<AppointmentSummary[]>([]);
 const patientEncounters = ref<EncounterSummary[]>([]);
 const patientRecords = ref<MedicalRecordListSummary[]>([]);
 const focalRecordEntries = ref<ClinicalEntrySummary[]>([]);
+const patientClinicalEntries = ref<ClinicalEntrySummary[]>([]);
 const focalEncounterTimeline = ref<EncounterTimelineEventSummary[]>([]);
 const focalClinicalTimeline = ref<ClinicalTimelineEventSummary[]>([]);
+const patientAttachments = ref<AttachmentSummary[]>([]);
+const patientPrescriptions = ref<PatientPrescription[]>([]);
 const focalTriage = ref<TriageSummary | null>(null);
 const focalInpatientStay = ref<InpatientStaySummary | null>(null);
 const focalBilling = ref<BillingRecordSummary | null>(null);
 const actionError = ref('');
 const actionMessage = ref('');
 const creatingPackageQuote = ref(false);
+const savingClinicalHistory = ref(false);
+const clinicalHistoryDraft = ref('');
+const weightWindowMonths = ref(12);
+
+const weightWindowOptions = [
+  { label: '3 meses', months: 3 },
+  { label: '6 meses', months: 6 },
+  { label: '1 ano', months: 12 }
+];
 
 const patientId = computed(() => String(route.params.id ?? ''));
 
@@ -814,6 +1121,88 @@ const currentMedicalRecord = computed<MedicalRecordListSummary | null>(() => {
   );
 });
 
+const sortedPatientClinicalEntries = computed(() =>
+  [...patientClinicalEntries.value].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
+);
+
+const anamnesisEntries = computed(() =>
+  sortedPatientClinicalEntries.value.filter((entry) => entry.entryType === 'anamnesis')
+);
+
+const diagnosticEntries = computed(() =>
+  sortedPatientClinicalEntries.value.filter(
+    (entry) => entry.entryType === 'assessment' || entry.entryType === 'plan'
+  )
+);
+
+const labAttachments = computed(() =>
+  patientAttachments.value.filter(
+    (attachment) =>
+      attachment.category === 'lab' ||
+      attachment.mimeType === 'application/pdf' ||
+      /exame|hemograma|bioquim|urina|laudo|labor/i.test(attachment.fileName)
+  )
+);
+
+const imageAttachments = computed(() =>
+  patientAttachments.value.filter(
+    (attachment) => attachment.category === 'image' || attachment.mimeType.startsWith('image/')
+  )
+);
+
+const examItems = computed<ExamFeedItem[]>(() => {
+  const entryItems = diagnosticEntries.value.map((entry) => ({
+    id: `entry-${entry.id}`,
+    title: entry.title,
+    description: entry.content,
+    meta: formatDateTime(entry.updatedAt)
+  }));
+
+  const attachmentItems = labAttachments.value.map((attachment) => ({
+    id: `attachment-${attachment.id}`,
+    title: attachment.fileName,
+    description: attachment.mimeType,
+    meta: formatDateTime(attachment.createdAt)
+  }));
+
+  return [...entryItems, ...attachmentItems].slice(0, 6);
+});
+
+const preventiveEvents = computed<PreventiveFeedItem[]>(() => {
+  const preventivePattern = /vacina|vacinal|verm[ií]fug|antirr[aá]b|v10|v8|gi[aá]rdia/i;
+  const entryItems = sortedPatientClinicalEntries.value
+    .filter((entry) => preventivePattern.test(`${entry.title} ${entry.content}`))
+    .map((entry) => ({
+      id: `entry-${entry.id}`,
+      title: entry.title,
+      description: clinicalEntryTypeLabel(entry.entryType),
+      occurredAt: entry.updatedAt
+    }));
+
+  const appointmentItems = patientAppointments.value
+    .filter((appointment) => preventivePattern.test(appointment.reason))
+    .map((appointment) => ({
+      id: `appointment-${appointment.id}`,
+      title: appointment.reason,
+      description: appointmentStatusLabel(appointment.status),
+      occurredAt: appointment.scheduledAt
+    }));
+
+  return [...entryItems, ...appointmentItems].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+  );
+});
+
+const clinicalHistoryEntry = computed(() =>
+  sortedPatientClinicalEntries.value.find(
+    (entry) =>
+      entry.entryType === 'progress_note' &&
+      /hist[oó]rico cl[ií]nico longitudinal/i.test(entry.title)
+  )
+);
+
 const formattedWeight = computed(() => {
   if (!patient.value?.baseWeightKg) {
     return 'Não informado';
@@ -821,6 +1210,80 @@ const formattedWeight = computed(() => {
 
   return `${patient.value.baseWeightKg} kg`;
 });
+
+const currentWeightLabel = computed(() => {
+  if (!patient.value?.baseWeightKg) {
+    return '0 Kg';
+  }
+
+  return `${patient.value.baseWeightKg} kg`;
+});
+
+const weightMeasurements = computed(() => {
+  const items: Array<{ date: string; weightKg: number }> = [];
+
+  for (const entry of sortedPatientClinicalEntries.value) {
+    const match = `${entry.title} ${entry.content}`.match(/peso(?:\s+atual)?[:\s]+(\d+(?:[,.]\d+)?)\s*kg/i);
+    if (!match) {
+      continue;
+    }
+
+    items.push({
+      date: entry.updatedAt,
+      weightKg: Number(match[1].replace(',', '.'))
+    });
+  }
+
+  if (patient.value?.baseWeightKg) {
+    items.push({
+      date: patient.value.updatedAt,
+      weightKg: patient.value.baseWeightKg
+    });
+  }
+
+  return items
+    .filter((item) => Number.isFinite(item.weightKg))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+});
+
+const filteredWeightMeasurements = computed(() => {
+  if (weightMeasurements.value.length <= 1) {
+    return weightMeasurements.value;
+  }
+
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - weightWindowMonths.value);
+  const filtered = weightMeasurements.value.filter((item) => new Date(item.date) >= cutoff);
+  return filtered.length > 0 ? filtered : weightMeasurements.value.slice(-1);
+});
+
+const weightChartPointList = computed(() => {
+  const points = filteredWeightMeasurements.value;
+  if (points.length === 0) {
+    return [{ x: 20, y: 95 }];
+  }
+
+  if (points.length === 1) {
+    return [
+      { x: 20, y: 70 },
+      { x: 300, y: 70 }
+    ];
+  }
+
+  const weights = points.map((point) => point.weightKg);
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = Math.max(max - min, 1);
+
+  return points.map((point, index) => ({
+    x: 20 + (280 * index) / Math.max(points.length - 1, 1),
+    y: 100 - ((point.weightKg - min) / range) * 70
+  }));
+});
+
+const weightChartPoints = computed(() =>
+  weightChartPointList.value.map((point) => `${point.x},${point.y}`).join(' ')
+);
 
 const ageLabel = computed(() => {
   if (!patient.value?.birthDateApproximate) {
@@ -939,7 +1402,28 @@ const ownerWhatsAppLink = computed(() => {
   return `https://wa.me/${normalized}`;
 });
 
-const chronicDiseaseLabel = computed(() => 'Não informado');
+const clinicalSearchText = computed(() =>
+  [
+    focalTriage.value?.chiefComplaint,
+    focalTriage.value?.initialNotes,
+    ...(focalTriage.value?.alerts ?? []),
+    ...sortedPatientClinicalEntries.value.map((entry) => `${entry.title} ${entry.content}`)
+  ]
+    .filter(Boolean)
+    .join(' ')
+);
+
+const chronicDiseaseLabel = computed(() => {
+  const text = clinicalSearchText.value;
+  if (!text) {
+    return 'Não informado';
+  }
+
+  const chronicTerms = text.match(
+    /doen[çc]a cr[oô]nica|cr[oô]nic[ao]|diabet[ea]s?|renal|card[ií]ac[ao]|epilepsia|hipotireoidismo|osteoartrose/gi
+  );
+  return chronicTerms ? [...new Set(chronicTerms)].join(', ') : 'Não informado';
+});
 
 const allergyLabel = computed(() => {
   const alerts = focalTriage.value?.alerts ?? [];
@@ -947,7 +1431,13 @@ const allergyLabel = computed(() => {
   return allergies.length > 0 ? allergies.join(', ') : 'Não informado';
 });
 
-const temperamentLabel = computed(() => 'Não informado');
+const temperamentLabel = computed(() => {
+  const match = clinicalSearchText.value.match(
+    /temperamento[:\s-]+([^.;\n]+)|\b(d[oó]cil|agressiv[ao]|reativ[ao]|medros[ao]|ansios[ao]|assustad[ao])\b/i
+  );
+
+  return match?.[1]?.trim() || match?.[2] || 'Não informado';
+});
 
 const animalNotesLabel = computed(() => focalTriage.value?.initialNotes || 'Não informado');
 
@@ -1258,13 +1748,17 @@ function resetRelatedState() {
   patientEncounters.value = [];
   patientRecords.value = [];
   focalRecordEntries.value = [];
+  patientClinicalEntries.value = [];
   focalEncounterTimeline.value = [];
   focalClinicalTimeline.value = [];
+  patientAttachments.value = [];
+  patientPrescriptions.value = [];
   focalTriage.value = null;
   focalInpatientStay.value = null;
   focalBilling.value = null;
   actionError.value = '';
   actionMessage.value = '';
+  clinicalHistoryDraft.value = '';
 }
 
 function patientStatusVariant(status: PatientStatus): 'success' | 'warning' | 'danger' {
@@ -1364,6 +1858,48 @@ function buildWhatsAppLink(message: string): string | null {
   return `${ownerWhatsAppLink.value}?text=${encodeURIComponent(message)}`;
 }
 
+function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
+async function saveClinicalHistory() {
+  if (!focalEncounter.value || !patient.value) {
+    return;
+  }
+
+  savingClinicalHistory.value = true;
+  actionError.value = '';
+  actionMessage.value = '';
+
+  try {
+    const content = clinicalHistoryDraft.value.trim();
+    const existing = clinicalHistoryEntry.value;
+    const saved = existing
+      ? await medicalRecordsService.updateEntry(existing.id, {
+          content,
+          reason: 'Atualização do histórico clínico longitudinal',
+          expectedVersion: existing.version
+        })
+      : await medicalRecordsService.createEntry({
+          encounterId: focalEncounter.value.id,
+          patientId: patient.value.id,
+          entryType: 'progress_note',
+          title: 'Histórico clínico longitudinal',
+          content
+        });
+
+    patientClinicalEntries.value = uniqueById([saved, ...patientClinicalEntries.value]);
+    focalRecordEntries.value = uniqueById([saved, ...focalRecordEntries.value]);
+    clinicalHistoryDraft.value = saved.content;
+    actionMessage.value = 'Histórico clínico atualizado.';
+  } catch (caughtError) {
+    actionError.value =
+      caughtError instanceof Error ? caughtError.message : 'Erro ao salvar histórico clínico';
+  } finally {
+    savingClinicalHistory.value = false;
+  }
+}
+
 async function createSuggestedPackageQuote() {
   if (!ownerSnapshot.value || !suggestedPackage.value || !patient.value) {
     return;
@@ -1412,7 +1948,8 @@ async function loadPage() {
       ownerResult,
       ownerSnapshotResult,
       ownerBillingResult,
-      ownerQuotesResult
+      ownerQuotesResult,
+      prescriptionsResult
     ] = await Promise.allSettled([
       encounterService.list(),
       appointmentService.list(),
@@ -1421,7 +1958,8 @@ async function loadPage() {
       getOwnerName(loadedPatient.primaryOwnerId),
       ownerService.getById(loadedPatient.primaryOwnerId),
       billingService.list(),
-      quoteService.list()
+      quoteService.list(),
+      prescriptionsService.listByPatient(loadedPatient.id)
     ]);
 
     if (encountersResult.status === 'fulfilled') {
@@ -1483,6 +2021,49 @@ async function loadPage() {
       );
     } else {
       registerWarning('orçamentos do tutor');
+    }
+
+    if (prescriptionsResult.status === 'fulfilled') {
+      patientPrescriptions.value = prescriptionsResult.value;
+    } else {
+      registerWarning('receituário');
+    }
+
+    if (patientRecords.value.length > 0) {
+      const [entriesResults, attachmentResults] = await Promise.all([
+        Promise.allSettled(
+          patientRecords.value.map((record) =>
+            medicalRecordsService.listEntries(record.record.encounterId)
+          )
+        ),
+        Promise.allSettled(
+          patientRecords.value.map((record) =>
+            attachmentService.list('medical_record', record.record.id)
+          )
+        )
+      ]);
+
+      patientClinicalEntries.value = uniqueById(
+        entriesResults.flatMap((result) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          registerWarning('histórico clínico longitudinal');
+          return [];
+        })
+      );
+
+      patientAttachments.value = uniqueById(
+        attachmentResults.flatMap((result) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          registerWarning('anexos clínicos');
+          return [];
+        })
+      );
+
+      clinicalHistoryDraft.value = clinicalHistoryEntry.value?.content ?? '';
     }
 
     const selectedEncounter = activeEncounters.value[0] ?? sortedEncounters.value[0] ?? null;
@@ -1745,6 +2326,79 @@ watch(
   min-width: 132px;
 }
 
+.weight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weight-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented-control button {
+  min-height: 34px;
+  border: 0;
+  border-right: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.segmented-control button:last-child {
+  border-right: 0;
+}
+
+.segmented-control button.active {
+  background: #1f2937;
+  color: #fff;
+}
+
+.weight-chart {
+  width: 100%;
+  min-height: 150px;
+  color: #2563eb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.clinical-history-field {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #111827;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.clinical-history-preview {
+  margin: 0 0 10px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.clinical-history-field:disabled {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1760,10 +2414,15 @@ watch(
 
 @media (max-width: 720px) {
   .workspace-highlight,
+  .weight-card__header,
   .timeline-list__item,
   .record-list__item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .segmented-control {
+    width: 100%;
   }
 
   .timeline-list__meta {

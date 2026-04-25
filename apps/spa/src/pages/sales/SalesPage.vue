@@ -2,7 +2,8 @@
   <div class="sales-page">
     <AppPageHeader
       title="Venda de Produtos"
-      subtitle="Índice beta de vendas abertas com ficha operacional herdada do fluxo legado."
+      :breadcrumbs="['Atendimentos', 'Atendimentos', 'Vendas']"
+      subtitle="Atendimentos > Vendas. Índice beta de vendas abertas com ficha operacional herdada do fluxo legado."
     >
       <template #actions>
         <DsButton variant="secondary" tag="a" to="/counter-sales">Comandas</DsButton>
@@ -55,10 +56,24 @@
               <option value="date-asc">Data: asc</option>
               <option value="total-desc">Valor: desc</option>
             </DsInput>
+            <DsButton variant="secondary" @click="loadSales">Filtrar</DsButton>
+          </div>
+
+          <div class="sales-beta-toolbar">
+            <label class="sales-select-all">
+              <input type="checkbox" aria-label="Selecionar todas as vendas visíveis" />
+              <span>Selecionar Tudo</span>
+            </label>
+            <span>{{ resultsSummary }}</span>
+            <DsInput v-model="filters.pageSize" type="select" label="Resultados">
+              <option value="20">20 resultados por página</option>
+              <option value="50">50 resultados por página</option>
+              <option value="100">100 resultados por página</option>
+            </DsInput>
           </div>
 
           <div v-if="filteredSales.length === 0" class="sales-empty">
-            Você ainda não tem vendas cadastradas para os filtros informados.
+            Você ainda não tem vendas cadastradas
           </div>
 
           <div v-else class="sales-card-list">
@@ -213,6 +228,12 @@
               <DsButton variant="secondary">Imprimir</DsButton>
               <DsButton variant="danger">Excluir Venda</DsButton>
             </div>
+
+            <div class="legacy-shortcuts" aria-label="Atalhos do legado">
+              <span>Insert: Inserir Produto</span>
+              <span>End: Salvar/Fechar Venda</span>
+              <span>Esc: Fechar Inclusão Itens</span>
+            </div>
           </template>
           <p v-else class="sales-empty">Selecione uma venda para abrir a ficha transacional.</p>
         </DsCard>
@@ -271,7 +292,8 @@ const errorMessage = ref('');
 const filters = ref({
   search: '',
   status: 'open',
-  order: 'date-desc'
+  order: 'date-desc',
+  pageSize: '20'
 });
 const selectedSaleId = ref(sales.value[0]?.id ?? '');
 
@@ -304,6 +326,11 @@ const filteredSales = computed(() => {
 const selectedSale = computed(() =>
   sales.value.find((sale) => sale.id === selectedSaleId.value) ?? null
 );
+const resultsSummary = computed(() => {
+  const count = filteredSales.value.length;
+  if (count === 0) return 'Mostrando 0 - 0 pág. de 0 resultados';
+  return `Mostrando 1 - ${count} pág. de ${count} resultados`;
+});
 
 const salesFlow = [
   {
@@ -508,9 +535,32 @@ function toSortableDate(value: string): number {
 
 .sales-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.35fr) minmax(150px, 0.35fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.35fr) minmax(150px, 0.35fr) max-content;
   gap: 12px;
   margin-bottom: 14px;
+  align-items: end;
+}
+
+.sales-beta-toolbar {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) 220px;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+}
+
+.sales-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #f97316;
 }
 
 .sale-card--selected {
@@ -647,9 +697,33 @@ dd {
   margin-top: 12px;
 }
 
+.legacy-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.legacy-shortcuts span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #64748b;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legacy-shortcuts span:nth-child(2) {
+  background: #15803d;
+}
+
 @media (max-width: 980px) {
   .sales-layout,
   .sales-toolbar,
+  .sales-beta-toolbar,
   .product-grid {
     grid-template-columns: 1fr;
   }
