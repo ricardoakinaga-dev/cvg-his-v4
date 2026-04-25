@@ -28,6 +28,7 @@ export * from './protocol_versions.js';
 export * from './protocols.js';
 export * from './products.js';
 export * from './services.js';
+export * from './responsibility_terms.js';
 export * from './role_permissions.js';
 export * from './roles.js';
 export * from './shift_handover_items.js';

@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
-import { getDatabaseClient } from '@cvg-his-v2/shared-database';
+import { getPool } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import type { SecretsManager } from '@cvg-his-v2/secrets';
@@ -51,7 +51,11 @@ import {
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
-import { resolveTenantFromRequest, runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import {
+  resolveTenantFromRequest,
+  runWithTenantContext,
+  withTenantQuery
+} from '@cvg-his-v2/tenant-context';
 import type {
   ApiKeySummary,
   AuthenticatedPrincipal,
@@ -407,6 +411,20 @@ interface ResponsibilityTermInput {
   readonly requiresWitnessSignature?: boolean;
 }
 
+interface ResponsibilityTermListFilters {
+  readonly search?: string;
+  readonly active?: boolean;
+  readonly usageContext?: string;
+}
+
+interface ResponsibilityTermStore {
+  create(accountId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary>;
+  update(termId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary>;
+  getOrThrow(termId: string): Promise<ResponsibilityTermSummary>;
+  list(accountId: string, filters: ResponsibilityTermListFilters): Promise<ResponsibilityTermSummary[]>;
+  delete(termId: string): Promise<void>;
+}
+
 const responsibilityTermUsageContexts = new Set<ResponsibilityTermUsageContext>([
   'atendimento',
   'internacao',
@@ -450,6 +468,291 @@ function normalizeResponsibilityTermContent(value: string | undefined): string {
     throw new ValidationError(`content must have at most ${responsibilityTermMaxContentLength} characters`);
   }
   return content;
+}
+
+function mapResponsibilityTermRow(row: Record<string, unknown>): ResponsibilityTermSummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    title: row.title as string,
+    code: (row.code as string | null) ?? null,
+    usageContext: row.usage_context as ResponsibilityTermUsageContext,
+    content: row.content as string,
+    active: row.active as boolean,
+    requiresOwnerSignature: row.requires_owner_signature as boolean,
+    requiresWitnessSignature: row.requires_witness_signature as boolean,
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
+    updatedAt: new Date(row.updated_at as string | Date).toISOString()
+  };
+}
+
+class InMemoryResponsibilityTermStore implements ResponsibilityTermStore {
+  readonly #terms = new Map<string, ResponsibilityTermSummary>();
+
+  async create(
+    accountId: string,
+    input: ResponsibilityTermInput
+  ): Promise<ResponsibilityTermSummary> {
+    const now = new Date().toISOString();
+    const term: ResponsibilityTermSummary = {
+      id: createCorrelationId('term'),
+      accountId,
+      title: normalizeResponsibilityTermTitle(input.title),
+      code: normalizeResponsibilityTermCode(input.code),
+      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
+      content: normalizeResponsibilityTermContent(input.content),
+      active: input.active ?? true,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#terms.set(term.id, term);
+    return term;
+  }
+
+  async update(
+    termId: string,
+    input: ResponsibilityTermInput
+  ): Promise<ResponsibilityTermSummary> {
+    const existing = await this.getOrThrow(termId);
+    const updated: ResponsibilityTermSummary = {
+      ...existing,
+      title: input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
+      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
+      usageContext:
+        input.usageContext !== undefined
+          ? normalizeResponsibilityTermUsageContext(input.usageContext)
+          : existing.usageContext,
+      content:
+        input.content !== undefined
+          ? normalizeResponsibilityTermContent(input.content)
+          : existing.content,
+      active: input.active ?? existing.active,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.#terms.set(updated.id, updated);
+    return updated;
+  }
+
+  async getOrThrow(termId: string): Promise<ResponsibilityTermSummary> {
+    const term = this.#terms.get(termId);
+    if (!term) {
+      throw new NotFoundError('Responsibility term not found', { termId });
+    }
+    return term;
+  }
+
+  async list(
+    accountId: string,
+    filters: ResponsibilityTermListFilters
+  ): Promise<ResponsibilityTermSummary[]> {
+    let items = Array.from(this.#terms.values()).filter((term) => term.accountId === accountId);
+
+    if (filters.active !== undefined) {
+      items = items.filter((term) => term.active === filters.active);
+    }
+
+    if (
+      filters.usageContext &&
+      responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)
+    ) {
+      items = items.filter((term) => term.usageContext === filters.usageContext);
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (term) =>
+          term.title.toLowerCase().includes(search) ||
+          (term.code?.toLowerCase().includes(search) ?? false) ||
+          term.content.toLowerCase().includes(search)
+      );
+    }
+
+    return items.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  async delete(termId: string): Promise<void> {
+    this.#terms.delete(termId);
+  }
+}
+
+class DatabaseResponsibilityTermStore implements ResponsibilityTermStore {
+  async create(
+    accountId: string,
+    input: ResponsibilityTermInput
+  ): Promise<ResponsibilityTermSummary> {
+    const now = new Date();
+    const term: ResponsibilityTermSummary = {
+      id: createCorrelationId('term'),
+      accountId,
+      title: normalizeResponsibilityTermTitle(input.title),
+      code: normalizeResponsibilityTermCode(input.code),
+      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
+      content: normalizeResponsibilityTermContent(input.content),
+      active: input.active ?? true,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `INSERT INTO responsibility_terms (
+           id,
+           account_id,
+           title,
+           code,
+           usage_context,
+           content,
+           active,
+           requires_owner_signature,
+           requires_witness_signature,
+           created_at,
+           updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING *`,
+        [
+          term.id,
+          term.accountId,
+          term.title,
+          term.code,
+          term.usageContext,
+          term.content,
+          term.active,
+          term.requiresOwnerSignature,
+          term.requiresWitnessSignature,
+          new Date(term.createdAt),
+          new Date(term.updatedAt)
+        ]
+      );
+      return mapResponsibilityTermRow(result.rows[0]);
+    });
+  }
+
+  async update(
+    termId: string,
+    input: ResponsibilityTermInput
+  ): Promise<ResponsibilityTermSummary> {
+    const existing = await this.getOrThrow(termId);
+    const updated: ResponsibilityTermSummary = {
+      ...existing,
+      title: input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
+      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
+      usageContext:
+        input.usageContext !== undefined
+          ? normalizeResponsibilityTermUsageContext(input.usageContext)
+          : existing.usageContext,
+      content:
+        input.content !== undefined
+          ? normalizeResponsibilityTermContent(input.content)
+          : existing.content,
+      active: input.active ?? existing.active,
+      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
+      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
+      updatedAt: new Date().toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE responsibility_terms
+         SET title = $2,
+             code = $3,
+             usage_context = $4,
+             content = $5,
+             active = $6,
+             requires_owner_signature = $7,
+             requires_witness_signature = $8,
+             updated_at = $9
+         WHERE id = $1
+         RETURNING *`,
+        [
+          termId,
+          updated.title,
+          updated.code,
+          updated.usageContext,
+          updated.content,
+          updated.active,
+          updated.requiresOwnerSignature,
+          updated.requiresWitnessSignature,
+          new Date(updated.updatedAt)
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Responsibility term not found', { termId });
+      }
+      return mapResponsibilityTermRow(result.rows[0]);
+    });
+  }
+
+  async getOrThrow(termId: string): Promise<ResponsibilityTermSummary> {
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM responsibility_terms WHERE id = $1', [termId]);
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Responsibility term not found', { termId });
+      }
+      return mapResponsibilityTermRow(result.rows[0]);
+    });
+  }
+
+  async list(
+    accountId: string,
+    filters: ResponsibilityTermListFilters
+  ): Promise<ResponsibilityTermSummary[]> {
+    return await withTenantQuery(getPool(), async (client) => {
+      let sql = 'SELECT * FROM responsibility_terms WHERE account_id = $1';
+      const params: unknown[] = [accountId];
+      let nextParam = 2;
+
+      if (filters.active !== undefined) {
+        sql += ` AND active = $${nextParam}`;
+        params.push(filters.active);
+        nextParam++;
+      }
+
+      if (
+        filters.usageContext &&
+        responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)
+      ) {
+        sql += ` AND usage_context = $${nextParam}`;
+        params.push(filters.usageContext);
+        nextParam++;
+      }
+
+      if (filters.search) {
+        sql += ` AND (title ILIKE $${nextParam} OR code ILIKE $${nextParam} OR content ILIKE $${nextParam})`;
+        params.push(`%${filters.search}%`);
+        nextParam++;
+      }
+
+      sql += ' ORDER BY title ASC';
+      const result = await client.query(sql, params);
+      return result.rows.map((row: Record<string, unknown>) => mapResponsibilityTermRow(row));
+    });
+  }
+
+  async delete(termId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query('DELETE FROM responsibility_terms WHERE id = $1', [termId]);
+    });
+  }
+}
+
+function createResponsibilityTermStore(): ResponsibilityTermStore {
+  try {
+    getPool();
+    return new DatabaseResponsibilityTermStore();
+  } catch {
+    return new InMemoryResponsibilityTermStore();
+  }
 }
 
 export function createApiServer(options: ApiServerOptions): ApiServer {
@@ -560,7 +863,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const labAnomalyDetection = new LabAnomalyDetectionService();
   const fiscal = new FiscalService();
   const mlTelemetry = new MlTelemetryService();
-  const responsibilityTerms = new Map<string, ResponsibilityTermSummary>();
+  const responsibilityTerms = createResponsibilityTermStore();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -2184,7 +2487,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           const usageContext = url.searchParams.get('usageContext') ?? undefined;
           const active =
             activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-          const items = listResponsibilityTerms(principal.user.accountId, {
+          const items = await responsibilityTerms.list(principal.user.accountId, {
             search,
             active,
             usageContext
@@ -2208,7 +2511,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname === '/responsibility-terms' && request.method === 'POST') {
           const principal = requirePrincipal(request, 'service.write');
           const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
-          const term = createResponsibilityTerm(principal.user.accountId, payload);
+          const term = await responsibilityTerms.create(principal.user.accountId, payload);
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -2228,7 +2531,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname.startsWith('/responsibility-terms/') && request.method === 'GET') {
           const principal = requirePrincipal(request, 'service.read');
           const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-          const term = getResponsibilityTermOrThrow(termId);
+          const term = await responsibilityTerms.getOrThrow(termId);
           if (term.accountId !== principal.user.accountId) {
             throw new AuthenticationError('Responsibility term not found for current account');
           }
@@ -2251,12 +2554,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname.startsWith('/responsibility-terms/') && request.method === 'PATCH') {
           const principal = requirePrincipal(request, 'service.write');
           const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-          const existingTerm = getResponsibilityTermOrThrow(termId);
+          const existingTerm = await responsibilityTerms.getOrThrow(termId);
           if (existingTerm.accountId !== principal.user.accountId) {
             throw new AuthenticationError('Responsibility term not found for current account');
           }
           const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
-          const term = updateResponsibilityTerm(termId, payload);
+          const term = await responsibilityTerms.update(termId, payload);
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -2276,11 +2579,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname.startsWith('/responsibility-terms/') && request.method === 'DELETE') {
           const principal = requirePrincipal(request, 'service.write');
           const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-          const existingTerm = getResponsibilityTermOrThrow(termId);
+          const existingTerm = await responsibilityTerms.getOrThrow(termId);
           if (existingTerm.accountId !== principal.user.accountId) {
             throw new AuthenticationError('Responsibility term not found for current account');
           }
-          responsibilityTerms.delete(termId);
+          await responsibilityTerms.delete(termId);
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -2632,92 +2935,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     });
   }
 
-  function createResponsibilityTerm(
-    accountId: string,
-    input: ResponsibilityTermInput
-  ): ResponsibilityTermSummary {
-    const now = new Date().toISOString();
-    const title = normalizeResponsibilityTermTitle(input.title);
-    const content = normalizeResponsibilityTermContent(input.content);
-    const term: ResponsibilityTermSummary = {
-      id: createCorrelationId('term'),
-      accountId,
-      title,
-      code: normalizeResponsibilityTermCode(input.code),
-      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
-      content,
-      active: input.active ?? true,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    responsibilityTerms.set(term.id, term);
-    return term;
-  }
-
-  function updateResponsibilityTerm(
-    termId: string,
-    input: ResponsibilityTermInput
-  ): ResponsibilityTermSummary {
-    const existing = getResponsibilityTermOrThrow(termId);
-    const updated: ResponsibilityTermSummary = {
-      ...existing,
-      title: input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
-      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
-      usageContext:
-        input.usageContext !== undefined
-          ? normalizeResponsibilityTermUsageContext(input.usageContext)
-          : existing.usageContext,
-      content:
-        input.content !== undefined
-          ? normalizeResponsibilityTermContent(input.content)
-          : existing.content,
-      active: input.active ?? existing.active,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
-      updatedAt: new Date().toISOString()
-    };
-
-    responsibilityTerms.set(updated.id, updated);
-    return updated;
-  }
-
-  function getResponsibilityTermOrThrow(termId: string): ResponsibilityTermSummary {
-    const term = responsibilityTerms.get(termId);
-    if (!term) {
-      throw new NotFoundError('Responsibility term not found', { termId });
-    }
-    return term;
-  }
-
-  function listResponsibilityTerms(
-    accountId: string,
-    filters: { search?: string; active?: boolean; usageContext?: string }
-  ): ResponsibilityTermSummary[] {
-    let items = Array.from(responsibilityTerms.values()).filter((term) => term.accountId === accountId);
-
-    if (filters.active !== undefined) {
-      items = items.filter((term) => term.active === filters.active);
-    }
-
-    if (filters.usageContext && responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)) {
-      items = items.filter((term) => term.usageContext === filters.usageContext);
-    }
-
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (term) =>
-          term.title.toLowerCase().includes(search) ||
-          (term.code?.toLowerCase().includes(search) ?? false) ||
-          term.content.toLowerCase().includes(search)
-      );
-    }
-
-    return items.sort((a, b) => a.title.localeCompare(b.title));
-  }
 }
 
 function readHeader(request: IncomingMessage, headerName: string): string | undefined {

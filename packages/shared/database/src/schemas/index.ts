@@ -452,6 +452,20 @@ export const dataSubjectRequests = pgTable('data_subject_requests', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const responsibilityTerms = pgTable('responsibility_terms', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  title: varchar('title', { length: 160 }).notNull(),
+  code: varchar('code', { length: 80 }),
+  usageContext: varchar('usage_context', { length: 32 }).notNull().default('atendimento'),
+  content: text('content').notNull(),
+  active: boolean('active').notNull().default(true),
+  requiresOwnerSignature: boolean('requires_owner_signature').notNull().default(true),
+  requiresWitnessSignature: boolean('requires_witness_signature').notNull().default(false),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),
