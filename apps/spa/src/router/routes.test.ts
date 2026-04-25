@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { flattenAllNavItems } from '../navigation';
 import { routes } from './routes';
 
 function findChildRoute(path: string) {
@@ -9,6 +10,14 @@ function findChildRoute(path: string) {
 }
 
 describe('router convergence', () => {
+  it('keeps every navbar item backed by a SPA route', () => {
+    const missingRoutes = flattenAllNavItems()
+      .map((item) => item.path)
+      .filter((path) => !findChildRoute(path === '/' ? '' : path.replace(/^\//, '')));
+
+    expect(missingRoutes).toEqual([]);
+  });
+
   it('redirects legacy scheduling routes to the canonical agenda', () => {
     expect(findChildRoute('scheduling')?.redirect).toBe('/appointments');
     expect(findChildRoute('scheduling/new')?.redirect).toBe('/appointments/new');
