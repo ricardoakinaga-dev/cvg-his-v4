@@ -1,9 +1,9 @@
 <template>
   <div class="form-page">
     <AppPageHeader
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços', isEditing ? 'Editar Serviço' : 'Novo Serviço']"
-      :title="isEditing ? 'Editar Serviço' : 'Novo Serviço'"
-      :subtitle="isEditing ? 'Atualize os dados do serviço' : 'Cadastre um novo serviço no catálogo'"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Serviços', isEditing ? 'Editar Serviço' : 'Incluir Serviço']"
+      :title="isEditing ? 'Editar Serviço' : 'Incluir Serviço'"
+      :subtitle="isEditing ? 'Atualize o cadastro mestre do serviço' : 'Inclua um serviço no cadastro mestre operacional'"
     >
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/services')">Voltar</DsButton>
@@ -22,22 +22,22 @@
         <form class="service-form" @submit.prevent="submitForm">
           <DsInput
             v-model="form.name"
-            label="Nome do Serviço"
+            label="Descrição"
             required
-            placeholder="Ex: Consulta Veterinária"
+            placeholder="Descrição do serviço"
           />
-          <DsInput v-model="form.code" label="Código" placeholder="Ex: CONS-001" />
+          <DsInput v-model="form.code" label="Id externo/Código" placeholder="Ex: CONS-001" />
           <DsInput
             v-model="form.description"
             type="textarea"
-            label="Descrição"
+            label="Observações"
             :rows="3"
-            placeholder="Descrição opcional do serviço"
+            placeholder="Observações internas do cadastro"
           />
           <DsInput
             v-model.number="form.basePrice"
             type="number"
-            label="Preço Base"
+            label="Valor"
             required
             step="0.01"
             min="0"
@@ -46,12 +46,12 @@
           <div class="active-toggle">
             <label class="toggle-label">
               <input type="checkbox" v-model="form.active" />
-              <span>Serviço Ativo</span>
+              <span>Serviços Ativos</span>
             </label>
           </div>
           <div class="form-actions">
             <DsButton variant="primary" :loading="submitting" type="submit">
-              {{ isEditing ? 'Atualizar' : 'Cadastrar' }}
+              Salvar
             </DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/services')">
               Cancelar
@@ -59,6 +59,21 @@
           </div>
         </form>
       </DsCard>
+
+      <section class="service-config-grid">
+        <DsCard title="Tabela de Preço">
+          <div class="detail-list">
+            <div><strong>Tabela:</strong> Padrão</div>
+            <div><strong>Valor:</strong> {{ formatCurrency(Number(form.basePrice || 0)) }}</div>
+          </div>
+        </DsCard>
+        <DsCard title="Tabela Fiscal">
+          <div class="detail-list">
+            <div><strong>Empresa:</strong> Empresa atual</div>
+            <div><strong>Tabela Fiscal Serviço:</strong> Configuração fiscal vinculada</div>
+          </div>
+        </DsCard>
+      </section>
 
       <aside class="form-aside">
         <DsCard title="Resumo em tempo real">
@@ -110,10 +125,10 @@ const error = ref('');
 const successMessage = ref('');
 
 const summaryCards = computed(() => [
-  { label: 'Nome', value: form.value.name.trim() || '—', hint: 'Identificação de catálogo' },
+  { label: 'Descrição', value: form.value.name.trim() || '—', hint: 'Identificação de catálogo' },
   { label: 'Código', value: form.value.code.trim() || '—', hint: 'Referência de integração' },
   {
-    label: 'Preço',
+    label: 'Valor',
     value: formatCurrency(Number(form.value.basePrice || 0)),
     hint: 'Valor base do serviço'
   },
@@ -162,7 +177,7 @@ async function submitForm() {
         basePrice: form.value.basePrice,
         active: form.value.active
       });
-      successMessage.value = 'Serviço atualizado com sucesso.';
+      successMessage.value = 'Serviço salvo com sucesso.';
     } else {
       await servicesService.create({
         name: form.value.name.trim(),
@@ -171,7 +186,7 @@ async function submitForm() {
         basePrice: form.value.basePrice,
         active: form.value.active
       });
-      successMessage.value = 'Serviço cadastrado com sucesso.';
+      successMessage.value = 'Serviço salvo com sucesso.';
     }
     setTimeout(() => router.push('/services'), 1500);
   } catch (err: unknown) {
@@ -204,12 +219,6 @@ onMounted(loadService);
   gap: 16px;
 }
 
-@media (max-width: 640px) {
-  .service-form {
-    grid-template-columns: 1fr;
-  }
-}
-
 .active-toggle {
   display: flex;
   align-items: center;
@@ -233,6 +242,25 @@ onMounted(loadService);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.service-config-grid {
+  display: grid;
+  grid-column: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 14px;
+}
+
+.detail-list strong {
+  color: var(--color-text, #0f172a);
 }
 
 .form-aside {
@@ -298,6 +326,17 @@ onMounted(loadService);
 
   .form-aside {
     position: static;
+  }
+
+  .service-config-grid {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .service-form,
+  .service-config-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

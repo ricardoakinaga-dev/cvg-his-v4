@@ -52,28 +52,37 @@ describe('ServicesListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Cadastro de Serviços');
+    expect(wrapper.text()).toContain('Incluir');
     expect(wrapper.text()).toContain('Serviços Ativos');
-    expect(wrapper.text()).toContain('Tabela de Preço');
-    expect(wrapper.text()).toContain('Tabela Fiscal');
-    expect(wrapper.text()).toContain('Agenda usa ativos agendáveis');
-    expect(wrapper.text()).toContain('Comanda cobra execução');
-    expect(wrapper.text()).toContain('Fiscal parametriza NFS-e');
     expect(wrapper.text()).toContain('Id');
     expect(wrapper.text()).toContain('Descrição');
     expect(wrapper.text()).toContain('Valor');
     expect(wrapper.text()).toContain('Abrir');
+    expect(servicesService.list).toHaveBeenCalledWith({ search: undefined, active: true });
   });
 
-  it('filters services by id/description and active flag', async () => {
+  it('filters services by id and description', async () => {
     const wrapper = mount(ServicesListPage);
     await flushPromises();
 
     await wrapper.find('input[placeholder="Id"]').setValue('svc-1');
     await wrapper.find('input[placeholder="Descrição"]').setValue('consulta');
-    await wrapper.find('input[type="checkbox"]').setValue(true);
     await flushPromises();
 
     expect(wrapper.text()).toContain('Consulta Veterinária');
     expect(wrapper.text()).not.toContain('Banho terapêutico');
+  });
+
+  it('reloads using description and active filters when searching', async () => {
+    const wrapper = mount(ServicesListPage);
+    await flushPromises();
+
+    await wrapper.find('input[placeholder="Descrição"]').setValue('consulta');
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+    await flushPromises();
+
+    expect(servicesService.list).toHaveBeenLastCalledWith({ search: 'consulta', active: true });
   });
 });

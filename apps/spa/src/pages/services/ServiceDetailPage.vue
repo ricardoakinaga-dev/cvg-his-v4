@@ -6,7 +6,7 @@
       :subtitle="service?.name ?? 'Carregando...'">
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/services')">Voltar</DsButton>
-        <DsButton variant="primary" @click="router.push(`/services/${serviceId}/edit`)">Editar</DsButton>
+        <DsButton variant="primary" @click="router.push(`/services/${serviceId}/edit`)">Editar Cadastro</DsButton>
       </template>
     </AppPageHeader>
 
@@ -28,10 +28,11 @@
       <div class="detail-grid">
         <DsCard title="Dados do Serviço">
           <div class="detail-list">
-            <div><strong>Nome:</strong> {{ service.name }}</div>
+            <div><strong>Id:</strong> {{ service.id }}</div>
             <div><strong>Código:</strong> {{ service.code ?? '—' }}</div>
-            <div><strong>Descrição:</strong> {{ service.description ?? '—' }}</div>
-            <div><strong>Preço Base:</strong> {{ formatCurrency(service.basePrice) }}</div>
+            <div><strong>Descrição:</strong> {{ service.name }}</div>
+            <div><strong>Observações:</strong> {{ service.description ?? '—' }}</div>
+            <div><strong>Valor:</strong> {{ formatCurrency(service.basePrice) }}</div>
             <div>
               <strong>Status:</strong>
               <span
@@ -42,6 +43,28 @@
             </div>
             <div><strong>Criado em:</strong> {{ formatDateTime(service.createdAt) }}</div>
             <div><strong>Atualizado em:</strong> {{ formatDateTime(service.updatedAt) }}</div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Tabela de Preço">
+          <div class="detail-list">
+            <div><strong>Tabela:</strong> Padrão</div>
+            <div><strong>Valor:</strong> {{ formatCurrency(service.basePrice) }}</div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Tabela Fiscal">
+          <div class="detail-list">
+            <div><strong>Empresa:</strong> Empresa atual</div>
+            <div><strong>Tabela Fiscal Serviço:</strong> Configuração fiscal vinculada</div>
+          </div>
+        </DsCard>
+
+        <DsCard title="Conexões operacionais">
+          <div class="detail-list">
+            <div><strong>Agenda:</strong> serviço ativo disponível para seleção operacional.</div>
+            <div><strong>Comandas:</strong> serviço pode compor cobrança por animal/cliente.</div>
+            <div><strong>Faturamento:</strong> valor e tabela fiscal alimentam fechamento e NFS-e.</div>
           </div>
         </DsCard>
       </div>
@@ -72,7 +95,7 @@ const summaryCards = computed(() => {
   if (!service.value) return [];
   return [
     { label: 'Código', value: service.value.code || '—', hint: 'Identificador comercial' },
-    { label: 'Preço', value: formatCurrency(service.value.basePrice), hint: 'Valor base de catálogo' },
+    { label: 'Valor', value: formatCurrency(service.value.basePrice), hint: 'Valor base de catálogo' },
     { label: 'Status', value: service.value.active ? 'Ativo' : 'Inativo', hint: 'Situação operacional' },
     { label: 'Atualizado', value: formatDateTime(service.value.updatedAt), hint: 'Última alteração' }
   ];

@@ -1984,6 +1984,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname === '/services' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'service.read');
           const search = url.searchParams.get('search') ?? undefined;
+          const activeParam = url.searchParams.get('active');
+          const active =
+            activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -1998,7 +2001,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           response.statusCode = 200;
           response.end(
             JSON.stringify({
-              items: services.list(principal.user.accountId as never, { search })
+              items: services.list(principal.user.accountId as never, { search, active })
             })
           );
           return;

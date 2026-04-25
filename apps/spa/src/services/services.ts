@@ -16,6 +16,11 @@ interface ServicesListResponse {
   items: readonly ServiceSummary[];
 }
 
+export interface ServiceListFilters {
+  search?: string;
+  active?: boolean;
+}
+
 export interface CreateServicePayload {
   name: string;
   code?: string | null;
@@ -33,9 +38,20 @@ export interface UpdateServicePayload {
 }
 
 export const servicesService = {
-  async list(search?: string): Promise<ServiceSummary[]> {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    const response = await apiRequest<ServicesListResponse>(`/services${params}`);
+  async list(filters?: string | ServiceListFilters): Promise<ServiceSummary[]> {
+    const searchParams = new URLSearchParams();
+    const normalizedFilters =
+      typeof filters === 'string' ? ({ search: filters } satisfies ServiceListFilters) : filters;
+
+    if (normalizedFilters?.search) {
+      searchParams.set('search', normalizedFilters.search);
+    }
+    if (typeof normalizedFilters?.active === 'boolean') {
+      searchParams.set('active', normalizedFilters.active ? 'true' : 'false');
+    }
+
+    const params = searchParams.toString();
+    const response = await apiRequest<ServicesListResponse>(`/services${params ? `?${params}` : ''}`);
     return [...(response.items ?? [])];
   },
 

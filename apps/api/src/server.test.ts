@@ -1074,6 +1074,24 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   });
   assert.equal(createServiceResponse.statusCode, 201);
 
+  const createInactiveServiceResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/services',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Filtro Servico Inativo',
+      code: 'SRV-INATIVO-001',
+      description: 'Servico para validar filtro ativo',
+      basePrice: 75,
+      active: false
+    }
+  });
+  assert.equal(createInactiveServiceResponse.statusCode, 201);
+
   const productsResponse = await performRequest(server, {
     method: 'GET',
     url: '/products?search=FILTRO-001',
@@ -1099,6 +1117,19 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   const services = servicesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
   assert.equal(services.items.length, 1);
   assert.equal(services.items[0]?.code, 'SRV-FILTRO-001');
+
+  const activeServicesResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/services?active=true',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(activeServicesResponse.statusCode, 200);
+  const activeServices = activeServicesResponse.bodyJson<{ items: Array<{ code: string | null; active: boolean }> }>();
+  assert.equal(activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'), true);
+  assert.equal(activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'), false);
 
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
