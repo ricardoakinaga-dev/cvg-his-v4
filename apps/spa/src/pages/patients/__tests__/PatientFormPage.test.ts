@@ -52,6 +52,19 @@ const mockOwnerListFn = vi.fn().mockResolvedValue(mockOwners);
 const mockPatientGetByIdFn = vi.fn().mockResolvedValue(mockPatient);
 const mockPatientCreateFn = vi.fn().mockResolvedValue({ id: 'pat-new' });
 const mockPatientUpdateFn = vi.fn().mockResolvedValue(mockPatient);
+const mockBreedListFn = vi.fn().mockResolvedValue([
+  {
+    id: 'breed-1',
+    accountId: 'acc-1',
+    name: 'Golden Retriever',
+    code: 'CAN-GOLD',
+    species: 'canine',
+    description: null,
+    active: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+]);
 const mockRouterPush = vi.fn();
 const mockRouteParams = vi.fn().mockReturnValue({ params: {}, path: '/patients/new' });
 
@@ -77,6 +90,14 @@ vi.mock('@/services/patient', () => ({
   }
 }));
 
+vi.mock('@/services/breeds', () => ({
+  breedsService: {
+    get list() {
+      return mockBreedListFn;
+    }
+  }
+}));
+
 vi.mock('vue-router', () => ({
   useRoute: () => mockRouteParams(),
   useRouter: () => ({
@@ -91,6 +112,19 @@ describe('PatientFormPage', () => {
     mockPatientGetByIdFn.mockResolvedValue(mockPatient);
     mockPatientCreateFn.mockResolvedValue({ id: 'pat-new' });
     mockPatientUpdateFn.mockResolvedValue(mockPatient);
+    mockBreedListFn.mockResolvedValue([
+      {
+        id: 'breed-1',
+        accountId: 'acc-1',
+        name: 'Golden Retriever',
+        code: 'CAN-GOLD',
+        species: 'canine',
+        description: null,
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      }
+    ]);
     mockRouterPush.mockResolvedValue(undefined);
     mockRouteParams.mockReturnValue({ params: {}, path: '/patients/new' });
   });

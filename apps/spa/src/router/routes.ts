@@ -203,9 +203,41 @@ export const routes: RouteRecordRaw[] = [
         path: 'breeds',
         name: 'Breeds',
         alias: ['/racas', '/raças', '/cadastros/racas', '/cadastros/raças', '/cadastro/racas', '/cadastro/raças'],
-        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
-        props: { kind: 'breeds' },
+        component: () => import('@/pages/breeds/BreedsListPage.vue'),
         meta: { title: 'Raças', breadcrumb: 'Raças', breadcrumbParent: 'Cadastros', icon: '🧬' }
+      },
+      {
+        path: 'breeds/new',
+        name: 'BreedNew',
+        component: () => import('@/pages/breeds/BreedFormPage.vue'),
+        meta: {
+          title: 'Nova Raça',
+          breadcrumb: 'Nova Raça',
+          breadcrumbParent: 'Raças',
+          icon: '🧬'
+        }
+      },
+      {
+        path: 'breeds/:id',
+        name: 'BreedDetail',
+        component: () => import('@/pages/breeds/BreedDetailPage.vue'),
+        meta: {
+          title: 'Detalhes da Raça',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Raças',
+          icon: '🧬'
+        }
+      },
+      {
+        path: 'breeds/:id/edit',
+        name: 'BreedEdit',
+        component: () => import('@/pages/breeds/BreedFormPage.vue'),
+        meta: {
+          title: 'Editar Raça',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Raças',
+          icon: '🧬'
+        }
       },
       {
         path: 'species',

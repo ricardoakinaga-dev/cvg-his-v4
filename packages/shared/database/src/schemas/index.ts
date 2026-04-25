@@ -466,6 +466,18 @@ export const responsibilityTerms = pgTable('responsibility_terms', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const breeds = pgTable('breeds', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  name: varchar('name', { length: 160 }).notNull(),
+  code: varchar('code', { length: 80 }),
+  species: varchar('species', { length: 32 }).notNull().default('canine'),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),

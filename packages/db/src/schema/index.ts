@@ -5,6 +5,7 @@ export * from './appointment_type_configs.js';
 export * from './alerts.js';
 export * from './audit_events.js';
 export * from './beds.js';
+export * from './breeds.js';
 export * from './clinical_notes.js';
 export * from './clinical_note_versions.js';
 export * from './documents.js';

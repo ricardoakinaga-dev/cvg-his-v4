@@ -1183,6 +1183,68 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(updateTermResponse.statusCode, 200);
   assert.equal(updateTermResponse.bodyJson<{ active: boolean; title: string }>().active, false);
 
+  const createBreedResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/breeds',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Golden Retriever',
+      code: 'CAN-GOLD-001',
+      species: 'canine',
+      description: 'Raca canina para validar cadastro Vetus',
+      active: true
+    }
+  });
+  assert.equal(createBreedResponse.statusCode, 201);
+  const createdBreed = createBreedResponse.bodyJson<{ id: string; code: string | null; species: string }>();
+  assert.equal(createdBreed.code, 'CAN-GOLD-001');
+  assert.equal(createdBreed.species, 'canine');
+
+  const breedsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/breeds?search=GOLD-001&active=true&species=canine',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(breedsResponse.statusCode, 200);
+  const breeds = breedsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(breeds.items.length, 1);
+  assert.equal(breeds.items[0]?.code, 'CAN-GOLD-001');
+
+  const vetusAliasBreedResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/breed?species=canine',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(vetusAliasBreedResponse.statusCode, 200);
+  const vetusAliasBreeds = vetusAliasBreedResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(vetusAliasBreeds.items.some((item) => item.code === 'CAN-GOLD-001'), true);
+
+  const updateBreedResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/breeds/${createdBreed.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Golden Retriever Revisado',
+      active: false
+    }
+  });
+  assert.equal(updateBreedResponse.statusCode, 200);
+  assert.equal(updateBreedResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
     url: '/inventory?search=MED-001',

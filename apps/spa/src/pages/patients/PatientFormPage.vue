@@ -107,9 +107,19 @@
             <DsInput
               id="breed"
               v-model="form.breed"
+              type="select"
               label="Raça"
-              placeholder="Ex: Golden Retriever"
-            />
+              :disabled="breedsLoading"
+              :hint="breedSelectHint"
+            >
+              <option value="">Selecione...</option>
+              <option v-for="breed in breedOptionsForSpecies" :key="breed.id" :value="breed.name">
+                {{ breed.name }}
+              </option>
+              <option v-if="selectedBreedOutsideCatalog" :value="form.breed">
+                {{ form.breed }}
+              </option>
+            </DsInput>
             <DsInput
               id="sex"
               v-model="form.sex"
@@ -211,6 +221,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { patientService } from '@/services/patient';
 import { ownerService } from '@/services/owner';
+import { breedsService, type BreedSummary } from '@/services/breeds';
 import type { CreatePatientRequest, UpdatePatientRequest, PatientSummary } from '@/types/patient';
 import type { OwnerSummary } from '@/types/owner';
 import SearchSelect from '@/components/SearchSelect.vue';
@@ -240,11 +251,24 @@ const form = reactive({
 });
 
 const owners = ref<OwnerSummary[]>([]);
+const breeds = ref<BreedSummary[]>([]);
 const ownersLoading = ref(false);
+const breedsLoading = ref(false);
 const ownerSearch = ref('');
 const stagedOwnerId = ref('');
 
 const ownerOptions = computed(() => owners.value.map((o) => ({ label: o.fullName, value: o.id })));
+const breedOptionsForSpecies = computed(() =>
+  breeds.value.filter((breed) => !form.species || breed.species === form.species)
+);
+const selectedBreedOutsideCatalog = computed(
+  () => Boolean(form.breed) && !breedOptionsForSpecies.value.some((breed) => breed.name === form.breed)
+);
+const breedSelectHint = computed(() =>
+  breedsLoading.value
+    ? 'Carregando raças cadastradas...'
+    : 'Lista integrada ao cadastro Cadastros > Raças.'
+);
 const selectedOwnerName = computed(
   () => owners.value.find((owner) => owner.id === form.primaryOwnerId)?.fullName || '—'
 );
@@ -347,6 +371,7 @@ function ownerEmailByOwner(owner: OwnerSummary): string {
 
 onMounted(async () => {
   ownersLoading.value = true;
+  breedsLoading.value = true;
   try {
     owners.value = await ownerService.list();
     const ownerIdFromQuery = typeof route.query?.ownerId === 'string' ? route.query.ownerId : '';
@@ -358,6 +383,13 @@ onMounted(async () => {
     formError.value = 'Erro ao carregar lista de clientes';
   } finally {
     ownersLoading.value = false;
+  }
+  try {
+    breeds.value = await breedsService.list({ active: true });
+  } catch {
+    formError.value = formError.value || 'Erro ao carregar lista de raças';
+  } finally {
+    breedsLoading.value = false;
   }
 
   if (isEdit.value) {

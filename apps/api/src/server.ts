@@ -755,6 +755,323 @@ function createResponsibilityTermStore(): ResponsibilityTermStore {
   }
 }
 
+type BreedSpecies = 'canine' | 'feline' | 'avian' | 'rodent' | 'reptile' | 'other';
+
+interface BreedSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly name: string;
+  readonly code: string | null;
+  readonly species: BreedSpecies;
+  readonly description: string | null;
+  readonly active: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+interface BreedInput {
+  readonly name?: string;
+  readonly code?: string | null;
+  readonly species?: BreedSpecies;
+  readonly description?: string | null;
+  readonly active?: boolean;
+}
+
+interface BreedListFilters {
+  readonly search?: string;
+  readonly active?: boolean;
+  readonly species?: string;
+}
+
+interface BreedStore {
+  create(accountId: string, input: BreedInput): Promise<BreedSummary>;
+  update(breedId: string, input: BreedInput): Promise<BreedSummary>;
+  getOrThrow(breedId: string): Promise<BreedSummary>;
+  list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]>;
+  delete(breedId: string): Promise<void>;
+}
+
+const breedSpeciesValues = new Set<BreedSpecies>([
+  'canine',
+  'feline',
+  'avian',
+  'rodent',
+  'reptile',
+  'other'
+]);
+const breedMaxNameLength = 160;
+const breedMaxCodeLength = 80;
+const breedMaxDescriptionLength = 1000;
+
+function normalizeBreedSpecies(value: BreedSpecies | undefined): BreedSpecies {
+  if (!value) return 'canine';
+  if (!breedSpeciesValues.has(value)) {
+    throw new ValidationError('species is invalid');
+  }
+  return value;
+}
+
+function normalizeBreedName(value: string | undefined): string {
+  const name = requireNonEmptyString(value, 'name').trim();
+  if (name.length > breedMaxNameLength) {
+    throw new ValidationError(`name must have at most ${breedMaxNameLength} characters`);
+  }
+  return name;
+}
+
+function normalizeBreedCode(value: string | null | undefined): string | null {
+  const code = value?.trim() || null;
+  if (code && code.length > breedMaxCodeLength) {
+    throw new ValidationError(`code must have at most ${breedMaxCodeLength} characters`);
+  }
+  return code;
+}
+
+function normalizeBreedDescription(value: string | null | undefined): string | null {
+  const description = value?.trim() || null;
+  if (description && description.length > breedMaxDescriptionLength) {
+    throw new ValidationError(`description must have at most ${breedMaxDescriptionLength} characters`);
+  }
+  return description;
+}
+
+function mapBreedRow(row: Record<string, unknown>): BreedSummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    name: row.name as string,
+    code: (row.code as string | null) ?? null,
+    species: row.species as BreedSpecies,
+    description: (row.description as string | null) ?? null,
+    active: row.active as boolean,
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
+    updatedAt: new Date(row.updated_at as string | Date).toISOString()
+  };
+}
+
+class InMemoryBreedStore implements BreedStore {
+  readonly #breeds = new Map<string, BreedSummary>();
+
+  async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
+    const now = new Date().toISOString();
+    const breed: BreedSummary = {
+      id: createCorrelationId('breed'),
+      accountId,
+      name: normalizeBreedName(input.name),
+      code: normalizeBreedCode(input.code),
+      species: normalizeBreedSpecies(input.species),
+      description: normalizeBreedDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#breeds.set(breed.id, breed);
+    return breed;
+  }
+
+  async update(breedId: string, input: BreedInput): Promise<BreedSummary> {
+    const existing = await this.getOrThrow(breedId);
+    const updated: BreedSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeBreedName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeBreedCode(input.code) : existing.code,
+      species: input.species !== undefined ? normalizeBreedSpecies(input.species) : existing.species,
+      description:
+        input.description !== undefined
+          ? normalizeBreedDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.#breeds.set(updated.id, updated);
+    return updated;
+  }
+
+  async getOrThrow(breedId: string): Promise<BreedSummary> {
+    const breed = this.#breeds.get(breedId);
+    if (!breed) {
+      throw new NotFoundError('Breed not found', { breedId });
+    }
+    return breed;
+  }
+
+  async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
+    let items = Array.from(this.#breeds.values()).filter((breed) => breed.accountId === accountId);
+
+    if (filters.active !== undefined) {
+      items = items.filter((breed) => breed.active === filters.active);
+    }
+
+    if (filters.species && breedSpeciesValues.has(filters.species as BreedSpecies)) {
+      items = items.filter((breed) => breed.species === filters.species);
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (breed) =>
+          breed.name.toLowerCase().includes(search) ||
+          (breed.code?.toLowerCase().includes(search) ?? false) ||
+          (breed.description?.toLowerCase().includes(search) ?? false)
+      );
+    }
+
+    return items.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async delete(breedId: string): Promise<void> {
+    this.#breeds.delete(breedId);
+  }
+}
+
+class DatabaseBreedStore implements BreedStore {
+  async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
+    const now = new Date();
+    const breed: BreedSummary = {
+      id: createCorrelationId('breed'),
+      accountId,
+      name: normalizeBreedName(input.name),
+      code: normalizeBreedCode(input.code),
+      species: normalizeBreedSpecies(input.species),
+      description: normalizeBreedDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `INSERT INTO breeds (
+           id,
+           account_id,
+           name,
+           code,
+           species,
+           description,
+           active,
+           created_at,
+           updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [
+          breed.id,
+          breed.accountId,
+          breed.name,
+          breed.code,
+          breed.species,
+          breed.description,
+          breed.active,
+          new Date(breed.createdAt),
+          new Date(breed.updatedAt)
+        ]
+      );
+      return mapBreedRow(result.rows[0]);
+    });
+  }
+
+  async update(breedId: string, input: BreedInput): Promise<BreedSummary> {
+    const existing = await this.getOrThrow(breedId);
+    const updated: BreedSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeBreedName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeBreedCode(input.code) : existing.code,
+      species: input.species !== undefined ? normalizeBreedSpecies(input.species) : existing.species,
+      description:
+        input.description !== undefined
+          ? normalizeBreedDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE breeds
+         SET name = $2,
+             code = $3,
+             species = $4,
+             description = $5,
+             active = $6,
+             updated_at = $7
+         WHERE id = $1
+         RETURNING *`,
+        [
+          breedId,
+          updated.name,
+          updated.code,
+          updated.species,
+          updated.description,
+          updated.active,
+          new Date(updated.updatedAt)
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Breed not found', { breedId });
+      }
+      return mapBreedRow(result.rows[0]);
+    });
+  }
+
+  async getOrThrow(breedId: string): Promise<BreedSummary> {
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM breeds WHERE id = $1', [breedId]);
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Breed not found', { breedId });
+      }
+      return mapBreedRow(result.rows[0]);
+    });
+  }
+
+  async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
+    return await withTenantQuery(getPool(), async (client) => {
+      let sql = 'SELECT * FROM breeds WHERE account_id = $1';
+      const params: unknown[] = [accountId];
+      let nextParam = 2;
+
+      if (filters.active !== undefined) {
+        sql += ` AND active = $${nextParam}`;
+        params.push(filters.active);
+        nextParam++;
+      }
+
+      if (filters.species && breedSpeciesValues.has(filters.species as BreedSpecies)) {
+        sql += ` AND species = $${nextParam}`;
+        params.push(filters.species);
+        nextParam++;
+      }
+
+      if (filters.search) {
+        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
+        params.push(`%${filters.search}%`);
+        nextParam++;
+      }
+
+      sql += ' ORDER BY name ASC';
+      const result = await client.query(sql, params);
+      return result.rows.map((row: Record<string, unknown>) => mapBreedRow(row));
+    });
+  }
+
+  async delete(breedId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query('DELETE FROM breeds WHERE id = $1', [breedId]);
+    });
+  }
+}
+
+function createBreedStore(): BreedStore {
+  try {
+    getPool();
+    return new DatabaseBreedStore();
+  } catch {
+    return new InMemoryBreedStore();
+  }
+}
+
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
@@ -864,6 +1181,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const fiscal = new FiscalService();
   const mlTelemetry = new MlTelemetryService();
   const responsibilityTerms = createResponsibilityTermStore();
+  const breeds = createBreedStore();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -2477,6 +2795,126 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           );
           response.statusCode = 200;
           response.end(JSON.stringify(service));
+          return;
+        }
+
+        if ((pathname === '/breeds' || pathname === '/breed') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const search = url.searchParams.get('search') ?? undefined;
+          const activeParam = url.searchParams.get('active');
+          const species = url.searchParams.get('species') ?? undefined;
+          const active =
+            activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
+          const items = await breeds.list(principal.user.accountId, {
+            search,
+            active,
+            species
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'breeds',
+            'list',
+            'breed',
+            search ?? species ?? 'all',
+            'Breeds catalog inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/breeds' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'service.write');
+          const payload = (await readJsonBody(request)) as BreedInput;
+          const breed = await breeds.create(principal.user.accountId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'breeds',
+            'create',
+            'breed',
+            breed.id,
+            `Breed ${breed.name} created`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(breed));
+          return;
+        }
+
+        if (pathname.startsWith('/breeds/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
+          const breed = await breeds.getOrThrow(breedId);
+          if (breed.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Breed not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'breeds',
+            'read',
+            'breed',
+            breed.id,
+            `Breed ${breed.name} inspected`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(breed));
+          return;
+        }
+
+        if (pathname.startsWith('/breeds/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'service.write');
+          const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
+          const existingBreed = await breeds.getOrThrow(breedId);
+          if (existingBreed.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Breed not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as BreedInput;
+          const breed = await breeds.update(breedId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'breeds',
+            'update',
+            'breed',
+            breed.id,
+            `Breed ${breed.name} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(breed));
+          return;
+        }
+
+        if (pathname.startsWith('/breeds/') && request.method === 'DELETE') {
+          const principal = requirePrincipal(request, 'service.write');
+          const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
+          const existingBreed = await breeds.getOrThrow(breedId);
+          if (existingBreed.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Breed not found for current account');
+          }
+          await breeds.delete(breedId);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'breeds',
+            'delete',
+            'breed',
+            breedId,
+            `Breed ${existingBreed.name} deleted`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
           return;
         }
 

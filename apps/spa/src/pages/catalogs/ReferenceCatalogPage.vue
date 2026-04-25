@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-type CatalogKind = 'breeds' | 'species' | 'coat-colors';
+type CatalogKind = 'species' | 'coat-colors';
 
 interface ReferenceItem {
   code: string;
@@ -59,18 +59,6 @@ const props = defineProps<{
 }>();
 
 const catalogs: Record<CatalogKind, ReferenceCatalog> = {
-  breeds: {
-    title: 'Raças',
-    description: 'Base operacional de raças para padronizar cadastros de animais e importações Vetus.',
-    placeholder: 'Buscar por raça, espécie ou código',
-    items: [
-      { code: 'CAN-SRD', name: 'Sem raça definida', description: 'Uso padrão para cães sem raça informada.', meta: 'Canina' },
-      { code: 'CAN-SHIH', name: 'Shih-tzu', description: 'Raça canina de pequeno porte comum na clínica.', meta: 'Canina' },
-      { code: 'CAN-GOLD', name: 'Golden Retriever', description: 'Raça canina de grande porte com alta incidência em rotina clínica.', meta: 'Canina' },
-      { code: 'FEL-SRD', name: 'Sem raça definida felina', description: 'Uso padrão para felinos sem raça informada.', meta: 'Felina' },
-      { code: 'FEL-SIAM', name: 'Siamês', description: 'Raça felina cadastrada para histórico e relatórios.', meta: 'Felina' }
-    ]
-  },
   species: {
     title: 'Espécies',
     description: 'Catálogo base de espécies aceitas no cadastro de animais e nos filtros clínicos.',

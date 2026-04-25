@@ -5,7 +5,6 @@ import ReferenceCatalogPage from '../ReferenceCatalogPage.vue';
 
 describe('ReferenceCatalogPage', () => {
   it.each([
-    ['breeds', 'Raças', 'Buscar por raça, espécie ou código', 'Shih-tzu'],
     ['species', 'Espécies', 'Buscar por espécie ou código', 'Canina'],
     ['coat-colors', 'Cores', 'Buscar por cor, pelagem ou código', 'Tricolor']
   ] as const)('renders the %s catalog with search and stable data', async (kind, title, placeholder, expectedItem) => {
