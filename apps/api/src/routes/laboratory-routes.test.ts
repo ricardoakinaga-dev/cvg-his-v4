@@ -316,3 +316,46 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and fi
   const codePayload = codeResponse.bodyJson<{ items: Array<{ id: string }> }>();
   assert.equal(codePayload.items.length, 1);
 });
+
+test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HEM results', async () => {
+  const laboratory = createLaboratoryService();
+  const response = new MockResponse();
+
+  const handled = await handleLaboratoryRoutes(
+    '/laboratorio/atendimentos/hemogramas',
+    { method: 'GET', url: '/laboratorio/atendimentos/hemogramas?corpo=normalidade' } as never,
+    response as never,
+    'corr-lab-hemogramas',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ examCatalogId?: string; resultSummary?: string }> }>();
+  assert.equal(payload.items.length, 1);
+  assert.equal(payload.items[0].examCatalogId, 'cat_001');
+  assert.match(payload.items[0].resultSummary ?? '', /normalidade/i);
+
+  const shortAliasResponse = new MockResponse();
+  const shortAliasHandled = await handleLaboratoryRoutes(
+    '/laboratory/hemograms',
+    { method: 'GET', url: '/laboratory/hemograms?animal=pat-1' } as never,
+    shortAliasResponse as never,
+    'corr-lab-hemogramas-short',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(shortAliasHandled, true);
+  assert.equal(shortAliasResponse.statusCode, 200);
+  const shortPayload = shortAliasResponse.bodyJson<{ items: Array<{ examType: string }> }>();
+  assert.equal(shortPayload.items.length, 1);
+  assert.match(shortPayload.items[0].examType, /hemograma/i);
+});

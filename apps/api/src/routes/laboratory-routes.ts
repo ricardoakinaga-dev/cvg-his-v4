@@ -68,6 +68,14 @@ function isLaboratoryResultsCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryHemogramsCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/hemograms',
+    '/laboratorio/hemogramas',
+    '/laboratorio/atendimentos/hemogramas'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -301,10 +309,19 @@ export async function handleLaboratoryRoutes(
     });
   }
 
-  if ((isLaboratoryResultsCollectionPath(pathname) || pathname === '/diagnostics/results') && request.method === 'GET') {
+  if (
+    (
+      isLaboratoryResultsCollectionPath(pathname)
+      || isLaboratoryHemogramsCollectionPath(pathname)
+      || pathname === '/diagnostics/results'
+    )
+    && request.method === 'GET'
+  ) {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const examType = url.searchParams.get('examType') ?? undefined;
+    const examType = isLaboratoryHemogramsCollectionPath(pathname)
+      ? (url.searchParams.get('examType') ?? 'HEM')
+      : (url.searchParams.get('examType') ?? undefined);
     const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
     const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
     const bodyFilter = normalizeSearch(url.searchParams.get('body') ?? url.searchParams.get('corpo'));
@@ -326,10 +343,12 @@ export async function handleLaboratoryRoutes(
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: routeModule,
-      action: 'results_list',
+      action: isLaboratoryHemogramsCollectionPath(pathname) ? 'hemograms_list' : 'results_list',
       entityType: 'diagnostic-order',
       entityId: examType ?? 'all-results',
-      payloadSummary: 'Released laboratory results listed',
+      payloadSummary: isLaboratoryHemogramsCollectionPath(pathname)
+        ? 'Laboratory hemograms listed'
+        : 'Released laboratory results listed',
       riskLevel: 'medium',
       correlationId
     });

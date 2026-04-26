@@ -557,7 +557,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/hemograms',
         name: 'LaboratoryHemograms',
-        alias: ['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/exames/hemogramas'],
+        alias: ['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/atendimentos/hemogramas', '/laboratorio/exames/hemogramas'],
         component: () => import('@/pages/laboratory/LaboratoryHemogramsPage.vue'),
         meta: {
           title: 'Hemogramas',

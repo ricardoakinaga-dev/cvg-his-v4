@@ -54,7 +54,12 @@ describe('router convergence', () => {
     expect(findChildRoute('packages')?.name).toBe('Packages');
     expect(findChildRoute('laboratory/hemograms')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('laboratory/hemograms')?.alias).toEqual(
-      expect.arrayContaining(['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/exames/hemogramas'])
+      expect.arrayContaining([
+        '/hemogramas',
+        '/laboratorio/hemogramas',
+        '/laboratorio/atendimentos/hemogramas',
+        '/laboratorio/exames/hemogramas'
+      ])
     );
     expect(findChildRoute('laboratory/urinalysis')?.alias).toEqual(
       expect.arrayContaining(['/urina', '/laboratorio/urina', '/laboratorio/exames/urina'])
