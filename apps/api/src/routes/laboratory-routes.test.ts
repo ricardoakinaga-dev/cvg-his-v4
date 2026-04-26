@@ -417,3 +417,61 @@ test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to U
   assert.equal(shortPayload.items.length, 1);
   assert.match(shortPayload.items[0].examType, /urina/i);
 });
+
+test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to BIO results', async () => {
+  const laboratory = createLaboratoryService();
+  const biochemistryOrder = laboratory.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Bioquimico',
+    examCatalogId: 'cat_002',
+    reason: 'Perfil bioquimico'
+  });
+  laboratory.recordResult(biochemistryOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'lab-user'
+  });
+  laboratory.recordResult(biochemistryOrder.id, {
+    status: 'resulted',
+    resultSummary: 'ALT dentro da referencia'
+  });
+
+  const response = new MockResponse();
+  const handled = await handleLaboratoryRoutes(
+    '/laboratorio/atendimentos/bioquimico',
+    { method: 'GET', url: '/laboratorio/atendimentos/bioquimico?corpo=alt' } as never,
+    response as never,
+    'corr-lab-bioquimico',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ examCatalogId?: string; resultSummary?: string }> }>();
+  assert.equal(payload.items.length, 1);
+  assert.equal(payload.items[0].examCatalogId, 'cat_002');
+  assert.match(payload.items[0].resultSummary ?? '', /alt/i);
+
+  const shortAliasResponse = new MockResponse();
+  const shortAliasHandled = await handleLaboratoryRoutes(
+    '/laboratory/biochemistry',
+    { method: 'GET', url: '/laboratory/biochemistry?animal=pat-1' } as never,
+    shortAliasResponse as never,
+    'corr-lab-bioquimico-short',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(shortAliasHandled, true);
+  assert.equal(shortAliasResponse.statusCode, 200);
+  const shortPayload = shortAliasResponse.bodyJson<{ items: Array<{ examType: string }> }>();
+  assert.equal(shortPayload.items.length, 1);
+  assert.match(shortPayload.items[0].examType, /bioquim/i);
+});

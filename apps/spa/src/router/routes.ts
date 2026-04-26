@@ -581,6 +581,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry',
         name: 'LaboratoryBiochemistry',
+        alias: ['/bioquimico', '/bioquímico', '/laboratorio/bioquimico', '/laboratorio/bioquímico', '/laboratorio/atendimentos/bioquimico', '/laboratorio/exames/bioquimico'],
         component: () => import('@/pages/laboratory/LaboratoryBiochemistryPage.vue'),
         meta: {
           title: 'Bioquímico',

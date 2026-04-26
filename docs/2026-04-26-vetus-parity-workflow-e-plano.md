@@ -142,7 +142,7 @@ Submenu `Atendimento` observado em modo somente leitura:
 
 Checkpoint de decisao anterior: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
 
-Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas` e `Laboratorio > Atendimentos > Urina` foram implementados. O proximo modulo pela ordem observada em `Laboratorio > Atendimentos` e `Bioquimico`.
+Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas`, `Laboratorio > Atendimentos > Urina` e `Laboratorio > Atendimentos > Bioquimico` foram implementados. O proximo modulo pela ordem observada e `Laboratorio > Cadastros > Equipamentos`.
 
 ### Laboratorio observado em 2026-04-24
 
@@ -203,7 +203,8 @@ A partir deste checkpoint, a sequencia correta e:
 | Laboratorio > Atendimentos > Exames | Listagem/fila de exames laboratoriais | Implementado | `495cfcb` | Observado no Vetus em `Sistema/Laboratorio/Exames.htm`: botao `Incluir`, filtros `Cliente`, `Animal` e `Data`, botao `Pesquisar`, tabela com `Id`, `Cliente`, `Animal`, `Data` e `Abrir`, vazio `Nenhum registro encontrado`. No `cvg-his-v2`: SPA `/laboratory/orders` com aliases `/laboratorio/exames`, `/laboratorio/atendimentos/exames`, `/laboratorio/pedidos-de-exame`, `/laboratorio/atendimentos/pedidos-de-exame`; tela `Exames` com filtros Vetus-like, listagem enriquecida por cliente/animal via cadastros existentes, acao `Incluir` para a Central Diagnostica e `Abrir` no pedido; API `/laboratory/orders`, `/laboratory/exams`, `/laboratorio/exames`, `/laboratorio/atendimentos/exames` com filtros por id, animal/patientId e data; persistencia duravel existente em `diagnostic_orders`. |
 | Laboratorio > Atendimentos > Laudos | Listagem de laudos laboratoriais | Implementado | `c67c047` | Observado no Vetus em `Sistema/Laboratorio/Laudos.htm`: botao `Incluir`, filtros `Codigo do Laudo`, `Cliente`, `Proprietario`, `Animal`, `Data da Finalizacao`, `Data de Entrada`, `Corpo do Laudo`, checkbox `Pesquisar Laudos Fechados`, botao `Pesquisar`, tabela com `Codigo de Laudo`, `Cliente`, `Proprietario`, `Animal`, `Data de Finalizacao`, `Data de Entrada`, `Valor` e `Abrir`, vazio `Nenhum registro encontrado`. No `cvg-his-v2`: SPA `/laboratory/results` com aliases `/laboratorio/laudos` e `/laboratorio/atendimentos/laudos`; tela `Laudos` com filtros Vetus-like, listagem enriquecida por cliente/proprietario/animal via cadastros existentes, acao `Incluir` para a Central Diagnostica e `Abrir` para o diagnostico do atendimento; API `/laboratory/results`, `/laboratory/reports`, `/laboratorio/laudos`, `/laboratorio/atendimentos/laudos` com filtros por codigo, animal/patientId, datas, corpo e fechados; persistencia duravel existente em `diagnostic_orders`. |
 | Laboratorio > Atendimentos > Hemogramas | Resultado hematologico estruturado | Implementado | `9c76c7f` | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Hemogramas.htm`; a abertura direta da tela ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Hemogramas`, na dependencia estrutural de `Vlr. Ref. Hemograma` e na cadeia `Exames -> Esteira de Exames -> Coleta -> Hemogramas -> Laudo -> Entrega`. No `cvg-his-v2`: SPA `/laboratory/hemograms` com aliases `/hemogramas`, `/laboratorio/hemogramas`, `/laboratorio/atendimentos/hemogramas` e `/laboratorio/exames/hemogramas`; tela `Hemogramas` com botao `Incluir`, filtros `Codigo do Hemograma`, `Cliente`, `Proprietario`, `Animal`, `Data da Analise`, `Data de Entrada`, `Corpo do Resultado`, checkbox `Pesquisar Hemogramas Fechados`, botao `Pesquisar`, listagem enriquecida por cliente/proprietario/animal, tabela de parametros hematologicos ligada a `Vlr. Ref. Hemograma`, status de faixa e historico comparativo; API `/laboratory/hemograms`, `/laboratorio/hemogramas`, `/laboratorio/atendimentos/hemogramas` filtrando resultados `HEM`; persistencia duravel reaproveita `diagnostic_orders` e `laboratory_reference_values`. |
-| Laboratorio > Atendimentos > Urina | Resultado urinario estruturado | Implementado | Este commit | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Urina.htm`; a abertura direta ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Urina` e na cadeia `Exames -> Esteira de Exames -> Coleta -> Urina -> Laudo -> Entrega`. No `cvg-his-v2`: SPA `/laboratory/urinalysis` com aliases `/urina`, `/urinanalise`, `/urinálise`, `/laboratorio/urina`, `/laboratorio/atendimentos/urina` e `/laboratorio/exames/urina`; tela `Urina` com botao `Incluir`, filtros `Codigo do Exame`, `Cliente`, `Proprietario`, `Animal`, `Data da Analise`, `Data de Entrada`, `Corpo do Resultado`, checkbox `Pesquisar Exames Fechados`, botao `Pesquisar`, listagem enriquecida por cliente/proprietario/animal, secoes `Exame fisico`, `Exame quimico`, `Exame microscopico`, achados observacionais e referencias `URIN`; API `/laboratory/urinalysis`, `/laboratorio/urina`, `/laboratorio/atendimentos/urina` filtrando resultados `URIN`; persistencia duravel reaproveita `diagnostic_orders` e `laboratory_reference_values`. |
+| Laboratorio > Atendimentos > Urina | Resultado urinario estruturado | Implementado | `d21a4d3` | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Urina.htm`; a abertura direta ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Urina` e na cadeia `Exames -> Esteira de Exames -> Coleta -> Urina -> Laudo -> Entrega`. No `cvg-his-v2`: SPA `/laboratory/urinalysis` com aliases `/urina`, `/urinanalise`, `/urinálise`, `/laboratorio/urina`, `/laboratorio/atendimentos/urina` e `/laboratorio/exames/urina`; tela `Urina` com botao `Incluir`, filtros `Codigo do Exame`, `Cliente`, `Proprietario`, `Animal`, `Data da Analise`, `Data de Entrada`, `Corpo do Resultado`, checkbox `Pesquisar Exames Fechados`, botao `Pesquisar`, listagem enriquecida por cliente/proprietario/animal, secoes `Exame fisico`, `Exame quimico`, `Exame microscopico`, achados observacionais e referencias `URIN`; API `/laboratory/urinalysis`, `/laboratorio/urina`, `/laboratorio/atendimentos/urina` filtrando resultados `URIN`; persistencia duravel reaproveita `diagnostic_orders` e `laboratory_reference_values`. |
+| Laboratorio > Atendimentos > Bioquimico | Resultado bioquimico estruturado | Implementado | Este commit | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Bioquimico.htm`; a abertura direta ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Bioquimico`, na dependencia estrutural de `Vlr. Ref. Bioquimico` e na cadeia `Exames -> Esteira de Exames -> Coleta -> Bioquimico -> Laudo -> Entrega`. No `cvg-his-v2`: SPA `/laboratory/biochemistry` com aliases `/bioquimico`, `/bioquímico`, `/laboratorio/bioquimico`, `/laboratorio/bioquímico`, `/laboratorio/atendimentos/bioquimico` e `/laboratorio/exames/bioquimico`; tela `Bioquimico` com botao `Incluir`, filtros `Codigo do Exame`, `Cliente`, `Proprietario`, `Animal`, `Data da Analise`, `Data de Entrada`, `Corpo do Resultado`, checkbox `Pesquisar Bioquimicos Fechados`, botao `Pesquisar`, listagem enriquecida por cliente/proprietario/animal, resultado tabular por `Painel hepatico`, `Painel renal` e `Metabolico`, e referencias `BIO`; API `/laboratory/biochemistry`, `/laboratorio/bioquimico`, `/laboratorio/atendimentos/bioquimico` filtrando resultados `BIO`; persistencia duravel reaproveita `diagnostic_orders` e `laboratory_reference_values`. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -211,7 +212,8 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
-Este commit feat: align Vetus-like laboratory urinalysis flow
+Este commit feat: align Vetus-like laboratory biochemistry flow
+d21a4d3 feat: align Vetus-like laboratory urinalysis flow
 9c76c7f feat: align Vetus-like laboratory hemograms flow
 c67c047 feat: align Vetus-like laboratory reports flow
 495cfcb feat: align Vetus-like laboratory exams flow
@@ -235,9 +237,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/laboratory/urinalysis`
+- Ultima rota validada: `http://localhost:3002/laboratory/biochemistry`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/laboratory/urinalysis`
+- Ultima API validada: `GET http://localhost:3003/laboratory/biochemistry`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -548,8 +550,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Laboratorio > Atendimentos > Urina`, continuar pela ordem observada em `Laboratorio > Atendimentos`:
+Apos concluir `Laboratorio > Atendimentos > Bioquimico`, continuar pela ordem observada em `Laboratorio > Cadastros`:
 
-1. `Laboratorio > Atendimentos > Bioquimico`
+1. `Laboratorio > Cadastros > Equipamentos`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

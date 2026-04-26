@@ -12,6 +12,7 @@ vi.mock('@/services/laboratory', () => ({
   laboratoryService: {
     listHemograms: vi.fn(),
     listUrinalysis: vi.fn(),
+    listBiochemistry: vi.fn(),
     listReferenceValues: vi.fn()
   }
 }));
@@ -61,6 +62,21 @@ describe('Laboratory analytical result pages', () => {
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
     ]);
+    vi.mocked(laboratoryService.listBiochemistry).mockResolvedValue([
+      {
+        id: 'diag_bio_1' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'patient_1' as never,
+        examType: 'Bioquimico',
+        examCatalogId: 'cat_002',
+        reason: 'Perfil bioquimico',
+        status: 'resulted',
+        resultSummary: 'ALT: 92; Creatinina: 1.3',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-25T10:00:00.000Z'
+      }
+    ]);
     vi.mocked(laboratoryService.listReferenceValues).mockImplementation(async (filterExam?: string) => {
       if (filterExam === 'URIN') {
         return [
@@ -79,6 +95,35 @@ describe('Laboratory analytical result pages', () => {
             minValue: 5.5,
             maxValue: 7.5,
             unit: 'pH'
+          }
+        ];
+      }
+
+      if (filterExam === 'BIO') {
+        return [
+          {
+            id: 'ref-bio-1',
+            parameter: 'ALT',
+            examType: 'BIO',
+            minValue: 10,
+            maxValue: 125,
+            unit: 'U/L'
+          },
+          {
+            id: 'ref-bio-2',
+            parameter: 'Creatinina',
+            examType: 'BIO',
+            minValue: 0.5,
+            maxValue: 1.8,
+            unit: 'mg/dL'
+          },
+          {
+            id: 'ref-bio-3',
+            parameter: 'Glicose',
+            examType: 'BIO',
+            minValue: 70,
+            maxValue: 120,
+            unit: 'mg/dL'
           }
         ];
       }
@@ -234,16 +279,57 @@ describe('Laboratory analytical result pages', () => {
     });
   });
 
-  it('renders biochemistry as a compact tabular panel with species references', () => {
+  it('renders biochemistry as an operational compact tabular panel with species references', async () => {
     const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
 
     expect(wrapper.text()).toContain('Bioquímico');
     expect(wrapper.text()).toContain('Painel bioquímico completo');
-    expect(wrapper.text()).toContain('Resultado tabular');
-    expect(wrapper.text()).toContain('12-15 campos');
-    expect(wrapper.text()).toContain('Valores de referência por espécie');
+    expect(wrapper.text()).toContain('Código do Exame');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('Proprietário');
+    expect(wrapper.text()).toContain('Animal');
+    expect(wrapper.text()).toContain('Data da Análise');
+    expect(wrapper.text()).toContain('Data de Entrada');
+    expect(wrapper.text()).toContain('Pesquisar Bioquímicos Fechados');
+    expect(wrapper.text()).toContain('Cliente Exemplo');
+    expect(wrapper.text()).toContain('Mel');
+    expect(wrapper.text()).toContain('Resultado estruturado');
+    expect(wrapper.text()).toContain('Painel hepático');
+    expect(wrapper.text()).toContain('Painel renal');
+    expect(wrapper.text()).toContain('Metabólico');
+    expect(wrapper.text()).toContain('ALT');
+    expect(wrapper.text()).toContain('Creatinina');
     expect(wrapper.text()).toContain('Vlr. Ref. Bioquímico');
-    expect(wrapper.text()).toContain('Fora da faixa');
-    expect(wrapper.text()).toContain('Laudo');
+    expect(laboratoryService.listBiochemistry).toHaveBeenCalledWith({
+      code: undefined,
+      finalizedAt: undefined,
+      enteredAt: undefined,
+      body: undefined,
+      closed: true
+    });
+    expect(laboratoryService.listReferenceValues).toHaveBeenCalledWith('BIO');
+  });
+
+  it('sends Vetus-like biochemistry filters to the laboratory API', async () => {
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+
+    const searchInputs = wrapper.findAll('input[type="search"]');
+    await searchInputs[0].setValue('diag');
+    await searchInputs[4].setValue('ALT');
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0].setValue('2026-04-25');
+    await dateInputs[1].setValue('2026-04-24');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(laboratoryService.listBiochemistry).toHaveBeenLastCalledWith({
+      code: 'diag',
+      finalizedAt: '2026-04-25',
+      enteredAt: '2026-04-24',
+      body: 'ALT',
+      closed: true
+    });
   });
 });

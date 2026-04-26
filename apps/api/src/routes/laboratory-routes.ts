@@ -84,6 +84,14 @@ function isLaboratoryUrinalysisCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryBiochemistryCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/biochemistry',
+    '/laboratorio/bioquimico',
+    '/laboratorio/atendimentos/bioquimico'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -322,6 +330,7 @@ export async function handleLaboratoryRoutes(
       isLaboratoryResultsCollectionPath(pathname)
       || isLaboratoryHemogramsCollectionPath(pathname)
       || isLaboratoryUrinalysisCollectionPath(pathname)
+      || isLaboratoryBiochemistryCollectionPath(pathname)
       || pathname === '/diagnostics/results'
     )
     && request.method === 'GET'
@@ -332,7 +341,9 @@ export async function handleLaboratoryRoutes(
       ? (url.searchParams.get('examType') ?? 'HEM')
       : isLaboratoryUrinalysisCollectionPath(pathname)
         ? (url.searchParams.get('examType') ?? 'URIN')
-      : (url.searchParams.get('examType') ?? undefined);
+        : isLaboratoryBiochemistryCollectionPath(pathname)
+          ? (url.searchParams.get('examType') ?? 'BIO')
+          : (url.searchParams.get('examType') ?? undefined);
     const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
     const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
     const bodyFilter = normalizeSearch(url.searchParams.get('body') ?? url.searchParams.get('corpo'));
@@ -358,14 +369,18 @@ export async function handleLaboratoryRoutes(
         ? 'hemograms_list'
         : isLaboratoryUrinalysisCollectionPath(pathname)
           ? 'urinalysis_list'
-          : 'results_list',
+          : isLaboratoryBiochemistryCollectionPath(pathname)
+            ? 'biochemistry_list'
+            : 'results_list',
       entityType: 'diagnostic-order',
       entityId: examType ?? 'all-results',
       payloadSummary: isLaboratoryHemogramsCollectionPath(pathname)
         ? 'Laboratory hemograms listed'
         : isLaboratoryUrinalysisCollectionPath(pathname)
           ? 'Laboratory urinalysis results listed'
-        : 'Released laboratory results listed',
+          : isLaboratoryBiochemistryCollectionPath(pathname)
+            ? 'Laboratory biochemistry results listed'
+            : 'Released laboratory results listed',
       riskLevel: 'medium',
       correlationId
     });
