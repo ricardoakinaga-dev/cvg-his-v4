@@ -128,6 +128,15 @@ describe('router convergence', () => {
         '/estoque/controles/entrada-nota-fiscal'
       ])
     );
+    expect(findChildRoute('inventory/movements')?.meta?.title).toBe('Transação no Estoque');
+    expect(findChildRoute('inventory/movements')?.alias).toEqual(
+      expect.arrayContaining([
+        '/transacao-no-estoque',
+        '/transação-no-estoque',
+        '/estoque/transacao-no-estoque',
+        '/estoque/controles/transacao-no-estoque'
+      ])
+    );
     expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');

@@ -1507,10 +1507,16 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/movements',
         name: 'InventoryMovements',
-        component: () => import('@/pages/inventory/InventoryMovementsPage.vue'),
+        alias: [
+          '/transacao-no-estoque',
+          '/transação-no-estoque',
+          '/estoque/transacao-no-estoque',
+          '/estoque/controles/transacao-no-estoque'
+        ],
+        component: () => import('@/pages/inventory/InventoryStockTransactionPage.vue'),
         meta: {
-          title: 'Transações',
-          breadcrumb: 'Transações',
+          title: 'Transação no Estoque',
+          breadcrumb: 'Transação no Estoque',
           breadcrumbParent: 'Estoque',
           icon: '📥'
         }
