@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('inventory/price-adjustments', 'InventoryPriceAdjustments', 'Reajuste de Preços', 'Estoque', '📈'),
   placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
   placeholderRoute('finance/advance-payments', 'FinanceAdvancePayments', 'Pagamento Antecipado', 'Financeiro', '⏩'),
@@ -1588,6 +1587,24 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Compras',
           breadcrumbParent: 'Estoque',
           icon: '🛒'
+        }
+      },
+      {
+        path: 'inventory/price-adjustments',
+        name: 'InventoryPriceAdjustments',
+        alias: [
+          '/reajuste-de-precos',
+          '/reajuste-de-preços',
+          '/reajuste-precos',
+          '/estoque/reajuste-de-precos',
+          '/estoque/controles/reajuste-de-precos'
+        ],
+        component: () => import('@/pages/inventory/InventoryPriceAdjustmentsPage.vue'),
+        meta: {
+          title: 'Reajuste de Preços',
+          breadcrumb: 'Reajuste de Preços',
+          breadcrumbParent: 'Estoque',
+          icon: '📈'
         }
       },
       {
