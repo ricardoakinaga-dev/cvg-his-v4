@@ -254,6 +254,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Estoque > Controles > Requisicao a Farmacia | Solicitacao e dispensacao de medicamentos conectadas ao saldo | Implementado | `657351e` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a quarta posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/pharmacy` com aliases `/requisicao-farmacia`, `/requisicao-a-farmacia`, `/requisição-à-farmácia`, `/estoque/requisicao-farmacia` e `/estoque/controles/requisicao-farmacia`; tela com acao `Atualizar`, atalho `Transacao`, painel de requisicao com `Origem`, `Prioridade`, `Solicitante`, `Atendimento / Paciente`, `Produto`, `Codigo de Barras`, `Quantidade`, `Observacao`, preview de saldo e botao `Dispensar`; filtros `Codigo`, `Produto`, `Origem`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Origem`, `Prioridade`, `Quantidade`, `Situacao`, `Custo`, `Referencia`, `Data` e `Abrir`; baixa de saldo usando API existente `PATCH /inventory/:id`; listagem combina `/inventory` e `/inventory/consumptions`; integracao com Atendimento, Internacao, Cirurgia, Laboratorio e Transacao no Estoque. |
 | Estoque > Controles > Validade de Produtos | Controle de vencimento, lote, localizacao e criticidade dos produtos | Implementado | `ece6cc0` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a quinta posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/validity` com aliases `/validade-de-produtos`, `/validade-produtos`, `/estoque/validade-de-produtos` e `/estoque/controles/validade-de-produtos`; tela com acoes `Atualizar`, `Entrada NF` e `Transacao`; painel de conferencia com `Produto`, `Localizacao`, `Lote`, `Validade`, situacao e acao recomendada; filtros `Codigo`, `Produto`, `Lote`, `Fornecedor`, `Validade ate`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Lote`, `Estoque`, `Fornecedor`, `Fabricacao`, `Validade`, `Dias`, `Quantidade`, `Situacao` e `Abrir`; composicao somente leitura dos endpoints persistentes existentes `/inventory` e `/inventory/lots`; integracao com Entrada de Nota Fiscal, Transacao no Estoque, Produtos e Auditoria de Estoque. |
 | Estoque > Controles > Auditoria de Estoque | Rastreabilidade operacional de saldos, consumos, lotes e divergencias | Implementado | `fb8291a` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a sexta posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/audit` com aliases `/auditoria-de-estoque`, `/auditoria-estoque`, `/estoque/auditoria-de-estoque` e `/estoque/controles/auditoria-de-estoque`; tela somente leitura com acoes `Atualizar`, `Validade` e `Transacao`; painel de conferencia com `Registro`, `Natureza`, `Origem`, `Usuario`, saldo auditado e trilha selecionada; filtros `Codigo`, `Produto`, `Origem`, `Natureza`, `Data inicial`, `Data final`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Natureza`, `Origem`, `Usuario`, `Quantidade`, `Custo`, `Saldo`, `Referencia`, `Situacao`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/inventory`, `/inventory/consumptions` e `/inventory/lots`; integracao com Produtos, Validade de Produtos, Entrada de Nota Fiscal e Transacao no Estoque. |
+| Estoque > Controles > Auditoria de Precos | Conferencia de precos, custos, margens e tabelas comerciais | Implementado | `15b22b7` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a setima posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/price-audit` com aliases `/auditoria-de-precos`, `/auditoria-de-preços`, `/auditoria-precos`, `/estoque/auditoria-de-precos` e `/estoque/controles/auditoria-de-precos`; tela somente leitura com acoes `Atualizar`, `Consulta` e `Tabelas`; painel de conferencia com `Registro`, `Preco atual`, `Custo`, `Margem`, tabela e acao de auditoria; filtros `Codigo`, `Produto`, `Tabela`, `Origem`, `Situacao`, `Margem minima %`, botao `Pesquisar`; tabela `Codigo`, `Produto / Tabela`, `Origem`, `Tabela`, `Preco`, `Custo`, `Margem`, `Saldo`, `Situacao`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/products`, `/inventory` e `/price-tables`; integracao com Consulta de Precos, Produtos, Estoque, Tabelas de Preco e fluxo comercial/PDV. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -261,6 +262,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`15b22b7` feat: align Vetus-like inventory price audit
 `fb8291a` feat: align Vetus-like inventory audit control
 `ece6cc0` feat: align Vetus-like product validity control
 `657351e` feat: align Vetus-like pharmacy requisitions
@@ -296,9 +298,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/inventory/audit`
+- Ultima rota validada: `http://localhost:3002/inventory/price-audit`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/inventory`, `GET http://localhost:3003/inventory/consumptions` e `GET http://localhost:3003/inventory/lots`
+- Ultima API validada: `GET http://localhost:3003/products`, `GET http://localhost:3003/inventory` e `GET http://localhost:3003/price-tables`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -573,7 +575,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Auditoria de Precos`. |
+| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Transferencia entre Estoques`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -609,8 +611,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Controles > Auditoria de Estoque`, continuar pela ordem do grupo `Estoque > Controles`:
+Apos concluir `Estoque > Controles > Auditoria de Precos`, continuar pela ordem do grupo `Estoque > Controles`:
 
-1. `Estoque > Controles > Auditoria de Precos`
+1. `Estoque > Controles > Transferencia entre Estoques`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
