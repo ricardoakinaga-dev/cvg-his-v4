@@ -1598,10 +1598,16 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/validity',
         name: 'InventoryValidity',
+        alias: [
+          '/validade-de-produtos',
+          '/validade-produtos',
+          '/estoque/validade-de-produtos',
+          '/estoque/controles/validade-de-produtos'
+        ],
         component: () => import('@/pages/inventory/InventoryValidityPage.vue'),
         meta: {
-          title: 'Validade',
-          breadcrumb: 'Validade',
+          title: 'Validade de Produtos',
+          breadcrumb: 'Validade de Produtos',
           breadcrumbParent: 'Estoque',
           icon: '📅'
         }

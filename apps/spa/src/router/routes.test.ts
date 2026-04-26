@@ -121,6 +121,16 @@ describe('router convergence', () => {
         '/estoque/controles/requisicao-farmacia'
       ])
     );
+    expect(findChildRoute('inventory/validity')?.meta?.title).toBe('Validade de Produtos');
+    expect(findChildRoute('inventory/validity')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('inventory/validity')?.alias).toEqual(
+      expect.arrayContaining([
+        '/validade-de-produtos',
+        '/validade-produtos',
+        '/estoque/validade-de-produtos',
+        '/estoque/controles/validade-de-produtos'
+      ])
+    );
     expect(findChildRoute('inventory/price-consultation')?.meta?.title).toBe('Consulta de Preços');
     expect(findChildRoute('inventory/price-consultation')?.alias).toEqual(
       expect.arrayContaining([
