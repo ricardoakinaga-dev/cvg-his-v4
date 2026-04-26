@@ -304,7 +304,7 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     expect(wrapper.find('.quick-create-stub').exists()).toBe(true);
-    expect(wrapper.find('.scheduled-at').text()).toBe('2026-04-12T07:00');
+    expect(wrapper.find('.scheduled-at').text()).toBe('2026-04-12T00:00');
     expect(wrapper.find('.practitioner-id').text()).toBe('');
   });
 
@@ -409,7 +409,7 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.html()).toContain('practitionerStaffId=staff_vet');
   });
 
-  it('shows contextual empty state for the selected day when there are no appointments', async () => {
+  it('keeps the operational grid visible when the selected day has no appointments', async () => {
     mockGetSchedulingOverview.mockResolvedValue({
       ...overviewPayload,
       items: [],
@@ -426,9 +426,13 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Nenhum agendamento em domingo, 12 de abril');
-    expect(wrapper.text()).toContain('Não há compromissos visíveis para domingo, 12 de abril na visão Dia.');
-    expect(wrapper.text()).toContain('Criar agendamento para domingo, 12 de abril');
+    expect(wrapper.text()).toContain('Grade da agenda');
+    expect(wrapper.text()).toContain('Agendados0');
+    expect(wrapper.text()).toContain('Horários disponíveis');
+    expect(wrapper.text()).toContain('0 agendados · 45 horários disponíveis');
+    expect(wrapper.text()).toContain('00:00');
+    expect(wrapper.text()).toContain('22:00');
+    expect(wrapper.findAll('.time-matrix__empty-button').length).toBeGreaterThan(40);
   });
 
   it('compacts dense slots and shows a summary for additional appointments', async () => {

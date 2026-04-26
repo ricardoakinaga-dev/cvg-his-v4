@@ -240,17 +240,29 @@
           </div>
 
           <EmptyState
-            v-else-if="!overview || filteredItems.length === 0"
+            v-else-if="!overview"
             icon="📅"
-            :title="emptyStateCopy.title"
-            :description="emptyStateCopy.description"
-          >
-            <template v-if="canManageScheduling" #action>
-              <DsButton variant="primary" @click="openCreateFlow">{{ emptyStateCopy.actionLabel }}</DsButton>
-            </template>
-          </EmptyState>
+            title="Agenda indisponível"
+            description="Não foi possível carregar a grade operacional da agenda neste momento."
+          />
 
-          <template v-else-if="viewMode === 'month'">
+          <template v-else>
+            <section class="agenda-grid-summary" aria-label="Resumo da grade da agenda">
+              <div>
+                <span>Grade da agenda</span>
+                <strong>{{ periodLabel }}</strong>
+              </div>
+              <div>
+                <span>Agendados</span>
+                <strong>{{ filteredItems.length }}</strong>
+              </div>
+              <div>
+                <span>Horários disponíveis</span>
+                <strong>{{ totalAvailableSlots }}</strong>
+              </div>
+            </section>
+
+          <template v-if="viewMode === 'month'">
             <section class="month-board">
               <div class="month-board__weekdays">
                 <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
@@ -267,9 +279,12 @@
                 >
                   <button type="button" class="month-cell__header" @click="selectDate(day.date)">
                     <strong>{{ day.dayNumber }}</strong>
-                    <span>{{ appointmentsByDay(day.date).length }}</span>
+                    <span>{{ appointmentsByDay(day.date).length }} ag.</span>
                   </button>
                   <div class="month-cell__body">
+                    <div class="month-cell__availability">
+                      {{ availableSlotsByDay(day.date) }} horários livres
+                    </div>
                     <button
                       v-if="canManageScheduling"
                       type="button"
@@ -321,7 +336,25 @@
                   class="time-matrix__column-title time-matrix__column-title--day"
                 >
                   <strong>{{ day.label }}</strong>
-                  <span>{{ appointmentsByDay(day.date).length }}</span>
+                  <span>{{ dayGridSummary(day.date) }}</span>
+                </div>
+
+                <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
+                <div
+                  v-for="day in visibleDays"
+                  :key="`${day.date}-all-day`"
+                  class="time-matrix__slot time-matrix__slot--all-day"
+                >
+                  <button
+                    v-if="canManageScheduling"
+                    type="button"
+                    class="time-matrix__empty-button time-matrix__empty-button--compact"
+                    :aria-label="`Criar agendamento livre em ${day.label}`"
+                    @click="openSlotCreateFlow({ date: day.date })"
+                  >
+                    Disponível dia inteiro
+                  </button>
+                  <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
                 </div>
 
                 <template v-for="hour in timelineHours" :key="`week-${hour}`">
@@ -373,6 +406,20 @@
                     </div>
 
                     <button
+                      v-if="canManageScheduling && hasAvailableWeekSlot(day.date, hour)"
+                      type="button"
+                      class="time-matrix__empty-button"
+                      :class="{ 'time-matrix__empty-button--compact': appointmentsByWeekSlot(day.date, hour).length > 0 }"
+                      :aria-label="`Criar agendamento livre em ${day.label} às ${formatHour(hour)}`"
+                      @click="openSlotCreateFlow({
+                        date: day.date,
+                        hour,
+                        practitionerStaffId: firstAvailablePractitionerForWeekSlot(day.date, hour)
+                      })"
+                    >
+                      {{ appointmentsByWeekSlot(day.date, hour).length > 0 ? 'Horário livre' : 'Disponível' }}
+                    </button>
+                    <button
                       v-else-if="canManageScheduling"
                       type="button"
                       class="time-matrix__empty-button"
@@ -393,7 +440,7 @@
               <div class="day-board__header">
                 <div>
                   <strong>{{ day.label }}</strong>
-                  <p>{{ appointmentsByDay(day.date).length }} agendamentos no período</p>
+                  <p>{{ dayGridSummary(day.date) }}</p>
                 </div>
                 <DsButton
                   v-if="canManageScheduling"
@@ -417,6 +464,24 @@
                 >
                   <strong>{{ column.label }}</strong>
                   <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
+                </div>
+
+                <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
+                <div
+                  v-for="column in professionalColumns"
+                  :key="`${day.date}-${column.id}-all-day`"
+                  class="time-matrix__slot time-matrix__slot--all-day"
+                >
+                  <button
+                    v-if="canManageScheduling"
+                    type="button"
+                    class="time-matrix__empty-button time-matrix__empty-button--compact"
+                    :aria-label="slotAriaLabel(day.label, column.label, 9)"
+                    @click="openSlotCreateFlow({ date: day.date, practitionerStaffId: column.id })"
+                  >
+                    Disponível dia inteiro
+                  </button>
+                  <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
                 </div>
 
                 <template v-for="hour in timelineHours" :key="`${day.date}-${hour}`">
@@ -547,6 +612,7 @@
               </span>
             </div>
           </section>
+          </template>
         </section>
       </div>
     </template>
@@ -718,7 +784,7 @@ const vetusLegendItems = [
 ];
 
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const timelineHours = Array.from({ length: 13 }, (_, index) => 7 + index);
+const timelineHours = Array.from({ length: 23 }, (_, index) => index);
 const maxVisibleAppointmentsPerSlot = 2;
 
 const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
@@ -780,47 +846,14 @@ const miniCalendarLabel = computed(() =>
 );
 const miniCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
 const monthCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
+const totalAvailableSlots = computed(() =>
+  visibleDays.value.reduce((total, day) => total + availableSlotsByDay(day.date), 0)
+);
 const markerOptions = computed(() =>
   [...new Set((overview.value?.items ?? []).flatMap((item) => deriveMarkers(item)))].sort((a, b) =>
     a.localeCompare(b, 'pt-BR')
   )
 );
-const emptyStateCopy = computed(() => {
-  const date = new Date(`${referenceDate.value}T00:00:00`);
-
-  if (viewMode.value === 'day') {
-    const dayLabel = date.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long'
-    });
-
-    return {
-      title: `Nenhum agendamento em ${dayLabel}`,
-      description: `Não há compromissos visíveis para ${dayLabel} na visão Dia. Você pode abrir um novo agendamento já ancorado nesta data.`,
-      actionLabel: `Criar agendamento para ${dayLabel}`
-    };
-  }
-
-  if (viewMode.value === 'week') {
-    const start = new Date(`${visibleDays.value[0]?.date ?? referenceDate.value}T00:00:00`);
-    const end = new Date(`${visibleDays.value[visibleDays.value.length - 1]?.date ?? referenceDate.value}T00:00:00`);
-    const rangeLabel = `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} a ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`;
-
-    return {
-      title: `Nenhum agendamento na semana de ${rangeLabel}`,
-      description: `A semana selecionada está sem compromissos visíveis com os filtros atuais. Ajuste os filtros ou inicie um novo agendamento dentro desta janela.`,
-      actionLabel: 'Criar agendamento nesta semana'
-    };
-  }
-
-  const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  return {
-    title: `Nenhum agendamento em ${monthLabel}`,
-    description: `O mês selecionado está sem compromissos visíveis na agenda. Você pode cadastrar o primeiro agendamento deste período ou revisar os filtros ativos.`,
-    actionLabel: `Criar agendamento em ${monthLabel}`
-  };
-});
 
 const legendItems = computed(() => vetusLegendItems);
 
@@ -922,6 +955,37 @@ function appointmentsByDay(date: string) {
   return filteredItems.value.filter((item) => item.scheduledAt.slice(0, 10) === date);
 }
 
+function columnIdForAppointment(item: SchedulingCockpitAppointmentSummary) {
+  return item.practitionerStaffId || 'unassigned';
+}
+
+function occupiedSlotKeysByDay(date: string) {
+  const keys = new Set<string>();
+
+  appointmentsByDay(date).forEach((item) => {
+    keys.add(`${columnIdForAppointment(item)}-${new Date(item.scheduledAt).getHours()}`);
+  });
+
+  (overview.value?.blocks ?? [])
+    .filter((block) => block.startsAt.slice(0, 10) === date && block.practitionerStaffId)
+    .forEach((block) => {
+      keys.add(`${block.practitionerStaffId}-${new Date(block.startsAt).getHours()}`);
+    });
+
+  return keys;
+}
+
+function availableSlotsByDay(date: string) {
+  const totalSlots = professionalColumns.value.length * timelineHours.length;
+  return Math.max(totalSlots - occupiedSlotKeysByDay(date).size, 0);
+}
+
+function dayGridSummary(date: string) {
+  const appointments = appointmentsByDay(date).length;
+  const available = availableSlotsByDay(date);
+  return `${appointments} agendados · ${available} horários disponíveis`;
+}
+
 function appointmentsByColumn(date: string, columnId: string) {
   return appointmentsByDay(date)
     .filter((item) => {
@@ -973,6 +1037,31 @@ function appointmentsByWeekSlot(date: string, hour: number) {
   return appointmentsByDay(date)
     .filter((item) => new Date(item.scheduledAt).getHours() === hour)
     .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+}
+
+function occupiedProfessionalIdsByWeekSlot(date: string, hour: number) {
+  const ids = new Set<string>();
+
+  appointmentsByWeekSlot(date, hour).forEach((item) => {
+    ids.add(columnIdForAppointment(item));
+  });
+
+  weekBlocksBySlot(date, hour).forEach((block) => {
+    if (block.practitionerStaffId) {
+      ids.add(block.practitionerStaffId);
+    }
+  });
+
+  return ids;
+}
+
+function hasAvailableWeekSlot(date: string, hour: number) {
+  return occupiedProfessionalIdsByWeekSlot(date, hour).size < professionalColumns.value.length;
+}
+
+function firstAvailablePractitionerForWeekSlot(date: string, hour: number) {
+  const occupied = occupiedProfessionalIdsByWeekSlot(date, hour);
+  return professionalColumns.value.find((column) => !occupied.has(column.id))?.id ?? 'unassigned';
 }
 
 function visibleAppointmentsByWeekSlot(date: string, hour: number) {
@@ -1577,6 +1666,36 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
+.agenda-grid-summary {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(140px, 0.6fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.agenda-grid-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+}
+
+.agenda-grid-summary span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.agenda-grid-summary strong {
+  color: var(--color-text, #0f172a);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
 .week-board {
   margin-bottom: 20px;
 }
@@ -1630,6 +1749,20 @@ onMounted(async () => {
 .timeline-blocks {
   display: grid;
   gap: 8px;
+}
+
+.month-cell__availability {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(236, 253, 245, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  color: #047857;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .timeline-items {
@@ -1790,6 +1923,11 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.time-matrix__hour--all-day {
+  color: #0f766e;
+  background: rgba(240, 253, 250, 0.96);
+}
+
 .time-matrix__slot {
   min-height: 126px;
   display: grid;
@@ -1813,6 +1951,16 @@ onMounted(async () => {
   padding: 16px 12px;
   font-size: 13px;
   text-align: left;
+}
+
+.time-matrix__slot--all-day {
+  min-height: 68px;
+  background: rgba(240, 253, 250, 0.55);
+}
+
+.time-matrix__empty-button--compact {
+  min-height: 42px;
+  padding: 10px 12px;
 }
 
 .timeline-block {
@@ -2046,6 +2194,10 @@ onMounted(async () => {
 
   .board-toolbar__group--right {
     justify-content: flex-start;
+  }
+
+  .agenda-grid-summary {
+    grid-template-columns: 1fr;
   }
 }
 
