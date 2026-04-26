@@ -327,7 +327,7 @@
             <section class="week-board">
               <div
                 class="time-matrix"
-                :style="{ gridTemplateColumns: `88px repeat(${visibleDays.length}, minmax(180px, 1fr))` }"
+                :style="{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(150px, 1fr))` }"
               >
                 <div class="time-matrix__corner">Horário</div>
                 <div
@@ -454,7 +454,7 @@
 
               <div
                 class="time-matrix"
-                :style="{ gridTemplateColumns: `88px repeat(${columnCount}, minmax(220px, 1fr))` }"
+                :style="{ gridTemplateColumns: `72px repeat(${columnCount}, minmax(180px, 1fr))` }"
               >
                 <div class="time-matrix__corner">Horário</div>
                 <div
@@ -1392,14 +1392,21 @@ onMounted(async () => {
 
 <style scoped>
 .appointments-cockpit {
-  max-width: 1560px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 
 .appointments-cockpit__layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 286px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
+  min-width: 0;
+}
+
+.appointments-cockpit__main {
+  min-width: 0;
 }
 
 .appointments-cockpit__sidebar {
@@ -1441,8 +1448,8 @@ onMounted(async () => {
 .mini-calendar {
   display: grid;
   gap: 12px;
-  padding: 14px;
-  border-radius: 18px;
+  padding: 12px;
+  border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
@@ -1487,7 +1494,7 @@ onMounted(async () => {
 .mini-calendar__day {
   aspect-ratio: 1;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.76);
   color: var(--color-text, #0f172a);
   cursor: pointer;
@@ -1525,7 +1532,7 @@ onMounted(async () => {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 8px;
   background: rgba(248, 250, 252, 0.96);
   border: 1px solid rgba(226, 232, 240, 0.92);
 }
@@ -1533,8 +1540,8 @@ onMounted(async () => {
 .view-toggle__button {
   border: 1px solid transparent;
   background: transparent;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 8px 11px;
   cursor: pointer;
   font-weight: 600;
   color: var(--color-text-secondary, #475569);
@@ -1566,7 +1573,7 @@ onMounted(async () => {
 .agenda-filter-block {
   display: grid;
   gap: 10px;
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   background: rgba(255, 255, 255, 0.86);
@@ -1648,7 +1655,7 @@ onMounted(async () => {
   top: 20px;
   z-index: 3;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border: 1px solid rgba(226, 232, 240, 0.88);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
@@ -1656,9 +1663,11 @@ onMounted(async () => {
 }
 
 .board-toolbar__group:first-child strong {
-  font-size: 1rem;
+  min-width: 0;
+  font-size: 0.95rem;
   line-height: 1.2;
   color: var(--color-text, #0f172a);
+  overflow-wrap: anywhere;
 }
 
 .board-toolbar__group--right {
@@ -1668,15 +1677,16 @@ onMounted(async () => {
 
 .agenda-grid-summary {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(140px, 0.6fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(120px, 0.6fr));
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .agenda-grid-summary > div {
   display: grid;
   gap: 4px;
-  padding: 12px 14px;
+  min-width: 0;
+  padding: 10px 12px;
   border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 8px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
@@ -1685,15 +1695,16 @@ onMounted(async () => {
 
 .agenda-grid-summary span {
   color: var(--color-text-muted, #64748b);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .agenda-grid-summary strong {
   color: var(--color-text, #0f172a);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .week-board {
@@ -1706,9 +1717,9 @@ onMounted(async () => {
 }
 
 .month-cell {
-  min-height: 180px;
+  min-height: 156px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid rgba(226, 232, 240, 0.9);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
@@ -1737,6 +1748,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   background: none;
   border: none;
   padding: 0;
@@ -1748,7 +1760,8 @@ onMounted(async () => {
 .timeline-items,
 .timeline-blocks {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .month-cell__availability {
@@ -1785,12 +1798,12 @@ onMounted(async () => {
 
 .month-cell__empty-surface {
   width: 100%;
-  min-height: 56px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1px dashed rgba(148, 163, 184, 0.45);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.88));
   color: var(--color-text-muted, #64748b);
@@ -1814,14 +1827,15 @@ onMounted(async () => {
 .month-item,
 .timeline-item {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
+  min-width: 0;
   text-align: left;
   border: 1px solid var(--color-border, #dbe2ea);
-  border-left: 4px solid transparent;
-  border-radius: 14px;
+  border-left: 3px solid transparent;
+  border-radius: 8px;
   background: linear-gradient(180deg, #fff, #f8fafc);
-  padding: 12px;
+  padding: 9px 10px;
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -1847,7 +1861,7 @@ onMounted(async () => {
 .time-matrix__empty-button {
   width: 100%;
   border: 1px dashed rgba(148, 163, 184, 0.45);
-  border-radius: 14px;
+  border-radius: 8px;
   background: rgba(248, 250, 252, 0.9);
   color: #475569;
   cursor: pointer;
@@ -1855,8 +1869,8 @@ onMounted(async () => {
 }
 
 .month-create-slot {
-  min-height: 52px;
-  padding: 12px;
+  min-height: 42px;
+  padding: 9px 10px;
   text-align: left;
 }
 
@@ -1884,8 +1898,9 @@ onMounted(async () => {
   display: grid;
   gap: 1px;
   background: rgba(148, 163, 184, 0.14);
-  border-radius: 18px;
+  border-radius: 8px;
   overflow: auto;
+  scrollbar-width: thin;
 }
 
 .time-matrix__corner,
@@ -1893,7 +1908,8 @@ onMounted(async () => {
 .time-matrix__hour,
 .time-matrix__slot {
   background: var(--color-surface, #fff);
-  padding: 12px;
+  padding: 8px;
+  min-width: 0;
 }
 
 .time-matrix__corner,
@@ -1904,6 +1920,8 @@ onMounted(async () => {
 }
 
 .time-matrix__corner {
+  left: 0;
+  z-index: 3;
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted, #64748b);
@@ -1912,14 +1930,27 @@ onMounted(async () => {
 .time-matrix__column-title {
   display: grid;
   gap: 4px;
+  align-content: center;
+}
+
+.time-matrix__column-title strong,
+.time-matrix__column-title span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .time-matrix__column-title--day {
-  min-width: 180px;
+  min-width: 150px;
 }
 
 .time-matrix__hour {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   color: var(--color-text-muted, #64748b);
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1929,7 +1960,7 @@ onMounted(async () => {
 }
 
 .time-matrix__slot {
-  min-height: 126px;
+  min-height: 106px;
   display: grid;
   align-content: start;
   gap: 8px;
@@ -1943,32 +1974,33 @@ onMounted(async () => {
 
 .time-matrix__empty {
   color: var(--color-text-muted, #94a3b8);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .time-matrix__empty-button {
   min-height: 100%;
-  padding: 16px 12px;
-  font-size: 13px;
+  padding: 12px 10px;
+  font-size: 12px;
   text-align: left;
 }
 
 .time-matrix__slot--all-day {
-  min-height: 68px;
+  min-height: 52px;
   background: rgba(240, 253, 250, 0.55);
 }
 
 .time-matrix__empty-button--compact {
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 34px;
+  padding: 8px 10px;
 }
 
 .timeline-block {
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(245, 158, 11, 0.12);
   color: #92400e;
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .timeline-item--scheduled {
@@ -1999,8 +2031,8 @@ onMounted(async () => {
 
 .timeline-item--dense {
   gap: 4px;
-  padding: 10px 10px 9px;
-  border-radius: 12px;
+  padding: 8px;
+  border-radius: 8px;
 }
 
 .timeline-item--dense .timeline-item__head {
@@ -2014,16 +2046,50 @@ onMounted(async () => {
 }
 
 .timeline-item--dense strong {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.timeline-item strong,
+.timeline-item span,
+.timeline-item small,
+.month-item strong,
+.month-item span,
+.month-item small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.timeline-item > strong,
+.month-item > strong {
   font-size: 13px;
   line-height: 1.25;
 }
 
+.timeline-item > span,
+.timeline-item > small,
+.month-item > span,
+.month-item > small {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--color-text-secondary, #475569);
+}
+
+.timeline-item__head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .status-pill {
   display: inline-flex;
+  max-width: 100%;
   border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 3px 7px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .status-pill--scheduled {
@@ -2066,13 +2132,14 @@ onMounted(async () => {
   display: grid;
   gap: 4px;
   color: #b91c1c;
-  font-size: 12px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .timeline-item__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .appointments-legend {
@@ -2202,6 +2269,24 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
+  .appointments-cockpit__layout {
+    gap: 10px;
+  }
+
+  .board-toolbar {
+    position: static;
+  }
+
+  .board-toolbar,
+  .board-toolbar__group,
+  .board-toolbar__group--right {
+    align-items: stretch;
+  }
+
+  .view-toggle {
+    width: 100%;
+  }
+
   .month-grid {
     grid-template-columns: 1fr;
   }
@@ -2212,6 +2297,21 @@ onMounted(async () => {
 
   .sidebar-actions {
     flex-direction: column;
+  }
+
+  .time-matrix {
+    border-radius: 8px;
+  }
+
+  .time-matrix__corner,
+  .time-matrix__column-title,
+  .time-matrix__hour,
+  .time-matrix__slot {
+    padding: 7px;
+  }
+
+  .time-matrix__slot {
+    min-height: 92px;
   }
 }
 </style>

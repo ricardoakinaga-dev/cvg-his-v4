@@ -943,7 +943,7 @@ function handleLogout() {
 .app-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 286px minmax(0, 1fr);
   background:
     radial-gradient(circle at top left, rgba(241, 148, 54, 0.08), transparent 22%),
     linear-gradient(180deg, #f6f7f9, #eef1f4 58%, #edf1f5);
@@ -959,7 +959,7 @@ function handleLogout() {
 }
 
 .app-layout--collapsed {
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -969,7 +969,7 @@ function handleLogout() {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 14px;
+  padding: 14px 10px;
   border-right: 1px solid #dfe4ea;
   background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
@@ -981,7 +981,7 @@ function handleLogout() {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 10px 2px;
+  padding: 6px 8px 2px;
 }
 
 .sidebar__brand-mark {
@@ -1032,7 +1032,7 @@ function handleLogout() {
 }
 
 .sidebar__company-context {
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   border: 1px solid #e0e5eb;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 249, 251, 0.96));
@@ -1060,7 +1060,7 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   min-height: 48px;
-  padding: 10px;
+  padding: 8px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #eceff3;
@@ -1089,7 +1089,7 @@ function handleLogout() {
 }
 
 .sidebar__panel {
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid #e1e6ec;
@@ -1148,7 +1148,7 @@ function handleLogout() {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 6px;
+  padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(120, 138, 156, 0.42) transparent;
   transition: box-shadow 0.18s ease;
@@ -1271,7 +1271,7 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px 10px;
+  padding: 10px 9px 9px;
   cursor: pointer;
   user-select: none;
 }
@@ -1324,7 +1324,7 @@ function handleLogout() {
 .sidebar__enterprise-groups {
   display: grid;
   gap: 8px;
-  padding: 0 8px 10px;
+  padding: 0 6px 8px;
 }
 
 .sidebar__group-body {
@@ -1366,7 +1366,7 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   min-height: 42px;
-  padding: 10px 10px;
+  padding: 9px 8px;
   border-radius: 12px;
   border: 1px solid transparent;
   color: #4e5b68;
@@ -1411,6 +1411,10 @@ function handleLogout() {
 .sidebar__quick-link-label,
 .sidebar__recent-link-label {
   font-size: 13px;
+  min-width: 0;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1824,7 +1828,7 @@ function handleLogout() {
 @media (max-width: 1200px) {
   .app-layout,
   .app-layout--collapsed {
-    grid-template-columns: 104px minmax(0, 1fr);
+    grid-template-columns: 76px minmax(0, 1fr);
   }
 
   .sidebar__brand-copy,
