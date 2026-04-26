@@ -228,6 +228,7 @@ A partir deste checkpoint, a sequencia correta e:
 | --- | --- | --- | --- | --- |
 | Navbar | Shell/navbar Vetus | Implementado | `c590978` | Navbar do `cvg-his-v2` alinhado com a estrutura macro do Vetus. |
 | Atendimento | Fallbacks operacionais Vetus-like | Implementado | `b29bae9` | Paginas fallback para manter navegabilidade inicial. |
+| Atendimento > Atendimentos > Agenda | Auditoria e reforco Vetus-like da agenda operacional | Implementado | `be2d146` | Revisao solicitada em 2026-04-26 por GAPs de UI, fluxo e estrutura. Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao ou confirmacao no Vetus. A correcao seguiu o documento-fonte e o padrao Vetus ja observado: breadcrumb `Atendimento > Atendimentos > Agenda`; acoes `Atualizar`, `Esteira`, `Comandas` e `Incluir`; painel superior `Filtros da agenda` com `Data`, `Cliente / Animal`, `Profissional`, `Servico`, `Situacao`, `Marcador`, botoes `Pesquisar` e `Limpar`; aliases SPA `/agenda`, `/agendamentos`, `/atendimento/agenda` e `/atendimento/atendimentos/agenda`; aliases de inclusao `/agenda/novo`, `/agendamentos/novo` e `/atendimento/atendimentos/agenda/novo`; preservacao da grade premium Dia/Semana/Mes, calendario lateral, legenda operacional, disponibilidade e modal de criacao; inclusao de listagem Vetus-like com colunas `Data/Hora`, `Cliente`, `Animal`, `Profissional`, `Servico`, `Situacao`, `Fluxo` e `Abrir`; integracao mantida com `/scheduling/overview`, `/scheduling/availability`, `/appointments`, `/queue`, Esteira, Comandas, check-in, no-show, cancelamento e inicio de atendimento. |
 | Atendimento > Cadastros > Clientes | Cadastro de clientes | Implementado | `2a698ba` | Fluxo de cadastro/listagem de clientes espelhado para a arquitetura do `cvg-his-v2`. |
 | Atendimento > Cadastros > Animais | Cadastro de animais | Implementado | `b57404f` | Fluxo de animais espelhado; depende de clientes. |
 | Atendimento > Cadastros > Servicos | Cadastro de servicos | Implementado | `2c1f875` | Fluxo de servicos Vetus-like. |
@@ -267,6 +268,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`be2d146` feat: refine Vetus-like appointment agenda
 `e9ee9d9` feat: align Vetus-like products registry
 `3e4414d` feat: align Vetus-like inventory data collectors
 `201ccb9` feat: align Vetus-like inventory price adjustments
@@ -308,9 +310,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/products`
+- Ultima rota validada: `http://localhost:3002/appointments`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/products` e contrato SPA para `POST/PATCH http://localhost:3003/products`
+- Ultima API validada: `GET http://localhost:3003/scheduling/overview` e contrato SPA para `GET/POST http://localhost:3003/appointments`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
