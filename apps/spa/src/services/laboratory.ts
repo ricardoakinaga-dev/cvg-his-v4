@@ -47,6 +47,17 @@ export interface LaboratoryOrderListFilters {
   id?: string;
 }
 
+export interface LaboratoryReportListFilters {
+  examType?: string;
+  code?: string;
+  patientId?: string;
+  animal?: string;
+  finalizedAt?: string;
+  enteredAt?: string;
+  body?: string;
+  closed?: boolean;
+}
+
 export const laboratoryService = {
   async listOrders(filters?: string | LaboratoryOrderListFilters): Promise<DiagnosticOrderSummary[]> {
     const normalizedFilters =
@@ -84,19 +95,28 @@ export const laboratoryService = {
     });
   },
 
-  async listResults(filterType?: string): Promise<DiagnosticOrderSummary[]> {
-    const orders = await this.listOrders();
-    const normalizedFilter = normalizeText(filterType);
-
-    return orders.filter((order) => {
-      const matchesType =
-        !normalizedFilter ||
-        normalizeText(order.examType).includes(normalizedFilter) ||
-        normalizeText(order.examCatalogId).includes(normalizedFilter);
-
-      const hasResult = order.status === 'resulted' || Boolean(order.resultSummary);
-      return matchesType && hasResult;
-    });
+  async listResults(filters?: string | LaboratoryReportListFilters): Promise<DiagnosticOrderSummary[]> {
+    const normalizedFilters =
+      typeof filters === 'string'
+        ? ({ examType: filters } satisfies LaboratoryReportListFilters)
+        : filters;
+    const response = await apiRequest<DiagnosticOrderListResponse>(
+      `/laboratory/results${buildQuery({
+        examType: normalizedFilters?.examType,
+        code: normalizedFilters?.code,
+        patientId: normalizedFilters?.patientId,
+        animal: normalizedFilters?.animal,
+        finalizedAt: normalizedFilters?.finalizedAt,
+        enteredAt: normalizedFilters?.enteredAt,
+        body: normalizedFilters?.body,
+        closed: typeof normalizedFilters?.closed === 'boolean'
+          ? String(normalizedFilters.closed)
+          : undefined
+      })}`
+    );
+    return [...(response.items ?? [])].sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt)
+    );
   },
 
   async getDashboardSummary(): Promise<LaboratoryDashboardSummary> {

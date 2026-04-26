@@ -142,7 +142,7 @@ Submenu `Atendimento` observado em modo somente leitura:
 
 Checkpoint de decisao anterior: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
 
-Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames` foi implementado. O proximo modulo pela ordem observada em `Laboratorio > Atendimentos` e `Laudos`.
+Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames` e `Laboratorio > Atendimentos > Laudos` foram implementados. O proximo modulo pela ordem observada em `Laboratorio > Atendimentos` e `Hemogramas`.
 
 ### Laboratorio observado em 2026-04-24
 
@@ -200,7 +200,8 @@ A partir deste checkpoint, a sequencia correta e:
 | Atendimento > Cadastros > Grupos de Clientes | Cadastro de grupos de clientes | Implementado | `897820c` | Persistencia em `customer_groups`, API `/customer-groups`, aliases `/customer-group` e `/grupos-de-clientes`, paginas SPA de lista/inclusao/edicao/detalhe, politicas comerciais basicas. |
 | Atendimento > Cadastros > Boxes de Internacao | Cadastro/listagem de boxes de internacao | Implementado | `61f7395` | Observado no Vetus em `Sistema/Internacao/InternacaoBox.htm`: botao `Incluir`, filtros `Codigo` e `Descricao`, botao `Pesquisar`, tabela com `Codigo`, `Descricao` e `Abrir`. No `cvg-his-v2`: SPA `/beds` com aliases `/boxes-de-internacao`, `/cadastros/boxes-de-internacao`, `/cadastro/boxes-de-internacao`; telas de lista/inclusao/edicao/detalhe; API `/beds`, `/beds/:id`, aliases de colecao; persistencia em `sectors`/`beds`; integracao com mapa de leitos e internação. |
 | Atendimento > Cadastros > Webhooks | Cadastro/listagem de webhooks | Implementado | `02c72d6` | Link Vetus observado no navbar como `/Sistema/Cadastros/Webhooks.htm`. Nesta tarefa, a tentativa de login observacional automatizado nao chegou aos campos por indisponibilidade dos seletores de login/validacao; nao houve escrita no Vetus. No `cvg-his-v2`: SPA `/webhooks` com aliases `/webhook`, `/cadastro/webhooks`, `/cadastros/webhooks`; lista com botao `Incluir`, filtros `URL`, `Evento`, `Status`, botao `Pesquisar`, tabela `URL`, `Eventos`, `Status`, `Criado em`, `Abrir`; formulario de inclusao/edicao; detalhe com `Testar`, `Editar`, `Ativar/Desativar`; API com filtros, aliases de colecao, deliveries, stats e reteste; persistencia duravel existente em `webhooks`/`webhook_deliveries`; respostas publicas sem expor `secret`. |
-| Laboratorio > Atendimentos > Exames | Listagem/fila de exames laboratoriais | Implementado | Este commit | Observado no Vetus em `Sistema/Laboratorio/Exames.htm`: botao `Incluir`, filtros `Cliente`, `Animal` e `Data`, botao `Pesquisar`, tabela com `Id`, `Cliente`, `Animal`, `Data` e `Abrir`, vazio `Nenhum registro encontrado`. No `cvg-his-v2`: SPA `/laboratory/orders` com aliases `/laboratorio/exames`, `/laboratorio/atendimentos/exames`, `/laboratorio/pedidos-de-exame`, `/laboratorio/atendimentos/pedidos-de-exame`; tela `Exames` com filtros Vetus-like, listagem enriquecida por cliente/animal via cadastros existentes, acao `Incluir` para a Central Diagnostica e `Abrir` no pedido; API `/laboratory/orders`, `/laboratory/exams`, `/laboratorio/exames`, `/laboratorio/atendimentos/exames` com filtros por id, animal/patientId e data; persistencia duravel existente em `diagnostic_orders`. |
+| Laboratorio > Atendimentos > Exames | Listagem/fila de exames laboratoriais | Implementado | `495cfcb` | Observado no Vetus em `Sistema/Laboratorio/Exames.htm`: botao `Incluir`, filtros `Cliente`, `Animal` e `Data`, botao `Pesquisar`, tabela com `Id`, `Cliente`, `Animal`, `Data` e `Abrir`, vazio `Nenhum registro encontrado`. No `cvg-his-v2`: SPA `/laboratory/orders` com aliases `/laboratorio/exames`, `/laboratorio/atendimentos/exames`, `/laboratorio/pedidos-de-exame`, `/laboratorio/atendimentos/pedidos-de-exame`; tela `Exames` com filtros Vetus-like, listagem enriquecida por cliente/animal via cadastros existentes, acao `Incluir` para a Central Diagnostica e `Abrir` no pedido; API `/laboratory/orders`, `/laboratory/exams`, `/laboratorio/exames`, `/laboratorio/atendimentos/exames` com filtros por id, animal/patientId e data; persistencia duravel existente em `diagnostic_orders`. |
+| Laboratorio > Atendimentos > Laudos | Listagem de laudos laboratoriais | Implementado | Este commit | Observado no Vetus em `Sistema/Laboratorio/Laudos.htm`: botao `Incluir`, filtros `Codigo do Laudo`, `Cliente`, `Proprietario`, `Animal`, `Data da Finalizacao`, `Data de Entrada`, `Corpo do Laudo`, checkbox `Pesquisar Laudos Fechados`, botao `Pesquisar`, tabela com `Codigo de Laudo`, `Cliente`, `Proprietario`, `Animal`, `Data de Finalizacao`, `Data de Entrada`, `Valor` e `Abrir`, vazio `Nenhum registro encontrado`. No `cvg-his-v2`: SPA `/laboratory/results` com aliases `/laboratorio/laudos` e `/laboratorio/atendimentos/laudos`; tela `Laudos` com filtros Vetus-like, listagem enriquecida por cliente/proprietario/animal via cadastros existentes, acao `Incluir` para a Central Diagnostica e `Abrir` para o diagnostico do atendimento; API `/laboratory/results`, `/laboratory/reports`, `/laboratorio/laudos`, `/laboratorio/atendimentos/laudos` com filtros por codigo, animal/patientId, datas, corpo e fechados; persistencia duravel existente em `diagnostic_orders`. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -208,7 +209,8 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
-Este commit feat: align Vetus-like laboratory exams flow
+Este commit feat: align Vetus-like laboratory reports flow
+495cfcb feat: align Vetus-like laboratory exams flow
 02c72d6 feat: align Vetus-like webhooks registry flow
 61f7395 feat: add Vetus-like inpatient boxes module
 2e53796 feat: persist vaccines and dewormers flow
@@ -229,9 +231,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/laboratory/orders`
+- Ultima rota validada: `http://localhost:3002/laboratory/results`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/laboratory/orders`
+- Ultima API validada: `GET http://localhost:3003/laboratory/results`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -542,8 +544,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Laboratorio > Atendimentos > Exames`, continuar pela ordem observada em `Laboratorio > Atendimentos`:
+Apos concluir `Laboratorio > Atendimentos > Laudos`, continuar pela ordem observada em `Laboratorio > Atendimentos`:
 
-1. `Laboratorio > Atendimentos > Laudos`
+1. `Laboratorio > Atendimentos > Hemogramas`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

@@ -66,6 +66,9 @@ describe('router convergence', () => {
         '/laboratorio/pedidos-de-exame'
       ])
     );
+    expect(findChildRoute('laboratory/results')?.alias).toEqual(
+      expect.arrayContaining(['/laboratorio/laudos', '/laboratorio/atendimentos/laudos'])
+    );
     expect(findChildRoute('exam-orders')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('exam-results')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('inventory/pharmacy')?.meta?.breadcrumbParent).toBe('Estoque');

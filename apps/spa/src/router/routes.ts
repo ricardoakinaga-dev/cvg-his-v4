@@ -545,6 +545,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/results',
         name: 'LaboratoryResults',
+        alias: ['/laboratorio/laudos', '/laboratorio/atendimentos/laudos'],
         component: () => import('@/pages/laboratory/LaboratoryResultsPage.vue'),
         meta: {
           title: 'Laudos',

@@ -5538,9 +5538,150 @@ paths:
           schema:
             type: string
           description: Optional exam type or catalog code filter.
+        - in: query
+          name: code
+          schema:
+            type: string
+          description: Optional Vetus-like report code filter.
+        - in: query
+          name: patientId
+          schema:
+            type: string
+          description: Optional patient/animal ID filter.
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional Vetus-like animal filter.
+        - in: query
+          name: finalizedAt
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like finalization date filter.
+        - in: query
+          name: enteredAt
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like entry date filter.
+        - in: query
+          name: body
+          schema:
+            type: string
+          description: Optional Vetus-like report body filter.
+        - in: query
+          name: closed
+          schema:
+            type: boolean
+          description: Optional Vetus-like closed reports filter.
       responses:
         '200':
           description: Released laboratory results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratory/reports:
+    get:
+      operationId: listLaboratoryReportsAlias
+      summary: List laboratory reports using Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional Vetus-like report code filter.
+        - in: query
+          name: corpo
+          schema:
+            type: string
+          description: Optional Vetus-like report body filter.
+        - in: query
+          name: fechados
+          schema:
+            type: boolean
+          description: Optional Vetus-like closed reports filter.
+      responses:
+        '200':
+          description: Laboratory reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratorio/atendimentos/laudos:
+    get:
+      operationId: listLaboratorioAtendimentosLaudosAlias
+      summary: List laboratory reports using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional Vetus-like report code filter.
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional Vetus-like animal filter.
+        - in: query
+          name: dataFinalizacao
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like finalization date filter.
+        - in: query
+          name: dataEntrada
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like entry date filter.
+        - in: query
+          name: corpo
+          schema:
+            type: string
+          description: Optional Vetus-like report body filter.
+        - in: query
+          name: fechados
+          schema:
+            type: boolean
+          description: Optional Vetus-like closed reports filter.
+      responses:
+        '200':
+          description: Laboratory reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratorio/laudos:
+    get:
+      operationId: listLaboratorioLaudosAlias
+      summary: List laboratory reports using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional Vetus-like report code filter.
+        - in: query
+          name: corpo
+          schema:
+            type: string
+          description: Optional Vetus-like report body filter.
+        - in: query
+          name: fechados
+          schema:
+            type: boolean
+          description: Optional Vetus-like closed reports filter.
+      responses:
+        '200':
+          description: Laboratory reports
           content:
             application/json:
               schema:

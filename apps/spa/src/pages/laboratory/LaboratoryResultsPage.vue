@@ -1,11 +1,12 @@
 <template>
   <div class="laboratory-results-page">
     <AppPageHeader
-      :breadcrumbs="['Laboratório', 'Atendimentos', 'Resultados']"
-      title="Resultados Laboratoriais"
-      subtitle="Laudos liberados e pendências por tipo de exame"
+      :breadcrumbs="['Laboratório', 'Atendimentos', 'Laudos']"
+      title="Laudos"
+      subtitle="Documentos laboratoriais por cliente, proprietário, animal e datas"
     >
       <template #actions>
+        <DsButton variant="primary" tag="a" to="/diagnostics" icon="➕">Incluir</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
       </template>
     </AppPageHeader>
@@ -14,57 +15,78 @@
       {{ error }}
     </DsAlert>
 
-    <section class="hub-kpis">
-      <DsStatCard :label="`${pendingCount} aguardando laudo`" value="" icon="📋" />
-      <DsStatCard :label="`${filteredResults.length} liberado(s)`" value="" icon="✅" />
-      <DsStatCard :label="`${allResults.length} item(ns) monitorados`" value="" icon="📊" />
+    <section class="summary-grid" aria-label="Resumo dos laudos">
+      <DsStatCard :label="`${reports.length} laudo(s)`" value="" icon="📋" />
+      <DsStatCard :label="`${closedCount} fechado(s)`" value="" icon="✅" />
       <DsStatCard :label="`${anomalySummary.flaggedOrders} com anomalia`" value="" icon="🚨" />
     </section>
 
-    <div class="filter-bar">
-      <DsInput v-model="filterType" type="select" label="Tipo de Exame">
-        <option value="">Todos</option>
-        <option value="HEM">Hemograma</option>
-        <option value="BIO">Bioquímico</option>
-        <option value="URIN">Urina</option>
-        <option value="RX">Radiografia</option>
-        <option value="US">Ultrassonografia</option>
-      </DsInput>
-    </div>
+    <section class="filter-panel" aria-label="Filtros de laudos">
+      <form class="filters" @submit.prevent="applyFilters">
+        <label class="filter-field">
+          <span>Código do Laudo</span>
+          <input v-model="draftFilters.code" type="search" autocomplete="off" />
+        </label>
+        <label class="filter-field">
+          <span>Cliente</span>
+          <input v-model="draftFilters.client" type="search" autocomplete="off" />
+        </label>
+        <label class="filter-field">
+          <span>Proprietário</span>
+          <input v-model="draftFilters.owner" type="search" autocomplete="off" />
+        </label>
+        <label class="filter-field">
+          <span>Animal</span>
+          <input v-model="draftFilters.animal" type="search" autocomplete="off" />
+        </label>
+        <label class="filter-field">
+          <span>Data da Finalização</span>
+          <input v-model="draftFilters.finalizedAt" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>Data de Entrada</span>
+          <input v-model="draftFilters.enteredAt" type="date" />
+        </label>
+        <label class="filter-field filter-field--wide">
+          <span>Corpo do Laudo</span>
+          <input v-model="draftFilters.body" type="search" autocomplete="off" />
+        </label>
+        <label class="checkbox-field">
+          <input v-model="draftFilters.closed" type="checkbox" />
+          <span>Pesquisar Laudos Fechados</span>
+        </label>
+        <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+      </form>
+    </section>
 
     <DataTable
       :columns="columns"
-      :rows="filteredResults"
+      :rows="filteredReports"
       :loading="loading"
       empty-icon="📋"
-      empty-title="Nenhum resultado encontrado"
-      empty-description="Resultados laboratoriais aparecerão aqui quando forem liberados."
+      empty-title="Nenhum registro encontrado"
       variant="hoverable"
     >
-      <template #cell-status="{ row }">
-        <DsBadge :variant="statusVariant((row as DiagnosticOrderSummary).status)" size="sm">
-          {{ statusLabel((row as DiagnosticOrderSummary).status) }}
-        </DsBadge>
+      <template #cell-id="{ row }">
+        <span class="report-id">{{ shortId((row as LaboratoryReportRow).id) }}</span>
       </template>
-      <template #cell-resultSummary="{ row }">
-        {{ (row as DiagnosticOrderSummary).resultSummary ?? 'Aguardando liberação no prontuário' }}
+      <template #cell-finalizedAt="{ row }">
+        {{ formatDate((row as LaboratoryReportRow).finalizedAt) }}
       </template>
-      <template #cell-anomaly="{ row }">
-        <DsBadge
-          v-if="anomalyByOrder[(row as DiagnosticOrderSummary).id]"
-          :variant="anomalyByOrder[(row as DiagnosticOrderSummary).id]?.severity === 'critical' ? 'danger' : 'warning'"
-          size="sm"
-        >
-          {{ anomalyByOrder[(row as DiagnosticOrderSummary).id]?.severity === 'critical' ? 'Crítica' : 'Revisar' }}
-        </DsBadge>
-        <span v-else>—</span>
+      <template #cell-enteredAt="{ row }">
+        {{ formatDate((row as LaboratoryReportRow).enteredAt) }}
       </template>
-      <template #cell-createdAt="{ row }">
-        {{ formatDate((row as DiagnosticOrderSummary).createdAt) }}
+      <template #cell-value="{ row }">
+        {{ (row as LaboratoryReportRow).value }}
       </template>
       <template #cell-actions="{ row }">
-        <DsButton tag="a" :to="`/diagnostics?encounter=${(row as DiagnosticOrderSummary).encounterId}`" size="sm" variant="secondary">
-          Ver laudo
+        <DsButton
+          tag="a"
+          :to="`/diagnostics?encounter=${(row as LaboratoryReportRow).encounterId}`"
+          size="sm"
+          variant="secondary"
+        >
+          Abrir
         </DsButton>
       </template>
     </DataTable>
@@ -72,109 +94,158 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
-import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { laboratoryService } from '@/services/laboratory';
 import { mlService, type LabAnomalyResponse } from '@/services/ml';
+import { ownerService } from '@/services/owner';
+import { patientService } from '@/services/patient';
+import type { OwnerSummary } from '@/types/owner';
+import type { PatientSummary } from '@/types/patient';
+
+interface LaboratoryReportRow extends DiagnosticOrderSummary {
+  clientName: string;
+  ownerName: string;
+  animalName: string;
+  finalizedAt: string;
+  enteredAt: string;
+  value: string;
+}
 
 const route = useRoute();
-const allResults = ref<DiagnosticOrderSummary[]>([]);
+const reports = ref<DiagnosticOrderSummary[]>([]);
+const patients = ref<PatientSummary[]>([]);
+const owners = ref<OwnerSummary[]>([]);
 const anomalies = ref<LabAnomalyResponse | null>(null);
 const loading = ref(false);
 const error = ref('');
-const filterType = ref('');
+const draftFilters = reactive({
+  code: '',
+  client: '',
+  owner: '',
+  animal: '',
+  finalizedAt: '',
+  enteredAt: '',
+  body: '',
+  closed: true
+});
+const appliedFilters = reactive({ ...draftFilters });
 
 const columns: DataTableColumn[] = [
-  { key: 'examType', label: 'Tipo de Exame' },
-  { key: 'patientId', label: 'Paciente' },
-  { key: 'status', label: 'Status' },
-  { key: 'resultSummary', label: 'Resumo do Laudo' },
-  { key: 'anomaly', label: 'Anomalia' },
-  { key: 'createdAt', label: 'Data' },
-  { key: 'actions', label: 'Ações', class: 'table__actions-col' }
+  { key: 'id', label: 'Código de Laudo', width: '16%' },
+  { key: 'clientName', label: 'Cliente' },
+  { key: 'ownerName', label: 'Proprietário' },
+  { key: 'animalName', label: 'Animal' },
+  { key: 'finalizedAt', label: 'Data de Finalização', width: '16%' },
+  { key: 'enteredAt', label: 'Data de Entrada', width: '15%' },
+  { key: 'value', label: 'Valor', width: '110px' },
+  { key: 'actions', label: 'Abrir', class: 'table__actions-col', width: '110px' }
 ];
 
-const filteredResults = computed(() => {
-  const normalizedFilter = filterType.value.trim().toUpperCase();
+const ownerById = computed(() => new Map(owners.value.map((owner) => [owner.id, owner])));
+const patientById = computed(() => new Map(patients.value.map((patient) => [patient.id, patient])));
 
-  return allResults.value.filter((item) => {
-    const matchesType =
-      !normalizedFilter ||
-      item.examType.toUpperCase().includes(normalizedFilter) ||
-      item.examCatalogId?.toUpperCase().includes(normalizedFilter);
+const decoratedReports = computed<LaboratoryReportRow[]>(() =>
+  reports.value.map((report) => {
+    const patient = patientById.value.get(report.patientId);
+    const owner = patient ? ownerById.value.get(patient.primaryOwnerId) : undefined;
+    const ownerName = owner?.fullName ?? 'Proprietário não identificado';
+    return {
+      ...report,
+      clientName: ownerName,
+      ownerName,
+      animalName: patient?.name ?? report.patientId,
+      finalizedAt: report.status === 'resulted' ? report.updatedAt : '',
+      enteredAt: report.createdAt,
+      value: 'R$ 0,00'
+    };
+  })
+);
 
-    return matchesType;
+const filteredReports = computed(() => {
+  const code = normalizeSearch(appliedFilters.code);
+  const client = normalizeSearch(appliedFilters.client);
+  const owner = normalizeSearch(appliedFilters.owner);
+  const animal = normalizeSearch(appliedFilters.animal);
+  const body = normalizeSearch(appliedFilters.body);
+
+  return decoratedReports.value.filter((report) => {
+    if (code && !normalizeSearch(report.id).includes(code)) return false;
+    if (client && !normalizeSearch(report.clientName).includes(client)) return false;
+    if (owner && !normalizeSearch(report.ownerName).includes(owner)) return false;
+    if (animal && !normalizeSearch(report.animalName).includes(animal) && !normalizeSearch(report.patientId).includes(animal)) {
+      return false;
+    }
+    if (body && !normalizeSearch(report.resultSummary).includes(body)) return false;
+    if (appliedFilters.finalizedAt && report.finalizedAt.slice(0, 10) !== appliedFilters.finalizedAt) return false;
+    if (appliedFilters.enteredAt && report.enteredAt.slice(0, 10) !== appliedFilters.enteredAt) return false;
+    if (!appliedFilters.closed && report.status === 'resulted') return false;
+    return true;
   });
 });
 
-const pendingCount = computed(() =>
-  allResults.value.filter((item) => item.status === 'requested' || item.status === 'collected').length
-);
-const anomalyByOrder = computed<Record<string, { severity: 'warning' | 'critical'; message: string }>>(() =>
-  Object.fromEntries((anomalies.value?.flags ?? []).map((flag) => [flag.orderId, flag]))
-);
+const closedCount = computed(() => reports.value.filter((item) => item.status === 'resulted').length);
 const anomalySummary = computed(() => ({
   flaggedOrders: anomalies.value?.flaggedOrders ?? 0
 }));
 
-function formatDate(d: string): string {
-  return new Date(d).toLocaleString('pt-BR', {
+function normalizeSearch(value: string | undefined): string {
+  return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 12)}...` : id;
+}
+
+function formatDate(value: string): string {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
   });
 }
 
-function statusVariant(status: DiagnosticOrderSummary['status']): 'default' | 'warning' | 'success' | 'danger' {
-  switch (status) {
-    case 'requested':
-    case 'collected':
-      return 'warning';
-    case 'resulted':
-      return 'success';
-    case 'cancelled':
-      return 'danger';
-    default:
-      return 'default';
-  }
-}
-
-function statusLabel(status: DiagnosticOrderSummary['status']): string {
-  switch (status) {
-    case 'requested':
-      return 'Solicitado';
-    case 'collected':
-      return 'Coletado';
-    case 'resulted':
-      return 'Liberado';
-    case 'cancelled':
-      return 'Cancelado';
-    default:
-      return status;
-  }
+function applyFilters() {
+  Object.assign(appliedFilters, draftFilters);
+  void load();
 }
 
 async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const [results, anomalyResponse] = await Promise.all([
-      laboratoryService.listResults(),
-      mlService.getLabAnomalies({ examType: filterType.value || undefined }).catch(() => null)
+    const [reportsResult, patientsResult, ownersResult, anomalyResponse] = await Promise.allSettled([
+      laboratoryService.listResults({
+        code: appliedFilters.code || undefined,
+        finalizedAt: appliedFilters.finalizedAt || undefined,
+        enteredAt: appliedFilters.enteredAt || undefined,
+        body: appliedFilters.body || undefined,
+        closed: appliedFilters.closed
+      }),
+      patientService.list({ pageSize: 500 }),
+      ownerService.list({ pageSize: 500 }),
+      mlService.getLabAnomalies({ examType: undefined }).catch(() => null)
     ]);
-    allResults.value = results;
-    anomalies.value = anomalyResponse;
+
+    if (reportsResult.status === 'rejected') {
+      throw reportsResult.reason;
+    }
+
+    reports.value = reportsResult.value;
+    patients.value = patientsResult.status === 'fulfilled' ? patientsResult.value : [];
+    owners.value = ownersResult.status === 'fulfilled' ? ownersResult.value : [];
+    anomalies.value = anomalyResponse.status === 'fulfilled' ? anomalyResponse.value : null;
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar resultados';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar laudos';
+    reports.value = [];
   } finally {
     loading.value = false;
   }
@@ -183,7 +254,11 @@ async function load() {
 watch(
   () => route.query.type,
   (value) => {
-    filterType.value = typeof value === 'string' ? value : '';
+    const type = typeof value === 'string' ? value : '';
+    if (type) {
+      draftFilters.body = type;
+      appliedFilters.body = type;
+    }
   },
   { immediate: true }
 );
@@ -198,13 +273,76 @@ onMounted(load);
   gap: 16px;
 }
 
-.hub-kpis {
+.summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
-.filter-bar {
-  max-width: 400px;
+.filter-panel {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+}
+
+.filter-field--wide {
+  grid-column: span 2;
+}
+
+.filter-field input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #d7dde8);
+  border-radius: 6px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+  font: inherit;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+}
+
+.report-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .filters,
+  .filter-field--wide {
+    grid-template-columns: 1fr;
+    grid-column: auto;
+  }
 }
 </style>

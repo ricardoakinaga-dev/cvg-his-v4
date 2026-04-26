@@ -273,3 +273,46 @@ test('handleLaboratoryRoutes lists resulted orders through the diagnostics bridg
   assert.equal(payload.items[0].status, 'resulted');
   assert.equal(payload.items[0].examCatalogId, 'cat_001');
 });
+
+test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and filters', async () => {
+  const laboratory = createLaboratoryService();
+  const response = new MockResponse();
+
+  const handled = await handleLaboratoryRoutes(
+    '/laboratorio/atendimentos/laudos',
+    { method: 'GET', url: '/laboratorio/atendimentos/laudos?corpo=normalidade' } as never,
+    response as never,
+    'corr-lab-laudos',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ status: string; resultSummary?: string }> }>();
+  assert.equal(payload.items.length, 1);
+  assert.equal(payload.items[0].status, 'resulted');
+  assert.match(payload.items[0].resultSummary ?? '', /normalidade/i);
+
+  const code = payload.items[0] as { id?: string };
+  const codeResponse = new MockResponse();
+  const codeHandled = await handleLaboratoryRoutes(
+    '/laboratory/reports',
+    { method: 'GET', url: `/laboratory/reports?codigo=${code.id ?? 'missing'}` } as never,
+    codeResponse as never,
+    'corr-lab-laudos-code',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(codeHandled, true);
+  assert.equal(codeResponse.statusCode, 200);
+  const codePayload = codeResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(codePayload.items.length, 1);
+});

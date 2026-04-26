@@ -59,6 +59,15 @@ function isLaboratoryOrdersCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryResultsCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/results',
+    '/laboratory/reports',
+    '/laboratorio/laudos',
+    '/laboratorio/atendimentos/laudos'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -70,6 +79,10 @@ function normalizeSearch(value: string | null | undefined): string | undefined {
 
 function createdAtMatchesDate(createdAt: string, dateFilter: string): boolean {
   return createdAt.slice(0, 10) === dateFilter;
+}
+
+function dateMatches(value: string | undefined, dateFilter: string): boolean {
+  return Boolean(value?.slice(0, 10) === dateFilter);
 }
 
 export async function handleLaboratoryRoutes(
@@ -288,11 +301,25 @@ export async function handleLaboratoryRoutes(
     });
   }
 
-  if ((pathname === '/laboratory/results' || pathname === '/diagnostics/results') && request.method === 'GET') {
+  if ((isLaboratoryResultsCollectionPath(pathname) || pathname === '/diagnostics/results') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = url.searchParams.get('examType') ?? undefined;
-    const items = await laboratory.listResults(principal.user.accountId as never, examType);
+    const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
+    const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
+    const bodyFilter = normalizeSearch(url.searchParams.get('body') ?? url.searchParams.get('corpo'));
+    const finalizedAt = url.searchParams.get('finalizedAt') ?? url.searchParams.get('dataFinalizacao') ?? undefined;
+    const enteredAt = url.searchParams.get('enteredAt') ?? url.searchParams.get('dataEntrada') ?? undefined;
+    const includeClosed = url.searchParams.get('closed') ?? url.searchParams.get('fechados');
+    const items = (await laboratory.listResults(principal.user.accountId as never, examType)).filter((order) => {
+      if (codeFilter && !order.id.toLowerCase().includes(codeFilter)) return false;
+      if (patientFilter && !order.patientId.toLowerCase().includes(patientFilter)) return false;
+      if (bodyFilter && !normalizeSearch(order.resultSummary)?.includes(bodyFilter)) return false;
+      if (finalizedAt && !dateMatches(order.updatedAt, finalizedAt)) return false;
+      if (enteredAt && !dateMatches(order.createdAt, enteredAt)) return false;
+      if (includeClosed === 'false' && order.status === 'resulted') return false;
+      return true;
+    });
     const payload: DiagnosticOrderListResponse = { items };
 
     appendAudit(audit, {
