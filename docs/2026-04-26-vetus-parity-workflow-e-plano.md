@@ -179,7 +179,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Atendimento > Cadastros > Racas | Cadastro de racas | Implementado | `3f2028e` | Persistencia em `breeds`, API `/breeds`, alias `/breed`, paginas SPA e integracao com animal. |
 | Atendimento > Cadastros > Especies | Cadastro de especies | Implementado | `c70ac2b` | Persistencia em `animal_species`, API `/species`, alias `/specie`, paginas SPA e integracao com animal. |
 | Atendimento > Cadastros > Cores/Pelagens | Cadastro de cores/pelagens | Implementado | `c77af4a` | Persistencia em `coat_colors`, API `/coat-colors`, aliases `/coat-color` e `/pelagens`, paginas SPA. |
-| Atendimento > Cadastros > Grupos de Clientes | Cadastro de grupos de clientes | Implementado | `PENDENTE_HASH` | Persistencia em `customer_groups`, API `/customer-groups`, aliases `/customer-group` e `/grupos-de-clientes`, paginas SPA de lista/inclusao/edicao/detalhe, politicas comerciais basicas. |
+| Atendimento > Cadastros > Grupos de Clientes | Cadastro de grupos de clientes | Implementado | `897820c` | Persistencia em `customer_groups`, API `/customer-groups`, aliases `/customer-group` e `/grupos-de-clientes`, paginas SPA de lista/inclusao/edicao/detalhe, politicas comerciais basicas. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
