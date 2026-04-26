@@ -4,12 +4,14 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { LaboratoryService } from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
+  CreateLaboratoryEquipmentRequest,
   DiagnosticOrderListResponse,
   ExamCatalogListResponse,
   LaboratoryEquipmentListResponse,
   LaboratoryReferenceValueListResponse,
   LaboratoryReportTypeListResponse,
-  RecordDiagnosticResultRequest
+  RecordDiagnosticResultRequest,
+  UpdateLaboratoryEquipmentRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -92,6 +94,15 @@ function isLaboratoryBiochemistryCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryEquipmentCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/equipment',
+    '/diagnostics/equipment',
+    '/laboratorio/equipamentos',
+    '/laboratorio/cadastros/equipamentos'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -107,6 +118,48 @@ function createdAtMatchesDate(createdAt: string, dateFilter: string): boolean {
 
 function dateMatches(value: string | undefined, dateFilter: string): boolean {
   return Boolean(value?.slice(0, 10) === dateFilter);
+}
+
+function normalizeEquipmentStatus(value: unknown): 'active' | 'maintenance' {
+  return value === 'maintenance' ? 'maintenance' : 'active';
+}
+
+function normalizeCalibrationDate(value: unknown): string {
+  const date = new Date(requireNonEmptyString(String(value ?? ''), 'lastCalibrationAt'));
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('lastCalibrationAt must be a valid date');
+  }
+  return date.toISOString();
+}
+
+function parseCreateEquipmentPayload(payload: Record<string, unknown>): CreateLaboratoryEquipmentRequest {
+  return {
+    name: requireNonEmptyString(String(payload.name ?? ''), 'name'),
+    type: requireNonEmptyString(String(payload.type ?? ''), 'type'),
+    serialNumber: requireNonEmptyString(String(payload.serialNumber ?? ''), 'serialNumber'),
+    status: normalizeEquipmentStatus(payload.status),
+    lastCalibrationAt: normalizeCalibrationDate(payload.lastCalibrationAt)
+  };
+}
+
+function parseUpdateEquipmentPayload(payload: Record<string, unknown>): UpdateLaboratoryEquipmentRequest {
+  const update: {
+    name?: string;
+    type?: string;
+    serialNumber?: string;
+    status?: 'active' | 'maintenance';
+    lastCalibrationAt?: string;
+  } = {};
+  if (payload.name !== undefined) update.name = requireNonEmptyString(String(payload.name), 'name');
+  if (payload.type !== undefined) update.type = requireNonEmptyString(String(payload.type), 'type');
+  if (payload.serialNumber !== undefined) {
+    update.serialNumber = requireNonEmptyString(String(payload.serialNumber), 'serialNumber');
+  }
+  if (payload.status !== undefined) update.status = normalizeEquipmentStatus(payload.status);
+  if (payload.lastCalibrationAt !== undefined) {
+    update.lastCalibrationAt = normalizeCalibrationDate(payload.lastCalibrationAt);
+  }
+  return update;
 }
 
 export async function handleLaboratoryRoutes(
@@ -535,12 +588,92 @@ export async function handleLaboratoryRoutes(
     });
   }
 
-  if ((pathname === '/laboratory/equipment' || pathname === '/diagnostics/equipment') && request.method === 'GET') {
+  const equipmentDetailMatch = pathname.match(/^\/laboratory\/equipment\/([^/]+)$/);
+  if (equipmentDetailMatch && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
-    const payload: LaboratoryEquipmentListResponse = {
-      items: await laboratory.listEquipment(principal.user.accountId as never)
-    };
+    const equipmentId = requireNonEmptyString(equipmentDetailMatch[1], 'equipmentId');
+    const payload = await laboratory.getEquipment(principal.user.accountId as never, equipmentId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'equipment_read',
+      entityType: 'laboratory-equipment',
+      entityId: equipmentId,
+      payloadSummary: `Laboratory equipment ${equipmentId} inspected`,
+      riskLevel: 'low',
+      correlationId
+    });
     return json(response, 200, payload);
+  }
+
+  if (isLaboratoryEquipmentCollectionPath(pathname) && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const idFilter = normalizeSearch(url.searchParams.get('id') ?? url.searchParams.get('codigo'));
+    const descriptionFilter = normalizeSearch(url.searchParams.get('description') ?? url.searchParams.get('descricao'));
+    const typeFilter = normalizeSearch(url.searchParams.get('type') ?? url.searchParams.get('tipo'));
+    const statusFilter = normalizeSearch(url.searchParams.get('status') ?? url.searchParams.get('situacao'));
+    const items = (await laboratory.listEquipment(principal.user.accountId as never)).filter((equipment) => {
+      if (idFilter && !normalizeSearch(`${equipment.id} ${equipment.serialNumber}`)?.includes(idFilter)) return false;
+      if (descriptionFilter && !normalizeSearch(equipment.name)?.includes(descriptionFilter)) return false;
+      if (typeFilter && !normalizeSearch(equipment.type)?.includes(typeFilter)) return false;
+      if (statusFilter && !normalizeSearch(equipment.status)?.includes(statusFilter)) return false;
+      return true;
+    });
+    const payload: LaboratoryEquipmentListResponse = {
+      items
+    };
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'equipment_list',
+      entityType: 'laboratory-equipment',
+      entityId: 'all',
+      payloadSummary: 'Laboratory equipment listed',
+      riskLevel: 'low',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (isLaboratoryEquipmentCollectionPath(pathname) && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const payload = parseCreateEquipmentPayload((await readJsonBody(request)) as Record<string, unknown>);
+    const equipment = await laboratory.createEquipment(principal.user.accountId as never, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'equipment_create',
+      entityType: 'laboratory-equipment',
+      entityId: equipment.id,
+      payloadSummary: `Laboratory equipment ${equipment.name} created`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, equipment);
+  }
+
+  if (equipmentDetailMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const equipmentId = requireNonEmptyString(equipmentDetailMatch[1], 'equipmentId');
+    const payload = parseUpdateEquipmentPayload((await readJsonBody(request)) as Record<string, unknown>);
+    const equipment = await laboratory.updateEquipment(principal.user.accountId as never, equipmentId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'equipment_update',
+      entityType: 'laboratory-equipment',
+      entityId: equipment.id,
+      payloadSummary: `Laboratory equipment ${equipment.name} updated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, equipment);
   }
 
   if ((pathname === '/laboratory/report-types' || pathname === '/diagnostics/report-types') && request.method === 'GET') {

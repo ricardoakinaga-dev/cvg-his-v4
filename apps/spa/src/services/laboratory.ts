@@ -58,6 +58,23 @@ export interface LaboratoryReportListFilters {
   closed?: boolean;
 }
 
+export interface LaboratoryEquipmentListFilters {
+  id?: string;
+  description?: string;
+  type?: string;
+  status?: 'active' | 'maintenance' | '';
+}
+
+export interface CreateLaboratoryEquipmentPayload {
+  name: string;
+  type: string;
+  serialNumber: string;
+  status?: 'active' | 'maintenance';
+  lastCalibrationAt: string;
+}
+
+export type UpdateLaboratoryEquipmentPayload = Partial<CreateLaboratoryEquipmentPayload>;
+
 export const laboratoryService = {
   async listOrders(filters?: string | LaboratoryOrderListFilters): Promise<DiagnosticOrderSummary[]> {
     const normalizedFilters =
@@ -183,9 +200,37 @@ export const laboratoryService = {
     return apiRequest<LaboratoryDashboardSummary>('/laboratory/summary');
   },
 
-  async listEquipment(): Promise<LaboratoryEquipmentSummary[]> {
-    const response = await apiRequest<LaboratoryEquipmentListResponse>('/laboratory/equipment');
+  async listEquipment(filters?: LaboratoryEquipmentListFilters): Promise<LaboratoryEquipmentSummary[]> {
+    const response = await apiRequest<LaboratoryEquipmentListResponse>(
+      `/laboratory/equipment${buildQuery({
+        id: filters?.id,
+        description: filters?.description,
+        type: filters?.type,
+        status: filters?.status || undefined
+      })}`
+    );
     return [...(response.items ?? [])].sort((left, right) => left.name.localeCompare(right.name));
+  },
+
+  async getEquipment(equipmentId: string): Promise<LaboratoryEquipmentSummary> {
+    return apiRequest<LaboratoryEquipmentSummary>(`/laboratory/equipment/${equipmentId}`);
+  },
+
+  async createEquipment(payload: CreateLaboratoryEquipmentPayload): Promise<LaboratoryEquipmentSummary> {
+    return apiRequest<LaboratoryEquipmentSummary>('/laboratory/equipment', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateEquipment(
+    equipmentId: string,
+    payload: UpdateLaboratoryEquipmentPayload
+  ): Promise<LaboratoryEquipmentSummary> {
+    return apiRequest<LaboratoryEquipmentSummary>(`/laboratory/equipment/${equipmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listReportTypes(): Promise<LaboratoryReportTypeSummary[]> {

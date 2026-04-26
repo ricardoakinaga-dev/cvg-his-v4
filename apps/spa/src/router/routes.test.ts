@@ -78,6 +78,16 @@ describe('router convergence', () => {
         '/laboratorio/exames/bioquimico'
       ])
     );
+    expect(findChildRoute('laboratory/equipment')?.alias).toEqual(
+      expect.arrayContaining([
+        '/equipamentos',
+        '/laboratorio/equipamentos',
+        '/laboratorio/cadastros/equipamentos'
+      ])
+    );
+    expect(findChildRoute('laboratory/equipment/new')?.name).toBe('LaboratoryEquipmentNew');
+    expect(findChildRoute('laboratory/equipment/:id')?.name).toBe('LaboratoryEquipmentDetail');
+    expect(findChildRoute('laboratory/equipment/:id/edit')?.name).toBe('LaboratoryEquipmentEdit');
     expect(findChildRoute('laboratory/orders')?.alias).toEqual(
       expect.arrayContaining([
         '/laboratorio/exames',

@@ -81,6 +81,21 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
+function createMockRequest(method: string, url: string, body?: object): object {
+  const bodyStr = body ? JSON.stringify(body) : '';
+  const chunks: Buffer[] = bodyStr ? [Buffer.from(bodyStr)] : [];
+  return {
+    method,
+    url,
+    [Symbol.asyncIterator]: () => ({
+      next: async () => {
+        if (chunks.length === 0) return { done: true, value: undefined };
+        return { done: false, value: chunks.shift()! };
+      }
+    })
+  };
+}
+
 function createLaboratoryService(): LaboratoryService {
   const diagnostics = new DiagnosticsService(
     {
@@ -474,4 +489,72 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to
   const shortPayload = shortAliasResponse.bodyJson<{ items: Array<{ examType: string }> }>();
   assert.equal(shortPayload.items.length, 1);
   assert.match(shortPayload.items[0].examType, /bioquim/i);
+});
+
+test('handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog with filters and write flow', async () => {
+  const laboratory = createLaboratoryService();
+  const createResponse = new MockResponse();
+
+  const createHandled = await handleLaboratoryRoutes(
+    '/laboratorio/cadastros/equipamentos',
+    createMockRequest('POST', '/laboratorio/cadastros/equipamentos', {
+      name: 'Analisador Bioquimico Teste',
+      type: 'Bioquimica',
+      serialNumber: 'BIO-TEST-001',
+      status: 'active',
+      lastCalibrationAt: '2026-04-25T00:00:00.000Z'
+    }) as never,
+    createResponse as never,
+    'corr-lab-equip-create',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(createResponse.statusCode, 201);
+  const created = createResponse.bodyJson<{ id: string; name: string; serialNumber: string }>();
+  assert.equal(created.name, 'Analisador Bioquimico Teste');
+  assert.equal(created.serialNumber, 'BIO-TEST-001');
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleLaboratoryRoutes(
+    '/laboratorio/equipamentos',
+    { method: 'GET', url: '/laboratorio/equipamentos?descricao=bioquimico&tipo=bioquimica' } as never,
+    listResponse as never,
+    'corr-lab-equip-list',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(listResponse.statusCode, 200);
+  const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; name: string }> }>();
+  assert.ok(listPayload.items.some((item) => item.id === created.id));
+
+  const updateResponse = new MockResponse();
+  const updateHandled = await handleLaboratoryRoutes(
+    `/laboratory/equipment/${created.id}`,
+    createMockRequest('PATCH', `/laboratory/equipment/${created.id}`, {
+      status: 'maintenance'
+    }) as never,
+    updateResponse as never,
+    'corr-lab-equip-update',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(updateHandled, true);
+  assert.equal(updateResponse.statusCode, 200);
+  const updated = updateResponse.bodyJson<{ id: string; status: string }>();
+  assert.equal(updated.id, created.id);
+  assert.equal(updated.status, 'maintenance');
 });

@@ -291,6 +291,31 @@ test('LaboratoryService serves backend-first catalog and dashboard summary', asy
   assert.ok(summary.equipmentActive >= 1);
 });
 
+test('LaboratoryService creates and updates laboratory equipment in the catalog repository', async () => {
+  const { service: diagnostics } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: new InMemoryLaboratoryCatalogRepository()
+  });
+
+  const created = await laboratory.createEquipment('acc_test' as never, {
+    name: 'Analisador Bioquimico Teste',
+    type: 'Bioquimica',
+    serialNumber: 'BIO-TEST-001',
+    status: 'active',
+    lastCalibrationAt: '2026-04-25T00:00:00.000Z'
+  });
+
+  const updated = await laboratory.updateEquipment('acc_test' as never, created.id, {
+    status: 'maintenance',
+    lastCalibrationAt: '2026-04-26T00:00:00.000Z'
+  });
+  const detail = await laboratory.getEquipment('acc_test' as never, created.id);
+
+  assert.equal(created.name, 'Analisador Bioquimico Teste');
+  assert.equal(updated.status, 'maintenance');
+  assert.equal(detail.lastCalibrationAt, '2026-04-26T00:00:00.000Z');
+});
+
 test('LaboratoryService exposes resulted orders and order detail scoped by account', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics, {
@@ -350,6 +375,15 @@ test('LaboratoryService keeps order listing available when catalog repository is
         throw new Error('relation "laboratory_report_types" does not exist');
       },
       async listEquipment() {
+        throw new Error('relation "laboratory_equipment" does not exist');
+      },
+      async getEquipment() {
+        throw new Error('relation "laboratory_equipment" does not exist');
+      },
+      async createEquipment() {
+        throw new Error('relation "laboratory_equipment" does not exist');
+      },
+      async updateEquipment() {
         throw new Error('relation "laboratory_equipment" does not exist');
       },
       async listReportTypes() {

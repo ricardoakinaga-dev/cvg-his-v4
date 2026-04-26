@@ -9,9 +9,12 @@ import type {
   LaboratoryReportTypeSummary
 } from '@cvg-his-v2/shared-types';
 import type {
+  CreateLaboratoryEquipmentRequest,
   CreateDiagnosticOrderRequest,
-  RecordDiagnosticResultRequest
+  RecordDiagnosticResultRequest,
+  UpdateLaboratoryEquipmentRequest
 } from '@cvg-his-v2/shared-contracts';
+import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_LABORATORY_EQUIPMENT,
   DEFAULT_LABORATORY_REFERENCE_VALUES,
@@ -33,6 +36,16 @@ interface DiagnosticsOrdersGateway {
 export interface LaboratoryCatalogRepository {
   ensureSeedData(accountId: AccountId): Promise<void>;
   listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]>;
+  getEquipment(accountId: AccountId, equipmentId: string): Promise<LaboratoryEquipmentSummary | undefined>;
+  createEquipment(
+    accountId: AccountId,
+    payload: CreateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary>;
+  updateEquipment(
+    accountId: AccountId,
+    equipmentId: string,
+    payload: UpdateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary>;
   listReportTypes(accountId: AccountId): Promise<readonly LaboratoryReportTypeSummary[]>;
   listReferenceValues(
     accountId: AccountId,
@@ -72,6 +85,59 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     return [...(this.#equipment.get(accountId) ?? [])].sort((left, right) =>
       left.name.localeCompare(right.name)
     );
+  }
+
+  public async getEquipment(
+    accountId: AccountId,
+    equipmentId: string
+  ): Promise<LaboratoryEquipmentSummary | undefined> {
+    await this.ensureSeedData(accountId);
+    return (this.#equipment.get(accountId) ?? []).find((item) => item.id === equipmentId);
+  }
+
+  public async createEquipment(
+    accountId: AccountId,
+    payload: CreateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    await this.ensureSeedData(accountId);
+    const equipment: LaboratoryEquipmentSummary = {
+      id: `lab-eq-${randomUUID()}`,
+      name: payload.name,
+      type: payload.type,
+      serialNumber: payload.serialNumber,
+      status: payload.status ?? 'active',
+      lastCalibrationAt: new Date(payload.lastCalibrationAt).toISOString()
+    };
+    const current = this.#equipment.get(accountId) ?? [];
+    this.#equipment.set(accountId, [...current, equipment]);
+    return equipment;
+  }
+
+  public async updateEquipment(
+    accountId: AccountId,
+    equipmentId: string,
+    payload: UpdateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    await this.ensureSeedData(accountId);
+    const current = [...(this.#equipment.get(accountId) ?? [])];
+    const index = current.findIndex((item) => item.id === equipmentId);
+    if (index < 0) {
+      throw new Error('Laboratory equipment not found');
+    }
+    const existing = current[index];
+    const updated: LaboratoryEquipmentSummary = {
+      ...existing,
+      name: payload.name ?? existing.name,
+      type: payload.type ?? existing.type,
+      serialNumber: payload.serialNumber ?? existing.serialNumber,
+      status: payload.status ?? existing.status,
+      lastCalibrationAt: payload.lastCalibrationAt
+        ? new Date(payload.lastCalibrationAt).toISOString()
+        : existing.lastCalibrationAt
+    };
+    current[index] = updated;
+    this.#equipment.set(accountId, current);
+    return updated;
   }
 
   public async listReportTypes(
@@ -194,6 +260,47 @@ export class LaboratoryService {
         left.name.localeCompare(right.name)
       );
     }
+  }
+
+  public async getEquipment(
+    accountId: AccountId,
+    equipmentId: string
+  ): Promise<LaboratoryEquipmentSummary> {
+    if (!this.#catalogRepository) {
+      const equipment = DEFAULT_LABORATORY_EQUIPMENT.find((item) => item.id === equipmentId);
+      if (!equipment) throw new Error('Laboratory equipment not found');
+      return equipment;
+    }
+
+    await this.#catalogRepository.ensureSeedData(accountId);
+    const equipment = await this.#catalogRepository.getEquipment(accountId, equipmentId);
+    if (!equipment) {
+      throw new Error('Laboratory equipment not found');
+    }
+    return equipment;
+  }
+
+  public async createEquipment(
+    accountId: AccountId,
+    payload: CreateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory equipment persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.createEquipment(accountId, payload);
+  }
+
+  public async updateEquipment(
+    accountId: AccountId,
+    equipmentId: string,
+    payload: UpdateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory equipment persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.updateEquipment(accountId, equipmentId, payload);
   }
 
   public async listReportTypes(

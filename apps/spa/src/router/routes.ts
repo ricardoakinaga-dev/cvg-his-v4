@@ -593,11 +593,45 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/equipment',
         name: 'LaboratoryEquipment',
+        alias: ['/equipamentos', '/laboratorio/equipamentos', '/laboratorio/cadastros/equipamentos'],
         component: () => import('@/pages/laboratory/LaboratoryEquipmentPage.vue'),
         meta: {
           title: 'Equipamentos',
           breadcrumb: 'Equipamentos',
           breadcrumbParent: 'Laboratório',
+          icon: '🔧'
+        }
+      },
+      {
+        path: 'laboratory/equipment/new',
+        name: 'LaboratoryEquipmentNew',
+        component: () => import('@/pages/laboratory/LaboratoryEquipmentFormPage.vue'),
+        meta: {
+          title: 'Incluir Equipamento',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Equipamentos',
+          icon: '🔧'
+        }
+      },
+      {
+        path: 'laboratory/equipment/:id',
+        name: 'LaboratoryEquipmentDetail',
+        component: () => import('@/pages/laboratory/LaboratoryEquipmentDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Equipamento',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Equipamentos',
+          icon: '🔧'
+        }
+      },
+      {
+        path: 'laboratory/equipment/:id/edit',
+        name: 'LaboratoryEquipmentEdit',
+        component: () => import('@/pages/laboratory/LaboratoryEquipmentFormPage.vue'),
+        meta: {
+          title: 'Editar Equipamento',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Equipamentos',
           icon: '🔧'
         }
       },

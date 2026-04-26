@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import {
@@ -6,6 +7,10 @@ import {
   laboratoryReportTypes
 } from '@cvg-his-v2/shared-database';
 import { nowIso } from '@cvg-his-v2/shared-utils';
+import type {
+  CreateLaboratoryEquipmentRequest,
+  UpdateLaboratoryEquipmentRequest
+} from '@cvg-his-v2/shared-contracts';
 import type {
   AccountId,
   LaboratoryEquipmentSummary,
@@ -88,16 +93,79 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       .from(laboratoryEquipment)
       .where(eq(laboratoryEquipment.accountId, accountId));
 
-    return result
-      .map((row) => ({
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        serialNumber: row.serialNumber,
-        status: row.status as LaboratoryEquipmentSummary['status'],
-        lastCalibrationAt: row.lastCalibrationAt.toISOString()
-      }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    return result.map((row) => this.#toEquipmentSummary(row)).sort((left, right) =>
+      left.name.localeCompare(right.name)
+    );
+  }
+
+  public async getEquipment(
+    accountId: AccountId,
+    equipmentId: string
+  ): Promise<LaboratoryEquipmentSummary | undefined> {
+    const result = await this.#db
+      .select()
+      .from(laboratoryEquipment)
+      .where(and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId)))
+      .limit(1);
+
+    return result[0] ? this.#toEquipmentSummary(result[0]) : undefined;
+  }
+
+  public async createEquipment(
+    accountId: AccountId,
+    payload: CreateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    const now = new Date(nowIso());
+    const id = `lab-eq-${randomUUID()}`;
+
+    await this.#db.insert(laboratoryEquipment).values({
+      id,
+      accountId,
+      name: payload.name,
+      type: payload.type,
+      serialNumber: payload.serialNumber,
+      status: payload.status ?? 'active',
+      lastCalibrationAt: new Date(payload.lastCalibrationAt),
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const equipment = await this.getEquipment(accountId, id);
+    if (!equipment) {
+      throw new Error('Laboratory equipment was not persisted');
+    }
+    return equipment;
+  }
+
+  public async updateEquipment(
+    accountId: AccountId,
+    equipmentId: string,
+    payload: UpdateLaboratoryEquipmentRequest
+  ): Promise<LaboratoryEquipmentSummary> {
+    const existing = await this.getEquipment(accountId, equipmentId);
+    if (!existing) {
+      throw new Error('Laboratory equipment not found');
+    }
+
+    await this.#db
+      .update(laboratoryEquipment)
+      .set({
+        name: payload.name ?? existing.name,
+        type: payload.type ?? existing.type,
+        serialNumber: payload.serialNumber ?? existing.serialNumber,
+        status: payload.status ?? existing.status,
+        lastCalibrationAt: payload.lastCalibrationAt
+          ? new Date(payload.lastCalibrationAt)
+          : new Date(existing.lastCalibrationAt),
+        updatedAt: new Date(nowIso())
+      })
+      .where(and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId)));
+
+    const updated = await this.getEquipment(accountId, equipmentId);
+    if (!updated) {
+      throw new Error('Laboratory equipment not found');
+    }
+    return updated;
   }
 
   public async listReportTypes(
@@ -146,5 +214,16 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
         unit: row.unit
       }))
       .sort((left, right) => left.parameter.localeCompare(right.parameter));
+  }
+
+  #toEquipmentSummary(row: typeof laboratoryEquipment.$inferSelect): LaboratoryEquipmentSummary {
+    return {
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      serialNumber: row.serialNumber,
+      status: row.status as LaboratoryEquipmentSummary['status'],
+      lastCalibrationAt: row.lastCalibrationAt.toISOString()
+    };
   }
 }

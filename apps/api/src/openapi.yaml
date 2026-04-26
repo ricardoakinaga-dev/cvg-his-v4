@@ -6089,6 +6089,162 @@ paths:
       operationId: listLaboratoryEquipment
       summary: List laboratory equipment
       tags: [Laboratory]
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Optional equipment code or serial filter.
+        - in: query
+          name: description
+          schema:
+            type: string
+          description: Optional equipment description filter.
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Optional equipment type filter.
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, maintenance]
+          description: Optional equipment status filter.
+      responses:
+        '200':
+          description: Laboratory equipment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentListResponse'
+    post:
+      operationId: createLaboratoryEquipment
+      summary: Create laboratory equipment
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryEquipmentRequest'
+      responses:
+        '201':
+          description: Laboratory equipment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+
+  /laboratory/equipment/{equipmentId}:
+    get:
+      operationId: getLaboratoryEquipment
+      summary: Get laboratory equipment detail
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: equipmentId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory equipment detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+    patch:
+      operationId: updateLaboratoryEquipment
+      summary: Update laboratory equipment
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: equipmentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLaboratoryEquipmentRequest'
+      responses:
+        '200':
+          description: Laboratory equipment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+
+  /laboratorio/cadastros/equipamentos:
+    get:
+      operationId: listLaboratorioCadastrosEquipamentosAlias
+      summary: List laboratory equipment using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional equipment code or serial filter.
+        - in: query
+          name: descricao
+          schema:
+            type: string
+          description: Optional equipment description filter.
+        - in: query
+          name: tipo
+          schema:
+            type: string
+          description: Optional equipment type filter.
+        - in: query
+          name: situacao
+          schema:
+            type: string
+          description: Optional equipment status filter.
+      responses:
+        '200':
+          description: Laboratory equipment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentListResponse'
+    post:
+      operationId: createLaboratorioCadastrosEquipamentosAlias
+      summary: Create laboratory equipment using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryEquipmentRequest'
+      responses:
+        '201':
+          description: Laboratory equipment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+
+  /laboratorio/equipamentos:
+    get:
+      operationId: listLaboratorioEquipamentosAlias
+      summary: List laboratory equipment using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional equipment code or serial filter.
+        - in: query
+          name: descricao
+          schema:
+            type: string
+          description: Optional equipment description filter.
       responses:
         '200':
           description: Laboratory equipment
@@ -8849,6 +9005,39 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LaboratoryEquipmentSummary'
+
+    CreateLaboratoryEquipmentRequest:
+      type: object
+      required: [name, type, serialNumber, lastCalibrationAt]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+          enum: [active, maintenance]
+        lastCalibrationAt:
+          type: string
+          format: date-time
+
+    UpdateLaboratoryEquipmentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+          enum: [active, maintenance]
+        lastCalibrationAt:
+          type: string
+          format: date-time
 
     LaboratoryReportTypeSummary:
       type: object

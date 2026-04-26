@@ -816,6 +816,16 @@ export interface LaboratoryEquipmentListResponse {
   readonly items: readonly LaboratoryEquipmentSummary[];
 }
 
+export interface CreateLaboratoryEquipmentRequest {
+  readonly name: string;
+  readonly type: string;
+  readonly serialNumber: string;
+  readonly status?: 'active' | 'maintenance';
+  readonly lastCalibrationAt: string;
+}
+
+export type UpdateLaboratoryEquipmentRequest = Partial<CreateLaboratoryEquipmentRequest>;
+
 export interface LaboratoryReportTypeListResponse {
   readonly items: readonly LaboratoryReportTypeSummary[];
 }
