@@ -220,21 +220,15 @@ describe('AppointmentsListPage', () => {
     vi.useRealTimers();
   });
 
-  it('renders the premium cockpit summary and professional column', async () => {
+  it('renders the Vetus-like agenda board and professional column', async () => {
     const wrapper = await mountPage();
 
     await flushPromises();
 
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Atendimento > Atendimentos > Agenda');
-    expect(wrapper.text()).toContain('Pesquisar agenda por data');
-    expect(wrapper.text()).toContain('Pesquisar');
-    expect(wrapper.text()).toContain('Limpar');
-    expect(wrapper.text()).toContain('Situação');
-    expect(wrapper.text()).toContain('Listagem');
-    expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).toContain('Criar agendamento');
     expect(wrapper.text()).toContain('Veterinário Responsável');
-    expect(wrapper.text()).toContain('Conflitos');
     expect(wrapper.text()).toContain('Intervalo operacional');
     expect(wrapper.text()).toContain('Em triagem');
     expect(wrapper.text()).toContain('Cliente');
@@ -242,9 +236,10 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Status:');
     expect(wrapper.text()).toContain('Pesquisar Profissional');
     expect(wrapper.text()).toContain('Marcador');
-    expect(wrapper.text()).toContain('Disponibilidade');
-    expect(wrapper.text()).toContain('10 livres');
-    expect(wrapper.text()).toContain('2 agendamentos · 1 bloqueios/folgas');
+    expect(wrapper.text()).toContain('Hoje');
+    expect(wrapper.text()).toContain('Mês');
+    expect(wrapper.text()).toContain('Semana');
+    expect(wrapper.text()).toContain('Dia');
     expect(wrapper.text()).toContain('Legenda operacional');
     expect(wrapper.text()).toContain('Folga');
     expect(wrapper.text()).toContain('Aberto');
@@ -277,7 +272,7 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     const quickCreateButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Incluir')
+      button.text().includes('Criar agendamento')
     );
     expect(quickCreateButton).toBeDefined();
 
