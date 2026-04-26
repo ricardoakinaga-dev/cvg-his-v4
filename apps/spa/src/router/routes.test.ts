@@ -100,6 +100,9 @@ describe('router convergence', () => {
     expect(speciesRoute?.name).toBe('Species');
     expect(speciesRoute?.meta?.breadcrumbParent).toBe('Cadastros');
     expect(speciesRoute?.alias).toEqual(expect.arrayContaining(['/especies', '/cadastros/especies']));
+    expect(findChildRoute('species/new')?.name).toBe('SpeciesNew');
+    expect(findChildRoute('species/:id')?.name).toBe('SpeciesDetail');
+    expect(findChildRoute('species/:id/edit')?.name).toBe('SpeciesEdit');
     expect(findChildRoute('cadastros/especies')?.redirect).toBe('/species');
     expect(findChildRoute('cadastro/especies')?.redirect).toBe('/species');
     expect(findChildRoute('cadastros/species')?.redirect).toBe('/species');

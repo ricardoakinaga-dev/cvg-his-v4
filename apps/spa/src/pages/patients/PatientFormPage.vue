@@ -92,15 +92,17 @@
               type="select"
               label="Espécie"
               :error="errors.species"
+              :disabled="speciesLoading"
+              :hint="speciesSelectHint"
               required
             >
               <option value="">Selecione...</option>
-              <option value="canine">🐕 Canino</option>
-              <option value="feline">🐈 Felino</option>
-              <option value="avian">🐦 Aves</option>
-              <option value="rodent">🐹 Roedor</option>
-              <option value="reptile">🦎 Réptil</option>
-              <option value="other">🐾 Outro</option>
+              <option v-for="speciesOption in speciesOptions" :key="speciesOption.id" :value="speciesOption.systemCode">
+                {{ speciesOption.name }}
+              </option>
+              <option v-if="selectedSpeciesOutsideCatalog" :value="form.species">
+                {{ form.species }}
+              </option>
             </DsInput>
           </div>
           <div class="form-row form-row--3">
@@ -222,6 +224,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { patientService } from '@/services/patient';
 import { ownerService } from '@/services/owner';
 import { breedsService, type BreedSummary } from '@/services/breeds';
+import {
+  animalSpeciesService,
+  defaultAnimalSpecies,
+  type AnimalSpeciesSummary
+} from '@/services/species';
 import type { CreatePatientRequest, UpdatePatientRequest, PatientSummary } from '@/types/patient';
 import type { OwnerSummary } from '@/types/owner';
 import SearchSelect from '@/components/SearchSelect.vue';
@@ -252,12 +259,25 @@ const form = reactive({
 
 const owners = ref<OwnerSummary[]>([]);
 const breeds = ref<BreedSummary[]>([]);
+const speciesCatalog = ref<AnimalSpeciesSummary[]>([]);
 const ownersLoading = ref(false);
 const breedsLoading = ref(false);
+const speciesLoading = ref(false);
 const ownerSearch = ref('');
 const stagedOwnerId = ref('');
 
 const ownerOptions = computed(() => owners.value.map((o) => ({ label: o.fullName, value: o.id })));
+const speciesOptions = computed(() =>
+  speciesCatalog.value.length > 0 ? speciesCatalog.value : [...defaultAnimalSpecies]
+);
+const selectedSpeciesOutsideCatalog = computed(
+  () => Boolean(form.species) && !speciesOptions.value.some((species) => species.systemCode === form.species)
+);
+const speciesSelectHint = computed(() =>
+  speciesLoading.value
+    ? 'Carregando espécies cadastradas...'
+    : 'Lista integrada ao cadastro Cadastros > Espécies.'
+);
 const breedOptionsForSpecies = computed(() =>
   breeds.value.filter((breed) => !form.species || breed.species === form.species)
 );
@@ -372,6 +392,7 @@ function ownerEmailByOwner(owner: OwnerSummary): string {
 onMounted(async () => {
   ownersLoading.value = true;
   breedsLoading.value = true;
+  speciesLoading.value = true;
   try {
     owners.value = await ownerService.list();
     const ownerIdFromQuery = typeof route.query?.ownerId === 'string' ? route.query.ownerId : '';
@@ -383,6 +404,14 @@ onMounted(async () => {
     formError.value = 'Erro ao carregar lista de clientes';
   } finally {
     ownersLoading.value = false;
+  }
+  try {
+    speciesCatalog.value = await animalSpeciesService.list({ active: true });
+  } catch {
+    speciesCatalog.value = [...defaultAnimalSpecies];
+    formError.value = formError.value || 'Erro ao carregar lista de espécies';
+  } finally {
+    speciesLoading.value = false;
   }
   try {
     breeds.value = await breedsService.list({ active: true });

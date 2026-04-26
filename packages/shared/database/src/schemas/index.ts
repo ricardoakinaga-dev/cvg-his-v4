@@ -478,6 +478,18 @@ export const breeds = pgTable('breeds', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const animalSpecies = pgTable('animal_species', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  name: varchar('name', { length: 160 }).notNull(),
+  code: varchar('code', { length: 80 }),
+  systemCode: varchar('system_code', { length: 32 }).notNull().default('other'),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),

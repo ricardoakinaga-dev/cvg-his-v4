@@ -65,6 +65,30 @@ const mockBreedListFn = vi.fn().mockResolvedValue([
     updatedAt: '2024-01-01T00:00:00Z'
   }
 ]);
+const mockAnimalSpeciesListFn = vi.fn().mockResolvedValue([
+  {
+    id: 'species-1',
+    accountId: 'acc-1',
+    name: 'Canino',
+    code: 'CANINE',
+    systemCode: 'canine',
+    description: null,
+    active: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'species-2',
+    accountId: 'acc-1',
+    name: 'Felino',
+    code: 'FELINE',
+    systemCode: 'feline',
+    description: null,
+    active: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+]);
 const mockRouterPush = vi.fn();
 const mockRouteParams = vi.fn().mockReturnValue({ params: {}, path: '/patients/new' });
 
@@ -98,6 +122,18 @@ vi.mock('@/services/breeds', () => ({
   }
 }));
 
+vi.mock('@/services/species', async () => {
+  const actual = await vi.importActual<typeof import('@/services/species')>('@/services/species');
+  return {
+    ...actual,
+    animalSpeciesService: {
+      get list() {
+        return mockAnimalSpeciesListFn;
+      }
+    }
+  };
+});
+
 vi.mock('vue-router', () => ({
   useRoute: () => mockRouteParams(),
   useRouter: () => ({
@@ -119,6 +155,30 @@ describe('PatientFormPage', () => {
         name: 'Golden Retriever',
         code: 'CAN-GOLD',
         species: 'canine',
+        description: null,
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      }
+    ]);
+    mockAnimalSpeciesListFn.mockResolvedValue([
+      {
+        id: 'species-1',
+        accountId: 'acc-1',
+        name: 'Canino',
+        code: 'CANINE',
+        systemCode: 'canine',
+        description: null,
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: 'species-2',
+        accountId: 'acc-1',
+        name: 'Felino',
+        code: 'FELINE',
+        systemCode: 'feline',
         description: null,
         active: true,
         createdAt: '2024-01-01T00:00:00Z',

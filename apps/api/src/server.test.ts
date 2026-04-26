@@ -1245,6 +1245,68 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(updateBreedResponse.statusCode, 200);
   assert.equal(updateBreedResponse.bodyJson<{ active: boolean; name: string }>().active, false);
 
+  const createSpeciesResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/species',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Lagomorfo',
+      code: 'LAGOMORPH-001',
+      systemCode: 'other',
+      description: 'Especie para validar cadastro Vetus',
+      active: true
+    }
+  });
+  assert.equal(createSpeciesResponse.statusCode, 201);
+  const createdSpecies = createSpeciesResponse.bodyJson<{ id: string; code: string | null; systemCode: string }>();
+  assert.equal(createdSpecies.code, 'LAGOMORPH-001');
+  assert.equal(createdSpecies.systemCode, 'other');
+
+  const speciesResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/species?search=LAGOMORPH-001&active=true&systemCode=other',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(speciesResponse.statusCode, 200);
+  const species = speciesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(species.items.length, 1);
+  assert.equal(species.items[0]?.code, 'LAGOMORPH-001');
+
+  const vetusAliasSpeciesResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/specie?systemCode=other',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(vetusAliasSpeciesResponse.statusCode, 200);
+  const vetusAliasSpecies = vetusAliasSpeciesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(vetusAliasSpecies.items.some((item) => item.code === 'LAGOMORPH-001'), true);
+
+  const updateSpeciesResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/species/${createdSpecies.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Lagomorfo Revisado',
+      active: false
+    }
+  });
+  assert.equal(updateSpeciesResponse.statusCode, 200);
+  assert.equal(updateSpeciesResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
     url: '/inventory?search=MED-001',

@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-type CatalogKind = 'species' | 'coat-colors';
+type CatalogKind = 'coat-colors';
 
 interface ReferenceItem {
   code: string;
@@ -59,17 +59,6 @@ const props = defineProps<{
 }>();
 
 const catalogs: Record<CatalogKind, ReferenceCatalog> = {
-  species: {
-    title: 'Espécies',
-    description: 'Catálogo base de espécies aceitas no cadastro de animais e nos filtros clínicos.',
-    placeholder: 'Buscar por espécie ou código',
-    items: [
-      { code: 'CANINE', name: 'Canina', description: 'Pacientes cães.', meta: 'Pequenos animais' },
-      { code: 'FELINE', name: 'Felina', description: 'Pacientes gatos.', meta: 'Pequenos animais' },
-      { code: 'AVIAN', name: 'Ave', description: 'Pacientes aves ornamentais ou silvestres autorizadas.', meta: 'Exóticos' },
-      { code: 'LAGOMORPH', name: 'Lagomorfo', description: 'Coelhos e espécies relacionadas.', meta: 'Exóticos' }
-    ]
-  },
   'coat-colors': {
     title: 'Cores',
     description: 'Tabela de pelagens para normalizar fichas, identificação visual e relatórios cadastrais.',

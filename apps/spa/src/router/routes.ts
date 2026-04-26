@@ -243,9 +243,41 @@ export const routes: RouteRecordRaw[] = [
         path: 'species',
         name: 'Species',
         alias: ['/especies', '/espécies', '/cadastros/especies', '/cadastros/espécies', '/cadastro/especies', '/cadastro/espécies'],
-        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
-        props: { kind: 'species' },
+        component: () => import('@/pages/species/SpeciesListPage.vue'),
         meta: { title: 'Espécies', breadcrumb: 'Espécies', breadcrumbParent: 'Cadastros', icon: '🦴' }
+      },
+      {
+        path: 'species/new',
+        name: 'SpeciesNew',
+        component: () => import('@/pages/species/SpeciesFormPage.vue'),
+        meta: {
+          title: 'Nova Espécie',
+          breadcrumb: 'Nova Espécie',
+          breadcrumbParent: 'Espécies',
+          icon: '🦴'
+        }
+      },
+      {
+        path: 'species/:id',
+        name: 'SpeciesDetail',
+        component: () => import('@/pages/species/SpeciesDetailPage.vue'),
+        meta: {
+          title: 'Detalhes da Espécie',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Espécies',
+          icon: '🦴'
+        }
+      },
+      {
+        path: 'species/:id/edit',
+        name: 'SpeciesEdit',
+        component: () => import('@/pages/species/SpeciesFormPage.vue'),
+        meta: {
+          title: 'Editar Espécie',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Espécies',
+          icon: '🦴'
+        }
       },
       {
         path: 'coat-colors',

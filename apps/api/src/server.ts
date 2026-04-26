@@ -1072,6 +1072,344 @@ function createBreedStore(): BreedStore {
   }
 }
 
+type AnimalSpeciesSystemCode = 'canine' | 'feline' | 'avian' | 'rodent' | 'reptile' | 'other';
+
+interface AnimalSpeciesSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly name: string;
+  readonly code: string | null;
+  readonly systemCode: AnimalSpeciesSystemCode;
+  readonly description: string | null;
+  readonly active: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+interface AnimalSpeciesInput {
+  readonly name?: string;
+  readonly code?: string | null;
+  readonly systemCode?: AnimalSpeciesSystemCode;
+  readonly description?: string | null;
+  readonly active?: boolean;
+}
+
+interface AnimalSpeciesListFilters {
+  readonly search?: string;
+  readonly active?: boolean;
+  readonly systemCode?: string;
+}
+
+interface AnimalSpeciesStore {
+  create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary>;
+  update(speciesId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary>;
+  getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary>;
+  list(accountId: string, filters: AnimalSpeciesListFilters): Promise<AnimalSpeciesSummary[]>;
+  delete(speciesId: string): Promise<void>;
+}
+
+const animalSpeciesSystemCodes = new Set<AnimalSpeciesSystemCode>([
+  'canine',
+  'feline',
+  'avian',
+  'rodent',
+  'reptile',
+  'other'
+]);
+const animalSpeciesMaxNameLength = 160;
+const animalSpeciesMaxCodeLength = 80;
+const animalSpeciesMaxDescriptionLength = 1000;
+
+function normalizeAnimalSpeciesSystemCode(
+  value: AnimalSpeciesSystemCode | undefined
+): AnimalSpeciesSystemCode {
+  if (!value) return 'other';
+  if (!animalSpeciesSystemCodes.has(value)) {
+    throw new ValidationError('systemCode is invalid');
+  }
+  return value;
+}
+
+function normalizeAnimalSpeciesName(value: string | undefined): string {
+  const name = requireNonEmptyString(value, 'name').trim();
+  if (name.length > animalSpeciesMaxNameLength) {
+    throw new ValidationError(`name must have at most ${animalSpeciesMaxNameLength} characters`);
+  }
+  return name;
+}
+
+function normalizeAnimalSpeciesCode(value: string | null | undefined): string | null {
+  const code = value?.trim() || null;
+  if (code && code.length > animalSpeciesMaxCodeLength) {
+    throw new ValidationError(`code must have at most ${animalSpeciesMaxCodeLength} characters`);
+  }
+  return code;
+}
+
+function normalizeAnimalSpeciesDescription(value: string | null | undefined): string | null {
+  const description = value?.trim() || null;
+  if (description && description.length > animalSpeciesMaxDescriptionLength) {
+    throw new ValidationError(`description must have at most ${animalSpeciesMaxDescriptionLength} characters`);
+  }
+  return description;
+}
+
+function mapAnimalSpeciesRow(row: Record<string, unknown>): AnimalSpeciesSummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    name: row.name as string,
+    code: (row.code as string | null) ?? null,
+    systemCode: row.system_code as AnimalSpeciesSystemCode,
+    description: (row.description as string | null) ?? null,
+    active: row.active as boolean,
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
+    updatedAt: new Date(row.updated_at as string | Date).toISOString()
+  };
+}
+
+class InMemoryAnimalSpeciesStore implements AnimalSpeciesStore {
+  readonly #species = new Map<string, AnimalSpeciesSummary>();
+
+  async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
+    const now = new Date().toISOString();
+    const species: AnimalSpeciesSummary = {
+      id: createCorrelationId('species'),
+      accountId,
+      name: normalizeAnimalSpeciesName(input.name),
+      code: normalizeAnimalSpeciesCode(input.code),
+      systemCode: normalizeAnimalSpeciesSystemCode(input.systemCode),
+      description: normalizeAnimalSpeciesDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#species.set(species.id, species);
+    return species;
+  }
+
+  async update(
+    speciesId: string,
+    input: AnimalSpeciesInput
+  ): Promise<AnimalSpeciesSummary> {
+    const existing = await this.getOrThrow(speciesId);
+    const updated: AnimalSpeciesSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeAnimalSpeciesName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeAnimalSpeciesCode(input.code) : existing.code,
+      systemCode:
+        input.systemCode !== undefined
+          ? normalizeAnimalSpeciesSystemCode(input.systemCode)
+          : existing.systemCode,
+      description:
+        input.description !== undefined
+          ? normalizeAnimalSpeciesDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.#species.set(updated.id, updated);
+    return updated;
+  }
+
+  async getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary> {
+    const species = this.#species.get(speciesId);
+    if (!species) {
+      throw new NotFoundError('Animal species not found', { speciesId });
+    }
+    return species;
+  }
+
+  async list(
+    accountId: string,
+    filters: AnimalSpeciesListFilters
+  ): Promise<AnimalSpeciesSummary[]> {
+    let items = Array.from(this.#species.values()).filter((species) => species.accountId === accountId);
+
+    if (filters.active !== undefined) {
+      items = items.filter((species) => species.active === filters.active);
+    }
+
+    if (filters.systemCode && animalSpeciesSystemCodes.has(filters.systemCode as AnimalSpeciesSystemCode)) {
+      items = items.filter((species) => species.systemCode === filters.systemCode);
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (species) =>
+          species.name.toLowerCase().includes(search) ||
+          (species.code?.toLowerCase().includes(search) ?? false) ||
+          species.systemCode.toLowerCase().includes(search) ||
+          (species.description?.toLowerCase().includes(search) ?? false)
+      );
+    }
+
+    return items.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async delete(speciesId: string): Promise<void> {
+    this.#species.delete(speciesId);
+  }
+}
+
+class DatabaseAnimalSpeciesStore implements AnimalSpeciesStore {
+  async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
+    const now = new Date();
+    const species: AnimalSpeciesSummary = {
+      id: createCorrelationId('species'),
+      accountId,
+      name: normalizeAnimalSpeciesName(input.name),
+      code: normalizeAnimalSpeciesCode(input.code),
+      systemCode: normalizeAnimalSpeciesSystemCode(input.systemCode),
+      description: normalizeAnimalSpeciesDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `INSERT INTO animal_species (
+           id,
+           account_id,
+           name,
+           code,
+           system_code,
+           description,
+           active,
+           created_at,
+           updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [
+          species.id,
+          species.accountId,
+          species.name,
+          species.code,
+          species.systemCode,
+          species.description,
+          species.active,
+          new Date(species.createdAt),
+          new Date(species.updatedAt)
+        ]
+      );
+      return mapAnimalSpeciesRow(result.rows[0]);
+    });
+  }
+
+  async update(
+    speciesId: string,
+    input: AnimalSpeciesInput
+  ): Promise<AnimalSpeciesSummary> {
+    const existing = await this.getOrThrow(speciesId);
+    const updated: AnimalSpeciesSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeAnimalSpeciesName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeAnimalSpeciesCode(input.code) : existing.code,
+      systemCode:
+        input.systemCode !== undefined
+          ? normalizeAnimalSpeciesSystemCode(input.systemCode)
+          : existing.systemCode,
+      description:
+        input.description !== undefined
+          ? normalizeAnimalSpeciesDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE animal_species
+         SET name = $2,
+             code = $3,
+             system_code = $4,
+             description = $5,
+             active = $6,
+             updated_at = $7
+         WHERE id = $1
+         RETURNING *`,
+        [
+          speciesId,
+          updated.name,
+          updated.code,
+          updated.systemCode,
+          updated.description,
+          updated.active,
+          new Date(updated.updatedAt)
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Animal species not found', { speciesId });
+      }
+      return mapAnimalSpeciesRow(result.rows[0]);
+    });
+  }
+
+  async getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary> {
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM animal_species WHERE id = $1', [speciesId]);
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Animal species not found', { speciesId });
+      }
+      return mapAnimalSpeciesRow(result.rows[0]);
+    });
+  }
+
+  async list(
+    accountId: string,
+    filters: AnimalSpeciesListFilters
+  ): Promise<AnimalSpeciesSummary[]> {
+    return await withTenantQuery(getPool(), async (client) => {
+      let sql = 'SELECT * FROM animal_species WHERE account_id = $1';
+      const params: unknown[] = [accountId];
+      let nextParam = 2;
+
+      if (filters.active !== undefined) {
+        sql += ` AND active = $${nextParam}`;
+        params.push(filters.active);
+        nextParam++;
+      }
+
+      if (filters.systemCode && animalSpeciesSystemCodes.has(filters.systemCode as AnimalSpeciesSystemCode)) {
+        sql += ` AND system_code = $${nextParam}`;
+        params.push(filters.systemCode);
+        nextParam++;
+      }
+
+      if (filters.search) {
+        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR system_code ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
+        params.push(`%${filters.search}%`);
+        nextParam++;
+      }
+
+      sql += ' ORDER BY name ASC';
+      const result = await client.query(sql, params);
+      return result.rows.map((row: Record<string, unknown>) => mapAnimalSpeciesRow(row));
+    });
+  }
+
+  async delete(speciesId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query('DELETE FROM animal_species WHERE id = $1', [speciesId]);
+    });
+  }
+}
+
+function createAnimalSpeciesStore(): AnimalSpeciesStore {
+  try {
+    getPool();
+    return new DatabaseAnimalSpeciesStore();
+  } catch {
+    return new InMemoryAnimalSpeciesStore();
+  }
+}
+
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
@@ -1182,6 +1520,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const mlTelemetry = new MlTelemetryService();
   const responsibilityTerms = createResponsibilityTermStore();
   const breeds = createBreedStore();
+  const animalSpecies = createAnimalSpeciesStore();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -2910,6 +3249,126 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             'breed',
             breedId,
             `Breed ${existingBreed.name} deleted`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
+          return;
+        }
+
+        if ((pathname === '/species' || pathname === '/specie') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const search = url.searchParams.get('search') ?? undefined;
+          const activeParam = url.searchParams.get('active');
+          const systemCode = url.searchParams.get('systemCode') ?? undefined;
+          const active =
+            activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
+          const items = await animalSpecies.list(principal.user.accountId, {
+            search,
+            active,
+            systemCode
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'species',
+            'list',
+            'animal-species',
+            search ?? systemCode ?? 'all',
+            'Animal species catalog inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/species' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'service.write');
+          const payload = (await readJsonBody(request)) as AnimalSpeciesInput;
+          const species = await animalSpecies.create(principal.user.accountId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'species',
+            'create',
+            'animal-species',
+            species.id,
+            `Animal species ${species.name} created`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(species));
+          return;
+        }
+
+        if (pathname.startsWith('/species/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
+          const species = await animalSpecies.getOrThrow(speciesId);
+          if (species.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Animal species not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'species',
+            'read',
+            'animal-species',
+            species.id,
+            `Animal species ${species.name} inspected`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(species));
+          return;
+        }
+
+        if (pathname.startsWith('/species/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'service.write');
+          const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
+          const existingSpecies = await animalSpecies.getOrThrow(speciesId);
+          if (existingSpecies.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Animal species not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as AnimalSpeciesInput;
+          const species = await animalSpecies.update(speciesId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'species',
+            'update',
+            'animal-species',
+            species.id,
+            `Animal species ${species.name} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(species));
+          return;
+        }
+
+        if (pathname.startsWith('/species/') && request.method === 'DELETE') {
+          const principal = requirePrincipal(request, 'service.write');
+          const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
+          const existingSpecies = await animalSpecies.getOrThrow(speciesId);
+          if (existingSpecies.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Animal species not found for current account');
+          }
+          await animalSpecies.delete(speciesId);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'species',
+            'delete',
+            'animal-species',
+            speciesId,
+            `Animal species ${existingSpecies.name} deleted`,
             'medium',
             correlationId
           );

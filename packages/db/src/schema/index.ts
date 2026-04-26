@@ -1,5 +1,6 @@
 export * from './accounts.js';
 export * from './access_governance.js';
+export * from './animal_species.js';
 export * from './appointments.js';
 export * from './appointment_type_configs.js';
 export * from './alerts.js';
