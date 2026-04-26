@@ -119,6 +119,15 @@ describe('router convergence', () => {
         '/estoque/controles/consulta-de-precos'
       ])
     );
+    expect(findChildRoute('inventory/nf')?.meta?.title).toBe('Entrada de Nota Fiscal');
+    expect(findChildRoute('inventory/nf')?.alias).toEqual(
+      expect.arrayContaining([
+        '/entrada-nota-fiscal',
+        '/entrada-de-nota-fiscal',
+        '/estoque/entrada-nota-fiscal',
+        '/estoque/controles/entrada-nota-fiscal'
+      ])
+    );
     expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');

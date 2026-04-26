@@ -1558,11 +1558,16 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/nf',
         name: 'InventoryInvoices',
-        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
-        props: { mode: 'invoices' },
+        alias: [
+          '/entrada-nota-fiscal',
+          '/entrada-de-nota-fiscal',
+          '/estoque/entrada-nota-fiscal',
+          '/estoque/controles/entrada-nota-fiscal'
+        ],
+        component: () => import('@/pages/inventory/InventoryInvoicesPage.vue'),
         meta: {
-          title: 'NF',
-          breadcrumb: 'NF',
+          title: 'Entrada de Nota Fiscal',
+          breadcrumb: 'Entrada de Nota Fiscal',
           breadcrumbParent: 'Estoque',
           icon: '🧾'
         }

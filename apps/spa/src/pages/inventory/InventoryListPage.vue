@@ -68,7 +68,7 @@
         <div class="hub-links">
           <DsButton variant="secondary" tag="a" to="/inventory/movements">Transação no estoque</DsButton>
           <DsButton variant="secondary" tag="a" to="/inventory/movements">Transferência entre estoques</DsButton>
-          <DsButton variant="secondary" tag="a" to="/fiscal">Entrada de nota fiscal</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/nf">Entrada de nota fiscal</DsButton>
           <DsButton variant="secondary" tag="a" to="/quotes">Compras e orçamentos</DsButton>
         </div>
       </DsCard>
