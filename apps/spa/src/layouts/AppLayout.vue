@@ -943,7 +943,7 @@ function handleLogout() {
 .app-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   background:
     radial-gradient(circle at top left, rgba(241, 148, 54, 0.08), transparent 22%),
     linear-gradient(180deg, #f6f7f9, #eef1f4 58%, #edf1f5);
@@ -959,7 +959,7 @@ function handleLogout() {
 }
 
 .app-layout--collapsed {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -968,8 +968,8 @@ function handleLogout() {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 10px;
+  gap: 8px;
+  padding: 12px 8px;
   border-right: 1px solid #dfe4ea;
   background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
@@ -980,23 +980,23 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 8px 2px;
+  gap: 8px;
+  padding: 4px 6px 2px;
 }
 
 .sidebar__brand-mark {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .sidebar__brand-mark-logo {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #f6a24f, #f19436);
   color: #fff;
   font-weight: 800;
@@ -1022,24 +1022,24 @@ function handleLogout() {
 
 .sidebar__toggle {
   margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #d8dde6;
-  background: rgba(255, 255, 255, 0.88);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.68);
   color: #6c757d;
   flex-shrink: 0;
 }
 
 .sidebar__company-context {
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid #e0e5eb;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 249, 251, 0.96));
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.52);
 }
 
 .sidebar__company-context--collapsed {
-  padding: 10px;
+  padding: 6px 4px;
 }
 
 .sidebar__company-head {
@@ -1047,7 +1047,7 @@ function handleLogout() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .sidebar__company-switch {
@@ -1058,12 +1058,12 @@ function handleLogout() {
 .sidebar__company-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #eceff3;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 0;
 }
 
 .sidebar__company-icon {
@@ -1079,20 +1079,21 @@ function handleLogout() {
 }
 
 .sidebar__company-copy strong {
-  font-size: 13px;
+  font-size: 12px;
   color: #243140;
+  line-height: 1.25;
 }
 
 .sidebar__company-copy span {
-  font-size: 12px;
+  font-size: 11px;
   color: #7b8794;
 }
 
 .sidebar__panel {
-  padding: 10px;
-  border-radius: 14px;
+  padding: 8px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
-  border: 1px solid #e1e6ec;
+  border: 0;
 }
 
 .sidebar__panel--enterprise {
@@ -1121,16 +1122,16 @@ function handleLogout() {
 }
 
 .sidebar__search {
-  padding: 0 2px;
+  padding: 0;
 }
 
 .sidebar__search-input {
   width: 100%;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #dde3ea;
-  background: rgba(255, 255, 255, 0.92);
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.72);
   color: #243140;
   outline: none;
 }
@@ -1143,12 +1144,12 @@ function handleLogout() {
 .sidebar__content {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
+  padding-right: 3px;
   scrollbar-width: thin;
   scrollbar-color: rgba(120, 138, 156, 0.42) transparent;
   transition: box-shadow 0.18s ease;
@@ -1209,15 +1210,15 @@ function handleLogout() {
 
 .sidebar__nav {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   min-height: auto;
 }
 
 .sidebar__utility-stack {
   display: grid;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(220, 226, 233, 0.92);
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(220, 226, 233, 0.58);
 }
 
 .sidebar__utility-label {
@@ -1230,9 +1231,9 @@ function handleLogout() {
 }
 
 .sidebar__utility-group {
-  border-radius: 12px;
-  border: 1px solid #e2e7ed;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.46);
   overflow: hidden;
 }
 
@@ -1245,8 +1246,8 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 9px;
   cursor: pointer;
 }
 
@@ -1255,15 +1256,15 @@ function handleLogout() {
 }
 
 .sidebar__group {
-  border-radius: 14px;
-  border: 1px solid #dfe4ea;
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
   overflow: hidden;
 }
 
 .sidebar__group--active {
-  border-color: rgba(241, 148, 54, 0.38);
-  box-shadow: inset 3px 0 0 #f19436;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 2px 0 0 #f19436;
 }
 
 .sidebar__group-summary {
@@ -1271,13 +1272,13 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 9px 9px;
+  padding: 8px 8px;
   cursor: pointer;
   user-select: none;
 }
 
 .sidebar__group--active > .sidebar__group-summary {
-  background: linear-gradient(180deg, rgba(255, 243, 230, 0.96), rgba(255, 249, 244, 0.94));
+  background: rgba(255, 243, 230, 0.62);
 }
 
 .sidebar__group-summary::-webkit-details-marker {
@@ -1287,7 +1288,7 @@ function handleLogout() {
 .sidebar__group-summary-text {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -1297,18 +1298,18 @@ function handleLogout() {
 }
 
 .sidebar__group-icon {
-  width: 24px;
+  width: 22px;
   text-align: center;
 }
 
 .sidebar__group-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #243140;
 }
 
 .sidebar__group-description {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.3;
   color: #8a95a2;
   overflow: hidden;
@@ -1323,30 +1324,30 @@ function handleLogout() {
 .sidebar__group-body,
 .sidebar__enterprise-groups {
   display: grid;
-  gap: 8px;
-  padding: 0 6px 8px;
+  gap: 4px;
+  padding: 2px 4px 6px;
 }
 
 .sidebar__group-body {
-  background: linear-gradient(180deg, rgba(246, 247, 249, 0.92), rgba(243, 245, 247, 0.9));
+  background: transparent;
 }
 
 .sidebar__section {
   display: grid;
-  gap: 4px;
-  padding: 6px 4px;
-  border-radius: 10px;
+  gap: 2px;
+  padding: 3px 2px;
+  border-radius: 8px;
 }
 
 .sidebar__section--active {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(241, 148, 54, 0.14);
+  background: rgba(255, 255, 255, 0.46);
+  border: 0;
 }
 
 .sidebar__section-label {
   margin: 0;
-  padding: 2px 10px 4px;
-  font-size: 11px;
+  padding: 2px 8px 3px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1356,7 +1357,7 @@ function handleLogout() {
 .sidebar__quick-links,
 .sidebar__recent-list {
   display: grid;
-  gap: 6px;
+  gap: 2px;
 }
 
 .sidebar__quick-link,
@@ -1364,11 +1365,11 @@ function handleLogout() {
 .sidebar__link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 9px 8px;
-  border-radius: 12px;
-  border: 1px solid transparent;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 7px;
+  border-radius: 7px;
+  border: 0;
   color: #4e5b68;
   text-decoration: none;
   transition:
@@ -1380,29 +1381,27 @@ function handleLogout() {
 .sidebar__quick-link:hover,
 .sidebar__recent-link:hover,
 .sidebar__link:hover {
-  transform: translateX(2px);
+  transform: none;
   background: rgba(241, 148, 54, 0.08);
-  border-color: rgba(241, 148, 54, 0.12);
   text-decoration: none;
 }
 
 .sidebar__quick-link--active,
 .sidebar__recent-link--active,
 .sidebar__link--active {
-  background: linear-gradient(135deg, rgba(255, 237, 218, 0.96), rgba(255, 247, 237, 0.92));
-  border-color: rgba(241, 148, 54, 0.22);
+  background: rgba(255, 237, 218, 0.78);
   color: #b76516;
   font-weight: 600;
 }
 
 .sidebar__link--utility {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .sidebar__quick-link-icon,
 .sidebar__recent-link-icon,
 .sidebar__link-icon {
-  width: 24px;
+  width: 20px;
   flex-shrink: 0;
   text-align: center;
 }
@@ -1411,11 +1410,15 @@ function handleLogout() {
 .sidebar__quick-link-label,
 .sidebar__recent-link-label {
   font-size: 13px;
+  max-width: 154px;
   min-width: 0;
   line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .sidebar__ghost-btn {
@@ -1828,7 +1831,7 @@ function handleLogout() {
 @media (max-width: 1200px) {
   .app-layout,
   .app-layout--collapsed {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .sidebar__brand-copy,
