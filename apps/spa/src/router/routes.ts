@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
   placeholderRoute('finance/advance-payments', 'FinanceAdvancePayments', 'Pagamento Antecipado', 'Financeiro', '⏩'),
   placeholderRoute('finance/card-accounts', 'FinanceCardAccounts', 'Contas Adm. Cartão', 'Financeiro', '💳'),
@@ -1605,6 +1604,24 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Reajuste de Preços',
           breadcrumbParent: 'Estoque',
           icon: '📈'
+        }
+      },
+      {
+        path: 'inventory/data-collectors',
+        name: 'InventoryDataCollectors',
+        alias: [
+          '/coletores-de-dados',
+          '/coletores',
+          '/coletor-de-dados',
+          '/estoque/coletores-de-dados',
+          '/estoque/controles/coletores-de-dados'
+        ],
+        component: () => import('@/pages/inventory/InventoryDataCollectorsPage.vue'),
+        meta: {
+          title: 'Coletores de Dados',
+          breadcrumb: 'Coletores de Dados',
+          breadcrumbParent: 'Estoque',
+          icon: '📟'
         }
       },
       {

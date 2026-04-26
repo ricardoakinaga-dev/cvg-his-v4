@@ -174,6 +174,17 @@ describe('router convergence', () => {
         '/estoque/controles/reajuste-de-precos'
       ])
     );
+    expect(findChildRoute('inventory/data-collectors')?.meta?.title).toBe('Coletores de Dados');
+    expect(findChildRoute('inventory/data-collectors')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('inventory/data-collectors')?.alias).toEqual(
+      expect.arrayContaining([
+        '/coletores-de-dados',
+        '/coletores',
+        '/coletor-de-dados',
+        '/estoque/coletores-de-dados',
+        '/estoque/controles/coletores-de-dados'
+      ])
+    );
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');
     expect(findChildRoute('inventory/transfers')?.meta?.breadcrumbParent).toBe('Estoque');
     expect(findChildRoute('inventory/transfers')?.alias).toEqual(
