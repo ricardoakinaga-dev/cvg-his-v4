@@ -152,6 +152,17 @@ describe('router convergence', () => {
         '/estoque/controles/auditoria-de-precos'
       ])
     );
+    expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');
+    expect(findChildRoute('inventory/transfers')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('inventory/transfers')?.alias).toEqual(
+      expect.arrayContaining([
+        '/transferencia-entre-estoques',
+        '/transferência-entre-estoques',
+        '/transferencia-estoques',
+        '/estoque/transferencia-entre-estoques',
+        '/estoque/controles/transferencia-entre-estoques'
+      ])
+    );
     expect(findChildRoute('inventory/price-consultation')?.meta?.title).toBe('Consulta de Preços');
     expect(findChildRoute('inventory/price-consultation')?.alias).toEqual(
       expect.arrayContaining([

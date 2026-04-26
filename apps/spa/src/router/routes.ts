@@ -1587,11 +1587,17 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/transfers',
         name: 'InventoryTransfers',
-        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
-        props: { mode: 'transfers' },
+        alias: [
+          '/transferencia-entre-estoques',
+          '/transferência-entre-estoques',
+          '/transferencia-estoques',
+          '/estoque/transferencia-entre-estoques',
+          '/estoque/controles/transferencia-entre-estoques'
+        ],
+        component: () => import('@/pages/inventory/InventoryTransfersPage.vue'),
         meta: {
-          title: 'Transferências',
-          breadcrumb: 'Transferências',
+          title: 'Transferência entre Estoques',
+          breadcrumb: 'Transferência entre Estoques',
           breadcrumbParent: 'Estoque',
           icon: '🔄'
         }
