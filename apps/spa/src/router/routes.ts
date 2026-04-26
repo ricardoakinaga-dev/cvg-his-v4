@@ -1575,8 +1575,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/purchases',
         name: 'InventoryPurchases',
-        component: () => import('@/pages/inventory/InventoryOperationPage.vue'),
-        props: { mode: 'purchases' },
+        alias: [
+          '/compras',
+          '/estoque/compras',
+          '/estoque/controles/compras',
+          '/compras-estoque',
+          '/compras-de-estoque'
+        ],
+        component: () => import('@/pages/inventory/InventoryPurchasesPage.vue'),
         meta: {
           title: 'Compras',
           breadcrumb: 'Compras',
