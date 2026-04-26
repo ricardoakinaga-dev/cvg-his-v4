@@ -1541,15 +1541,16 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/audit',
         name: 'InventoryAudit',
-        component: () => import('@/pages/inventory/InventoryMovementsPage.vue'),
-        props: {
-          title: 'Auditoria de Estoque',
-          subtitle: 'Rastreabilidade operacional de consumos assistenciais e comerciais com filtros por natureza.',
-          breadcrumb: 'Auditoria'
-        },
+        alias: [
+          '/auditoria-de-estoque',
+          '/auditoria-estoque',
+          '/estoque/auditoria-de-estoque',
+          '/estoque/controles/auditoria-de-estoque'
+        ],
+        component: () => import('@/pages/inventory/InventoryAuditPage.vue'),
         meta: {
-          title: 'Auditoria',
-          breadcrumb: 'Auditoria',
+          title: 'Auditoria de Estoque',
+          breadcrumb: 'Auditoria de Estoque',
           breadcrumbParent: 'Estoque',
           icon: '🧾'
         }
