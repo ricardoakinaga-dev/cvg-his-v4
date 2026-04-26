@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('inventory/price-audit', 'InventoryPriceAudit', 'Auditoria de Preços', 'Estoque', '🏷️'),
   placeholderRoute('inventory/price-adjustments', 'InventoryPriceAdjustments', 'Reajuste de Preços', 'Estoque', '📈'),
   placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
@@ -1553,6 +1552,24 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Auditoria de Estoque',
           breadcrumbParent: 'Estoque',
           icon: '🧾'
+        }
+      },
+      {
+        path: 'inventory/price-audit',
+        name: 'InventoryPriceAudit',
+        alias: [
+          '/auditoria-de-precos',
+          '/auditoria-de-preços',
+          '/auditoria-precos',
+          '/estoque/auditoria-de-precos',
+          '/estoque/controles/auditoria-de-precos'
+        ],
+        component: () => import('@/pages/inventory/InventoryPriceAuditPage.vue'),
+        meta: {
+          title: 'Auditoria de Preços',
+          breadcrumb: 'Auditoria de Preços',
+          breadcrumbParent: 'Estoque',
+          icon: '🏷️'
         }
       },
       {
