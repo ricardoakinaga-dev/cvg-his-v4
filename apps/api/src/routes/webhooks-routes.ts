@@ -10,7 +10,7 @@ import { readJsonBody } from '../helpers/common.js';
 import { appendAudit } from '../helpers/audit-helper.js';
 import type { CreateWebhookRequest, UpdateWebhookRequest } from '@cvg-his-v2/shared-contracts';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
-import type { UserSummary } from '@cvg-his-v2/shared-types';
+import type { UserSummary, WebhookSummary } from '@cvg-his-v2/shared-types';
 
 // Principal result type (duplicated from server.ts to avoid tight coupling)
 export interface PrincipalResult {
@@ -24,6 +24,50 @@ export interface WebhooksHandlers {
   audit: AuditService;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   requirePrincipal: (request: IncomingMessage, permission: string) => any;
+}
+
+type PublicWebhookSummary = Omit<WebhookSummary, 'secret'>;
+
+function isWebhookCollectionPath(pathname: string): boolean {
+  return [
+    '/webhooks',
+    '/webhook',
+    '/cadastro/webhooks',
+    '/cadastros/webhooks'
+  ].includes(pathname);
+}
+
+function normalizeSearch(value: string | null | undefined): string | undefined {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : undefined;
+}
+
+function parseActiveFilter(value: string | null): boolean | undefined {
+  if (value === null || value === '') return undefined;
+  return value !== 'false';
+}
+
+function toPublicWebhook(webhook: WebhookSummary): PublicWebhookSummary {
+  const { secret: _secret, ...publicWebhook } = webhook;
+  return publicWebhook;
+}
+
+function filterWebhooks(
+  items: readonly WebhookSummary[],
+  filters: { url?: string; event?: string; active?: boolean }
+): readonly WebhookSummary[] {
+  const eventFilter = filters.event;
+  return items.filter((item) => {
+    if (filters.url && !item.url.toLowerCase().includes(filters.url)) return false;
+    if (
+      eventFilter &&
+      !item.events.some((event) => event.toLowerCase().includes(eventFilter))
+    ) {
+      return false;
+    }
+    if (filters.active !== undefined && item.isActive !== filters.active) return false;
+    return true;
+  });
 }
 
 /**
@@ -40,19 +84,25 @@ export function handleWebhooksRoutes(
   const { webhooks, audit, requirePrincipal } = handlers;
 
   // GET /webhooks — list all webhooks for account
-  if (pathname === '/webhooks' && request.method === 'GET') {
+  if (isWebhookCollectionPath(pathname) && request.method === 'GET') {
     const principal = requirePrincipal(request, 'webhooks.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const filters = {
+      url: normalizeSearch(url.searchParams.get('url') ?? url.searchParams.get('description')),
+      event: normalizeSearch(url.searchParams.get('event')),
+      active: parseActiveFilter(url.searchParams.get('active'))
+    };
     const items = webhooks.list(principal.user.accountId);
     Promise.resolve(items).then((resolvedItems) => {
       response.statusCode = 200;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ items: resolvedItems }));
+      response.end(JSON.stringify({ items: filterWebhooks(resolvedItems, filters).map(toPublicWebhook) }));
     });
     return true;
   }
 
   // POST /webhooks — register new webhook
-  if (pathname === '/webhooks' && request.method === 'POST') {
+  if (isWebhookCollectionPath(pathname) && request.method === 'POST') {
     const principal = requirePrincipal(request, 'webhooks.manage');
     const body = readJsonBody(request) as Promise<CreateWebhookRequest>;
     body.then(async (payload) => {
@@ -74,7 +124,7 @@ export function handleWebhooksRoutes(
       });
       response.statusCode = 201;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(webhook));
+      response.end(JSON.stringify(toPublicWebhook(webhook)));
     });
     return true;
   }
@@ -93,7 +143,7 @@ export function handleWebhooksRoutes(
       }
       response.statusCode = 200;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(wh));
+      response.end(JSON.stringify(toPublicWebhook(wh)));
       return true;
     });
   }
@@ -125,7 +175,7 @@ export function handleWebhooksRoutes(
       });
       response.statusCode = 200;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(updated));
+      response.end(JSON.stringify(updated ? toPublicWebhook(updated) : null));
       return true;
     });
   }
@@ -284,7 +334,7 @@ export function handleWebhooksRoutes(
     request.method === 'POST'
   ) {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = requirePrincipal(request, 'webhooks.manage');
     return (async () => {
       const result = await webhooks.test(webhookId as never, principal.user.accountId as never);
       if (!result) {

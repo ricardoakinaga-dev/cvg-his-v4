@@ -79,7 +79,7 @@ describe('WebhooksListPage', () => {
     vi.mocked(webhookService.list).mockResolvedValue([]);
     const { wrapper } = mountComponent();
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum webhook encontrado');
+    expect(wrapper.text()).toContain('Nenhum registro encontrado');
   });
 
   it('renders webhook data', async () => {
@@ -101,7 +101,7 @@ describe('WebhooksListPage', () => {
   it('has Novo Webhook button', () => {
     vi.mocked(webhookService.list).mockResolvedValue([]);
     const { wrapper } = mountComponent();
-    expect(wrapper.text()).toContain('+ Novo Webhook');
+    expect(wrapper.text()).toContain('Incluir');
   });
 
   it('shows error when API fails', async () => {
@@ -110,5 +110,25 @@ describe('WebhooksListPage', () => {
     await flushPromises();
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Network error');
+  });
+
+  it('requests Vetus-like filters when searching', async () => {
+    vi.mocked(webhookService.list).mockResolvedValue(mockWebhooks);
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    await wrapper.find('input[placeholder="URL"]').setValue('hooks.example.com');
+    await wrapper.find('input[placeholder="Evento"]').setValue('patient.created');
+    await wrapper.find('select').setValue('all');
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+    await flushPromises();
+
+    expect(webhookService.list).toHaveBeenLastCalledWith({
+      url: 'hooks.example.com',
+      event: 'patient.created',
+      active: undefined
+    });
   });
 });

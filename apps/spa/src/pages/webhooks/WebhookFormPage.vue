@@ -1,11 +1,11 @@
 <template>
   <div class="webhook-form-page">
-    <AppPageHeader :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks', isEdit ? 'Editar Webhook' : 'Novo Webhook']">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Webhooks', isEdit ? 'Editar' : 'Incluir']">
       <template #title>
-        {{ isEdit ? 'Editar Webhook' : 'Novo Webhook' }}
+        {{ isEdit ? 'Editar Webhook' : 'Incluir Webhook' }}
       </template>
       <template #subtitle>
-        <span class="muted">Integração por evento com validação de endpoint e contrato de entrega.</span>
+        <span class="muted">Cadastro de endpoint para recebimento de eventos do ERP.</span>
       </template>
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
@@ -21,11 +21,11 @@
 
     <div class="webhook-form__layout">
       <form class="webhook-form" @submit.prevent="onSubmit">
-        <DsCard title="Configuração do Webhook">
+        <DsCard title="Dados do Webhook">
           <DsInput
             id="url"
             v-model="form.url"
-            label="URL do Endpoint *"
+            label="URL *"
             placeholder="https://seu-sistema.com/webhook"
             :error="errors.url"
             required
@@ -52,11 +52,17 @@
             Após criar o webhook, você receberá notificações HTTP em sua URL para cada evento
             selecionado.
           </DsAlert>
+          <DsCheckbox
+            v-if="isEdit"
+            id="isActive"
+            v-model="form.isActive"
+            label="Webhook ativo"
+          />
         </DsCard>
 
         <div class="form-actions">
           <DsButton type="submit" variant="primary" :loading="submitting">
-            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Cadastrar Webhook' }}
+            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar' }}
           </DsButton>
           <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
         </div>
@@ -84,6 +90,7 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsCheckbox from '@cvg-his-v2/design-system/vue/DsCheckbox.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const route = useRoute();
@@ -95,7 +102,8 @@ const webhookId = computed(() => route.params.id as string);
 const form = reactive({
   url: '',
   events: [] as string[],
-  secret: ''
+  secret: '',
+  isActive: true
 });
 
 const validation = useFormValidation({
@@ -135,7 +143,8 @@ async function onSubmit() {
     if (isEdit.value) {
       const payload: UpdateWebhookRequest = {
         url: form.url.trim(),
-        events: form.events
+        events: form.events,
+        isActive: form.isActive
       };
       await webhookService.update(webhookId.value, payload);
       successMessage.value = 'Webhook atualizado com sucesso!';
@@ -163,6 +172,7 @@ onMounted(async () => {
       const webhook: WebhookSummary = await webhookService.getById(webhookId.value);
       form.url = webhook.url;
       form.events = [...webhook.events];
+      form.isActive = webhook.isActive;
     } catch (err: unknown) {
       formError.value = err instanceof Error ? err.message : 'Erro ao carregar webhook';
     }

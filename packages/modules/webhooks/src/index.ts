@@ -26,6 +26,49 @@ export interface WebhooksServiceOptions {
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [5000, 30000, 90000];
+const MAX_EVENTS_PER_WEBHOOK = 50;
+const MAX_EVENT_LENGTH = 120;
+
+function normalizeWebhookUrl(rawUrl: string): string {
+  const url = requireNonEmptyString(rawUrl, 'url');
+  let parsed: URL;
+
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('Invalid webhook URL');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Webhook URL must use HTTP or HTTPS');
+  }
+
+  if (parsed.username || parsed.password) {
+    throw new Error('Webhook URL must not include credentials');
+  }
+
+  return parsed.toString();
+}
+
+function normalizeWebhookEvents(rawEvents: readonly string[] | undefined): string[] {
+  if (!Array.isArray(rawEvents) || rawEvents.length === 0) {
+    throw new Error('At least one webhook event is required');
+  }
+
+  if (rawEvents.length > MAX_EVENTS_PER_WEBHOOK) {
+    throw new Error(`Webhook cannot subscribe to more than ${MAX_EVENTS_PER_WEBHOOK} events`);
+  }
+
+  const events = rawEvents.map((event) => requireNonEmptyString(event, 'event'));
+
+  for (const event of events) {
+    if (event.length > MAX_EVENT_LENGTH || !/^[a-z0-9._:-]+$/i.test(event)) {
+      throw new Error('Webhook event has invalid format');
+    }
+  }
+
+  return [...new Set(events)];
+}
 
 export class WebhooksService {
   readonly #repository?: IWebhookRepository;
@@ -41,15 +84,15 @@ export class WebhooksService {
     accountId: AccountId,
     payload: CreateWebhookRequest
   ): Promise<WebhookSummary> {
-    const url = requireNonEmptyString(payload.url, 'url');
-    requireNonEmptyString(payload.events.length > 0 ? payload.events[0] : 'events', 'events');
+    const url = normalizeWebhookUrl(payload.url);
+    const events = normalizeWebhookEvents(payload.events);
 
     const now = nowIso();
     const webhook: WebhookSummary = {
       id: createCorrelationId('wh') as WebhookId,
       accountId,
       url,
-      events: [...payload.events],
+      events,
       secret: payload.secret,
       isActive: true,
       createdAt: now,
@@ -132,8 +175,8 @@ export class WebhooksService {
 
     const updated: WebhookSummary = {
       ...existing,
-      url: payload.url ?? existing.url,
-      events: payload.events ?? existing.events,
+      url: payload.url !== undefined ? normalizeWebhookUrl(payload.url) : existing.url,
+      events: payload.events !== undefined ? normalizeWebhookEvents(payload.events) : existing.events,
       isActive: payload.isActive ?? existing.isActive,
       updatedAt: nowIso()
     };

@@ -1553,6 +1553,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'webhooks',
         name: 'Webhooks',
         component: () => import('@/pages/webhooks/WebhooksListPage.vue'),
+        alias: ['/webhook', '/cadastro/webhooks', '/cadastros/webhooks'],
         meta: {
           title: 'Webhooks',
           breadcrumb: 'Webhooks',
@@ -1565,8 +1566,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'WebhookNew',
         component: () => import('@/pages/webhooks/WebhookFormPage.vue'),
         meta: {
-          title: 'Novo Webhook',
-          breadcrumb: 'Novo Webhook',
+          title: 'Incluir Webhook',
+          breadcrumb: 'Incluir Webhook',
           breadcrumbParent: 'Webhooks',
           icon: '🔗'
         }

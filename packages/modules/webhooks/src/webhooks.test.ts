@@ -73,6 +73,28 @@ test('WebhooksService register creates webhook in repository', async () => {
   assert.equal(webhook.isActive, true);
 });
 
+test('WebhooksService register normalizes URL and rejects non-HTTP protocols', async () => {
+  const repo = createMockRepository();
+  const service = new WebhooksService({ repository: repo });
+
+  const webhook = await service.register('user_1' as never, 'acc_test' as never, {
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created', 'billing.record.created']
+  });
+
+  assert.equal(webhook.url, 'https://example.com/webhook');
+  assert.deepEqual(webhook.events, ['billing.record.created']);
+
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'file:///etc/passwd',
+        events: ['billing.record.created']
+      }),
+    /HTTP or HTTPS/
+  );
+});
+
 test('WebhooksService register returns webhook even without repository', async () => {
   const service = new WebhooksService({ repository: undefined });
 

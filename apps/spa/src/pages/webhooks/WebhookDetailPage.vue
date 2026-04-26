@@ -14,7 +14,7 @@
     </DsAlert>
 
     <template v-else-if="webhook">
-      <AppPageHeader :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks', 'Webhook']">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Webhooks', 'Abrir']">
         <template #title>Webhook</template>
         <template #subtitle>
           <StatusBadge
@@ -23,13 +23,26 @@
           />
         </template>
         <template #actions>
+          <DsButton variant="primary" :loading="testing" @click="handleTest">
+            Testar
+          </DsButton>
           <DsButton tag="a" :to="`/webhooks/${webhook.id}/edit`" variant="secondary">
             Editar
           </DsButton>
-          <DsButton variant="danger" size="sm" @click="handleDelete">Desativar</DsButton>
           <DsButton variant="secondary" tag="a" to="/webhooks">Voltar</DsButton>
+          <DsButton
+            :variant="webhook.isActive ? 'danger' : 'secondary'"
+            size="sm"
+            @click="handleStatusToggle"
+          >
+            {{ webhook.isActive ? 'Desativar' : 'Ativar' }}
+          </DsButton>
         </template>
       </AppPageHeader>
+
+      <DsAlert v-if="testMessage" :variant="testSuccess ? 'success' : 'warning'" dismissible @dismiss="testMessage = ''">
+        {{ testMessage }}
+      </DsAlert>
 
       <section class="summary-grid">
         <DsCard v-for="item in summaryCards" :key="item.label" variant="elevated" class="summary-card">
@@ -111,7 +124,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { webhookService } from '@/services/webhook';
 import type { WebhookSummary, WebhookDelivery } from '@/types/webhook';
 import { formatDate } from '@/utils/labels';
@@ -126,7 +139,6 @@ import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
 const route = useRoute();
-const router = useRouter();
 
 const webhook = ref<WebhookSummary | null>(null);
 const loading = ref(true);
@@ -134,6 +146,9 @@ const error = ref('');
 const deliveries = ref<WebhookDelivery[]>([]);
 const deliveriesLoading = ref(true);
 const deliveriesError = ref('');
+const testing = ref(false);
+const testMessage = ref('');
+const testSuccess = ref(false);
 
 const deliveryColumns: DataTableColumn[] = [
   { key: 'event', label: 'Evento' },
@@ -205,14 +220,34 @@ function deliveryStatusVariant(
   return 'danger';
 }
 
-async function handleDelete() {
+async function handleStatusToggle() {
   if (!webhook.value) return;
-  if (!confirm('Tem certeza que deseja desativar este webhook?')) return;
+  const nextActive = !webhook.value.isActive;
+  const action = nextActive ? 'ativar' : 'desativar';
+  if (!confirm(`Tem certeza que deseja ${action} este webhook?`)) return;
   try {
-    await webhookService.delete(webhook.value.id);
-    router.push('/webhooks');
+    webhook.value = await webhookService.update(webhook.value.id, { isActive: nextActive });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao desativar webhook';
+    error.value = err instanceof Error ? err.message : 'Erro ao atualizar webhook';
+  }
+}
+
+async function handleTest() {
+  if (!webhook.value) return;
+  testing.value = true;
+  testMessage.value = '';
+  try {
+    const result = await webhookService.test(webhook.value.id);
+    testSuccess.value = result.success;
+    const status = result.statusCode ? `HTTP ${result.statusCode}` : 'sem resposta HTTP';
+    testMessage.value = result.success
+      ? `Teste enviado com sucesso (${status}).`
+      : `Teste enviado, mas o endpoint não confirmou a entrega (${status}).`;
+  } catch (err: unknown) {
+    testSuccess.value = false;
+    testMessage.value = err instanceof Error ? err.message : 'Erro ao testar webhook';
+  } finally {
+    testing.value = false;
   }
 }
 

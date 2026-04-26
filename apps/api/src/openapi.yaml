@@ -3022,6 +3022,25 @@ paths:
       tags: [Webhooks]
       security:
         - BearerAuth: []
+      parameters:
+        - name: url
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by endpoint URL
+        - name: event
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by subscribed event name
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter active or inactive webhooks
       responses:
         '200':
           description: Webhooks
@@ -3195,6 +3214,91 @@ paths:
                       $ref: '#/components/schemas/WebhookDelivery'
         '401':
           description: Unauthorized
+
+  /webhooks/{webhookId}/deliveries/stats:
+    get:
+      operationId: getWebhookDeliveryStats
+      summary: Get delivery statistics for a webhook
+      tags: [Webhooks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delivery statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryStats'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook not found
+
+  /webhooks/{webhookId}/deliveries/{deliveryId}:
+    get:
+      operationId: getWebhookDelivery
+      summary: Get a webhook delivery attempt
+      tags: [Webhooks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delivery details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDelivery'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook delivery not found
+
+  /webhooks/{webhookId}/deliveries/{deliveryId}/retest:
+    post:
+      operationId: retestWebhookDelivery
+      summary: Queue a webhook delivery retest
+      tags: [Webhooks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Delivery retest queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookRetestResult'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook delivery not found
 
   /api-keys:
     get:
@@ -8277,7 +8381,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         accountId:
           type: string
         url:
@@ -8300,7 +8403,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         webhookId:
           type: string
         event:
@@ -8336,6 +8438,26 @@ components:
         body:
           type: string
           description: Response body from the webhook endpoint
+
+    WebhookDeliveryStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        pending:
+          type: integer
+        delivered:
+          type: integer
+        failed:
+          type: integer
+
+    WebhookRetestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
 
     ApiKeySummaryPublic:
       type: object
