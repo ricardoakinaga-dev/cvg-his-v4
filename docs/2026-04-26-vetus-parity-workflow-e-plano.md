@@ -58,6 +58,9 @@ O resultado esperado nao e uma copia tecnica literal do Vetus. O objetivo e uma 
    - publicacao nos containers existentes;
    - commit.
 
+9. **Atualizar este documento ao fim de cada tarefa.**
+   Ao concluir qualquer modulo, fluxo, checkpoint de mapeamento ou mudanca relevante de sequencia, atualizar este arquivo antes do commit final da tarefa. O documento deve refletir o que foi feito, o commit criado, a ultima migration aplicada, o status do modulo e o proximo passo recomendado.
+
 ## Procedimento de login observacional no Vetus
 
 URL:
@@ -127,7 +130,8 @@ A partir deste checkpoint, a sequencia correta e:
 4. localizar o equivalente no `cvg-his-v2`;
 5. implementar usando o padrao existente do projeto;
 6. verificar e publicar;
-7. registrar commit e atualizar este documento quando houver mudanca relevante de sequencia/status.
+7. atualizar este documento com o resultado da tarefa, status e proximo passo;
+8. registrar commit incluindo a atualizacao deste documento quando a tarefa alterar o roadmap/status.
 
 ## Modulos ja espelhados ou alinhados nesta frente
 
