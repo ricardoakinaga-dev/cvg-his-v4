@@ -1882,10 +1882,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'suppliers',
         name: 'Suppliers',
+        alias: ['/fornecedores-e-despesas', '/fornecedores', '/estoque/fornecedores-e-despesas', '/estoque/cadastros/fornecedores-e-despesas'],
         component: () => import('@/pages/inventory/SuppliersPage.vue'),
         meta: {
-          title: 'Fornecedores',
-          breadcrumb: 'Fornecedores',
+          title: 'Fornecedores e Despesas',
+          breadcrumb: 'Fornecedores e Despesas',
           breadcrumbParent: 'Cadastros',
           icon: '🚚'
         }

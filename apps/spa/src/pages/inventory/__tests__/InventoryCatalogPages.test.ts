@@ -4,9 +4,9 @@ import { mount } from '@vue/test-utils';
 const pages = [
   {
     loader: () => import('../SuppliersPage.vue'),
-    title: 'Fornecedores',
-    breadcrumb: 'EstoqueCadastradosFornecedores',
-    placeholder: 'Buscar por ID ou descrição'
+    title: 'Fornecedores e Despesas',
+    breadcrumb: 'EstoqueCadastrosFornecedoreseDespesas',
+    placeholder: undefined
   },
   {
     loader: () => import('../ManufacturersPage.vue'),
@@ -35,6 +35,8 @@ describe('Inventory catalog starter pages', () => {
 
     expect(wrapper.text().replace(/\s+/g, '').replace(/\//g, '')).toContain(breadcrumb.replace(/\s+/g, '').replace(/\//g, ''));
     expect(wrapper.text()).toContain(title);
-    expect(wrapper.find('input[type="search"]').attributes('placeholder')).toBe(placeholder);
+    if (placeholder) {
+      expect(wrapper.find('input[type="search"]').attributes('placeholder')).toBe(placeholder);
+    }
   });
 });

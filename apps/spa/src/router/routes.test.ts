@@ -216,6 +216,15 @@ describe('router convergence', () => {
         '/estoque/cadastros/importar-dados-produtos'
       ])
     );
+    expect(findChildRoute('suppliers')?.meta?.title).toBe('Fornecedores e Despesas');
+    expect(findChildRoute('suppliers')?.alias).toEqual(
+      expect.arrayContaining([
+        '/fornecedores-e-despesas',
+        '/fornecedores',
+        '/estoque/fornecedores-e-despesas',
+        '/estoque/cadastros/fornecedores-e-despesas'
+      ])
+    );
     expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
     expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');
