@@ -110,7 +110,17 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('exam-orders')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('exam-results')?.meta?.breadcrumbParent).toBe('Laboratório');
+    expect(findChildRoute('inventory/pharmacy')?.meta?.title).toBe('Requisição à Farmácia');
     expect(findChildRoute('inventory/pharmacy')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('inventory/pharmacy')?.alias).toEqual(
+      expect.arrayContaining([
+        '/requisicao-farmacia',
+        '/requisicao-a-farmacia',
+        '/requisição-à-farmácia',
+        '/estoque/requisicao-farmacia',
+        '/estoque/controles/requisicao-farmacia'
+      ])
+    );
     expect(findChildRoute('inventory/price-consultation')?.meta?.title).toBe('Consulta de Preços');
     expect(findChildRoute('inventory/price-consultation')?.alias).toEqual(
       expect.arrayContaining([

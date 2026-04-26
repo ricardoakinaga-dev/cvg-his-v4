@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('inventory/pharmacy', 'InventoryPharmacy', 'Farmácia', 'Estoque', '💊'),
   placeholderRoute('inventory/price-audit', 'InventoryPriceAudit', 'Auditoria de Preços', 'Estoque', '🏷️'),
   placeholderRoute('inventory/price-adjustments', 'InventoryPriceAdjustments', 'Reajuste de Preços', 'Estoque', '📈'),
   placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
@@ -1519,6 +1518,24 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Transação no Estoque',
           breadcrumbParent: 'Estoque',
           icon: '📥'
+        }
+      },
+      {
+        path: 'inventory/pharmacy',
+        name: 'InventoryPharmacy',
+        alias: [
+          '/requisicao-farmacia',
+          '/requisicao-a-farmacia',
+          '/requisição-à-farmácia',
+          '/estoque/requisicao-farmacia',
+          '/estoque/controles/requisicao-farmacia'
+        ],
+        component: () => import('@/pages/inventory/InventoryPharmacyRequestPage.vue'),
+        meta: {
+          title: 'Requisição à Farmácia',
+          breadcrumb: 'Requisição à Farmácia',
+          breadcrumbParent: 'Estoque',
+          icon: '💊'
         }
       },
       {
