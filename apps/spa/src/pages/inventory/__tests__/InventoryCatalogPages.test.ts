@@ -11,7 +11,7 @@ const pages = [
   {
     loader: () => import('../ManufacturersPage.vue'),
     title: 'Fabricantes',
-    breadcrumb: 'EstoqueCadastradosFabricantes',
+    breadcrumb: 'EstoqueCadastrosFabricantes',
     placeholder: 'Buscar por ID ou nome'
   },
   {

@@ -1894,6 +1894,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'manufacturers',
         name: 'Manufacturers',
+        alias: ['/fabricantes', '/estoque/fabricantes', '/estoque/cadastros/fabricantes'],
         component: () => import('@/pages/inventory/ManufacturersPage.vue'),
         meta: {
           title: 'Fabricantes',
