@@ -400,6 +400,14 @@ describe('router convergence', () => {
   it('uses concrete routes for beta price tables and point-of-sale sync', () => {
     expect(findChildRoute('tabelas-de-preco')?.meta?.title).toBe('Tabelas de Preço');
     expect(findChildRoute('tabelas-de-preco')?.meta?.breadcrumbParent).toBe('Estoque');
+    expect(findChildRoute('tabelas-de-preco')?.alias).toEqual(
+      expect.arrayContaining([
+        '/price-tables',
+        '/tabelas-de-preços',
+        '/estoque/tabelas-de-preco',
+        '/estoque/cadastros/tabelas-de-preco'
+      ])
+    );
     expect(findChildRoute('pontos-de-venda')?.meta?.title).toBe('Pontos de venda');
     expect(findChildRoute('pontos-de-venda')?.meta?.breadcrumbParent).toBe('Estoque');
   });

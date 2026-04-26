@@ -30,10 +30,45 @@ export interface RedeemLoyaltyPointsPayload {
 
 export interface PriceTableSummary {
   id: string;
+  accountId?: string;
   legacyId: string | null;
   description: string;
   context: string | null;
   isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PriceTableItemSummary {
+  id: string;
+  accountId: string;
+  priceTableId: string;
+  itemKind: 'product' | 'service';
+  itemId: string;
+  price: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PriceTableDetail extends PriceTableSummary {
+  items: PriceTableItemSummary[];
+}
+
+export interface PriceTablePayload {
+  legacyId?: string | null;
+  description: string;
+  context?: string | null;
+  isActive?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
+export interface PriceTableItemPayload {
+  itemKind: PriceTableItemSummary['itemKind'];
+  itemId: string;
+  price: number;
 }
 
 export interface PosSyncJobSummary {
@@ -75,6 +110,37 @@ export async function listPriceTables(filters?: { search?: string; active?: bool
   const suffix = params.toString() ? `?${params.toString()}` : '';
   const payload = await apiRequest<{ items: PriceTableSummary[] }>(`/price-tables${suffix}`);
   return payload.items;
+}
+
+export async function getPriceTableDetail(priceTableId: string): Promise<PriceTableDetail> {
+  return apiRequest<PriceTableDetail>(`/price-tables/${encodeURIComponent(priceTableId)}`);
+}
+
+export async function createPriceTable(payload: PriceTablePayload): Promise<PriceTableSummary> {
+  return apiRequest<PriceTableSummary>('/price-tables', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updatePriceTable(priceTableId: string, payload: PriceTablePayload): Promise<PriceTableSummary> {
+  return apiRequest<PriceTableSummary>(`/price-tables/${encodeURIComponent(priceTableId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function archivePriceTable(priceTableId: string): Promise<void> {
+  await apiRequest<void>(`/price-tables/${encodeURIComponent(priceTableId)}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function addPriceTableItem(priceTableId: string, payload: PriceTableItemPayload): Promise<PriceTableItemSummary> {
+  return apiRequest<PriceTableItemSummary>(`/price-tables/${encodeURIComponent(priceTableId)}/items`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function createPosSyncJob(syncKind: PosSyncJobSummary['syncKind']): Promise<PosSyncJobSummary> {

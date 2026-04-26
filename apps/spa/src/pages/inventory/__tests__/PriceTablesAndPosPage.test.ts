@@ -1,18 +1,48 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import PriceTablesPage from '../PriceTablesPage.vue';
 import PointOfSaleSyncPage from '../PointOfSaleSyncPage.vue';
-import { completePosSyncJob, createPosSyncJob, listPosSyncJobs, listPriceTables } from '@/services/commercial';
+import {
+  addPriceTableItem,
+  archivePriceTable,
+  completePosSyncJob,
+  createPosSyncJob,
+  createPriceTable,
+  getPriceTableDetail,
+  listPosSyncJobs,
+  listPriceTables,
+  updatePriceTable
+} from '@/services/commercial';
+import { productsService } from '@/services/products';
+import { servicesService } from '@/services/services';
 
 vi.mock('@/services/commercial', () => ({
   listPriceTables: vi.fn(),
+  getPriceTableDetail: vi.fn(),
+  createPriceTable: vi.fn(),
+  updatePriceTable: vi.fn(),
+  archivePriceTable: vi.fn(),
+  addPriceTableItem: vi.fn(),
   createPosSyncJob: vi.fn(),
   completePosSyncJob: vi.fn(),
   listPosSyncJobs: vi.fn()
 }));
 
+vi.mock('@/services/products', () => ({
+  productsService: {
+    list: vi.fn()
+  }
+}));
+
+vi.mock('@/services/services', () => ({
+  servicesService: {
+    list: vi.fn()
+  }
+}));
+
 async function flush() {
+  await flushPromises();
   await Promise.resolve();
   await nextTick();
 }
@@ -21,17 +51,112 @@ beforeEach(() => {
   vi.mocked(listPriceTables).mockResolvedValue([
     {
       id: '2',
+      accountId: 'account-1',
       legacyId: '2',
       description: 'TABELA FINAL DE SEMANA',
       context: 'Atendimentos e vendas fora da rotina semanal',
-      isActive: true
+      isActive: true,
+      startsAt: null,
+      endsAt: null,
+      createdAt: '2026-04-26T00:00:00.000Z',
+      updatedAt: '2026-04-26T00:00:00.000Z'
     },
     {
       id: '1',
+      accountId: 'account-1',
       legacyId: '1',
       description: 'TABELA MADRUGADA',
       context: 'Plantão, emergência e operação 24h',
-      isActive: true
+      isActive: true,
+      startsAt: null,
+      endsAt: null,
+      createdAt: '2026-04-26T00:00:00.000Z',
+      updatedAt: '2026-04-26T00:00:00.000Z'
+    }
+  ]);
+  vi.mocked(getPriceTableDetail).mockResolvedValue({
+    id: '2',
+    accountId: 'account-1',
+    legacyId: '2',
+    description: 'TABELA FINAL DE SEMANA',
+    context: 'Atendimentos e vendas fora da rotina semanal',
+    isActive: true,
+    startsAt: null,
+    endsAt: null,
+    createdAt: '2026-04-26T00:00:00.000Z',
+    updatedAt: '2026-04-26T00:00:00.000Z',
+    items: [
+      {
+        id: 'pti-1',
+        accountId: 'account-1',
+        priceTableId: '2',
+        itemKind: 'product',
+        itemId: 'prod-1',
+        price: 99.9,
+        createdAt: '2026-04-26T00:00:00.000Z',
+        updatedAt: '2026-04-26T00:00:00.000Z'
+      }
+    ]
+  });
+  vi.mocked(createPriceTable).mockResolvedValue({
+    id: '3',
+    accountId: 'account-1',
+    legacyId: '3',
+    description: 'TABELA PLANTAO',
+    context: 'Emergência',
+    isActive: true,
+    startsAt: null,
+    endsAt: null,
+    createdAt: '2026-04-26T00:00:00.000Z',
+    updatedAt: '2026-04-26T00:00:00.000Z'
+  });
+  vi.mocked(updatePriceTable).mockResolvedValue({
+    id: '3',
+    accountId: 'account-1',
+    legacyId: '3',
+    description: 'TABELA PLANTAO PREMIUM',
+    context: 'Emergência',
+    isActive: true,
+    startsAt: null,
+    endsAt: null,
+    createdAt: '2026-04-26T00:00:00.000Z',
+    updatedAt: '2026-04-26T00:00:00.000Z'
+  });
+  vi.mocked(archivePriceTable).mockResolvedValue(undefined);
+  vi.mocked(addPriceTableItem).mockResolvedValue({
+    id: 'pti-2',
+    accountId: 'account-1',
+    priceTableId: '2',
+    itemKind: 'product',
+    itemId: 'prod-1',
+    price: 120,
+    createdAt: '2026-04-26T00:00:00.000Z',
+    updatedAt: '2026-04-26T00:00:00.000Z'
+  });
+  vi.mocked(productsService.list).mockResolvedValue([
+    {
+      id: 'prod-1',
+      accountId: 'account-1',
+      name: 'Vacina V10',
+      code: 'VAC10',
+      description: null,
+      basePrice: 100,
+      active: true,
+      createdAt: '2026-04-26T00:00:00.000Z',
+      updatedAt: '2026-04-26T00:00:00.000Z'
+    }
+  ]);
+  vi.mocked(servicesService.list).mockResolvedValue([
+    {
+      id: 'svc-1',
+      accountId: 'account-1',
+      name: 'Consulta',
+      code: 'CONS',
+      description: null,
+      basePrice: 180,
+      active: true,
+      createdAt: '2026-04-26T00:00:00.000Z',
+      updatedAt: '2026-04-26T00:00:00.000Z'
     }
   ]);
   vi.mocked(createPosSyncJob).mockResolvedValue({
@@ -71,17 +196,65 @@ describe('PriceTablesPage', () => {
     await flush();
 
     expect(wrapper.text()).toContain('Tabelas de Preço');
-    expect(wrapper.text()).toContain('Buscar por ID ou descrição');
-    expect(wrapper.text()).toContain('+ Incluir Nova Tabela');
+    expect(wrapper.get('[data-testid="price-table-search"]').attributes('placeholder')).toBe('Buscar por ID ou descrição');
+    expect(wrapper.text()).toContain('Incluir Nova Tabela');
     expect(wrapper.text()).toContain('TABELA FINAL DE SEMANA');
     expect(wrapper.text()).toContain('TABELA MADRUGADA');
-    expect(wrapper.text()).toContain('Produtos');
-    expect(wrapper.text()).toContain('Serviços');
 
-    await wrapper.find('input[placeholder="Buscar por ID ou descrição"]').setValue('madrugada');
+    await wrapper.find('[data-testid="price-table-search"]').setValue('madrugada');
+    await wrapper.findAll('button').find((button) => button.text() === 'Pesquisar')!.trigger('click');
+    await flush();
 
-    expect(wrapper.text()).toContain('TABELA MADRUGADA');
-    expect(wrapper.text()).not.toContain('TABELA FINAL DE SEMANA');
+    expect(listPriceTables).toHaveBeenLastCalledWith({ search: 'madrugada', active: true });
+  });
+
+  it('creates, updates, archives and links price table items', async () => {
+    const wrapper = mount(PriceTablesPage);
+    await flush();
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Incluir Nova Tabela')!.trigger('click');
+    await wrapper.get('[data-testid="price-table-id"]').setValue('3');
+    await wrapper.get('[data-testid="price-table-description"]').setValue('TABELA PLANTAO');
+    await wrapper.get('[data-testid="price-table-context"]').setValue('Emergência');
+    await wrapper.find('form[aria-label="Cadastro de tabela de preço"]').trigger('submit');
+    await flush();
+
+    expect(createPriceTable).toHaveBeenCalledWith({
+      legacyId: '3',
+      description: 'TABELA PLANTAO',
+      context: 'Emergência',
+      startsAt: null,
+      endsAt: null,
+      isActive: true
+    });
+    expect(wrapper.text()).toContain('Tabela de preço cadastrada com sucesso.');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Ver Detalhes')!.trigger('click');
+    await flush();
+    await wrapper.get('[data-testid="price-table-description"]').setValue('TABELA PLANTAO PREMIUM');
+    await wrapper.find('form[aria-label="Cadastro de tabela de preço"]').trigger('submit');
+    await flush();
+
+    expect(updatePriceTable).toHaveBeenCalledWith('3', expect.objectContaining({
+      description: 'TABELA PLANTAO PREMIUM'
+    }));
+
+    await wrapper.get('[data-testid="price-table-item-id"]').setValue('prod-1');
+    await wrapper.get('[data-testid="price-table-item-price"]').setValue(120);
+    await wrapper.find('form[aria-label="Vincular item à tabela de preço"]').trigger('submit');
+    await flush();
+
+    expect(addPriceTableItem).toHaveBeenCalledWith('3', {
+      itemKind: 'product',
+      itemId: 'prod-1',
+      price: 120
+    });
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Excluir')!.trigger('click');
+    await flush();
+
+    expect(archivePriceTable).toHaveBeenCalledWith('3');
+    expect(wrapper.text()).toContain('Tabela de preço excluída com sucesso.');
   });
 });
 

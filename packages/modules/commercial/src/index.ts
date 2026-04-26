@@ -321,6 +321,50 @@ export class CommercialService {
     return table;
   }
 
+  public async updatePriceTable(
+    accountId: AccountId,
+    priceTableId: string,
+    input: {
+      legacyId?: string | null;
+      description: string;
+      context?: string | null;
+      isActive?: boolean;
+      startsAt?: string | null;
+      endsAt?: string | null;
+    }
+  ): Promise<PriceTableSummary> {
+    const existing = this.#priceTables.get(priceTableId);
+    if (!existing || existing.accountId !== accountId) {
+      throw new NotFoundError('Price table not found', { priceTableId });
+    }
+    assertValidWindow(input.startsAt ?? null, input.endsAt ?? null);
+    const table: PriceTableSummary = {
+      ...existing,
+      legacyId: input.legacyId?.trim() || null,
+      description: requireTrimmed(input.description, 'description'),
+      context: input.context?.trim() || null,
+      isActive: input.isActive ?? existing.isActive,
+      startsAt: input.startsAt ?? null,
+      endsAt: input.endsAt ?? null,
+      updatedAt: nowIso()
+    };
+    this.#priceTables.set(table.id, table);
+    await this.#repository?.updatePriceTable(table);
+    return table;
+  }
+
+  public async archivePriceTable(accountId: AccountId, priceTableId: string): Promise<PriceTableSummary> {
+    const existing = this.getPriceTableDetail(accountId, priceTableId);
+    const table: PriceTableSummary = {
+      ...existing,
+      isActive: false,
+      updatedAt: nowIso()
+    };
+    this.#priceTables.set(table.id, table);
+    await this.#repository?.updatePriceTable(table);
+    return table;
+  }
+
   public listPriceTables(
     accountId: AccountId,
     filters?: { search?: string; active?: boolean }
@@ -329,7 +373,12 @@ export class CommercialService {
     return Array.from(this.#priceTables.values())
       .filter((item) => item.accountId === accountId)
       .filter((item) => filters?.active === undefined || item.isActive === filters.active)
-      .filter((item) => !search || item.description.toLowerCase().includes(search) || item.legacyId?.toLowerCase().includes(search))
+      .filter((item) =>
+        !search ||
+        item.description.toLowerCase().includes(search) ||
+        item.legacyId?.toLowerCase().includes(search) ||
+        item.context?.toLowerCase().includes(search)
+      )
       .sort((a, b) => a.description.localeCompare(b.description));
   }
 

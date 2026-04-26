@@ -128,11 +128,11 @@ test('handleCommercialRoutes exposes loyalty points balance and redemptions', as
   assert.equal(summary.redeemedPoints, 40);
 });
 
-test('handleCommercialRoutes creates price tables and items', async () => {
+test('handleCommercialRoutes creates, updates, archives price tables and items', async () => {
   const commercial = new CommercialService();
   const createResponse = new MockResponse();
   await handleCommercialRoutes(
-    '/price-tables',
+    '/tabelas-de-preco',
     request('POST', { legacyId: '1', description: 'Tabela final de semana' }),
     createResponse as never,
     'corr-price-1',
@@ -141,6 +141,22 @@ test('handleCommercialRoutes creates price tables and items', async () => {
   const table = createResponse.bodyJson<{ id: string; description: string }>();
   assert.equal(createResponse.statusCode, 201);
   assert.equal(table.description, 'Tabela final de semana');
+
+  const updateResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/tabelas-de-preco/${table.id}`,
+    request('PATCH', {
+      legacyId: '2',
+      description: 'Tabela final de semana premium',
+      context: 'Feriados',
+      isActive: true
+    }),
+    updateResponse as never,
+    'corr-price-1b',
+    handlers(commercial)
+  );
+  assert.equal(updateResponse.statusCode, 200);
+  assert.equal(updateResponse.bodyJson<{ description: string; context: string }>().context, 'Feriados');
 
   const itemResponse = new MockResponse();
   await handleCommercialRoutes(
@@ -163,6 +179,16 @@ test('handleCommercialRoutes creates price tables and items', async () => {
   const detail = detailResponse.bodyJson<{ items: Array<{ itemId: string; price: number }> }>();
   assert.equal(detail.items[0]?.itemId, 'svc-1');
   assert.equal(detail.items[0]?.price, 90);
+
+  const deleteResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/price-tables/${table.id}`,
+    request('DELETE'),
+    deleteResponse as never,
+    'corr-price-4',
+    handlers(commercial)
+  );
+  assert.equal(deleteResponse.statusCode, 204);
 });
 
 test('handleCommercialRoutes creates and updates POS sync jobs', async () => {

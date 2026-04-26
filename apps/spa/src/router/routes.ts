@@ -1678,6 +1678,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'tabelas-de-preco',
         name: 'PriceTables',
+        alias: [
+          '/price-tables',
+          '/tabelas-de-preços',
+          '/estoque/tabelas-de-preco',
+          '/estoque/tabelas-de-preços',
+          '/estoque/cadastros/tabelas-de-preco',
+          '/estoque/cadastros/tabelas-de-preços'
+        ],
         component: () => import('@/pages/inventory/PriceTablesPage.vue'),
         meta: {
           title: 'Tabelas de Preço',

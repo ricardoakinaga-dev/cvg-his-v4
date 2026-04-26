@@ -80,6 +80,19 @@ test('CommercialService isolates price tables by account', async () => {
   assert.equal(service.listPriceTables(ACCOUNT).length, 1);
   assert.equal(service.getPriceTableDetail(ACCOUNT, table.id).items.length, 1);
   assert.throws(() => service.getPriceTableDetail(OTHER_ACCOUNT, table.id), NotFoundError);
+
+  const updated = await service.updatePriceTable(ACCOUNT, table.id, {
+    legacyId: '1',
+    description: 'Tabela final de semana premium',
+    context: 'Final de semana e feriados',
+    isActive: true
+  });
+  assert.equal(updated.description, 'Tabela final de semana premium');
+  assert.equal(service.listPriceTables(ACCOUNT, { search: 'feriados' }).length, 1);
+
+  const archived = await service.archivePriceTable(ACCOUNT, table.id);
+  assert.equal(archived.isActive, false);
+  assert.equal(service.listPriceTables(ACCOUNT, { active: true }).length, 0);
 });
 
 test('CommercialService validates price table windows', async () => {

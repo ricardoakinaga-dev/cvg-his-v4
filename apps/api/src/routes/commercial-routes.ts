@@ -39,6 +39,26 @@ function parseBoolean(value: string | null): boolean | undefined {
   throw new ValidationError('active must be true or false');
 }
 
+const priceTableCollectionPaths = new Set([
+  '/price-tables',
+  '/tabelas-de-preco',
+  '/tabelas-de-preços',
+  '/estoque/tabelas-de-preco',
+  '/estoque/tabelas-de-preços',
+  '/estoque/cadastros/tabelas-de-preco',
+  '/estoque/cadastros/tabelas-de-preços'
+]);
+
+function parsePriceTableId(pathname: string): string | null {
+  const match = pathname.match(/^\/(?:price-tables|tabelas-de-preco|tabelas-de-preços)\/([^/]+)$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+function parsePriceTableItemsId(pathname: string): string | null {
+  const match = pathname.match(/^\/(?:price-tables|tabelas-de-preco|tabelas-de-preços)\/([^/]+)\/items$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export async function handleCommercialRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -49,6 +69,12 @@ export async function handleCommercialRoutes(
   if (
     !pathname.startsWith('/loyalty') &&
     !pathname.startsWith('/price-tables') &&
+    !pathname.startsWith('/tabelas-de-preco') &&
+    !pathname.startsWith('/tabelas-de-preços') &&
+    !pathname.startsWith('/estoque/tabelas-de-preco') &&
+    !pathname.startsWith('/estoque/tabelas-de-preços') &&
+    !pathname.startsWith('/estoque/cadastros/tabelas-de-preco') &&
+    !pathname.startsWith('/estoque/cadastros/tabelas-de-preços') &&
     !pathname.startsWith('/pos-sync')
   ) {
     return false;
@@ -154,7 +180,7 @@ export async function handleCommercialRoutes(
     return json(response, 201, redemption);
   }
 
-  if (pathname === '/price-tables' && method === 'GET') {
+  if (priceTableCollectionPaths.has(pathname) && method === 'GET') {
     const principal = requirePrincipal(request, 'inventory.read');
     const url = query(request, pathname);
     return json(response, 200, {
@@ -165,7 +191,7 @@ export async function handleCommercialRoutes(
     });
   }
 
-  if (pathname === '/price-tables' && method === 'POST') {
+  if (priceTableCollectionPaths.has(pathname) && method === 'POST') {
     const principal = requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       legacyId?: string | null;
@@ -190,14 +216,58 @@ export async function handleCommercialRoutes(
     return json(response, 201, table);
   }
 
-  const priceTableMatch = pathname.match(/^\/price-tables\/([^/]+)$/);
-  if (priceTableMatch && method === 'GET') {
+  const priceTableId = parsePriceTableId(pathname);
+  if (priceTableId && method === 'GET') {
     const principal = requirePrincipal(request, 'inventory.read');
-    return json(response, 200, commercial.getPriceTableDetail(principal.user.accountId, priceTableMatch[1]));
+    return json(response, 200, commercial.getPriceTableDetail(principal.user.accountId, priceTableId));
   }
 
-  const priceTableItemsMatch = pathname.match(/^\/price-tables\/([^/]+)\/items$/);
-  if (priceTableItemsMatch && method === 'POST') {
+  if (priceTableId && method === 'PATCH') {
+    const principal = requirePrincipal(request, 'inventory.manage');
+    const payload = await readJsonBody(request) as {
+      legacyId?: string | null;
+      description: string;
+      context?: string | null;
+      isActive?: boolean;
+      startsAt?: string | null;
+      endsAt?: string | null;
+    };
+    const table = await commercial.updatePriceTable(principal.user.accountId, priceTableId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'update_price_table',
+      entityType: 'price-table',
+      entityId: table.id,
+      payloadSummary: `Price table ${table.description} updated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, table);
+  }
+
+  if (priceTableId && method === 'DELETE') {
+    const principal = requirePrincipal(request, 'inventory.manage');
+    const table = await commercial.archivePriceTable(principal.user.accountId, priceTableId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'archive_price_table',
+      entityType: 'price-table',
+      entityId: table.id,
+      payloadSummary: `Price table ${table.description} archived`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 204;
+    response.end();
+    return true;
+  }
+
+  const priceTableItemsId = parsePriceTableItemsId(pathname);
+  if (priceTableItemsId && method === 'POST') {
     const principal = requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       itemKind: PriceTableItemKind;
@@ -206,7 +276,7 @@ export async function handleCommercialRoutes(
     };
     const item = await commercial.addPriceTableItem(
       principal.user.accountId,
-      priceTableItemsMatch[1],
+      priceTableItemsId,
       payload
     );
     appendAudit(audit, {
