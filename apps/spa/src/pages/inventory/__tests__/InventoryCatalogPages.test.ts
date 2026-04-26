@@ -17,7 +17,7 @@ const pages = [
   {
     loader: () => import('../ProductGroupsPage.vue'),
     title: 'Grupos de Produto',
-    breadcrumb: 'EstoqueCadastradosGrupos de Produto',
+    breadcrumb: 'EstoqueCadastrosGrupos de Produto',
     placeholder: 'Buscar por ID ou descrição'
   },
   {

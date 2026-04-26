@@ -94,6 +94,7 @@ import { handlePrescriptionExecutionsRoutes } from './routes/prescription-execut
 import { handleInventoryRoutes } from './routes/inventory-routes.js';
 import { handleInventoryWarehousesRoutes } from './routes/inventory-warehouses-routes.js';
 import { handleInventoryManufacturersRoutes } from './routes/inventory-manufacturers-routes.js';
+import { handleInventoryProductGroupsRoutes } from './routes/inventory-product-groups-routes.js';
 import { handleCommercialRoutes } from './routes/commercial-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
@@ -5381,6 +5382,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
         // --- Inventory manufacturers (delegated) ---
         if (await handleInventoryManufacturersRoutes(pathname, request, response, correlationId, {
+          audit,
+          requirePrincipal
+        })) { return; }
+
+        // --- Inventory product groups (delegated) ---
+        if (await handleInventoryProductGroupsRoutes(pathname, request, response, correlationId, {
           audit,
           requirePrincipal
         })) { return; }

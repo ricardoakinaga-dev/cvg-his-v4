@@ -233,6 +233,17 @@ describe('router convergence', () => {
     expect(findChildRoute('manufacturers')?.alias).toEqual(
       expect.arrayContaining(['/fabricantes', '/estoque/fabricantes', '/estoque/cadastros/fabricantes'])
     );
+    expect(findChildRoute('product-groups')?.meta?.title).toBe('Grupos de Produto');
+    expect(findChildRoute('product-groups')?.alias).toEqual(
+      expect.arrayContaining([
+        '/grupos-de-produto',
+        '/grupos-de-produtos',
+        '/grupos-produto',
+        '/grupos-produtos',
+        '/estoque/grupos-de-produto',
+        '/estoque/cadastros/grupos-de-produto'
+      ])
+    );
     expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
     expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');

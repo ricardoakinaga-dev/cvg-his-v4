@@ -1906,6 +1906,16 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'product-groups',
         name: 'ProductGroups',
+        alias: [
+          '/grupos-de-produto',
+          '/grupos-de-produtos',
+          '/grupos-produto',
+          '/grupos-produtos',
+          '/estoque/grupos-de-produto',
+          '/estoque/grupos-de-produtos',
+          '/estoque/cadastros/grupos-de-produto',
+          '/estoque/cadastros/grupos-de-produtos'
+        ],
         component: () => import('@/pages/inventory/ProductGroupsPage.vue'),
         meta: {
           title: 'Grupos de Produto',
