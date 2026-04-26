@@ -37,7 +37,7 @@ function resetDocument() {
 
   const meta = document.createElement('meta');
   meta.setAttribute('name', 'theme-color');
-  meta.setAttribute('content', '#1e40af');
+  meta.setAttribute('content', '#0ea5e9');
   document.head.appendChild(meta);
 }
 
@@ -68,7 +68,7 @@ describe('theme store', () => {
     expect(document.documentElement.style.colorScheme).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(
-      '#1e40af'
+      '#0ea5e9'
     );
   });
 
@@ -86,7 +86,7 @@ describe('theme store', () => {
   });
 
   it('resolves the theme-color meta value for both modes', () => {
-    expect(getThemeMetaColor('light')).toBe('#1e40af');
+    expect(getThemeMetaColor('light')).toBe('#0ea5e9');
     expect(getThemeMetaColor('dark')).toBe('#0f172a');
   });
 

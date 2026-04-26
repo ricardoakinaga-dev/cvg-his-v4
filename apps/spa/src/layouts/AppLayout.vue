@@ -3,10 +3,70 @@
 
   <div
     class="app-layout"
-    :class="{ 'app-layout--collapsed': appStore.sidebarCollapsed }"
+    :class="{
+      'app-layout--collapsed': appStore.sidebarCollapsed,
+      'app-layout--dark': themeStore.theme === 'dark'
+    }"
     role="application"
     aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
+    <header class="topbar">
+      <div class="topbar__brand-pill">
+        <img
+          class="topbar__brand-logo"
+          src="https://www.cevetguarapiranga.com.br/assets/uploads/gallery/img_6924fdbaa85a4.jpg"
+          alt="Centro Veterinário Guarapiranga"
+        />
+        <div class="topbar__brand-copy">
+          <strong>Centro Veterinário Guarapiranga</strong>
+          <span>ERP operacional Premium</span>
+        </div>
+      </div>
+
+      <button
+        class="topbar__collapse-btn"
+        type="button"
+        @click="appStore.toggleSidebar()"
+        :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+        :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+      >
+        <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
+        <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
+      </button>
+
+      <button class="topbar__search-shell" type="button" @click="openPalette">
+        <span class="topbar__search-shell-icon">🔎</span>
+        <span class="topbar__search-shell-copy">Buscar módulo, rotina ou relatório</span>
+        <kbd>Ctrl+K</kbd>
+      </button>
+
+      <div class="topbar__actions">
+        <button class="topbar__icon-btn topbar__icon-btn--notifications" type="button" title="Notificações" @click="navigateTo('/notifications')">
+          🔔
+        </button>
+
+        <button class="topbar__icon-btn topbar__icon-btn--whatsapp" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
+          💬
+        </button>
+
+        <button
+          class="topbar__icon-btn"
+          type="button"
+          :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+          @click="themeStore.toggle()"
+        >
+          {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+        </button>
+
+        <div class="topbar__profile">
+          <strong>{{ authStore.userName }}</strong>
+          <span>{{ userBadgeId }}</span>
+        </div>
+
+        <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
+      </div>
+    </header>
+
     <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
       <div class="sidebar__search">
         <input
@@ -182,110 +242,6 @@
     </aside>
 
     <main class="workspace">
-      <header class="topbar">
-        <div class="topbar__system-row">
-          <div class="topbar__system-left">
-            <div class="topbar__history-nav" aria-label="Navegação de histórico">
-              <button
-                class="topbar__history-btn"
-                type="button"
-                title="Voltar"
-                aria-label="Voltar"
-                :disabled="!canGoBack"
-                @click="goBack"
-              >
-                ←
-              </button>
-
-              <button
-                class="topbar__history-btn"
-                type="button"
-                title="Avançar"
-                aria-label="Avançar"
-                :disabled="!canGoForward"
-                @click="goForward"
-              >
-                →
-              </button>
-            </div>
-
-            <button
-              class="topbar__collapse-btn"
-              type="button"
-              @click="appStore.toggleSidebar()"
-              :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
-              :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
-            >
-              <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
-              <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
-            </button>
-
-            <div class="topbar__brand-pill">
-              <div class="topbar__brand-logo">V</div>
-              <div class="topbar__brand-copy">
-                <strong>CVG HIS V2</strong>
-                <span>Shell operacional estilo Vetus</span>
-              </div>
-            </div>
-
-            <button class="topbar__search-shell" type="button" @click="openPalette">
-              <span class="topbar__search-shell-icon">🔎</span>
-              <span class="topbar__search-shell-copy">Buscar módulo, rotina ou relatório</span>
-              <kbd>Ctrl+K</kbd>
-            </button>
-          </div>
-
-          <div class="topbar__system-right">
-            <button class="topbar__icon-btn topbar__icon-btn--notifications" type="button" title="Notificações" @click="navigateTo('/notifications')">
-              🔔
-            </button>
-
-            <button class="topbar__icon-btn topbar__icon-btn--support" type="button" title="Suporte" @click="openSupportCenter()">
-              ❔
-            </button>
-
-            <button class="topbar__icon-btn topbar__icon-btn--whatsapp" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
-              💬
-            </button>
-
-            <button
-              class="topbar__icon-btn"
-              type="button"
-              :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
-              @click="themeStore.toggle()"
-            >
-              {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
-            </button>
-
-            <div class="topbar__profile">
-              <strong>{{ authStore.userName }}</strong>
-              <span>{{ userBadgeId }}</span>
-            </div>
-
-            <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
-          </div>
-        </div>
-
-        <div class="topbar__context-row">
-          <div class="topbar__title-block">
-            <div class="topbar__breadcrumbs" aria-label="Breadcrumbs">
-              <span
-                v-for="(crumb, index) in shellBreadcrumbs"
-                :key="`${crumb.label}-${index}`"
-                class="topbar__breadcrumb-item"
-              >
-                <span v-if="index > 0" class="topbar__breadcrumb-separator">/</span>
-                <span>{{ crumb.label }}</span>
-              </span>
-            </div>
-            <h1 class="topbar__title">{{ currentPageTitle }}</h1>
-            <p class="topbar__subtitle">
-              {{ currentAreaLabel }} · Centro Veterinário Guarapiranga · Unidade principal
-            </p>
-          </div>
-        </div>
-      </header>
-
       <section class="workspace__body" id="main-content" role="main" aria-label="Conteudo principal">
         <router-view />
       </section>
@@ -909,12 +865,21 @@ function handleLogout() {
 }
 
 .app-layout {
+  --brand-blue: #0ea5e9;
+  --brand-blue-dark: #0284c7;
+  --brand-blue-soft: #e0f2fe;
+  --brand-blue-ink: #075985;
+  --shell-border: #dbe5ee;
+  --shell-text: #243140;
+  --shell-muted: #64748b;
+  --topbar-height: 72px;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
   background:
-    radial-gradient(circle at top left, rgba(241, 148, 54, 0.08), transparent 22%),
-    linear-gradient(180deg, #f6f7f9, #eef1f4 58%, #edf1f5);
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.14), transparent 24%),
+    linear-gradient(180deg, #f7fbff, #edf3f8 58%, #e9f0f6);
   font-family:
     'Open Sans',
     -apple-system,
@@ -932,14 +897,16 @@ function handleLogout() {
 
 .sidebar {
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: var(--topbar-height);
+  grid-column: 1;
+  grid-row: 2;
+  height: calc(100vh - var(--topbar-height));
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 8px;
-  border-right: 1px solid #dfe4ea;
-  background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
+  border-right: 1px solid var(--shell-border);
+  background: linear-gradient(180deg, #f8fbfe, #f2f6fa 72%, #edf3f8);
   min-width: 0;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
 }
@@ -952,7 +919,7 @@ function handleLogout() {
 }
 
 .sidebar__panel--enterprise {
-  background: linear-gradient(180deg, rgba(241, 148, 54, 0.08), rgba(255, 255, 255, 0.88));
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.08), rgba(255, 255, 255, 0.88));
 }
 
 .sidebar__panel-head {
@@ -968,7 +935,7 @@ function handleLogout() {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #f19436;
+  color: var(--brand-blue-dark);
 }
 
 .sidebar__microcopy {
@@ -987,7 +954,7 @@ function handleLogout() {
   border-radius: 8px;
   border: 0;
   background: rgba(255, 255, 255, 0.72);
-  color: #243140;
+  color: var(--shell-text);
   outline: none;
 }
 
@@ -996,8 +963,8 @@ function handleLogout() {
 }
 
 .sidebar__search-input:focus {
-  border-color: rgba(241, 148, 54, 0.55);
-  box-shadow: 0 0 0 3px rgba(241, 148, 54, 0.14);
+  border-color: rgba(14, 165, 233, 0.55);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
 }
 
 .sidebar__content {
@@ -1097,7 +1064,7 @@ function handleLogout() {
 }
 
 .sidebar__utility-group--enterprise {
-  background: rgba(255, 247, 239, 0.9);
+  background: rgba(224, 242, 254, 0.62);
 }
 
 .sidebar__utility-summary {
@@ -1123,7 +1090,7 @@ function handleLogout() {
 
 .sidebar__group--active {
   background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 2px 0 0 #f19436;
+  box-shadow: inset 2px 0 0 var(--brand-blue);
 }
 
 .sidebar__group-summary {
@@ -1137,7 +1104,7 @@ function handleLogout() {
 }
 
 .sidebar__group--active > .sidebar__group-summary {
-  background: rgba(255, 243, 230, 0.62);
+  background: rgba(224, 242, 254, 0.72);
 }
 
 .sidebar__group-summary::-webkit-details-marker {
@@ -1164,7 +1131,7 @@ function handleLogout() {
 .sidebar__group-label {
   font-size: 12px;
   font-weight: 700;
-  color: #243140;
+  color: var(--shell-text);
 }
 
 .sidebar__group-description {
@@ -1241,15 +1208,15 @@ function handleLogout() {
 .sidebar__recent-link:hover,
 .sidebar__link:hover {
   transform: none;
-  background: rgba(241, 148, 54, 0.08);
+  background: rgba(14, 165, 233, 0.08);
   text-decoration: none;
 }
 
 .sidebar__quick-link--active,
 .sidebar__recent-link--active,
 .sidebar__link--active {
-  background: rgba(255, 237, 218, 0.78);
-  color: #b76516;
+  background: rgba(224, 242, 254, 0.84);
+  color: var(--brand-blue-ink);
   font-weight: 600;
 }
 
@@ -1283,51 +1250,38 @@ function handleLogout() {
 .sidebar__ghost-btn {
   background: none;
   border: 0;
-  color: #f19436;
+  color: var(--brand-blue-dark);
   font-size: 12px;
   font-weight: 600;
   padding: 0;
 }
 
 .workspace {
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
 .topbar {
-  display: grid;
-  gap: 0;
-  border-bottom: 1px solid #dee4ea;
-  background: rgba(248, 249, 251, 0.96);
-  min-width: 0;
-  backdrop-filter: blur(12px);
-}
-
-.topbar__system-row,
-.topbar__context-row {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: var(--topbar-height);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(14, 116, 144, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(240, 249, 255, 0.94)),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.16), rgba(2, 132, 199, 0.08));
   min-width: 0;
-  padding: 12px 24px;
-}
-
-.topbar__system-row {
-  border-bottom: 1px solid rgba(220, 226, 233, 0.96);
-}
-
-.topbar__system-left,
-.topbar__system-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.topbar__system-left {
-  flex: 1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(16px);
 }
 
 .topbar__brand-pill {
@@ -1335,73 +1289,46 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid #e2e7ed;
-}
-
-.topbar__history-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.topbar__history-btn {
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border-radius: 10px;
-  border: 1px solid #dde3ea;
-  background: rgba(255, 255, 255, 0.92);
-  color: #5d6a76;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.topbar__history-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .topbar__brand-logo {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #f97316, #fb923c);
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.18);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(14, 165, 233, 0.22);
+  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.14);
 }
 
 .topbar__brand-copy {
   display: grid;
   gap: 1px;
+  min-width: 0;
 }
 
 .topbar__brand-copy strong {
   font-size: 14px;
-  color: #243140;
+  color: #0f172a;
+  white-space: nowrap;
 }
 
 .topbar__brand-copy span {
   font-size: 11px;
-  color: #7b8794;
+  color: var(--brand-blue-dark);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .topbar__collapse-btn {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border-radius: 10px;
-  border: 1px solid #dde3ea;
-  background: rgba(255, 255, 255, 0.92);
-  color: #5d6a76;
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.82);
+  color: #475569;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1418,13 +1345,13 @@ function handleLogout() {
 
 .topbar__search-shell {
   flex: 1;
-  min-height: 40px;
-  max-width: 520px;
-  padding: 0 14px;
+  min-height: 42px;
+  max-width: 620px;
+  padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid #dde4ea;
-  background: rgba(255, 255, 255, 0.88);
-  color: #7a8794;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  color: #64748b;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -1444,101 +1371,36 @@ function handleLogout() {
   font-size: 14px;
 }
 
-.topbar__context-row {
-  align-items: flex-start;
-}
-
-.topbar__title-block {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.topbar__breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  font-weight: 600;
-  color: #7b8794;
-}
-
-.topbar__breadcrumb-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.topbar__breadcrumb-separator {
-  color: #a0a9b4;
-}
-
-.topbar__title {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.1;
-  color: #243140;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.topbar__subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: #7b8794;
-}
-
-.topbar__action-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.topbar__action-btn {
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid #dde4ea;
-  background: rgba(255, 255, 255, 0.92);
-  color: #5d6a76;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.topbar__action-btn--search {
-  font-weight: 700;
-}
-
-.topbar__action-btn kbd,
 .command-palette__item-shortcut {
   font-size: 11px;
   color: #98a1ab;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .topbar__icon-btn {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  border: 1px solid #dde4ea;
-  background: rgba(255, 255, 255, 0.92);
-  color: #5d6a76;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.84);
+  color: #475569;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 .topbar__icon-btn--notifications,
-.topbar__icon-btn--support,
 .topbar__icon-btn--whatsapp {
-  color: #5d6a76;
-  border-color: #dde4ea;
-  background: rgba(255, 255, 255, 0.92);
+  color: #475569;
+  border-color: rgba(14, 165, 233, 0.16);
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .topbar__icon-btn--whatsapp {
@@ -1560,29 +1422,37 @@ function handleLogout() {
   display: grid;
   align-items: center;
   min-height: 38px;
-  padding: 6px 14px;
+  max-width: 190px;
+  padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(241, 148, 54, 0.24);
-  background: linear-gradient(135deg, rgba(255, 237, 218, 0.9), rgba(255, 255, 255, 0.98));
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.78), rgba(255, 255, 255, 0.98));
+  min-width: 0;
 }
 
 .topbar__profile strong {
   font-size: 13px;
-  color: #243140;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar__profile span {
   font-size: 11px;
-  color: #b76516;
+  color: var(--brand-blue-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar__logout-btn {
   min-height: 38px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(241, 148, 54, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  color: #b76516;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--brand-blue-ink);
   font-weight: 600;
 }
 
@@ -1653,13 +1523,13 @@ function handleLogout() {
 }
 
 .command-palette__item:hover {
-  border-color: rgba(241, 148, 54, 0.24);
-  background: rgba(241, 148, 54, 0.06);
+  border-color: rgba(14, 165, 233, 0.24);
+  background: rgba(14, 165, 233, 0.06);
 }
 
 .command-palette__item--selected {
-  border-color: rgba(241, 148, 54, 0.45);
-  background: rgba(241, 148, 54, 0.1);
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(14, 165, 233, 0.1);
 }
 
 .command-palette__item-icon {
@@ -1687,6 +1557,67 @@ function handleLogout() {
   text-align: center;
 }
 
+.app-layout--dark {
+  --shell-border: #1e293b;
+  --shell-text: #e2e8f0;
+  --shell-muted: #94a3b8;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 24%),
+    linear-gradient(180deg, #0f172a, #111827 58%, #0b1120);
+}
+
+.app-layout--dark .topbar {
+  border-bottom-color: rgba(56, 189, 248, 0.16);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(12, 74, 110, 0.9)),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.16), rgba(15, 23, 42, 0.92));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+}
+
+.app-layout--dark .sidebar {
+  background: linear-gradient(180deg, #111827, #0f172a 72%, #0b1120);
+  box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.08);
+}
+
+.app-layout--dark .sidebar__search-input,
+.app-layout--dark .topbar__search-shell,
+.app-layout--dark .topbar__collapse-btn,
+.app-layout--dark .topbar__icon-btn,
+.app-layout--dark .topbar__logout-btn,
+.app-layout--dark .command-palette__input,
+.app-layout--dark .command-palette__item {
+  border-color: rgba(56, 189, 248, 0.18);
+  background: rgba(15, 23, 42, 0.76);
+  color: #cbd5e1;
+}
+
+.app-layout--dark .topbar__brand-copy strong,
+.app-layout--dark .topbar__profile strong,
+.app-layout--dark .sidebar__group-label {
+  color: #f8fafc;
+}
+
+.app-layout--dark .topbar__profile,
+.app-layout--dark .sidebar__group--active,
+.app-layout--dark .sidebar__section--active,
+.app-layout--dark .sidebar__utility-group,
+.app-layout--dark .sidebar__panel {
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.app-layout--dark .sidebar__link,
+.app-layout--dark .sidebar__quick-link,
+.app-layout--dark .sidebar__recent-link {
+  color: #cbd5e1;
+}
+
+.app-layout--dark .sidebar__link--active,
+.app-layout--dark .sidebar__quick-link--active,
+.app-layout--dark .sidebar__recent-link--active {
+  background: rgba(14, 165, 233, 0.18);
+  color: #7dd3fc;
+}
+
 @media (max-width: 1200px) {
   .app-layout,
   .app-layout--collapsed {
@@ -1708,31 +1639,89 @@ function handleLogout() {
 }
 
 @media (max-width: 980px) {
-  .topbar__system-row,
-  .topbar__context-row,
-  .topbar__system-left,
-  .topbar__system-right {
+  .app-layout {
+    --topbar-height: 122px;
+  }
+
+  .topbar {
     flex-wrap: wrap;
+    height: auto;
+    min-height: var(--topbar-height);
+    padding: 10px 14px;
   }
 
   .topbar__search-shell {
+    order: 3;
+    flex-basis: 100%;
     max-width: none;
     width: 100%;
+  }
+
+  .topbar__actions {
+    margin-left: auto;
   }
 }
 
 @media (max-width: 860px) {
   .app-layout,
   .app-layout--collapsed {
+    --topbar-height: 156px;
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    position: sticky;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .topbar__brand-copy strong {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar__brand-copy span,
+  .topbar__profile span,
+  .topbar__search-shell kbd {
+    display: none;
+  }
+
+  .topbar__actions {
+    order: 2;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .topbar__search-shell {
+    order: 3;
+  }
+
+  .topbar__profile {
+    max-width: 150px;
+    padding-inline: 10px;
+  }
+
+  .topbar__logout-btn {
+    padding-inline: 10px;
   }
 
   .sidebar {
     position: sticky;
-    top: 0;
+    grid-column: 1;
+    grid-row: 2;
+    top: var(--topbar-height);
     z-index: 20;
+    height: auto;
     max-height: 48vh;
     overflow: auto;
+  }
+
+  .workspace {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .app-layout .sidebar__search {
