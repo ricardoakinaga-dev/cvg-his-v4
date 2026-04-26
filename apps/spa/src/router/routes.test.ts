@@ -207,6 +207,15 @@ describe('router convergence', () => {
     expect(findChildRoute('products/new')?.alias).toEqual(
       expect.arrayContaining(['/produtos/novo', '/estoque/cadastros/produtos/novo'])
     );
+    expect(findChildRoute('products/import')?.meta?.title).toBe('Importar Dados Produtos');
+    expect(findChildRoute('products/import')?.meta?.breadcrumbParent).toBe('Produtos');
+    expect(findChildRoute('products/import')?.alias).toEqual(
+      expect.arrayContaining([
+        '/produtos/importar',
+        '/estoque/produtos/importar',
+        '/estoque/cadastros/importar-dados-produtos'
+      ])
+    );
     expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
     expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');

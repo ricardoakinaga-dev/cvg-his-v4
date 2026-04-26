@@ -38,7 +38,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
   placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
   placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
   placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
@@ -1922,6 +1921,18 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Estoques',
           breadcrumbParent: 'Cadastros',
           icon: '🏬'
+        }
+      },
+      {
+        path: 'products/import',
+        name: 'ProductsImport',
+        alias: ['/produtos/importar', '/estoque/produtos/importar', '/estoque/cadastros/importar-dados-produtos'],
+        component: () => import('@/pages/products/ProductsImportPage.vue'),
+        meta: {
+          title: 'Importar Dados Produtos',
+          breadcrumb: 'Importar Dados Produtos',
+          breadcrumbParent: 'Produtos',
+          icon: '⬆️'
         }
       },
       {
