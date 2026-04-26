@@ -254,6 +254,15 @@ describe('router convergence', () => {
         '/estoque/cadastros/setores'
       ])
     );
+    expect(findChildRoute('measurement-units')?.meta?.title).toBe('Unidades de Medida');
+    expect(findChildRoute('measurement-units')?.alias).toEqual(
+      expect.arrayContaining([
+        '/unidades-de-medida',
+        '/unidades-medida',
+        '/estoque/unidades-de-medida',
+        '/estoque/cadastros/unidades-de-medida'
+      ])
+    );
     expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
     expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');

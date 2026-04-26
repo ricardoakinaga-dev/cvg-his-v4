@@ -96,6 +96,7 @@ import { handleInventoryWarehousesRoutes } from './routes/inventory-warehouses-r
 import { handleInventoryManufacturersRoutes } from './routes/inventory-manufacturers-routes.js';
 import { handleInventoryProductGroupsRoutes } from './routes/inventory-product-groups-routes.js';
 import { handleCompanySectorsRoutes } from './routes/company-sectors-routes.js';
+import { handleMeasurementUnitsRoutes } from './routes/measurement-units-routes.js';
 import { handleCommercialRoutes } from './routes/commercial-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
@@ -5395,6 +5396,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
         // --- Company sectors (delegated) ---
         if (await handleCompanySectorsRoutes(pathname, request, response, correlationId, {
+          audit,
+          requirePrincipal
+        })) { return; }
+
+        // --- Measurement units (delegated) ---
+        if (await handleMeasurementUnitsRoutes(pathname, request, response, correlationId, {
           audit,
           requirePrincipal
         })) { return; }

@@ -38,7 +38,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
   placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
   placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
   placeholderRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', '📦'),
@@ -1940,6 +1939,25 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Setores da Empresa',
           breadcrumbParent: 'Cadastros',
           icon: '🏢'
+        }
+      },
+      {
+        path: 'measurement-units',
+        name: 'MeasurementUnits',
+        alias: [
+          '/unidades-de-medida',
+          '/unidades-medida',
+          '/estoque/unidades-de-medida',
+          '/estoque/unidades-medida',
+          '/estoque/cadastros/unidades-de-medida',
+          '/estoque/cadastros/unidades-medida'
+        ],
+        component: () => import('@/pages/inventory/MeasurementUnitsPage.vue'),
+        meta: {
+          title: 'Unidades de Medida',
+          breadcrumb: 'Unidades de Medida',
+          breadcrumbParent: 'Cadastros',
+          icon: '📏'
         }
       },
       {

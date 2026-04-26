@@ -27,6 +27,12 @@ const pages = [
     placeholder: 'Buscar por código ou nome'
   },
   {
+    loader: () => import('../MeasurementUnitsPage.vue'),
+    title: 'Unidades de Medida',
+    breadcrumb: 'EstoqueCadastrosUnidades de Medida',
+    placeholder: 'Buscar por código ou descrição'
+  },
+  {
     loader: () => import('../WarehousesPage.vue'),
     title: 'Estoques',
     breadcrumb: 'EstoqueCadastrosEstoques',
