@@ -226,6 +226,13 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Agenda');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Agenda');
+    expect(wrapper.text()).toContain('Pesquisar agenda por data');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Limpar');
+    expect(wrapper.text()).toContain('Situação');
+    expect(wrapper.text()).toContain('Listagem');
+    expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('Veterinário Responsável');
     expect(wrapper.text()).toContain('Conflitos');
     expect(wrapper.text()).toContain('Intervalo operacional');
@@ -270,7 +277,7 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     const quickCreateButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Criar agendamento')
+      button.text().includes('Incluir')
     );
     expect(quickCreateButton).toBeDefined();
 

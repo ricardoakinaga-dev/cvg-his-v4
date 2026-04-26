@@ -1,21 +1,22 @@
 <template>
   <div class="appointments-cockpit">
-    <AppPageHeader :breadcrumbs="['Início', 'Agenda']">
-      <template #title>📅 Agenda</template>
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Agenda']">
+      <template #title>Agenda</template>
       <template #subtitle>
-        Início &gt; Agenda. Grade operacional por profissional, data, serviço, cliente, status e
-        marcador, com visões de mês, semana e dia no padrão Vetus.
+        Atendimento &gt; Atendimentos &gt; Agenda. Controle operacional por data, profissional,
+        serviço, cliente, status e marcador, com visão de grade e listagem no padrão Vetus.
       </template>
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadOverview">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" href="/queue">Esteira de atendimento</DsButton>
+        <DsButton variant="secondary" tag="a" href="/queue">Esteira</DsButton>
+        <DsButton variant="secondary" tag="a" href="/counter-sales">Comandas</DsButton>
         <DsButton
           v-if="canManageScheduling"
           variant="primary"
           class="agenda-cta"
           @click="openCreateFlow"
         >
-          + Criar agendamento
+          Incluir
         </DsButton>
       </template>
     </AppPageHeader>
@@ -32,6 +33,90 @@
     />
 
     <template v-else>
+      <section class="vetus-agenda-panel" aria-label="Filtros da agenda">
+        <div class="vetus-agenda-panel__header">
+          <div>
+            <strong>Atendimento &gt; Atendimentos &gt; Agenda</strong>
+            <span>Pesquisar agenda por data, cliente, animal, profissional, serviço, situação e marcador.</span>
+          </div>
+          <div class="vetus-agenda-panel__actions" role="tablist" aria-label="Modo de visualização">
+            <button
+              v-for="mode in viewOptions"
+              :key="`top-${mode.value}`"
+              type="button"
+              class="view-toggle__button"
+              :class="{ 'view-toggle__button--active': viewMode === mode.value }"
+              @click="setViewMode(mode.value)"
+            >
+              {{ mode.label }}
+            </button>
+          </div>
+        </div>
+
+        <form class="vetus-agenda-filters" @submit.prevent="applyQuickSearch">
+          <label class="vetus-field">
+            <span>Data</span>
+            <input v-model="referenceDate" type="date" data-testid="agenda-date-filter" />
+          </label>
+          <label class="vetus-field">
+            <span>Cliente / Animal</span>
+            <input
+              v-model="localFilters.clientSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="Cliente, animal ou motivo"
+              data-testid="agenda-client-filter"
+            />
+          </label>
+          <label class="vetus-field">
+            <span>Profissional</span>
+            <select v-model="filters.practitionerStaffId" data-testid="agenda-professional-filter">
+              <option value="">Todos</option>
+              <option value="unassigned">Sem profissional</option>
+              <option
+                v-for="professional in overview?.professionals ?? []"
+                :key="professional.id"
+                :value="professional.id"
+              >
+                {{ professional.fullName }}
+              </option>
+            </select>
+          </label>
+          <label class="vetus-field">
+            <span>Serviço</span>
+            <select v-model="filters.serviceId" data-testid="agenda-service-filter">
+              <option value="">Todos</option>
+              <option v-for="service in services" :key="service.id" :value="service.id">
+                {{ service.name }}
+              </option>
+            </select>
+          </label>
+          <label class="vetus-field">
+            <span>Situação</span>
+            <select v-model="quickStatusFilter" data-testid="agenda-status-filter">
+              <option value="">Todas</option>
+              <option value="scheduled">Aberto</option>
+              <option value="checked_in">Confirmado</option>
+              <option value="completed">Executado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </label>
+          <label class="vetus-field">
+            <span>Marcador</span>
+            <select v-model="localFilters.marker" data-testid="agenda-marker-filter">
+              <option value="">Todos</option>
+              <option v-for="marker in markerOptions" :key="marker" :value="marker">
+                {{ marker }}
+              </option>
+            </select>
+          </label>
+          <div class="vetus-agenda-filters__actions">
+            <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+            <DsButton type="button" variant="secondary" @click="resetFilters">Limpar</DsButton>
+          </div>
+        </form>
+      </section>
+
       <section class="appointments-cockpit__summary">
         <DsCard v-for="card in summaryCards" :key="card.label" class="metric-card metric-card--summary">
           <div class="metric-card__stack">
@@ -600,6 +685,73 @@
               </span>
             </div>
           </section>
+
+          <section class="appointments-listing" aria-label="Listagem de agendamentos">
+            <div class="appointments-listing__header">
+              <div>
+                <strong>Listagem</strong>
+                <span>{{ agendaListRows.length }} registro(s) encontrados</span>
+              </div>
+              <DsButton v-if="canManageScheduling" variant="secondary" @click="openCreateFlow">Incluir</DsButton>
+            </div>
+            <DataTable
+              :columns="agendaTableColumns"
+              :rows="agendaListRows"
+              :loading="loading"
+              empty-icon="📅"
+              empty-title="Nenhum agendamento encontrado"
+              empty-description="Ajuste os filtros ou inclua um novo agendamento."
+              variant="hoverable"
+            >
+              <template #cell-scheduledAt="{ row }">
+                <strong>{{ formatAgendaDateTime((row as SchedulingCockpitAppointmentSummary).scheduledAt) }}</strong>
+              </template>
+              <template #cell-ownerId="{ row }">
+                {{ ownerName((row as SchedulingCockpitAppointmentSummary).ownerId) }}
+              </template>
+              <template #cell-patientId="{ row }">
+                {{ patientName((row as SchedulingCockpitAppointmentSummary).patientId) }}
+              </template>
+              <template #cell-practitionerStaffId="{ row }">
+                {{ (row as SchedulingCockpitAppointmentSummary).practitionerName || 'Sem profissional' }}
+              </template>
+              <template #cell-serviceName="{ row }">
+                {{
+                  (row as SchedulingCockpitAppointmentSummary).serviceName ||
+                  (row as SchedulingCockpitAppointmentSummary).specialty ||
+                  (row as SchedulingCockpitAppointmentSummary).reason
+                }}
+              </template>
+              <template #cell-status="{ row }">
+                <span class="status-pill" :class="`status-pill--${(row as SchedulingCockpitAppointmentSummary).status}`">
+                  {{ statusLabel((row as SchedulingCockpitAppointmentSummary).status) }}
+                </span>
+              </template>
+              <template #cell-operational="{ row }">
+                {{ operationalLabel(row as SchedulingCockpitAppointmentSummary) }}
+              </template>
+              <template #cell-actions="{ row }">
+                <div class="row-actions">
+                  <DsButton
+                    size="sm"
+                    variant="secondary"
+                    @click="openAppointmentDetails(row as SchedulingCockpitAppointmentSummary)"
+                  >
+                    Abrir
+                  </DsButton>
+                  <DsButton
+                    v-if="canCheckIn(row as SchedulingCockpitAppointmentSummary)"
+                    size="sm"
+                    variant="success"
+                    :loading="actionLoadingId === (row as SchedulingCockpitAppointmentSummary).id && actionKind === 'checkin'"
+                    @click="checkIn(row as SchedulingCockpitAppointmentSummary)"
+                  >
+                    Check-in
+                  </DsButton>
+                </div>
+              </template>
+            </DataTable>
+          </section>
         </section>
       </div>
     </template>
@@ -662,6 +814,8 @@ import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppointmentClientSelectorModal from '@/components/appointments/AppointmentClientSelectorModal.vue';
 import AppointmentDetailsDrawer from '@/components/appointments/AppointmentDetailsDrawer.vue';
 import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
@@ -728,6 +882,7 @@ const selectedAppointment = ref<SchedulingCockpitAppointmentSummary | null>(null
 const actionLoadingId = ref('');
 const actionKind = ref<'cancel' | 'checkin' | 'noshow' | ''>('');
 const pendingSlotPreset = ref<AppointmentSlotPreset | null>(null);
+const quickStatusFilter = ref('');
 
 const viewMode = ref<'day' | 'week' | 'month'>('day');
 const referenceDate = ref(new Date().toISOString().slice(0, 10));
@@ -784,6 +939,16 @@ const vetusLegendItems = [
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const timelineHours = Array.from({ length: 13 }, (_, index) => 7 + index);
 const maxVisibleAppointmentsPerSlot = 2;
+const agendaTableColumns: DataTableColumn[] = [
+  { key: 'scheduledAt', label: 'Data/Hora', width: '150px' },
+  { key: 'ownerId', label: 'Cliente' },
+  { key: 'patientId', label: 'Animal' },
+  { key: 'practitionerStaffId', label: 'Profissional' },
+  { key: 'serviceName', label: 'Serviço' },
+  { key: 'status', label: 'Situação', width: '120px' },
+  { key: 'operational', label: 'Fluxo', width: '140px' },
+  { key: 'actions', label: 'Abrir', width: '170px', class: 'table__actions-col' }
+];
 
 const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
 const canManageScheduling = computed(() => permissionCodes.value?.includes('scheduling.manage') ?? false);
@@ -816,6 +981,9 @@ const filteredItems = computed(() => {
     return true;
   });
 });
+const agendaListRows = computed(() =>
+  [...filteredItems.value].sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))
+);
 const summaryCards = computed(() => {
   const items = filteredItems.value;
   if (!overview.value) return [];
@@ -1023,6 +1191,15 @@ function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatAgendaDateTime(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function formatHour(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`;
 }
@@ -1198,11 +1375,13 @@ function resetFilters() {
     clientSearch: '',
     marker: ''
   };
+  quickStatusFilter.value = '';
   selectedStatuses.value = [];
   void loadOverview();
 }
 
 function clearStatusFilters() {
+  quickStatusFilter.value = '';
   selectedStatuses.value = [];
   void loadOverview();
 }
@@ -1223,6 +1402,13 @@ function clearClientFilter() {
 
 function clearMarkerFilter() {
   localFilters.value.marker = '';
+}
+
+function applyQuickSearch() {
+  selectedStatuses.value = quickStatusFilter.value
+    ? [quickStatusFilter.value as AppointmentStatus]
+    : [];
+  void loadOverview();
 }
 
 async function loadReferenceData(items: SchedulingCockpitAppointmentSummary[]) {
@@ -1442,6 +1628,101 @@ onMounted(async () => {
 <style scoped>
 .appointments-cockpit {
   max-width: 1560px;
+}
+
+.vetus-agenda-panel {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.vetus-agenda-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.vetus-agenda-panel__header > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vetus-agenda-panel__header strong,
+.appointments-listing__header strong {
+  color: var(--color-text, #0f172a);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.vetus-agenda-panel__header span,
+.appointments-listing__header span {
+  color: var(--color-text-secondary, #475569);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.vetus-agenda-panel__actions {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.vetus-agenda-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.vetus-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vetus-field span {
+  color: var(--color-text-secondary, #475569);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.vetus-field input,
+.vetus-field select {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--color-border, #dbe2ea);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-text, #0f172a);
+  font: inherit;
+  padding: 8px 10px;
+}
+
+.vetus-field input:focus,
+.vetus-field select:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.vetus-agenda-filters__actions,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .appointments-cockpit__summary {
@@ -2355,11 +2636,42 @@ onMounted(async () => {
   line-height: 1.45;
 }
 
+.appointments-listing {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.appointments-listing__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.appointments-listing__header > div {
+  display: grid;
+  gap: 4px;
+}
+
 .agenda-cta {
   box-shadow: 0 12px 24px rgba(249, 115, 22, 0.18);
 }
 
 @media (max-width: 1180px) {
+  .vetus-agenda-filters {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .vetus-agenda-filters__actions {
+    grid-column: 1 / -1;
+  }
+
   .appointments-cockpit__layout {
     grid-template-columns: 1fr;
   }
@@ -2379,6 +2691,16 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
+  .vetus-agenda-panel__header,
+  .appointments-listing__header {
+    display: grid;
+  }
+
+  .vetus-agenda-panel__actions,
+  .vetus-agenda-filters {
+    grid-template-columns: 1fr;
+  }
+
   .month-grid {
     grid-template-columns: 1fr;
   }

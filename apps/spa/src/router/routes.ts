@@ -406,6 +406,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'appointments',
         name: 'Appointments',
         component: () => import('@/pages/appointments/AppointmentsListPage.vue'),
+        alias: ['/agenda', '/agendamentos', '/atendimento/agenda', '/atendimento/atendimentos/agenda'],
         meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: '📅' }
       },
       {
@@ -434,6 +435,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'appointments/new',
         name: 'AppointmentNew',
         component: () => import('@/pages/appointments/AppointmentFormPage.vue'),
+        alias: ['/agenda/novo', '/agendamentos/novo', '/atendimento/atendimentos/agenda/novo'],
         meta: {
           title: 'Novo Agendamento',
           breadcrumb: 'Novo Agendamento',

@@ -23,6 +23,20 @@ describe('router convergence', () => {
     expect(findChildRoute('scheduling/new')?.redirect).toBe('/appointments/new');
   });
 
+  it('exposes Vetus-like aliases for the agenda flow', () => {
+    expect(findChildRoute('appointments')?.alias).toEqual([
+      '/agenda',
+      '/agendamentos',
+      '/atendimento/agenda',
+      '/atendimento/atendimentos/agenda'
+    ]);
+    expect(findChildRoute('appointments/new')?.alias).toEqual([
+      '/agenda/novo',
+      '/agendamentos/novo',
+      '/atendimento/atendimentos/agenda/novo'
+    ]);
+  });
+
   it('anchors the renamed atendimento and cadastros routes to the new taxonomy', () => {
     expect(findChildRoute('encounters')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('queue')?.meta?.title).toBe('Esteira');
