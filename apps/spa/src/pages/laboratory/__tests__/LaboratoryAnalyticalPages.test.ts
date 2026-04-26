@@ -11,6 +11,7 @@ import { patientService } from '@/services/patient';
 vi.mock('@/services/laboratory', () => ({
   laboratoryService: {
     listHemograms: vi.fn(),
+    listUrinalysis: vi.fn(),
     listReferenceValues: vi.fn()
   }
 }));
@@ -45,7 +46,44 @@ describe('Laboratory analytical result pages', () => {
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
     ]);
-    vi.mocked(laboratoryService.listReferenceValues).mockResolvedValue([
+    vi.mocked(laboratoryService.listUrinalysis).mockResolvedValue([
+      {
+        id: 'diag_uri_1' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'patient_1' as never,
+        examType: 'Urina',
+        examCatalogId: 'cat_003',
+        reason: 'Suspeita urinaria',
+        status: 'resulted',
+        resultSummary: 'Densidade urinaria: 1.035; pH urinario: 6.5',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-25T10:00:00.000Z'
+      }
+    ]);
+    vi.mocked(laboratoryService.listReferenceValues).mockImplementation(async (filterExam?: string) => {
+      if (filterExam === 'URIN') {
+        return [
+          {
+            id: 'ref-urin-1',
+            parameter: 'Densidade urinaria',
+            examType: 'URIN',
+            minValue: 1.015,
+            maxValue: 1.045,
+            unit: 'SG'
+          },
+          {
+            id: 'ref-urin-2',
+            parameter: 'pH urinario',
+            examType: 'URIN',
+            minValue: 5.5,
+            maxValue: 7.5,
+            unit: 'pH'
+          }
+        ];
+      }
+
+      return [
       {
         id: 'ref-hem-1',
         parameter: 'Hemacias',
@@ -62,7 +100,8 @@ describe('Laboratory analytical result pages', () => {
         maxValue: 17,
         unit: 'mil/uL'
       }
-    ]);
+      ];
+    });
     vi.mocked(patientService.list).mockResolvedValue([
       {
         id: 'patient_1',
@@ -142,17 +181,57 @@ describe('Laboratory analytical result pages', () => {
     });
   });
 
-  it('renders urinalysis as physical chemical and microscopic sections', () => {
+  it('renders urinalysis as an operational physical chemical and microscopic flow', async () => {
     const wrapper = mount(LaboratoryUrinalysisPage);
+    await flushPromises();
 
     expect(wrapper.text()).toContain('Urina');
     expect(wrapper.text()).toContain('Análise urinária completa');
+    expect(wrapper.text()).toContain('Código do Exame');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('Proprietário');
+    expect(wrapper.text()).toContain('Animal');
+    expect(wrapper.text()).toContain('Data da Análise');
+    expect(wrapper.text()).toContain('Data de Entrada');
+    expect(wrapper.text()).toContain('Pesquisar Exames Fechados');
+    expect(wrapper.text()).toContain('Cliente Exemplo');
+    expect(wrapper.text()).toContain('Mel');
     expect(wrapper.text()).toContain('Exame físico');
     expect(wrapper.text()).toContain('Exame químico');
     expect(wrapper.text()).toContain('Exame microscópico');
     expect(wrapper.text()).toContain('Achados observacionais');
-    expect(wrapper.text()).toContain('Resultado clínico estruturado');
-    expect(wrapper.text()).toContain('Laudo');
+    expect(wrapper.text()).toContain('Densidade urinária');
+    expect(wrapper.text()).toContain('pH urinário');
+    expect(laboratoryService.listUrinalysis).toHaveBeenCalledWith({
+      code: undefined,
+      finalizedAt: undefined,
+      enteredAt: undefined,
+      body: undefined,
+      closed: true
+    });
+    expect(laboratoryService.listReferenceValues).toHaveBeenCalledWith('URIN');
+  });
+
+  it('sends Vetus-like urinalysis filters to the laboratory API', async () => {
+    const wrapper = mount(LaboratoryUrinalysisPage);
+    await flushPromises();
+
+    const searchInputs = wrapper.findAll('input[type="search"]');
+    await searchInputs[0].setValue('diag');
+    await searchInputs[4].setValue('Densidade');
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0].setValue('2026-04-25');
+    await dateInputs[1].setValue('2026-04-24');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(laboratoryService.listUrinalysis).toHaveBeenLastCalledWith({
+      code: 'diag',
+      finalizedAt: '2026-04-25',
+      enteredAt: '2026-04-24',
+      body: 'Densidade',
+      closed: true
+    });
   });
 
   it('renders biochemistry as a compact tabular panel with species references', () => {

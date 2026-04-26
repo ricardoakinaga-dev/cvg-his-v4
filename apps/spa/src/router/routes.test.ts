@@ -62,7 +62,12 @@ describe('router convergence', () => {
       ])
     );
     expect(findChildRoute('laboratory/urinalysis')?.alias).toEqual(
-      expect.arrayContaining(['/urina', '/laboratorio/urina', '/laboratorio/exames/urina'])
+      expect.arrayContaining([
+        '/urina',
+        '/laboratorio/urina',
+        '/laboratorio/atendimentos/urina',
+        '/laboratorio/exames/urina'
+      ])
     );
     expect(findChildRoute('laboratory/orders')?.alias).toEqual(
       expect.arrayContaining([

@@ -5813,6 +5813,132 @@ paths:
               schema:
                 $ref: '#/components/schemas/DiagnosticOrderListResponse'
 
+  /laboratory/urinalysis:
+    get:
+      operationId: listLaboratoryUrinalysis
+      summary: List laboratory urinalysis results
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: code
+          schema:
+            type: string
+          description: Optional Vetus-like urinalysis code filter.
+        - in: query
+          name: patientId
+          schema:
+            type: string
+          description: Optional patient/animal ID filter.
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional Vetus-like animal filter.
+        - in: query
+          name: finalizedAt
+          schema:
+            type: string
+            format: date
+          description: Optional analysis/finalization date filter.
+        - in: query
+          name: enteredAt
+          schema:
+            type: string
+            format: date
+          description: Optional entry date filter.
+        - in: query
+          name: body
+          schema:
+            type: string
+          description: Optional result body filter.
+        - in: query
+          name: closed
+          schema:
+            type: boolean
+          description: Optional closed urinalysis filter.
+      responses:
+        '200':
+          description: Laboratory urinalysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratorio/atendimentos/urina:
+    get:
+      operationId: listLaboratorioAtendimentosUrinaAlias
+      summary: List urinalysis results using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional Vetus-like urinalysis code filter.
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional Vetus-like animal filter.
+        - in: query
+          name: dataFinalizacao
+          schema:
+            type: string
+            format: date
+          description: Optional analysis/finalization date filter.
+        - in: query
+          name: dataEntrada
+          schema:
+            type: string
+            format: date
+          description: Optional entry date filter.
+        - in: query
+          name: corpo
+          schema:
+            type: string
+          description: Optional result body filter.
+        - in: query
+          name: fechados
+          schema:
+            type: boolean
+          description: Optional closed urinalysis filter.
+      responses:
+        '200':
+          description: Laboratory urinalysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratorio/urina:
+    get:
+      operationId: listLaboratorioUrinaAlias
+      summary: List urinalysis results using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional Vetus-like urinalysis code filter.
+        - in: query
+          name: corpo
+          schema:
+            type: string
+          description: Optional result body filter.
+        - in: query
+          name: fechados
+          schema:
+            type: boolean
+          description: Optional closed urinalysis filter.
+      responses:
+        '200':
+          description: Laboratory urinalysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
   /diagnostics/results:
     get:
       operationId: listDiagnosticsResults

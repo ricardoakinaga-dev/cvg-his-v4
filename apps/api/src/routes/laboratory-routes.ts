@@ -76,6 +76,14 @@ function isLaboratoryHemogramsCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryUrinalysisCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/urinalysis',
+    '/laboratorio/urina',
+    '/laboratorio/atendimentos/urina'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -313,6 +321,7 @@ export async function handleLaboratoryRoutes(
     (
       isLaboratoryResultsCollectionPath(pathname)
       || isLaboratoryHemogramsCollectionPath(pathname)
+      || isLaboratoryUrinalysisCollectionPath(pathname)
       || pathname === '/diagnostics/results'
     )
     && request.method === 'GET'
@@ -321,6 +330,8 @@ export async function handleLaboratoryRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = isLaboratoryHemogramsCollectionPath(pathname)
       ? (url.searchParams.get('examType') ?? 'HEM')
+      : isLaboratoryUrinalysisCollectionPath(pathname)
+        ? (url.searchParams.get('examType') ?? 'URIN')
       : (url.searchParams.get('examType') ?? undefined);
     const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
     const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
@@ -343,11 +354,17 @@ export async function handleLaboratoryRoutes(
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: routeModule,
-      action: isLaboratoryHemogramsCollectionPath(pathname) ? 'hemograms_list' : 'results_list',
+      action: isLaboratoryHemogramsCollectionPath(pathname)
+        ? 'hemograms_list'
+        : isLaboratoryUrinalysisCollectionPath(pathname)
+          ? 'urinalysis_list'
+          : 'results_list',
       entityType: 'diagnostic-order',
       entityId: examType ?? 'all-results',
       payloadSummary: isLaboratoryHemogramsCollectionPath(pathname)
         ? 'Laboratory hemograms listed'
+        : isLaboratoryUrinalysisCollectionPath(pathname)
+          ? 'Laboratory urinalysis results listed'
         : 'Released laboratory results listed',
       riskLevel: 'medium',
       correlationId

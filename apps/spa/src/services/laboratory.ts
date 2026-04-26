@@ -139,6 +139,26 @@ export const laboratoryService = {
     );
   },
 
+  async listUrinalysis(filters?: LaboratoryReportListFilters): Promise<DiagnosticOrderSummary[]> {
+    const response = await apiRequest<DiagnosticOrderListResponse>(
+      `/laboratory/urinalysis${buildQuery({
+        examType: filters?.examType ?? 'URIN',
+        code: filters?.code,
+        patientId: filters?.patientId,
+        animal: filters?.animal,
+        finalizedAt: filters?.finalizedAt,
+        enteredAt: filters?.enteredAt,
+        body: filters?.body,
+        closed: typeof filters?.closed === 'boolean'
+          ? String(filters.closed)
+          : undefined
+      })}`
+    );
+    return [...(response.items ?? [])].sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt)
+    );
+  },
+
   async getDashboardSummary(): Promise<LaboratoryDashboardSummary> {
     return apiRequest<LaboratoryDashboardSummary>('/laboratory/summary');
   },

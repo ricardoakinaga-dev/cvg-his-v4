@@ -569,7 +569,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/urinalysis',
         name: 'LaboratoryUrinalysis',
-        alias: ['/urina', '/urinanalise', '/urinálise', '/laboratorio/urina', '/laboratorio/exames/urina'],
+        alias: ['/urina', '/urinanalise', '/urinálise', '/laboratorio/urina', '/laboratorio/atendimentos/urina', '/laboratorio/exames/urina'],
         component: () => import('@/pages/laboratory/LaboratoryUrinalysisPage.vue'),
         meta: {
           title: 'Urina',
