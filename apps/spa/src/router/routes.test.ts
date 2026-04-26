@@ -225,6 +225,10 @@ describe('router convergence', () => {
         '/estoque/cadastros/fornecedores-e-despesas'
       ])
     );
+    expect(findChildRoute('warehouses')?.meta?.title).toBe('Estoques');
+    expect(findChildRoute('warehouses')?.alias).toEqual(
+      expect.arrayContaining(['/estoques', '/estoque/estoques', '/estoque/cadastros/estoques'])
+    );
     expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
     expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');

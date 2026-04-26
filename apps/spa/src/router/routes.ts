@@ -1916,6 +1916,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'warehouses',
         name: 'Warehouses',
+        alias: ['/estoques', '/estoque/estoques', '/estoque/cadastros/estoques'],
         component: () => import('@/pages/inventory/WarehousesPage.vue'),
         meta: {
           title: 'Estoques',

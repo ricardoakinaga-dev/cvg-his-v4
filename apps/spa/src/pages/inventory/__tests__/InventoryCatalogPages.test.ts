@@ -23,8 +23,8 @@ const pages = [
   {
     loader: () => import('../WarehousesPage.vue'),
     title: 'Estoques',
-    breadcrumb: 'EstoqueCadastradosEstoques',
-    placeholder: 'Buscar por ID ou descrição'
+    breadcrumb: 'EstoqueCadastrosEstoques',
+    placeholder: undefined
   }
 ];
 
