@@ -709,11 +709,45 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'beds',
         name: 'Beds',
+        alias: ['/boxes-de-internacao', '/cadastros/boxes-de-internacao', '/cadastro/boxes-de-internacao'],
         component: () => import('@/pages/inpatient/BedsPage.vue'),
         meta: {
-          title: 'Leitos',
-          breadcrumb: 'Leitos',
-          breadcrumbParent: 'Internação',
+          title: 'Boxes de Internação',
+          breadcrumb: 'Boxes de Internação',
+          breadcrumbParent: 'Cadastros',
+          icon: '🛏️'
+        }
+      },
+      {
+        path: 'beds/new',
+        name: 'BedNew',
+        component: () => import('@/pages/inpatient/BedFormPage.vue'),
+        meta: {
+          title: 'Incluir Box de Internação',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Boxes de Internação',
+          icon: '🛏️'
+        }
+      },
+      {
+        path: 'beds/:id',
+        name: 'BedDetail',
+        component: () => import('@/pages/inpatient/BedDetailPage.vue'),
+        meta: {
+          title: 'Box de Internação',
+          breadcrumb: 'Abrir',
+          breadcrumbParent: 'Boxes de Internação',
+          icon: '🛏️'
+        }
+      },
+      {
+        path: 'beds/:id/edit',
+        name: 'BedEdit',
+        component: () => import('@/pages/inpatient/BedFormPage.vue'),
+        meta: {
+          title: 'Editar Box de Internação',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Boxes de Internação',
           icon: '🛏️'
         }
       },

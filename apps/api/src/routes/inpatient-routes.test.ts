@@ -169,3 +169,52 @@ test('handleInpatientRoutes generates handover preview with latest progress and 
   );
   assert.equal(payload.items[0]?.requiresAttention, true);
 });
+
+test('handleInpatientRoutes lists beds with Vetus-like filters', async () => {
+  const response = new MockResponse();
+  const listBeds = test.mock.fn(async () => [
+    {
+      id: 'bed-1',
+      accountId: 'acc_cvg_demo',
+      sectorId: 'sector-1',
+      code: 'B01',
+      name: 'Box 01',
+      status: 'available',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'bed-2',
+      accountId: 'acc_cvg_demo',
+      sectorId: 'sector-1',
+      code: 'B02',
+      name: 'Isolamento',
+      status: 'blocked',
+      active: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ]);
+
+  const handled = await handleInpatientRoutes(
+    '/beds',
+    new MockRequest({
+      method: 'GET',
+      url: '/beds?code=B01&description=Box&active=true'
+    }) as never,
+    response as never,
+    'corr-beds-list',
+    {
+      inpatient: createInpatientService(),
+      sectorBedService: { listBeds } as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.deepEqual(payload.items.map((item) => item.id), ['bed-1']);
+});

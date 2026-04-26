@@ -77,8 +77,18 @@ export const inpatientService = {
     });
   },
 
-  async listBeds(sectorId?: string): Promise<BedSummary[]> {
-    const params = sectorId ? `?sectorId=${encodeURIComponent(sectorId)}` : '';
+  async listBeds(filters?: {
+    sectorId?: string;
+    code?: string;
+    description?: string;
+    active?: boolean;
+  }): Promise<BedSummary[]> {
+    const query = new URLSearchParams();
+    if (filters?.sectorId) query.set('sectorId', filters.sectorId);
+    if (filters?.code) query.set('code', filters.code);
+    if (filters?.description) query.set('description', filters.description);
+    if (filters?.active === false) query.set('active', 'false');
+    const params = query.toString() ? `?${query.toString()}` : '';
     const res = await apiRequest<{ items: BedSummary[] }>(`/beds${params}`);
     return res.items;
   },
@@ -92,6 +102,33 @@ export const inpatientService = {
     return apiRequest<BedSummary>('/beds', {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  },
+
+  async getBedById(bedId: string): Promise<BedSummary> {
+    return apiRequest<BedSummary>(`/beds/${encodeURIComponent(bedId)}`);
+  },
+
+  async updateBed(
+    bedId: string,
+    payload: {
+      sectorId?: string;
+      code?: string;
+      name?: string;
+      status?: BedSummary['status'];
+      supportsSpecies?: string | null;
+      active?: boolean;
+    }
+  ): Promise<BedSummary> {
+    return apiRequest<BedSummary>(`/beds/${encodeURIComponent(bedId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async archiveBed(bedId: string): Promise<void> {
+    await apiRequest<void>(`/beds/${encodeURIComponent(bedId)}`, {
+      method: 'DELETE'
     });
   },
 

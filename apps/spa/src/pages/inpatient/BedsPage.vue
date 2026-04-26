@@ -1,11 +1,14 @@
 <template>
   <div class="beds-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Leitos']" title="Leitos" subtitle="Atendimento > Internação > Leitos. Gestão de disponibilidade assistencial por setor.">
+    <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Boxes de Internação']"
+      title="Boxes de Internação"
+      subtitle="Cadastro de boxes usado na admissão, mapa de leitos e controle de disponibilidade da internação.">
       <template #actions>
-        <DsBadge variant="info" size="md">{{ beds.length }} leitos</DsBadge>
+        <DsBadge variant="info" size="md">{{ beds.length }} boxes</DsBadge>
         <DsButton variant="ghost" tag="a" href="/sectors">Setores</DsButton>
         <DsButton variant="secondary" tag="a" href="/inpatient/board">Mapa de Leitos</DsButton>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
+        <DsButton variant="primary" @click="router.push('/beds/new')">Incluir</DsButton>
       </template>
     </AppPageHeader>
 
@@ -23,97 +26,127 @@
         <span class="overview-card__label">Ocupados</span>
       </div>
       <div class="overview-card">
-        <span class="overview-card__value">{{ maintenanceCount }}</span>
-        <span class="overview-card__label">Manutenção</span>
+        <span class="overview-card__value">{{ blockedCount }}</span>
+        <span class="overview-card__label">Bloqueados</span>
       </div>
     </section>
 
-    <div class="workspace">
-      <DsCard title="Novo leito" class="panel">
-        <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
-          {{ formError }}
-        </DsAlert>
-        <form class="form-grid" @submit.prevent="createBed">
-          <DsInput v-model="form.sectorId" label="Setor ID" placeholder="ID do setor" required />
-          <DsInput v-model="form.code" label="Código" placeholder="Ex.: B01" required />
-          <DsInput v-model="form.name" label="Nome" placeholder="Ex.: Leito 01" required />
-          <DsInput v-model="form.supportsSpecies" label="Espécie suportada" placeholder="Ex.: caninos, felinos" />
-          <div class="actions-row">
-            <DsButton :loading="saving" variant="primary">Criar leito</DsButton>
-          </div>
-        </form>
-      </DsCard>
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
 
-      <DsCard title="Leitos cadastrados" class="panel">
-        <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-          {{ error }}
-        </DsAlert>
-        <DataTable
-          :columns="columns"
-          :rows="beds"
-          :loading="loading"
-          empty-icon="🛏️"
-          empty-title="Nenhum leito cadastrado"
-          empty-description="Cadastre setores e leitos para liberar o mapa de ocupação e preparar admissões na internação."
-          variant="hoverable"
-        >
-          <template #cell-status="{ row }">
-            <StatusBadge
-              :label="statusLabel((row as BedSummary).status)"
-              :variant="statusVariant((row as BedSummary).status)"
-            />
-          </template>
-          <template #cell-active="{ row }">
-            <StatusBadge
-              :label="(row as BedSummary).active ? 'Ativo' : 'Inativo'"
-              :variant="(row as BedSummary).active ? 'success' : 'neutral'"
-            />
-          </template>
-        </DataTable>
-      </DsCard>
-    </div>
+    <DsCard>
+      <div class="legacy-filter-grid">
+        <DsInput v-model="filters.code" label="Código" placeholder="Código" />
+        <DsInput v-model="filters.description" label="Descrição" placeholder="Descrição" />
+        <label class="active-filter">
+          <input v-model="filters.activeOnly" type="checkbox" />
+          <span>Boxes Ativos</span>
+        </label>
+        <DsButton variant="secondary" :loading="loading" @click="loadData">Pesquisar</DsButton>
+      </div>
+    </DsCard>
+
+    <DataTable
+      :columns="columns"
+      :rows="beds"
+      :loading="loading"
+      empty-icon="🛏️"
+      empty-title="Nenhum registro encontrado"
+      empty-description="Use os filtros acima ou inclua um novo box de internação."
+      variant="hoverable"
+    >
+      <template #cell-code="{ row }">
+        <strong>{{ (row as BedSummary).code }}</strong>
+      </template>
+      <template #cell-name="{ row }">
+        {{ (row as BedSummary).name }}
+      </template>
+      <template #cell-sectorId="{ row }">
+        {{ sectorLabel((row as BedSummary).sectorId) }}
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge
+          :label="statusLabel((row as BedSummary).status)"
+          :variant="statusVariant((row as BedSummary).status)"
+        />
+      </template>
+      <template #cell-active="{ row }">
+        {{ (row as BedSummary).active ? 'Sim' : 'Não' }}
+      </template>
+      <template #cell-actions="{ row }">
+        <DsButton size="sm" variant="secondary" @click="router.push(`/beds/${(row as BedSummary).id}`)">
+          Abrir
+        </DsButton>
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DataTable from '@/components/DataTable.vue';
+import DataTable, { type DataTableColumn } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import { inpatientService } from '@/services/inpatient';
+import type { BedSummary, SectorSummary } from '@/types/inpatient';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import { inpatientService } from '@/services/inpatient';
-import type { BedSummary } from '@/types/inpatient';
-import type { DataTableColumn } from '@/components/DataTable.vue';
 
+const router = useRouter();
 const loading = ref(true);
-const saving = ref(false);
 const error = ref('');
-const formError = ref('');
 const beds = ref<BedSummary[]>([]);
-
-const form = reactive({
-  sectorId: '',
+const sectors = ref<SectorSummary[]>([]);
+const filters = ref({
   code: '',
-  name: '',
-  supportsSpecies: ''
+  description: '',
+  activeOnly: true
 });
 
 const columns: DataTableColumn[] = [
-  { key: 'code', label: 'Código' },
-  { key: 'name', label: 'Nome' },
-  { key: 'sectorId', label: 'Setor' },
-  { key: 'status', label: 'Status' },
-  { key: 'supportsSpecies', label: 'Espécie' },
-  { key: 'active', label: 'Ativo' }
+  { key: 'code', label: 'Código', width: '130px' },
+  { key: 'name', label: 'Descrição' },
+  { key: 'sectorId', label: 'Setor', width: '190px' },
+  { key: 'status', label: 'Status', width: '140px' },
+  { key: 'active', label: 'Boxes Ativos', width: '130px' },
+  { key: 'actions', label: 'Abrir', width: '110px', class: 'table__actions-col' }
 ];
 
 const availableCount = computed(() => beds.value.filter((bed) => bed.status === 'available').length);
 const occupiedCount = computed(() => beds.value.filter((bed) => bed.status === 'occupied').length);
-const maintenanceCount = computed(() => beds.value.filter((bed) => bed.status === 'maintenance').length);
+const blockedCount = computed(() => beds.value.filter((bed) => bed.status === 'blocked' || !bed.active).length);
+
+async function loadData() {
+  loading.value = true;
+  error.value = '';
+  try {
+    const [bedItems, sectorItems] = await Promise.all([
+      inpatientService.listBeds({
+        code: filters.value.code.trim() || undefined,
+        description: filters.value.description.trim() || undefined,
+        active: filters.value.activeOnly
+      }),
+      inpatientService.listSectors()
+    ]);
+    beds.value = bedItems;
+    sectors.value = sectorItems;
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Falha ao carregar boxes de internação';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function sectorLabel(sectorId: string): string {
+  const sector = sectors.value.find((item) => item.id === sectorId);
+  return sector ? `${sector.code} - ${sector.name}` : sectorId;
+}
 
 function statusLabel(status: BedSummary['status']) {
   const map: Record<BedSummary['status'], string> = {
@@ -135,44 +168,6 @@ function statusVariant(status: BedSummary['status']) {
   return map[status];
 }
 
-async function loadData() {
-  loading.value = true;
-  error.value = '';
-  try {
-    beds.value = await inpatientService.listBeds();
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao carregar leitos';
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function createBed() {
-  saving.value = true;
-  formError.value = '';
-  try {
-    await inpatientService.createBed({
-      sectorId: form.sectorId.trim(),
-      code: form.code.trim(),
-      name: form.name.trim(),
-      supportsSpecies: form.supportsSpecies.trim() || undefined
-    });
-    form.sectorId = '';
-    form.code = '';
-    form.name = '';
-    form.supportsSpecies = '';
-    await loadData();
-  } catch (err: unknown) {
-    formError.value = err instanceof Error ? err.message : 'Falha ao criar leito';
-  } finally {
-    saving.value = false;
-  }
-}
-
-function reload() {
-  void loadData();
-}
-
 onMounted(loadData);
 </script>
 
@@ -191,9 +186,9 @@ onMounted(loadData);
 
 .overview-card {
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: var(--color-surface, #ffffff);
 }
 
 .overview-card__value {
@@ -208,29 +203,30 @@ onMounted(loadData);
   color: var(--color-text-muted, #64748b);
 }
 
-.workspace {
+.legacy-filter-grid {
   display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 16px;
-}
-
-.panel {
-  border-radius: 18px;
-}
-
-.form-grid {
-  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(260px, 1fr) auto auto;
+  align-items: end;
   gap: 12px;
 }
 
-.actions-row {
-  display: flex;
+.active-filter {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
   gap: 8px;
-  flex-wrap: wrap;
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+  font-weight: 600;
 }
 
-@media (max-width: 960px) {
-  .workspace {
+.active-filter input {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 860px) {
+  .legacy-filter-grid {
     grid-template-columns: 1fr;
   }
 }

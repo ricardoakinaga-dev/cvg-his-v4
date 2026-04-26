@@ -111,6 +111,7 @@ import {
   workerFailureExperiment,
   apiLatencyExperiment
 } from '@cvg-his-v2/chaos';
+import type { SectorBedServiceOptions } from '@cvg-his-v2/module-inpatient';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { LocalPixPaymentGateway, PagarMePaymentGatewayAdapter } from './payment-gateway.js';
 import {
@@ -198,6 +199,7 @@ export interface ApiServerOptions {
   readonly mfaEncryptionKey?: string;
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
+  readonly sectorBedOptions?: SectorBedServiceOptions;
   readonly featureFlagsProvider?: string;
   /** Pre-resolved feature flags snapshot (GAP-06: avoids async call inside createApiServer) */
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
@@ -2778,6 +2780,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     mfaEncryptionKey: options.mfaEncryptionKey,
     repositories: options.repositories,
     fileStorage: options.fileStorage,
+    sectorBedOptions: options.sectorBedOptions,
     runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
     notificationsWhatsappRemindersEnabled:
       options.featureFlags?.notificationsWhatsappRemindersEnabled,

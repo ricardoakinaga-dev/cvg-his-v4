@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { sectors, beds, inpatientStays } from '@cvg-his-v2/shared-database';
 import { eq, and, isNull } from 'drizzle-orm';
@@ -12,6 +14,7 @@ import type {
 import type {
   CreateSectorRequest,
   CreateBedRequest,
+  UpdateBedRequest,
   BedMapSector,
   BedMapBed
 } from '@cvg-his-v2/shared-contracts';
@@ -110,7 +113,12 @@ export class DatabaseBedRepository implements BedRepository {
     await this.#db
       .update(beds)
       .set({
+        sectorId: bed.sectorId,
+        code: bed.code,
+        name: bed.name,
         status: bed.status,
+        supportsSpecies: bed.supportsSpecies ?? null,
+        active: bed.active,
         updatedAt: new Date(bed.updatedAt)
       })
       .where(eq(beds.id, bed.id));
@@ -244,7 +252,7 @@ export class SectorBedService {
 
     const now = nowIso();
     const bed: BedSummary = {
-      id: createCorrelationId('bed') as BedId,
+      id: randomUUID() as BedId,
       accountId,
       sectorId: payload.sectorId as SectorId,
       code: payload.code,
@@ -273,6 +281,65 @@ export class SectorBedService {
       throw new NotFoundError('Bed not found', { bedId });
     }
     return bed;
+  }
+
+  public async getBedForAccountOrThrow(accountId: AccountId, bedId: BedId): Promise<BedSummary> {
+    const bed = await this.getBedOrThrow(bedId);
+    if (bed.accountId !== accountId) {
+      throw new NotFoundError('Bed not found', { bedId });
+    }
+    return bed;
+  }
+
+  public async updateBed(
+    accountId: AccountId,
+    bedId: BedId,
+    payload: UpdateBedRequest
+  ): Promise<BedSummary> {
+    const current = await this.getBedForAccountOrThrow(accountId, bedId);
+    const nextSectorId = (payload.sectorId ?? current.sectorId) as SectorId;
+
+    if (payload.sectorId && payload.sectorId !== current.sectorId) {
+      const sector = await this.getSectorOrThrow(nextSectorId);
+      if (sector.accountId !== accountId) {
+        throw new NotFoundError('Sector not found', { sectorId: nextSectorId });
+      }
+    }
+
+    const nextStatus = payload.status ?? current.status;
+    if (!['available', 'occupied', 'maintenance', 'blocked'].includes(nextStatus)) {
+      throw new ValidationError('Invalid bed status', { status: nextStatus });
+    }
+
+    const updated: BedSummary = {
+      ...current,
+      sectorId: nextSectorId,
+      code: payload.code === undefined ? current.code : requireNonEmptyString(payload.code, 'code'),
+      name: payload.name === undefined ? current.name : requireNonEmptyString(payload.name, 'name'),
+      status: nextStatus,
+      supportsSpecies:
+        payload.supportsSpecies === undefined
+          ? current.supportsSpecies
+          : payload.supportsSpecies?.trim() || undefined,
+      active: payload.active ?? current.active,
+      updatedAt: nowIso()
+    };
+
+    await this.#bedRepo.update(updated);
+    return updated;
+  }
+
+  public async archiveBed(accountId: AccountId, bedId: BedId): Promise<void> {
+    const current = await this.getBedForAccountOrThrow(accountId, bedId);
+    if (current.status === 'occupied') {
+      throw new ValidationError('Cannot archive an occupied bed', { bedId });
+    }
+    await this.#bedRepo.update({
+      ...current,
+      active: false,
+      status: 'blocked',
+      updatedAt: nowIso()
+    });
   }
 
   public async getAvailableBeds(sectorId: SectorId): Promise<readonly BedSummary[]> {
@@ -309,7 +376,7 @@ export class SectorBedService {
     const allBeds = await this.#bedRepo.findByAccountId(accountId);
     const bedsBySector = new Map<SectorId, BedSummary[]>();
 
-    for (const bed of allBeds) {
+    for (const bed of allBeds.filter((item) => item.active)) {
       const list = bedsBySector.get(bed.sectorId) ?? [];
       list.push(bed);
       bedsBySector.set(bed.sectorId, list);

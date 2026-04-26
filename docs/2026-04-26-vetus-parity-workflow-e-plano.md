@@ -140,7 +140,9 @@ Submenu `Atendimento` observado em modo somente leitura:
    - Boxes de Internacao
    - Webhooks
 
-Checkpoint de decisao desta tarefa: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
+Checkpoint de decisao anterior: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
+
+Checkpoint de decisao atual: apos `Grupos de Clientes`, o proximo item pela ordem observada do navbar Vetus foi `Boxes de Internacao`; este modulo foi implementado e o proximo item pendente da mesma sequencia e `Webhooks`.
 
 ## Regra de sequenciamento
 
@@ -180,6 +182,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Atendimento > Cadastros > Especies | Cadastro de especies | Implementado | `c70ac2b` | Persistencia em `animal_species`, API `/species`, alias `/specie`, paginas SPA e integracao com animal. |
 | Atendimento > Cadastros > Cores/Pelagens | Cadastro de cores/pelagens | Implementado | `c77af4a` | Persistencia em `coat_colors`, API `/coat-colors`, aliases `/coat-color` e `/pelagens`, paginas SPA. |
 | Atendimento > Cadastros > Grupos de Clientes | Cadastro de grupos de clientes | Implementado | `897820c` | Persistencia em `customer_groups`, API `/customer-groups`, aliases `/customer-group` e `/grupos-de-clientes`, paginas SPA de lista/inclusao/edicao/detalhe, politicas comerciais basicas. |
+| Atendimento > Cadastros > Boxes de Internacao | Cadastro/listagem de boxes de internacao | Implementado | Este commit | Observado no Vetus em `Sistema/Internacao/InternacaoBox.htm`: botao `Incluir`, filtros `Codigo` e `Descricao`, botao `Pesquisar`, tabela com `Codigo`, `Descricao` e `Abrir`. No `cvg-his-v2`: SPA `/beds` com aliases `/boxes-de-internacao`, `/cadastros/boxes-de-internacao`, `/cadastro/boxes-de-internacao`; telas de lista/inclusao/edicao/detalhe; API `/beds`, `/beds/:id`, aliases de colecao; persistencia em `sectors`/`beds`; integracao com mapa de leitos e internação. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -187,6 +190,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+Este commit feat: add Vetus-like inpatient boxes module
 2e53796 feat: persist vaccines and dewormers flow
 c77af4a feat: add Vetus-like coat colors registry flow
 c70ac2b feat: add Vetus-like species registry flow
@@ -205,9 +209,10 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/customer-groups`
+- Ultima rota validada: `http://localhost:3002/beds`
 - API health validado em `http://localhost:3003/health`
-- Ultima migration aplicada: `0029_customer_groups` apos esta tarefa
+- Ultima API validada: `GET http://localhost:3003/beds`
+- Ultima migration aplicada: `0030_vetus_boxes_internacao` apos esta tarefa
 
 ## Padrao minimo para cada modulo espelhado
 
@@ -517,9 +522,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Atendimento > Cadastros > Grupos de Clientes`, continuar pela ordem observada em `Atendimento > Cadastros`:
+Apos concluir `Atendimento > Cadastros > Boxes de Internacao`, continuar pela ordem observada em `Atendimento > Cadastros`:
 
-1. `Boxes de Internacao`
-2. `Webhooks`
+1. `Webhooks`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

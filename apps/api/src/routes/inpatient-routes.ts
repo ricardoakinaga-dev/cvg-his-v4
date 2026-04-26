@@ -10,6 +10,7 @@ import type { SectorBedService } from '@cvg-his-v2/module-inpatient';
 import type {
   CreateSectorRequest,
   CreateBedRequest,
+  UpdateBedRequest,
   InpatientHandoverPreviewResponse
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -17,6 +18,21 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+
+const bedCollectionPaths = new Set(['/beds', '/boxes-de-internacao', '/box-internacao']);
+
+function parseBedId(pathname: string): string | null {
+  const match = pathname.match(/^\/beds\/([^/]+)$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+function normalizeSearch(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
 
 export interface InpatientRoutesHandlers {
   inpatient: InpatientService;
@@ -82,10 +98,23 @@ export async function handleInpatientRoutes(
   }
 
   // GET /beds
-  if (pathname === '/beds' && request.method === 'GET') {
+  if (bedCollectionPaths.has(pathname) && request.method === 'GET') {
     const principal = rp(request, 'inpatient.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const sectorId = url.searchParams.get('sectorId') ?? undefined;
+    const code = normalizeSearch(url.searchParams.get('code'));
+    const description = normalizeSearch(url.searchParams.get('description') ?? url.searchParams.get('name'));
+    const activeOnly = url.searchParams.get('active') !== 'false';
+    const items = await sectorBedService.listBeds(
+      principal.user.accountId as never,
+      sectorId as never
+    );
+    const filteredItems = items.filter((bed) => {
+      const matchesCode = !code || normalizeSearch(bed.code).includes(code);
+      const matchesDescription = !description || normalizeSearch(bed.name).includes(description);
+      const matchesActive = !activeOnly || bed.active;
+      return matchesCode && matchesDescription && matchesActive;
+    });
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -100,17 +129,14 @@ export async function handleInpatientRoutes(
     response.statusCode = 200;
     response.end(
       JSON.stringify({
-        items: await sectorBedService.listBeds(
-          principal.user.accountId as never,
-          sectorId as never
-        )
+        items: filteredItems
       })
     );
     return true;
   }
 
   // POST /beds
-  if (pathname === '/beds' && request.method === 'POST') {
+  if (bedCollectionPaths.has(pathname) && request.method === 'POST') {
     const principal = rp(request, 'inpatient.manage');
     const payload = (await readJsonBody(request)) as CreateBedRequest;
     const bed = await sectorBedService.createBed(principal.user.accountId as never, payload);
@@ -127,6 +153,76 @@ export async function handleInpatientRoutes(
     });
     response.statusCode = 201;
     response.end(JSON.stringify(bed));
+    return true;
+  }
+
+  const bedId = parseBedId(pathname);
+
+  // GET /beds/:id
+  if (bedId && request.method === 'GET') {
+    const principal = rp(request, 'inpatient.read');
+    const bed = await sectorBedService.getBedForAccountOrThrow(
+      principal.user.accountId as never,
+      bedId as never
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'beds',
+      action: 'read',
+      entityType: 'bed',
+      entityId: bed.id,
+      payloadSummary: `Bed ${bed.name} opened`,
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(bed));
+    return true;
+  }
+
+  // PATCH /beds/:id
+  if (bedId && request.method === 'PATCH') {
+    const principal = rp(request, 'inpatient.manage');
+    const payload = (await readJsonBody(request)) as UpdateBedRequest;
+    const bed = await sectorBedService.updateBed(
+      principal.user.accountId as never,
+      bedId as never,
+      payload
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'beds',
+      action: 'update',
+      entityType: 'bed',
+      entityId: bed.id,
+      payloadSummary: `Bed ${bed.name} updated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(bed));
+    return true;
+  }
+
+  // DELETE /beds/:id
+  if (bedId && request.method === 'DELETE') {
+    const principal = rp(request, 'inpatient.manage');
+    await sectorBedService.archiveBed(principal.user.accountId as never, bedId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'beds',
+      action: 'archive',
+      entityType: 'bed',
+      entityId: bedId,
+      payloadSummary: `Bed ${bedId} archived`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 204;
+    response.end();
     return true;
   }
 

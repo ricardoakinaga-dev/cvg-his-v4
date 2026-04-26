@@ -3687,7 +3687,18 @@ paths:
           in: query
           schema:
             type: string
-            format: uuid
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: description
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: Beds
@@ -3714,6 +3725,61 @@ paths:
       responses:
         '201':
           description: Bed created
+
+  /beds/{bedId}:
+    get:
+      operationId: getBed
+      summary: Get bed
+      tags: [Inpatient]
+      parameters:
+        - name: bedId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bed'
+    patch:
+      operationId: updateBed
+      summary: Update bed
+      tags: [Inpatient]
+      parameters:
+        - name: bedId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBedRequest'
+      responses:
+        '200':
+          description: Bed updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bed'
+    delete:
+      operationId: archiveBed
+      summary: Archive bed
+      tags: [Inpatient]
+      parameters:
+        - name: bedId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Bed archived
 
   /bed-map:
     get:
@@ -7536,14 +7602,19 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+        code:
+          type: string
         name:
           type: string
         sectorId:
           type: string
-          format: uuid
         status:
           type: string
+          enum: [available, occupied, maintenance, blocked]
+        supportsSpecies:
+          type: string
+        active:
+          type: boolean
 
     CreateSectorRequest:
       type: object
@@ -7558,13 +7629,34 @@ components:
 
     CreateBedRequest:
       type: object
-      required: [sectorId, name]
+      required: [sectorId, code, name]
       properties:
         sectorId:
           type: string
-          format: uuid
+        code:
+          type: string
         name:
           type: string
+        supportsSpecies:
+          type: string
+
+    UpdateBedRequest:
+      type: object
+      properties:
+        sectorId:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, maintenance, blocked]
+        supportsSpecies:
+          type: string
+          nullable: true
+        active:
+          type: boolean
 
     CreateAttachmentRequest:
       type: object

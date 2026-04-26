@@ -849,7 +849,7 @@ export interface BedSummary {
   readonly sectorId: SectorId;
   readonly code: string;
   readonly name: string;
-  readonly status: 'available' | 'occupied' | 'maintenance';
+  readonly status: 'available' | 'occupied' | 'maintenance' | 'blocked';
   readonly supportsSpecies?: string;
   readonly active: boolean;
   readonly createdAt: string;

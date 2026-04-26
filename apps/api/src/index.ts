@@ -176,6 +176,7 @@ async function main() {
     mfaEncryptionKey: config.mfaEncryptionKey,
     repositories: bootstrapResult.repositories,
     fileStorage: bootstrapResult.fileStorage,
+    sectorBedOptions: db ? { databaseClient: db } : undefined,
     featureFlagsProvider: config.featureFlagsProvider,
     runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
     // GAP-06: pre-resolved feature flags passed directly (already awaited above)

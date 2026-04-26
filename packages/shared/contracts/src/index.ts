@@ -942,6 +942,15 @@ export interface CreateBedRequest {
   readonly supportsSpecies?: string;
 }
 
+export interface UpdateBedRequest {
+  readonly sectorId?: string;
+  readonly code?: string;
+  readonly name?: string;
+  readonly status?: 'available' | 'occupied' | 'maintenance' | 'blocked';
+  readonly supportsSpecies?: string | null;
+  readonly active?: boolean;
+}
+
 export interface SectorListResponse {
   readonly items: readonly SectorSummary[];
 }
@@ -954,7 +963,7 @@ export interface BedMapBed {
   readonly id: string;
   readonly code: string;
   readonly name: string;
-  readonly status: 'available' | 'occupied' | 'maintenance';
+  readonly status: 'available' | 'occupied' | 'maintenance' | 'blocked';
   readonly supportsSpecies?: string;
   readonly stayId?: string;
   readonly patientId?: string;
