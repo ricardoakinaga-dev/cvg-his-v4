@@ -8,38 +8,6 @@
     aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
     <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
-      <div class="sidebar__brand">
-        <div class="sidebar__brand-mark">
-          <span class="sidebar__brand-mark-logo">V</span>
-          <div v-if="!appStore.sidebarCollapsed" class="sidebar__brand-copy">
-            <span class="sidebar__eyebrow">CVG HIS V2</span>
-            <strong>Menu operacional</strong>
-          </div>
-        </div>
-        <button
-          class="sidebar__toggle"
-          @click="appStore.toggleSidebar()"
-          :aria-label="appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'"
-          :title="appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'"
-        >
-          {{ appStore.sidebarCollapsed ? '›' : '‹' }}
-        </button>
-      </div>
-
-      <section class="sidebar__company-context" :class="{ 'sidebar__company-context--collapsed': appStore.sidebarCollapsed }">
-        <div class="sidebar__company-head">
-          <span class="sidebar__eyebrow">Empresa:</span>
-          <span v-if="!appStore.sidebarCollapsed" class="sidebar__company-switch">↔ Trocar contexto</span>
-        </div>
-        <div class="sidebar__company-card">
-          <span class="sidebar__company-icon">🏥</span>
-          <div v-if="!appStore.sidebarCollapsed" class="sidebar__company-copy">
-            <strong>Centro Veterinário Guarapiranga</strong>
-            <span>Unidade principal ativa</span>
-          </div>
-        </div>
-      </section>
-
       <div class="sidebar__search">
         <input
           v-model="searchQuery"
@@ -968,125 +936,12 @@ function handleLogout() {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 12px 8px;
   border-right: 1px solid #dfe4ea;
   background: linear-gradient(180deg, #f7f8fa, #f1f3f6 72%, #eef1f4);
   min-width: 0;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
-}
-
-.sidebar__brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 6px 2px;
-}
-
-.sidebar__brand-mark {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.sidebar__brand-mark-logo {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #f6a24f, #f19436);
-  color: #fff;
-  font-weight: 800;
-  box-shadow: 0 10px 18px rgba(241, 148, 54, 0.24);
-}
-
-.sidebar__brand-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sidebar__brand-copy strong {
-  font-size: 13px;
-  color: #243140;
-}
-
-.sidebar__brand-copy span {
-  font-size: 11px;
-  color: #f19436;
-}
-
-.sidebar__toggle {
-  margin-left: auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.68);
-  color: #6c757d;
-  flex-shrink: 0;
-}
-
-.sidebar__company-context {
-  padding: 8px 6px;
-  border-radius: 8px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.52);
-}
-
-.sidebar__company-context--collapsed {
-  padding: 6px 4px;
-}
-
-.sidebar__company-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.sidebar__company-switch {
-  font-size: 12px;
-  color: #7b8794;
-}
-
-.sidebar__company-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 6px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-  border: 0;
-}
-
-.sidebar__company-icon {
-  width: 28px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.sidebar__company-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sidebar__company-copy strong {
-  font-size: 12px;
-  color: #243140;
-  line-height: 1.25;
-}
-
-.sidebar__company-copy span {
-  font-size: 11px;
-  color: #7b8794;
 }
 
 .sidebar__panel {
@@ -1134,6 +989,10 @@ function handleLogout() {
   background: rgba(255, 255, 255, 0.72);
   color: #243140;
   outline: none;
+}
+
+.app-layout--collapsed .sidebar__search {
+  display: none;
 }
 
 .sidebar__search-input:focus {
@@ -1834,7 +1693,7 @@ function handleLogout() {
     grid-template-columns: 64px minmax(0, 1fr);
   }
 
-  .sidebar__brand-copy,
+  .sidebar__search,
   .sidebar__group-label,
   .sidebar__group-description,
   .sidebar__link-label,
@@ -1874,6 +1733,10 @@ function handleLogout() {
     z-index: 20;
     max-height: 48vh;
     overflow: auto;
+  }
+
+  .app-layout .sidebar__search {
+    display: block;
   }
 
   .workspace__body {
