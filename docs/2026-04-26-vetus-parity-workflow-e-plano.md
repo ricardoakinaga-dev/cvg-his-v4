@@ -207,6 +207,8 @@ Checkpoint posterior em 2026-04-26: o acesso observacional ao Vetus foi retomado
 
 Checkpoint posterior em 2026-04-26: a tentativa de observacao direta ao Vetus para `Estoque > Cadastros > Grupos de Produto`, rota `/grupos-de-produto`, ficou bloqueada por Cloudflare antes da tela do modulo; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. Para manter fidelidade, foram usados artefatos observacionais read-only ja existentes em `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estado-beta-grupos-produto.json`, `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estoque-beta-grupos-produto.html`, `docs/vetus/guides/14-modulo-estoque-fiscal.md` e `docs/vetus/guides/2026-04-23-relatorio-entidade-estoque.md`. Estrutura Vetus confirmada nesses artefatos: breadcrumb `Estoque > Cadastros > Grupos de Produto`, titulo `Grupos de Produto`, texto de apoio `Quer cadastrar grupos de produto de forma pratica? Saiba Mais`, busca `Buscar por ID ou descricao`, botao `Incluir Novo Grupo`, cards com `Descricao`, `ID` e `Ver Detalhes`, e consulta backend Vetus-like `GET /product-group?size=10&page=0&search=`.
 
+Checkpoint posterior em 2026-04-26: para `Estoque > Cadastros > Setores da Empresa`, rota Vetus `/setores`, nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. A implementacao usou os artefatos observacionais read-only existentes em `docs/vetus/guides/02-ANALISE-SISTEMA-VETUS.md`, `docs/vetus/guides/03-MODELO-DADOS.md` e `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/*`, que confirmam o item no navbar Vetus logo apos `Grupos de Produtos`, com URL SPA `/setores`, e modelagem conceitual de setores como departamentos da empresa. Como o `cvg-his-v2` ja tinha a tabela duravel `sectors` criada para Internacao/Boxes, o modulo foi espelhado sem criar tabela paralela.
+
 ## Regra de sequenciamento
 
 A partir deste checkpoint, a sequencia correta e:
@@ -274,6 +276,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Estoque > Cadastros > Estoques | Cadastro de estoques fisicos e logicos por ID e descricao | Implementado | `096a449` | Observado diretamente no Vetus em 2026-04-26 em `/estoques`, somente leitura; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. Estrutura Vetus observada: breadcrumb `Estoque > Cadastros > Estoques`; botao `Incluir Novo Estoque`; busca por `ID ou descricao`; cards com `Descricao`, `ID` e `Ver Detalhes`; formulario `Cadastrar Estoque`/`Editar Estoque` com `Id`, `Descricao`, `Excluir`, `Cancelar` e `Salvar`. No `cvg-his-v2`: SPA `/warehouses` com aliases `/estoques`, `/estoque/estoques` e `/estoque/cadastros/estoques`; tela com acao `Atualizar`, botao `Incluir Novo Estoque`, filtro `Buscar por ID ou descricao`, filtro de situacao, cards Vetus-like com `Descricao`, `ID`, `Situacao` e `Ver Detalhes`; formulario lateral com `Id`, `Descricao`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; integracoes para `Transferencia`, `Validade` e `Auditoria`; API persistente `/warehouses` e `/warehouses/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API `/estoques`, `/estoque/estoques` e `/estoque/cadastros/estoques`; migration duravel `0031_inventory_warehouses` com RLS e seeds genericos por conta, sem nova porta ou dependencia. |
 | Estoque > Cadastros > Fabricantes | Cadastro de fabricantes/marcas por ID e nome | Implementado | `43eb1af` | Observado diretamente no Vetus em 2026-04-26 em `/fabricantes`, somente leitura; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. Estrutura Vetus observada: breadcrumb `Estoque > Cadastros > Fabricantes`; botao `Incluir Novo Fabricante`; busca por `ID ou nome`; estado vazio `Nenhum registro encontrado`; formulario `Cadastrar Fabricantes` com `ID`, `Nome`, `Excluir`, `Cancelar` e `Salvar`. No `cvg-his-v2`: SPA `/manufacturers` com aliases `/fabricantes`, `/estoque/fabricantes` e `/estoque/cadastros/fabricantes`; tela com acao `Atualizar`, botao `Incluir Novo Fabricante`, filtro `Buscar por ID ou nome`, filtro de situacao, cards Vetus-like com `Nome`, `ID`, `Situacao` e `Ver Detalhes`; formulario lateral com `Id`, `Nome`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Produtos`, `Importar Produtos` e `Grupos`; API persistente `/manufacturers` e `/manufacturers/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API `/fabricantes`, `/estoque/fabricantes` e `/estoque/cadastros/fabricantes`; migration duravel `0032_inventory_manufacturers` com RLS, sem nova porta ou dependencia. |
 | Estoque > Cadastros > Grupos de Produtos | Cadastro de grupos de produto por ID e descricao | Implementado | `6f6c640` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes da tela do modulo; nao houve escrita no Vetus. A implementacao usou artefatos observacionais read-only existentes do Vetus para confirmar rota `/grupos-de-produto`, breadcrumb `Estoque > Cadastros > Grupos de Produto`, titulo `Grupos de Produto`, busca `Buscar por ID ou descricao`, botao `Incluir Novo Grupo` e cards com `Descricao`, `ID` e `Ver Detalhes`. No `cvg-his-v2`: SPA `/product-groups` com aliases `/grupos-de-produto`, `/grupos-de-produtos`, `/grupos-produto`, `/grupos-produtos`, `/estoque/grupos-de-produto`, `/estoque/grupos-de-produtos`, `/estoque/cadastros/grupos-de-produto` e `/estoque/cadastros/grupos-de-produtos`; tela com acao `Atualizar`, botao `Incluir Novo Grupo`, filtro `Buscar por ID ou descricao`, filtro de situacao, cards Vetus-like com `Descricao`, `ID`, `Situacao` e `Ver Detalhes`; formulario lateral com `Id`, `Descricao`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Produtos`, `Importar Produtos` e `Fabricantes`; API persistente `/product-groups` e `/product-groups/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API PT-BR e de estoque/cadastros; migration duravel `0033_inventory_product_groups` com RLS e seeds genericos por conta, sem nova porta ou dependencia. |
+| Estoque > Cadastros > Setores da Empresa | Cadastro de departamentos/setores operacionais da empresa | Implementado | `94ef168` | Implementacao baseada em artefatos observacionais read-only existentes do Vetus, que confirmam rota `/setores` e posicao no navbar apos `Grupos de Produtos`; nao houve escrita no Vetus. No `cvg-his-v2`: SPA `/company-sectors` com aliases `/setores`, `/setores-da-empresa`, `/estoque/setores`, `/estoque/setores-da-empresa`, `/estoque/cadastros/setores` e `/estoque/cadastros/setores-da-empresa`; tela com acao `Atualizar`, botao `Incluir Novo Setor`, filtro `Buscar por codigo ou nome`, filtro de tipo, filtro de situacao, cards Vetus-like com `Nome`, `Codigo`, `Tipo`, `Situacao` e `Ver Detalhes`; formulario lateral com `Codigo`, `Nome`, `Tipo`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Estoques`, `Boxes` e `Acessos`; API persistente `/company-sectors` e `/company-sectors/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API `/setores`, `/setores-da-empresa` e caminhos de estoque/cadastros; persistencia reutiliza tabela duravel `sectors`; migration `0034_company_sectors_inventory_seed` adiciona seeds genericos por conta e comentario de uso compartilhado, sem nova porta ou dependencia. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -281,6 +284,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`94ef168` feat: align Vetus-like company sectors registry
 `6f6c640` feat: align Vetus-like product groups registry
 `43eb1af` feat: align Vetus-like inventory manufacturers
 `096a449` feat: align Vetus-like inventory warehouses
@@ -334,10 +338,10 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/grupos-de-produto`
+- Ultima rota validada: `http://localhost:3002/setores`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: contrato SPA/API para `GET/POST/PATCH/DELETE http://localhost:3003/product-groups`
-- Ultima migration aplicada: `0033_inventory_product_groups`
+- Ultima API validada: contrato SPA/API para `GET/POST/PATCH/DELETE http://localhost:3003/company-sectors`
+- Ultima migration aplicada: `0034_company_sectors_inventory_seed`
 
 ## Padrao minimo para cada modulo espelhado
 
@@ -611,7 +615,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Setores da Empresa`. |
+| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Unidades de Medida`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -647,8 +651,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Cadastros > Grupos de Produtos`, continuar pela ordem do grupo `Estoque > Cadastros`:
+Apos concluir `Estoque > Cadastros > Setores da Empresa`, continuar pela ordem do grupo `Estoque > Cadastros`:
 
-1. `Estoque > Cadastros > Setores da Empresa`
+1. `Estoque > Cadastros > Unidades de Medida`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
