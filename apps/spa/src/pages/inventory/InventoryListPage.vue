@@ -74,7 +74,7 @@
       </DsCard>
       <DsCard title="Consulta balcão" variant="compact">
         <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/products">Consulta de preços</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory/price-consultation">Consulta de preços</DsButton>
           <DsButton variant="secondary" tag="a" to="/counter-sales">Consumir em comanda</DsButton>
           <DsButton variant="secondary" tag="a" to="/billing">Reflexo financeiro</DsButton>
         </div>

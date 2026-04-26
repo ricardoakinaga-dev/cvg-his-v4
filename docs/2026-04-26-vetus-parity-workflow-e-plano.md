@@ -142,7 +142,7 @@ Submenu `Atendimento` observado em modo somente leitura:
 
 Checkpoint de decisao anterior: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
 
-Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas`, `Laboratorio > Atendimentos > Urina`, `Laboratorio > Atendimentos > Bioquimico`, `Laboratorio > Cadastros > Equipamentos`, `Laboratorio > Cadastros > Tipos de Laudo`, `Laboratorio > Cadastros > Vlr. Ref. Hemograma` e `Laboratorio > Cadastros > Vlr. Ref. Bioquimico` foram implementados. A sequencia observada de `Laboratorio > Cadastros` esta fechada neste checkpoint.
+Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas`, `Laboratorio > Atendimentos > Urina`, `Laboratorio > Atendimentos > Bioquimico`, `Laboratorio > Cadastros > Equipamentos`, `Laboratorio > Cadastros > Tipos de Laudo`, `Laboratorio > Cadastros > Vlr. Ref. Hemograma` e `Laboratorio > Cadastros > Vlr. Ref. Bioquimico` foram implementados. A sequencia observada de `Laboratorio > Cadastros` esta fechada. O fluxo seguiu para o proximo macro do navbar, `Estoque`, iniciando por `Estoque > Controles > Consulta de Precos`.
 
 ### Laboratorio observado em 2026-04-24
 
@@ -159,6 +159,45 @@ Submenu `Laboratorio` observado em modo somente leitura:
    - Tipos de Laudo
    - Vlr. Ref. Hemograma
    - Vlr. Ref. Bioquimico
+
+### Estoque observado em 2026-04-26
+
+Tentativa de observacao direta em modo automatizado foi bloqueada por Cloudflare antes do login. Nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, baixa ou confirmacao no Vetus.
+
+Como fallback operacional, a sequencia foi baseada no navbar ja alinhado do `cvg-his-v2`, que havia sido criado a partir da estrutura macro Vetus e segue a ordem documentada para o grupo `Estoque`:
+
+1. Controles
+   - Consulta de Precos
+   - Entrada de Nota Fiscal
+   - Transacao no Estoque
+   - Requisicao a Farmacia
+   - Validade de Produtos
+   - Auditoria de Estoque
+   - Auditoria de Precos
+   - Transferencia entre Estoques
+   - Compras
+   - Reajuste de Precos
+   - Coletores de Dados
+2. Cadastros
+   - Produtos
+   - Importar Dados Produtos
+   - Fornecedores e Despesas
+   - Estoques
+   - Fabricantes
+   - Grupos de Produtos
+   - Setores da Empresa
+   - Unidades de Medida
+   - Tabelas de Preco
+   - Ponto de Venda
+3. Configuracoes Fiscais
+   - Tabela ICMS
+   - Tabela IPI
+   - Tabela PIS
+   - Tabela COFINS
+   - Tabela CFOP
+   - Tabela NFS-e
+   - Matriz Estado ICMS
+   - Tabela IBS/CBS
 
 ## Regra de sequenciamento
 
@@ -209,6 +248,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Laboratorio > Cadastros > Tipos de Laudo | Cadastro de modelos/tipos de laudo laboratoriais | Implementado | `db417fc` | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Tipos de Laudo`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_report_types`. No `cvg-his-v2`: SPA `/laboratory/report-types` com aliases `/tipos-de-laudo`, `/laboratorio/tipos-de-laudo` e `/laboratorio/cadastros/tipos-de-laudo`; lista com botao `Incluir`, filtros `Codigo`, `Descricao`, `Categoria`, `Situacao`, botao `Pesquisar`, tabela `Codigo`, `Descricao`, `Categoria`, `Modelo`, `Situacao` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/report-types`, `/laboratory/report-types/:id`, `/laboratorio/tipos-de-laudo`, `/laboratorio/cadastros/tipos-de-laudo` com filtros, criacao, detalhe e atualizacao; integracao com Exames, Laudos, Hemogramas, Bioquimico, Urina e auditoria. |
 | Laboratorio > Cadastros > Vlr. Ref. Hemograma | Cadastro de valores de referencia hematologicos | Implementado | `a3e132f` | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Vlr. Ref. Hemograma`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_reference_values` filtrada por `HEM`. No `cvg-his-v2`: SPA `/laboratory/hemogram-reference-values` com aliases `/vlr-ref-hemograma`, `/laboratorio/vlr-ref-hemograma` e `/laboratorio/cadastros/vlr-ref-hemograma`; lista com botao `Incluir`, filtros `Codigo`, `Parametro`, `Unidade`, botao `Pesquisar`, tabela `Codigo`, `Parametro`, `Exame`, `Valor Minimo`, `Valor Maximo`, `Unidade`, `Faixa` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/hemogram-reference-values`, `/laboratory/hemogram-reference-values/:id`, `/laboratorio/vlr-ref-hemograma`, `/laboratorio/cadastros/vlr-ref-hemograma` com filtros, criacao, detalhe e atualizacao; integracao com Hemogramas, Laudos, Exames e auditoria tecnica. |
 | Laboratorio > Cadastros > Vlr. Ref. Bioquimico | Cadastro de valores de referencia bioquimicos | Implementado | `fd6c417` | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Vlr. Ref. Bioquimico`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_reference_values` filtrada por `BIO`. No `cvg-his-v2`: SPA `/laboratory/biochemistry-reference-values` com aliases `/vlr-ref-bioquimico`, `/laboratorio/vlr-ref-bioquimico` e `/laboratorio/cadastros/vlr-ref-bioquimico`; lista com botao `Incluir`, filtros `Codigo`, `Parametro`, `Unidade`, botao `Pesquisar`, tabela `Codigo`, `Parametro`, `Exame`, `Valor Minimo`, `Valor Maximo`, `Unidade`, `Faixa` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/biochemistry-reference-values`, `/laboratory/biochemistry-reference-values/:id`, `/laboratorio/vlr-ref-bioquimico`, `/laboratorio/cadastros/vlr-ref-bioquimico` com filtros, criacao, detalhe e atualizacao; integracao com Bioquimico, Laudos, Exames e auditoria tecnica. |
+| Estoque > Controles > Consulta de Precos | Consulta de preco, custo, saldo e disponibilidade | Implementado | Este commit | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a primeira posicao do grupo `Estoque > Controles` conforme navbar ja alinhado no `cvg-his-v2`. No `cvg-his-v2`: SPA `/inventory/price-consultation` com aliases `/consulta-de-precos`, `/estoque/consulta-de-precos` e `/estoque/controles/consulta-de-precos`; tela com botao `Novo Produto`, acao `Atualizar`, filtros `Codigo`, `Produto`, `Origem`, botao `Pesquisar`, tabela `Codigo`, `Produto`, `Origem`, `Preco`, `Custo`, `Margem`, `Saldo`, `Status` e `Abrir`; composicao somente leitura dos endpoints persistentes existentes `/products` e `/inventory`; integracao com Produtos, Estoque, Comandas e Atendimento. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -216,6 +256,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+Este commit feat: align Vetus-like inventory price consultation
 `fd6c417` feat: align Vetus-like biochemistry reference values registry
 `a3e132f` feat: align Vetus-like hemogram reference values registry
 db417fc feat: align Vetus-like laboratory report types registry
@@ -245,9 +286,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/laboratory/biochemistry-reference-values`
+- Ultima rota validada: `http://localhost:3002/inventory/price-consultation`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/laboratory/biochemistry-reference-values`
+- Ultima API validada: `GET http://localhost:3003/products` e `GET http://localhost:3003/inventory`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -522,7 +563,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Parcial | Observar ordem do submenu e conectar com produtos/vacinas/servicos. |
+| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Entrada de Nota Fiscal`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -558,6 +599,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Laboratorio > Cadastros > Vlr. Ref. Bioquimico`, a sequencia observada de `Laboratorio > Cadastros` esta completa neste checkpoint. O proximo item deve ser definido a partir do proximo grupo do navbar Vetus ainda nao espelhado ou por prioridade funcional do responsavel.
+Apos concluir `Estoque > Controles > Consulta de Precos`, continuar pela ordem do grupo `Estoque > Controles`:
+
+1. `Estoque > Controles > Entrada de Nota Fiscal`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

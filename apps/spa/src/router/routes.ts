@@ -22,7 +22,6 @@ function placeholderRoute(
 
 const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('inventory/pharmacy', 'InventoryPharmacy', 'Farmácia', 'Estoque', '💊'),
-  placeholderRoute('inventory/price-consultation', 'InventoryPriceConsultation', 'Consulta de Preços', 'Estoque', '🔎'),
   placeholderRoute('inventory/price-audit', 'InventoryPriceAudit', 'Auditoria de Preços', 'Estoque', '🏷️'),
   placeholderRoute('inventory/price-adjustments', 'InventoryPriceAdjustments', 'Reajuste de Preços', 'Estoque', '📈'),
   placeholderRoute('inventory/data-collectors', 'InventoryDataCollectors', 'Coletores de Dados', 'Estoque', '📟'),
@@ -1491,6 +1490,18 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Estoque',
           icon: '📦'
+        }
+      },
+      {
+        path: 'inventory/price-consultation',
+        name: 'InventoryPriceConsultation',
+        alias: ['/consulta-de-precos', '/estoque/consulta-de-precos', '/estoque/controles/consulta-de-precos'],
+        component: () => import('@/pages/inventory/InventoryPriceConsultationPage.vue'),
+        meta: {
+          title: 'Consulta de Preços',
+          breadcrumb: 'Consulta de Preços',
+          breadcrumbParent: 'Estoque',
+          icon: '🔎'
         }
       },
       {

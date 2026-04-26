@@ -112,6 +112,13 @@ describe('router convergence', () => {
     expect(findChildRoute('exam-results')?.meta?.breadcrumbParent).toBe('Laboratório');
     expect(findChildRoute('inventory/pharmacy')?.meta?.breadcrumbParent).toBe('Estoque');
     expect(findChildRoute('inventory/price-consultation')?.meta?.title).toBe('Consulta de Preços');
+    expect(findChildRoute('inventory/price-consultation')?.alias).toEqual(
+      expect.arrayContaining([
+        '/consulta-de-precos',
+        '/estoque/consulta-de-precos',
+        '/estoque/controles/consulta-de-precos'
+      ])
+    );
     expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
