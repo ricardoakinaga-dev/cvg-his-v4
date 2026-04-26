@@ -110,6 +110,38 @@ Ordem principal observada em 2026-04-26:
 
 Observacao: a ordem de submenus deve ser validada diretamente no Vetus antes de implementar cada proximo modulo. Esta lista principal serve como trilho macro.
 
+### Atendimento observado em 2026-04-26
+
+Submenu `Atendimento` observado em modo somente leitura:
+
+1. Atendimentos
+   - Agenda
+   - Comandas
+   - Vendas
+   - Pacotes
+   - Esteira
+   - Esteira de Exames
+   - Vacinas e Vermifugos
+   - Orcamentos
+   - Resgate de Pontos
+   - Vendas (beta)
+2. Internacao
+   - Internacao
+3. Cadastros
+   - Animais
+   - Clientes
+   - Servicos
+   - Importar Dados Servicos
+   - Termos de Responsabilidade
+   - Racas
+   - Especies
+   - Cores
+   - Grupos de Clientes
+   - Boxes de Internacao
+   - Webhooks
+
+Checkpoint de decisao desta tarefa: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
+
 ## Regra de sequenciamento
 
 A partir deste checkpoint, a sequencia correta e:
@@ -147,6 +179,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Atendimento > Cadastros > Racas | Cadastro de racas | Implementado | `3f2028e` | Persistencia em `breeds`, API `/breeds`, alias `/breed`, paginas SPA e integracao com animal. |
 | Atendimento > Cadastros > Especies | Cadastro de especies | Implementado | `c70ac2b` | Persistencia em `animal_species`, API `/species`, alias `/specie`, paginas SPA e integracao com animal. |
 | Atendimento > Cadastros > Cores/Pelagens | Cadastro de cores/pelagens | Implementado | `c77af4a` | Persistencia em `coat_colors`, API `/coat-colors`, aliases `/coat-color` e `/pelagens`, paginas SPA. |
+| Atendimento > Cadastros > Grupos de Clientes | Cadastro de grupos de clientes | Implementado | `PENDENTE_HASH` | Persistencia em `customer_groups`, API `/customer-groups`, aliases `/customer-group` e `/grupos-de-clientes`, paginas SPA de lista/inclusao/edicao/detalhe, politicas comerciais basicas. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -172,9 +205,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/vaccines-dewormers`
+- Ultima rota validada: `http://localhost:3002/customer-groups`
 - API health validado em `http://localhost:3003/health`
-- Ultima migration aplicada: `0028_preventive_events`
+- Ultima migration aplicada: `0029_customer_groups` apos esta tarefa
 
 ## Padrao minimo para cada modulo espelhado
 
@@ -257,6 +290,7 @@ Subareas ja parcialmente implementadas:
 - Racas.
 - Especies.
 - Cores/Pelagens.
+- Grupos de Clientes.
 - Vacinas e Vermifugos.
 
 Subareas a mapear na ordem real do Vetus:
@@ -483,12 +517,9 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Antes de implementar qualquer novo modulo, abrir o Vetus e mapear o submenu do primeiro navbar ainda nao fechado na ordem real.
+Apos concluir `Atendimento > Cadastros > Grupos de Clientes`, continuar pela ordem observada em `Atendimento > Cadastros`:
 
-Como ja houve trabalho recente em `Atendimento`, o proximo passo pratico e:
+1. `Boxes de Internacao`
+2. `Webhooks`
 
-1. abrir `Atendimento` no Vetus;
-2. capturar a ordem completa dos submenus;
-3. marcar cada subitem contra a tabela de status;
-4. escolher o primeiro subitem ainda nao espelhado ou parcialmente espelhado;
-5. implementar no `cvg-his-v2`.
+Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

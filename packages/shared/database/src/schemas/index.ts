@@ -503,6 +503,21 @@ export const coatColors = pgTable('coat_colors', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const customerGroups = pgTable('customer_groups', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  name: varchar('name', { length: 160 }).notNull(),
+  code: varchar('code', { length: 80 }),
+  segment: varchar('segment', { length: 80 }),
+  discountPercent: numeric('discount_percent', { precision: 5, scale: 2 }).notNull().default('0'),
+  paymentTermDays: integer('payment_term_days').notNull().default(0),
+  creditLimitAmount: numeric('credit_limit_amount', { precision: 12, scale: 2 }),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const preventiveEvents = pgTable('preventive_events', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: uuid('account_id').notNull(),

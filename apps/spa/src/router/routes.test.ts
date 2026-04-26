@@ -85,6 +85,7 @@ describe('router convergence', () => {
     const breedsRoute = findChildRoute('breeds');
     const speciesRoute = findChildRoute('species');
     const coatColorsRoute = findChildRoute('coat-colors');
+    const customerGroupsRoute = findChildRoute('customer-groups');
 
     expect(breedsRoute?.name).toBe('Breeds');
     expect(breedsRoute?.component).toBeTruthy();
@@ -118,6 +119,16 @@ describe('router convergence', () => {
     expect(findChildRoute('cadastro/cores')?.redirect).toBe('/coat-colors');
     expect(findChildRoute('cadastros/coat-colors')?.redirect).toBe('/coat-colors');
     expect(findChildRoute('cadastros/pelagens')?.redirect).toBe('/coat-colors');
+
+    expect(customerGroupsRoute?.name).toBe('CustomerGroups');
+    expect(customerGroupsRoute?.component).toBeTruthy();
+    expect(customerGroupsRoute?.meta?.title).toBe('Grupos de Clientes');
+    expect(customerGroupsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(customerGroupsRoute?.alias).toEqual(expect.arrayContaining(['/grupos-de-clientes', '/cadastros/grupos-de-clientes']));
+    expect(findChildRoute('customer-groups/new')?.name).toBe('CustomerGroupNew');
+    expect(findChildRoute('customer-groups/:id')?.name).toBe('CustomerGroupDetail');
+    expect(findChildRoute('customer-groups/:id/edit')?.name).toBe('CustomerGroupEdit');
+    expect(findChildRoute('cadastros/grupos-de-clientes')?.redirect).toBe('/customer-groups');
   });
 
   it('uses a concrete loyalty route for Vetus points redemption', () => {

@@ -1376,6 +1376,81 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(updateCoatColorResponse.statusCode, 200);
   assert.equal(updateCoatColorResponse.bodyJson<{ active: boolean; name: string }>().active, false);
 
+  const createCustomerGroupResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/customer-groups',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Convenio',
+      code: 'CUSTOMER-GROUP-001',
+      segment: 'Convenio',
+      discountPercent: 10,
+      paymentTermDays: 30,
+      creditLimitAmount: 1000,
+      description: 'Grupo para validar cadastro Vetus-like',
+      active: true
+    }
+  });
+  assert.equal(createCustomerGroupResponse.statusCode, 201);
+  const createdCustomerGroup = createCustomerGroupResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    segment: string | null;
+    discountPercent: number;
+    paymentTermDays: number;
+    creditLimitAmount: number | null;
+  }>();
+  assert.equal(createdCustomerGroup.code, 'CUSTOMER-GROUP-001');
+  assert.equal(createdCustomerGroup.segment, 'Convenio');
+  assert.equal(createdCustomerGroup.discountPercent, 10);
+  assert.equal(createdCustomerGroup.paymentTermDays, 30);
+  assert.equal(createdCustomerGroup.creditLimitAmount, 1000);
+
+  const customerGroupsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/customer-groups?search=CUSTOMER-GROUP-001&active=true&segment=Convenio',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(customerGroupsResponse.statusCode, 200);
+  const customerGroups = customerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(customerGroups.items.length, 1);
+  assert.equal(customerGroups.items[0]?.code, 'CUSTOMER-GROUP-001');
+
+  const vetusAliasCustomerGroupsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/grupos-de-clientes?segment=Convenio',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(vetusAliasCustomerGroupsResponse.statusCode, 200);
+  const vetusAliasCustomerGroups = vetusAliasCustomerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'), true);
+
+  const updateCustomerGroupResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/customer-groups/${createdCustomerGroup.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Convenio Revisado',
+      active: false
+    }
+  });
+  assert.equal(updateCustomerGroupResponse.statusCode, 200);
+  assert.equal(updateCustomerGroupResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+
   const createPreventiveResponse = await performRequest(server, {
     method: 'POST',
     url: '/vaccines-dewormers',

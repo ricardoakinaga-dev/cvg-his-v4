@@ -10,6 +10,7 @@ export * from './breeds.js';
 export * from './clinical_notes.js';
 export * from './clinical_note_versions.js';
 export * from './coat_colors.js';
+export * from './customer_groups.js';
 export * from './documents.js';
 export * from './encounter_billing_items.js';
 export * from './encounter_financial_accounts.js';

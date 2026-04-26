@@ -43,7 +43,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('customer-groups', 'CustomerGroups', 'Grupos de Clientes', 'Cadastros', '👥'),
   placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
   placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
   placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
@@ -319,6 +318,46 @@ export const routes: RouteRecordRaw[] = [
           icon: '🎨'
         }
       },
+      {
+        path: 'customer-groups',
+        name: 'CustomerGroups',
+        alias: ['/grupos-de-clientes', '/cadastros/grupos-de-clientes', '/cadastro/grupos-de-clientes'],
+        component: () => import('@/pages/customer-groups/CustomerGroupsListPage.vue'),
+        meta: { title: 'Grupos de Clientes', breadcrumb: 'Grupos de Clientes', breadcrumbParent: 'Cadastros', icon: '👥' }
+      },
+      {
+        path: 'customer-groups/new',
+        name: 'CustomerGroupNew',
+        component: () => import('@/pages/customer-groups/CustomerGroupFormPage.vue'),
+        meta: {
+          title: 'Novo Grupo de Clientes',
+          breadcrumb: 'Novo Grupo de Clientes',
+          breadcrumbParent: 'Grupos de Clientes',
+          icon: '👥'
+        }
+      },
+      {
+        path: 'customer-groups/:id',
+        name: 'CustomerGroupDetail',
+        component: () => import('@/pages/customer-groups/CustomerGroupDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Grupo de Clientes',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Grupos de Clientes',
+          icon: '👥'
+        }
+      },
+      {
+        path: 'customer-groups/:id/edit',
+        name: 'CustomerGroupEdit',
+        component: () => import('@/pages/customer-groups/CustomerGroupFormPage.vue'),
+        meta: {
+          title: 'Editar Grupo de Clientes',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Grupos de Clientes',
+          icon: '👥'
+        }
+      },
       { path: 'cadastros/racas', redirect: '/breeds' },
       { path: 'cadastros/raças', redirect: '/breeds' },
       { path: 'cadastro/racas', redirect: '/breeds' },
@@ -335,6 +374,8 @@ export const routes: RouteRecordRaw[] = [
       { path: 'cadastro/coat-colors', redirect: '/coat-colors' },
       { path: 'cadastros/pelagens', redirect: '/coat-colors' },
       { path: 'cadastro/pelagens', redirect: '/coat-colors' },
+      { path: 'cadastros/grupos-de-clientes', redirect: '/customer-groups' },
+      { path: 'cadastro/grupos-de-clientes', redirect: '/customer-groups' },
       {
         path: 'encounters',
         name: 'Encounters',
