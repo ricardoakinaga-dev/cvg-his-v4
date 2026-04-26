@@ -844,6 +844,16 @@ export interface LaboratoryReferenceValueListResponse {
   readonly items: readonly LaboratoryReferenceValueSummary[];
 }
 
+export interface CreateLaboratoryReferenceValueRequest {
+  readonly parameter: string;
+  readonly examType: string;
+  readonly minValue: number;
+  readonly maxValue: number;
+  readonly unit: string;
+}
+
+export type UpdateLaboratoryReferenceValueRequest = Partial<CreateLaboratoryReferenceValueRequest>;
+
 export interface RecordDiagnosticResultRequest {
   readonly status: 'collected' | 'resulted' | 'cancelled';
   readonly resultSummary?: string;

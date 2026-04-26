@@ -218,7 +218,7 @@ const domainLayers = [
     title: 'Vlr. Ref. Hemograma',
     description: 'Norma hematológica por espécie, parâmetro, unidade e faixa esperada.',
     action: 'Abrir referências',
-    to: '/laboratory/reference-values'
+    to: '/laboratory/hemogram-reference-values'
   },
   {
     icon: '⚗️',

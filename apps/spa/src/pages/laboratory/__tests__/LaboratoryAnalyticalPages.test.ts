@@ -77,8 +77,9 @@ describe('Laboratory analytical result pages', () => {
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
     ]);
-    vi.mocked(laboratoryService.listReferenceValues).mockImplementation(async (filterExam?: string) => {
-      if (filterExam === 'URIN') {
+    vi.mocked(laboratoryService.listReferenceValues).mockImplementation(async (filterExam?: string | { examType?: string }) => {
+      const examType = typeof filterExam === 'string' ? filterExam : filterExam?.examType;
+      if (examType === 'URIN') {
         return [
           {
             id: 'ref-urin-1',
@@ -99,7 +100,7 @@ describe('Laboratory analytical result pages', () => {
         ];
       }
 
-      if (filterExam === 'BIO') {
+      if (examType === 'BIO') {
         return [
           {
             id: 'ref-bio-1',

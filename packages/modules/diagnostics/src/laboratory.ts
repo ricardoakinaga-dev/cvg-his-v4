@@ -10,10 +10,12 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import type {
   CreateLaboratoryEquipmentRequest,
+  CreateLaboratoryReferenceValueRequest,
   CreateLaboratoryReportTypeRequest,
   CreateDiagnosticOrderRequest,
   RecordDiagnosticResultRequest,
   UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import { randomUUID } from 'node:crypto';
@@ -63,6 +65,16 @@ export interface LaboratoryCatalogRepository {
     accountId: AccountId,
     filterExam?: string
   ): Promise<readonly LaboratoryReferenceValueSummary[]>;
+  getReferenceValue(accountId: AccountId, referenceValueId: string): Promise<LaboratoryReferenceValueSummary | undefined>;
+  createReferenceValue(
+    accountId: AccountId,
+    payload: CreateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary>;
+  updateReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string,
+    payload: UpdateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary>;
 }
 
 export interface LaboratoryServiceOptions {
@@ -221,6 +233,60 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     return [...(this.#referenceValues.get(accountId) ?? [])]
       .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
       .sort((left, right) => left.parameter.localeCompare(right.parameter));
+  }
+
+  public async getReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string
+  ): Promise<LaboratoryReferenceValueSummary | undefined> {
+    await this.ensureSeedData(accountId);
+    return (this.#referenceValues.get(accountId) ?? []).find((item) => item.id === referenceValueId);
+  }
+
+  public async createReferenceValue(
+    accountId: AccountId,
+    payload: CreateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    await this.ensureSeedData(accountId);
+    const referenceValue: LaboratoryReferenceValueSummary = {
+      id: `lab-ref-${randomUUID()}`,
+      parameter: payload.parameter,
+      examType: payload.examType,
+      minValue: payload.minValue,
+      maxValue: payload.maxValue,
+      unit: payload.unit
+    };
+    const current = this.#referenceValues.get(accountId) ?? [];
+    this.#referenceValues.set(accountId, [...current, referenceValue]);
+    return referenceValue;
+  }
+
+  public async updateReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string,
+    payload: UpdateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    await this.ensureSeedData(accountId);
+    const current = [...(this.#referenceValues.get(accountId) ?? [])];
+    const index = current.findIndex((item) => item.id === referenceValueId);
+    if (index < 0) {
+      throw new Error('Laboratory reference value not found');
+    }
+    const existing = current[index];
+    const updated: LaboratoryReferenceValueSummary = {
+      ...existing,
+      parameter: payload.parameter ?? existing.parameter,
+      examType: payload.examType ?? existing.examType,
+      minValue: payload.minValue ?? existing.minValue,
+      maxValue: payload.maxValue ?? existing.maxValue,
+      unit: payload.unit ?? existing.unit
+    };
+    if (updated.minValue > updated.maxValue) {
+      throw new Error('Laboratory reference value minimum cannot be greater than maximum');
+    }
+    current[index] = updated;
+    this.#referenceValues.set(accountId, current);
+    return updated;
   }
 }
 
@@ -446,5 +512,46 @@ export class LaboratoryService {
         .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
+  }
+
+  public async getReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string
+  ): Promise<LaboratoryReferenceValueSummary> {
+    if (!this.#catalogRepository) {
+      const referenceValue = DEFAULT_LABORATORY_REFERENCE_VALUES.find((item) => item.id === referenceValueId);
+      if (!referenceValue) throw new Error('Laboratory reference value not found');
+      return referenceValue;
+    }
+
+    await this.#catalogRepository.ensureSeedData(accountId);
+    const referenceValue = await this.#catalogRepository.getReferenceValue(accountId, referenceValueId);
+    if (!referenceValue) {
+      throw new Error('Laboratory reference value not found');
+    }
+    return referenceValue;
+  }
+
+  public async createReferenceValue(
+    accountId: AccountId,
+    payload: CreateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory reference value persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.createReferenceValue(accountId, payload);
+  }
+
+  public async updateReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string,
+    payload: UpdateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory reference value persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.updateReferenceValue(accountId, referenceValueId, payload);
   }
 }

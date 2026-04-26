@@ -341,6 +341,32 @@ test('LaboratoryService creates and updates laboratory report types in the catal
   assert.equal(detail.description, 'Modelo revisado de laudo citologico');
 });
 
+test('LaboratoryService creates and updates laboratory reference values in the catalog repository', async () => {
+  const { service: diagnostics } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: new InMemoryLaboratoryCatalogRepository()
+  });
+
+  const created = await laboratory.createReferenceValue('acc_test' as never, {
+    parameter: 'Plaquetas',
+    examType: 'HEM',
+    minValue: 200,
+    maxValue: 500,
+    unit: 'mil/uL'
+  });
+
+  const updated = await laboratory.updateReferenceValue('acc_test' as never, created.id, {
+    maxValue: 550
+  });
+  const detail = await laboratory.getReferenceValue('acc_test' as never, created.id);
+  const hemogramValues = await laboratory.listReferenceValues('acc_test' as never, 'HEM');
+
+  assert.equal(created.parameter, 'Plaquetas');
+  assert.equal(updated.maxValue, 550);
+  assert.equal(detail.unit, 'mil/uL');
+  assert.ok(hemogramValues.some((item) => item.id === created.id));
+});
+
 test('LaboratoryService exposes resulted orders and order detail scoped by account', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics, {
@@ -424,6 +450,15 @@ test('LaboratoryService keeps order listing available when catalog repository is
         throw new Error('relation "laboratory_report_types" does not exist');
       },
       async listReferenceValues() {
+        throw new Error('relation "laboratory_reference_values" does not exist');
+      },
+      async getReferenceValue() {
+        throw new Error('relation "laboratory_reference_values" does not exist');
+      },
+      async createReferenceValue() {
+        throw new Error('relation "laboratory_reference_values" does not exist');
+      },
+      async updateReferenceValue() {
         throw new Error('relation "laboratory_reference_values" does not exist');
       }
     }

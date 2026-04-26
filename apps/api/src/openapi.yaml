@@ -6467,6 +6467,195 @@ paths:
               schema:
                 $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
 
+  /laboratory/reference-values/{referenceValueId}:
+    get:
+      operationId: getLaboratoryReferenceValue
+      summary: Get laboratory reference value detail
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory reference value detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+    patch:
+      operationId: updateLaboratoryReferenceValue
+      summary: Update laboratory reference value
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLaboratoryReferenceValueRequest'
+      responses:
+        '200':
+          description: Laboratory reference value updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratory/hemogram-reference-values:
+    get:
+      operationId: listLaboratoryHemogramReferenceValues
+      summary: List hemogram reference values
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Optional reference value code filter.
+        - in: query
+          name: parameter
+          schema:
+            type: string
+          description: Optional parameter filter.
+        - in: query
+          name: unit
+          schema:
+            type: string
+          description: Optional unit filter.
+      responses:
+        '200':
+          description: Hemogram reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+    post:
+      operationId: createLaboratoryHemogramReferenceValue
+      summary: Create hemogram reference value
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReferenceValueRequest'
+      responses:
+        '201':
+          description: Hemogram reference value created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratory/hemogram-reference-values/{referenceValueId}:
+    get:
+      operationId: getLaboratoryHemogramReferenceValue
+      summary: Get hemogram reference value detail
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Hemogram reference value detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+    patch:
+      operationId: updateLaboratoryHemogramReferenceValue
+      summary: Update hemogram reference value
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLaboratoryReferenceValueRequest'
+      responses:
+        '200':
+          description: Hemogram reference value updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratorio/cadastros/vlr-ref-hemograma:
+    get:
+      operationId: listLaboratorioCadastrosVlrRefHemogramaAlias
+      summary: List hemogram reference values using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional reference value code filter.
+        - in: query
+          name: parametro
+          schema:
+            type: string
+          description: Optional parameter filter.
+        - in: query
+          name: unidade
+          schema:
+            type: string
+          description: Optional unit filter.
+      responses:
+        '200':
+          description: Hemogram reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+    post:
+      operationId: createLaboratorioCadastrosVlrRefHemogramaAlias
+      summary: Create hemogram reference value using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReferenceValueRequest'
+      responses:
+        '201':
+          description: Hemogram reference value created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratorio/vlr-ref-hemograma:
+    get:
+      operationId: listLaboratorioVlrRefHemogramaAlias
+      summary: List hemogram reference values using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Hemogram reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+
   /diagnostics/reference-values:
     get:
       operationId: listDiagnosticsReferenceValues
@@ -9256,6 +9445,35 @@ components:
       properties:
         id:
           type: string
+        parameter:
+          type: string
+        examType:
+          type: string
+        minValue:
+          type: number
+        maxValue:
+          type: number
+        unit:
+          type: string
+
+    CreateLaboratoryReferenceValueRequest:
+      type: object
+      required: [parameter, examType, minValue, maxValue, unit]
+      properties:
+        parameter:
+          type: string
+        examType:
+          type: string
+        minValue:
+          type: number
+        maxValue:
+          type: number
+        unit:
+          type: string
+
+    UpdateLaboratoryReferenceValueRequest:
+      type: object
+      properties:
         parameter:
           type: string
         examType:

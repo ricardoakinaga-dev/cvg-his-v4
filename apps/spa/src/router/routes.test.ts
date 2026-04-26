@@ -124,6 +124,16 @@ describe('router convergence', () => {
     expect(findChildRoute('responsibility-terms')?.meta?.title).toBe('Termos de Responsabilidade');
     expect(findChildRoute('customer-groups')?.meta?.title).toBe('Grupos de Clientes');
     expect(findChildRoute('laboratory/hemogram-reference-values')?.meta?.title).toBe('Vlr. Ref. Hemograma');
+    expect(findChildRoute('laboratory/hemogram-reference-values')?.alias).toEqual(
+      expect.arrayContaining([
+        '/vlr-ref-hemograma',
+        '/laboratorio/vlr-ref-hemograma',
+        '/laboratorio/cadastros/vlr-ref-hemograma'
+      ])
+    );
+    expect(findChildRoute('laboratory/hemogram-reference-values/new')?.name).toBe('LaboratoryHemogramReferenceValueNew');
+    expect(findChildRoute('laboratory/hemogram-reference-values/:id')?.name).toBe('LaboratoryHemogramReferenceValueDetail');
+    expect(findChildRoute('laboratory/hemogram-reference-values/:id/edit')?.name).toBe('LaboratoryHemogramReferenceValueEdit');
     expect(findChildRoute('laboratory/biochemistry-reference-values')?.meta?.title).toBe('Vlr. Ref. Bioquímico');
   });
 

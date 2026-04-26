@@ -142,7 +142,7 @@ Submenu `Atendimento` observado em modo somente leitura:
 
 Checkpoint de decisao anterior: como a trilha recente estava em `Atendimento > Cadastros` e ja havia implementacao ate `Cores`, o proximo item pendente pela ordem observada foi `Grupos de Clientes`.
 
-Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas`, `Laboratorio > Atendimentos > Urina`, `Laboratorio > Atendimentos > Bioquimico`, `Laboratorio > Cadastros > Equipamentos` e `Laboratorio > Cadastros > Tipos de Laudo` foram implementados. O proximo modulo pela ordem observada e `Laboratorio > Cadastros > Vlr. Ref. Hemograma`.
+Checkpoint de decisao atual: `Webhooks` fechou a sequencia observada de `Atendimento > Cadastros`; em seguida, `Laboratorio > Atendimentos > Exames`, `Laboratorio > Atendimentos > Laudos`, `Laboratorio > Atendimentos > Hemogramas`, `Laboratorio > Atendimentos > Urina`, `Laboratorio > Atendimentos > Bioquimico`, `Laboratorio > Cadastros > Equipamentos`, `Laboratorio > Cadastros > Tipos de Laudo` e `Laboratorio > Cadastros > Vlr. Ref. Hemograma` foram implementados. O proximo modulo pela ordem observada e `Laboratorio > Cadastros > Vlr. Ref. Bioquimico`.
 
 ### Laboratorio observado em 2026-04-24
 
@@ -207,6 +207,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Laboratorio > Atendimentos > Bioquimico | Resultado bioquimico estruturado | Implementado | `00308ac` | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Bioquimico.htm`; a abertura direta ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Bioquimico`, na dependencia estrutural de `Vlr. Ref. Bioquimico` e na cadeia `Exames -> Esteira de Exames -> Coleta -> Bioquimico -> Laudo -> Entrega`. No `cvg-his-v2`: SPA `/laboratory/biochemistry` com aliases `/bioquimico`, `/bioquímico`, `/laboratorio/bioquimico`, `/laboratorio/bioquímico`, `/laboratorio/atendimentos/bioquimico` e `/laboratorio/exames/bioquimico`; tela `Bioquimico` com botao `Incluir`, filtros `Codigo do Exame`, `Cliente`, `Proprietario`, `Animal`, `Data da Analise`, `Data de Entrada`, `Corpo do Resultado`, checkbox `Pesquisar Bioquimicos Fechados`, botao `Pesquisar`, listagem enriquecida por cliente/proprietario/animal, resultado tabular por `Painel hepatico`, `Painel renal` e `Metabolico`, e referencias `BIO`; API `/laboratory/biochemistry`, `/laboratorio/bioquimico`, `/laboratorio/atendimentos/bioquimico` filtrando resultados `BIO`; persistencia duravel reaproveita `diagnostic_orders` e `laboratory_reference_values`. |
 | Laboratorio > Cadastros > Equipamentos | Cadastro tecnico de equipamentos laboratoriais | Implementado | `a9f9a63` | Observado no Vetus como rota legacy confirmada `Sistema/Laboratorio/Equipamentos.htm`; a abertura direta ficou bloqueada por borda/Cloudflare, entao a construcao foi baseada na posicao real do navbar, no relatorio de entidade `Equipamentos de Laboratorio`, na definicao de `Cadastro de equipamentos`, manutencao preventiva/corretiva e calibracao. No `cvg-his-v2`: SPA `/laboratory/equipment` com aliases `/equipamentos`, `/laboratorio/equipamentos` e `/laboratorio/cadastros/equipamentos`; lista com botao `Incluir`, filtros `Codigo`, `Descricao`, `Tipo`, `Situacao`, botao `Pesquisar`, tabela `Codigo`, `Descricao`, `Tipo`, `No Serie`, `Ultima Calibracao`, `Calibracao`, `Situacao` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/equipment`, `/laboratory/equipment/:id`, `/laboratorio/equipamentos`, `/laboratorio/cadastros/equipamentos` com filtros, criacao, detalhe e atualizacao; persistencia duravel reaproveita `laboratory_equipment`; integracao com dashboard de laboratorio, Hemogramas, Bioquimico, Laudos e auditoria tecnica. |
 | Laboratorio > Cadastros > Tipos de Laudo | Cadastro de modelos/tipos de laudo laboratoriais | Implementado | `db417fc` | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Tipos de Laudo`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_report_types`. No `cvg-his-v2`: SPA `/laboratory/report-types` com aliases `/tipos-de-laudo`, `/laboratorio/tipos-de-laudo` e `/laboratorio/cadastros/tipos-de-laudo`; lista com botao `Incluir`, filtros `Codigo`, `Descricao`, `Categoria`, `Situacao`, botao `Pesquisar`, tabela `Codigo`, `Descricao`, `Categoria`, `Modelo`, `Situacao` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/report-types`, `/laboratory/report-types/:id`, `/laboratorio/tipos-de-laudo`, `/laboratorio/cadastros/tipos-de-laudo` com filtros, criacao, detalhe e atualizacao; integracao com Exames, Laudos, Hemogramas, Bioquimico, Urina e auditoria. |
+| Laboratorio > Cadastros > Vlr. Ref. Hemograma | Cadastro de valores de referencia hematologicos | Implementado | Este commit | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Vlr. Ref. Hemograma`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_reference_values` filtrada por `HEM`. No `cvg-his-v2`: SPA `/laboratory/hemogram-reference-values` com aliases `/vlr-ref-hemograma`, `/laboratorio/vlr-ref-hemograma` e `/laboratorio/cadastros/vlr-ref-hemograma`; lista com botao `Incluir`, filtros `Codigo`, `Parametro`, `Unidade`, botao `Pesquisar`, tabela `Codigo`, `Parametro`, `Exame`, `Valor Minimo`, `Valor Maximo`, `Unidade`, `Faixa` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/hemogram-reference-values`, `/laboratory/hemogram-reference-values/:id`, `/laboratorio/vlr-ref-hemograma`, `/laboratorio/cadastros/vlr-ref-hemograma` com filtros, criacao, detalhe e atualizacao; integracao com Hemogramas, Laudos, Exames e auditoria tecnica. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -214,6 +215,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+Este commit feat: align Vetus-like hemogram reference values registry
 db417fc feat: align Vetus-like laboratory report types registry
 a9f9a63 feat: align Vetus-like laboratory equipment registry
 00308ac feat: align Vetus-like laboratory biochemistry flow
@@ -241,9 +243,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/laboratory/report-types`
+- Ultima rota validada: `http://localhost:3002/laboratory/hemogram-reference-values`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/laboratory/report-types`
+- Ultima API validada: `GET http://localhost:3003/laboratory/hemogram-reference-values`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -554,8 +556,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Laboratorio > Cadastros > Tipos de Laudo`, continuar pela ordem observada em `Laboratorio > Cadastros`:
+Apos concluir `Laboratorio > Cadastros > Vlr. Ref. Hemograma`, continuar pela ordem observada em `Laboratorio > Cadastros`:
 
-1. `Laboratorio > Cadastros > Vlr. Ref. Hemograma`
+1. `Laboratorio > Cadastros > Vlr. Ref. Bioquimico`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.

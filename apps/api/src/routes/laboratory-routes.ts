@@ -5,6 +5,7 @@ import type { LaboratoryService } from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
   CreateLaboratoryEquipmentRequest,
+  CreateLaboratoryReferenceValueRequest,
   CreateLaboratoryReportTypeRequest,
   DiagnosticOrderListResponse,
   ExamCatalogListResponse,
@@ -13,6 +14,7 @@ import type {
   LaboratoryReportTypeListResponse,
   RecordDiagnosticResultRequest,
   UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -114,6 +116,24 @@ function isLaboratoryReportTypeCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryHemogramReferenceValueCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/hemogram-reference-values',
+    '/laboratorio/vlr-ref-hemograma',
+    '/laboratorio/cadastros/vlr-ref-hemograma'
+  ].includes(pathname);
+}
+
+function isLaboratoryReferenceValueCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/reference-values',
+    '/diagnostics/reference-values',
+    '/laboratory/hemogram-reference-values',
+    '/laboratorio/vlr-ref-hemograma',
+    '/laboratorio/cadastros/vlr-ref-hemograma'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -210,6 +230,62 @@ function parseUpdateReportTypePayload(payload: Record<string, unknown>): UpdateL
     update.description = requireNonEmptyString(String(payload.description), 'description');
   }
   if (payload.active !== undefined) update.active = normalizeReportTypeActive(payload.active);
+  return update;
+}
+
+function normalizeReferenceValueNumber(value: unknown, fieldName: string): number {
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized)) {
+    throw new Error(`${fieldName} must be a valid number`);
+  }
+  return normalized;
+}
+
+function normalizeReferenceExamType(value: unknown, fallback: string): string {
+  return requireNonEmptyString(String(value ?? fallback), 'examType').trim().toUpperCase();
+}
+
+function parseCreateReferenceValuePayload(
+  payload: Record<string, unknown>,
+  fallbackExamType: string
+): CreateLaboratoryReferenceValueRequest {
+  const minValue = normalizeReferenceValueNumber(payload.minValue, 'minValue');
+  const maxValue = normalizeReferenceValueNumber(payload.maxValue, 'maxValue');
+  if (minValue > maxValue) {
+    throw new Error('minValue must be less than or equal to maxValue');
+  }
+
+  return {
+    parameter: requireNonEmptyString(String(payload.parameter ?? ''), 'parameter'),
+    examType: normalizeReferenceExamType(payload.examType, fallbackExamType),
+    minValue,
+    maxValue,
+    unit: requireNonEmptyString(String(payload.unit ?? ''), 'unit')
+  };
+}
+
+function parseUpdateReferenceValuePayload(payload: Record<string, unknown>): UpdateLaboratoryReferenceValueRequest {
+  const update: {
+    parameter?: string;
+    examType?: string;
+    minValue?: number;
+    maxValue?: number;
+    unit?: string;
+  } = {};
+  if (payload.parameter !== undefined) {
+    update.parameter = requireNonEmptyString(String(payload.parameter), 'parameter');
+  }
+  if (payload.examType !== undefined) update.examType = normalizeReferenceExamType(payload.examType, 'HEM');
+  if (payload.minValue !== undefined) {
+    update.minValue = normalizeReferenceValueNumber(payload.minValue, 'minValue');
+  }
+  if (payload.maxValue !== undefined) {
+    update.maxValue = normalizeReferenceValueNumber(payload.maxValue, 'maxValue');
+  }
+  if (payload.unit !== undefined) update.unit = requireNonEmptyString(String(payload.unit), 'unit');
+  if (update.minValue !== undefined && update.maxValue !== undefined && update.minValue > update.maxValue) {
+    throw new Error('minValue must be less than or equal to maxValue');
+  }
   return update;
 }
 
@@ -821,17 +897,102 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, reportType);
   }
 
-  if (
-    (pathname === '/laboratory/reference-values' || pathname === '/diagnostics/reference-values')
-    && request.method === 'GET'
-  ) {
+  const referenceValueDetailMatch = pathname.match(
+    /^\/(?:laboratory\/reference-values|laboratory\/hemogram-reference-values|laboratorio\/cadastros\/vlr-ref-hemograma|laboratorio\/vlr-ref-hemograma)\/([^/]+)$/
+  );
+
+  if (referenceValueDetailMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const referenceValueId = requireNonEmptyString(referenceValueDetailMatch[1], 'referenceValueId');
+    const payload = await laboratory.getReferenceValue(principal.user.accountId as never, referenceValueId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'reference_value_read',
+      entityType: 'laboratory-reference-value',
+      entityId: referenceValueId,
+      payloadSummary: `Laboratory reference value ${referenceValueId} inspected`,
+      riskLevel: 'low',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (isLaboratoryReferenceValueCollectionPath(pathname) && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const examType = url.searchParams.get('examType') ?? undefined;
+    const examType = isLaboratoryHemogramReferenceValueCollectionPath(pathname)
+      ? 'HEM'
+      : (url.searchParams.get('examType') ?? undefined);
+    const idFilter = normalizeSearch(url.searchParams.get('id') ?? url.searchParams.get('codigo'));
+    const parameterFilter = normalizeSearch(url.searchParams.get('parameter') ?? url.searchParams.get('parametro'));
+    const unitFilter = normalizeSearch(url.searchParams.get('unit') ?? url.searchParams.get('unidade'));
+    const items = (await laboratory.listReferenceValues(principal.user.accountId as never, examType)).filter((referenceValue) => {
+      if (idFilter && !normalizeSearch(referenceValue.id)?.includes(idFilter)) return false;
+      if (parameterFilter && !normalizeSearch(referenceValue.parameter)?.includes(parameterFilter)) return false;
+      if (unitFilter && !normalizeSearch(referenceValue.unit)?.includes(unitFilter)) return false;
+      return true;
+    });
     const payload: LaboratoryReferenceValueListResponse = {
-      items: await laboratory.listReferenceValues(principal.user.accountId as never, examType)
+      items
     };
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: isLaboratoryHemogramReferenceValueCollectionPath(pathname)
+        ? 'hemogram_reference_value_list'
+        : 'reference_value_list',
+      entityType: 'laboratory-reference-value',
+      entityId: examType ?? 'all',
+      payloadSummary: isLaboratoryHemogramReferenceValueCollectionPath(pathname)
+        ? 'Laboratory hemogram reference values listed'
+        : 'Laboratory reference values listed',
+      riskLevel: 'low',
+      correlationId
+    });
     return json(response, 200, payload);
+  }
+
+  if (isLaboratoryHemogramReferenceValueCollectionPath(pathname) && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const payload = parseCreateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>, 'HEM');
+    const referenceValue = await laboratory.createReferenceValue(principal.user.accountId as never, {
+      ...payload,
+      examType: 'HEM'
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'hemogram_reference_value_create',
+      entityType: 'laboratory-reference-value',
+      entityId: referenceValue.id,
+      payloadSummary: `Laboratory hemogram reference value ${referenceValue.parameter} created`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, referenceValue);
+  }
+
+  if (referenceValueDetailMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const referenceValueId = requireNonEmptyString(referenceValueDetailMatch[1], 'referenceValueId');
+    const payload = parseUpdateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>);
+    const referenceValue = await laboratory.updateReferenceValue(principal.user.accountId as never, referenceValueId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'reference_value_update',
+      entityType: 'laboratory-reference-value',
+      entityId: referenceValue.id,
+      payloadSummary: `Laboratory reference value ${referenceValue.parameter} updated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, referenceValue);
   }
 
   return false;

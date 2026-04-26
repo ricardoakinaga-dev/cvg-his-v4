@@ -9,8 +9,10 @@ import {
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   CreateLaboratoryEquipmentRequest,
+  CreateLaboratoryReferenceValueRequest,
   CreateLaboratoryReportTypeRequest,
   UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
@@ -286,6 +288,79 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       .sort((left, right) => left.parameter.localeCompare(right.parameter));
   }
 
+  public async getReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string
+  ): Promise<LaboratoryReferenceValueSummary | undefined> {
+    const result = await this.#db
+      .select()
+      .from(laboratoryReferenceValues)
+      .where(and(eq(laboratoryReferenceValues.accountId, accountId), eq(laboratoryReferenceValues.id, referenceValueId)))
+      .limit(1);
+
+    return result[0] ? this.#toReferenceValueSummary(result[0]) : undefined;
+  }
+
+  public async createReferenceValue(
+    accountId: AccountId,
+    payload: CreateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    const now = new Date(nowIso());
+    const id = `lab-ref-${randomUUID()}`;
+
+    await this.#db.insert(laboratoryReferenceValues).values({
+      id,
+      accountId,
+      parameter: payload.parameter,
+      examType: payload.examType,
+      minValue: payload.minValue.toString(),
+      maxValue: payload.maxValue.toString(),
+      unit: payload.unit,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const referenceValue = await this.getReferenceValue(accountId, id);
+    if (!referenceValue) {
+      throw new Error('Laboratory reference value was not persisted');
+    }
+    return referenceValue;
+  }
+
+  public async updateReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string,
+    payload: UpdateLaboratoryReferenceValueRequest
+  ): Promise<LaboratoryReferenceValueSummary> {
+    const existing = await this.getReferenceValue(accountId, referenceValueId);
+    if (!existing) {
+      throw new Error('Laboratory reference value not found');
+    }
+    const minValue = payload.minValue ?? existing.minValue;
+    const maxValue = payload.maxValue ?? existing.maxValue;
+    if (minValue > maxValue) {
+      throw new Error('Laboratory reference value minimum cannot be greater than maximum');
+    }
+
+    await this.#db
+      .update(laboratoryReferenceValues)
+      .set({
+        parameter: payload.parameter ?? existing.parameter,
+        examType: payload.examType ?? existing.examType,
+        minValue: minValue.toString(),
+        maxValue: maxValue.toString(),
+        unit: payload.unit ?? existing.unit,
+        updatedAt: new Date(nowIso())
+      })
+      .where(and(eq(laboratoryReferenceValues.accountId, accountId), eq(laboratoryReferenceValues.id, referenceValueId)));
+
+    const updated = await this.getReferenceValue(accountId, referenceValueId);
+    if (!updated) {
+      throw new Error('Laboratory reference value not found');
+    }
+    return updated;
+  }
+
   #toEquipmentSummary(row: typeof laboratoryEquipment.$inferSelect): LaboratoryEquipmentSummary {
     return {
       id: row.id,
@@ -305,6 +380,17 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       category: row.category,
       description: row.description,
       active: row.active
+    };
+  }
+
+  #toReferenceValueSummary(row: typeof laboratoryReferenceValues.$inferSelect): LaboratoryReferenceValueSummary {
+    return {
+      id: row.id,
+      parameter: row.parameter,
+      examType: row.examType,
+      minValue: Number(row.minValue),
+      maxValue: Number(row.maxValue),
+      unit: row.unit
     };
   }
 }

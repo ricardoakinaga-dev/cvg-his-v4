@@ -626,3 +626,71 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog w
   assert.equal(updated.id, created.id);
   assert.equal(updated.active, false);
 });
+
+test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog with filters and write flow', async () => {
+  const laboratory = createLaboratoryService();
+  const createResponse = new MockResponse();
+
+  const createHandled = await handleLaboratoryRoutes(
+    '/laboratorio/cadastros/vlr-ref-hemograma',
+    createMockRequest('POST', '/laboratorio/cadastros/vlr-ref-hemograma', {
+      parameter: 'Plaquetas',
+      minValue: 200,
+      maxValue: 500,
+      unit: 'mil/uL'
+    }) as never,
+    createResponse as never,
+    'corr-lab-hem-ref-create',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(createResponse.statusCode, 201);
+  const created = createResponse.bodyJson<{ id: string; parameter: string; examType: string }>();
+  assert.equal(created.parameter, 'Plaquetas');
+  assert.equal(created.examType, 'HEM');
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleLaboratoryRoutes(
+    '/laboratorio/vlr-ref-hemograma',
+    { method: 'GET', url: '/laboratorio/vlr-ref-hemograma?parametro=plaquetas&unidade=mil' } as never,
+    listResponse as never,
+    'corr-lab-hem-ref-list',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(listResponse.statusCode, 200);
+  const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; examType: string }> }>();
+  assert.ok(listPayload.items.some((item) => item.id === created.id));
+  assert.equal(listPayload.items.every((item) => item.examType === 'HEM'), true);
+
+  const updateResponse = new MockResponse();
+  const updateHandled = await handleLaboratoryRoutes(
+    `/laboratory/hemogram-reference-values/${created.id}`,
+    createMockRequest('PATCH', `/laboratory/hemogram-reference-values/${created.id}`, {
+      maxValue: 550
+    }) as never,
+    updateResponse as never,
+    'corr-lab-hem-ref-update',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(updateHandled, true);
+  assert.equal(updateResponse.statusCode, 200);
+  const updated = updateResponse.bodyJson<{ id: string; maxValue: number }>();
+  assert.equal(updated.id, created.id);
+  assert.equal(updated.maxValue, 550);
+});

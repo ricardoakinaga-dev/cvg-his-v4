@@ -1,11 +1,13 @@
 import type {
   CreateDiagnosticOrderRequest,
+  CreateLaboratoryReferenceValueRequest,
   DiagnosticOrderListResponse,
   LaboratoryEquipmentListResponse,
   LaboratoryReferenceValueListResponse,
   LaboratoryReportTypeListResponse,
   RecordDiagnosticResultRequest,
   CreateLaboratoryReportTypeRequest,
+  UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
@@ -87,6 +89,17 @@ export interface LaboratoryReportTypeListFilters {
 export type CreateLaboratoryReportTypePayload = CreateLaboratoryReportTypeRequest;
 
 export type UpdateLaboratoryReportTypePayload = UpdateLaboratoryReportTypeRequest;
+
+export interface LaboratoryReferenceValueListFilters {
+  examType?: string;
+  id?: string;
+  parameter?: string;
+  unit?: string;
+}
+
+export type CreateLaboratoryReferenceValuePayload = CreateLaboratoryReferenceValueRequest;
+
+export type UpdateLaboratoryReferenceValuePayload = UpdateLaboratoryReferenceValueRequest;
 
 export const laboratoryService = {
   async listOrders(filters?: string | LaboratoryOrderListFilters): Promise<DiagnosticOrderSummary[]> {
@@ -279,12 +292,58 @@ export const laboratoryService = {
     });
   },
 
-  async listReferenceValues(filterExam?: string): Promise<LaboratoryReferenceValueSummary[]> {
+  async listReferenceValues(filterExam?: string | LaboratoryReferenceValueListFilters): Promise<LaboratoryReferenceValueSummary[]> {
+    const filters = typeof filterExam === 'string'
+      ? ({ examType: filterExam } satisfies LaboratoryReferenceValueListFilters)
+      : filterExam;
     const response = await apiRequest<LaboratoryReferenceValueListResponse>(
-      `/laboratory/reference-values${buildQuery({ examType: filterExam })}`
+      `/laboratory/reference-values${buildQuery({
+        examType: filters?.examType,
+        id: filters?.id,
+        parameter: filters?.parameter,
+        unit: filters?.unit
+      })}`
     );
     return [...(response.items ?? [])].sort((left, right) =>
       left.parameter.localeCompare(right.parameter)
     );
+  },
+
+  async listHemogramReferenceValues(
+    filters?: Omit<LaboratoryReferenceValueListFilters, 'examType'>
+  ): Promise<LaboratoryReferenceValueSummary[]> {
+    const response = await apiRequest<LaboratoryReferenceValueListResponse>(
+      `/laboratory/hemogram-reference-values${buildQuery({
+        id: filters?.id,
+        parameter: filters?.parameter,
+        unit: filters?.unit
+      })}`
+    );
+    return [...(response.items ?? [])].sort((left, right) =>
+      left.parameter.localeCompare(right.parameter)
+    );
+  },
+
+  async getReferenceValue(referenceValueId: string): Promise<LaboratoryReferenceValueSummary> {
+    return apiRequest<LaboratoryReferenceValueSummary>(`/laboratory/reference-values/${referenceValueId}`);
+  },
+
+  async createHemogramReferenceValue(
+    payload: Omit<CreateLaboratoryReferenceValuePayload, 'examType'>
+  ): Promise<LaboratoryReferenceValueSummary> {
+    return apiRequest<LaboratoryReferenceValueSummary>('/laboratory/hemogram-reference-values', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, examType: 'HEM' })
+    });
+  },
+
+  async updateReferenceValue(
+    referenceValueId: string,
+    payload: UpdateLaboratoryReferenceValuePayload
+  ): Promise<LaboratoryReferenceValueSummary> {
+    return apiRequest<LaboratoryReferenceValueSummary>(`/laboratory/reference-values/${referenceValueId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   }
 };

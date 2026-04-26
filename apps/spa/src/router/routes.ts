@@ -46,7 +46,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
   placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
   placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
-  placeholderRoute('laboratory/hemogram-reference-values', 'LaboratoryHemogramReferenceValues', 'Vlr. Ref. Hemograma', 'Laboratório', '📈'),
   placeholderRoute('laboratory/biochemistry-reference-values', 'LaboratoryBiochemistryReferenceValues', 'Vlr. Ref. Bioquímico', 'Laboratório', '⚗️'),
   placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
   placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
@@ -688,6 +687,51 @@ export const routes: RouteRecordRaw[] = [
           title: 'Valores de Referência',
           breadcrumb: 'Valores de Referência',
           breadcrumbParent: 'Laboratório',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'laboratory/hemogram-reference-values',
+        name: 'LaboratoryHemogramReferenceValues',
+        alias: ['/vlr-ref-hemograma', '/laboratorio/vlr-ref-hemograma', '/laboratorio/cadastros/vlr-ref-hemograma'],
+        component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValuesPage.vue'),
+        meta: {
+          title: 'Vlr. Ref. Hemograma',
+          breadcrumb: 'Vlr. Ref. Hemograma',
+          breadcrumbParent: 'Laboratório',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'laboratory/hemogram-reference-values/new',
+        name: 'LaboratoryHemogramReferenceValueNew',
+        component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValueFormPage.vue'),
+        meta: {
+          title: 'Incluir Valor de Referência',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Vlr. Ref. Hemograma',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'laboratory/hemogram-reference-values/:id',
+        name: 'LaboratoryHemogramReferenceValueDetail',
+        component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValueDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Valor de Referência',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Vlr. Ref. Hemograma',
+          icon: '📈'
+        }
+      },
+      {
+        path: 'laboratory/hemogram-reference-values/:id/edit',
+        name: 'LaboratoryHemogramReferenceValueEdit',
+        component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValueFormPage.vue'),
+        meta: {
+          title: 'Editar Valor de Referência',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Vlr. Ref. Hemograma',
           icon: '📈'
         }
       },
