@@ -250,6 +250,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Laboratorio > Cadastros > Vlr. Ref. Bioquimico | Cadastro de valores de referencia bioquimicos | Implementado | `fd6c417` | Observado no Vetus como item de navbar em `Laboratorio > Cadastros > Vlr. Ref. Bioquimico`; a construcao segue a rota/ordem documentada e reaproveita a persistencia duravel existente em `laboratory_reference_values` filtrada por `BIO`. No `cvg-his-v2`: SPA `/laboratory/biochemistry-reference-values` com aliases `/vlr-ref-bioquimico`, `/laboratorio/vlr-ref-bioquimico` e `/laboratorio/cadastros/vlr-ref-bioquimico`; lista com botao `Incluir`, filtros `Codigo`, `Parametro`, `Unidade`, botao `Pesquisar`, tabela `Codigo`, `Parametro`, `Exame`, `Valor Minimo`, `Valor Maximo`, `Unidade`, `Faixa` e `Abrir`; rotas de inclusao, detalhe e edicao; API `/laboratory/biochemistry-reference-values`, `/laboratory/biochemistry-reference-values/:id`, `/laboratorio/vlr-ref-bioquimico`, `/laboratorio/cadastros/vlr-ref-bioquimico` com filtros, criacao, detalhe e atualizacao; integracao com Bioquimico, Laudos, Exames e auditoria tecnica. |
 | Estoque > Controles > Consulta de Precos | Consulta de preco, custo, saldo e disponibilidade | Implementado | `b000f5f` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a primeira posicao do grupo `Estoque > Controles` conforme navbar ja alinhado no `cvg-his-v2`. No `cvg-his-v2`: SPA `/inventory/price-consultation` com aliases `/consulta-de-precos`, `/estoque/consulta-de-precos` e `/estoque/controles/consulta-de-precos`; tela com botao `Novo Produto`, acao `Atualizar`, filtros `Codigo`, `Produto`, `Origem`, botao `Pesquisar`, tabela `Codigo`, `Produto`, `Origem`, `Preco`, `Custo`, `Margem`, `Saldo`, `Status` e `Abrir`; composicao somente leitura dos endpoints persistentes existentes `/products` e `/inventory`; integracao com Produtos, Estoque, Comandas e Atendimento. |
 | Estoque > Controles > Entrada de Nota Fiscal | Conferencia de entrada fiscal, lotes, custos e fornecedores | Implementado | `b2320a8` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a segunda posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/nf` com aliases `/entrada-nota-fiscal`, `/entrada-de-nota-fiscal`, `/estoque/entrada-nota-fiscal` e `/estoque/controles/entrada-nota-fiscal`; tela com botao `Novo Produto`, acao `Atualizar`, filtros `Nota Fiscal`, `Fornecedor`, `Produto`, `Lote`, `Status`, botao `Pesquisar`, tabela `Nota Fiscal`, `Fornecedor`, `Produto`, `Lote`, `Entrada`, `Validade`, `Quantidade`, `Custo Unit.`, `Valor`, `Status` e `Abrir`; composicao dos endpoints persistentes existentes `/inventory` e `/inventory/lots`; integracao com Produtos, Estoque, Validade/Lotes, Fornecedores e fluxo fiscal de entrada. |
+| Estoque > Controles > Transacao no Estoque | Lancamento operacional de entrada, saida e ajuste de saldo | Implementado | `d88e167` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a terceira posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/movements` com aliases `/transacao-no-estoque`, `/transação-no-estoque`, `/estoque/transacao-no-estoque` e `/estoque/controles/transacao-no-estoque`; tela com botao `Novo Item`, acao `Atualizar`, painel de lancamento com `Estoque`, `Tipo`, `Produto`, `Codigo de Barras`, `Quantidade`, `Observacao`, preview de saldo e botao `Lancar`; filtros `Codigo`, `Produto`, `Natureza`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Natureza`, `Quantidade`, `Saldo`, `Custo`, `Referencia`, `Data` e `Abrir`; persistencia de saldo usando API existente `PATCH /inventory/:id`; listagem combina `/inventory` e `/inventory/consumptions`; tela antiga de ledger permanece como base de `Auditoria de Estoque`. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -257,6 +258,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`d88e167` feat: align Vetus-like inventory stock transaction
 `b2320a8` feat: align Vetus-like inventory invoice entry
 `b000f5f` feat: align Vetus-like inventory price consultation
 `fd6c417` feat: align Vetus-like biochemistry reference values registry
@@ -288,9 +290,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/inventory/nf`
+- Ultima rota validada: `http://localhost:3002/inventory/movements`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/inventory` e `GET http://localhost:3003/inventory/lots`
+- Ultima API validada: `GET http://localhost:3003/inventory`, `GET http://localhost:3003/inventory/consumptions` e `PATCH http://localhost:3003/inventory/:id`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -565,7 +567,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Transacao no Estoque`. |
+| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Requisicao a Farmacia`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -601,8 +603,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Controles > Entrada de Nota Fiscal`, continuar pela ordem do grupo `Estoque > Controles`:
+Apos concluir `Estoque > Controles > Transacao no Estoque`, continuar pela ordem do grupo `Estoque > Controles`:
 
-1. `Estoque > Controles > Transacao no Estoque`
+1. `Estoque > Controles > Requisicao a Farmacia`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
