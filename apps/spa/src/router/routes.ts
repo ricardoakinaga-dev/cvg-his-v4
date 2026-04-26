@@ -38,7 +38,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
   placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
   placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
   placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
   placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
@@ -1922,6 +1921,25 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Grupos de Produto',
           breadcrumbParent: 'Cadastros',
           icon: '🗂️'
+        }
+      },
+      {
+        path: 'company-sectors',
+        name: 'CompanySectors',
+        alias: [
+          '/setores',
+          '/setores-da-empresa',
+          '/estoque/setores',
+          '/estoque/setores-da-empresa',
+          '/estoque/cadastros/setores',
+          '/estoque/cadastros/setores-da-empresa'
+        ],
+        component: () => import('@/pages/inventory/CompanySectorsPage.vue'),
+        meta: {
+          title: 'Setores da Empresa',
+          breadcrumb: 'Setores da Empresa',
+          breadcrumbParent: 'Cadastros',
+          icon: '🏢'
         }
       },
       {

@@ -21,6 +21,12 @@ const pages = [
     placeholder: 'Buscar por ID ou descrição'
   },
   {
+    loader: () => import('../CompanySectorsPage.vue'),
+    title: 'Setores da Empresa',
+    breadcrumb: 'EstoqueCadastrosSetores da Empresa',
+    placeholder: 'Buscar por código ou nome'
+  },
+  {
     loader: () => import('../WarehousesPage.vue'),
     title: 'Estoques',
     breadcrumb: 'EstoqueCadastrosEstoques',
