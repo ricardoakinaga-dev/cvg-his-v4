@@ -694,3 +694,71 @@ test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog
   assert.equal(updated.id, created.id);
   assert.equal(updated.maxValue, 550);
 });
+
+test('handleLaboratoryRoutes exposes Vetus-like biochemistry reference value catalog with filters and write flow', async () => {
+  const laboratory = createLaboratoryService();
+  const createResponse = new MockResponse();
+
+  const createHandled = await handleLaboratoryRoutes(
+    '/laboratorio/cadastros/vlr-ref-bioquimico',
+    createMockRequest('POST', '/laboratorio/cadastros/vlr-ref-bioquimico', {
+      parameter: 'Ureia',
+      minValue: 15,
+      maxValue: 65,
+      unit: 'mg/dL'
+    }) as never,
+    createResponse as never,
+    'corr-lab-bio-ref-create',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(createResponse.statusCode, 201);
+  const created = createResponse.bodyJson<{ id: string; parameter: string; examType: string }>();
+  assert.equal(created.parameter, 'Ureia');
+  assert.equal(created.examType, 'BIO');
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleLaboratoryRoutes(
+    '/laboratorio/vlr-ref-bioquimico',
+    { method: 'GET', url: '/laboratorio/vlr-ref-bioquimico?parametro=ureia&unidade=mg' } as never,
+    listResponse as never,
+    'corr-lab-bio-ref-list',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(listResponse.statusCode, 200);
+  const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; examType: string }> }>();
+  assert.ok(listPayload.items.some((item) => item.id === created.id));
+  assert.equal(listPayload.items.every((item) => item.examType === 'BIO'), true);
+
+  const updateResponse = new MockResponse();
+  const updateHandled = await handleLaboratoryRoutes(
+    `/laboratory/biochemistry-reference-values/${created.id}`,
+    createMockRequest('PATCH', `/laboratory/biochemistry-reference-values/${created.id}`, {
+      maxValue: 75
+    }) as never,
+    updateResponse as never,
+    'corr-lab-bio-ref-update',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(updateHandled, true);
+  assert.equal(updateResponse.statusCode, 200);
+  const updated = updateResponse.bodyJson<{ id: string; maxValue: number }>();
+  assert.equal(updated.id, created.id);
+  assert.equal(updated.maxValue, 75);
+});

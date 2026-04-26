@@ -135,6 +135,16 @@ describe('router convergence', () => {
     expect(findChildRoute('laboratory/hemogram-reference-values/:id')?.name).toBe('LaboratoryHemogramReferenceValueDetail');
     expect(findChildRoute('laboratory/hemogram-reference-values/:id/edit')?.name).toBe('LaboratoryHemogramReferenceValueEdit');
     expect(findChildRoute('laboratory/biochemistry-reference-values')?.meta?.title).toBe('Vlr. Ref. Bioquímico');
+    expect(findChildRoute('laboratory/biochemistry-reference-values')?.alias).toEqual(
+      expect.arrayContaining([
+        '/vlr-ref-bioquimico',
+        '/laboratorio/vlr-ref-bioquimico',
+        '/laboratorio/cadastros/vlr-ref-bioquimico'
+      ])
+    );
+    expect(findChildRoute('laboratory/biochemistry-reference-values/new')?.name).toBe('LaboratoryBiochemistryReferenceValueNew');
+    expect(findChildRoute('laboratory/biochemistry-reference-values/:id')?.name).toBe('LaboratoryBiochemistryReferenceValueDetail');
+    expect(findChildRoute('laboratory/biochemistry-reference-values/:id/edit')?.name).toBe('LaboratoryBiochemistryReferenceValueEdit');
   });
 
   it('uses concrete routes for cadastro auxiliary animal catalogs', () => {

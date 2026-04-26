@@ -46,7 +46,6 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('products/import', 'ProductsImport', 'Importar Dados Produtos', 'Estoque', '⬆️'),
   placeholderRoute('company-sectors', 'CompanySectors', 'Setores da Empresa', 'Estoque', '🏢'),
   placeholderRoute('measurement-units', 'MeasurementUnits', 'Unidades de Medida', 'Estoque', '📏'),
-  placeholderRoute('laboratory/biochemistry-reference-values', 'LaboratoryBiochemistryReferenceValues', 'Vlr. Ref. Bioquímico', 'Laboratório', '⚗️'),
   placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
   placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
   placeholderRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', '📦'),
@@ -733,6 +732,51 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Editar',
           breadcrumbParent: 'Vlr. Ref. Hemograma',
           icon: '📈'
+        }
+      },
+      {
+        path: 'laboratory/biochemistry-reference-values',
+        name: 'LaboratoryBiochemistryReferenceValues',
+        alias: ['/vlr-ref-bioquimico', '/laboratorio/vlr-ref-bioquimico', '/laboratorio/cadastros/vlr-ref-bioquimico'],
+        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValuesPage.vue'),
+        meta: {
+          title: 'Vlr. Ref. Bioquímico',
+          breadcrumb: 'Vlr. Ref. Bioquímico',
+          breadcrumbParent: 'Laboratório',
+          icon: '⚗️'
+        }
+      },
+      {
+        path: 'laboratory/biochemistry-reference-values/new',
+        name: 'LaboratoryBiochemistryReferenceValueNew',
+        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
+        meta: {
+          title: 'Incluir Valor Bioquímico',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Vlr. Ref. Bioquímico',
+          icon: '⚗️'
+        }
+      },
+      {
+        path: 'laboratory/biochemistry-reference-values/:id',
+        name: 'LaboratoryBiochemistryReferenceValueDetail',
+        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Valor Bioquímico',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Vlr. Ref. Bioquímico',
+          icon: '⚗️'
+        }
+      },
+      {
+        path: 'laboratory/biochemistry-reference-values/:id/edit',
+        name: 'LaboratoryBiochemistryReferenceValueEdit',
+        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
+        meta: {
+          title: 'Editar Valor Bioquímico',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Vlr. Ref. Bioquímico',
+          icon: '⚗️'
         }
       },
       {

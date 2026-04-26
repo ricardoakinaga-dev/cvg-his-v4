@@ -6656,6 +6656,153 @@ paths:
               schema:
                 $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
 
+  /laboratory/biochemistry-reference-values:
+    get:
+      operationId: listLaboratoryBiochemistryReferenceValues
+      summary: List biochemistry reference values
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Optional reference value code filter.
+        - in: query
+          name: parameter
+          schema:
+            type: string
+          description: Optional parameter filter.
+        - in: query
+          name: unit
+          schema:
+            type: string
+          description: Optional unit filter.
+      responses:
+        '200':
+          description: Biochemistry reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+    post:
+      operationId: createLaboratoryBiochemistryReferenceValue
+      summary: Create biochemistry reference value
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReferenceValueRequest'
+      responses:
+        '201':
+          description: Biochemistry reference value created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratory/biochemistry-reference-values/{referenceValueId}:
+    get:
+      operationId: getLaboratoryBiochemistryReferenceValue
+      summary: Get biochemistry reference value detail
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Biochemistry reference value detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+    patch:
+      operationId: updateLaboratoryBiochemistryReferenceValue
+      summary: Update biochemistry reference value
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: referenceValueId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLaboratoryReferenceValueRequest'
+      responses:
+        '200':
+          description: Biochemistry reference value updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratorio/cadastros/vlr-ref-bioquimico:
+    get:
+      operationId: listLaboratorioCadastrosVlrRefBioquimicoAlias
+      summary: List biochemistry reference values using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional reference value code filter.
+        - in: query
+          name: parametro
+          schema:
+            type: string
+          description: Optional parameter filter.
+        - in: query
+          name: unidade
+          schema:
+            type: string
+          description: Optional unit filter.
+      responses:
+        '200':
+          description: Biochemistry reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+    post:
+      operationId: createLaboratorioCadastrosVlrRefBioquimicoAlias
+      summary: Create biochemistry reference value using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReferenceValueRequest'
+      responses:
+        '201':
+          description: Biochemistry reference value created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueSummary'
+
+  /laboratorio/vlr-ref-bioquimico:
+    get:
+      operationId: listLaboratorioVlrRefBioquimicoAlias
+      summary: List biochemistry reference values using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      responses:
+        '200':
+          description: Biochemistry reference values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReferenceValueListResponse'
+
   /diagnostics/reference-values:
     get:
       operationId: listDiagnosticsReferenceValues

@@ -225,7 +225,7 @@ const domainLayers = [
     title: 'Vlr. Ref. Bioquímico',
     description: 'Norma bioquímica que transforma resultado numérico em interpretação clínica.',
     action: 'Abrir referências',
-    to: '/laboratory/reference-values'
+    to: '/laboratory/biochemistry-reference-values'
   },
   {
     icon: '🔧',

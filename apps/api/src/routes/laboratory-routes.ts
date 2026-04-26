@@ -124,13 +124,24 @@ function isLaboratoryHemogramReferenceValueCollectionPath(pathname: string): boo
   ].includes(pathname);
 }
 
+function isLaboratoryBiochemistryReferenceValueCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/biochemistry-reference-values',
+    '/laboratorio/vlr-ref-bioquimico',
+    '/laboratorio/cadastros/vlr-ref-bioquimico'
+  ].includes(pathname);
+}
+
 function isLaboratoryReferenceValueCollectionPath(pathname: string): boolean {
   return [
     '/laboratory/reference-values',
     '/diagnostics/reference-values',
     '/laboratory/hemogram-reference-values',
     '/laboratorio/vlr-ref-hemograma',
-    '/laboratorio/cadastros/vlr-ref-hemograma'
+    '/laboratorio/cadastros/vlr-ref-hemograma',
+    '/laboratory/biochemistry-reference-values',
+    '/laboratorio/vlr-ref-bioquimico',
+    '/laboratorio/cadastros/vlr-ref-bioquimico'
   ].includes(pathname);
 }
 
@@ -898,7 +909,7 @@ export async function handleLaboratoryRoutes(
   }
 
   const referenceValueDetailMatch = pathname.match(
-    /^\/(?:laboratory\/reference-values|laboratory\/hemogram-reference-values|laboratorio\/cadastros\/vlr-ref-hemograma|laboratorio\/vlr-ref-hemograma)\/([^/]+)$/
+    /^\/(?:laboratory\/reference-values|laboratory\/hemogram-reference-values|laboratory\/biochemistry-reference-values|laboratorio\/cadastros\/vlr-ref-hemograma|laboratorio\/vlr-ref-hemograma|laboratorio\/cadastros\/vlr-ref-bioquimico|laboratorio\/vlr-ref-bioquimico)\/([^/]+)$/
   );
 
   if (referenceValueDetailMatch && request.method === 'GET') {
@@ -924,7 +935,9 @@ export async function handleLaboratoryRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = isLaboratoryHemogramReferenceValueCollectionPath(pathname)
       ? 'HEM'
-      : (url.searchParams.get('examType') ?? undefined);
+      : isLaboratoryBiochemistryReferenceValueCollectionPath(pathname)
+        ? 'BIO'
+        : (url.searchParams.get('examType') ?? undefined);
     const idFilter = normalizeSearch(url.searchParams.get('id') ?? url.searchParams.get('codigo'));
     const parameterFilter = normalizeSearch(url.searchParams.get('parameter') ?? url.searchParams.get('parametro'));
     const unitFilter = normalizeSearch(url.searchParams.get('unit') ?? url.searchParams.get('unidade'));
@@ -943,11 +956,15 @@ export async function handleLaboratoryRoutes(
       module: routeModule,
       action: isLaboratoryHemogramReferenceValueCollectionPath(pathname)
         ? 'hemogram_reference_value_list'
+        : isLaboratoryBiochemistryReferenceValueCollectionPath(pathname)
+          ? 'biochemistry_reference_value_list'
         : 'reference_value_list',
       entityType: 'laboratory-reference-value',
       entityId: examType ?? 'all',
       payloadSummary: isLaboratoryHemogramReferenceValueCollectionPath(pathname)
         ? 'Laboratory hemogram reference values listed'
+        : isLaboratoryBiochemistryReferenceValueCollectionPath(pathname)
+          ? 'Laboratory biochemistry reference values listed'
         : 'Laboratory reference values listed',
       riskLevel: 'low',
       correlationId
@@ -970,6 +987,27 @@ export async function handleLaboratoryRoutes(
       entityType: 'laboratory-reference-value',
       entityId: referenceValue.id,
       payloadSummary: `Laboratory hemogram reference value ${referenceValue.parameter} created`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, referenceValue);
+  }
+
+  if (isLaboratoryBiochemistryReferenceValueCollectionPath(pathname) && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const payload = parseCreateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>, 'BIO');
+    const referenceValue = await laboratory.createReferenceValue(principal.user.accountId as never, {
+      ...payload,
+      examType: 'BIO'
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'biochemistry_reference_value_create',
+      entityType: 'laboratory-reference-value',
+      entityId: referenceValue.id,
+      payloadSummary: `Laboratory biochemistry reference value ${referenceValue.parameter} created`,
       riskLevel: 'medium',
       correlationId
     });

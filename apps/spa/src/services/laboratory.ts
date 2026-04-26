@@ -324,6 +324,21 @@ export const laboratoryService = {
     );
   },
 
+  async listBiochemistryReferenceValues(
+    filters?: Omit<LaboratoryReferenceValueListFilters, 'examType'>
+  ): Promise<LaboratoryReferenceValueSummary[]> {
+    const response = await apiRequest<LaboratoryReferenceValueListResponse>(
+      `/laboratory/biochemistry-reference-values${buildQuery({
+        id: filters?.id,
+        parameter: filters?.parameter,
+        unit: filters?.unit
+      })}`
+    );
+    return [...(response.items ?? [])].sort((left, right) =>
+      left.parameter.localeCompare(right.parameter)
+    );
+  },
+
   async getReferenceValue(referenceValueId: string): Promise<LaboratoryReferenceValueSummary> {
     return apiRequest<LaboratoryReferenceValueSummary>(`/laboratory/reference-values/${referenceValueId}`);
   },
@@ -334,6 +349,15 @@ export const laboratoryService = {
     return apiRequest<LaboratoryReferenceValueSummary>('/laboratory/hemogram-reference-values', {
       method: 'POST',
       body: JSON.stringify({ ...payload, examType: 'HEM' })
+    });
+  },
+
+  async createBiochemistryReferenceValue(
+    payload: Omit<CreateLaboratoryReferenceValuePayload, 'examType'>
+  ): Promise<LaboratoryReferenceValueSummary> {
+    return apiRequest<LaboratoryReferenceValueSummary>('/laboratory/biochemistry-reference-values', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, examType: 'BIO' })
     });
   },
 
