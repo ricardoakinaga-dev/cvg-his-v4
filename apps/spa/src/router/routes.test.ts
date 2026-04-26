@@ -185,6 +185,16 @@ describe('router convergence', () => {
         '/estoque/controles/coletores-de-dados'
       ])
     );
+    expect(findChildRoute('products')?.meta?.title).toBe('Produtos');
+    expect(findChildRoute('products')?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(findChildRoute('products')?.alias).toEqual(
+      expect.arrayContaining(['/produtos', '/estoque/produtos', '/estoque/cadastros/produtos', '/cadastros/produtos'])
+    );
+    expect(findChildRoute('products/new')?.alias).toEqual(
+      expect.arrayContaining(['/produtos/novo', '/estoque/cadastros/produtos/novo'])
+    );
+    expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
+    expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');
     expect(findChildRoute('inventory/transfers')?.meta?.breadcrumbParent).toBe('Estoque');
     expect(findChildRoute('inventory/transfers')?.alias).toEqual(

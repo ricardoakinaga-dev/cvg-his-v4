@@ -1869,11 +1869,12 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products',
         name: 'Products',
+        alias: ['/produtos', '/estoque/produtos', '/estoque/cadastros/produtos', '/cadastros/produtos'],
         component: () => import('@/pages/products/ProductsListPage.vue'),
         meta: {
           title: 'Produtos',
           breadcrumb: 'Produtos',
-          breadcrumbParent: 'Estoque',
+          breadcrumbParent: 'Cadastros',
           icon: '📦'
         }
       },
@@ -1924,6 +1925,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products/new',
         name: 'ProductNew',
+        alias: ['/produtos/novo', '/estoque/cadastros/produtos/novo'],
         component: () => import('@/pages/products/ProductFormPage.vue'),
         meta: {
           title: 'Novo Produto',
@@ -1935,6 +1937,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products/:id',
         name: 'ProductDetail',
+        alias: ['/produtos/:id'],
         component: () => import('@/pages/products/ProductDetailPage.vue'),
         meta: {
           title: 'Detalhes do Produto',
@@ -1946,6 +1949,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products/:id/edit',
         name: 'ProductEdit',
+        alias: ['/produtos/:id/editar'],
         component: () => import('@/pages/products/ProductFormPage.vue'),
         meta: {
           title: 'Editar Produto',

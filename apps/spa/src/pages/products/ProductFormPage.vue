@@ -1,7 +1,7 @@
 <template>
   <div class="form-page">
     <AppPageHeader
-      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos', isEditing ? 'Editar Produto' : 'Novo Produto']"
+      :breadcrumbs="['Estoque', 'Cadastros', 'Produtos', isEditing ? 'Editar Produto' : 'Novo Produto']"
       :title="isEditing ? 'Editar Produto' : 'Novo Produto'"
       :subtitle="isEditing ? 'Atualize os dados do produto' : 'Cadastre um novo produto no catálogo'"
     >
@@ -19,15 +19,16 @@
 
     <div class="form-layout">
       <DsCard>
-        <form class="product-form" @submit.prevent="submitForm">
-          <DsInput v-model="form.name" label="Nome do Produto" required placeholder="Ex: Vacina V4" />
-          <DsInput v-model="form.code" label="Código" placeholder="Ex: VAC-001" />
+        <form class="product-form" aria-label="Cadastro de produto" @submit.prevent="submitForm">
+          <DsInput v-model="form.name" label="Produto" required placeholder="Ex: Vacina V4" data-testid="product-name" />
+          <DsInput v-model="form.code" label="Código" placeholder="Ex: VAC-001" data-testid="product-code" />
           <DsInput
             v-model="form.description"
             type="textarea"
             label="Descrição"
             :rows="3"
             placeholder="Descrição opcional do produto"
+            data-testid="product-description"
           />
           <DsInput
             v-model.number="form.basePrice"
@@ -37,10 +38,11 @@
             step="0.01"
             min="0"
             placeholder="0.00"
+            data-testid="product-price"
           />
           <div class="active-toggle">
             <label class="toggle-label">
-              <input type="checkbox" v-model="form.active" />
+              <input v-model="form.active" type="checkbox" data-testid="product-active" />
               <span>Produto Ativo</span>
             </label>
           </div>

@@ -1,80 +1,88 @@
 <template>
-  <div class="list-page">
+  <div class="products-list-page">
     <AppPageHeader
       title="Produtos"
-      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos']"
-      subtitle="Catálogo de produtos e mercadorias para estoque e comercialização">
+      :breadcrumbs="['Estoque', 'Cadastros', 'Produtos']"
+      subtitle="Cadastro comercial de produtos, códigos, preços e situação operacional"
+    >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
-        <DsButton variant="primary" @click="router.push('/products/new')">Novo Produto</DsButton>
+        <DsButton variant="secondary" tag="a" to="/products/import" icon="⬆️">Importar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/inventory" icon="📦">Estoque</DsButton>
+        <DsButton variant="primary" tag="a" to="/products/new" icon="➕">Incluir</DsButton>
       </template>
     </AppPageHeader>
-
-    <!-- Hub: KPI StatCards -->
-    <section class="hub-kpis">
-      <DsStatCard :label="products.length + ' produto(s)'" value="" icon="📦" />
-      <DsStatCard :label="activeCount + ' ativo(s)'" value="" icon="✅" />
-      <DsStatCard :label="inactiveCount + ' inativo(s)'" value="" icon="❌" />
-      <DsStatCard :label="filteredCount + ' resultado(s)'" value="" icon="🔍" />
-    </section>
-
-    <!-- Hub: Quick Actions -->
-    <section class="hub-actions">
-      <DsCard title="Ações rápidas" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="primary" tag="a" to="/products/new" icon="➕">
-            Novo Produto
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory" icon="📦">
-            Ver Estoque
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/sales/quotes" icon="🧾">
-            Orçamentos
-          </DsButton>
-          <DsButton variant="ghost" :loading="loading" @click="loadData" icon="🔄">
-            Atualizar
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
-    <div class="search-bar">
-      <DsInput v-model="searchQuery" label="" placeholder="Buscar por nome ou código..." @input="debouncedSearch" />
-    </div>
+    <section class="hub-kpis" aria-label="Resumo de produtos">
+      <DsStatCard :label="`${products.length} produto(s)`" value="" icon="📦" />
+      <DsStatCard :label="`${activeCount} ativo(s)`" value="" icon="✅" />
+      <DsStatCard :label="`${inactiveCount} inativo(s)`" value="" icon="⏸️" />
+      <DsStatCard :label="`${filteredProducts.length} resultado(s)`" value="" icon="🔎" />
+    </section>
+
+    <section class="filter-panel" aria-label="Filtros de produtos">
+      <form class="filters" @submit.prevent="applyFilters">
+        <label class="field">
+          <span>Código</span>
+          <input v-model="draftFilters.code" type="search" autocomplete="off" data-testid="products-code-filter" />
+        </label>
+        <label class="field">
+          <span>Produto</span>
+          <input v-model="draftFilters.product" type="search" autocomplete="off" data-testid="products-name-filter" />
+        </label>
+        <label class="field">
+          <span>Situação</span>
+          <select v-model="draftFilters.status" data-testid="products-status-filter">
+            <option value="">Todas</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+          </select>
+        </label>
+        <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+      </form>
+    </section>
 
     <DataTable
       :columns="columns"
-      :rows="products"
+      :rows="filteredProducts"
       :loading="loading"
       empty-icon="📦"
       empty-title="Nenhum produto encontrado"
-      empty-description="Cadastre o primeiro produto para começar."
+      empty-description="Produtos cadastrados pela API aparecerão aqui."
       variant="hoverable"
     >
-      <template #cell-name="{ row }">
-        {{ (row as ProductSummary).name }}
-      </template>
       <template #cell-code="{ row }">
-        {{ (row as ProductSummary).code ?? '—' }}
+        <span class="record-id">{{ (row as ProductSummary).code ?? (row as ProductSummary).id }}</span>
+      </template>
+      <template #cell-name="{ row }">
+        <strong>{{ (row as ProductSummary).name }}</strong>
+      </template>
+      <template #cell-description="{ row }">
+        {{ (row as ProductSummary).description || 'Sem descrição' }}
       </template>
       <template #cell-basePrice="{ row }">
         {{ formatCurrency((row as ProductSummary).basePrice) }}
       </template>
       <template #cell-active="{ row }">
-        <span :class="['status-badge', (row as ProductSummary).active ? 'status-badge--active' : 'status-badge--inactive']">
-          {{ (row as ProductSummary).active ? 'Ativo' : 'Inativo' }}
-        </span>
+        <StatusBadge
+          :label="(row as ProductSummary).active ? 'Ativo' : 'Inativo'"
+          :variant="(row as ProductSummary).active ? 'success' : 'neutral'"
+          size="sm"
+        />
+      </template>
+      <template #cell-updatedAt="{ row }">
+        {{ formatDate((row as ProductSummary).updatedAt) }}
       </template>
       <template #cell-actions="{ row }">
         <div class="row-actions">
-          <DsButton size="sm" variant="secondary" @click="router.push(`/products/${(row as ProductSummary).id}`)">
-            Ver
+          <DsButton tag="a" :to="`/products/${(row as ProductSummary).id}`" size="sm" variant="secondary">
+            Abrir
           </DsButton>
-          <DsButton size="sm" variant="secondary" @click="router.push(`/products/${(row as ProductSummary).id}/edit`)">
+          <DsButton tag="a" :to="`/products/${(row as ProductSummary).id}/edit`" size="sm" variant="secondary">
             Editar
           </DsButton>
         </div>
@@ -84,63 +92,75 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn } from '@/components/DataTable.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { productsService, type ProductSummary } from '@/services/products';
-import type { DataTableColumn } from '@/components/DataTable.vue';
-import { computed } from 'vue';
 
-const router = useRouter();
-const products = ref<any[]>([]);
+const products = ref<ProductSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
-const searchQuery = ref('');
+const draftFilters = reactive({
+  code: '',
+  product: '',
+  status: ''
+});
+const appliedFilters = reactive({ ...draftFilters });
 
 const columns: DataTableColumn[] = [
-  { key: 'name', label: 'Nome' },
-  { key: 'code', label: 'Código' },
-  { key: 'basePrice', label: 'Preço Base' },
-  { key: 'active', label: 'Status' },
-  { key: 'actions', label: 'Ações', class: 'table__actions-col' }
+  { key: 'code', label: 'Código', width: '140px' },
+  { key: 'name', label: 'Produto' },
+  { key: 'description', label: 'Descrição' },
+  { key: 'basePrice', label: 'Preço Base', width: '130px' },
+  { key: 'active', label: 'Situação', width: '120px' },
+  { key: 'updatedAt', label: 'Atualizado', width: '130px' },
+  { key: 'actions', label: 'Abrir', width: '150px', class: 'table__actions-col' }
 ];
 
 const activeCount = computed(() => products.value.filter((product) => product.active).length);
 const inactiveCount = computed(() => products.value.filter((product) => !product.active).length);
-const filteredCount = computed(
-  () =>
-    products.value.filter((product) => {
-      const q = searchQuery.value.toLowerCase();
-      if (!q) return true;
-      return product.name.toLowerCase().includes(q) || (product.code ?? '').toLowerCase().includes(q);
-    }).length
-);
-const activeRate = computed(() => {
-  if (!products.value.length) return '0%';
-  return `${Math.round((activeCount.value / products.value.length) * 100)}%`;
+const filteredProducts = computed(() => {
+  const code = normalizeSearch(appliedFilters.code);
+  const productName = normalizeSearch(appliedFilters.product);
+  const status = appliedFilters.status;
+
+  return products.value.filter((product) => {
+    if (status === 'active' && !product.active) return false;
+    if (status === 'inactive' && product.active) return false;
+    if (code && !normalizeSearch(product.code ?? product.id).includes(code)) return false;
+    if (productName && !normalizeSearch(product.name).includes(productName)) return false;
+    return true;
+  });
 });
+
+function normalizeSearch(value: string): string {
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-let debounceTimer: ReturnType<typeof setTimeout>;
-function debouncedSearch() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => loadData(searchQuery.value), 300);
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
 }
 
-async function loadData(search?: string) {
+function applyFilters() {
+  Object.assign(appliedFilters, draftFilters);
+  void loadData();
+}
+
+async function loadData() {
   loading.value = true;
   error.value = '';
   try {
-    products.value = await productsService.list(search);
+    const query = draftFilters.product || draftFilters.code || undefined;
+    products.value = await productsService.list(query);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar produtos';
   } finally {
@@ -152,7 +172,7 @@ onMounted(loadData);
 </script>
 
 <style scoped>
-.list-page {
+.products-list-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -160,44 +180,59 @@ onMounted(loadData);
 
 .hub-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
-.hub-actions {
-  margin-bottom: 0;
+.filter-panel {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
 }
 
-.quick-actions {
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #d7dde8);
+  border-radius: 6px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+  font: inherit;
+}
+
+.record-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+}
+
+.row-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.search-bar {
-  max-width: 400px;
-}
-
-.row-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-badge--active {
-  background: var(--color-success-100, #dcfce7);
-  color: var(--color-success-700, #15803d);
-}
-
-.status-badge--inactive {
-  background: var(--color-neutral-100, #f1f5f9);
-  color: var(--color-neutral-600, #475569);
+@media (max-width: 820px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

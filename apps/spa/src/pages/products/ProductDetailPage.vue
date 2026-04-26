@@ -1,11 +1,13 @@
 <template>
   <div class="detail-page">
     <AppPageHeader
-      :breadcrumbs="['Estoque', 'Cadastrados', 'Produtos', product?.name ?? 'Detalhes']"
+      :breadcrumbs="['Estoque', 'Cadastros', 'Produtos', product?.name ?? 'Detalhes']"
       title="Detalhes do Produto"
       :subtitle="product?.name ?? 'Carregando...'">
       <template #actions>
         <DsButton variant="secondary" @click="router.push('/products')">Voltar</DsButton>
+        <DsButton variant="secondary" @click="router.push('/inventory/price-consultation')">Consulta</DsButton>
+        <DsButton variant="secondary" @click="router.push('/inventory/price-audit')">Auditoria</DsButton>
         <DsButton variant="primary" @click="router.push(`/products/${productId}/edit`)">Editar</DsButton>
       </template>
     </AppPageHeader>
