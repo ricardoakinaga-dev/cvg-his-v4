@@ -257,6 +257,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Estoque > Controles > Auditoria de Precos | Conferencia de precos, custos, margens e tabelas comerciais | Implementado | `15b22b7` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a setima posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/price-audit` com aliases `/auditoria-de-precos`, `/auditoria-de-preços`, `/auditoria-precos`, `/estoque/auditoria-de-precos` e `/estoque/controles/auditoria-de-precos`; tela somente leitura com acoes `Atualizar`, `Consulta` e `Tabelas`; painel de conferencia com `Registro`, `Preco atual`, `Custo`, `Margem`, tabela e acao de auditoria; filtros `Codigo`, `Produto`, `Tabela`, `Origem`, `Situacao`, `Margem minima %`, botao `Pesquisar`; tabela `Codigo`, `Produto / Tabela`, `Origem`, `Tabela`, `Preco`, `Custo`, `Margem`, `Saldo`, `Situacao`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/products`, `/inventory` e `/price-tables`; integracao com Consulta de Precos, Produtos, Estoque, Tabelas de Preco e fluxo comercial/PDV. |
 | Estoque > Controles > Transferencia entre Estoques | Conferencia de origem, destino, lote e saldo para remanejamento interno | Implementado | `c8aad2f` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a oitava posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/transfers` com aliases `/transferencia-entre-estoques`, `/transferência-entre-estoques`, `/transferencia-estoques`, `/estoque/transferencia-entre-estoques` e `/estoque/controles/transferencia-entre-estoques`; tela com acoes `Atualizar`, `Transacao` e `Estoques`; painel de transferencia com `Origem`, `Destino`, `Produto`, `Codigo de Barras`, `Lote`, `Quantidade`, `Responsavel`, `Observacao`, preview de saldo de origem e botao `Preparar`; filtros `Codigo`, `Produto`, `Origem`, `Destino`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Origem`, `Destino`, `Lote`, `Quantidade`, `Saldo`, `Situacao`, `Responsavel`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/inventory` e `/inventory/lots`; integracao com Transacao no Estoque, Estoques, Produtos, Validade de Produtos e Auditoria de Estoque. Observacao tecnica: como a API atual ainda nao persiste saldo por local/depósito, a acao `Preparar` registra a conferencia no runtime da tela e nao altera o saldo global; a persistencia duravel de transferencia por local deve ser o proximo refinamento tecnico quando o modelo de estoque por deposito for exposto pela API. |
 | Estoque > Controles > Compras | Sugestao, cotacao e preparacao de compra por saldo, minimo e lote | Implementado | `6a60fd9` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a nona posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/purchases` com aliases `/compras`, `/estoque/compras`, `/estoque/controles/compras`, `/compras-estoque` e `/compras-de-estoque`; tela com acoes `Atualizar`, `Entrada NF` e `Fornecedores`; painel de compra com `Fornecedor`, `Condicao`, `Produto`, `Codigo`, `Quantidade`, `Custo Unit.`, `Previsao`, `Observacao`, preview de saldo e total previsto, botao `Preparar Pedido`; filtros `Codigo`, `Produto`, `Fornecedor`, `Situacao`, `Previsao ate`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Fornecedor`, `Quantidade`, `Custo Unit.`, `Total`, `Saldo`, `Minimo`, `Situacao`, `Previsao` e `Abrir`; composicao dos endpoints persistentes existentes `/inventory` e `/inventory/lots`; integracao com Entrada de Nota Fiscal, Fornecedores, Produtos, Validade de Produtos e fluxo financeiro futuro de contas a pagar. Observacao tecnica: como a API atual ainda nao persiste pedido de compra, a acao `Preparar Pedido` registra a conferencia no runtime da tela e nao altera saldo/custo; a persistencia duravel de pedidos de compra deve ser o proximo refinamento tecnico quando o contrato de compras for exposto pela API. |
+| Estoque > Controles > Reajuste de Precos | Simulacao, conferencia e aplicacao de reajuste comercial por produto, margem e tabela | Implementado | `201ccb9` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a decima posicao do grupo `Estoque > Controles` conforme sequencia documentada. No `cvg-his-v2`: SPA `/inventory/price-adjustments` com aliases `/reajuste-de-precos`, `/reajuste-de-preços`, `/reajuste-precos`, `/estoque/reajuste-de-precos` e `/estoque/controles/reajuste-de-precos`; tela com acoes `Atualizar`, `Auditoria` e `Tabelas`; painel de reajuste com `Tabela`, `Tipo`, `Produto`, `Codigo`, `Valor do Reajuste`, `Arredondamento`, `Margem minima %`, `Motivo`, preview de preco atual/novo preco e botao `Aplicar`; filtros `Codigo`, `Produto`, `Tabela`, `Situacao`, `Margem minima %`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Tabela`, `Preco Atual`, `Novo Preco`, `Variacao`, `Custo`, `Margem`, `Saldo`, `Situacao`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/products`, `/inventory` e `/price-tables`; persistencia duravel do reajuste via `PATCH /products/:id`; integracao com Auditoria de Precos, Tabelas de Preco, Consulta de Precos, Produtos e fluxo comercial/PDV. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -264,6 +265,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`201ccb9` feat: align Vetus-like inventory price adjustments
 `6a60fd9` feat: align Vetus-like inventory purchases
 `c8aad2f` feat: align Vetus-like inventory transfers
 `15b22b7` feat: align Vetus-like inventory price audit
@@ -302,9 +304,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/inventory/purchases`
+- Ultima rota validada: `http://localhost:3002/inventory/price-adjustments`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/inventory` e `GET http://localhost:3003/inventory/lots`
+- Ultima API validada: `GET http://localhost:3003/products`, `GET http://localhost:3003/inventory`, `GET http://localhost:3003/price-tables` e contrato SPA para `PATCH http://localhost:3003/products/:id`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -579,7 +581,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Reajuste de Precos`. |
+| Estoque | Em andamento | Continuar em `Estoque > Controles`, proximo item provavel: `Coletores de Dados`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -615,8 +617,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Controles > Compras`, continuar pela ordem do grupo `Estoque > Controles`:
+Apos concluir `Estoque > Controles > Reajuste de Precos`, continuar pela ordem do grupo `Estoque > Controles`:
 
-1. `Estoque > Controles > Reajuste de Precos`
+1. `Estoque > Controles > Coletores de Dados`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
