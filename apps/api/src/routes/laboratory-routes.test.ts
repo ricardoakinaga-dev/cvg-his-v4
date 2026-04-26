@@ -558,3 +558,71 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog wit
   assert.equal(updated.id, created.id);
   assert.equal(updated.status, 'maintenance');
 });
+
+test('handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog with filters and write flow', async () => {
+  const laboratory = createLaboratoryService();
+  const createResponse = new MockResponse();
+
+  const createHandled = await handleLaboratoryRoutes(
+    '/laboratorio/cadastros/tipos-de-laudo',
+    createMockRequest('POST', '/laboratorio/cadastros/tipos-de-laudo', {
+      name: 'Citologia',
+      code: 'cito',
+      category: 'Laboratorial',
+      description: 'Modelo de laudo citologico',
+      active: true
+    }) as never,
+    createResponse as never,
+    'corr-lab-report-type-create',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(createResponse.statusCode, 201);
+  const created = createResponse.bodyJson<{ id: string; name: string; code: string }>();
+  assert.equal(created.name, 'Citologia');
+  assert.equal(created.code, 'CITO');
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleLaboratoryRoutes(
+    '/laboratorio/tipos-de-laudo',
+    { method: 'GET', url: '/laboratorio/tipos-de-laudo?descricao=citologico&categoria=laboratorial' } as never,
+    listResponse as never,
+    'corr-lab-report-type-list',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(listResponse.statusCode, 200);
+  const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; name: string }> }>();
+  assert.ok(listPayload.items.some((item) => item.id === created.id));
+
+  const updateResponse = new MockResponse();
+  const updateHandled = await handleLaboratoryRoutes(
+    `/laboratory/report-types/${created.id}`,
+    createMockRequest('PATCH', `/laboratory/report-types/${created.id}`, {
+      active: false
+    }) as never,
+    updateResponse as never,
+    'corr-lab-report-type-update',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(updateHandled, true);
+  assert.equal(updateResponse.statusCode, 200);
+  const updated = updateResponse.bodyJson<{ id: string; active: boolean }>();
+  assert.equal(updated.id, created.id);
+  assert.equal(updated.active, false);
+});

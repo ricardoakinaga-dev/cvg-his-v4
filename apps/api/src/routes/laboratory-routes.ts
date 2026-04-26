@@ -5,13 +5,15 @@ import type { LaboratoryService } from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
   CreateLaboratoryEquipmentRequest,
+  CreateLaboratoryReportTypeRequest,
   DiagnosticOrderListResponse,
   ExamCatalogListResponse,
   LaboratoryEquipmentListResponse,
   LaboratoryReferenceValueListResponse,
   LaboratoryReportTypeListResponse,
   RecordDiagnosticResultRequest,
-  UpdateLaboratoryEquipmentRequest
+  UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -103,6 +105,15 @@ function isLaboratoryEquipmentCollectionPath(pathname: string): boolean {
   ].includes(pathname);
 }
 
+function isLaboratoryReportTypeCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/report-types',
+    '/diagnostics/report-types',
+    '/laboratorio/tipos-de-laudo',
+    '/laboratorio/cadastros/tipos-de-laudo'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
 }
@@ -159,6 +170,46 @@ function parseUpdateEquipmentPayload(payload: Record<string, unknown>): UpdateLa
   if (payload.lastCalibrationAt !== undefined) {
     update.lastCalibrationAt = normalizeCalibrationDate(payload.lastCalibrationAt);
   }
+  return update;
+}
+
+function normalizeReportTypeCode(value: unknown): string {
+  return requireNonEmptyString(String(value ?? ''), 'code').trim().toUpperCase();
+}
+
+function normalizeReportTypeActive(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value ?? 'true').trim().toLowerCase();
+  return !['false', '0', 'inactive', 'inativo'].includes(normalized);
+}
+
+function parseCreateReportTypePayload(payload: Record<string, unknown>): CreateLaboratoryReportTypeRequest {
+  return {
+    name: requireNonEmptyString(String(payload.name ?? ''), 'name'),
+    code: normalizeReportTypeCode(payload.code),
+    category: requireNonEmptyString(String(payload.category ?? ''), 'category'),
+    description: requireNonEmptyString(String(payload.description ?? ''), 'description'),
+    active: normalizeReportTypeActive(payload.active)
+  };
+}
+
+function parseUpdateReportTypePayload(payload: Record<string, unknown>): UpdateLaboratoryReportTypeRequest {
+  const update: {
+    name?: string;
+    code?: string;
+    category?: string;
+    description?: string;
+    active?: boolean;
+  } = {};
+  if (payload.name !== undefined) update.name = requireNonEmptyString(String(payload.name), 'name');
+  if (payload.code !== undefined) update.code = normalizeReportTypeCode(payload.code);
+  if (payload.category !== undefined) {
+    update.category = requireNonEmptyString(String(payload.category), 'category');
+  }
+  if (payload.description !== undefined) {
+    update.description = requireNonEmptyString(String(payload.description), 'description');
+  }
+  if (payload.active !== undefined) update.active = normalizeReportTypeActive(payload.active);
   return update;
 }
 
@@ -676,12 +727,98 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, equipment);
   }
 
-  if ((pathname === '/laboratory/report-types' || pathname === '/diagnostics/report-types') && request.method === 'GET') {
+  const reportTypeDetailMatch = pathname.match(
+    /^\/(?:laboratory\/report-types|laboratorio\/cadastros\/tipos-de-laudo|laboratorio\/tipos-de-laudo)\/([^/]+)$/
+  );
+
+  if (reportTypeDetailMatch && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
-    const payload: LaboratoryReportTypeListResponse = {
-      items: await laboratory.listReportTypes(principal.user.accountId as never)
-    };
+    const reportTypeId = requireNonEmptyString(reportTypeDetailMatch[1], 'reportTypeId');
+    const payload = await laboratory.getReportType(principal.user.accountId as never, reportTypeId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'report_type_read',
+      entityType: 'laboratory-report-type',
+      entityId: reportTypeId,
+      payloadSummary: `Laboratory report type ${reportTypeId} inspected`,
+      riskLevel: 'low',
+      correlationId
+    });
     return json(response, 200, payload);
+  }
+
+  if (isLaboratoryReportTypeCollectionPath(pathname) && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
+    const descriptionFilter = normalizeSearch(url.searchParams.get('description') ?? url.searchParams.get('descricao'));
+    const categoryFilter = normalizeSearch(url.searchParams.get('category') ?? url.searchParams.get('categoria'));
+    const statusFilter = normalizeSearch(url.searchParams.get('status') ?? url.searchParams.get('situacao'));
+    const items = (await laboratory.listReportTypes(principal.user.accountId as never)).filter((reportType) => {
+      if (codeFilter && !normalizeSearch(`${reportType.id} ${reportType.code}`)?.includes(codeFilter)) return false;
+      if (descriptionFilter && !normalizeSearch(`${reportType.name} ${reportType.description}`)?.includes(descriptionFilter)) {
+        return false;
+      }
+      if (categoryFilter && !normalizeSearch(reportType.category)?.includes(categoryFilter)) return false;
+      if (statusFilter) {
+        const status = reportType.active ? 'ativo active' : 'inativo inactive';
+        if (!normalizeSearch(status)?.includes(statusFilter)) return false;
+      }
+      return true;
+    });
+    const payload: LaboratoryReportTypeListResponse = { items };
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'report_type_list',
+      entityType: 'laboratory-report-type',
+      entityId: 'all',
+      payloadSummary: 'Laboratory report types listed',
+      riskLevel: 'low',
+      correlationId
+    });
+    return json(response, 200, payload);
+  }
+
+  if (isLaboratoryReportTypeCollectionPath(pathname) && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const payload = parseCreateReportTypePayload((await readJsonBody(request)) as Record<string, unknown>);
+    const reportType = await laboratory.createReportType(principal.user.accountId as never, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'report_type_create',
+      entityType: 'laboratory-report-type',
+      entityId: reportType.id,
+      payloadSummary: `Laboratory report type ${reportType.name} created`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, reportType);
+  }
+
+  if (reportTypeDetailMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const reportTypeId = requireNonEmptyString(reportTypeDetailMatch[1], 'reportTypeId');
+    const payload = parseUpdateReportTypePayload((await readJsonBody(request)) as Record<string, unknown>);
+    const reportType = await laboratory.updateReportType(principal.user.accountId as never, reportTypeId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'report_type_update',
+      entityType: 'laboratory-report-type',
+      entityId: reportType.id,
+      payloadSummary: `Laboratory report type ${reportType.name} updated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, reportType);
   }
 
   if (

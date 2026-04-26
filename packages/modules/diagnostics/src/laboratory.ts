@@ -10,9 +10,11 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import type {
   CreateLaboratoryEquipmentRequest,
+  CreateLaboratoryReportTypeRequest,
   CreateDiagnosticOrderRequest,
   RecordDiagnosticResultRequest,
-  UpdateLaboratoryEquipmentRequest
+  UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import { randomUUID } from 'node:crypto';
 import {
@@ -47,6 +49,16 @@ export interface LaboratoryCatalogRepository {
     payload: UpdateLaboratoryEquipmentRequest
   ): Promise<LaboratoryEquipmentSummary>;
   listReportTypes(accountId: AccountId): Promise<readonly LaboratoryReportTypeSummary[]>;
+  getReportType(accountId: AccountId, reportTypeId: string): Promise<LaboratoryReportTypeSummary | undefined>;
+  createReportType(
+    accountId: AccountId,
+    payload: CreateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary>;
+  updateReportType(
+    accountId: AccountId,
+    reportTypeId: string,
+    payload: UpdateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary>;
   listReferenceValues(
     accountId: AccountId,
     filterExam?: string
@@ -147,6 +159,57 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     return [...(this.#reportTypes.get(accountId) ?? [])].sort((left, right) =>
       left.name.localeCompare(right.name)
     );
+  }
+
+  public async getReportType(
+    accountId: AccountId,
+    reportTypeId: string
+  ): Promise<LaboratoryReportTypeSummary | undefined> {
+    await this.ensureSeedData(accountId);
+    return (this.#reportTypes.get(accountId) ?? []).find((item) => item.id === reportTypeId);
+  }
+
+  public async createReportType(
+    accountId: AccountId,
+    payload: CreateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    await this.ensureSeedData(accountId);
+    const reportType: LaboratoryReportTypeSummary = {
+      id: `lab-report-type-${randomUUID()}`,
+      name: payload.name,
+      code: payload.code,
+      category: payload.category,
+      description: payload.description,
+      active: payload.active ?? true
+    };
+    const current = this.#reportTypes.get(accountId) ?? [];
+    this.#reportTypes.set(accountId, [...current, reportType]);
+    return reportType;
+  }
+
+  public async updateReportType(
+    accountId: AccountId,
+    reportTypeId: string,
+    payload: UpdateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    await this.ensureSeedData(accountId);
+    const current = [...(this.#reportTypes.get(accountId) ?? [])];
+    const index = current.findIndex((item) => item.id === reportTypeId);
+    if (index < 0) {
+      throw new Error('Laboratory report type not found');
+    }
+    const existing = current[index];
+    const updated: LaboratoryReportTypeSummary = {
+      ...existing,
+      name: payload.name ?? existing.name,
+      code: payload.code ?? existing.code,
+      category: payload.category ?? existing.category,
+      description: payload.description ?? existing.description,
+      active: payload.active ?? existing.active
+    };
+    current[index] = updated;
+    this.#reportTypes.set(accountId, current);
+    return updated;
   }
 
   public async listReferenceValues(
@@ -320,6 +383,47 @@ export class LaboratoryService {
         left.name.localeCompare(right.name)
       );
     }
+  }
+
+  public async getReportType(
+    accountId: AccountId,
+    reportTypeId: string
+  ): Promise<LaboratoryReportTypeSummary> {
+    if (!this.#catalogRepository) {
+      const reportType = DEFAULT_LABORATORY_REPORT_TYPES.find((item) => item.id === reportTypeId);
+      if (!reportType) throw new Error('Laboratory report type not found');
+      return reportType;
+    }
+
+    await this.#catalogRepository.ensureSeedData(accountId);
+    const reportType = await this.#catalogRepository.getReportType(accountId, reportTypeId);
+    if (!reportType) {
+      throw new Error('Laboratory report type not found');
+    }
+    return reportType;
+  }
+
+  public async createReportType(
+    accountId: AccountId,
+    payload: CreateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory report type persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.createReportType(accountId, payload);
+  }
+
+  public async updateReportType(
+    accountId: AccountId,
+    reportTypeId: string,
+    payload: UpdateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    if (!this.#catalogRepository) {
+      throw new Error('Laboratory report type persistence is not configured');
+    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.updateReportType(accountId, reportTypeId, payload);
   }
 
   public async listReferenceValues(

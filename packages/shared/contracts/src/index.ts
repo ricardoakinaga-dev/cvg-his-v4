@@ -830,6 +830,16 @@ export interface LaboratoryReportTypeListResponse {
   readonly items: readonly LaboratoryReportTypeSummary[];
 }
 
+export interface CreateLaboratoryReportTypeRequest {
+  readonly name: string;
+  readonly code: string;
+  readonly category: string;
+  readonly description: string;
+  readonly active?: boolean;
+}
+
+export type UpdateLaboratoryReportTypeRequest = Partial<CreateLaboratoryReportTypeRequest>;
+
 export interface LaboratoryReferenceValueListResponse {
   readonly items: readonly LaboratoryReferenceValueSummary[];
 }

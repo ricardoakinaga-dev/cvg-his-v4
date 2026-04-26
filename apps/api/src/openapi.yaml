@@ -6271,6 +6271,162 @@ paths:
       operationId: listLaboratoryReportTypes
       summary: List laboratory report types
       tags: [Laboratory]
+      parameters:
+        - in: query
+          name: code
+          schema:
+            type: string
+          description: Optional report type code filter.
+        - in: query
+          name: description
+          schema:
+            type: string
+          description: Optional report type description or model filter.
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Optional report type category filter.
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: Optional report type status filter.
+      responses:
+        '200':
+          description: Laboratory report types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeListResponse'
+    post:
+      operationId: createLaboratoryReportType
+      summary: Create laboratory report type
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReportTypeRequest'
+      responses:
+        '201':
+          description: Laboratory report type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeSummary'
+
+  /laboratory/report-types/{reportTypeId}:
+    get:
+      operationId: getLaboratoryReportType
+      summary: Get laboratory report type detail
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: reportTypeId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory report type detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeSummary'
+    patch:
+      operationId: updateLaboratoryReportType
+      summary: Update laboratory report type
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: reportTypeId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLaboratoryReportTypeRequest'
+      responses:
+        '200':
+          description: Laboratory report type updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeSummary'
+
+  /laboratorio/cadastros/tipos-de-laudo:
+    get:
+      operationId: listLaboratorioCadastrosTiposDeLaudoAlias
+      summary: List laboratory report types using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional report type code filter.
+        - in: query
+          name: descricao
+          schema:
+            type: string
+          description: Optional report type description or model filter.
+        - in: query
+          name: categoria
+          schema:
+            type: string
+          description: Optional report type category filter.
+        - in: query
+          name: situacao
+          schema:
+            type: string
+          description: Optional report type status filter.
+      responses:
+        '200':
+          description: Laboratory report types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeListResponse'
+    post:
+      operationId: createLaboratorioCadastrosTiposDeLaudoAlias
+      summary: Create laboratory report type using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLaboratoryReportTypeRequest'
+      responses:
+        '201':
+          description: Laboratory report type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryReportTypeSummary'
+
+  /laboratorio/tipos-de-laudo:
+    get:
+      operationId: listLaboratorioTiposDeLaudoAlias
+      summary: List laboratory report types using short Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: codigo
+          schema:
+            type: string
+          description: Optional report type code filter.
+        - in: query
+          name: descricao
+          schema:
+            type: string
+          description: Optional report type description or model filter.
       responses:
         '200':
           description: Laboratory report types
@@ -9045,6 +9201,35 @@ components:
       properties:
         id:
           type: string
+        name:
+          type: string
+        code:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+
+    CreateLaboratoryReportTypeRequest:
+      type: object
+      required: [name, code, category, description]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+
+    UpdateLaboratoryReportTypeRequest:
+      type: object
+      properties:
         name:
           type: string
         code:

@@ -4,7 +4,9 @@ import type {
   LaboratoryEquipmentListResponse,
   LaboratoryReferenceValueListResponse,
   LaboratoryReportTypeListResponse,
-  RecordDiagnosticResultRequest
+  RecordDiagnosticResultRequest,
+  CreateLaboratoryReportTypeRequest,
+  UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
   DiagnosticOrderSummary,
@@ -74,6 +76,17 @@ export interface CreateLaboratoryEquipmentPayload {
 }
 
 export type UpdateLaboratoryEquipmentPayload = Partial<CreateLaboratoryEquipmentPayload>;
+
+export interface LaboratoryReportTypeListFilters {
+  code?: string;
+  description?: string;
+  category?: string;
+  status?: 'active' | 'inactive' | '';
+}
+
+export type CreateLaboratoryReportTypePayload = CreateLaboratoryReportTypeRequest;
+
+export type UpdateLaboratoryReportTypePayload = UpdateLaboratoryReportTypeRequest;
 
 export const laboratoryService = {
   async listOrders(filters?: string | LaboratoryOrderListFilters): Promise<DiagnosticOrderSummary[]> {
@@ -233,9 +246,37 @@ export const laboratoryService = {
     });
   },
 
-  async listReportTypes(): Promise<LaboratoryReportTypeSummary[]> {
-    const response = await apiRequest<LaboratoryReportTypeListResponse>('/laboratory/report-types');
+  async listReportTypes(filters?: LaboratoryReportTypeListFilters): Promise<LaboratoryReportTypeSummary[]> {
+    const response = await apiRequest<LaboratoryReportTypeListResponse>(
+      `/laboratory/report-types${buildQuery({
+        code: filters?.code,
+        description: filters?.description,
+        category: filters?.category,
+        status: filters?.status || undefined
+      })}`
+    );
     return [...(response.items ?? [])].sort((left, right) => left.name.localeCompare(right.name));
+  },
+
+  async getReportType(reportTypeId: string): Promise<LaboratoryReportTypeSummary> {
+    return apiRequest<LaboratoryReportTypeSummary>(`/laboratory/report-types/${reportTypeId}`);
+  },
+
+  async createReportType(payload: CreateLaboratoryReportTypePayload): Promise<LaboratoryReportTypeSummary> {
+    return apiRequest<LaboratoryReportTypeSummary>('/laboratory/report-types', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateReportType(
+    reportTypeId: string,
+    payload: UpdateLaboratoryReportTypePayload
+  ): Promise<LaboratoryReportTypeSummary> {
+    return apiRequest<LaboratoryReportTypeSummary>(`/laboratory/report-types/${reportTypeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listReferenceValues(filterExam?: string): Promise<LaboratoryReferenceValueSummary[]> {

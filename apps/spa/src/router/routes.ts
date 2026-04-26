@@ -638,11 +638,45 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/report-types',
         name: 'LaboratoryReportTypes',
+        alias: ['/tipos-de-laudo', '/laboratorio/tipos-de-laudo', '/laboratorio/cadastros/tipos-de-laudo'],
         component: () => import('@/pages/laboratory/LaboratoryReportTypesPage.vue'),
         meta: {
           title: 'Tipos de Laudo',
           breadcrumb: 'Tipos de Laudo',
           breadcrumbParent: 'Laboratório',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'laboratory/report-types/new',
+        name: 'LaboratoryReportTypeNew',
+        component: () => import('@/pages/laboratory/LaboratoryReportTypeFormPage.vue'),
+        meta: {
+          title: 'Incluir Tipo de Laudo',
+          breadcrumb: 'Incluir',
+          breadcrumbParent: 'Tipos de Laudo',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'laboratory/report-types/:id',
+        name: 'LaboratoryReportTypeDetail',
+        component: () => import('@/pages/laboratory/LaboratoryReportTypeDetailPage.vue'),
+        meta: {
+          title: 'Detalhes do Tipo de Laudo',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Tipos de Laudo',
+          icon: '📄'
+        }
+      },
+      {
+        path: 'laboratory/report-types/:id/edit',
+        name: 'LaboratoryReportTypeEdit',
+        component: () => import('@/pages/laboratory/LaboratoryReportTypeFormPage.vue'),
+        meta: {
+          title: 'Editar Tipo de Laudo',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Tipos de Laudo',
           icon: '📄'
         }
       },

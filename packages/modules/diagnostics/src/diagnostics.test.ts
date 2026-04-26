@@ -316,6 +316,31 @@ test('LaboratoryService creates and updates laboratory equipment in the catalog 
   assert.equal(detail.lastCalibrationAt, '2026-04-26T00:00:00.000Z');
 });
 
+test('LaboratoryService creates and updates laboratory report types in the catalog repository', async () => {
+  const { service: diagnostics } = createService();
+  const laboratory = new LaboratoryService(diagnostics, {
+    catalogRepository: new InMemoryLaboratoryCatalogRepository()
+  });
+
+  const created = await laboratory.createReportType('acc_test' as never, {
+    name: 'Citologia',
+    code: 'CITO',
+    category: 'Laboratorial',
+    description: 'Modelo de laudo citologico',
+    active: true
+  });
+
+  const updated = await laboratory.updateReportType('acc_test' as never, created.id, {
+    description: 'Modelo revisado de laudo citologico',
+    active: false
+  });
+  const detail = await laboratory.getReportType('acc_test' as never, created.id);
+
+  assert.equal(created.code, 'CITO');
+  assert.equal(updated.active, false);
+  assert.equal(detail.description, 'Modelo revisado de laudo citologico');
+});
+
 test('LaboratoryService exposes resulted orders and order detail scoped by account', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics, {
@@ -387,6 +412,15 @@ test('LaboratoryService keeps order listing available when catalog repository is
         throw new Error('relation "laboratory_equipment" does not exist');
       },
       async listReportTypes() {
+        throw new Error('relation "laboratory_report_types" does not exist');
+      },
+      async getReportType() {
+        throw new Error('relation "laboratory_report_types" does not exist');
+      },
+      async createReportType() {
+        throw new Error('relation "laboratory_report_types" does not exist');
+      },
+      async updateReportType() {
         throw new Error('relation "laboratory_report_types" does not exist');
       },
       async listReferenceValues() {

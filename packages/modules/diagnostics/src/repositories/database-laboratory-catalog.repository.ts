@@ -9,7 +9,9 @@ import {
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   CreateLaboratoryEquipmentRequest,
-  UpdateLaboratoryEquipmentRequest
+  CreateLaboratoryReportTypeRequest,
+  UpdateLaboratoryEquipmentRequest,
+  UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
   AccountId,
@@ -188,6 +190,74 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       .sort((left, right) => left.name.localeCompare(right.name));
   }
 
+  public async getReportType(
+    accountId: AccountId,
+    reportTypeId: string
+  ): Promise<LaboratoryReportTypeSummary | undefined> {
+    const result = await this.#db
+      .select()
+      .from(laboratoryReportTypes)
+      .where(and(eq(laboratoryReportTypes.accountId, accountId), eq(laboratoryReportTypes.id, reportTypeId)))
+      .limit(1);
+
+    return result[0] ? this.#toReportTypeSummary(result[0]) : undefined;
+  }
+
+  public async createReportType(
+    accountId: AccountId,
+    payload: CreateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    const now = new Date(nowIso());
+    const id = `lab-report-type-${randomUUID()}`;
+
+    await this.#db.insert(laboratoryReportTypes).values({
+      id,
+      accountId,
+      name: payload.name,
+      code: payload.code,
+      category: payload.category,
+      description: payload.description,
+      active: payload.active ?? true,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const reportType = await this.getReportType(accountId, id);
+    if (!reportType) {
+      throw new Error('Laboratory report type was not persisted');
+    }
+    return reportType;
+  }
+
+  public async updateReportType(
+    accountId: AccountId,
+    reportTypeId: string,
+    payload: UpdateLaboratoryReportTypeRequest
+  ): Promise<LaboratoryReportTypeSummary> {
+    const existing = await this.getReportType(accountId, reportTypeId);
+    if (!existing) {
+      throw new Error('Laboratory report type not found');
+    }
+
+    await this.#db
+      .update(laboratoryReportTypes)
+      .set({
+        name: payload.name ?? existing.name,
+        code: payload.code ?? existing.code,
+        category: payload.category ?? existing.category,
+        description: payload.description ?? existing.description,
+        active: payload.active ?? existing.active,
+        updatedAt: new Date(nowIso())
+      })
+      .where(and(eq(laboratoryReportTypes.accountId, accountId), eq(laboratoryReportTypes.id, reportTypeId)));
+
+    const updated = await this.getReportType(accountId, reportTypeId);
+    if (!updated) {
+      throw new Error('Laboratory report type not found');
+    }
+    return updated;
+  }
+
   public async listReferenceValues(
     accountId: AccountId,
     filterExam?: string
@@ -224,6 +294,17 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       serialNumber: row.serialNumber,
       status: row.status as LaboratoryEquipmentSummary['status'],
       lastCalibrationAt: row.lastCalibrationAt.toISOString()
+    };
+  }
+
+  #toReportTypeSummary(row: typeof laboratoryReportTypes.$inferSelect): LaboratoryReportTypeSummary {
+    return {
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      category: row.category,
+      description: row.description,
+      active: row.active
     };
   }
 }
