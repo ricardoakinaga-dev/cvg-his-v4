@@ -39,10 +39,28 @@ export {
   type LaboratoryReferenceValueSummary
 };
 
+export interface LaboratoryOrderListFilters {
+  encounterId?: string;
+  patientId?: string;
+  animal?: string;
+  date?: string;
+  id?: string;
+}
+
 export const laboratoryService = {
-  async listOrders(encounterId?: string): Promise<DiagnosticOrderSummary[]> {
+  async listOrders(filters?: string | LaboratoryOrderListFilters): Promise<DiagnosticOrderSummary[]> {
+    const normalizedFilters =
+      typeof filters === 'string'
+        ? ({ encounterId: filters } satisfies LaboratoryOrderListFilters)
+        : filters;
     const response = await apiRequest<DiagnosticOrderListResponse>(
-      `/laboratory/orders${buildQuery({ encounterId })}`
+      `/laboratory/orders${buildQuery({
+        encounterId: normalizedFilters?.encounterId,
+        patientId: normalizedFilters?.patientId,
+        animal: normalizedFilters?.animal,
+        date: normalizedFilters?.date,
+        id: normalizedFilters?.id
+      })}`
     );
     return [...(response.items ?? [])].sort((left, right) =>
       right.createdAt.localeCompare(left.createdAt)

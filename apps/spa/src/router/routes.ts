@@ -528,7 +528,12 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/orders',
         name: 'LaboratoryOrders',
-        alias: ['/laboratorio/exames', '/laboratorio/pedidos-de-exame', '/laboratorio/atendimentos/pedidos-de-exame'],
+        alias: [
+          '/laboratorio/exames',
+          '/laboratorio/atendimentos/exames',
+          '/laboratorio/pedidos-de-exame',
+          '/laboratorio/atendimentos/pedidos-de-exame'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryOrdersPage.vue'),
         meta: {
           title: 'Exames',

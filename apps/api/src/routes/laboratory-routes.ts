@@ -50,8 +50,26 @@ function isDiagnosticsBridge(pathname: string): boolean {
     || pathname.startsWith('/exam-results/');
 }
 
+function isLaboratoryOrdersCollectionPath(pathname: string): boolean {
+  return [
+    '/laboratory/orders',
+    '/laboratory/exams',
+    '/laboratorio/exames',
+    '/laboratorio/atendimentos/exames'
+  ].includes(pathname);
+}
+
 function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
   return pathname.startsWith('/diagnostics') ? 'diagnostics' : 'laboratory';
+}
+
+function normalizeSearch(value: string | null | undefined): string | undefined {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : undefined;
+}
+
+function createdAtMatchesDate(createdAt: string, dateFilter: string): boolean {
+  return createdAt.slice(0, 10) === dateFilter;
 }
 
 export async function handleLaboratoryRoutes(
@@ -61,7 +79,7 @@ export async function handleLaboratoryRoutes(
   correlationId: string,
   handlers: LaboratoryRoutesHandlers
 ): Promise<boolean> {
-  const isLaboratoryPath = pathname.startsWith('/laboratory');
+  const isLaboratoryPath = pathname.startsWith('/laboratory') || pathname.startsWith('/laboratorio');
   const isDiagnosticsPath = isDiagnosticsBridge(pathname);
   if (!isLaboratoryPath && !isDiagnosticsPath) {
     return false;
@@ -107,11 +125,19 @@ export async function handleLaboratoryRoutes(
     return json(response, 200, payload);
   }
 
-  if ((pathname === '/laboratory/orders' || pathname === '/diagnostics/orders') && request.method === 'GET') {
+  if ((isLaboratoryOrdersCollectionPath(pathname) || pathname === '/diagnostics/orders') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
-    const items = await laboratory.listOrders(principal.user.accountId as never, encounterId);
+    const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
+    const idFilter = normalizeSearch(url.searchParams.get('id'));
+    const dateFilter = url.searchParams.get('date') ?? url.searchParams.get('data') ?? undefined;
+    const items = (await laboratory.listOrders(principal.user.accountId as never, encounterId)).filter((order) => {
+      if (idFilter && !order.id.toLowerCase().includes(idFilter)) return false;
+      if (patientFilter && !order.patientId.toLowerCase().includes(patientFilter)) return false;
+      if (dateFilter && !createdAtMatchesDate(order.createdAt, dateFilter)) return false;
+      return true;
+    });
     const payload: DiagnosticOrderListResponse = { items };
 
     appendAudit(audit, {
@@ -209,7 +235,7 @@ export async function handleLaboratoryRoutes(
     });
   }
 
-  if ((pathname === '/laboratory/orders' || pathname === '/diagnostics/orders') && request.method === 'POST') {
+  if ((isLaboratoryOrdersCollectionPath(pathname) || pathname === '/diagnostics/orders') && request.method === 'POST') {
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as CreateDiagnosticOrderRequest;
     const order = laboratory.createOrder(payload);

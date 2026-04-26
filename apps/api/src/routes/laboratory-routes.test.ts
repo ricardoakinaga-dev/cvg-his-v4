@@ -168,6 +168,46 @@ test('handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge', as
   assert.equal(payload.items.every((item) => item.encounterId === 'enc-1'), true);
 });
 
+test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and filters', async () => {
+  const response = new MockResponse();
+
+  const handled = await handleLaboratoryRoutes(
+    '/laboratorio/atendimentos/exames',
+    { method: 'GET', url: '/laboratorio/atendimentos/exames?animal=pat-1&data=2026-' } as never,
+    response as never,
+    'corr-lab-vetus-exames',
+    {
+      laboratory: createLaboratoryService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ patientId: string }> }>();
+  assert.equal(payload.items.length, 0);
+
+  const datedResponse = new MockResponse();
+  const datedHandled = await handleLaboratoryRoutes(
+    '/laboratory/exams',
+    { method: 'GET', url: '/laboratory/exams?animal=pat-1' } as never,
+    datedResponse as never,
+    'corr-lab-vetus-exames-2',
+    {
+      laboratory: createLaboratoryService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(datedHandled, true);
+  assert.equal(datedResponse.statusCode, 200);
+  const datedPayload = datedResponse.bodyJson<{ items: Array<{ patientId: string }> }>();
+  assert.equal(datedPayload.items.length, 2);
+  assert.equal(datedPayload.items.every((item) => item.patientId === 'pat-1'), true);
+});
+
 test('handleLaboratoryRoutes exposes diagnostics catalog and order detail', async () => {
   const laboratory = createLaboratoryService();
   const orders = await laboratory.listOrders('acc-1' as never, 'enc-1');

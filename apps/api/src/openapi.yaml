@@ -5261,6 +5261,27 @@ paths:
           schema:
             type: string
           description: Optional encounter filter.
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Optional Vetus-like order ID filter.
+        - in: query
+          name: patientId
+          schema:
+            type: string
+          description: Optional patient/animal ID filter.
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional Vetus-like animal filter.
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like creation date filter.
       responses:
         '200':
           description: Laboratory orders
@@ -5281,6 +5302,90 @@ paths:
       responses:
         '201':
           description: Laboratory order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /laboratory/exams:
+    get:
+      operationId: listLaboratoryExamsAlias
+      summary: List laboratory exams using Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional animal filter.
+        - in: query
+          name: data
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like date filter.
+      responses:
+        '200':
+          description: Laboratory exams
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+    post:
+      operationId: createLaboratoryExamAlias
+      summary: Create laboratory exam using Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagnosticOrderRequest'
+      responses:
+        '201':
+          description: Laboratory exam created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderSummary'
+
+  /laboratorio/atendimentos/exames:
+    get:
+      operationId: listLaboratorioAtendimentosExamesAlias
+      summary: List laboratory exams using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      parameters:
+        - in: query
+          name: animal
+          schema:
+            type: string
+          description: Optional animal filter.
+        - in: query
+          name: data
+          schema:
+            type: string
+            format: date
+          description: Optional Vetus-like date filter.
+      responses:
+        '200':
+          description: Laboratory exams
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticOrderListResponse'
+    post:
+      operationId: createLaboratorioAtendimentosExameAlias
+      summary: Create laboratory exam using Portuguese Vetus-like route alias
+      tags: [Laboratory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagnosticOrderRequest'
+      responses:
+        '201':
+          description: Laboratory exam created
           content:
             application/json:
               schema:
