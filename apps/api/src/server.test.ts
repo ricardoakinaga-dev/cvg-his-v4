@@ -1376,6 +1376,99 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(updateCoatColorResponse.statusCode, 200);
   assert.equal(updateCoatColorResponse.bodyJson<{ active: boolean; name: string }>().active, false);
 
+  const createPreventiveResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/vaccines-dewormers',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      clientName: 'Maria Silva',
+      animalName: 'Rex',
+      eventDate: '2026-05-10',
+      itemType: 'vaccine',
+      description: 'Vacina V10 - reforco anual',
+      observation: 'Avisar tutor com antecedencia.'
+    }
+  });
+  assert.equal(createPreventiveResponse.statusCode, 201);
+  const createdPreventive = createPreventiveResponse.bodyJson<{
+    id: string;
+    description: string;
+    status: string;
+    itemType: string;
+  }>();
+  assert.equal(createdPreventive.description, 'Vacina V10 - reforco anual');
+  assert.equal(createdPreventive.status, 'scheduled');
+  assert.equal(createdPreventive.itemType, 'vaccine');
+
+  const preventiveListResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/vaccines-dewormers?dateFrom=2026-05-01&dateTo=2026-05-31&client=Maria&animal=Rex&itemType=vaccine',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(preventiveListResponse.statusCode, 200);
+  const preventiveEvents = preventiveListResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>();
+  assert.equal(preventiveEvents.items.length, 1);
+  assert.equal(preventiveEvents.items[0]?.id, createdPreventive.id);
+
+  const executePreventiveResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/vaccines-dewormers/${createdPreventive.id}/execute`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      observation: 'Aplicada sem intercorrencias.',
+      rescheduleTo: '2027-05-10'
+    }
+  });
+  assert.equal(executePreventiveResponse.statusCode, 200);
+  const executePreventive = executePreventiveResponse.bodyJson<{
+    event: { status: string; executedObservation: string | null };
+    rescheduledEvent: { eventDate: string; status: string } | null;
+  }>();
+  assert.equal(executePreventive.event.status, 'executed');
+  assert.equal(executePreventive.event.executedObservation, 'Aplicada sem intercorrencias.');
+  assert.equal(executePreventive.rescheduledEvent?.eventDate, '2027-05-10');
+  assert.equal(executePreventive.rescheduledEvent?.status, 'scheduled');
+
+  const includeExecutedPreventiveResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/vaccines-dewormers?includeExecuted=true&client=Maria',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(includeExecutedPreventiveResponse.statusCode, 200);
+  const includeExecutedPreventive = includeExecutedPreventiveResponse.bodyJson<{
+    items: Array<{ status: string }>;
+  }>();
+  assert.equal(includeExecutedPreventive.items.some((item) => item.status === 'executed'), true);
+
+  const preventiveEmailResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/vaccines-dewormers/reminders/email',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      client: 'Maria'
+    }
+  });
+  assert.equal(preventiveEmailResponse.statusCode, 200);
+  assert.equal(preventiveEmailResponse.bodyJson<{ preparedCount: number }>().preparedCount, 1);
+
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
     url: '/inventory?search=MED-001',

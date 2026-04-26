@@ -3,14 +3,16 @@
     <AppPageHeader
       :breadcrumbs="['Atendimento', 'Vacinas e Vermífugos']"
       title="Vacinas e Vermífugos"
-      subtitle="Agenda preventiva por cliente, animal, data, execução e aviso ao tutor."
-    >
+      subtitle="Agenda preventiva por cliente, animal, data, execução e aviso ao tutor.">
       <template #actions>
         <DsButton variant="primary" @click="openScheduleModal()">Agendar Vacina ou Vermífugo</DsButton>
-        <DsButton variant="secondary" @click="sendBulkEmail">Enviar Email de Aviso</DsButton>
+        <DsButton variant="secondary" :loading="emailLoading" @click="sendBulkEmail">Enviar Email de Aviso</DsButton>
       </template>
     </AppPageHeader>
 
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
     <DsAlert v-if="notice" :variant="notice.variant" dismissible @dismiss="notice = null">
       {{ notice.message }}
     </DsAlert>
@@ -25,20 +27,27 @@
           placeholder="Nome, CPF ou ID do cliente"
         />
         <DsInput v-model="draftFilters.animal" label="Animal" placeholder="Nome ou ID do animal" />
+        <DsInput v-model="draftFilters.itemType" type="select" label="Tipo">
+          <option value="">Todos</option>
+          <option v-for="option in preventiveItemTypeOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </DsInput>
         <label class="filters-grid__check">
           <input v-model="draftFilters.includeExecuted" type="checkbox" />
           <span>Pesquisar aplicações executadas</span>
         </label>
         <div class="filters-grid__actions">
           <DsButton variant="secondary" type="button" @click="clearFilters">Todos</DsButton>
-          <DsButton variant="primary" type="submit">Pesquisar</DsButton>
+          <DsButton variant="primary" type="submit" :loading="loading">Pesquisar</DsButton>
         </div>
       </form>
     </DsCard>
 
     <DataTable
       :columns="columns"
-      :rows="filteredRows"
+      :rows="rows"
+      :loading="loading"
       empty-icon="💉"
       empty-title="Nenhuma vacina nem vermífugo encontrado."
       empty-description="Agende uma vacina ou vermífugo para acompanhar prevenção, execução e avisos."
@@ -47,33 +56,36 @@
       <template #emptyAction>
         <DsButton variant="primary" @click="openScheduleModal()">Agendar Vacina ou Vermífugo</DsButton>
       </template>
-      <template #cell-date="{ row }">
-        {{ formatDate((row as PreventiveEvent).date) }}
+      <template #cell-eventDate="{ row }">
+        {{ formatDate((row as PreventiveEventSummary).eventDate) }}
+      </template>
+      <template #cell-itemType="{ row }">
+        {{ preventiveItemTypeLabel((row as PreventiveEventSummary).itemType) }}
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
-          :label="statusLabel((row as PreventiveEvent).status)"
-          :variant="(row as PreventiveEvent).status === 'executed' ? 'success' : 'warning'"
+          :label="statusLabel((row as PreventiveEventSummary).status)"
+          :variant="(row as PreventiveEventSummary).status === 'executed' ? 'success' : 'warning'"
           size="sm"
         />
       </template>
       <template #cell-execute="{ row }">
         <DsButton
           size="sm"
-          :variant="(row as PreventiveEvent).status === 'executed' ? 'secondary' : 'success'"
-          :disabled="(row as PreventiveEvent).status === 'executed'"
-          @click="openExecuteModal(row as PreventiveEvent)"
+          :variant="(row as PreventiveEventSummary).status === 'executed' ? 'secondary' : 'success'"
+          :disabled="(row as PreventiveEventSummary).status === 'executed'"
+          @click="openExecuteModal(row as PreventiveEventSummary)"
         >
-          {{ (row as PreventiveEvent).status === 'executed' ? 'Baixado' : 'Executar' }}
+          {{ (row as PreventiveEventSummary).status === 'executed' ? 'Baixado' : 'Executar' }}
         </DsButton>
       </template>
       <template #cell-open="{ row }">
-        <DsButton size="sm" variant="secondary" @click="openScheduleModal(row as PreventiveEvent)">
+        <DsButton size="sm" variant="secondary" @click="openScheduleModal(row as PreventiveEventSummary)">
           Abrir
         </DsButton>
       </template>
       <template #cell-email="{ row }">
-        <DsButton size="sm" variant="secondary" @click="sendEmail(row as PreventiveEvent)">Email</DsButton>
+        <DsButton size="sm" variant="secondary" @click="sendEmail(row as PreventiveEventSummary)">Email</DsButton>
       </template>
     </DataTable>
 
@@ -85,10 +97,20 @@
       @close="closeScheduleModal"
     >
       <div class="modal-grid">
-        <DsInput v-model="scheduleForm.client" label="Cliente" placeholder="Cliente" />
-        <DsInput v-model="scheduleForm.animal" label="Animal" placeholder="Não Definido" />
-        <DsInput v-model="scheduleForm.description" label="Vacina/Vermífugo" placeholder="V10, antirrábica..." />
-        <DsInput v-model="scheduleForm.date" type="date" label="Data" />
+        <DsInput v-model="scheduleForm.clientName" label="Cliente" placeholder="Cliente" />
+        <DsInput v-model="scheduleForm.animalName" label="Animal" placeholder="Não Definido" />
+        <DsInput v-model="scheduleForm.itemType" type="select" label="Tipo">
+          <option v-for="option in preventiveItemTypeOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </DsInput>
+        <DsInput v-model="scheduleForm.eventDate" type="date" label="Data" />
+        <DsInput
+          v-model="scheduleForm.description"
+          class="modal-grid__wide"
+          label="Vacina/Vermífugo"
+          placeholder="V10, antirrábica..."
+        />
         <DsInput
           v-model="scheduleForm.observation"
           class="modal-grid__wide"
@@ -101,7 +123,7 @@
       <template #footer>
         <DsButton variant="secondary" @click="closeScheduleModal">Cancelar</DsButton>
         <DsButton variant="danger" :disabled="!selectedEvent" @click="deleteSelectedEvent">Excluir</DsButton>
-        <DsButton variant="primary" :disabled="!canSaveSchedule" @click="saveSchedule">Salvar</DsButton>
+        <DsButton variant="primary" :disabled="!canSaveSchedule" :loading="saving" @click="saveSchedule">Salvar</DsButton>
       </template>
     </DsModal>
 
@@ -122,18 +144,29 @@
       </div>
       <template #footer>
         <DsButton variant="secondary" @click="closeExecuteModal">Cancelar</DsButton>
-        <DsButton variant="success" :disabled="!selectedEvent" @click="executeSelectedEvent">Baixar</DsButton>
+        <DsButton variant="success" :disabled="!selectedEvent" :loading="saving" @click="executeSelectedEvent">
+          Baixar
+        </DsButton>
       </template>
     </DsModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
+import {
+  preventiveItemTypeLabel,
+  preventiveItemTypeOptions,
+  vaccinesDewormersService,
+  type PreventiveEventListFilters,
+  type PreventiveEventSummary,
+  type PreventiveItemType
+} from '@/services/vaccinesDewormers';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
@@ -142,28 +175,20 @@ import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 type PreventiveStatus = 'scheduled' | 'executed';
 
-interface PreventiveEvent {
-  id: string;
-  client: string;
-  animal: string;
-  date: string;
-  description: string;
-  status: PreventiveStatus;
-  observation: string;
-}
-
 interface PreventiveFilters {
   dateFrom: string;
   dateTo: string;
   client: string;
   animal: string;
+  itemType: PreventiveItemType | '';
   includeExecuted: boolean;
 }
 
 const columns: DataTableColumn[] = [
-  { key: 'client', label: 'Cliente' },
-  { key: 'animal', label: 'Animal' },
-  { key: 'date', label: 'Data' },
+  { key: 'clientName', label: 'Cliente' },
+  { key: 'animalName', label: 'Animal' },
+  { key: 'eventDate', label: 'Data' },
+  { key: 'itemType', label: 'Tipo' },
   { key: 'description', label: 'Descrição' },
   { key: 'status', label: 'Status' },
   { key: 'execute', label: 'Executar', class: 'table__actions-col' },
@@ -172,53 +197,31 @@ const columns: DataTableColumn[] = [
 ];
 
 const defaultFilters = (): PreventiveFilters => ({
-  dateFrom: '2026-04-01',
-  dateTo: '2026-04-30',
+  dateFrom: '',
+  dateTo: '',
   client: '',
   animal: '',
+  itemType: '',
   includeExecuted: false
 });
 
-const rows = ref<PreventiveEvent[]>([
-  {
-    id: 'prev-1',
-    client: 'Maria Silva',
-    animal: 'Rex',
-    date: '2026-04-24',
-    description: 'Vacina V10 - reforço anual',
-    status: 'scheduled',
-    observation: 'Avisar tutor com 3 dias de antecedência.'
-  },
-  {
-    id: 'prev-2',
-    client: 'João Costa',
-    animal: 'Mimi',
-    date: '2026-04-28',
-    description: 'Vermífugo amplo espectro',
-    status: 'scheduled',
-    observation: 'Repetir conforme peso atualizado.'
-  },
-  {
-    id: 'prev-3',
-    client: 'Carla Nogueira',
-    animal: 'Nina',
-    date: '2026-04-12',
-    description: 'Antirrábica',
-    status: 'executed',
-    observation: 'Aplicada sem intercorrências.'
-  }
-]);
+const rows = ref<PreventiveEventSummary[]>([]);
 const draftFilters = ref<PreventiveFilters>(defaultFilters());
 const appliedFilters = ref<PreventiveFilters>(defaultFilters());
+const loading = ref(false);
+const saving = ref(false);
+const emailLoading = ref(false);
+const error = ref('');
 const notice = ref<{ variant: 'success' | 'danger'; message: string } | null>(null);
 const scheduleModalOpen = ref(false);
 const executeModalOpen = ref(false);
-const selectedEvent = ref<PreventiveEvent | null>(null);
+const selectedEvent = ref<PreventiveEventSummary | null>(null);
 const scheduleForm = ref({
-  client: '',
-  animal: 'Não Definido',
+  clientName: '',
+  animalName: 'Não Definido',
+  itemType: 'vaccine' as PreventiveItemType,
   description: '',
-  date: '2026-04-24',
+  eventDate: new Date().toISOString().slice(0, 10),
   observation: ''
 });
 const executeForm = ref({
@@ -226,56 +229,55 @@ const executeForm = ref({
   rescheduleTo: ''
 });
 
-const filteredRows = computed(() => {
-  const filters = appliedFilters.value;
-  const client = normalize(filters.client);
-  const animal = normalize(filters.animal);
-  const dateFrom = filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
-  const dateTo = filters.dateTo ? new Date(`${filters.dateTo}T23:59:59`).getTime() : Number.POSITIVE_INFINITY;
-
-  return rows.value.filter((row) => {
-    const rowTime = new Date(`${row.date}T12:00:00`).getTime();
-    if (rowTime < dateFrom || rowTime > dateTo) return false;
-    if (!filters.includeExecuted && row.status === 'executed') return false;
-    if (client && !normalize(row.client).includes(client)) return false;
-    if (animal && !normalize(row.animal).includes(animal)) return false;
-    return true;
-  });
-});
-
 const canSaveSchedule = computed(() => {
   return Boolean(
-    scheduleForm.value.client.trim() &&
-      scheduleForm.value.animal.trim() &&
+    scheduleForm.value.clientName.trim() &&
+      scheduleForm.value.animalName.trim() &&
       scheduleForm.value.description.trim() &&
-      scheduleForm.value.date
+      scheduleForm.value.eventDate
   );
 });
 
-function applyFilters() {
-  appliedFilters.value = { ...draftFilters.value };
+async function loadData(filters: PreventiveFilters = appliedFilters.value) {
+  loading.value = true;
+  error.value = '';
+  try {
+    rows.value = await vaccinesDewormersService.list(toServiceFilters(filters));
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar vacinas e vermífugos';
+  } finally {
+    loading.value = false;
+  }
 }
 
-function clearFilters() {
+async function applyFilters() {
+  appliedFilters.value = { ...draftFilters.value };
+  await loadData(appliedFilters.value);
+}
+
+async function clearFilters() {
   draftFilters.value = defaultFilters();
   appliedFilters.value = defaultFilters();
+  await loadData(appliedFilters.value);
 }
 
-function openScheduleModal(event?: PreventiveEvent) {
+function openScheduleModal(event?: PreventiveEventSummary) {
   selectedEvent.value = event ?? null;
   scheduleForm.value = event
     ? {
-        client: event.client,
-        animal: event.animal,
+        clientName: event.clientName,
+        animalName: event.animalName,
+        itemType: event.itemType,
         description: event.description,
-        date: event.date,
-        observation: event.observation
+        eventDate: event.eventDate,
+        observation: event.observation ?? ''
       }
     : {
-        client: '',
-        animal: 'Não Definido',
+        clientName: '',
+        animalName: 'Não Definido',
+        itemType: 'vaccine',
         description: '',
-        date: '2026-04-24',
+        eventDate: new Date().toISOString().slice(0, 10),
         observation: ''
       };
   scheduleModalOpen.value = true;
@@ -286,44 +288,55 @@ function closeScheduleModal() {
   selectedEvent.value = null;
 }
 
-function saveSchedule() {
+async function saveSchedule() {
   if (!canSaveSchedule.value) return;
+  saving.value = true;
+  error.value = '';
+  notice.value = null;
   const payload = {
-    client: scheduleForm.value.client.trim(),
-    animal: scheduleForm.value.animal.trim(),
+    clientName: scheduleForm.value.clientName.trim(),
+    animalName: scheduleForm.value.animalName.trim(),
+    itemType: scheduleForm.value.itemType,
     description: scheduleForm.value.description.trim(),
-    date: scheduleForm.value.date,
-    observation: scheduleForm.value.observation.trim()
+    eventDate: scheduleForm.value.eventDate,
+    observation: scheduleForm.value.observation.trim() || null
   };
 
-  if (selectedEvent.value) {
-    rows.value = rows.value.map((row) =>
-      row.id === selectedEvent.value?.id ? { ...row, ...payload } : row
-    );
-    notice.value = { variant: 'success', message: 'Agendamento atualizado.' };
-  } else {
-    rows.value = [
-      {
-        id: `prev-${Date.now()}`,
-        status: 'scheduled',
-        ...payload
-      },
-      ...rows.value
-    ];
-    notice.value = { variant: 'success', message: 'Vacina ou vermífugo agendado.' };
+  try {
+    if (selectedEvent.value) {
+      await vaccinesDewormersService.update(selectedEvent.value.id, payload);
+      notice.value = { variant: 'success', message: 'Agendamento atualizado.' };
+    } else {
+      await vaccinesDewormersService.create(payload);
+      notice.value = { variant: 'success', message: 'Vacina ou vermífugo agendado.' };
+    }
+    closeScheduleModal();
+    await loadData();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao salvar agendamento';
+  } finally {
+    saving.value = false;
   }
-
-  closeScheduleModal();
 }
 
-function deleteSelectedEvent() {
+async function deleteSelectedEvent() {
   if (!selectedEvent.value) return;
-  rows.value = rows.value.filter((row) => row.id !== selectedEvent.value?.id);
-  notice.value = { variant: 'success', message: 'Registro excluído.' };
-  closeScheduleModal();
+  saving.value = true;
+  error.value = '';
+  notice.value = null;
+  try {
+    await vaccinesDewormersService.delete(selectedEvent.value.id);
+    notice.value = { variant: 'success', message: 'Registro excluído.' };
+    closeScheduleModal();
+    await loadData();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao excluir registro';
+  } finally {
+    saving.value = false;
+  }
 }
 
-function openExecuteModal(event: PreventiveEvent) {
+function openExecuteModal(event: PreventiveEventSummary) {
   if (event.status === 'executed') return;
   selectedEvent.value = event;
   executeForm.value = {
@@ -338,42 +351,65 @@ function closeExecuteModal() {
   selectedEvent.value = null;
 }
 
-function executeSelectedEvent() {
+async function executeSelectedEvent() {
   if (!selectedEvent.value) return;
-  const current = selectedEvent.value;
-  rows.value = rows.value.map((row) =>
-    row.id === current.id
-      ? {
-          ...row,
-          status: 'executed',
-          observation: executeForm.value.observation.trim() || row.observation
-        }
-      : row
-  );
-
-  if (executeForm.value.rescheduleTo) {
-    rows.value = [
-      {
-        ...current,
-        id: `prev-${Date.now()}`,
-        date: executeForm.value.rescheduleTo,
-        status: 'scheduled',
-        observation: 'Reagendado após baixa.'
-      },
-      ...rows.value
-    ];
+  saving.value = true;
+  error.value = '';
+  notice.value = null;
+  try {
+    await vaccinesDewormersService.execute(selectedEvent.value.id, {
+      observation: executeForm.value.observation.trim() || null,
+      rescheduleTo: executeForm.value.rescheduleTo || null
+    });
+    notice.value = { variant: 'success', message: 'Aplicação baixada e rotina preventiva atualizada.' };
+    closeExecuteModal();
+    await loadData();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao baixar aplicação';
+  } finally {
+    saving.value = false;
   }
-
-  notice.value = { variant: 'success', message: 'Aplicação baixada e rotina preventiva atualizada.' };
-  closeExecuteModal();
 }
 
-function sendEmail(event: PreventiveEvent) {
-  notice.value = { variant: 'success', message: `Email de aviso preparado para ${event.client}.` };
+async function sendEmail(event: PreventiveEventSummary) {
+  error.value = '';
+  notice.value = null;
+  try {
+    await vaccinesDewormersService.prepareEmail(event.id);
+    notice.value = { variant: 'success', message: `Email de aviso preparado para ${event.clientName}.` };
+    await loadData();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao preparar email de aviso';
+  }
 }
 
-function sendBulkEmail() {
-  notice.value = { variant: 'success', message: 'Emails de aviso preparados para os registros filtrados.' };
+async function sendBulkEmail() {
+  emailLoading.value = true;
+  error.value = '';
+  notice.value = null;
+  try {
+    const result = await vaccinesDewormersService.prepareBulkEmail(toServiceFilters(appliedFilters.value));
+    notice.value = {
+      variant: 'success',
+      message: `Emails de aviso preparados para ${result.preparedCount} registro(s).`
+    };
+    await loadData();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao preparar emails de aviso';
+  } finally {
+    emailLoading.value = false;
+  }
+}
+
+function toServiceFilters(filters: PreventiveFilters): PreventiveEventListFilters {
+  return {
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+    client: filters.client || undefined,
+    animal: filters.animal || undefined,
+    itemType: filters.itemType || undefined,
+    includeExecuted: filters.includeExecuted
+  };
 }
 
 function statusLabel(status: PreventiveStatus): string {
@@ -384,13 +420,9 @@ function formatDate(value: string): string {
   return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 }
 
-function normalize(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
+onMounted(() => {
+  void loadData();
+});
 </script>
 
 <style scoped>

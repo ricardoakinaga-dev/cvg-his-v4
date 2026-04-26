@@ -24,6 +24,7 @@ export * from './medication_orders.js';
 export * from './owners.js';
 export * from './patients.js';
 export * from './professional_availability.js';
+export * from './preventive_events.js';
 export * from './permissions.js';
 export * from './protocol_references.js';
 export * from './protocol_snapshots.js';

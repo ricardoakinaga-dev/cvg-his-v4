@@ -503,6 +503,24 @@ export const coatColors = pgTable('coat_colors', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const preventiveEvents = pgTable('preventive_events', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  clientName: varchar('client_name', { length: 160 }).notNull(),
+  animalName: varchar('animal_name', { length: 160 }).notNull(),
+  eventDate: date('event_date').notNull(),
+  itemType: varchar('item_type', { length: 32 }).notNull().default('vaccine'),
+  description: varchar('description', { length: 255 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('scheduled'),
+  observation: text('observation'),
+  executedAt: timestamp('executed_at'),
+  executedObservation: text('executed_observation'),
+  rescheduledFromId: varchar('rescheduled_from_id', { length: 255 }),
+  reminderEmailPreparedAt: timestamp('reminder_email_prepared_at'),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),

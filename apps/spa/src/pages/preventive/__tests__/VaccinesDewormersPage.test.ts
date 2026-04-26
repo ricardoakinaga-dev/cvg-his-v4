@@ -1,17 +1,86 @@
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import VaccinesDewormersPage from '../VaccinesDewormersPage.vue';
+import {
+  vaccinesDewormersService,
+  type PreventiveEventSummary
+} from '@/services/vaccinesDewormers';
+
+vi.mock('@/services/vaccinesDewormers', async () => {
+  const actual = await vi.importActual<typeof import('@/services/vaccinesDewormers')>(
+    '@/services/vaccinesDewormers'
+  );
+  return {
+    ...actual,
+    vaccinesDewormersService: {
+      list: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      execute: vi.fn(),
+      prepareEmail: vi.fn(),
+      prepareBulkEmail: vi.fn()
+    }
+  };
+});
+
+const scheduledEvent: PreventiveEventSummary = {
+  id: 'prev-1',
+  accountId: 'acc-1',
+  clientName: 'Maria Silva',
+  animalName: 'Rex',
+  eventDate: '2026-04-24',
+  itemType: 'vaccine',
+  description: 'Vacina V10 - reforço anual',
+  status: 'scheduled',
+  observation: 'Avisar tutor com 3 dias de antecedência.',
+  executedAt: null,
+  executedObservation: null,
+  rescheduledFromId: null,
+  reminderEmailPreparedAt: null,
+  createdAt: '2026-04-01T10:00:00Z',
+  updatedAt: '2026-04-01T10:00:00Z'
+};
+
+const executedEvent: PreventiveEventSummary = {
+  ...scheduledEvent,
+  id: 'prev-2',
+  clientName: 'Carla Nogueira',
+  animalName: 'Nina',
+  description: 'Antirrábica',
+  status: 'executed',
+  executedAt: '2026-04-12T10:00:00Z'
+};
 
 describe('VaccinesDewormersPage', () => {
-  it('renders the Vetus-like preventive list, filters and actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(vaccinesDewormersService.list).mockResolvedValue([scheduledEvent]);
+    vi.mocked(vaccinesDewormersService.create).mockResolvedValue(scheduledEvent);
+    vi.mocked(vaccinesDewormersService.update).mockResolvedValue(scheduledEvent);
+    vi.mocked(vaccinesDewormersService.delete).mockResolvedValue(undefined);
+    vi.mocked(vaccinesDewormersService.execute).mockResolvedValue({
+      event: { ...scheduledEvent, status: 'executed' },
+      rescheduledEvent: null
+    });
+    vi.mocked(vaccinesDewormersService.prepareEmail).mockResolvedValue(scheduledEvent);
+    vi.mocked(vaccinesDewormersService.prepareBulkEmail).mockResolvedValue({
+      preparedCount: 1,
+      preparedAt: '2026-04-01T10:00:00Z'
+    });
+  });
+
+  it('renders the Vetus-like preventive list, filters and actions', async () => {
     const wrapper = mount(VaccinesDewormersPage);
+    await flushPromises();
 
     expect(wrapper.text()).toContain('Vacinas e Vermífugos');
     expect(wrapper.text()).toContain('Data Inicial');
     expect(wrapper.text()).toContain('Data Final');
     expect(wrapper.text()).toContain('Cliente (branco = Todos)');
     expect(wrapper.text()).toContain('Animal');
+    expect(wrapper.text()).toContain('Tipo');
     expect(wrapper.text()).toContain('Pesquisar aplicações executadas');
     expect(wrapper.text()).toContain('Pesquisar');
     expect(wrapper.text()).toContain('Agendar Vacina ou Vermífugo');
@@ -23,10 +92,19 @@ describe('VaccinesDewormersPage', () => {
     expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('Email');
     expect(wrapper.text()).toContain('Vacina V10 - reforço anual');
+    expect(vaccinesDewormersService.list).toHaveBeenCalledWith({
+      dateFrom: undefined,
+      dateTo: undefined,
+      client: undefined,
+      animal: undefined,
+      itemType: undefined,
+      includeExecuted: false
+    });
   });
 
   it('opens the scheduling and execution dialogs', async () => {
     const wrapper = mount(VaccinesDewormersPage);
+    await flushPromises();
 
     const scheduleButton = wrapper
       .findAll('button')
@@ -50,13 +128,27 @@ describe('VaccinesDewormersPage', () => {
   });
 
   it('can include executed applications in the search', async () => {
+    vi.mocked(vaccinesDewormersService.list)
+      .mockResolvedValueOnce([scheduledEvent])
+      .mockResolvedValueOnce([scheduledEvent, executedEvent]);
+
     const wrapper = mount(VaccinesDewormersPage);
+    await flushPromises();
 
     expect(wrapper.text()).not.toContain('Antirrábica');
 
     await wrapper.find('input[type="checkbox"]').setValue(true);
     await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
 
+    expect(vaccinesDewormersService.list).toHaveBeenLastCalledWith({
+      dateFrom: undefined,
+      dateTo: undefined,
+      client: undefined,
+      animal: undefined,
+      itemType: undefined,
+      includeExecuted: true
+    });
     expect(wrapper.text()).toContain('Antirrábica');
     expect(wrapper.text()).toContain('Executada');
   });
