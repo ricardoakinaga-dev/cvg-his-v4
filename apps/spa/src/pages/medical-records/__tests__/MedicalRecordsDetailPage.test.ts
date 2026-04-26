@@ -64,6 +64,73 @@ const mockCreateEntryFn = vi.fn().mockResolvedValue({});
 const mockUpdateEntryFn = vi.fn().mockResolvedValue({});
 const mockArchiveEntryFn = vi.fn().mockResolvedValue({});
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
+const mockGetOwnerName = vi.fn().mockResolvedValue('Ana Tutor');
+const mockEncounterGetById = vi.fn().mockResolvedValue({
+  id: 'enc-1',
+  accountId: 'acc-1',
+  patientId: 'pat-1',
+  ownerId: 'owner-1',
+  visitType: 'walk_in',
+  status: 'in_care',
+  origin: 'reception',
+  reason: 'Consulta dermatológica',
+  openedAt: '2024-01-15T10:00:00Z',
+  createdByUserId: 'user-1',
+  updatedAt: '2024-01-15T10:00:00Z'
+});
+const mockPatientGetById = vi.fn().mockResolvedValue({
+  id: 'pat-1',
+  accountId: 'acc-1',
+  name: 'Rex',
+  species: 'Canina',
+  breed: 'SRD',
+  sex: 'male',
+  baseWeightKg: 12,
+  primaryOwnerId: 'owner-1',
+  status: 'active',
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z'
+});
+const mockOwnerGetById = vi.fn().mockResolvedValue({
+  id: 'owner-1',
+  accountId: 'acc-1',
+  fullName: 'Ana Tutor',
+  documentId: '000.000.000-00',
+  contacts: [{ label: 'Celular', value: '11999999999', type: 'phone', primary: true }],
+  financialResponsible: true,
+  status: 'active',
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z'
+});
+const mockBillingGetByEncounter = vi.fn().mockResolvedValue({
+  id: 'bill-1',
+  accountId: 'acc-1',
+  encounterId: 'enc-1',
+  patientId: 'pat-1',
+  ownerId: 'owner-1',
+  status: 'open',
+  subtotalAmount: 180,
+  currency: 'BRL',
+  createdAt: '2024-01-15T10:05:00Z',
+  updatedAt: '2024-01-15T10:05:00Z'
+});
+const mockBillingListItems = vi.fn().mockResolvedValue([
+  {
+    id: 'bill-item-1',
+    billingRecordId: 'bill-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    itemType: 'service',
+    description: 'Consulta',
+    quantity: 1,
+    unitPriceAmount: 180,
+    totalAmount: 180,
+    createdByUserId: 'user-1',
+    createdAt: '2024-01-15T10:10:00Z'
+  }
+]);
+const mockDiagnosticsListByEncounter = vi.fn().mockResolvedValue([]);
+const mockPrescriptionsListByPatient = vi.fn().mockResolvedValue([]);
 
 vi.mock('@/services/medicalRecords', () => ({
   medicalRecordsService: {
@@ -94,11 +161,48 @@ vi.mock('@/services/medicalRecords', () => ({
 vi.mock('@/composables/useEntityCache', () => ({
   useEntityCache: () => ({
     getPatientName: mockGetPatientName,
-    getOwnerName: vi.fn().mockResolvedValue(''),
+    getOwnerName: mockGetOwnerName,
     getUserName: vi.fn().mockResolvedValue(''),
     preloadUserNames: vi.fn().mockResolvedValue(undefined),
     loading: new Set()
   })
+}));
+
+vi.mock('@/services/encounter', () => ({
+  encounterService: {
+    getById: mockEncounterGetById
+  }
+}));
+
+vi.mock('@/services/patient', () => ({
+  patientService: {
+    getById: mockPatientGetById
+  }
+}));
+
+vi.mock('@/services/owner', () => ({
+  ownerService: {
+    getById: mockOwnerGetById
+  }
+}));
+
+vi.mock('@/services/billing', () => ({
+  billingService: {
+    getByEncounter: mockBillingGetByEncounter,
+    listItems: mockBillingListItems
+  }
+}));
+
+vi.mock('@/services/diagnostics', () => ({
+  diagnosticsService: {
+    listByEncounter: mockDiagnosticsListByEncounter
+  }
+}));
+
+vi.mock('@/services/prescriptions', () => ({
+  prescriptionsService: {
+    listByPatient: mockPrescriptionsListByPatient
+  }
 }));
 
 vi.mock('vue-router', () => ({
@@ -123,6 +227,73 @@ describe('MedicalRecordsDetailPage', () => {
     mockUpdateEntryFn.mockResolvedValue({});
     mockArchiveEntryFn.mockResolvedValue({});
     mockGetPatientName.mockResolvedValue('Rex');
+    mockGetOwnerName.mockResolvedValue('Ana Tutor');
+    mockEncounterGetById.mockResolvedValue({
+      id: 'enc-1',
+      accountId: 'acc-1',
+      patientId: 'pat-1',
+      ownerId: 'owner-1',
+      visitType: 'walk_in',
+      status: 'in_care',
+      origin: 'reception',
+      reason: 'Consulta dermatológica',
+      openedAt: '2024-01-15T10:00:00Z',
+      createdByUserId: 'user-1',
+      updatedAt: '2024-01-15T10:00:00Z'
+    });
+    mockPatientGetById.mockResolvedValue({
+      id: 'pat-1',
+      accountId: 'acc-1',
+      name: 'Rex',
+      species: 'Canina',
+      breed: 'SRD',
+      sex: 'male',
+      baseWeightKg: 12,
+      primaryOwnerId: 'owner-1',
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    });
+    mockOwnerGetById.mockResolvedValue({
+      id: 'owner-1',
+      accountId: 'acc-1',
+      fullName: 'Ana Tutor',
+      documentId: '000.000.000-00',
+      contacts: [{ label: 'Celular', value: '11999999999', type: 'phone', primary: true }],
+      financialResponsible: true,
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    });
+    mockBillingGetByEncounter.mockResolvedValue({
+      id: 'bill-1',
+      accountId: 'acc-1',
+      encounterId: 'enc-1',
+      patientId: 'pat-1',
+      ownerId: 'owner-1',
+      status: 'open',
+      subtotalAmount: 180,
+      currency: 'BRL',
+      createdAt: '2024-01-15T10:05:00Z',
+      updatedAt: '2024-01-15T10:05:00Z'
+    });
+    mockBillingListItems.mockResolvedValue([
+      {
+        id: 'bill-item-1',
+        billingRecordId: 'bill-1',
+        accountId: 'acc-1',
+        encounterId: 'enc-1',
+        itemType: 'service',
+        description: 'Consulta',
+        quantity: 1,
+        unitPriceAmount: 180,
+        totalAmount: 180,
+        createdByUserId: 'user-1',
+        createdAt: '2024-01-15T10:10:00Z'
+      }
+    ]);
+    mockDiagnosticsListByEncounter.mockResolvedValue([]);
+    mockPrescriptionsListByPatient.mockResolvedValue([]);
   });
 
   it('shows loading state initially', async () => {
@@ -181,6 +352,54 @@ describe('MedicalRecordsDetailPage', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('Prontu');
     expect(wrapper.text()).toContain('Rex');
+  });
+
+  it('renders the Vetus-like clinical cockpit cards', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Ficha de atendimento');
+    expect(wrapper.text()).toContain('Últimos Atendimentos');
+    expect(wrapper.text()).toContain('Anamneses');
+    expect(wrapper.text()).toContain('Exames');
+    expect(wrapper.text()).toContain('Receituário');
+    expect(wrapper.text()).toContain('Comanda');
+    expect(wrapper.text()).toContain('Histórico Clinico');
+  });
+
+  it('saves a structured clinical sheet as separate clinical entries', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+    await wrapper.find('[data-testid="clinical-anamnesis"]').setValue('Tutor relata prurido há 3 dias.');
+    await wrapper.find('[data-testid="clinical-physicalExam"]').setValue('Pele hiperêmica em região cervical.');
+    await wrapper.find('[data-testid="clinical-plan"]').setValue('Retorno em 7 dias e controle de ectoparasitas.');
+
+    const saveBtn = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar ficha de atendimento'));
+    await saveBtn!.trigger('click');
+    await flushPromises();
+
+    expect(mockCreateEntryFn).toHaveBeenCalledTimes(3);
+    expect(mockCreateEntryFn).toHaveBeenCalledWith(expect.objectContaining({
+      entryType: 'anamnesis',
+      title: 'Anamnese',
+      content: 'Tutor relata prurido há 3 dias.'
+    }));
+    expect(mockCreateEntryFn).toHaveBeenCalledWith(expect.objectContaining({
+      entryType: 'physical_exam',
+      title: 'Exame físico',
+      content: 'Pele hiperêmica em região cervical.'
+    }));
+    expect(mockCreateEntryFn).toHaveBeenCalledWith(expect.objectContaining({
+      entryType: 'plan',
+      title: 'Plano terapêutico',
+      content: 'Retorno em 7 dias e controle de ectoparasitas.'
+    }));
   });
 
   it('shows status badge for open record', async () => {
