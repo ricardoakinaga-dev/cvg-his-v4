@@ -211,6 +211,8 @@ Checkpoint posterior em 2026-04-26: para `Estoque > Cadastros > Setores da Empre
 
 Checkpoint posterior em 2026-04-26: para `Estoque > Cadastros > Unidades de Medida`, rota Vetus `/unidades-de-medida`, nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. A implementacao usou artefatos observacionais read-only existentes em `docs/vetus/guides/02-ANALISE-SISTEMA-VETUS.md`, `docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md`, `docs/vetus/guides/2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md` e `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/*`, que confirmam item de navbar logo apos `Setores da Empresa`, URL SPA `/unidades-de-medida`, uso operacional em entrada de nota fiscal e exemplos como `kg`, `un`, `ml` e `cx`.
 
+Checkpoint posterior em 2026-04-26: para `Estoque > Cadastros > Tabelas de Preco`, a implementacao seguiu a ordem documentada do navbar e os artefatos observacionais read-only ja existentes do fluxo de estoque/comercial; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. O modulo foi tratado como cadastro comercial transversal usado por produtos, servicos, consulta de precos, reajustes, comandas e PDV.
+
 ## Regra de sequenciamento
 
 A partir deste checkpoint, a sequencia correta e:
@@ -280,6 +282,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Estoque > Cadastros > Grupos de Produtos | Cadastro de grupos de produto por ID e descricao | Implementado | `6f6c640` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes da tela do modulo; nao houve escrita no Vetus. A implementacao usou artefatos observacionais read-only existentes do Vetus para confirmar rota `/grupos-de-produto`, breadcrumb `Estoque > Cadastros > Grupos de Produto`, titulo `Grupos de Produto`, busca `Buscar por ID ou descricao`, botao `Incluir Novo Grupo` e cards com `Descricao`, `ID` e `Ver Detalhes`. No `cvg-his-v2`: SPA `/product-groups` com aliases `/grupos-de-produto`, `/grupos-de-produtos`, `/grupos-produto`, `/grupos-produtos`, `/estoque/grupos-de-produto`, `/estoque/grupos-de-produtos`, `/estoque/cadastros/grupos-de-produto` e `/estoque/cadastros/grupos-de-produtos`; tela com acao `Atualizar`, botao `Incluir Novo Grupo`, filtro `Buscar por ID ou descricao`, filtro de situacao, cards Vetus-like com `Descricao`, `ID`, `Situacao` e `Ver Detalhes`; formulario lateral com `Id`, `Descricao`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Produtos`, `Importar Produtos` e `Fabricantes`; API persistente `/product-groups` e `/product-groups/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API PT-BR e de estoque/cadastros; migration duravel `0033_inventory_product_groups` com RLS e seeds genericos por conta, sem nova porta ou dependencia. |
 | Estoque > Cadastros > Setores da Empresa | Cadastro de departamentos/setores operacionais da empresa | Implementado | `94ef168` | Implementacao baseada em artefatos observacionais read-only existentes do Vetus, que confirmam rota `/setores` e posicao no navbar apos `Grupos de Produtos`; nao houve escrita no Vetus. No `cvg-his-v2`: SPA `/company-sectors` com aliases `/setores`, `/setores-da-empresa`, `/estoque/setores`, `/estoque/setores-da-empresa`, `/estoque/cadastros/setores` e `/estoque/cadastros/setores-da-empresa`; tela com acao `Atualizar`, botao `Incluir Novo Setor`, filtro `Buscar por codigo ou nome`, filtro de tipo, filtro de situacao, cards Vetus-like com `Nome`, `Codigo`, `Tipo`, `Situacao` e `Ver Detalhes`; formulario lateral com `Codigo`, `Nome`, `Tipo`, `Ativo`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Estoques`, `Boxes` e `Acessos`; API persistente `/company-sectors` e `/company-sectors/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API `/setores`, `/setores-da-empresa` e caminhos de estoque/cadastros; persistencia reutiliza tabela duravel `sectors`; migration `0034_company_sectors_inventory_seed` adiciona seeds genericos por conta e comentario de uso compartilhado, sem nova porta ou dependencia. |
 | Estoque > Cadastros > Unidades de Medida | Cadastro de siglas e precisao decimal para produtos, nota fiscal, compras e movimentacoes | Implementado | `38d14f9` | Implementacao baseada em artefatos observacionais read-only existentes do Vetus, que confirmam rota `/unidades-de-medida`, item no navbar apos `Setores da Empresa`, uso em entrada de nota fiscal e exemplos `kg`, `un`, `ml` e `cx`; nao houve escrita no Vetus. No `cvg-his-v2`: SPA `/measurement-units` com aliases `/unidades-de-medida`, `/unidades-medida`, `/estoque/unidades-de-medida`, `/estoque/unidades-medida`, `/estoque/cadastros/unidades-de-medida` e `/estoque/cadastros/unidades-medida`; tela com acao `Atualizar`, botao `Incluir Nova Unidade`, filtro `Buscar por codigo ou descricao`, filtro de precisao, filtro de situacao, cards Vetus-like com `Descricao`, `Codigo`, `Decimais`, `Situacao` e `Ver Detalhes`; formulario lateral com `Codigo`, `Descricao`, `Decimais`, `Ativa`, `Excluir`, `Cancelar` e `Salvar`; atalhos para `Produtos`, `Entrada de NF` e `Movimentacoes`; API persistente `/measurement-units` e `/measurement-units/:id` com `GET`, `POST`, `PATCH` e `DELETE` logico; aliases API em PT-BR e caminhos de estoque/cadastros; migration duravel `0035_inventory_measurement_units` com RLS, indice unico por conta/codigo e seeds `UN`, `KG`, `G`, `L`, `ML` e `CX`, sem nova porta ou dependencia. |
+| Estoque > Cadastros > Tabelas de Preco | Cadastro de politicas comerciais e precos por produto/servico | Implementado | `0eae066` | Implementacao baseada na ordem documentada do navbar e artefatos observacionais read-only existentes do fluxo de estoque/comercial; nao houve escrita no Vetus. No `cvg-his-v2`: SPA `/tabelas-de-preco` com aliases `/price-tables`, `/tabelas-de-preços`, `/estoque/tabelas-de-preco`, `/estoque/tabelas-de-preços`, `/estoque/cadastros/tabelas-de-preco` e `/estoque/cadastros/tabelas-de-preços`; tela com acoes `Atualizar` e `Incluir Nova Tabela`, filtro `Buscar por ID ou descricao`, filtro de situacao, KPIs de tabelas/itens/ativas/inativas, cards Vetus-like com `Descricao`, `ID`, `Contexto`, `Situacao` e `Ver Detalhes`; formulario lateral com `Id`, `Descricao`, `Contexto`, `Inicio`, `Fim`, `Ativa`, `Excluir`, `Cancelar` e `Salvar`; detalhe com validade e itens vinculados; vinculacao de item por `Produto` ou `Servico` e `Preco`; atalhos para `Produtos`, `Servicos`, `Consulta` e `Reajuste`; API persistente `/price-tables` com aliases PT-BR e caminhos de estoque/cadastros, `GET`, `POST`, `PATCH`, `DELETE` logico, detalhe e `POST /price-tables/:id/items`; migration `0036_inventory_price_tables_seed` semeia `Tabela Padrao`, `Tabela Plantao` e `Tabela Final de Semana` para contas sem tabela, sem nova porta ou dependencia. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -287,6 +290,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`0eae066` feat: align Vetus-like price tables registry
 `38d14f9` feat: align Vetus-like measurement units registry
 `94ef168` feat: align Vetus-like company sectors registry
 `6f6c640` feat: align Vetus-like product groups registry
@@ -342,10 +346,10 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/unidades-de-medida`
+- Ultima rota validada: `http://localhost:3002/tabelas-de-preco`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: contrato SPA/API para `GET/POST/PATCH/DELETE http://localhost:3003/measurement-units`
-- Ultima migration aplicada: `0035_inventory_measurement_units`
+- Ultima API validada: contrato SPA/API para `GET/POST/PATCH/DELETE http://localhost:3003/price-tables` e `POST http://localhost:3003/price-tables/:id/items`
+- Ultima migration aplicada: `0036_inventory_price_tables_seed`
 
 ## Padrao minimo para cada modulo espelhado
 
@@ -619,7 +623,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Tabelas de Preco`. |
+| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Ponto de Venda`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -655,8 +659,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Cadastros > Unidades de Medida`, continuar pela ordem do grupo `Estoque > Cadastros`:
+Apos concluir `Estoque > Cadastros > Tabelas de Preco`, continuar pela ordem do grupo `Estoque > Cadastros`:
 
-1. `Estoque > Cadastros > Tabelas de Preco`
+1. `Estoque > Cadastros > Ponto de Venda`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
