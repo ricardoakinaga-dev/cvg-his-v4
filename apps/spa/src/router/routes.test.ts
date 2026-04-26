@@ -108,8 +108,12 @@ describe('router convergence', () => {
     expect(findChildRoute('cadastros/species')?.redirect).toBe('/species');
 
     expect(coatColorsRoute?.name).toBe('CoatColors');
+    expect(coatColorsRoute?.meta?.title).toBe('Cores/Pelagens');
     expect(coatColorsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
-    expect(coatColorsRoute?.alias).toEqual(expect.arrayContaining(['/cores', '/cadastros/cores']));
+    expect(coatColorsRoute?.alias).toEqual(expect.arrayContaining(['/cores', '/pelagens', '/cadastros/cores']));
+    expect(findChildRoute('coat-colors/new')?.name).toBe('CoatColorNew');
+    expect(findChildRoute('coat-colors/:id')?.name).toBe('CoatColorDetail');
+    expect(findChildRoute('coat-colors/:id/edit')?.name).toBe('CoatColorEdit');
     expect(findChildRoute('cadastros/cores')?.redirect).toBe('/coat-colors');
     expect(findChildRoute('cadastro/cores')?.redirect).toBe('/coat-colors');
     expect(findChildRoute('cadastros/coat-colors')?.redirect).toBe('/coat-colors');

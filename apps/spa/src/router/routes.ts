@@ -282,10 +282,42 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'coat-colors',
         name: 'CoatColors',
-        alias: ['/cores', '/cadastros/cores', '/cadastro/cores'],
-        component: () => import('@/pages/catalogs/ReferenceCatalogPage.vue'),
-        props: { kind: 'coat-colors' },
-        meta: { title: 'Cores', breadcrumb: 'Cores', breadcrumbParent: 'Cadastros', icon: '🎨' }
+        alias: ['/cores', '/pelagens', '/cadastros/cores', '/cadastro/cores'],
+        component: () => import('@/pages/coat-colors/CoatColorsListPage.vue'),
+        meta: { title: 'Cores/Pelagens', breadcrumb: 'Cores/Pelagens', breadcrumbParent: 'Cadastros', icon: '🎨' }
+      },
+      {
+        path: 'coat-colors/new',
+        name: 'CoatColorNew',
+        component: () => import('@/pages/coat-colors/CoatColorFormPage.vue'),
+        meta: {
+          title: 'Nova Cor/Pelagem',
+          breadcrumb: 'Nova Cor/Pelagem',
+          breadcrumbParent: 'Cores/Pelagens',
+          icon: '🎨'
+        }
+      },
+      {
+        path: 'coat-colors/:id',
+        name: 'CoatColorDetail',
+        component: () => import('@/pages/coat-colors/CoatColorDetailPage.vue'),
+        meta: {
+          title: 'Detalhes da Cor/Pelagem',
+          breadcrumb: 'Detalhes',
+          breadcrumbParent: 'Cores/Pelagens',
+          icon: '🎨'
+        }
+      },
+      {
+        path: 'coat-colors/:id/edit',
+        name: 'CoatColorEdit',
+        component: () => import('@/pages/coat-colors/CoatColorFormPage.vue'),
+        meta: {
+          title: 'Editar Cor/Pelagem',
+          breadcrumb: 'Editar',
+          breadcrumbParent: 'Cores/Pelagens',
+          icon: '🎨'
+        }
       },
       { path: 'cadastros/racas', redirect: '/breeds' },
       { path: 'cadastros/raças', redirect: '/breeds' },

@@ -1307,6 +1307,75 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(updateSpeciesResponse.statusCode, 200);
   assert.equal(updateSpeciesResponse.bodyJson<{ active: boolean; name: string }>().active, false);
 
+  const createCoatColorResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/coat-colors',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Chocolate',
+      code: 'COAT-CHOCOLATE-001',
+      colorGroup: 'Solida',
+      hexColor: '#4b2e22',
+      description: 'Pelagem para validar cadastro Vetus',
+      active: true
+    }
+  });
+  assert.equal(createCoatColorResponse.statusCode, 201);
+  const createdCoatColor = createCoatColorResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    colorGroup: string | null;
+    hexColor: string | null;
+  }>();
+  assert.equal(createdCoatColor.code, 'COAT-CHOCOLATE-001');
+  assert.equal(createdCoatColor.colorGroup, 'Solida');
+  assert.equal(createdCoatColor.hexColor, '#4b2e22');
+
+  const coatColorsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/coat-colors?search=CHOCOLATE-001&active=true&colorGroup=Solida',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(coatColorsResponse.statusCode, 200);
+  const coatColors = coatColorsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(coatColors.items.length, 1);
+  assert.equal(coatColors.items[0]?.code, 'COAT-CHOCOLATE-001');
+
+  const vetusAliasCoatColorsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/coat-color?colorGroup=Solida',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(vetusAliasCoatColorsResponse.statusCode, 200);
+  const vetusAliasCoatColors = vetusAliasCoatColorsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  assert.equal(vetusAliasCoatColors.items.some((item) => item.code === 'COAT-CHOCOLATE-001'), true);
+
+  const updateCoatColorResponse = await performRequest(server, {
+    method: 'PATCH',
+    url: `/coat-colors/${createdCoatColor.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Chocolate Revisado',
+      active: false
+    }
+  });
+  assert.equal(updateCoatColorResponse.statusCode, 200);
+  assert.equal(updateCoatColorResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+
   const inventoryResponse = await performRequest(server, {
     method: 'GET',
     url: '/inventory?search=MED-001',

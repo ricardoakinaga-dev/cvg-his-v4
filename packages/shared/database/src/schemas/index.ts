@@ -490,6 +490,19 @@ export const animalSpecies = pgTable('animal_species', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
+export const coatColors = pgTable('coat_colors', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  name: varchar('name', { length: 160 }).notNull(),
+  code: varchar('code', { length: 80 }),
+  colorGroup: varchar('color_group', { length: 80 }),
+  hexColor: varchar('hex_color', { length: 16 }),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),

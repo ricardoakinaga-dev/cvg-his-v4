@@ -1410,6 +1410,344 @@ function createAnimalSpeciesStore(): AnimalSpeciesStore {
   }
 }
 
+interface CoatColorSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly name: string;
+  readonly code: string | null;
+  readonly colorGroup: string | null;
+  readonly hexColor: string | null;
+  readonly description: string | null;
+  readonly active: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+interface CoatColorInput {
+  readonly name?: string;
+  readonly code?: string | null;
+  readonly colorGroup?: string | null;
+  readonly hexColor?: string | null;
+  readonly description?: string | null;
+  readonly active?: boolean;
+}
+
+interface CoatColorListFilters {
+  readonly search?: string;
+  readonly active?: boolean;
+  readonly colorGroup?: string;
+}
+
+interface CoatColorStore {
+  create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary>;
+  update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary>;
+  getOrThrow(coatColorId: string): Promise<CoatColorSummary>;
+  list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]>;
+  delete(coatColorId: string): Promise<void>;
+}
+
+const coatColorMaxNameLength = 160;
+const coatColorMaxCodeLength = 80;
+const coatColorMaxGroupLength = 80;
+const coatColorMaxDescriptionLength = 1000;
+const coatColorHexPattern = /^#[0-9A-Fa-f]{6}$/;
+
+function normalizeCoatColorName(value: string | undefined): string {
+  const name = requireNonEmptyString(value, 'name').trim();
+  if (name.length > coatColorMaxNameLength) {
+    throw new ValidationError(`name must have at most ${coatColorMaxNameLength} characters`);
+  }
+  return name;
+}
+
+function normalizeCoatColorCode(value: string | null | undefined): string | null {
+  const code = value?.trim() || null;
+  if (code && code.length > coatColorMaxCodeLength) {
+    throw new ValidationError(`code must have at most ${coatColorMaxCodeLength} characters`);
+  }
+  return code;
+}
+
+function normalizeCoatColorGroup(value: string | null | undefined): string | null {
+  const colorGroup = value?.trim() || null;
+  if (colorGroup && colorGroup.length > coatColorMaxGroupLength) {
+    throw new ValidationError(`colorGroup must have at most ${coatColorMaxGroupLength} characters`);
+  }
+  return colorGroup;
+}
+
+function normalizeCoatColorHex(value: string | null | undefined): string | null {
+  const hexColor = value?.trim() || null;
+  if (hexColor && !coatColorHexPattern.test(hexColor)) {
+    throw new ValidationError('hexColor must be a valid #RRGGBB value');
+  }
+  return hexColor;
+}
+
+function normalizeCoatColorDescription(value: string | null | undefined): string | null {
+  const description = value?.trim() || null;
+  if (description && description.length > coatColorMaxDescriptionLength) {
+    throw new ValidationError(`description must have at most ${coatColorMaxDescriptionLength} characters`);
+  }
+  return description;
+}
+
+function mapCoatColorRow(row: Record<string, unknown>): CoatColorSummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    name: row.name as string,
+    code: (row.code as string | null) ?? null,
+    colorGroup: (row.color_group as string | null) ?? null,
+    hexColor: (row.hex_color as string | null) ?? null,
+    description: (row.description as string | null) ?? null,
+    active: row.active as boolean,
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
+    updatedAt: new Date(row.updated_at as string | Date).toISOString()
+  };
+}
+
+class InMemoryCoatColorStore implements CoatColorStore {
+  readonly #coatColors = new Map<string, CoatColorSummary>();
+
+  async create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary> {
+    const now = new Date().toISOString();
+    const coatColor: CoatColorSummary = {
+      id: createCorrelationId('coat-color'),
+      accountId,
+      name: normalizeCoatColorName(input.name),
+      code: normalizeCoatColorCode(input.code),
+      colorGroup: normalizeCoatColorGroup(input.colorGroup),
+      hexColor: normalizeCoatColorHex(input.hexColor),
+      description: normalizeCoatColorDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#coatColors.set(coatColor.id, coatColor);
+    return coatColor;
+  }
+
+  async update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary> {
+    const existing = await this.getOrThrow(coatColorId);
+    const updated: CoatColorSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeCoatColorName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeCoatColorCode(input.code) : existing.code,
+      colorGroup:
+        input.colorGroup !== undefined
+          ? normalizeCoatColorGroup(input.colorGroup)
+          : existing.colorGroup,
+      hexColor:
+        input.hexColor !== undefined ? normalizeCoatColorHex(input.hexColor) : existing.hexColor,
+      description:
+        input.description !== undefined
+          ? normalizeCoatColorDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.#coatColors.set(updated.id, updated);
+    return updated;
+  }
+
+  async getOrThrow(coatColorId: string): Promise<CoatColorSummary> {
+    const coatColor = this.#coatColors.get(coatColorId);
+    if (!coatColor) {
+      throw new NotFoundError('Coat color not found', { coatColorId });
+    }
+    return coatColor;
+  }
+
+  async list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]> {
+    let items = Array.from(this.#coatColors.values()).filter((coatColor) => coatColor.accountId === accountId);
+
+    if (filters.active !== undefined) {
+      items = items.filter((coatColor) => coatColor.active === filters.active);
+    }
+
+    if (filters.colorGroup) {
+      const colorGroup = filters.colorGroup.toLowerCase();
+      items = items.filter((coatColor) => coatColor.colorGroup?.toLowerCase() === colorGroup);
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      items = items.filter(
+        (coatColor) =>
+          coatColor.name.toLowerCase().includes(search) ||
+          (coatColor.code?.toLowerCase().includes(search) ?? false) ||
+          (coatColor.colorGroup?.toLowerCase().includes(search) ?? false) ||
+          (coatColor.description?.toLowerCase().includes(search) ?? false)
+      );
+    }
+
+    return items.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async delete(coatColorId: string): Promise<void> {
+    this.#coatColors.delete(coatColorId);
+  }
+}
+
+class DatabaseCoatColorStore implements CoatColorStore {
+  async create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary> {
+    const now = new Date();
+    const coatColor: CoatColorSummary = {
+      id: createCorrelationId('coat-color'),
+      accountId,
+      name: normalizeCoatColorName(input.name),
+      code: normalizeCoatColorCode(input.code),
+      colorGroup: normalizeCoatColorGroup(input.colorGroup),
+      hexColor: normalizeCoatColorHex(input.hexColor),
+      description: normalizeCoatColorDescription(input.description),
+      active: input.active ?? true,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `INSERT INTO coat_colors (
+           id,
+           account_id,
+           name,
+           code,
+           color_group,
+           hex_color,
+           description,
+           active,
+           created_at,
+           updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          coatColor.id,
+          coatColor.accountId,
+          coatColor.name,
+          coatColor.code,
+          coatColor.colorGroup,
+          coatColor.hexColor,
+          coatColor.description,
+          coatColor.active,
+          new Date(coatColor.createdAt),
+          new Date(coatColor.updatedAt)
+        ]
+      );
+      return mapCoatColorRow(result.rows[0]);
+    });
+  }
+
+  async update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary> {
+    const existing = await this.getOrThrow(coatColorId);
+    const updated: CoatColorSummary = {
+      ...existing,
+      name: input.name !== undefined ? normalizeCoatColorName(input.name) : existing.name,
+      code: input.code !== undefined ? normalizeCoatColorCode(input.code) : existing.code,
+      colorGroup:
+        input.colorGroup !== undefined
+          ? normalizeCoatColorGroup(input.colorGroup)
+          : existing.colorGroup,
+      hexColor:
+        input.hexColor !== undefined ? normalizeCoatColorHex(input.hexColor) : existing.hexColor,
+      description:
+        input.description !== undefined
+          ? normalizeCoatColorDescription(input.description)
+          : existing.description,
+      active: input.active ?? existing.active,
+      updatedAt: new Date().toISOString()
+    };
+
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE coat_colors
+         SET name = $2,
+             code = $3,
+             color_group = $4,
+             hex_color = $5,
+             description = $6,
+             active = $7,
+             updated_at = $8
+         WHERE id = $1
+         RETURNING *`,
+        [
+          coatColorId,
+          updated.name,
+          updated.code,
+          updated.colorGroup,
+          updated.hexColor,
+          updated.description,
+          updated.active,
+          new Date(updated.updatedAt)
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Coat color not found', { coatColorId });
+      }
+      return mapCoatColorRow(result.rows[0]);
+    });
+  }
+
+  async getOrThrow(coatColorId: string): Promise<CoatColorSummary> {
+    return await withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM coat_colors WHERE id = $1', [coatColorId]);
+      if (result.rows.length === 0) {
+        throw new NotFoundError('Coat color not found', { coatColorId });
+      }
+      return mapCoatColorRow(result.rows[0]);
+    });
+  }
+
+  async list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]> {
+    return await withTenantQuery(getPool(), async (client) => {
+      let sql = 'SELECT * FROM coat_colors WHERE account_id = $1';
+      const params: unknown[] = [accountId];
+      let nextParam = 2;
+
+      if (filters.active !== undefined) {
+        sql += ` AND active = $${nextParam}`;
+        params.push(filters.active);
+        nextParam++;
+      }
+
+      if (filters.colorGroup) {
+        sql += ` AND color_group ILIKE $${nextParam}`;
+        params.push(filters.colorGroup);
+        nextParam++;
+      }
+
+      if (filters.search) {
+        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR color_group ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
+        params.push(`%${filters.search}%`);
+        nextParam++;
+      }
+
+      sql += ' ORDER BY name ASC';
+      const result = await client.query(sql, params);
+      return result.rows.map((row: Record<string, unknown>) => mapCoatColorRow(row));
+    });
+  }
+
+  async delete(coatColorId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query('DELETE FROM coat_colors WHERE id = $1', [coatColorId]);
+    });
+  }
+}
+
+function createCoatColorStore(): CoatColorStore {
+  try {
+    getPool();
+    return new DatabaseCoatColorStore();
+  } catch {
+    return new InMemoryCoatColorStore();
+  }
+}
+
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
@@ -1521,6 +1859,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const responsibilityTerms = createResponsibilityTermStore();
   const breeds = createBreedStore();
   const animalSpecies = createAnimalSpeciesStore();
+  const coatColors = createCoatColorStore();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -3369,6 +3708,129 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             'animal-species',
             speciesId,
             `Animal species ${existingSpecies.name} deleted`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 204;
+          response.end();
+          return;
+        }
+
+        if (
+          (pathname === '/coat-colors' || pathname === '/coat-color' || pathname === '/pelagens') &&
+          request.method === 'GET'
+        ) {
+          const principal = requirePrincipal(request, 'service.read');
+          const search = url.searchParams.get('search') ?? undefined;
+          const activeParam = url.searchParams.get('active');
+          const colorGroup = url.searchParams.get('colorGroup') ?? undefined;
+          const active =
+            activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
+          const items = await coatColors.list(principal.user.accountId, {
+            search,
+            active,
+            colorGroup
+          });
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'coat-colors',
+            'list',
+            'coat-color',
+            search ?? colorGroup ?? 'all',
+            'Coat colors catalog inspected',
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify({ items }));
+          return;
+        }
+
+        if (pathname === '/coat-colors' && request.method === 'POST') {
+          const principal = requirePrincipal(request, 'service.write');
+          const payload = (await readJsonBody(request)) as CoatColorInput;
+          const coatColor = await coatColors.create(principal.user.accountId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'coat-colors',
+            'create',
+            'coat-color',
+            coatColor.id,
+            `Coat color ${coatColor.name} created`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 201;
+          response.end(JSON.stringify(coatColor));
+          return;
+        }
+
+        if (pathname.startsWith('/coat-colors/') && request.method === 'GET') {
+          const principal = requirePrincipal(request, 'service.read');
+          const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
+          const coatColor = await coatColors.getOrThrow(coatColorId);
+          if (coatColor.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Coat color not found for current account');
+          }
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'coat-colors',
+            'read',
+            'coat-color',
+            coatColor.id,
+            `Coat color ${coatColor.name} inspected`,
+            'low',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(coatColor));
+          return;
+        }
+
+        if (pathname.startsWith('/coat-colors/') && request.method === 'PATCH') {
+          const principal = requirePrincipal(request, 'service.write');
+          const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
+          const existingCoatColor = await coatColors.getOrThrow(coatColorId);
+          if (existingCoatColor.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Coat color not found for current account');
+          }
+          const payload = (await readJsonBody(request)) as CoatColorInput;
+          const coatColor = await coatColors.update(coatColorId, payload);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'coat-colors',
+            'update',
+            'coat-color',
+            coatColor.id,
+            `Coat color ${coatColor.name} updated`,
+            'medium',
+            correlationId
+          );
+          response.statusCode = 200;
+          response.end(JSON.stringify(coatColor));
+          return;
+        }
+
+        if (pathname.startsWith('/coat-colors/') && request.method === 'DELETE') {
+          const principal = requirePrincipal(request, 'service.write');
+          const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
+          const existingCoatColor = await coatColors.getOrThrow(coatColorId);
+          if (existingCoatColor.accountId !== principal.user.accountId) {
+            throw new AuthenticationError('Coat color not found for current account');
+          }
+          await coatColors.delete(coatColorId);
+          appendAudit(
+            principal.user.id,
+            principal.user.accountId,
+            'coat-colors',
+            'delete',
+            'coat-color',
+            coatColorId,
+            `Coat color ${existingCoatColor.name} deleted`,
             'medium',
             correlationId
           );
