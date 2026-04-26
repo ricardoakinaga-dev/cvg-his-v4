@@ -199,6 +199,8 @@ Como fallback operacional, a sequencia foi baseada no navbar ja alinhado do `cvg
    - Matriz Estado ICMS
    - Tabela IBS/CBS
 
+Checkpoint posterior em 2026-04-26: o acesso observacional ao Vetus foi retomado com sucesso para `Estoque > Cadastros > Fornecedores e Despesas`, rota `/fornecedores-e-despesas`. Nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. Foram observados breadcrumb `Estoque > Cadastros > Fornecedores e Despesas`, botoes `Busca Avancada`, `Incluir Novo Registro`, `Filtrar e Ordenar`, meta de paginacao `Mostrando 1 - 3 pag. de 26 resultados` e cards com `Descricao`, `Categoria`, `Contato` e `Ver Detalhes`.
+
 ## Regra de sequenciamento
 
 A partir deste checkpoint, a sequencia correta e:
@@ -262,6 +264,7 @@ A partir deste checkpoint, a sequencia correta e:
 | Estoque > Controles > Coletores de Dados | Conferencia por coletor, codigo de barras, lote, saldo e divergencia operacional | Implementado | `3e4414d` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu a decima primeira posicao do grupo `Estoque > Controles` conforme sequencia documentada e fecha a sequencia de `Estoque > Controles`. No `cvg-his-v2`: SPA `/inventory/data-collectors` com aliases `/coletores-de-dados`, `/coletores`, `/coletor-de-dados`, `/estoque/coletores-de-dados` e `/estoque/controles/coletores-de-dados`; tela com acoes `Atualizar`, `Transacao` e `Auditoria`; painel de coleta com `Coletor`, `Operacao`, `Produto`, `Codigo de Barras`, `Lote`, `Quantidade Coletada`, `Responsavel`, `Observacao`, preview de saldo/divergencia e botao `Registrar Coleta`; filtros `Codigo`, `Produto`, `Coletor`, `Operacao`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Coletor`, `Operacao`, `Lote`, `Quantidade`, `Saldo`, `Divergencia`, `Situacao`, `Responsavel`, `Data` e `Abrir`; composicao dos endpoints persistentes existentes `/inventory` e `/inventory/lots`; integracao com Transacao no Estoque, Auditoria de Estoque, Validade de Produtos e Produtos. Observacao tecnica: como a API atual ainda nao persiste sessoes de coletor, a acao `Registrar Coleta` registra a conferencia no runtime da tela e nao altera saldo global; a persistencia duravel de sessoes/importacoes de coletor deve ser o proximo refinamento tecnico quando o contrato de coletores for exposto pela API. |
 | Estoque > Cadastros > Produtos | Cadastro comercial de produtos, codigos, precos e situacao operacional | Implementado | `e9ee9d9` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao iniciou o grupo `Estoque > Cadastros` conforme sequencia documentada. No `cvg-his-v2`: SPA `/products` com aliases `/produtos`, `/estoque/produtos`, `/estoque/cadastros/produtos` e `/cadastros/produtos`; aliases auxiliares `/produtos/novo`, `/estoque/cadastros/produtos/novo`, `/produtos/:id` e `/produtos/:id/editar`; lista com acoes `Atualizar`, `Importar`, `Estoque` e `Incluir`; filtros `Codigo`, `Produto`, `Situacao`, botao `Pesquisar`; tabela `Codigo`, `Produto`, `Descricao`, `Preco Base`, `Situacao`, `Atualizado` e `Abrir`; formulario de inclusao/edicao com `Produto`, `Codigo`, `Descricao`, `Preco Base` e `Produto Ativo`; detalhe com ficha resumida e atalhos `Consulta`, `Auditoria` e `Editar`; API persistente existente `/products`, `/products/:id` com `GET`, `POST` e `PATCH`; integracao com Consulta de Precos, Auditoria de Precos, Reajuste de Precos, Estoque, Validade, Compras, Comandas e fluxo comercial/PDV. |
 | Estoque > Cadastros > Importar Dados Produtos | Importacao assistida de produtos por arquivo ou dados colados | Implementado | `3a0a719` | Tentativa de observacao direta no Vetus em 2026-04-26 ficou bloqueada por Cloudflare antes do login; nao houve escrita no Vetus. A implementacao seguiu o proximo item documentado apos `Produtos` no grupo `Estoque > Cadastros`. No `cvg-his-v2`: SPA `/products/import` com aliases `/produtos/importar`, `/estoque/produtos/importar` e `/estoque/cadastros/importar-dados-produtos`; tela com acoes `Cadastro de Produtos` e `Modelo CSV`; entrada por arquivo `.csv/.txt` ou area de dados colados; separador automatico, ponto e virgula, virgula, tabulacao ou barra vertical; politica de duplicados `Atualizar por codigo/nome`, `Ignorar duplicados` ou `Criar novo registro`; checkbox `Produtos Ativos`; botoes `Limpar`, `Validar` e `Importar`; resumo de `Registros`, `Novos`, `Atualizacoes` e `Com erro`; tabela de previa com `Linha`, `Codigo`, `Produto`, `Descricao`, `Preco Base`, `Produtos Ativos`, `Acao` e `Situacao`; importacao persistente usa API existente `/products` para criacao e `/products/:id` para atualizacao, sem criar nova porta ou dependencia. |
+| Estoque > Cadastros > Fornecedores e Despesas | Cadastro/listagem de fornecedores, despesas, contatos e vinculos operacionais | Implementado | `922b8b1` | Observado diretamente no Vetus em 2026-04-26 em `/fornecedores-e-despesas`, somente leitura; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. Estrutura Vetus observada: breadcrumb `Estoque > Cadastros > Fornecedores e Despesas`; botoes `Busca Avancada`, `Incluir Novo Registro`, `Filtrar e Ordenar`; meta `Mostrando 1 - 3 pag. de 26 resultados`; cards com `Descricao`, `Categoria`, `Contato` e `Ver Detalhes`. No `cvg-his-v2`: SPA `/suppliers` com aliases `/fornecedores-e-despesas`, `/fornecedores`, `/estoque/fornecedores-e-despesas` e `/estoque/cadastros/fornecedores-e-despesas`; tela com acoes `Atualizar`, `Busca Avancada` e `Incluir Novo Registro`; filtros `Descricao`, `Categoria`, `Contato`, `Ordenar` e botao `Pesquisar`; cards Vetus-like com `Descricao`, `Categoria`, `Contato` e `Ver Detalhes`; painel de detalhe com acoes `Editar`, `Contas a Pagar` e `Entrada NF`; formulario de criacao/edicao com `Descricao`, `Categoria`, `Tipo`, `Centro de custo` e `Contato`; persistencia duravel via API existente `/expenses-catalog`, sem nova porta ou dependencia; integracao com compras, entrada de nota fiscal, contas a pagar e centros de custo. |
 | Atendimento > Vacinas e Vermifugos | Agenda preventiva, baixa, reagendamento e email preparado | Implementado | `2e53796` | Persistencia em `preventive_events`, API `/vaccines-dewormers`, tela SPA ligada a API. |
 
 ## Checkpoint tecnico atual
@@ -269,6 +272,7 @@ A partir deste checkpoint, a sequencia correta e:
 Ultimos commits relevantes:
 
 ```text
+`922b8b1` feat: align Vetus-like suppliers and expenses flow
 `3a0a719` feat: align Vetus-like product import flow
 `cae2b2c` feat: add branded fixed enterprise topbar
 `50131c5` feat: simplify sidebar operational chrome
@@ -318,9 +322,9 @@ Ultimo estado publicado:
 
 - SPA: `http://localhost:3002`
 - API: `http://localhost:3003`
-- Ultima rota validada: `http://localhost:3002/appointments`
+- Ultima rota validada: `http://localhost:3002/fornecedores-e-despesas`
 - API health validado em `http://localhost:3003/health`
-- Ultima API validada: `GET http://localhost:3003/scheduling/overview` e contrato SPA para `GET/POST http://localhost:3003/appointments`
+- Ultima API validada: contrato SPA para `GET/POST/PATCH http://localhost:3003/expenses-catalog`
 - Ultima migration aplicada: `0030_vetus_boxes_internacao`
 
 ## Padrao minimo para cada modulo espelhado
@@ -595,7 +599,7 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Fornecedores e Despesas`. |
+| Estoque | Em andamento | Continuar em `Estoque > Cadastros`, proximo item provavel: `Estoques`. |
 | Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
@@ -631,8 +635,8 @@ Um modulo so deve ser considerado espelhado quando tiver:
 
 ## Proximo passo recomendado
 
-Apos concluir `Estoque > Cadastros > Importar Dados Produtos`, continuar pela ordem do grupo `Estoque > Cadastros`:
+Apos concluir `Estoque > Cadastros > Fornecedores e Despesas`, continuar pela ordem do grupo `Estoque > Cadastros`:
 
-1. `Estoque > Cadastros > Fornecedores e Despesas`
+1. `Estoque > Cadastros > Estoques`
 
 Antes de implementar o proximo item, abrir novamente o Vetus apenas em modo observacional para confirmar campos, botoes, filtros, colunas e acoes do modulo escolhido. Este documento deve ser atualizado novamente ao termino da proxima tarefa.
