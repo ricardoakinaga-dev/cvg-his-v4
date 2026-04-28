@@ -405,14 +405,16 @@ Checkpoint em 2026-04-28:
 - P1 foi implementado em escopo focado e publicado no compose v2 existente.
 - P2-01 foi implementado em escopo focado para a agenda historica e futura por animal.
 - P2-02 foi implementado em escopo focado para comanda integrada ao atendimento.
+- P2-03 foi implementado em escopo focado para vacinas e vermifugos como modulo proprio.
 
-Proxima acao recomendada: executar `P2-03 - Vacinas e vermifugos como modulo proprio`.
+Proxima acao recomendada: executar `P2-04 - Internacao vinculada ao animal e prontuario`.
 
 Justificativa:
 
 - o card Agenda do animal ja mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
 - a comanda agora aparece no detalhe do animal, filtra por paciente/tutor/atendimento e lista itens do atendimento focal;
-- a proxima lacuna operacional passa a ser transformar vacinas e vermifugos em modulo proprio, reduzindo dependencia de agenda/texto solto.
+- vacinas e vermifugos agora aparecem no detalhe do animal a partir do modulo preventivo proprio, com proximas doses e historico por `patientId`/`ownerId`;
+- a proxima lacuna operacional passa a ser amarrar internacao ao mesmo contexto do animal e prontuario.
 
 Escopo minimo de `P2-03`:
 
@@ -433,11 +435,42 @@ Criterio de aceite de `P2-03`:
 Observacao de sequenciamento:
 
 - Este plano de GAPs continua agora por P2.
-- O workflow macro de espelhamento Vetus (`2026-04-26-vetus-parity-workflow-e-plano.md`) continua apontando `Estoque > Cadastros > Ponto de Venda` como proximo item quando a frente voltar para a ordem geral do navbar. Isso nao invalida o P2-01; apenas separa a correcao de GAP clinico/operacional da trilha macro de novos modulos.
+- O workflow macro Vetus fiscal deve retomar por `Estoque > Configuracoes Fiscais > Tabela NFS-e`, conforme sequenciamento definido pelo responsavel. Isso nao invalida o P2; apenas separa a correcao de GAP clinico/operacional da trilha macro fiscal.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P2-03 Vacinas e vermifugos como modulo proprio
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- eventos preventivos passaram a aceitar e devolver `patientId` e `ownerId`, mantendo `clientName` e `animalName` como snapshot legivel para compatibilidade com registros legados;
+- `GET /vaccines-dewormers` passou a filtrar por animal/tutor estruturados, alem dos filtros existentes por data, cliente, animal, tipo e executados;
+- migration `0042_preventive_events_patient_owner.sql` adicionou colunas e indices por `account_id + patient_id` e `account_id + owner_id`;
+- OpenAPI passou a documentar o modulo preventivo, incluindo listagem, criacao e baixa de aplicacao;
+- a tela `Vacinas e Vermifugos` passou a respeitar `patientId` e `ownerId` recebidos pela URL;
+- o card `Vacinas e Vermifugos` do detalhe do animal deixou de depender de regex em agenda/prontuario e passou a consumir o modulo preventivo, separando `Proximas doses` e `Historico preventivo`.
+
+Validacao:
+
+- teste focado de API cobre criacao/listagem com `patientId` e `ownerId` e exclusao de outro animal;
+- teste focado de `VaccinesDewormersPage` cobre filtros de contexto vindos da URL;
+- teste focado de `PatientDetailPage` cobre card preventivo por modulo proprio, proximas doses, historico e link para `/vaccines-dewormers?patientId=...&ownerId=...`;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/preventive/__tests__/VaccinesDewormersPage.test.ts src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/api run test`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/api run typecheck`;
+- `pnpm validate:openapi`;
+- `pnpm --filter @cvg-his/db run build`;
+- migration aplicada no Postgres do compose canonico e colunas `patient_id`/`owner_id` confirmadas;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/vaccines-dewormers?patientId=patient_luna&ownerId=owner_maria` 200, API local `http://127.0.0.1:3003/health` 200 e rota protegida `/vaccines-dewormers?patientId=patient_luna&includeExecuted=true` retornando 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA `/vaccines-dewormers` e API health retornando 200.
+
+Proxima frente recomendada: `P2-04 - Internacao vinculada ao animal e prontuario`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P2-02 Comanda integrada ao atendimento
 

@@ -274,6 +274,47 @@ const mockBillingItems = [
   }
 ];
 
+const mockPreventiveEvents = [
+  {
+    id: 'prev-1',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    clientName: 'João Silva',
+    animalName: 'Rex',
+    eventDate: '2099-03-01',
+    itemType: 'vaccine' as const,
+    description: 'Vacina V10 - reforço anual',
+    status: 'scheduled' as const,
+    observation: 'Aplicar dose anual',
+    executedAt: null,
+    executedObservation: null,
+    rescheduledFromId: null,
+    reminderEmailPreparedAt: null,
+    createdAt: '2024-01-03T09:00:00Z',
+    updatedAt: '2024-01-03T09:00:00Z'
+  },
+  {
+    id: 'prev-2',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    clientName: 'João Silva',
+    animalName: 'Rex',
+    eventDate: '2024-01-05',
+    itemType: 'dewormer' as const,
+    description: 'Vermífugo',
+    status: 'executed' as const,
+    observation: 'Dose conforme peso',
+    executedAt: '2024-01-05T10:00:00Z',
+    executedObservation: 'Sem intercorrências',
+    rescheduledFromId: null,
+    reminderEmailPreparedAt: null,
+    createdAt: '2024-01-03T09:00:00Z',
+    updatedAt: '2024-01-05T10:00:00Z'
+  }
+];
+
 const mockDiagnosticOrders = [
   {
     id: 'diag-1',
@@ -336,6 +377,7 @@ const mockTriageList = vi.fn().mockResolvedValue(mockTriageRecords);
 const mockInpatientList = vi.fn().mockResolvedValue(mockInpatientStays);
 const mockBillingList = vi.fn().mockResolvedValue(mockBillingRecords);
 const mockBillingListItems = vi.fn().mockResolvedValue(mockBillingItems);
+const mockPreventiveList = vi.fn().mockResolvedValue(mockPreventiveEvents);
 const mockLaboratoryListOrders = vi.fn().mockResolvedValue(mockDiagnosticOrders);
 const mockQuoteList = vi.fn().mockResolvedValue(mockQuotes);
 const mockQuoteCreate = vi.fn().mockResolvedValue({
@@ -453,6 +495,18 @@ vi.mock('@/services/billing', () => ({
   }
 }));
 
+vi.mock('@/services/vaccinesDewormers', async () => {
+  const actual = await vi.importActual<typeof import('@/services/vaccinesDewormers')>(
+    '@/services/vaccinesDewormers'
+  );
+  return {
+    ...actual,
+    vaccinesDewormersService: {
+      list: (...args: unknown[]) => mockPreventiveList(...args)
+    }
+  };
+});
+
 vi.mock('@/services/laboratory', () => ({
   laboratoryService: {
     listOrders: (...args: unknown[]) => mockLaboratoryListOrders(...args)
@@ -525,6 +579,7 @@ describe('PatientDetailPage', () => {
     mockInpatientList.mockResolvedValue(mockInpatientStays);
     mockBillingList.mockResolvedValue(mockBillingRecords);
     mockBillingListItems.mockResolvedValue(mockBillingItems);
+    mockPreventiveList.mockResolvedValue(mockPreventiveEvents);
     mockLaboratoryListOrders.mockResolvedValue(mockDiagnosticOrders);
     mockQuoteList.mockResolvedValue(mockQuotes);
     mockQuoteCreate.mockResolvedValue({
@@ -579,6 +634,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Adicionar anamnese');
     expect(wrapper.text()).toContain('Abrir prontuário');
     expect(wrapper.text()).toContain('Vacinas e Vermífugos');
+    expect(wrapper.text()).toContain('Vacina V10 - reforço anual');
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Comanda');
     expect(wrapper.text()).toContain('Exames');
@@ -616,6 +672,17 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Consulta cancelada');
     expect(wrapper.find('a[href="/appointments/apt-2"]').exists()).toBe(true);
 
+    await expandCard('Vacinas e Vermífugos');
+    expect(wrapper.text()).toContain('Próximas doses');
+    expect(wrapper.text()).toContain('Histórico preventivo');
+    expect(wrapper.text()).toContain('Vacina · Agendada · João Silva');
+    expect(wrapper.text()).toContain('Vermífugo · Executada · João Silva');
+    expect(
+      wrapper
+        .findAll('a')
+        .some((link) => link.attributes('href') === '/vaccines-dewormers?patientId=pat-1&ownerId=owner-1')
+    ).toBe(true);
+
     await expandCard('Comanda');
     expect(wrapper.text()).toContain('Aberto');
     expect(wrapper.text()).toContain('240,50');
@@ -639,6 +706,11 @@ describe('PatientDetailPage', () => {
     expect(mockBillingList).toHaveBeenCalledWith({ ownerId: 'owner-1' });
     expect(mockBillingList).toHaveBeenCalledWith({ encounterId: 'enc-1', patientId: 'pat-1' });
     expect(mockBillingListItems).toHaveBeenCalledWith('enc-1');
+    expect(mockPreventiveList).toHaveBeenCalledWith({
+      patientId: 'pat-1',
+      ownerId: 'owner-1',
+      includeExecuted: true
+    });
     expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
     expect(mockLaboratoryListOrders).toHaveBeenCalledWith({ patientId: 'pat-1' });
     expect(mockAttachmentList).toHaveBeenCalledWith('medical_record', 'mr-1');

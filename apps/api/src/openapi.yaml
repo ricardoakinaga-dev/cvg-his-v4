@@ -85,6 +85,8 @@ tags:
     description: Inpatient management and bed allocation
   - name: Triage
     description: Triage classification
+  - name: Preventive
+    description: Vaccines and dewormers preventive events
   - name: Billing
     description: Billing and financial records
   - name: Financial
@@ -1936,6 +1938,97 @@ paths:
       responses:
         '200':
           description: Triage updated
+
+  /vaccines-dewormers:
+    get:
+      operationId: listPreventiveEvents
+      summary: List vaccines and dewormers
+      tags: [Preventive]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: client
+          in: query
+          schema:
+            type: string
+        - name: animal
+          in: query
+          schema:
+            type: string
+        - name: patientId
+          in: query
+          schema:
+            type: string
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+        - name: itemType
+          in: query
+          schema:
+            type: string
+            enum: [vaccine, dewormer, other]
+        - name: includeExecuted
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Preventive events listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreventiveEventListResponse'
+    post:
+      operationId: createPreventiveEvent
+      summary: Create vaccine or dewormer event
+      tags: [Preventive]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePreventiveEventRequest'
+      responses:
+        '201':
+          description: Preventive event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreventiveEvent'
+
+  /vaccines-dewormers/{eventId}/execute:
+    post:
+      operationId: executePreventiveEvent
+      summary: Execute vaccine or dewormer event
+      tags: [Preventive]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutePreventiveEventRequest'
+      responses:
+        '200':
+          description: Preventive event executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutePreventiveEventResponse'
 
   /billing:
     get:
@@ -10971,6 +11064,117 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LaboratoryResultImportResponse'
+
+    PreventiveEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        patientId:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+        animalName:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        itemType:
+          type: string
+          enum: [vaccine, dewormer, other]
+        description:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, executed]
+        observation:
+          type: string
+          nullable: true
+        executedAt:
+          type: string
+          format: date-time
+          nullable: true
+        executedObservation:
+          type: string
+          nullable: true
+        rescheduledFromId:
+          type: string
+          nullable: true
+        reminderEmailPreparedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PreventiveEventListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreventiveEvent'
+
+    CreatePreventiveEventRequest:
+      type: object
+      required: [clientName, animalName, eventDate, description]
+      properties:
+        patientId:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+        animalName:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        itemType:
+          type: string
+          enum: [vaccine, dewormer, other]
+          default: vaccine
+        description:
+          type: string
+        observation:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, executed]
+
+    ExecutePreventiveEventRequest:
+      type: object
+      properties:
+        observation:
+          type: string
+          nullable: true
+        rescheduleTo:
+          type: string
+          format: date
+          nullable: true
+
+    ExecutePreventiveEventResponse:
+      type: object
+      properties:
+        event:
+          $ref: '#/components/schemas/PreventiveEvent'
+        rescheduledEvent:
+          allOf:
+            - $ref: '#/components/schemas/PreventiveEvent'
+          nullable: true
 
     CreateWebhookRequest:
       type: object

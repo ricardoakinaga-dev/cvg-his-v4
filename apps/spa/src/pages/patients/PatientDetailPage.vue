@@ -253,32 +253,56 @@
             <span>{{ isPatientCardExpanded('preventive') ? '−' : '+' }}</span>
           </button>
           <div class="vetus-accordion-card__summary">
-            <strong>{{ preventiveEvents.length }} evento(s)</strong>
+            <strong>{{ preventiveSummaryLabel }}</strong>
             <p>{{ latestPreventiveSummary }}</p>
           </div>
           <div v-if="isPatientCardExpanded('preventive')" class="vetus-accordion-card__body">
-            <div v-if="preventiveEvents.length" class="timeline-list">
-              <div
-                v-for="item in preventiveEvents.slice(0, 4)"
-                :key="item.id"
-                class="timeline-list__item"
-              >
-                <div>
-                  <strong>{{ item.title }}</strong>
-                  <p>{{ item.description }}</p>
+            <div v-if="patientPreventiveEvents.length" class="agenda-groups">
+              <section class="agenda-group" aria-label="Próximas doses preventivas">
+                <h4>Próximas doses</h4>
+                <div v-if="upcomingPreventiveEvents.length" class="timeline-list">
+                  <div
+                    v-for="event in upcomingPreventiveEvents.slice(0, 4)"
+                    :key="event.id"
+                    class="timeline-list__item"
+                  >
+                    <div>
+                      <strong>{{ event.description }}</strong>
+                      <p>{{ preventiveEventMeta(event) }}</p>
+                    </div>
+                    <span>{{ formatDate(event.eventDate) }}</span>
+                  </div>
                 </div>
-                <span>{{ formatDateTime(item.occurredAt) }}</span>
-              </div>
+                <p v-else class="muted">Sem dose futura agendada.</p>
+              </section>
+
+              <section class="agenda-group" aria-label="Histórico preventivo">
+                <h4>Histórico preventivo</h4>
+                <div v-if="historicalPreventiveEvents.length" class="timeline-list">
+                  <div
+                    v-for="event in historicalPreventiveEvents.slice(0, 4)"
+                    :key="event.id"
+                    class="timeline-list__item"
+                  >
+                    <div>
+                      <strong>{{ event.description }}</strong>
+                      <p>{{ preventiveEventMeta(event) }}</p>
+                    </div>
+                    <span>{{ formatDate(event.executedAt ?? event.eventDate) }}</span>
+                  </div>
+                </div>
+                <p v-else class="muted">Sem aplicação registrada no histórico.</p>
+              </section>
             </div>
             <p v-else class="muted">Esse animal ainda não possui vacinas ou vermífugos cadastrados.</p>
 
             <div class="quick-actions">
-              <DsButton tag="a" to="/appointments" variant="secondary" size="sm">
+              <DsButton tag="a" :to="patientPreventivePath" variant="secondary" size="sm">
                 Ver Mais Vacinas/Vermífugos
               </DsButton>
               <DsButton
                 tag="a"
-                :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
+                :to="patientPreventivePath"
                 variant="ghost"
                 size="sm"
               >
@@ -768,6 +792,12 @@ import { patientService } from '@/services/patient';
 import { prescriptionsService } from '@/services/prescriptions';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import { listTriageRecords } from '@/services/triage';
+import {
+  preventiveItemTypeLabel,
+  vaccinesDewormersService,
+  type PreventiveEventStatus,
+  type PreventiveEventSummary
+} from '@/services/vaccinesDewormers';
 import { useEntityCache } from '@/composables/useEntityCache';
 import type { AttachmentSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
@@ -835,13 +865,6 @@ interface ExamFeedItem {
   meta: string;
 }
 
-interface PreventiveFeedItem {
-  id: string;
-  title: string;
-  description: string;
-  occurredAt: string;
-}
-
 type PatientPrescription = ClinicalEntrySummary & {
   medicationName?: string;
   dosage?: string;
@@ -870,6 +893,7 @@ const focalClinicalTimeline = ref<ClinicalTimelineEventSummary[]>([]);
 const patientAttachments = ref<AttachmentSummary[]>([]);
 const patientDiagnosticOrders = ref<DiagnosticOrderSummary[]>([]);
 const patientPrescriptions = ref<PatientPrescription[]>([]);
+const patientPreventiveEvents = ref<PreventiveEventSummary[]>([]);
 const focalTriage = ref<TriageSummary | null>(null);
 const focalInpatientStay = ref<InpatientStaySummary | null>(null);
 const focalBilling = ref<BillingRecordSummary | null>(null);
@@ -988,6 +1012,13 @@ const patientBillingActionLabel = computed(() =>
   focalEncounter.value ? 'Abrir comanda do atendimento' : 'Abrir atendimento para comanda'
 );
 
+const patientPreventivePath = computed(() => {
+  const params = new URLSearchParams();
+  if (patient.value?.id) params.set('patientId', patient.value.id);
+  if (patient.value?.primaryOwnerId) params.set('ownerId', patient.value.primaryOwnerId);
+  return `/vaccines-dewormers${params.toString() ? `?${params.toString()}` : ''}`;
+});
+
 const anamnesisActionPath = computed(() => {
   if (focalEncounter.value) {
     return `/medical-records/${focalEncounter.value.id}?entry=anamnesis`;
@@ -1095,30 +1126,28 @@ const examItems = computed<ExamFeedItem[]>(() => {
   return [...diagnosticOrderItems, ...entryItems, ...attachmentItems].slice(0, 6);
 });
 
-const preventiveEvents = computed<PreventiveFeedItem[]>(() => {
-  const preventivePattern = /vacina|vacinal|verm[ií]fug|antirr[aá]b|v10|v8|gi[aá]rdia/i;
-  const entryItems = sortedPatientClinicalEntries.value
-    .filter((entry) => preventivePattern.test(`${entry.title} ${entry.content}`))
-    .map((entry) => ({
-      id: `entry-${entry.id}`,
-      title: entry.title,
-      description: clinicalEntryTypeLabel(entry.entryType),
-      occurredAt: entry.updatedAt
-    }));
+const sortedPreventiveEvents = computed(() =>
+  [...patientPreventiveEvents.value].sort(
+    (a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+  )
+);
 
-  const appointmentItems = patientAppointments.value
-    .filter((appointment) => preventivePattern.test(appointment.reason))
-    .map((appointment) => ({
-      id: `appointment-${appointment.id}`,
-      title: appointment.reason,
-      description: appointmentStatusLabel(appointment.status),
-      occurredAt: appointment.scheduledAt
-    }));
-
-  return [...entryItems, ...appointmentItems].sort(
-    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+const upcomingPreventiveEvents = computed(() => {
+  const today = new Date().toISOString().slice(0, 10);
+  return sortedPreventiveEvents.value.filter(
+    (event) => event.status === 'scheduled' && event.eventDate >= today
   );
 });
+
+const historicalPreventiveEvents = computed(() =>
+  [...sortedPreventiveEvents.value]
+    .filter((event) => event.status === 'executed' || !upcomingPreventiveEvents.value.includes(event))
+    .sort((a, b) => {
+      const left = a.executedAt ?? `${a.eventDate}T12:00:00Z`;
+      const right = b.executedAt ?? `${b.eventDate}T12:00:00Z`;
+      return new Date(right).getTime() - new Date(left).getTime();
+    })
+);
 
 const clinicalHistoryEntry = computed(() =>
   sortedPatientClinicalEntries.value.find(
@@ -1292,9 +1321,20 @@ const latestAnamnesisSummary = computed(() => {
 });
 
 const latestPreventiveSummary = computed(() => {
-  const event = preventiveEvents.value[0];
-  return event ? `${event.title} · ${formatDateTime(event.occurredAt)}` : 'Sem vacina ou vermífugo registrado.';
+  const nextEvent = upcomingPreventiveEvents.value[0];
+  if (nextEvent) {
+    return `Próxima: ${nextEvent.description} · ${formatDate(nextEvent.eventDate)}`;
+  }
+
+  const latestEvent = historicalPreventiveEvents.value[0];
+  return latestEvent
+    ? `Última: ${latestEvent.description} · ${formatDate(latestEvent.executedAt ?? latestEvent.eventDate)}`
+    : 'Sem vacina ou vermífugo registrado.';
 });
+
+const preventiveSummaryLabel = computed(() =>
+  `${upcomingPreventiveEvents.value.length} próxima(s) · ${historicalPreventiveEvents.value.length} histórico`
+);
 
 const agendaSummaryLabel = computed(() => {
   const parts = [
@@ -1820,6 +1860,7 @@ function resetRelatedState() {
   patientAttachments.value = [];
   patientDiagnosticOrders.value = [];
   patientPrescriptions.value = [];
+  patientPreventiveEvents.value = [];
   focalTriage.value = null;
   focalInpatientStay.value = null;
   focalBilling.value = null;
@@ -1874,6 +1915,18 @@ function billingItemTypeLabel(type: BillingItemType): string {
     daily_rate: 'Diária',
     other: 'Outro'
   }[type];
+}
+
+function preventiveStatusLabel(status: PreventiveEventStatus): string {
+  return status === 'executed' ? 'Executada' : 'Agendada';
+}
+
+function preventiveEventMeta(event: PreventiveEventSummary): string {
+  return [
+    preventiveItemTypeLabel(event.itemType),
+    preventiveStatusLabel(event.status),
+    event.clientName || ownerName.value
+  ].join(' · ');
 }
 
 function inpatientStatusLabel(status: InpatientStatus): string {
@@ -2046,7 +2099,8 @@ async function loadPage() {
       ownerBillingResult,
       ownerQuotesResult,
       diagnosticOrdersResult,
-      prescriptionsResult
+      prescriptionsResult,
+      preventiveEventsResult
     ] = await Promise.allSettled([
       encounterService.list(),
       appointmentService.list({ patientId: loadedPatient.id }),
@@ -2057,7 +2111,12 @@ async function loadPage() {
       billingService.list({ ownerId: loadedPatient.primaryOwnerId }),
       quoteService.list(),
       laboratoryService.listOrders({ patientId: loadedPatient.id }),
-      prescriptionsService.listByPatient(loadedPatient.id)
+      prescriptionsService.listByPatient(loadedPatient.id),
+      vaccinesDewormersService.list({
+        patientId: loadedPatient.id,
+        ownerId: loadedPatient.primaryOwnerId,
+        includeExecuted: true
+      })
     ]);
 
     if (encountersResult.status === 'fulfilled') {
@@ -2133,6 +2192,14 @@ async function loadPage() {
       patientPrescriptions.value = prescriptionsResult.value;
     } else {
       registerWarning('receituário');
+    }
+
+    if (preventiveEventsResult.status === 'fulfilled') {
+      patientPreventiveEvents.value = preventiveEventsResult.value.filter(
+        (event) => event.patientId === loadedPatient.id || event.animalName === loadedPatient.name
+      );
+    } else {
+      registerWarning('vacinas e vermífugos');
     }
 
     if (patientRecords.value.length > 0 || patientDiagnosticOrders.value.length > 0) {

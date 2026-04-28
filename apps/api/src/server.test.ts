@@ -1537,6 +1537,8 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
       host: 'localhost'
     },
     body: {
+      patientId: 'patient_rex',
+      ownerId: 'owner_maria',
       clientName: 'Maria Silva',
       animalName: 'Rex',
       eventDate: '2026-05-10',
@@ -1551,14 +1553,18 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     description: string;
     status: string;
     itemType: string;
+    patientId: string | null;
+    ownerId: string | null;
   }>();
   assert.equal(createdPreventive.description, 'Vacina V10 - reforco anual');
   assert.equal(createdPreventive.status, 'scheduled');
   assert.equal(createdPreventive.itemType, 'vaccine');
+  assert.equal(createdPreventive.patientId, 'patient_rex');
+  assert.equal(createdPreventive.ownerId, 'owner_maria');
 
   const preventiveListResponse = await performRequest(server, {
     method: 'GET',
-    url: '/vaccines-dewormers?dateFrom=2026-05-01&dateTo=2026-05-31&client=Maria&animal=Rex&itemType=vaccine',
+    url: '/vaccines-dewormers?dateFrom=2026-05-01&dateTo=2026-05-31&client=Maria&animal=Rex&itemType=vaccine&patientId=patient_rex&ownerId=owner_maria',
     headers: {
       authorization: `Bearer ${accessToken}`,
       host: 'localhost'
@@ -1568,6 +1574,17 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   const preventiveEvents = preventiveListResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>();
   assert.equal(preventiveEvents.items.length, 1);
   assert.equal(preventiveEvents.items[0]?.id, createdPreventive.id);
+
+  const otherPatientPreventiveListResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/vaccines-dewormers?includeExecuted=true&patientId=patient_other',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(otherPatientPreventiveListResponse.statusCode, 200);
+  assert.equal(otherPatientPreventiveListResponse.bodyJson<{ items: unknown[] }>().items.length, 0);
 
   const executePreventiveResponse = await performRequest(server, {
     method: 'POST',

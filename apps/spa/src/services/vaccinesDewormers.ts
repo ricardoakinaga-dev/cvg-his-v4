@@ -6,6 +6,8 @@ export type PreventiveEventStatus = 'scheduled' | 'executed';
 export interface PreventiveEventSummary {
   readonly id: string;
   readonly accountId: string;
+  readonly patientId: string | null;
+  readonly ownerId: string | null;
   readonly clientName: string;
   readonly animalName: string;
   readonly eventDate: string;
@@ -30,6 +32,8 @@ export interface PreventiveEventListFilters {
   readonly dateTo?: string;
   readonly client?: string;
   readonly animal?: string;
+  readonly patientId?: string;
+  readonly ownerId?: string;
   readonly includeExecuted?: boolean;
   readonly itemType?: PreventiveItemType | '';
 }
@@ -37,6 +41,8 @@ export interface PreventiveEventListFilters {
 export interface CreatePreventiveEventPayload {
   readonly clientName: string;
   readonly animalName: string;
+  readonly patientId?: string | null;
+  readonly ownerId?: string | null;
   readonly eventDate: string;
   readonly itemType: PreventiveItemType;
   readonly description: string;
@@ -75,6 +81,8 @@ export const vaccinesDewormersService = {
     if (filters?.dateTo) searchParams.set('dateTo', filters.dateTo);
     if (filters?.client) searchParams.set('client', filters.client);
     if (filters?.animal) searchParams.set('animal', filters.animal);
+    if (filters?.patientId) searchParams.set('patientId', filters.patientId);
+    if (filters?.ownerId) searchParams.set('ownerId', filters.ownerId);
     if (filters?.itemType) searchParams.set('itemType', filters.itemType);
     if (typeof filters?.includeExecuted === 'boolean') {
       searchParams.set('includeExecuted', filters.includeExecuted ? 'true' : 'false');

@@ -7,6 +7,8 @@ import {
   type PreventiveEventSummary
 } from '@/services/vaccinesDewormers';
 
+const mockRouteQuery = vi.hoisted(() => ({} as Record<string, string>));
+
 vi.mock('@/services/vaccinesDewormers', async () => {
   const actual = await vi.importActual<typeof import('@/services/vaccinesDewormers')>(
     '@/services/vaccinesDewormers'
@@ -25,9 +27,17 @@ vi.mock('@/services/vaccinesDewormers', async () => {
   };
 });
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({
+    query: mockRouteQuery
+  })
+}));
+
 const scheduledEvent: PreventiveEventSummary = {
   id: 'prev-1',
   accountId: 'acc-1',
+  patientId: 'pat-1',
+  ownerId: 'owner-1',
   clientName: 'Maria Silva',
   animalName: 'Rex',
   eventDate: '2026-04-24',
@@ -56,6 +66,9 @@ const executedEvent: PreventiveEventSummary = {
 describe('VaccinesDewormersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    for (const key of Object.keys(mockRouteQuery)) {
+      delete mockRouteQuery[key];
+    }
     vi.mocked(vaccinesDewormersService.list).mockResolvedValue([scheduledEvent]);
     vi.mocked(vaccinesDewormersService.create).mockResolvedValue(scheduledEvent);
     vi.mocked(vaccinesDewormersService.update).mockResolvedValue(scheduledEvent);
@@ -97,6 +110,8 @@ describe('VaccinesDewormersPage', () => {
       dateTo: undefined,
       client: undefined,
       animal: undefined,
+      patientId: undefined,
+      ownerId: undefined,
       itemType: undefined,
       includeExecuted: false
     });
@@ -146,10 +161,31 @@ describe('VaccinesDewormersPage', () => {
       dateTo: undefined,
       client: undefined,
       animal: undefined,
+      patientId: undefined,
+      ownerId: undefined,
       itemType: undefined,
       includeExecuted: true
     });
     expect(wrapper.text()).toContain('Antirrábica');
     expect(wrapper.text()).toContain('Executada');
+  });
+
+  it('uses patient and owner query filters for patient-context navigation', async () => {
+    mockRouteQuery.patientId = 'pat-1';
+    mockRouteQuery.ownerId = 'owner-1';
+
+    mount(VaccinesDewormersPage);
+    await flushPromises();
+
+    expect(vaccinesDewormersService.list).toHaveBeenCalledWith({
+      dateFrom: undefined,
+      dateTo: undefined,
+      client: undefined,
+      animal: undefined,
+      patientId: 'pat-1',
+      ownerId: 'owner-1',
+      itemType: undefined,
+      includeExecuted: false
+    });
   });
 });

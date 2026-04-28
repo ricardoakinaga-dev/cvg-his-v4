@@ -17,6 +17,8 @@ export const preventiveEvents = pgTable(
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
+    patientId: varchar('patient_id', { length: 255 }),
+    ownerId: varchar('owner_id', { length: 255 }),
     clientName: varchar('client_name', { length: 160 }).notNull(),
     animalName: varchar('animal_name', { length: 160 }).notNull(),
     eventDate: date('event_date').notNull(),
@@ -35,6 +37,8 @@ export const preventiveEvents = pgTable(
     accountDateIdx: index('idx_preventive_events_account_date').on(table.accountId, table.eventDate),
     accountStatusIdx: index('idx_preventive_events_account_status').on(table.accountId, table.status),
     accountClientIdx: index('idx_preventive_events_account_client').on(table.accountId, table.clientName),
-    accountAnimalIdx: index('idx_preventive_events_account_animal').on(table.accountId, table.animalName)
+    accountAnimalIdx: index('idx_preventive_events_account_animal').on(table.accountId, table.animalName),
+    accountPatientIdx: index('idx_preventive_events_account_patient').on(table.accountId, table.patientId),
+    accountOwnerIdx: index('idx_preventive_events_account_owner').on(table.accountId, table.ownerId)
   })
 );

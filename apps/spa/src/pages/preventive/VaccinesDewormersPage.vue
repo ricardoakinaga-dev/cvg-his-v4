@@ -154,6 +154,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
@@ -180,8 +181,17 @@ interface PreventiveFilters {
   dateTo: string;
   client: string;
   animal: string;
+  patientId: string;
+  ownerId: string;
   itemType: PreventiveItemType | '';
   includeExecuted: boolean;
+}
+
+const route = useRoute();
+
+function queryParam(name: string): string {
+  const value = route.query[name];
+  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
 }
 
 const columns: DataTableColumn[] = [
@@ -199,8 +209,10 @@ const columns: DataTableColumn[] = [
 const defaultFilters = (): PreventiveFilters => ({
   dateFrom: '',
   dateTo: '',
-  client: '',
-  animal: '',
+  client: queryParam('client'),
+  animal: queryParam('animal'),
+  patientId: queryParam('patientId'),
+  ownerId: queryParam('ownerId'),
   itemType: '',
   includeExecuted: false
 });
@@ -218,7 +230,7 @@ const executeModalOpen = ref(false);
 const selectedEvent = ref<PreventiveEventSummary | null>(null);
 const scheduleForm = ref({
   clientName: '',
-  animalName: 'Não Definido',
+  animalName: queryParam('animal') || 'Não Definido',
   itemType: 'vaccine' as PreventiveItemType,
   description: '',
   eventDate: new Date().toISOString().slice(0, 10),
@@ -274,7 +286,7 @@ function openScheduleModal(event?: PreventiveEventSummary) {
       }
     : {
         clientName: '',
-        animalName: 'Não Definido',
+        animalName: queryParam('animal') || 'Não Definido',
         itemType: 'vaccine',
         description: '',
         eventDate: new Date().toISOString().slice(0, 10),
@@ -296,6 +308,8 @@ async function saveSchedule() {
   const payload = {
     clientName: scheduleForm.value.clientName.trim(),
     animalName: scheduleForm.value.animalName.trim(),
+    patientId: selectedEvent.value?.patientId ?? (appliedFilters.value.patientId || null),
+    ownerId: selectedEvent.value?.ownerId ?? (appliedFilters.value.ownerId || null),
     itemType: scheduleForm.value.itemType,
     description: scheduleForm.value.description.trim(),
     eventDate: scheduleForm.value.eventDate,
@@ -407,6 +421,8 @@ function toServiceFilters(filters: PreventiveFilters): PreventiveEventListFilter
     dateTo: filters.dateTo || undefined,
     client: filters.client || undefined,
     animal: filters.animal || undefined,
+    patientId: filters.patientId || undefined,
+    ownerId: filters.ownerId || undefined,
     itemType: filters.itemType || undefined,
     includeExecuted: filters.includeExecuted
   };

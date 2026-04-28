@@ -521,6 +521,8 @@ export const customerGroups = pgTable('customer_groups', {
 export const preventiveEvents = pgTable('preventive_events', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: uuid('account_id').notNull(),
+  patientId: varchar('patient_id', { length: 255 }),
+  ownerId: varchar('owner_id', { length: 255 }),
   clientName: varchar('client_name', { length: 160 }).notNull(),
   animalName: varchar('animal_name', { length: 160 }).notNull(),
   eventDate: date('event_date').notNull(),

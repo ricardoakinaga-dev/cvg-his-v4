@@ -2454,6 +2454,8 @@ type PreventiveEventStatus = 'scheduled' | 'executed';
 interface PreventiveEventSummary {
   readonly id: string;
   readonly accountId: string;
+  readonly patientId: string | null;
+  readonly ownerId: string | null;
   readonly clientName: string;
   readonly animalName: string;
   readonly eventDate: string;
@@ -2470,6 +2472,8 @@ interface PreventiveEventSummary {
 }
 
 interface PreventiveEventInput {
+  readonly patientId?: string | null;
+  readonly ownerId?: string | null;
   readonly clientName?: string;
   readonly animalName?: string;
   readonly eventDate?: string;
@@ -2489,6 +2493,8 @@ interface PreventiveEventListFilters {
   readonly dateTo?: string;
   readonly client?: string;
   readonly animal?: string;
+  readonly patientId?: string;
+  readonly ownerId?: string;
   readonly includeExecuted?: boolean;
   readonly itemType?: string;
 }
@@ -2539,6 +2545,14 @@ function normalizePreventiveOptionalText(
   return text;
 }
 
+function normalizePreventiveOptionalId(value: string | null | undefined, field: string): string | null {
+  const text = value?.trim() || null;
+  if (text && text.length > 255) {
+    throw new ValidationError(`${field} must have at most 255 characters`);
+  }
+  return text;
+}
+
 function normalizePreventiveDate(value: string | undefined, field: string): string {
   const date = requireNonEmptyString(value, field).trim();
   if (!isoDatePattern.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
@@ -2582,6 +2596,8 @@ function mapPreventiveEventRow(row: Record<string, unknown>): PreventiveEventSum
   return {
     id: row.id as string,
     accountId: row.account_id as string,
+    patientId: (row.patient_id as string | null) ?? null,
+    ownerId: (row.owner_id as string | null) ?? null,
     clientName: row.client_name as string,
     animalName: row.animal_name as string,
     eventDate: mapPreventiveDate(row.event_date),
@@ -2607,6 +2623,8 @@ function createPreventiveEventSummary(
   return {
     id: createCorrelationId('preventive'),
     accountId,
+    patientId: normalizePreventiveOptionalId(input.patientId, 'patientId'),
+    ownerId: normalizePreventiveOptionalId(input.ownerId, 'ownerId'),
     clientName: normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength),
     animalName: normalizePreventiveText(input.animalName, 'animalName', preventiveMaxNameLength),
     eventDate: normalizePreventiveDate(input.eventDate, 'eventDate'),
@@ -2636,6 +2654,14 @@ class InMemoryPreventiveEventStore implements PreventiveEventStore {
     const existing = await this.getOrThrow(eventId);
     const updated: PreventiveEventSummary = {
       ...existing,
+      patientId:
+        input.patientId !== undefined
+          ? normalizePreventiveOptionalId(input.patientId, 'patientId')
+          : existing.patientId,
+      ownerId:
+        input.ownerId !== undefined
+          ? normalizePreventiveOptionalId(input.ownerId, 'ownerId')
+          : existing.ownerId,
       clientName:
         input.clientName !== undefined
           ? normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength)
@@ -2761,6 +2787,8 @@ function applyPreventiveFilters(
     if (filters.itemType && preventiveItemTypes.has(filters.itemType as PreventiveItemType) && event.itemType !== filters.itemType) {
       return false;
     }
+    if (filters.patientId && event.patientId !== filters.patientId) return false;
+    if (filters.ownerId && event.ownerId !== filters.ownerId) return false;
     if (client && !event.clientName.toLowerCase().includes(client)) return false;
     if (animal && !event.animalName.toLowerCase().includes(animal)) return false;
     return true;
@@ -2777,6 +2805,14 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
     const existing = await this.getOrThrow(eventId);
     const updated: PreventiveEventSummary = {
       ...existing,
+      patientId:
+        input.patientId !== undefined
+          ? normalizePreventiveOptionalId(input.patientId, 'patientId')
+          : existing.patientId,
+      ownerId:
+        input.ownerId !== undefined
+          ? normalizePreventiveOptionalId(input.ownerId, 'ownerId')
+          : existing.ownerId,
       clientName:
         input.clientName !== undefined
           ? normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength)
@@ -2805,18 +2841,22 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
         `UPDATE preventive_events
          SET client_name = $2,
              animal_name = $3,
-             event_date = $4,
-             item_type = $5,
-             description = $6,
-             status = $7,
-             observation = $8,
-             updated_at = $9
+             patient_id = $4,
+             owner_id = $5,
+             event_date = $6,
+             item_type = $7,
+             description = $8,
+             status = $9,
+             observation = $10,
+             updated_at = $11
          WHERE id = $1
          RETURNING *`,
         [
           eventId,
           updated.clientName,
           updated.animalName,
+          updated.patientId,
+          updated.ownerId,
           updated.eventDate,
           updated.itemType,
           updated.description,
@@ -2866,6 +2906,16 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
       if (filters.itemType && preventiveItemTypes.has(filters.itemType as PreventiveItemType)) {
         sql += ` AND item_type = $${nextParam}`;
         params.push(filters.itemType);
+        nextParam++;
+      }
+      if (filters.patientId) {
+        sql += ` AND patient_id = $${nextParam}`;
+        params.push(filters.patientId);
+        nextParam++;
+      }
+      if (filters.ownerId) {
+        sql += ` AND owner_id = $${nextParam}`;
+        params.push(filters.ownerId);
         nextParam++;
       }
       if (filters.client) {
@@ -2928,6 +2978,8 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
         const rescheduledEvent = createPreventiveEventSummary(
           existing.accountId,
           {
+            patientId: existing.patientId,
+            ownerId: existing.ownerId,
             clientName: existing.clientName,
             animalName: existing.animalName,
             eventDate: rescheduleTo,
@@ -2999,6 +3051,8 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
       `INSERT INTO preventive_events (
          id,
          account_id,
+         patient_id,
+         owner_id,
          client_name,
          animal_name,
          event_date,
@@ -3013,11 +3067,13 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
          created_at,
          updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         event.id,
         event.accountId,
+        event.patientId,
+        event.ownerId,
         event.clientName,
         event.animalName,
         event.eventDate,
@@ -5280,6 +5336,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             dateTo: url.searchParams.get('dateTo') ?? undefined,
             client: url.searchParams.get('client') ?? undefined,
             animal: url.searchParams.get('animal') ?? undefined,
+            patientId: url.searchParams.get('patientId') ?? undefined,
+            ownerId: url.searchParams.get('ownerId') ?? undefined,
             itemType: url.searchParams.get('itemType') ?? undefined,
             includeExecuted: includeExecutedParam?.toLowerCase() === 'true'
           };
@@ -5290,7 +5348,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             'vaccines-dewormers',
             'list',
             'preventive-event',
-            filters.client ?? filters.animal ?? filters.itemType ?? 'all',
+            filters.patientId ?? filters.ownerId ?? filters.client ?? filters.animal ?? filters.itemType ?? 'all',
             'Preventive events inspected',
             'medium',
             correlationId
@@ -5328,6 +5386,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             dateTo: payload.dateTo,
             client: payload.client,
             animal: payload.animal,
+            patientId: payload.patientId,
+            ownerId: payload.ownerId,
             itemType: payload.itemType,
             includeExecuted: false
           });
