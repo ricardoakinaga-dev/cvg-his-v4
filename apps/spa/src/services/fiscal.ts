@@ -2,6 +2,7 @@ import type {
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
+  CreateFiscalCofinsTableRequest,
   CreateFiscalNfseLayoutRequest,
   FiscalCfopListResponse,
   FiscalCfopSummary,
@@ -14,6 +15,8 @@ import type {
   FiscalIpiTableSummary,
   FiscalPisTableListResponse,
   FiscalPisTableSummary,
+  FiscalCofinsTableListResponse,
+  FiscalCofinsTableSummary,
   FiscalNcmEntryListResponse,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutListResponse,
@@ -24,6 +27,7 @@ import type {
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
+  UpdateFiscalCofinsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -32,6 +36,7 @@ import { apiRequest } from './api';
 export type FiscalIcmsTable = FiscalIcmsTableSummary;
 export type FiscalIpiTable = FiscalIpiTableSummary;
 export type FiscalPisTable = FiscalPisTableSummary;
+export type FiscalCofinsTable = FiscalCofinsTableSummary;
 export type FiscalPisCofinsRule = FiscalPisCofinsRuleSummary;
 export type FiscalCfopRow = FiscalCfopSummary;
 export type FiscalNcmEntry = FiscalNcmEntrySummary;
@@ -43,6 +48,8 @@ export type CreateFiscalIpiTable = CreateFiscalIpiTableRequest;
 export type UpdateFiscalIpiTable = UpdateFiscalIpiTableRequest;
 export type CreateFiscalPisTable = CreateFiscalPisTableRequest;
 export type UpdateFiscalPisTable = UpdateFiscalPisTableRequest;
+export type CreateFiscalCofinsTable = CreateFiscalCofinsTableRequest;
+export type UpdateFiscalCofinsTable = UpdateFiscalCofinsTableRequest;
 export type CreateFiscalNfseLayout = CreateFiscalNfseLayoutRequest;
 export type UpdateFiscalNfseLayout = UpdateFiscalNfseLayoutRequest;
 
@@ -55,6 +62,10 @@ export interface FiscalIpiTableFilters {
 }
 
 export interface FiscalPisTableFilters {
+  search?: string;
+}
+
+export interface FiscalCofinsTableFilters {
   search?: string;
 }
 
@@ -158,6 +169,27 @@ export const fiscalService = {
 
   async updatePisTable(id: string, payload: UpdateFiscalPisTable): Promise<FiscalPisTable> {
     return apiRequest<FiscalPisTable>(`/fiscal/pis/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async listCofinsTables(filters: FiscalCofinsTableFilters = {}): Promise<FiscalCofinsTable[]> {
+    const response = await apiRequest<FiscalCofinsTableListResponse>(
+      `/fiscal/cofins${buildQuery({ ...filters })}`
+    );
+    return [...(response.items ?? [])];
+  },
+
+  async createCofinsTable(payload: CreateFiscalCofinsTable): Promise<FiscalCofinsTable> {
+    return apiRequest<FiscalCofinsTable>('/fiscal/cofins', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateCofinsTable(id: string, payload: UpdateFiscalCofinsTable): Promise<FiscalCofinsTable> {
+    return apiRequest<FiscalCofinsTable>(`/fiscal/cofins/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });

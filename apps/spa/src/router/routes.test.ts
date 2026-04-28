@@ -73,6 +73,12 @@ describe('router convergence', () => {
       '/estoque/configuracoes-fiscais/pis',
       '/estoque/configuracoes-fiscais/tabela-pis'
     ]);
+    expect(findChildRoute('fiscal/cofins')?.meta?.title).toBe('Tabela COFINS');
+    expect(findChildRoute('fiscal/cofins')?.alias).toEqual([
+      '/cofins',
+      '/estoque/configuracoes-fiscais/cofins',
+      '/estoque/configuracoes-fiscais/tabela-cofins'
+    ]);
     expect(findChildRoute('fiscal/pis-cofins')?.meta?.title).toBe('PIS / COFINS');
     expect(findChildRoute('access-control')?.meta?.title).toBe('Grupos de Acesso');
     expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('RH');

@@ -154,10 +154,11 @@ test('handleFiscalRoutes filters CFOP rows using query params', async () => {
   assert.ok(payload.items.some((item) => item.category === 'servico'));
 });
 
-test('handleFiscalRoutes filters simple ICMS, IPI, PIS and NFS-e tables using real query params', async () => {
+test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables using real query params', async () => {
   const icmsResponse = new MockResponse();
   const ipiResponse = new MockResponse();
   const pisResponse = new MockResponse();
+  const cofinsResponse = new MockResponse();
   const nfseResponse = new MockResponse();
 
   const icmsHandled = await handleFiscalRoutes(
@@ -208,6 +209,22 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS and NFS-e tables using re
     }
   );
 
+  const cofinsHandled = await handleFiscalRoutes(
+    '/fiscal/cofins',
+    {
+      method: 'GET',
+      url: '/fiscal/cofins?search=7%2C6'
+    } as never,
+    cofinsResponse as never,
+    'corr-fiscal-cofins-list',
+    {
+      fiscal: new FiscalService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
   const nfseHandled = await handleFiscalRoutes(
     '/fiscal/nfse',
     {
@@ -227,6 +244,7 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS and NFS-e tables using re
   assert.equal(icmsHandled, true);
   assert.equal(ipiHandled, true);
   assert.equal(pisHandled, true);
+  assert.equal(cofinsHandled, true);
   assert.equal(nfseHandled, true);
 
   const icmsPayload = icmsResponse.bodyJson<{
@@ -236,6 +254,9 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS and NFS-e tables using re
     items: Array<{ code: string; description: string; percent: number }>;
   }>();
   const pisPayload = pisResponse.bodyJson<{
+    items: Array<{ code: string; description: string; percent: number }>;
+  }>();
+  const cofinsPayload = cofinsResponse.bodyJson<{
     items: Array<{ code: string; description: string; percent: number }>;
   }>();
   const nfsePayload = nfseResponse.bodyJson<{
@@ -248,6 +269,8 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS and NFS-e tables using re
   assert.ok(ipiPayload.items.every((item) => `${item.code} ${item.description}`.includes('3,25')));
   assert.ok(pisPayload.items.length > 0);
   assert.ok(pisPayload.items.every((item) => `${item.code} ${item.description}`.includes('0,65')));
+  assert.ok(cofinsPayload.items.length > 0);
+  assert.ok(cofinsPayload.items.every((item) => `${item.code} ${item.description}`.includes('7,6')));
   assert.ok(nfsePayload.items.length > 0);
   assert.ok(nfsePayload.items.every((item) => item.state === 'SP'));
   assert.ok(nfsePayload.items.every((item) => item.active));
@@ -431,6 +454,66 @@ test('handleFiscalRoutes creates and updates simple PIS table entries when enabl
   const updatedPayload = updateResponse.bodyJson<{ description: string; percent: number }>();
   assert.equal(updatedPayload.description, 'PIS interno 2%');
   assert.equal(updatedPayload.percent, 2.1);
+});
+
+test('handleFiscalRoutes creates and updates simple COFINS table entries when enabled', async () => {
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/cofins',
+    createMockRequest('POST', '/fiscal/cofins', {
+      code: '4',
+      description: 'COFINS 4%',
+      percent: 4
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-cofins-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ id: string; code: string; percent: number }>();
+  assert.equal(createdPayload.code, '4');
+  assert.equal(createdPayload.percent, 4);
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/cofins/${createdPayload.id}`,
+    createMockRequest('PATCH', `/fiscal/cofins/${createdPayload.id}`, {
+      description: 'COFINS interno 4%',
+      percent: 4.1
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-cofins-update',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ description: string; percent: number }>();
+  assert.equal(updatedPayload.description, 'COFINS interno 4%');
+  assert.equal(updatedPayload.percent, 4.1);
 });
 
 test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffice is enabled', async () => {

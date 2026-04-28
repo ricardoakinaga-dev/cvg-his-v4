@@ -2,6 +2,7 @@ import type {
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
+  CreateFiscalCofinsTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   FiscalNfseDocumentFilters,
@@ -12,6 +13,7 @@ import type {
   FiscalIcmsTableSummary,
   FiscalIpiTableSummary,
   FiscalPisTableSummary,
+  FiscalCofinsTableSummary,
   FiscalNfseDocumentSummary,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutSummary,
@@ -21,6 +23,7 @@ import type {
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
+  UpdateFiscalCofinsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -57,6 +60,10 @@ export interface FiscalIpiTableFilters {
 }
 
 export interface FiscalPisTableFilters {
+  readonly search?: string;
+}
+
+export interface FiscalCofinsTableFilters {
   readonly search?: string;
 }
 
@@ -262,6 +269,27 @@ const PIS_TABLES: readonly FiscalPisTableSummary[] = [
   }
 ] as const;
 
+const COFINS_TABLES: readonly FiscalCofinsTableSummary[] = [
+  {
+    id: 'cofins-table-0',
+    code: '0',
+    description: 'COFINS 0%',
+    percent: 0
+  },
+  {
+    id: 'cofins-table-3',
+    code: '3',
+    description: 'COFINS 3%',
+    percent: 3
+  },
+  {
+    id: 'cofins-table-7-6',
+    code: '7,6',
+    description: 'COFINS 7,6%',
+    percent: 7.6
+  }
+] as const;
+
 const PIS_COFINS_RULES: readonly FiscalPisCofinsRuleSummary[] = [
   {
     id: 'pis-cofins-simples-ambos',
@@ -360,6 +388,7 @@ const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout)
 const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => ({ ...table }));
 const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
 const inMemoryPisTables: FiscalPisTableSummary[] = PIS_TABLES.map((table) => ({ ...table }));
+const inMemoryCofinsTables: FiscalCofinsTableSummary[] = COFINS_TABLES.map((table) => ({ ...table }));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
 
 type NfseIssuerDocument = NfseDocument & {
@@ -454,6 +483,16 @@ function sanitizePisTableId(code: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return `pis-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
+function sanitizeCofinsTableId(code: string): string {
+  const normalized = code
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `cofins-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
 }
 
 function assertNonEmpty(value: string | undefined, field: string): string {
@@ -872,6 +911,85 @@ export class FiscalService {
     };
 
     inMemoryPisTables[index] = next;
+    return next;
+  }
+
+  public async listCofinsTables(filters: FiscalCofinsTableFilters = {}): Promise<FiscalCofinsTableSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listCofinsTables({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
+
+    return inMemoryCofinsTables.filter((table) =>
+      matchesContains(`${table.code} ${table.description} ${table.percent}`, filters.search)
+    );
+  }
+
+  public async createCofinsTable(
+    payload: CreateFiscalCofinsTableRequest
+  ): Promise<FiscalCofinsTableSummary> {
+    const code = assertNonEmpty(payload.code, 'code');
+    const percent = assertPercent(payload.percent, 'percent');
+    const description = payload.description?.trim() || `COFINS ${percent}%`;
+
+    const existing = await this.listCofinsTables();
+    if (existing.some((table) => table.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    const table: FiscalCofinsTableSummary = {
+      id: sanitizeCofinsTableId(code),
+      code,
+      description,
+      percent
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createCofinsTable(this.accountId!, table);
+    }
+
+    inMemoryCofinsTables.unshift(table);
+    return table;
+  }
+
+  public async updateCofinsTable(
+    id: string,
+    payload: UpdateFiscalCofinsTableRequest
+  ): Promise<FiscalCofinsTableSummary | null> {
+    const nextPayload: UpdateFiscalCofinsTableRequest = {
+      code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
+      description: payload.description?.trim(),
+      percent: payload.percent === undefined ? undefined : assertPercent(payload.percent, 'percent')
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateCofinsTable(this.accountId!, id, nextPayload);
+    }
+
+    const index = inMemoryCofinsTables.findIndex((table) => table.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryCofinsTables[index];
+    const code = nextPayload.code ?? current.code;
+    const duplicate = inMemoryCofinsTables.some(
+      (table) => table.id !== id && table.code.toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    const next: FiscalCofinsTableSummary = {
+      ...current,
+      code,
+      description: nextPayload.description ?? current.description,
+      percent: nextPayload.percent ?? current.percent
+    };
+
+    inMemoryCofinsTables[index] = next;
     return next;
   }
 

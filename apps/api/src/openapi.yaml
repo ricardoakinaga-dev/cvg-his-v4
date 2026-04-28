@@ -2420,6 +2420,68 @@ paths:
         '404':
           description: PIS table entry not found
 
+  /fiscal/cofins:
+    get:
+      operationId: listFiscalCofinsTables
+      summary: List simple COFINS table entries
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simple COFINS table entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCofinsTableListResponse'
+    post:
+      operationId: createFiscalCofinsTable
+      summary: Create simple COFINS table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalCofinsTableRequest'
+      responses:
+        '201':
+          description: Created COFINS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCofinsTableSummary'
+
+  /fiscal/cofins/{id}:
+    patch:
+      operationId: updateFiscalCofinsTable
+      summary: Update simple COFINS table entry
+      tags: [Fiscal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalCofinsTableRequest'
+      responses:
+        '200':
+          description: Updated COFINS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCofinsTableSummary'
+        '404':
+          description: COFINS table entry not found
+
   /fiscal/pis-cofins:
     get:
       operationId: listFiscalPisCofinsRules
@@ -8753,6 +8815,43 @@ components:
           minimum: 0
           maximum: 100
 
+    FiscalCofinsTableSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+
+    CreateFiscalCofinsTableRequest:
+      type: object
+      required: [code, percent]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    UpdateFiscalCofinsTableRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
     FiscalPisCofinsRuleSummary:
       type: object
       properties:
@@ -9085,6 +9184,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FiscalPisTableSummary'
+
+    FiscalCofinsTableListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalCofinsTableSummary'
 
     FiscalPisCofinsRuleListResponse:
       type: object

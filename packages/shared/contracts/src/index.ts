@@ -506,6 +506,25 @@ export interface UpdateFiscalPisTableRequest {
   readonly percent?: number;
 }
 
+export interface FiscalCofinsTableSummary {
+  readonly id: string;
+  readonly code: string;
+  readonly description: string;
+  readonly percent: number;
+}
+
+export interface CreateFiscalCofinsTableRequest {
+  readonly code: string;
+  readonly description?: string;
+  readonly percent: number;
+}
+
+export interface UpdateFiscalCofinsTableRequest {
+  readonly code?: string;
+  readonly description?: string;
+  readonly percent?: number;
+}
+
 export interface FiscalPisCofinsRuleSummary {
   readonly id: string;
   readonly regime: FiscalTaxRegime;
@@ -680,6 +699,10 @@ export interface FiscalIpiTableListResponse {
 
 export interface FiscalPisTableListResponse {
   readonly items: readonly FiscalPisTableSummary[];
+}
+
+export interface FiscalCofinsTableListResponse {
+  readonly items: readonly FiscalCofinsTableSummary[];
 }
 
 export interface FiscalPisCofinsRuleListResponse {

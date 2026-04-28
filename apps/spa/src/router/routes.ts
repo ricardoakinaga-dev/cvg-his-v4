@@ -1826,10 +1826,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/cofins',
         name: 'FiscalCofins',
-        component: () => import('@/pages/fiscal/FiscalPisCofinsPage.vue'),
+        alias: [
+          '/cofins',
+          '/estoque/configuracoes-fiscais/cofins',
+          '/estoque/configuracoes-fiscais/tabela-cofins'
+        ],
+        component: () => import('@/pages/fiscal/FiscalCOFINSPage.vue'),
         meta: {
-          title: 'COFINS',
-          breadcrumb: 'COFINS',
+          title: 'Tabela COFINS',
+          breadcrumb: 'Tabela COFINS',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '📉'
         }

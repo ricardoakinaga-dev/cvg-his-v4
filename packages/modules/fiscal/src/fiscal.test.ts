@@ -13,12 +13,13 @@ test('FiscalService returns searchable CFOP data from the backend catalog', asyn
   assert.ok(rows.some((row) => row.category === 'servico'));
 });
 
-test('FiscalService filters ICMS, IPI, PIS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
+test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
   const service = new FiscalService();
 
   const icmsRows = await service.listIcmsTables({ search: '18' });
   const ipiRows = await service.listIpiTables({ search: '3,25' });
   const pisRows = await service.listPisTables({ search: '0,65' });
+  const cofinsRows = await service.listCofinsTables({ search: '7,6' });
   const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
   const nfseLayouts = await service.listNfseLayouts({ state: 'SP', active: true });
 
@@ -28,6 +29,8 @@ test('FiscalService filters ICMS, IPI, PIS, PIS/COFINS and NFS-e tables using ba
   assert.ok(ipiRows.every((row) => `${row.code} ${row.description}`.includes('3,25')));
   assert.ok(pisRows.length > 0);
   assert.ok(pisRows.every((row) => `${row.code} ${row.description}`.includes('0,65')));
+  assert.ok(cofinsRows.length > 0);
+  assert.ok(cofinsRows.every((row) => `${row.code} ${row.description}`.includes('7,6')));
   assert.ok(pisCofinsRows.length > 0);
   assert.ok(pisCofinsRows.every((row) => row.regime === 'lucro_real'));
   assert.ok(pisCofinsRows.every((row) => row.appliesTo === 'servico'));
@@ -110,6 +113,32 @@ test('FiscalService creates and updates simple PIS table entries', async () => {
   assert.equal(updated?.percent, 2.1);
 
   const filtered = await service.listPisTables({ search: 'interno' });
+  assert.ok(filtered.some((table) => table.id === created.id));
+});
+
+test('FiscalService creates and updates simple COFINS table entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createCofinsTable({
+    code: '4',
+    description: 'COFINS 4%',
+    percent: 4
+  });
+
+  assert.equal(created.code, '4');
+  assert.equal(created.description, 'COFINS 4%');
+  assert.equal(created.percent, 4);
+
+  const updated = await service.updateCofinsTable(created.id, {
+    description: 'COFINS interno 4%',
+    percent: 4.1
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'COFINS interno 4%');
+  assert.equal(updated?.percent, 4.1);
+
+  const filtered = await service.listCofinsTables({ search: 'interno' });
   assert.ok(filtered.some((table) => table.id === created.id));
 });
 

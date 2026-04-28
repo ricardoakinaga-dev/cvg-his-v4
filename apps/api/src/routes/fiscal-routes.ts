@@ -6,6 +6,7 @@ import type {
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
+  CreateFiscalCofinsTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   CancelFiscalNfseDocumentRequest,
@@ -14,6 +15,7 @@ import type {
   FiscalIcmsTableListResponse,
   FiscalIpiTableListResponse,
   FiscalPisTableListResponse,
+  FiscalCofinsTableListResponse,
   FiscalNfseDocumentListResponse,
   FiscalNcmEntryListResponse,
   FiscalNfseLayoutListResponse,
@@ -21,6 +23,7 @@ import type {
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
+  UpdateFiscalCofinsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
@@ -329,6 +332,73 @@ export async function handleFiscalRoutes(
       entityType: 'pis-table',
       entityId: updated.id,
       payloadSummary: `PIS table ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
+  }
+
+  if (pathname === '/fiscal/cofins') {
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalCofinsTableListResponse = {
+        items: await scopedFiscal.listCofinsTables({
+          search: url.searchParams.get('search') ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalCofinsTableRequest;
+      const created = await scopedFiscal.createCofinsTable(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'cofins-table',
+        entityId: created.id,
+        payloadSummary: `COFINS table ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const cofinsTableMatch = pathname.match(/^\/fiscal\/cofins\/([^/]+)$/);
+  if (cofinsTableMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalCofinsTableRequest;
+    const updated = await scopedFiscal.updateCofinsTable(
+      decodeURIComponent(cofinsTableMatch[1] ?? ''),
+      payload
+    );
+
+    if (!updated) {
+      return json(response, 404, { code: 'COFINS_TABLE_NOT_FOUND', message: 'COFINS table not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'cofins-table',
+      entityId: updated.id,
+      payloadSummary: `COFINS table ${updated.code} updated`,
       riskLevel: 'high',
       correlationId
     });
