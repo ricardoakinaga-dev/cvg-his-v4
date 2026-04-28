@@ -7,6 +7,7 @@
       </template>
       <template #actions>
         <DsButton v-if="stay" variant="secondary" tag="a" :to="`/encounters/${stay.encounterId}`">Ver atendimento</DsButton>
+        <DsButton v-if="stay" variant="secondary" tag="a" :to="`/medical-records/${stay.encounterId}`">Ver prontuário</DsButton>
         <DsButton v-if="stay" variant="ghost" tag="a" :to="`/patients/${stay.patientId}`">Ver paciente</DsButton>
         <DsButton variant="secondary" tag="a" href="/inpatient">Lista de Internações</DsButton>
       </template>
@@ -42,6 +43,14 @@
             <span class="detail-item__value">
               <router-link :to="`/encounters/${stay.encounterId}`" class="encounter-link">
                 {{ stay.encounterId.slice(0, 8) }}...
+              </router-link>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Prontuário</span>
+            <span class="detail-item__value">
+              <router-link :to="`/medical-records/${stay.encounterId}`" class="encounter-link">
+                Abrir prontuário do atendimento
               </router-link>
             </span>
           </div>

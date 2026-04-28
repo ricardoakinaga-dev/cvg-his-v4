@@ -406,29 +406,31 @@ Checkpoint em 2026-04-28:
 - P2-01 foi implementado em escopo focado para a agenda historica e futura por animal.
 - P2-02 foi implementado em escopo focado para comanda integrada ao atendimento.
 - P2-03 foi implementado em escopo focado para vacinas e vermifugos como modulo proprio.
+- P2-04 foi implementado em escopo focado para internacao vinculada ao animal e prontuario.
 
-Proxima acao recomendada: executar `P2-04 - Internacao vinculada ao animal e prontuario`.
+Proxima acao recomendada: executar `P2-05 - Importacao assistida Vetus-like`.
 
 Justificativa:
 
 - o card Agenda do animal ja mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
 - a comanda agora aparece no detalhe do animal, filtra por paciente/tutor/atendimento e lista itens do atendimento focal;
 - vacinas e vermifugos agora aparecem no detalhe do animal a partir do modulo preventivo proprio, com proximas doses e historico por `patientId`/`ownerId`;
-- a proxima lacuna operacional passa a ser amarrar internacao ao mesmo contexto do animal e prontuario.
+- internacao agora lista por animal, mostra internacoes ativas/historicas no cockpit do paciente e grava evolucao/alta/transferencia na timeline do prontuario;
+- a proxima lacuna operacional passa a ser a importacao assistida Vetus-like.
 
-Escopo minimo de `P2-03`:
+Escopo minimo de `P2-05`:
 
-1. Mapear as fontes atuais de vacinas/vermifugos e eventos preventivos ja disponiveis no `cvg-his-v2`.
-2. Separar a experiencia preventiva da agenda generica quando houver fluxo proprio.
-3. Garantir listagem por animal, proximas doses, historico, status e responsavel.
-4. Criar/ajustar testes focados de API e SPA para eventos preventivos por animal.
+1. Mapear quais dados legados precisam de entrada assistida sem acesso direto ao banco.
+2. Definir fluxo operacional para importar/cadastrar dados Vetus-like com revisao humana.
+3. Garantir auditoria, origem do dado, responsavel e rastreabilidade por animal/tutor/atendimento.
+4. Criar/ajustar testes focados de API e SPA para o caminho principal de importacao assistida.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P2-03`:
+Criterio de aceite de `P2-05`:
 
-- vacinas e vermifugos aparecem como modulo proprio por animal;
-- proximas doses e historico ficam claros sem depender de texto solto;
-- eventos preventivos preservam contexto do animal/tutor e status operacional;
+- operador consegue registrar dados legados por fluxo assistido, sem SQL manual;
+- origem, responsavel e data da importacao ficam visiveis/auditaveis;
+- dados importados aparecem no contexto correto de animal/tutor/atendimento;
 - testes focados cobrem caminho API/SPA principal;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
@@ -440,6 +442,38 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P2-04 Internacao vinculada ao animal e prontuario
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- `GET /inpatient` passou a aceitar `patientId` e `includeDischarged`, preservando o filtro antigo por `encounterId`;
+- `InpatientService.list` passou a filtrar internacoes por atendimento, animal e status, mantendo compatibilidade com chamadas antigas por string de atendimento;
+- a tela `/inpatient` respeita `patientId` recebido por URL para abrir a lista no contexto do animal;
+- o detalhe da internacao ganhou link direto para o prontuario do atendimento (`/medical-records/{encounterId}`);
+- o card `Internacao` do detalhe do animal passou a consumir internacoes por `patientId`, mostrar internacao ativa/focal, alta quando houver, historico de internacoes e link para prontuario;
+- evolucoes, altas e transferencias registradas pela API de internacao agora disparam eventos estruturados na timeline do prontuario via `appendAdvancedCareEvent`;
+- OpenAPI documenta filtros por animal e resposta estruturada de internacao.
+
+Validacao:
+
+- teste do modulo `InpatientService` cobre filtro por animal entre multiplos atendimentos e inclusao/exclusao de altas;
+- teste focado da rota de internacao cobre callbacks de evolucao e alta para timeline clinica;
+- testes focados da SPA cobrem lista contextual por animal, detalhe com link para prontuario e card de internacao no detalhe do animal;
+- `pnpm --filter @cvg-his-v2/module-inpatient run build`;
+- `pnpm --filter @cvg-his-v2/module-inpatient test`;
+- `pnpm --filter @cvg-his-v2/api run build`;
+- `pnpm --filter @cvg-his-v2/api exec node --test dist/routes/inpatient-routes.test.js`;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/inpatient/__tests__/InpatientListPage.test.ts src/pages/inpatient/__tests__/InpatientDetailPage.test.ts src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm validate:openapi`.
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/inpatient?patientId=patient_luna` 200, API local `http://127.0.0.1:3003/health` 200 e rota protegida `/inpatient?patientId=patient_luna&includeDischarged=true` retornando 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA `/inpatient` e API health retornando 200.
+
+Proxima frente recomendada: `P2-05 - Importacao assistida Vetus-like`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P2-03 Vacinas e vermifugos como modulo proprio
 

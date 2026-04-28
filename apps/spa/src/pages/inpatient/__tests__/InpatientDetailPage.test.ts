@@ -107,6 +107,26 @@ describe('InpatientDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Detalhes da Internação');
+    expect(wrapper.text()).toContain('Ver prontuário');
+  });
+
+  it('links inpatient detail to patient medical record', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.find('a[href="/patients/pat-1"]').exists()).toBe(true);
+    expect(wrapper.find('a[href="/medical-records/enc-1"]').exists()).toBe(true);
   });
 
   it('shows error when stay not found', async () => {

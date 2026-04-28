@@ -4285,18 +4285,26 @@ paths:
             type: string
             format: uuid
           description: Filter by encounter ID
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by patient/animal ID
+        - name: includeDischarged
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include discharged inpatient stays in the response
       responses:
         '200':
           description: List of inpatient stays
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
+                $ref: '#/components/schemas/InpatientListResponse'
 
   /inpatient/handover-preview:
     get:
@@ -4348,6 +4356,10 @@ paths:
       responses:
         '200':
           description: Bed assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientStay'
 
   /inpatient/{stayId}/transfer-bed:
     post:
@@ -4371,6 +4383,10 @@ paths:
       responses:
         '200':
           description: Bed transferred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientStay'
 
   /inpatient/{stayId}/update-status:
     patch:
@@ -4404,6 +4420,10 @@ paths:
       responses:
         '200':
           description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientStay'
 
   /access-control:
     get:
@@ -9657,11 +9677,88 @@ components:
 
     AssignBedRequest:
       type: object
-      required: [bedId]
+      required: [sectorId, bedId]
       properties:
+        sectorId:
+          type: string
+          format: uuid
         bedId:
           type: string
           format: uuid
+
+    InpatientListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InpatientStay'
+
+    InpatientStay:
+      type: object
+      required:
+        [
+          id,
+          accountId,
+          encounterId,
+          patientId,
+          unit,
+          ward,
+          bed,
+          status,
+          admittedAt,
+          updatedAt
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        unit:
+          type: string
+        ward:
+          type: string
+        bed:
+          type: string
+        sectorId:
+          type: string
+          format: uuid
+        bedId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [admitted, stable, transferred, discharged]
+        admittedAt:
+          type: string
+          format: date-time
+        dischargedAt:
+          type: string
+          format: date-time
+        dischargeReason:
+          type: string
+        transferToUnit:
+          type: string
+        transferToWard:
+          type: string
+        transferToSectorId:
+          type: string
+          format: uuid
+        transferToBedId:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
 
     InpatientHandoverPreviewResponse:
       type: object

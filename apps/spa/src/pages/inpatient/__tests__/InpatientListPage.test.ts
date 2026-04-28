@@ -41,6 +41,10 @@ vi.mock('@/services/inpatient', () => ({
   }
 }));
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: { patientId: 'pat-1' } })
+}));
+
 vi.mock('@/composables/useEntityCache', () => ({
   useEntityCache: () => ({
     getPatientName: mockGetPatientName,
@@ -115,6 +119,7 @@ describe('InpatientListPage', () => {
     expect(wrapper.text()).toContain('UTI');
     expect(wrapper.text()).toContain('01');
     expect(wrapper.text()).toContain('03');
+    expect(mockListFn).toHaveBeenCalledWith({ patientId: 'pat-1' });
   });
 
   it('shows status labels for each stay', async () => {

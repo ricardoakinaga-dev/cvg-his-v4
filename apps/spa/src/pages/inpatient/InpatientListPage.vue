@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { inpatientService } from '@/services/inpatient';
 import type { InpatientStaySummary } from '@/types/inpatient';
 import { useEntityCache } from '@/composables/useEntityCache';
@@ -110,6 +111,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import { computed } from 'vue';
 
 const entityCache = useEntityCache();
+const route = useRoute();
 const patientNames = ref<Record<string, string>>({});
 
 const columns: DataTableColumn[] = [
@@ -165,7 +167,8 @@ const storyCards = computed(() => [
 
 const { items, loading, error, load } = useListData<InpatientStaySummary>({
   fetchFn: async () => {
-    const stays = await inpatientService.list();
+    const patientIdFilter = typeof route.query.patientId === 'string' ? route.query.patientId : undefined;
+    const stays = await inpatientService.list(patientIdFilter ? { patientId: patientIdFilter } : undefined);
     const patientIds = [...new Set(stays.map((s) => s.patientId))];
     await Promise.all(
       patientIds.map(async (id) => {

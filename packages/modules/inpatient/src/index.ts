@@ -53,6 +53,12 @@ export interface InpatientServiceOptions {
   readonly sectorBedService?: SectorBedService;
 }
 
+export interface InpatientStayListFilters {
+  readonly encounterId?: string;
+  readonly patientId?: string;
+  readonly includeDischarged?: boolean;
+}
+
 export class InpatientService {
   readonly #encounters: EncountersService;
   readonly #stays = new Map<InpatientStayId, InpatientStaySummary>();
@@ -211,10 +217,22 @@ export class InpatientService {
     return updated;
   }
 
-  public list(encounterId?: string): readonly InpatientStaySummary[] {
-    return Array.from(this.#stays.values()).filter(
-      (stay) => !encounterId || stay.encounterId === encounterId
-    );
+  public list(filters?: string | InpatientStayListFilters): readonly InpatientStaySummary[] {
+    const normalizedFilters =
+      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+
+    return Array.from(this.#stays.values()).filter((stay) => {
+      if (normalizedFilters.encounterId && stay.encounterId !== normalizedFilters.encounterId) {
+        return false;
+      }
+      if (normalizedFilters.patientId && stay.patientId !== normalizedFilters.patientId) {
+        return false;
+      }
+      if (!normalizedFilters.includeDischarged && stay.status === 'discharged') {
+        return false;
+      }
+      return true;
+    });
   }
 
   public getOrThrow(stayId: InpatientStayId): InpatientStaySummary {

@@ -543,9 +543,31 @@
                   <span class="detail-item__label">Admissão</span>
                   <strong>{{ formatDateTime(focalInpatientStay.admittedAt) }}</strong>
                 </div>
+                <div v-if="focalInpatientStay.dischargedAt" class="detail-item">
+                  <span class="detail-item__label">Alta</span>
+                  <strong>{{ formatDateTime(focalInpatientStay.dischargedAt) }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-item__label">Prontuário</span>
+                  <RouterLink :to="`/medical-records/${focalInpatientStay.encounterId}`">
+                    Abrir prontuário
+                  </RouterLink>
+                </div>
               </div>
             </div>
             <p v-else class="muted">Esse animal não possui internações registradas.</p>
+            <div v-if="historicalInpatientStays.length" class="workspace-stack">
+              <h4>Histórico de internações</h4>
+              <ul class="compact-feed">
+                <li v-for="stay in historicalInpatientStays" :key="stay.id">
+                  <strong>{{ stay.ward }} / {{ stay.bed }}</strong>
+                  <span>
+                    {{ inpatientStatusLabel(stay.status) }} · {{ formatDateTime(stay.admittedAt) }}
+                    <template v-if="stay.dischargedAt"> · Alta {{ formatDateTime(stay.dischargedAt) }}</template>
+                  </span>
+                </li>
+              </ul>
+            </div>
             <DsButton
               tag="a"
               :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
@@ -553,6 +575,15 @@
               size="sm"
             >
               Ver internação
+            </DsButton>
+            <DsButton
+              v-if="focalInpatientStay"
+              tag="a"
+              :to="`/medical-records/${focalInpatientStay.encounterId}`"
+              variant="ghost"
+              size="sm"
+            >
+              Abrir prontuário
             </DsButton>
           </div>
         </article>
@@ -894,6 +925,7 @@ const patientAttachments = ref<AttachmentSummary[]>([]);
 const patientDiagnosticOrders = ref<DiagnosticOrderSummary[]>([]);
 const patientPrescriptions = ref<PatientPrescription[]>([]);
 const patientPreventiveEvents = ref<PreventiveEventSummary[]>([]);
+const patientInpatientStays = ref<InpatientStaySummary[]>([]);
 const focalTriage = ref<TriageSummary | null>(null);
 const focalInpatientStay = ref<InpatientStaySummary | null>(null);
 const focalBilling = ref<BillingRecordSummary | null>(null);
@@ -1381,6 +1413,16 @@ const inpatientSummaryLabel = computed(() =>
     : 'Sem internação'
 );
 
+const sortedInpatientStays = computed(() =>
+  [...patientInpatientStays.value].sort(
+    (left, right) => new Date(right.admittedAt).getTime() - new Date(left.admittedAt).getTime()
+  )
+);
+
+const historicalInpatientStays = computed(() =>
+  sortedInpatientStays.value.filter((stay) => stay.id !== focalInpatientStay.value?.id)
+);
+
 const latestPrescriptionSummary = computed(() => {
   const prescription = patientPrescriptions.value[0];
   if (!prescription) {
@@ -1861,6 +1903,7 @@ function resetRelatedState() {
   patientDiagnosticOrders.value = [];
   patientPrescriptions.value = [];
   patientPreventiveEvents.value = [];
+  patientInpatientStays.value = [];
   focalTriage.value = null;
   focalInpatientStay.value = null;
   focalBilling.value = null;
@@ -2100,7 +2143,8 @@ async function loadPage() {
       ownerQuotesResult,
       diagnosticOrdersResult,
       prescriptionsResult,
-      preventiveEventsResult
+      preventiveEventsResult,
+      inpatientStaysResult
     ] = await Promise.allSettled([
       encounterService.list(),
       appointmentService.list({ patientId: loadedPatient.id }),
@@ -2116,6 +2160,10 @@ async function loadPage() {
         patientId: loadedPatient.id,
         ownerId: loadedPatient.primaryOwnerId,
         includeExecuted: true
+      }),
+      inpatientService.list({
+        patientId: loadedPatient.id,
+        includeDischarged: true
       })
     ]);
 
@@ -2202,6 +2250,14 @@ async function loadPage() {
       registerWarning('vacinas e vermífugos');
     }
 
+    if (inpatientStaysResult.status === 'fulfilled') {
+      patientInpatientStays.value = inpatientStaysResult.value.filter(
+        (stay) => stay.patientId === loadedPatient.id
+      );
+    } else {
+      registerWarning('internação');
+    }
+
     if (patientRecords.value.length > 0 || patientDiagnosticOrders.value.length > 0) {
       const [entriesResults, recordAttachmentResults, diagnosticAttachmentResults] = await Promise.all([
         Promise.allSettled(
@@ -2252,6 +2308,11 @@ async function loadPage() {
       clinicalHistoryDraft.value = clinicalHistoryEntry.value?.content ?? '';
     }
 
+    focalInpatientStay.value =
+      sortedInpatientStays.value.find((stay) => stay.status !== 'discharged') ??
+      sortedInpatientStays.value[0] ??
+      null;
+
     const selectedEncounter = activeEncounters.value[0] ?? sortedEncounters.value[0] ?? null;
     if (!selectedEncounter) {
       return;
@@ -2261,11 +2322,10 @@ async function loadPage() {
       (record) => record.record.encounterId === selectedEncounter.id
     );
 
-    const [encounterTimelineResult, triageResult, inpatientResult, billingResult] =
+    const [encounterTimelineResult, triageResult, billingResult] =
       await Promise.allSettled([
         encounterService.getTimeline(selectedEncounter.id),
         listTriageRecords(selectedEncounter.id),
-        inpatientService.list(selectedEncounter.id),
         billingService.list({ encounterId: selectedEncounter.id, patientId: loadedPatient.id })
       ]);
 
@@ -2289,12 +2349,6 @@ async function loadPage() {
       focalTriage.value = triageResult.value[0] ?? null;
     } else if (triageResult) {
       registerWarning('triagem');
-    }
-
-    if (inpatientResult?.status === 'fulfilled') {
-      focalInpatientStay.value = inpatientResult.value[0] ?? null;
-    } else if (inpatientResult) {
-      registerWarning('internação');
     }
 
     if (billingResult?.status === 'fulfilled') {

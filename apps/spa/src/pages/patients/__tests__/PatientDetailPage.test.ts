@@ -226,6 +226,20 @@ const mockInpatientStays = [
     status: 'admitted' as const,
     admittedAt: '2024-01-03T09:45:00Z',
     updatedAt: '2024-01-03T09:45:00Z'
+  },
+  {
+    id: 'stay-2',
+    accountId: 'acc-1',
+    encounterId: 'enc-old',
+    patientId: 'pat-1',
+    unit: 'Internação',
+    ward: 'Ala Clínica',
+    bed: 'C-01',
+    status: 'discharged' as const,
+    admittedAt: '2023-12-20T08:00:00Z',
+    dischargedAt: '2023-12-22T10:30:00Z',
+    dischargeReason: 'Alta clínica',
+    updatedAt: '2023-12-22T10:30:00Z'
   }
 ];
 
@@ -695,6 +709,14 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('hemograma.pdf');
     expect(wrapper.text()).toContain('radiografia-laudo.pdf');
 
+    await expandCard('Internação');
+    expect(wrapper.text()).toContain('Leito atual');
+    expect(wrapper.text()).toContain('UTI / B-02');
+    expect(wrapper.text()).toContain('Histórico de internações');
+    expect(wrapper.text()).toContain('Ala Clínica / C-01');
+    expect(wrapper.find('a[href="/inpatient/stay-1"]').exists()).toBe(true);
+    expect(wrapper.find('a[href="/medical-records/enc-1"]').exists()).toBe(true);
+
     await expandCard('Receituário');
     expect(wrapper.text()).toContain('Anti-inflamatório');
 
@@ -710,6 +732,10 @@ describe('PatientDetailPage', () => {
       patientId: 'pat-1',
       ownerId: 'owner-1',
       includeExecuted: true
+    });
+    expect(mockInpatientList).toHaveBeenCalledWith({
+      patientId: 'pat-1',
+      includeDischarged: true
     });
     expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
     expect(mockLaboratoryListOrders).toHaveBeenCalledWith({ patientId: 'pat-1' });

@@ -12,8 +12,19 @@ import type {
 } from '@/types/inpatient';
 
 export const inpatientService = {
-  async list(encounterId?: string): Promise<InpatientStaySummary[]> {
-    const params = encounterId ? `?encounterId=${encodeURIComponent(encounterId)}` : '';
+  async list(
+    filters?: string | {
+      encounterId?: string;
+      patientId?: string;
+      includeDischarged?: boolean;
+    }
+  ): Promise<InpatientStaySummary[]> {
+    const normalizedFilters = typeof filters === 'string' ? { encounterId: filters } : filters;
+    const query = new URLSearchParams();
+    if (normalizedFilters?.encounterId) query.set('encounterId', normalizedFilters.encounterId);
+    if (normalizedFilters?.patientId) query.set('patientId', normalizedFilters.patientId);
+    if (normalizedFilters?.includeDischarged) query.set('includeDischarged', 'true');
+    const params = query.toString() ? `?${query.toString()}` : '';
     const res = await apiRequest<InpatientListResponse>(`/inpatient${params}`);
     return res.items;
   },

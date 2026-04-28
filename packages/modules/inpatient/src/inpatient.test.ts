@@ -38,6 +38,52 @@ test('InpatientService admit creates stay linked to encounter', () => {
   assert.equal(service.list(encounter.id).length, 1);
 });
 
+test('InpatientService list filters stays by patient across encounters', () => {
+  const encounters = {
+    getOrThrow(encounterId: string) {
+      return {
+        id: encounterId,
+        accountId: 'acc_test',
+        patientId: encounterId === 'encounter_2' ? 'patient_2' : 'patient_1'
+      };
+    }
+  };
+  const service = new InpatientService(encounters as never);
+
+  service.admit({
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+  service.admit({
+    encounterId: 'encounter_2',
+    patientId: 'patient_2',
+    unit: 'Internacao',
+    ward: 'Ala B',
+    bed: 'B03'
+  });
+  const historicalStay = service.admit({
+    encounterId: 'encounter_3',
+    patientId: 'patient_1',
+    unit: 'Internacao',
+    ward: 'Ala C',
+    bed: 'C01'
+  });
+  service.updateStatus(historicalStay.id, {
+    status: 'discharged',
+    dischargeReason: 'Alta clinica'
+  });
+
+  assert.deepEqual(
+    service.list({ patientId: 'patient_1' }).map((stay) => stay.patientId),
+    ['patient_1']
+  );
+  assert.equal(service.list({ patientId: 'patient_1' }).length, 1);
+  assert.equal(service.list({ patientId: 'patient_1', includeDischarged: true }).length, 2);
+});
+
 test('InpatientService addProgress records authored progress note', () => {
   const { service, encounter } = createService();
   const stay = service.admit({

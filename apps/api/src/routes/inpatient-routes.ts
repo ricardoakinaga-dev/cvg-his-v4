@@ -14,6 +14,10 @@ import type {
   InpatientHandoverPreviewResponse
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type {
+  InpatientProgressSummary,
+  InpatientStaySummary
+} from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -39,6 +43,16 @@ export interface InpatientRoutesHandlers {
   sectorBedService: SectorBedService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  onProgressAdded?: (event: {
+    stay: InpatientStaySummary;
+    progress: InpatientProgressSummary;
+    principal: AuthenticatedPrincipal;
+  }) => void;
+  onStatusUpdated?: (event: {
+    stay: InpatientStaySummary;
+    previousStatus: InpatientStaySummary['status'];
+    principal: AuthenticatedPrincipal;
+  }) => void;
 }
 
 export async function handleInpatientRoutes(
@@ -339,7 +353,13 @@ export async function handleInpatientRoutes(
       transferToUnit?: string;
       transferToWard?: string;
     };
+    const previousStay = inpatient.getOrThrow(stayId as never);
     const stay = inpatient.updateStatus(stayId as never, payload);
+    handlers.onStatusUpdated?.({
+      stay,
+      previousStatus: previousStay.status,
+      principal
+    });
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -384,6 +404,11 @@ export async function handleInpatientRoutes(
     const progress = inpatient.addProgress(principal.user.id as never, {
       stayId,
       note: payload.note
+    });
+    handlers.onProgressAdded?.({
+      stay: inpatient.getOrThrow(stayId as never),
+      progress,
+      principal
     });
     appendAudit(audit, {
       actorId: principal.user.id,

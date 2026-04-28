@@ -4062,19 +4062,29 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         if (pathname === '/inpatient' && request.method === 'GET') {
           const principal = requirePrincipal(request, 'inpatient.read');
           const encounterId = url.searchParams.get('encounterId') ?? undefined;
+          const patientId = url.searchParams.get('patientId') ?? undefined;
+          const includeDischarged = url.searchParams.get('includeDischarged') === 'true';
           appendAudit(
             principal.user.id,
             principal.user.accountId,
             'inpatient',
             'list',
             'inpatient-stay',
-            encounterId ?? 'all',
+            encounterId ?? patientId ?? 'all',
             'Inpatient stays listed',
             'medium',
             correlationId
           );
           response.statusCode = 200;
-          response.end(JSON.stringify({ items: inpatient.list(encounterId as never) }));
+          response.end(
+            JSON.stringify({
+              items: inpatient.list({
+                encounterId,
+                patientId,
+                includeDischarged
+              })
+            })
+          );
           return;
         }
 
@@ -5661,7 +5671,38 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           inpatient,
           sectorBedService,
           audit,
-          requirePrincipal
+          requirePrincipal,
+          onProgressAdded: ({ stay, progress, principal }) => {
+            medicalRecords.appendAdvancedCareEvent(
+              stay.encounterId as never,
+              principal.user.id,
+              'inpatient_progressed',
+              `Evolucao de internacao registrada: ${progress.note}`
+            );
+          },
+          onStatusUpdated: ({ stay, previousStatus, principal }) => {
+            if (stay.status === previousStatus) {
+              return;
+            }
+            const eventType =
+              stay.status === 'discharged'
+                ? 'inpatient_discharged'
+                : stay.status === 'transferred'
+                  ? 'inpatient_transferred'
+                  : 'inpatient_progressed';
+            const summary =
+              stay.status === 'discharged'
+                ? `Alta da internacao registrada: ${stay.dischargeReason ?? 'sem motivo informado'}`
+                : stay.status === 'transferred'
+                  ? `Transferencia de internacao registrada para ${stay.transferToUnit ?? stay.unit}/${stay.transferToWard ?? stay.ward}`
+                  : `Status da internacao atualizado para ${stay.status}`;
+            medicalRecords.appendAdvancedCareEvent(
+              stay.encounterId as never,
+              principal.user.id,
+              eventType,
+              summary
+            );
+          }
         })) { return; }
 
 

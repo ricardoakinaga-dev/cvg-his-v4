@@ -170,6 +170,70 @@ test('handleInpatientRoutes generates handover preview with latest progress and 
   assert.equal(payload.items[0]?.requiresAttention, true);
 });
 
+test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {
+  const response = new MockResponse();
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const onProgressAdded = test.mock.fn();
+
+  const handled = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/progress`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/progress`,
+      body: { note: 'Paciente aceitou dieta e manteve parametros estaveis' }
+    }) as never,
+    response as never,
+    'corr-inpatient-progress',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      onProgressAdded
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.equal(onProgressAdded.mock.callCount(), 1);
+  const callbackPayload = onProgressAdded.mock.calls[0]?.arguments[0];
+  assert.equal(callbackPayload.stay.id, stay.id);
+  assert.equal(callbackPayload.progress.note, 'Paciente aceitou dieta e manteve parametros estaveis');
+  assert.equal(callbackPayload.principal.user.id, 'user-1');
+});
+
+test('handleInpatientRoutes appends inpatient discharge to clinical record timeline', async () => {
+  const response = new MockResponse();
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const onStatusUpdated = test.mock.fn();
+
+  const handled = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/update-status`,
+    new MockRequest({
+      method: 'PATCH',
+      url: `/inpatient/${stay.id}/update-status`,
+      body: { status: 'discharged', dischargeReason: 'Alta clinica' }
+    }) as never,
+    response as never,
+    'corr-inpatient-discharge',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      onStatusUpdated
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(onStatusUpdated.mock.callCount(), 1);
+  assert.equal(onStatusUpdated.mock.calls[0]?.arguments[0].previousStatus, 'admitted');
+  assert.equal(onStatusUpdated.mock.calls[0]?.arguments[0].stay.status, 'discharged');
+});
+
 test('handleInpatientRoutes lists beds with Vetus-like filters', async () => {
   const response = new MockResponse();
   const listBeds = test.mock.fn(async () => [
