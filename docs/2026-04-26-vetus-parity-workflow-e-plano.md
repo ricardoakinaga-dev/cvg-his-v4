@@ -685,6 +685,14 @@ Atualizacao posterior 2026-04-28:
 - Validacao concluida com teste focado de `PatientDetailPage`, typecheck da SPA, teste do modulo de prescricoes, typecheck da API e suite completa da API.
 - Publicacao corrigida para o workflow canonico: servidor temporario fora do compose encerrado, rebuild/recreate somente de `cvg-his-v2-api` e `cvg-his-v2-spa` via `docker-compose.v2.yml` com `.env.v2`, mantendo SPA em `3002`, API em `3003`, DNS/SSL/Caddy/nginx sem alteracao e HTTPS publico retornando 200.
 
+Atualizacao de execucao assistida 2026-04-28:
+
+- Prontuario Vetus autorizado pelo usuario foi observado diretamente no ERP Vetus em modo somente leitura.
+- Nenhuma acao de gravacao, exclusao, exportacao, download, envio, baixa ou confirmacao foi executada no Vetus.
+- Migracao manual no `cvg-his-v2` foi feita pela UI publicada no compose existente: cliente/tutor, animal, atendimento e entrada clinica de anamnese.
+- A verificacao foi feita por navegacao no detalhe do animal no `cvg-his-v2`, confirmando atendimento vinculado e 1 anamnese visivel no card do paciente.
+- Dados pessoais reais observados no Vetus nao foram transcritos neste documento, em fixtures, seeds ou testes.
+
 Apos concluir `Estoque > Cadastros > Tabelas de Preco`, continuar pela ordem do grupo `Estoque > Cadastros`:
 
 1. `Estoque > Cadastros > Ponto de Venda`

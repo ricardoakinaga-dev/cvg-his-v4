@@ -599,3 +599,22 @@ Validacao:
 - health local e HTTPS publico retornando 200;
 - rota publica `/patients/new` retornando 200;
 - smoke autenticado em database confirmou `Yorkshire Terrier` e `Canina` nos endpoints de catalogo.
+
+### 2026-04-28 - Smoke assistido por UI com prontuario Vetus autorizado
+
+Status: executado por navegacao, sem API/DB/script de migracao.
+
+Escopo executado:
+
+- Vetus usado somente como fonte observacional, seguindo os guardrails do workflow de paridade;
+- nenhum botao de salvar, excluir, baixar, exportar, enviar, confirmar ou dar baixa foi acionado no Vetus;
+- cliente/tutor criado no `cvg-his-v2` pela tela de cadastro de cliente;
+- animal criado no `cvg-his-v2` pela tela de cadastro de animal, vinculado ao tutor criado;
+- atendimento aberto no `cvg-his-v2` pela tela de atendimentos;
+- anamnese criada no prontuario pelo modal `Incluir Nova Anamnese`;
+- detalhe do animal no `cvg-his-v2` confirmou atendimento vinculado, peso cadastral e 1 registro de anamnese no card do paciente.
+
+Observacoes:
+
+- dados pessoais reais observados durante a migracao nao foram transcritos nesta documentacao;
+- a UI de cadastro de animal ainda usa catalogo fechado para raca; quando o texto literal do Vetus nao existe no catalogo, a categoria SRD disponivel foi selecionada e a descricao observada foi preservada no cadastro do animal.
