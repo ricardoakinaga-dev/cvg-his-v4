@@ -111,6 +111,7 @@ const entityCache = useEntityCache();
 const form = reactive({
   patientId: '',
   ownerId: '',
+  appointmentId: '',
   visitType: 'walk_in' as 'walk_in' | 'scheduled' | 'return',
   origin: 'reception' as 'reception' | 'schedule' | 'return',
   reason: ''
@@ -186,12 +187,19 @@ function readQueryPrefill() {
   const params = new URLSearchParams(window.location.search);
   return {
     patientId: params.get('patientId')?.trim() || '',
-    ownerId: params.get('ownerId')?.trim() || ''
+    ownerId: params.get('ownerId')?.trim() || '',
+    appointmentId: params.get('appointmentId')?.trim() || ''
   };
 }
 
 async function applyPrefill() {
-  const { patientId, ownerId } = readQueryPrefill();
+  const { patientId, ownerId, appointmentId } = readQueryPrefill();
+
+  if (appointmentId) {
+    form.appointmentId = appointmentId;
+    form.visitType = 'scheduled';
+    form.origin = 'schedule';
+  }
 
   if (ownerId) {
     form.ownerId = ownerId;
@@ -232,6 +240,9 @@ async function onSubmit() {
       origin: form.origin,
       reason: form.reason.trim()
     };
+    if (form.appointmentId) {
+      payload.appointmentId = form.appointmentId;
+    }
     const created = await encounterService.create(payload);
     successMessage.value = 'Atendimento aberto com sucesso!';
     setTimeout(() => router.push(`/encounters/${created.id}`), 1000);

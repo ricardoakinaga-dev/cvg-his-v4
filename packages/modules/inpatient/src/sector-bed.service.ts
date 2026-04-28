@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { sectors, beds, inpatientStays } from '@cvg-his-v2/shared-database';
-import { eq, and, isNull } from 'drizzle-orm';
+import { sectors, beds } from '@cvg-his-v2/shared-database';
+import { eq, and, sql } from 'drizzle-orm';
 import type {
   AccountId,
   SectorId,
@@ -382,14 +382,7 @@ export class SectorBedService {
       bedsBySector.set(bed.sectorId, list);
     }
 
-    const activeStays = this.#db
-      ? await this.#db
-          .select()
-          .from(inpatientStays)
-          .where(
-            and(eq(inpatientStays.accountId, accountId), eq(inpatientStays.status, 'admitted'))
-          )
-      : [];
+    const activeStays = this.#db ? await this.findActiveBedMapStays(accountId) : [];
 
     const stayByBedId = new Map<string, (typeof activeStays)[0]>();
     for (const stay of activeStays) {
@@ -417,8 +410,8 @@ export class SectorBedService {
           supportsSpecies: bed.supportsSpecies,
           stayId: stay?.id,
           patientId: stay?.patientId,
-          encounterId: stay?.encounterId,
-          occupiedSince: stay?.admittedAt?.toISOString()
+          encounterId: stay?.encounterId ?? undefined,
+          occupiedSince: stay?.admittedAt
         };
       });
 
@@ -442,5 +435,42 @@ export class SectorBedService {
       occupiedBeds,
       availableBeds: totalBeds - occupiedBeds
     };
+  }
+
+  private async findActiveBedMapStays(accountId: AccountId): Promise<
+    Array<{
+      id: string;
+      patientId: string;
+      encounterId: string | null;
+      bedId: string | null;
+      admittedAt: string;
+    }>
+  > {
+    if (!this.#db) {
+      return [];
+    }
+
+    const result = await this.#db.execute<{
+      id: string;
+      patient_id: string;
+      encounter_id: string | null;
+      bed_id: string | null;
+      admitted_at: Date | string;
+    }>(sql`
+      SELECT id, patient_id, encounter_id, bed_id, admitted_at
+      FROM inpatient_stays
+      WHERE account_id = ${accountId}
+        AND status::text IN ('admitted', 'active')
+        AND bed_id IS NOT NULL
+    `);
+
+    return result.rows.map((row) => ({
+      id: String(row.id),
+      patientId: String(row.patient_id),
+      encounterId: row.encounter_id === null ? null : String(row.encounter_id),
+      bedId: row.bed_id === null ? null : String(row.bed_id),
+      admittedAt:
+        row.admitted_at instanceof Date ? row.admitted_at.toISOString() : String(row.admitted_at)
+    }));
   }
 }

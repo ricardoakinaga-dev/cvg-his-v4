@@ -5,6 +5,7 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
+  CreateFiscalPisTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   CancelFiscalNfseDocumentRequest,
@@ -12,12 +13,14 @@ import type {
   FiscalIcmsMatrixListResponse,
   FiscalIcmsTableListResponse,
   FiscalIpiTableListResponse,
+  FiscalPisTableListResponse,
   FiscalNfseDocumentListResponse,
   FiscalNcmEntryListResponse,
   FiscalNfseLayoutListResponse,
   FiscalPisCofinsRuleListResponse,
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
+  UpdateFiscalPisTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
@@ -259,6 +262,73 @@ export async function handleFiscalRoutes(
       entityType: 'ipi-table',
       entityId: updated.id,
       payloadSummary: `IPI table ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
+  }
+
+  if (pathname === '/fiscal/pis') {
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalPisTableListResponse = {
+        items: await scopedFiscal.listPisTables({
+          search: url.searchParams.get('search') ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalPisTableRequest;
+      const created = await scopedFiscal.createPisTable(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'pis-table',
+        entityId: created.id,
+        payloadSummary: `PIS table ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const pisTableMatch = pathname.match(/^\/fiscal\/pis\/([^/]+)$/);
+  if (pisTableMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalPisTableRequest;
+    const updated = await scopedFiscal.updatePisTable(
+      decodeURIComponent(pisTableMatch[1] ?? ''),
+      payload
+    );
+
+    if (!updated) {
+      return json(response, 404, { code: 'PIS_TABLE_NOT_FOUND', message: 'PIS table not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'pis-table',
+      entityId: updated.id,
+      payloadSummary: `PIS table ${updated.code} updated`,
       riskLevel: 'high',
       correlationId
     });

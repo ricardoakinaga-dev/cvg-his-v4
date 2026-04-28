@@ -34,29 +34,53 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
   placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
-  placeholderRoute('rh/professions', 'RhProfessions', 'Profissões', 'RH', '🪪'),
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
   placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
-  placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊'),
-  placeholderRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', '🧾'),
-  placeholderRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', '🧾'),
-  placeholderRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', '📦'),
-  placeholderRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', '💵'),
-  placeholderRoute('reports/received-accounts', 'ReportsReceivedAccounts', 'Contas Recebidas', 'Relatórios Financeiros', '✅'),
-  placeholderRoute('reports/accounts-payable', 'ReportsAccountsPayable', 'Contas a Pagar', 'Relatórios Financeiros', '💸'),
-  placeholderRoute('reports/paid-accounts', 'ReportsPaidAccounts', 'Contas Pagas', 'Relatórios Financeiros', '✅'),
-  placeholderRoute('reports/cheques', 'ReportsCheques', 'Cheques', 'Relatórios Financeiros', '📄'),
-  placeholderRoute('reports/advance-payments', 'ReportsAdvancePayments', 'Pagamento Antecipado', 'Relatórios Financeiros', '⏩'),
-  placeholderRoute('reports/produced-items', 'ReportsProducedItems', 'Produtos/Serviços Produzidos', 'Relatórios de Atendimentos', '🛠️'),
-  placeholderRoute('reports/professional-care', 'ReportsProfessionalCare', 'Atendimento por Profissional', 'Relatórios de Atendimentos', '🩺'),
-  placeholderRoute('reports/registers/services', 'ReportsRegisterServices', 'Serviços', 'Relatórios de Cadastros', '🛠️'),
-  placeholderRoute('reports/registers/owners', 'ReportsRegisterOwners', 'Clientes', 'Relatórios de Cadastros', '👤'),
-  placeholderRoute('reports/registers/patients', 'ReportsRegisterPatients', 'Animais', 'Relatórios de Cadastros', '🐾'),
-  placeholderRoute('reports/registers/suppliers', 'ReportsRegisterSuppliers', 'Fornecedores', 'Relatórios de Cadastros', '🚚'),
-  placeholderRoute('reports/deleted-sales-counter-sales', 'ReportsDeletedSalesCounterSales', 'Exclusão de Vendas e Comandas', 'Relatórios de Cadastros', '🧾'),
-  placeholderRoute('reports/inventory-movements', 'ReportsInventoryMovements', 'Movimentações no Estoque', 'Relatórios de Estoque', '📥'),
-  placeholderRoute('reports/inventory-invoices', 'ReportsInventoryInvoices', 'Entrada de NF', 'Relatórios de Estoque', '🧾'),
-  placeholderRoute('reports/inventory-products', 'ReportsInventoryProducts', 'Relatório de Produtos', 'Relatórios de Estoque', '🏷️')
+  placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊')
+];
+
+function reportWorkbenchRoute(
+  path: string,
+  name: string,
+  title: string,
+  breadcrumbParent: string,
+  reportKey: string,
+  icon = '📈'
+): RouteRecordRaw {
+  return {
+    path,
+    name,
+    component: () => import('@/pages/reports/ReportWorkbenchPage.vue'),
+    props: { reportKey },
+    meta: {
+      title,
+      breadcrumb: title,
+      breadcrumbParent,
+      icon
+    }
+  };
+}
+
+const reportWorkbenchRoutes: RouteRecordRaw[] = [
+  reportWorkbenchRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', 'audit-appointments', '🧾'),
+  reportWorkbenchRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', 'cash-drawer', '🧾'),
+  reportWorkbenchRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', 'packages', '📦'),
+  reportWorkbenchRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', 'accounts-receivable', '💵'),
+  reportWorkbenchRoute('reports/received-accounts', 'ReportsReceivedAccounts', 'Contas Recebidas', 'Relatórios Financeiros', 'received-accounts', '✅'),
+  reportWorkbenchRoute('reports/accounts-payable', 'ReportsAccountsPayable', 'Contas a Pagar', 'Relatórios Financeiros', 'accounts-payable', '💸'),
+  reportWorkbenchRoute('reports/paid-accounts', 'ReportsPaidAccounts', 'Contas Pagas', 'Relatórios Financeiros', 'paid-accounts', '✅'),
+  reportWorkbenchRoute('reports/cheques', 'ReportsCheques', 'Cheques', 'Relatórios Financeiros', 'cheques', '📄'),
+  reportWorkbenchRoute('reports/advance-payments', 'ReportsAdvancePayments', 'Pagamento Antecipado', 'Relatórios Financeiros', 'advance-payments', '⏩'),
+  reportWorkbenchRoute('reports/produced-items', 'ReportsProducedItems', 'Produtos/Serviços Produzidos', 'Relatórios de Atendimentos', 'produced-items', '🛠️'),
+  reportWorkbenchRoute('reports/professional-care', 'ReportsProfessionalCare', 'Atendimento por Profissional', 'Relatórios de Atendimentos', 'professional-care', '🩺'),
+  reportWorkbenchRoute('reports/registers/services', 'ReportsRegisterServices', 'Serviços', 'Relatórios de Cadastros', 'register-services', '🛠️'),
+  reportWorkbenchRoute('reports/registers/owners', 'ReportsRegisterOwners', 'Clientes', 'Relatórios de Cadastros', 'register-owners', '👤'),
+  reportWorkbenchRoute('reports/registers/patients', 'ReportsRegisterPatients', 'Animais', 'Relatórios de Cadastros', 'register-patients', '🐾'),
+  reportWorkbenchRoute('reports/registers/suppliers', 'ReportsRegisterSuppliers', 'Fornecedores', 'Relatórios de Cadastros', 'register-suppliers', '🚚'),
+  reportWorkbenchRoute('reports/deleted-sales-counter-sales', 'ReportsDeletedSalesCounterSales', 'Exclusão de Vendas e Comandas', 'Relatórios de Cadastros', 'deleted-sales-counter-sales', '🧾'),
+  reportWorkbenchRoute('reports/inventory-movements', 'ReportsInventoryMovements', 'Movimentações no Estoque', 'Relatórios de Estoque', 'inventory-movements', '📥'),
+  reportWorkbenchRoute('reports/inventory-invoices', 'ReportsInventoryInvoices', 'Entrada de NF', 'Relatórios de Estoque', 'inventory-invoices', '🧾'),
+  reportWorkbenchRoute('reports/inventory-products', 'ReportsInventoryProducts', 'Relatório de Produtos', 'Relatórios de Estoque', 'inventory-products', '🏷️')
 ];
 
 export const routes: RouteRecordRaw[] = [
@@ -1786,10 +1810,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/pis',
         name: 'FiscalPis',
-        component: () => import('@/pages/fiscal/FiscalPisCofinsPage.vue'),
+        alias: [
+          '/pis',
+          '/estoque/configuracoes-fiscais/pis',
+          '/estoque/configuracoes-fiscais/tabela-pis'
+        ],
+        component: () => import('@/pages/fiscal/FiscalPISPage.vue'),
         meta: {
-          title: 'PIS',
-          breadcrumb: 'PIS',
+          title: 'Tabela PIS',
+          breadcrumb: 'Tabela PIS',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '📈'
         }
@@ -2238,6 +2267,18 @@ export const routes: RouteRecordRaw[] = [
           icon: '🌴'
         }
       },
+      {
+        path: 'rh/professions',
+        name: 'RhProfessions',
+        component: () => import('@/pages/rh/RhProfessionsPage.vue'),
+        meta: {
+          title: 'Profissões',
+          breadcrumb: 'Profissões',
+          breadcrumbParent: 'RH',
+          icon: '🪪'
+        }
+      },
+      ...reportWorkbenchRoutes,
       ...placeholderRoutes
     ]
   },

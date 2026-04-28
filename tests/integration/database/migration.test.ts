@@ -90,6 +90,59 @@ describe('Migration — Table Existence', () => {
   );
 });
 
+describe('Migration — Catalog Constraints', () => {
+  const ANIMAL_SPECIES_SYSTEM_CODES = [
+    'not_defined',
+    'avian',
+    'bovine',
+    'canine',
+    'rabbit',
+    'equine',
+    'feline',
+    'other',
+    'primate',
+    'rodent',
+    'reptile'
+  ];
+
+  it('animal_species should accept every Vetus system code seeded by the API', async () => {
+    const account = await queryOne<{ id: string }>('SELECT id FROM accounts ORDER BY id LIMIT 1');
+    expect(account).toBeTruthy();
+
+    const pool = getTestPool();
+    const client = await pool.connect();
+    const suffix = Date.now().toString(36);
+
+    try {
+      await client.query('BEGIN');
+
+      for (const systemCode of ANIMAL_SPECIES_SYSTEM_CODES) {
+        await client.query(
+          `INSERT INTO animal_species (
+             id,
+             account_id,
+             name,
+             code,
+             system_code,
+             active
+           )
+           VALUES ($1, $2, $3, $4, $5, true)`,
+          [
+            `species_constraint_${systemCode}_${suffix}`,
+            account!.id,
+            `Constraint ${systemCode}`,
+            `CONSTRAINT_${systemCode}_${suffix}`,
+            systemCode
+          ]
+        );
+      }
+    } finally {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
+  });
+});
+
 describe('Migration — Enum Existence', () => {
   const EXPECTED_ENUMS = [
     'encounter_status',

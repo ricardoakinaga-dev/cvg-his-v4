@@ -3,11 +3,12 @@
     <AppPageHeader
       title="Relatórios de Cadastros"
       :breadcrumbs="['Relatórios', 'Cadastros', 'Relatórios de Cadastros']"
-      subtitle="Primeira camada de leitura analítica de pacientes, tutores, serviços e base mestre"
+      subtitle="Entrada para relatórios de serviços, clientes, animais, fornecedores e exclusões comerciais"
     />
 
     <DsAlert variant="info">
-      Estrutura inicial do domínio Cadastros. Próxima onda pode acoplar qualidade da base e cobertura cadastral.
+      As rotas de cadastros do menu Vetus estão disponíveis com navegação operacional e sem dados simulados.
+      Métricas específicas entram quando os endpoints analíticos de cada cadastro forem expostos.
     </DsAlert>
   </div>
 </template>

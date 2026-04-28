@@ -1,112 +1,162 @@
 <template>
-  <div class="rh-catalog-page">
+  <div class="rh-page">
     <AppPageHeader
       title="Cálculo de Comissões"
       :breadcrumbs="['RH', 'Comissões', 'Cálculo de Comissões']"
-      subtitle="Painel inicial de leitura de repasses por período, equipe e produção"
+      subtitle="Prévia operacional de produção e bases de repasse sem gerar fechamento automático"
     >
       <template #actions>
-        <DsButton variant="secondary" @click="reload">Atualizar</DsButton>
-        <DsButton variant="primary">Gerar Cálculo</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
+        <DsButton variant="primary" tag="a" to="/commission-rules">Ver regras</DsButton>
       </template>
     </AppPageHeader>
 
     <DsAlert variant="info">
-      Estrutura inicial para materializar a trilha de <strong>RH &gt; Comissões</strong>. Fechamento por período,
-      auditoria e aprovação ainda entram em próximas ondas.
+      Nenhum cálculo é fechado nesta tela. A leitura consolida dados disponíveis do hub administrativo e da equipe
+      para apoiar conferência antes de um fechamento formal.
     </DsAlert>
 
-    <section class="catalog-kpis">
-      <DsStatCard :label="`${calculations.length} cálculo(s)`" value="" icon="🧮" />
-      <DsStatCard :label="`${pendingCount} pendente(s)`" value="" icon="⏳" />
-      <DsStatCard :label="totalLabel" value="" icon="💰" />
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
+
+    <section class="rh-page__kpis">
+      <DsStatCard label="Receita comercial" :value="formatCurrency(report?.executive.commercialRevenue ?? 0)" icon="📈" />
+      <DsStatCard label="Ticket médio" :value="formatCurrency(report?.domains.commercial.counterSales.avgTicket ?? 0)" icon="🧾" />
+      <DsStatCard :label="`${activeStaffCount} profissional(is) ativo(s)`" value="" icon="👥" />
     </section>
 
-    <DsCard title="Ciclos já mapeados">
-      <div class="catalog-grid">
-        <article v-for="item in calculations" :key="item.period" class="catalog-item">
-          <div class="catalog-item__head">
-            <strong>{{ item.period }}</strong>
-            <span class="catalog-item__badge" :class="{ 'catalog-item__badge--active': item.status === 'Fechado' }">
-              {{ item.status }}
-            </span>
-          </div>
-          <p class="catalog-item__meta">Equipe: {{ item.team }} · Itens: {{ item.entries }}</p>
-          <p class="catalog-item__hint">Total apurado: {{ item.total }}</p>
-        </article>
-      </div>
+    <DsCard title="Produção por itens vendidos ou executados">
+      <DataTable
+        :columns="productionColumns"
+        :rows="productionRows"
+        :loading="loading"
+        empty-icon="🧮"
+        empty-title="Sem produção consolidada"
+        empty-description="Produtos e serviços aparecem aqui quando houver vendas fechadas no período."
+        variant="hoverable"
+      >
+        <template #cell-revenue="{ row }">
+          {{ formatCurrency(productionRow(row).revenue) }}
+        </template>
+      </DataTable>
+    </DsCard>
+
+    <DsCard title="Equipe elegível para conferência">
+      <DataTable
+        :columns="staffColumns"
+        :rows="staffRows"
+        :loading="loading"
+        empty-icon="👥"
+        empty-title="Nenhum profissional ativo encontrado"
+        empty-description="Cadastre profissionais ativos para relacionar produção e comissão."
+        variant="hoverable"
+      />
     </DsCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import {
+  administrativeReportsService,
+  type AdministrativeReportsResponse
+} from '@/services/administrativeReports';
+import { staffService } from '@/services/staff';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import type { StaffSummary } from '@cvg-his-v2/shared-types';
 
-const calculations = ref([
-  { period: '2026-03', team: 'Clínica', entries: 42, total: 'R$ 12.480,00', status: 'Fechado' },
-  { period: '2026-04', team: 'Laboratório', entries: 18, total: 'R$ 4.230,00', status: 'Em apuração' },
-  { period: '2026-04', team: 'Comercial', entries: 11, total: 'R$ 2.140,00', status: 'Pendente' }
-]);
-
-const pendingCount = computed(() => calculations.value.filter((item) => item.status !== 'Fechado').length);
-const totalLabel = computed(() => 'R$ 18.850,00 mapeados');
-
-function reload() {
-  calculations.value = [...calculations.value];
+interface ProductionRow {
+  id: string;
+  name: string;
+  kind: string;
+  quantity: number;
+  revenue: number;
 }
+
+const loading = ref(false);
+const error = ref('');
+const report = ref<AdministrativeReportsResponse | null>(null);
+const staff = ref<StaffSummary[]>([]);
+
+const productionColumns: DataTableColumn[] = [
+  { key: 'name', label: 'Item' },
+  { key: 'kind', label: 'Tipo' },
+  { key: 'quantity', label: 'Quantidade' },
+  { key: 'revenue', label: 'Receita' }
+];
+const staffColumns: DataTableColumn[] = [
+  { key: 'fullName', label: 'Profissional' },
+  { key: 'department', label: 'Departamento' },
+  { key: 'jobTitle', label: 'Cargo' },
+  { key: 'employeeCode', label: 'Código' }
+];
+
+const activeStaffCount = computed(() => staff.value.filter((member) => member.status === 'active').length);
+const staffRows = computed(() =>
+  staff.value
+    .filter((member) => member.status === 'active')
+    .map((member) => ({
+      id: member.id,
+      fullName: member.fullName,
+      department: member.department || '—',
+      jobTitle: member.jobTitle || '—',
+      employeeCode: member.employeeCode
+    })) as DataTableRow[]
+);
+const productionRows = computed(() => {
+  const dashboard = report.value?.domains.commercial.counterSales;
+  if (!dashboard) return [];
+  return [
+    ...dashboard.topServices.map((item) => ({ ...item, id: `service-${item.name}`, kind: 'Serviço' })),
+    ...dashboard.topProducts.map((item) => ({ ...item, id: `product-${item.name}`, kind: 'Produto' }))
+  ] as DataTableRow[];
+});
+
+async function loadData() {
+  loading.value = true;
+  error.value = '';
+  try {
+    const [reportResponse, staffResponse] = await Promise.all([
+      administrativeReportsService.getHubs(),
+      staffService.list()
+    ]);
+    report.value = reportResponse;
+    staff.value = staffResponse;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar cálculo de comissões';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function productionRow(row: DataTableRow): ProductionRow {
+  return row as unknown as ProductionRow;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+onMounted(loadData);
 </script>
 
 <style scoped>
-.rh-catalog-page {
+.rh-page {
   display: grid;
   gap: 16px;
 }
-.catalog-kpis {
+
+.rh-page__kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
-}
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-.catalog-item {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-item__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-.catalog-item__badge {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
-}
-.catalog-item__badge--active {
-  background: #dcfce7;
-  color: #15803d;
-}
-.catalog-item__meta {
-  margin: 10px 0 6px;
-  font-size: 13px;
-  color: #475569;
-}
-.catalog-item__hint {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
 }
 </style>

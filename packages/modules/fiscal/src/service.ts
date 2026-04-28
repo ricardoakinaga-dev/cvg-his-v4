@@ -1,6 +1,7 @@
 import type {
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
+  CreateFiscalPisTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   FiscalNfseDocumentFilters,
@@ -10,6 +11,7 @@ import type {
   FiscalIcmsRuleSummary,
   FiscalIcmsTableSummary,
   FiscalIpiTableSummary,
+  FiscalPisTableSummary,
   FiscalNfseDocumentSummary,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutSummary,
@@ -18,6 +20,7 @@ import type {
   CancelFiscalNfseDocumentRequest,
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
+  UpdateFiscalPisTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -50,6 +53,10 @@ export interface FiscalIcmsTableFilters {
 }
 
 export interface FiscalIpiTableFilters {
+  readonly search?: string;
+}
+
+export interface FiscalPisTableFilters {
   readonly search?: string;
 }
 
@@ -234,6 +241,27 @@ const IPI_TABLES: readonly FiscalIpiTableSummary[] = [
   }
 ] as const;
 
+const PIS_TABLES: readonly FiscalPisTableSummary[] = [
+  {
+    id: 'pis-table-0',
+    code: '0',
+    description: 'PIS 0%',
+    percent: 0
+  },
+  {
+    id: 'pis-table-0-65',
+    code: '0,65',
+    description: 'PIS 0,65%',
+    percent: 0.65
+  },
+  {
+    id: 'pis-table-1-65',
+    code: '1,65',
+    description: 'PIS 1,65%',
+    percent: 1.65
+  }
+] as const;
+
 const PIS_COFINS_RULES: readonly FiscalPisCofinsRuleSummary[] = [
   {
     id: 'pis-cofins-simples-ambos',
@@ -331,6 +359,7 @@ const NFSE_LAYOUTS: readonly FiscalNfseLayoutSummary[] = [
 const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({ ...layout }));
 const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => ({ ...table }));
 const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
+const inMemoryPisTables: FiscalPisTableSummary[] = PIS_TABLES.map((table) => ({ ...table }));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
 
 type NfseIssuerDocument = NfseDocument & {
@@ -415,6 +444,16 @@ function sanitizeIpiTableId(code: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return `ipi-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
+function sanitizePisTableId(code: string): string {
+  const normalized = code
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `pis-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
 }
 
 function assertNonEmpty(value: string | undefined, field: string): string {
@@ -754,6 +793,85 @@ export class FiscalService {
     };
 
     inMemoryIpiTables[index] = next;
+    return next;
+  }
+
+  public async listPisTables(filters: FiscalPisTableFilters = {}): Promise<FiscalPisTableSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listPisTables({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
+
+    return inMemoryPisTables.filter((table) =>
+      matchesContains(`${table.code} ${table.description} ${table.percent}`, filters.search)
+    );
+  }
+
+  public async createPisTable(
+    payload: CreateFiscalPisTableRequest
+  ): Promise<FiscalPisTableSummary> {
+    const code = assertNonEmpty(payload.code, 'code');
+    const percent = assertPercent(payload.percent, 'percent');
+    const description = payload.description?.trim() || `PIS ${percent}%`;
+
+    const existing = await this.listPisTables();
+    if (existing.some((table) => table.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    const table: FiscalPisTableSummary = {
+      id: sanitizePisTableId(code),
+      code,
+      description,
+      percent
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createPisTable(this.accountId!, table);
+    }
+
+    inMemoryPisTables.unshift(table);
+    return table;
+  }
+
+  public async updatePisTable(
+    id: string,
+    payload: UpdateFiscalPisTableRequest
+  ): Promise<FiscalPisTableSummary | null> {
+    const nextPayload: UpdateFiscalPisTableRequest = {
+      code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
+      description: payload.description?.trim(),
+      percent: payload.percent === undefined ? undefined : assertPercent(payload.percent, 'percent')
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updatePisTable(this.accountId!, id, nextPayload);
+    }
+
+    const index = inMemoryPisTables.findIndex((table) => table.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryPisTables[index];
+    const code = nextPayload.code ?? current.code;
+    const duplicate = inMemoryPisTables.some(
+      (table) => table.id !== id && table.code.toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    const next: FiscalPisTableSummary = {
+      ...current,
+      code,
+      description: nextPayload.description ?? current.description,
+      percent: nextPayload.percent ?? current.percent
+    };
+
+    inMemoryPisTables[index] = next;
     return next;
   }
 

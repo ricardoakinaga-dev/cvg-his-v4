@@ -66,6 +66,7 @@ describe('EncounterFormPage', () => {
     mockListFn.mockResolvedValue(mockPatients);
     mockCreateFn.mockResolvedValue({ id: 'enc-new' });
     mockRouterPush.mockResolvedValue(undefined);
+    history.replaceState({}, '', '/');
   });
 
   it('renders the page title', async () => {
@@ -226,6 +227,52 @@ describe('EncounterFormPage', () => {
 
     expect(mockCreateFn).toHaveBeenCalled();
     expect(wrapper.text()).toContain('Atendimento aberto com sucesso');
+  });
+
+  it('preserves appointmentId from query params when creating encounter', async () => {
+    history.replaceState({}, '', '/encounters/new?appointmentId=appt-1&patientId=pat-1&ownerId=owner-1');
+
+    const EncounterFormPage = (await import('../EncounterFormPage.vue')).default;
+    const wrapper = mount(EncounterFormPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          },
+          SearchSelect: {
+            template:
+              '<input id="patientId" :value="modelValue" @input="select($event.target.value)" />',
+            props: ['modelValue', 'options'],
+            emits: ['update:modelValue', 'change'],
+            methods: {
+              select(value: string) {
+                this.$emit('update:modelValue', value);
+                this.$emit('change', this.options.find((option: any) => option.value === value) ?? null);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    await wrapper.find('#patientId').setValue('pat-1');
+    const reasonTextarea = wrapper.find('#reason');
+    await reasonTextarea.setValue('Consulta agendada');
+
+    const form = wrapper.find('form');
+    await form.trigger('submit');
+    await flushPromises();
+
+    expect(mockCreateFn).toHaveBeenCalledWith({
+      patientId: 'pat-1',
+      ownerId: 'owner-1',
+      appointmentId: 'appt-1',
+      visitType: 'scheduled',
+      origin: 'schedule',
+      reason: 'Consulta agendada'
+    });
   });
 
   it('shows error alert when create fails', async () => {

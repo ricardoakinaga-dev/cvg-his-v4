@@ -1,130 +1,130 @@
 <template>
-  <div class="rh-catalog-page">
+  <div class="rh-page">
     <AppPageHeader
       title="Folgas"
       :breadcrumbs="['RH', 'Cadastros', 'Folgas']"
-      subtitle="Base inicial de folgas, indisponibilidades e organização de cobertura da equipe"
+      subtitle="Leitura de cobertura da equipe para apoiar planejamento de indisponibilidades"
     >
       <template #actions>
-        <DsButton variant="secondary" @click="reload">Atualizar</DsButton>
-        <DsButton variant="primary">Nova Folga</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
+        <DsButton variant="primary" tag="a" to="/appointments">Abrir agenda</DsButton>
       </template>
     </AppPageHeader>
 
     <DsAlert variant="info">
-      Superfície inicial para <strong>RH &gt; Cadastros</strong>. Escalas, cobertura automática e conflito com agenda
-      ainda entram em ondas futuras.
+      O cadastro persistente de folgas ainda não está conectado nesta rota. A tela mostra a equipe ativa e os pontos
+      de atenção para registrar ausência com segurança na agenda existente.
     </DsAlert>
 
-    <section class="catalog-kpis">
-      <DsStatCard :label="`${timeOffEntries.length} registro(s)`" value="" icon="🌴" />
-      <DsStatCard :label="`${approvedCount} aprovado(s)`" value="" icon="✅" />
-      <DsStatCard :label="`${pendingCount} pendente(s)`" value="" icon="⏳" />
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
+
+    <section class="rh-page__kpis">
+      <DsStatCard :label="`${activeStaff.length} profissional(is) ativo(s)`" value="" icon="✅" />
+      <DsStatCard :label="`${departmentsCount} departamento(s)`" value="" icon="🏢" />
+      <DsStatCard :label="`${unlinkedCount} sem usuário vinculado`" value="" icon="⚠️" />
     </section>
 
-    <DsCard title="Janela inicial de folgas">
-      <div class="catalog-grid">
-        <article v-for="entry in timeOffEntries" :key="entry.employee + entry.period" class="catalog-item">
-          <div class="catalog-item__head">
-            <strong>{{ entry.employee }}</strong>
-            <span class="catalog-item__badge" :class="{ 'catalog-item__badge--active': entry.status === 'Aprovada' }">
-              {{ entry.status }}
-            </span>
-          </div>
-          <p class="catalog-item__meta">Período: {{ entry.period }} · Cobertura: {{ entry.coverage }}</p>
-          <p class="catalog-item__hint">{{ entry.reason }}</p>
-        </article>
-      </div>
+    <DsCard title="Cobertura por profissional">
+      <DataTable
+        :columns="columns"
+        :rows="staffRows"
+        :loading="loading"
+        empty-icon="🌴"
+        empty-title="Nenhum profissional ativo"
+        empty-description="Cadastre profissionais ativos antes de organizar folgas."
+        variant="hoverable"
+      >
+        <template #cell-userLinked="{ row }">
+          {{ timeOffRow(row).userLinked ? 'Usuário vinculado' : 'Sem usuário vinculado' }}
+        </template>
+        <template #cell-actions="{ row }">
+          <DsButton size="sm" variant="secondary" tag="a" :to="`/staff/${timeOffRow(row).id}`">
+            Ver profissional
+          </DsButton>
+        </template>
+      </DataTable>
     </DsCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import { staffService } from '@/services/staff';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import type { StaffSummary } from '@cvg-his-v2/shared-types';
 
-const timeOffEntries = ref([
-  {
-    employee: 'Ana Paula',
-    period: '12 a 14/05',
-    coverage: 'Equipe clínica',
-    status: 'Aprovada',
-    reason: 'Descanso programado com cobertura definida no plantão.'
-  },
-  {
-    employee: 'Rafael Lima',
-    period: '18/05',
-    coverage: 'Neurologia',
-    status: 'Pendente',
-    reason: 'Aguardando confirmação de substituição para agenda do dia.'
-  },
-  {
-    employee: 'Equipe laboratório',
-    period: '21/05',
-    coverage: 'Backoffice',
-    status: 'Aprovada',
-    reason: 'Janela operacional para manutenção e rodízio interno.'
-  }
-]);
-
-const approvedCount = computed(() => timeOffEntries.value.filter((item) => item.status === 'Aprovada').length);
-const pendingCount = computed(() => timeOffEntries.value.filter((item) => item.status === 'Pendente').length);
-
-function reload() {
-  timeOffEntries.value = [...timeOffEntries.value];
+interface TimeOffRow {
+  id: string;
+  fullName: string;
+  department: string;
+  jobTitle: string;
+  userLinked: boolean;
 }
+
+const loading = ref(false);
+const error = ref('');
+const staff = ref<StaffSummary[]>([]);
+
+const columns: DataTableColumn[] = [
+  { key: 'fullName', label: 'Profissional' },
+  { key: 'department', label: 'Departamento' },
+  { key: 'jobTitle', label: 'Cargo' },
+  { key: 'userLinked', label: 'Vínculo de acesso' },
+  { key: 'actions', label: 'Ações' }
+];
+
+const activeStaff = computed(() => staff.value.filter((member) => member.status === 'active'));
+const departmentsCount = computed(
+  () => new Set(activeStaff.value.map((member) => member.department).filter(Boolean)).size
+);
+const unlinkedCount = computed(() => activeStaff.value.filter((member) => !member.userId).length);
+const staffRows = computed(() =>
+  activeStaff.value.map((member) => ({
+    id: member.id,
+    fullName: member.fullName,
+    department: member.department || '—',
+    jobTitle: member.jobTitle || '—',
+    userLinked: Boolean(member.userId)
+  })) as DataTableRow[]
+);
+
+async function loadData() {
+  loading.value = true;
+  error.value = '';
+  try {
+    staff.value = await staffService.list();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar cobertura de folgas';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function timeOffRow(row: DataTableRow): TimeOffRow {
+  return row as unknown as TimeOffRow;
+}
+
+onMounted(loadData);
 </script>
 
 <style scoped>
-.rh-catalog-page {
+.rh-page {
   display: grid;
   gap: 16px;
 }
-.catalog-kpis {
+
+.rh-page__kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
-}
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-.catalog-item {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-item__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-.catalog-item__badge {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
-}
-.catalog-item__badge--active {
-  background: #dcfce7;
-  color: #15803d;
-}
-.catalog-item__meta {
-  margin: 10px 0 6px;
-  font-size: 13px;
-  color: #475569;
-}
-.catalog-item__hint {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
 }
 </style>

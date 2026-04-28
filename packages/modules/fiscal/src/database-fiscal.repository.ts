@@ -1,12 +1,14 @@
 /**
  * DatabaseFiscalRepository — GAP-08
  *
- * Repository that reads fiscal data (CFOP, ICMS, NCM, PIS/COFINS, NFS-e)
+ * Repository that reads fiscal data (CFOP, ICMS, IPI, PIS, PIS/COFINS, NFS-e)
  * from the database instead of in-memory arrays.
  *
  * Uses the Drizzle schemas created in packages/db/src/schema/:
  * - cfop_entries
  * - icms_tables
+ * - ipi_tables
+ * - pis_tables
  * - icms_rules
  * - ncm_entries
  * - pis_cofins_rules
@@ -19,12 +21,14 @@ import type {
   FiscalCfopSummary,
   FiscalIcmsTableSummary,
   FiscalIpiTableSummary,
+  FiscalPisTableSummary,
   FiscalIcmsRuleSummary,
   FiscalNcmEntrySummary,
   FiscalPisCofinsRuleSummary,
   FiscalNfseLayoutSummary,
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
+  UpdateFiscalPisTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -54,6 +58,10 @@ export interface DbIcmsTableFilters extends DbFiscalFilters {
 }
 
 export interface DbIpiTableFilters extends DbFiscalFilters {
+  readonly search?: string;
+}
+
+export interface DbPisTableFilters extends DbFiscalFilters {
   readonly search?: string;
 }
 
@@ -303,6 +311,88 @@ export class DatabaseFiscalRepository {
     const pool = this.pool;
     const result = await pool.query(
       `UPDATE ipi_tables
+       SET
+         code = COALESCE($2, code),
+         description = COALESCE($3, description),
+         percent = COALESCE($4, percent),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, payload.code, payload.description, payload.percent]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // PIS Tables
+  // --------------------------------------------------------------------------
+
+  async listPisTables(filters: DbPisTableFilters): Promise<FiscalPisTableSummary[]> {
+    const pool = this.pool;
+    const params: unknown[] = [];
+    let where = '';
+
+    if (filters.search) {
+      where = `WHERE (
+        code ILIKE $1 OR
+        description ILIKE $1 OR
+        CAST(percent AS TEXT) ILIKE $1
+      )`;
+      params.push(`%${filters.search}%`);
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM pis_tables ${where} ORDER BY code`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    })) as FiscalPisTableSummary[];
+  }
+
+  async createPisTable(
+    _accountId: AccountId,
+    table: FiscalPisTableSummary
+  ): Promise<FiscalPisTableSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO pis_tables (id, code, description, percent)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [table.id, table.code, table.description, table.percent]
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    };
+  }
+
+  async updatePisTable(
+    _accountId: AccountId,
+    id: string,
+    payload: UpdateFiscalPisTableRequest
+  ): Promise<FiscalPisTableSummary | null> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `UPDATE pis_tables
        SET
          code = COALESCE($2, code),
          description = COALESCE($3, description),

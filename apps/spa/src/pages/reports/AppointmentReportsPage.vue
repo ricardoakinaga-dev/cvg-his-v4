@@ -3,11 +3,12 @@
     <AppPageHeader
       title="Relatórios de Agenda"
       :breadcrumbs="['Relatórios', 'Agenda', 'Relatórios de Agenda']"
-      subtitle="Primeira camada de leitura analítica do domínio de agenda"
+      subtitle="Entrada para auditoria de agenda, ocupação operacional e compromissos"
     />
 
     <DsAlert variant="info">
-      Estrutura inicial do domínio Agenda. Próxima onda pode acoplar ocupação, no-show e capacidade.
+      A visão de auditoria de agendamentos já está disponível em Relatórios de Auditorias. Indicadores
+      operacionais de agenda devem usar os dados do módulo Agenda, sem duplicar cadastros.
     </DsAlert>
   </div>
 </template>

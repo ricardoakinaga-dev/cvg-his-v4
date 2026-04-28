@@ -36,10 +36,10 @@
           <DsButton
             v-if="canStartEncounter"
             variant="primary"
-            :loading="startingEncounter"
-            @click="handleStartEncounter"
+            :loading="startingEncounterContext"
+            @click="openStartEncounterConfirmation"
           >
-            {{ startingEncounter ? 'Iniciando...' : 'Iniciar Atendimento' }}
+            {{ startingEncounterContext ? 'Verificando...' : 'Iniciar Atendimento' }}
           </DsButton>
           <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
@@ -161,6 +161,47 @@
           <p class="muted">Use este agendamento como ponte entre recepção, fila e atendimento.</p>
         </AppDetailSection>
       </div>
+
+      <DsModal
+        :open="showStartEncounterConfirm"
+        :teleport="false"
+        title="Confirmar início do atendimento"
+        @close="closeStartEncounterConfirmation"
+      >
+        <div class="start-encounter-confirmation">
+          <dl class="confirmation-list">
+            <div>
+              <dt>Tutor</dt>
+              <dd>{{ ownerName || 'Não informado' }}</dd>
+            </div>
+            <div>
+              <dt>Paciente</dt>
+              <dd>{{ patientName || 'Não informado' }}</dd>
+            </div>
+            <div>
+              <dt>Data/hora do agendamento</dt>
+              <dd>{{ appointment ? formatDateTime(appointment.scheduledAt) : 'Não informado' }}</dd>
+            </div>
+            <div>
+              <dt>Status do paciente</dt>
+              <dd>{{ patientStatusText }}</dd>
+            </div>
+          </dl>
+
+          <DsAlert :variant="activePatientEncounter ? 'warning' : 'info'">
+            {{ startEncounterImpactText }}
+          </DsAlert>
+        </div>
+
+        <template #footer>
+          <DsButton variant="secondary" :disabled="startingEncounter" @click="closeStartEncounterConfirmation">
+            Cancelar
+          </DsButton>
+          <DsButton variant="primary" :loading="startingEncounter" @click="confirmStartEncounter">
+            {{ startingEncounter ? 'Iniciando...' : 'Confirmar' }}
+          </DsButton>
+        </template>
+      </DsModal>
     </template>
   </div>
 </template>
@@ -172,7 +213,11 @@ import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
 import { ownerService } from '@/services/owner';
 import type { OwnerSummary } from '@/types/owner';
-import { visitTypeLabel, appointmentStatusLabel, formatDateTime, formatDate } from '@/utils/labels';
+import { patientService } from '@/services/patient';
+import type { PatientSummary } from '@/types/patient';
+import { encounterService } from '@/services/encounter';
+import type { EncounterSummary } from '@/types/encounter';
+import { visitTypeLabel, appointmentStatusLabel, formatDateTime, formatDate, patientStatusLabel } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -180,14 +225,19 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const route = useRoute();
 const router = useRouter();
 const appointment = ref<AppointmentSummary | null>(null);
 const cancelling = ref(false);
 const startingEncounter = ref(false);
+const startingEncounterContext = ref(false);
+const showStartEncounterConfirm = ref(false);
 const entityCache = useEntityCache();
 const owner = ref<OwnerSummary | null>(null);
+const patient = ref<PatientSummary | null>(null);
+const activePatientEncounter = ref<EncounterSummary | null>(null);
 
 const patientName = ref('');
 const ownerName = ref('');
@@ -214,6 +264,23 @@ async function loadEntityNames(appt: AppointmentSummary) {
   }
 }
 
+async function loadStartEncounterContext(appt: AppointmentSummary) {
+  startingEncounterContext.value = true;
+  try {
+    const [patientRecord, encounters] = await Promise.all([
+      patientService.getById(appt.patientId).catch(() => null),
+      encounterService.list().catch(() => [])
+    ]);
+
+    patient.value = patientRecord;
+    activePatientEncounter.value = encounters
+      .filter((encounter) => encounter.patientId === appt.patientId && encounter.status !== 'closed')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null;
+  } finally {
+    startingEncounterContext.value = false;
+  }
+}
+
 const canCancel = computed(() => {
   return (
     appointment.value &&
@@ -223,6 +290,17 @@ const canCancel = computed(() => {
 const canGoToQueue = computed(() => appointment.value?.status === 'checked_in');
 const canStartEncounter = computed(() => {
   return appointment.value && appointment.value.status !== 'cancelled' && appointment.value.status !== 'completed';
+});
+
+const patientStatusText = computed(() =>
+  patient.value ? patientStatusLabel(patient.value.status) : 'Não informado'
+);
+
+const startEncounterImpactText = computed(() => {
+  if (activePatientEncounter.value) {
+    return `Será reutilizado atendimento existente (${activePatientEncounter.value.id.slice(0, 8)}...).`;
+  }
+  return 'Será criado novo atendimento para este agendamento.';
 });
 
 const whatsappContact = computed(() => {
@@ -288,11 +366,23 @@ async function handleCancel() {
   }
 }
 
-async function handleStartEncounter() {
+async function openStartEncounterConfirmation() {
+  if (!appointment.value) return;
+  await loadStartEncounterContext(appointment.value);
+  showStartEncounterConfirm.value = true;
+}
+
+function closeStartEncounterConfirmation() {
+  if (startingEncounter.value) return;
+  showStartEncounterConfirm.value = false;
+}
+
+async function confirmStartEncounter() {
   if (!appointment.value) return;
   startingEncounter.value = true;
   try {
     const encounter = await appointmentService.startEncounter(appointment.value.id);
+    showStartEncounterConfirm.value = false;
     await router.push(`/encounters/${encounter.id}`);
   } catch (err: unknown) {
     alert(err instanceof Error ? err.message : 'Erro ao iniciar atendimento');
@@ -325,14 +415,14 @@ onMounted(async () => {
   const fromState = history.state?.appointment as AppointmentSummary | undefined;
   if (fromState) {
     appointment.value = fromState;
-    await loadEntityNames(fromState);
+    await Promise.all([loadEntityNames(fromState), loadStartEncounterContext(fromState)]);
     return;
   }
   const id = route.params.id as string;
   try {
     const appt = await appointmentService.getById(id);
     appointment.value = appt;
-    await loadEntityNames(appt);
+    await Promise.all([loadEntityNames(appt), loadStartEncounterContext(appt)]);
   } catch {
     // Appointment not found, keep null
   }
@@ -419,5 +509,34 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.start-encounter-confirmation {
+  display: grid;
+  gap: 16px;
+}
+
+.confirmation-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.confirmation-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.confirmation-list dt {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.confirmation-list dd {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-weight: 700;
 }
 </style>

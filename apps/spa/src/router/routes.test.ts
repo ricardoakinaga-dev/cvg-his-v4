@@ -67,6 +67,13 @@ describe('router convergence', () => {
       '/estoque/configuracoes-fiscais/tabela-ipi'
     ]);
     expect(findChildRoute('fiscal/ipi-operacional')?.meta?.title).toBe('IPI Operacional');
+    expect(findChildRoute('fiscal/pis')?.meta?.title).toBe('Tabela PIS');
+    expect(findChildRoute('fiscal/pis')?.alias).toEqual([
+      '/pis',
+      '/estoque/configuracoes-fiscais/pis',
+      '/estoque/configuracoes-fiscais/tabela-pis'
+    ]);
+    expect(findChildRoute('fiscal/pis-cofins')?.meta?.title).toBe('PIS / COFINS');
     expect(findChildRoute('access-control')?.meta?.title).toBe('Grupos de Acesso');
     expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('RH');
   });
@@ -452,5 +459,6 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');
     expect(findChildRoute('reports/registers/services')?.meta?.title).toBe('Serviços');
     expect(findChildRoute('reports/inventory-products')?.meta?.title).toBe('Relatório de Produtos');
+    expect(findChildRoute('rh/professions')?.meta?.title).toBe('Profissões');
   });
 });

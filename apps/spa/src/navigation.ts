@@ -187,7 +187,7 @@ export const navGroups: AppNavGroup[] = [
         items: [
           { label: 'Tabela ICMS', path: '/fiscal/icms', icon: '📊', keywords: ['icms'] },
           { label: 'Tabela IPI', path: '/fiscal/ipi', icon: '🏷️', keywords: ['ipi', 'tabela ipi'] },
-          { label: 'Tabela PIS', path: '/fiscal/pis', icon: '📈', keywords: ['pis'] },
+          { label: 'Tabela PIS', path: '/fiscal/pis', icon: '📈', keywords: ['pis', 'tabela pis'] },
           { label: 'Tabela COFINS', path: '/fiscal/cofins', icon: '📉', keywords: ['cofins'] },
           { label: 'Tabela CFOP', path: '/fiscal/cfop', icon: '🔢', keywords: ['cfop'] },
           { label: 'Tabela NFS-e', path: '/fiscal/nfse', icon: '📄', keywords: ['nfse'] },

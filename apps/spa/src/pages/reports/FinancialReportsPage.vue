@@ -3,11 +3,12 @@
     <AppPageHeader
       title="Relatórios Financeiros"
       :breadcrumbs="['Relatórios', 'Financeiro', 'Relatórios Financeiros']"
-      subtitle="Primeira camada de leitura analítica do domínio financeiro"
+      subtitle="Entrada financeira para fluxo de caixa, DRE, contas, cheques e pagamento antecipado"
     />
 
     <DsAlert variant="info">
-      Estrutura inicial do domínio financeiro. A próxima iteração pode acoplar dados reais do hub executivo.
+      Use os relatórios financeiros específicos no menu lateral para consultar recebíveis, caixa, DRE,
+      cheques e pagamentos. O hub executivo consolidado continua disponível em Hubs Administrativos.
     </DsAlert>
   </div>
 </template>

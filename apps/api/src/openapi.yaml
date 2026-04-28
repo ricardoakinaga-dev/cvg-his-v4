@@ -2358,6 +2358,68 @@ paths:
         '404':
           description: IPI table entry not found
 
+  /fiscal/pis:
+    get:
+      operationId: listFiscalPisTables
+      summary: List simple PIS table entries
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simple PIS table entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalPisTableListResponse'
+    post:
+      operationId: createFiscalPisTable
+      summary: Create simple PIS table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalPisTableRequest'
+      responses:
+        '201':
+          description: Created PIS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalPisTableSummary'
+
+  /fiscal/pis/{id}:
+    patch:
+      operationId: updateFiscalPisTable
+      summary: Update simple PIS table entry
+      tags: [Fiscal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalPisTableRequest'
+      responses:
+        '200':
+          description: Updated PIS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalPisTableSummary'
+        '404':
+          description: PIS table entry not found
+
   /fiscal/pis-cofins:
     get:
       operationId: listFiscalPisCofinsRules
@@ -8654,6 +8716,43 @@ components:
           minimum: 0
           maximum: 100
 
+    FiscalPisTableSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+
+    CreateFiscalPisTableRequest:
+      type: object
+      required: [code, percent]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    UpdateFiscalPisTableRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
     FiscalPisCofinsRuleSummary:
       type: object
       properties:
@@ -8978,6 +9077,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FiscalIpiTableSummary'
+
+    FiscalPisTableListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalPisTableSummary'
 
     FiscalPisCofinsRuleListResponse:
       type: object

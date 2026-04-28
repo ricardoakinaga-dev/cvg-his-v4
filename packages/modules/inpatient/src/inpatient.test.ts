@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
-import { InpatientService } from './index.js';
+import { InpatientService, SectorBedService } from './index.js';
 
 function createService() {
   const encounter = {
@@ -193,4 +193,73 @@ test('InpatientService buildHandoverPreview summarizes latest progress and trans
   assert.equal(preview.items[0]?.stayId, stay.id);
   assert.equal(preview.items[0]?.latestProgressNote, 'Pendente reavaliacao hemodinamica');
   assert.equal(preview.items[0]?.requiresAttention, true);
+});
+
+test('SectorBedService buildBedMap reads only durable stay columns', async () => {
+  const accountId = '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never;
+  const sectorId = 'sec_uti' as never;
+  const bedId = 'bed_uti_01' as never;
+  let executedSql = '';
+  const service = new SectorBedService({
+    sectorRepository: {
+      create: async () => {},
+      findById: async () => null,
+      findByAccountId: async () => [
+        {
+          id: sectorId,
+          accountId,
+          code: 'UTI',
+          name: 'UTI',
+          kind: 'icu',
+          active: true,
+          createdAt: '2026-04-28T00:00:00.000Z',
+          updatedAt: '2026-04-28T00:00:00.000Z'
+        }
+      ]
+    },
+    bedRepository: {
+      create: async () => {},
+      update: async () => {},
+      findById: async () => null,
+      findBySectorId: async () => [],
+      findByAccountId: async () => [
+        {
+          id: bedId,
+          accountId,
+          sectorId,
+          code: 'UTI-01',
+          name: 'Leito UTI 01',
+          status: 'occupied',
+          active: true,
+          createdAt: '2026-04-28T00:00:00.000Z',
+          updatedAt: '2026-04-28T00:00:00.000Z'
+        }
+      ],
+      findByStatus: async () => []
+    },
+    databaseClient: {
+      execute: async (query: { sql?: string }) => {
+        executedSql = query.sql ?? '';
+        return {
+          rows: [
+            {
+              id: 'stay_1',
+              patient_id: 'patient_1',
+              encounter_id: 'encounter_1',
+              bed_id: bedId,
+              admitted_at: new Date('2026-04-28T06:00:00.000Z')
+            }
+          ]
+        };
+      }
+    } as never
+  });
+
+  const bedMap = await service.buildBedMap(accountId);
+
+  assert.equal(bedMap.occupiedBeds, 1);
+  assert.equal(bedMap.items[0]?.beds[0]?.stayId, 'stay_1');
+  assert.equal(bedMap.items[0]?.beds[0]?.patientId, 'patient_1');
+  assert.equal(executedSql.includes('unit'), false);
+  assert.equal(executedSql.includes('ward'), false);
 });

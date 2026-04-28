@@ -3,11 +3,13 @@
     <AppPageHeader
       title="Relatórios de Atendimento"
       :breadcrumbs="['Relatórios', 'Atendimento', 'Relatórios de Atendimento']"
-      subtitle="Primeira camada de leitura analítica da operação assistencial"
+      subtitle="Entrada para relatórios de comandas, produção, agenda e atendimento por profissional"
     />
 
     <DsAlert variant="info">
-      Estrutura inicial do domínio Atendimento. Próxima onda pode acoplar triagem, throughput e produtividade clínica.
+      Os relatórios específicos de atendimento foram materializados como páginas operacionais, com dados
+      conectados ao hub administrativo quando a fonte já existe e estados vazios explícitos quando a fonte
+      analítica ainda precisa evoluir.
     </DsAlert>
   </div>
 </template>

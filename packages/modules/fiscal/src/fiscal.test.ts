@@ -13,11 +13,12 @@ test('FiscalService returns searchable CFOP data from the backend catalog', asyn
   assert.ok(rows.some((row) => row.category === 'servico'));
 });
 
-test('FiscalService filters ICMS, IPI, PIS/COFINS and NFS-e tables using backend criteria', async () => {
+test('FiscalService filters ICMS, IPI, PIS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
   const service = new FiscalService();
 
   const icmsRows = await service.listIcmsTables({ search: '18' });
   const ipiRows = await service.listIpiTables({ search: '3,25' });
+  const pisRows = await service.listPisTables({ search: '0,65' });
   const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
   const nfseLayouts = await service.listNfseLayouts({ state: 'SP', active: true });
 
@@ -25,6 +26,8 @@ test('FiscalService filters ICMS, IPI, PIS/COFINS and NFS-e tables using backend
   assert.ok(icmsRows.every((row) => `${row.code} ${row.description}`.includes('18')));
   assert.ok(ipiRows.length > 0);
   assert.ok(ipiRows.every((row) => `${row.code} ${row.description}`.includes('3,25')));
+  assert.ok(pisRows.length > 0);
+  assert.ok(pisRows.every((row) => `${row.code} ${row.description}`.includes('0,65')));
   assert.ok(pisCofinsRows.length > 0);
   assert.ok(pisCofinsRows.every((row) => row.regime === 'lucro_real'));
   assert.ok(pisCofinsRows.every((row) => row.appliesTo === 'servico'));
@@ -81,6 +84,32 @@ test('FiscalService creates and updates simple IPI table entries', async () => {
   assert.equal(updated?.percent, 8.5);
 
   const filtered = await service.listIpiTables({ search: 'interno' });
+  assert.ok(filtered.some((table) => table.id === created.id));
+});
+
+test('FiscalService creates and updates simple PIS table entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createPisTable({
+    code: '2',
+    description: 'PIS 2%',
+    percent: 2
+  });
+
+  assert.equal(created.code, '2');
+  assert.equal(created.description, 'PIS 2%');
+  assert.equal(created.percent, 2);
+
+  const updated = await service.updatePisTable(created.id, {
+    description: 'PIS interno 2%',
+    percent: 2.1
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'PIS interno 2%');
+  assert.equal(updated?.percent, 2.1);
+
+  const filtered = await service.listPisTables({ search: 'interno' });
   assert.ok(filtered.some((table) => table.id === created.id));
 });
 

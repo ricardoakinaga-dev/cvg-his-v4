@@ -3,11 +3,12 @@
     <AppPageHeader
       title="Relatórios de Estoque"
       :breadcrumbs="['Relatórios', 'Estoque', 'Relatórios de Estoque']"
-      subtitle="Primeira camada de leitura analítica do domínio de estoque e suprimentos"
+      subtitle="Entrada para estoque, movimentações, entrada de NF e relatório de produtos"
     />
 
     <DsAlert variant="info">
-      Estrutura inicial do domínio Estoque. Próxima onda pode acoplar cobertura, validade, giro e consumo.
+      As rotas específicas de estoque foram materializadas com filtros, vínculo operacional e estados vazios
+      honestos. A visão não inventa giro, validade ou consumo quando a fonte ainda não está disponível.
     </DsAlert>
   </div>
 </template>
