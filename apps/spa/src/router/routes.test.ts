@@ -60,6 +60,13 @@ describe('router convergence', () => {
     expect(findChildRoute('pix')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('fiscal')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
     expect(findChildRoute('fiscal/icms')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
+    expect(findChildRoute('fiscal/ipi')?.meta?.title).toBe('Tabela IPI');
+    expect(findChildRoute('fiscal/ipi')?.alias).toEqual([
+      '/ipi',
+      '/estoque/configuracoes-fiscais/ipi',
+      '/estoque/configuracoes-fiscais/tabela-ipi'
+    ]);
+    expect(findChildRoute('fiscal/ipi-operacional')?.meta?.title).toBe('IPI Operacional');
     expect(findChildRoute('access-control')?.meta?.title).toBe('Grupos de Acesso');
     expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('RH');
   });

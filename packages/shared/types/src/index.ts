@@ -277,6 +277,8 @@ export interface OwnerSummary {
   readonly financialProfile?: OwnerFinancialProfile;
   readonly financialResponsible: boolean;
   readonly administrativeNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly status: 'active' | 'inactive';
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -292,6 +294,16 @@ export interface PatientSummary {
   readonly size?: 'small' | 'medium' | 'large';
   readonly baseWeightKg?: number;
   readonly birthDateApproximate?: string;
+  readonly isNeutered?: boolean;
+  readonly microchip?: string;
+  readonly pedigreeNumber?: string;
+  readonly color?: string;
+  readonly chronicDisease?: string;
+  readonly allergy?: string;
+  readonly temperament?: string;
+  readonly generalNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly primaryOwnerId: OwnerId;
   readonly status: 'active' | 'inactive' | 'deceased';
   readonly createdAt: string;

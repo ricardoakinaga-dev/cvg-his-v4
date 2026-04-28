@@ -77,8 +77,10 @@ export interface PosSyncJobSummary {
   status: 'queued' | 'running' | 'completed' | 'failed';
   processedCount: number;
   requestedAt: string;
+  startedAt: string | null;
   finishedAt: string | null;
   errorMessage: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export async function getLoyaltySummary(ownerId?: string): Promise<LoyaltyBalanceSummary> {

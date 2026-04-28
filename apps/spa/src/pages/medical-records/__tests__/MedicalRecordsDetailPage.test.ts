@@ -54,6 +54,7 @@ const mockTimeline = [
 ];
 
 let mockRouteId = 'enc-1';
+let mockRouteQuery: Record<string, unknown> = {};
 const mockGetByEncounterFn = vi
   .fn()
   .mockResolvedValue({ record: mockRecord, entries: mockEntries });
@@ -208,7 +209,8 @@ vi.mock('@/services/prescriptions', () => ({
 vi.mock('vue-router', () => ({
   useRoute: () => ({
     params: { id: mockRouteId },
-    path: `/medical-records/${mockRouteId}`
+    path: `/medical-records/${mockRouteId}`,
+    query: mockRouteQuery
   }),
   useRouter: () => ({
     push: vi.fn()
@@ -219,6 +221,7 @@ describe('MedicalRecordsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouteId = 'enc-1';
+    mockRouteQuery = {};
     mockGetByEncounterFn.mockResolvedValue({ record: mockRecord, entries: mockEntries });
     mockListAllFn.mockResolvedValue([{ record: mockRecord, entryCount: mockEntries.length }]);
     mockListEntriesFn.mockResolvedValue(mockEntries);
@@ -354,19 +357,25 @@ describe('MedicalRecordsDetailPage', () => {
     expect(wrapper.text()).toContain('Rex');
   });
 
-  it('renders the Vetus-like clinical cockpit cards', async () => {
+  it('renders the structured veterinary medical record', async () => {
     const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Ficha de atendimento');
-    expect(wrapper.text()).toContain('Últimos Atendimentos');
-    expect(wrapper.text()).toContain('Anamneses');
-    expect(wrapper.text()).toContain('Exames');
-    expect(wrapper.text()).toContain('Receituário');
-    expect(wrapper.text()).toContain('Comanda');
-    expect(wrapper.text()).toContain('Histórico Clinico');
+    expect(wrapper.text()).toContain('Queixa principal');
+    expect(wrapper.text()).toContain('Anamnese');
+    expect(wrapper.text()).toContain('Exame físico');
+    expect(wrapper.text()).toContain('Parâmetros vitais');
+    expect(wrapper.text()).toContain('Exames solicitados / recomendados');
+    expect(wrapper.text()).toContain('Suspeita diagnóstica / avaliação clínica');
+    expect(wrapper.text()).toContain('Terapêutica / plano de tratamento');
+    expect(wrapper.text()).toContain('Prescrição / receituário');
+    expect(wrapper.text()).toContain('Conduta e próximos passos');
+    expect(wrapper.text()).toContain('Observações');
+    expect(wrapper.text()).toContain('Blocos operacionais e contexto complementar');
+    expect(wrapper.text()).toContain('Entradas clínicas brutas e auditoria');
+    expect(wrapper.text()).toContain('Timeline técnica e IDs');
   });
 
   it('saves a structured clinical sheet as separate clinical entries', async () => {
@@ -397,7 +406,7 @@ describe('MedicalRecordsDetailPage', () => {
     }));
     expect(mockCreateEntryFn).toHaveBeenCalledWith(expect.objectContaining({
       entryType: 'plan',
-      title: 'Plano terapêutico',
+      title: 'Terapêutica / plano de tratamento',
       content: 'Retorno em 7 dias e controle de ectoparasitas.'
     }));
   });
@@ -425,7 +434,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Nota de Evolu');
+    expect(wrapper.text()).toContain('Observação clínica');
     expect(wrapper.text()).toContain('Exame');
   });
 
@@ -471,14 +480,30 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Nova Entrada'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain('Nova Entrada');
+    expect(wrapper.text()).toContain('Nova Entrada Clínica');
     expect(wrapper.find('#entryType').exists()).toBe(true);
     expect(wrapper.find('#entryTitle').exists()).toBe(true);
     expect(wrapper.find('#entryContent').exists()).toBe(true);
+  });
+
+  it('opens the anamnesis modal when requested by quick access query', async () => {
+    mockRouteQuery = { entry: 'anamnesis' };
+
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Nova Anamnese');
+    expect(wrapper.text()).toContain('Use este espaço para o relato do tutor');
+    expect((wrapper.find('#entryType').element as HTMLSelectElement).value).toBe('anamnesis');
+    expect((wrapper.find('#entryContent').element as HTMLTextAreaElement).placeholder).toContain(
+      'Relato do tutor'
+    );
   });
 
   it('creates a new entry successfully', async () => {
@@ -486,7 +511,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Nova Entrada'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
@@ -511,7 +536,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Nova Entrada'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
@@ -528,7 +553,7 @@ describe('MedicalRecordsDetailPage', () => {
     await editBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain('Editar Entrada');
+    expect(wrapper.text()).toContain('Editar Observação clínica');
     const titleInput = wrapper.find('#entryTitle') as any;
     expect(titleInput.element.value).toBe('Evolucao do dia');
   });
@@ -633,7 +658,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Nova Entrada'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 

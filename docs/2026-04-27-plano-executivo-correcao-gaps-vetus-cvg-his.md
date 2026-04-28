@@ -618,3 +618,37 @@ Observacoes:
 
 - dados pessoais reais observados durante a migracao nao foram transcritos nesta documentacao;
 - a UI de cadastro de animal ainda usa catalogo fechado para raca; quando o texto literal do Vetus nao existe no catalogo, a categoria SRD disponivel foi selecionada e a descricao observada foi preservada no cadastro do animal.
+
+### 2026-04-28 - P1-04 paridade Vetus do modulo Racas
+
+Status: implementado, publicado e validado por navegacao.
+
+Observacao Vetus:
+
+- modulo observado em `Sistema/Cadastros/Racas.htm`, somente leitura;
+- lista com filtros `Codigo` e `Descricao`, botoes `Incluir` e `Pesquisar`, tabela `Codigo`, `Descricao`, `Abrir`;
+- formulario de inclusao observado sem salvar no Vetus, com campos `Id`, `Descricao` e `Especie`;
+- opcoes de especie observadas: `Nao Definido`, `AVICOLA`, `BOVINO`, `CANINA`, `CUNICULA`, `EQUINA`, `FELINA`, `OUTRAS`, `PRIMATA`, `ROEDOR`.
+
+Escopo entregue no `cvg-his-v2`:
+
+- enum de especies de raca expandido para refletir as opcoes Vetus observadas;
+- modulo de especies alinhado ao mesmo conjunto operacional;
+- labels de especie ajustados nas listas, detalhes, filtros e formularios;
+- rota `/breeds` validada com filtro, listagem, inclusao, detalhe e edicao;
+- raca literal necessaria para o prontuario autorizado cadastrada pela UI do `cvg-his-v2`, sem escrita direta por API/DB;
+- formulario `/patients/new` validado por navegacao mostrando a nova raca no dropdown quando a especie `Canina` esta selecionada.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/api run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- suite completa da API: 167 testes passando;
+- testes focados da SPA para racas, especies, paciente e internacao: 54 testes passando;
+- build/recreate dos servicos existentes `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- health local da API e SPA retornando 200;
+- navegacao real em `/breeds`, `/breeds/new`, `/breeds/:id`, `/breeds/:id/edit` e `/patients/new`.
+
+Risco residual aberto:
+
+- apos recreate da API, o paciente cadastrado no smoke assistido anterior nao estava mais disponivel na listagem de pacientes. Esse comportamento precisa ser investigado como item separado de persistencia operacional antes de usar novos smokes manuais como evidencia definitiva de durabilidade.

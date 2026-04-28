@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { OwnersService } from '@cvg-his-v2/module-owners';
-import { PatientsService } from './index.js';
+import {
+  PatientsService,
+  type OwnerPatientLinkRepository,
+  type PatientRepository
+} from './index.js';
 import {
   InMemoryPatientRepository,
   InMemoryOwnerPatientLinkRepository
@@ -9,6 +13,7 @@ import type { AccountId, PatientId, OwnerId } from '@cvg-his-v2/shared-types';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 const ACCOUNT_ID = 'acc_test' as AccountId;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function createOwner(owners: OwnersService, name = 'Maria Silva'): { id: OwnerId } {
   return owners.create(ACCOUNT_ID, {
@@ -98,6 +103,23 @@ describe('PatientsService', () => {
       expect(results.length).toBe(2);
     });
 
+    it('filters patients by Vetus-like identifiers', () => {
+      const owner = createOwner(owners);
+      service.create(ACCOUNT_ID, {
+        name: 'Thor',
+        species: 'canine',
+        sex: 'male',
+        microchip: 'CHIP-9988',
+        color: 'Preto',
+        legacyVetusId: '3835',
+        primaryOwnerId: owner.id
+      });
+
+      expect(service.list('CHIP-9988')).toHaveLength(1);
+      expect(service.list('3835')).toHaveLength(1);
+      expect(service.list('preto')).toHaveLength(1);
+    });
+
     it('search is case-insensitive', () => {
       createPatient(service, owners, { name: 'LUNA' });
       const results = service.list('luna');
@@ -133,16 +155,37 @@ describe('PatientsService', () => {
         size: 'medium',
         baseWeightKg: 18.5,
         birthDateApproximate: '2020-08-15',
+        isNeutered: true,
+        microchip: '985141000000001',
+        pedigreeNumber: 'PED-123',
+        color: 'Caramelo',
+        chronicDisease: 'Doenca renal cronica',
+        allergy: 'Dipirona',
+        temperament: 'Docil',
+        generalNotes: 'Paciente usa coleira vermelha.',
+        legacyVetusId: '15',
+        originalCreatedAt: '2024-05-03',
         primaryOwnerId: owner.id
       });
 
       expect(patient.id).toBeDefined();
+      expect(patient.id).toMatch(UUID_PATTERN);
       expect(patient.name).toBe('Luna');
       expect(patient.species).toBe('canine');
       expect(patient.sex).toBe('female');
       expect(patient.breed).toBe('SRD');
       expect(patient.size).toBe('medium');
       expect(patient.baseWeightKg).toBe(18.5);
+      expect(patient.isNeutered).toBe(true);
+      expect(patient.microchip).toBe('985141000000001');
+      expect(patient.pedigreeNumber).toBe('PED-123');
+      expect(patient.color).toBe('Caramelo');
+      expect(patient.chronicDisease).toBe('Doenca renal cronica');
+      expect(patient.allergy).toBe('Dipirona');
+      expect(patient.temperament).toBe('Docil');
+      expect(patient.generalNotes).toBe('Paciente usa coleira vermelha.');
+      expect(patient.legacyVetusId).toBe('15');
+      expect(patient.originalCreatedAt).toBe('2024-05-03');
       expect(patient.status).toBe('active');
       expect(patient.primaryOwnerId).toBe(owner.id);
       expect(patient.createdAt).toBeDefined();
@@ -263,10 +306,63 @@ describe('PatientsService', () => {
         sex: 'female',
         primaryOwnerId: owner.id
       });
+      await service.waitForPersistence();
 
       const found = await patientRepo.findById(patient.id);
       expect(found).not.toBeNull();
       expect(found!.name).toBe('Luna');
+
+      const links = await linkRepo.findByPatientId(patient.id, ACCOUNT_ID);
+      expect(links).toHaveLength(1);
+      expect(links[0].relationshipType).toBe('primary');
+    });
+
+    it('rolls back patient and primary link from memory when repository persistence fails', async () => {
+      const owner = createOwner(owners);
+      const failingPatientRepository: PatientRepository = {
+        async create() {
+          throw new Error('database unavailable');
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async delete() {}
+      };
+      const linkRepository: OwnerPatientLinkRepository = {
+        async create() {},
+        async findById() {
+          return null;
+        },
+        async findByPatientId() {
+          return [];
+        },
+        async findByOwnerId() {
+          return [];
+        },
+        async delete() {}
+      };
+      const failingService = new PatientsService({
+        owners,
+        patientRepository: failingPatientRepository,
+        ownerPatientLinkRepository: linkRepository,
+        seedPatients: [],
+        seedLinks: []
+      });
+
+      const patient = failingService.create(ACCOUNT_ID, {
+        name: 'Rollback Patient',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+
+      await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
+      expect(() => failingService.getOrThrow(patient.id)).toThrow(NotFoundError);
+      expect(failingService.listLinks({ patientId: patient.id })).toHaveLength(0);
     });
 
     it('create without repository does not throw', () => {
@@ -294,12 +390,20 @@ describe('PatientsService', () => {
       const updated = service.update(patient.id, {
         name: 'Luna Updated',
         species: 'feline',
-        size: 'large'
+        size: 'large',
+        microchip: 'CHIP-UPDATED',
+        color: 'Branco',
+        isNeutered: false,
+        allergy: 'Penicilina'
       });
 
       expect(updated.name).toBe('Luna Updated');
       expect(updated.species).toBe('feline');
       expect(updated.size).toBe('large');
+      expect(updated.microchip).toBe('CHIP-UPDATED');
+      expect(updated.color).toBe('Branco');
+      expect(updated.isNeutered).toBe(false);
+      expect(updated.allergy).toBe('Penicilina');
       expect(updated.id).toBe(patient.id);
     });
 
@@ -341,6 +445,7 @@ describe('PatientsService', () => {
     it('persists update to repository', async () => {
       const patient = createPatient(service, owners);
       service.update(patient.id, { name: 'Updated' });
+      await service.waitForPersistence();
 
       const found = await patientRepo.findById(patient.id);
       expect(found!.name).toBe('Updated');
@@ -494,6 +599,7 @@ describe('PatientsService', () => {
         relationshipType: 'secondary',
         financialResponsible: false
       });
+      await service.waitForPersistence();
 
       const found = await linkRepo.findById(link.id, ACCOUNT_ID);
       expect(found).not.toBeNull();

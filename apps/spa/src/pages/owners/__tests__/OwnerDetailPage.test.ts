@@ -7,8 +7,35 @@ const mockOwner = {
   fullName: 'João Silva',
   documentId: '',
   contacts: [{ label: 'WhatsApp', type: 'whatsapp' as const, value: '(11) 99999-1111', primary: true }],
+  address: {
+    zipCode: '01234-567',
+    street: 'Rua Vetus',
+    number: '100',
+    complement: 'Casa',
+    state: 'SP',
+    city: 'Sao Paulo',
+    district: 'Centro',
+    reference: 'Proximo ao metro',
+    cityCode: '3550308'
+  },
+  profile: {
+    birthDate: '1988-02-03',
+    sex: 'male' as const,
+    group: 'VIP',
+    receiveSms: true,
+    personType: 'individual' as const,
+    rg: '11.222.333-4'
+  },
+  financialProfile: {
+    allowedDebtLimit: 250,
+    creditBalance: 35.5,
+    availablePoints: 120,
+    blockedPoints: 15
+  },
   financialResponsible: true,
   administrativeNotes: 'Cobrar autorização prévia',
+  legacyVetusId: '3835',
+  originalCreatedAt: '2024-05-03',
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z'
@@ -186,9 +213,21 @@ describe('OwnerDetailPage', () => {
     expect(wrapper.text()).toContain('Cadastrar Novo Animal');
     expect(wrapper.text()).toContain('Animais Cadastrados');
     expect(wrapper.text()).toContain('Documento ausente');
+    expect(wrapper.text()).toContain('3835');
+    expect(wrapper.text()).toContain('VIP');
+    expect(wrapper.text()).toContain('Recebe SMS?');
+    expect(wrapper.text()).toContain('Rua Vetus');
+    expect(wrapper.text()).toContain('3550308');
+    expect(wrapper.text()).toContain('35,50');
+    expect(wrapper.text()).toContain('120');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Agenda vinculada');
     expect(wrapper.text()).toContain('CRM financeiro');
+    expect(wrapper.text()).toContain('Resgate de Pontos');
+    expect(wrapper.text()).toContain('Live Animal e Live Lab');
+    expect(wrapper.text()).toContain('Comandas e Vendas');
+    expect(wrapper.text()).toContain('Orçamentos');
+    expect(wrapper.text()).toContain('Situação Financeira');
     expect(wrapper.text()).toContain('Pacotes sugeridos');
     expect(wrapper.text()).toContain('Mensageria contextual');
   });

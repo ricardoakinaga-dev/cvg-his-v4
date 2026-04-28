@@ -119,6 +119,7 @@ export async function handleOwnersRoutes(
     const body = (await readJsonBody(request)) as CreateOwnerRequest;
 
     const owner = owners.create(principal.user.accountId, body);
+    await owners.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -239,6 +240,7 @@ export async function handleOwnersRoutes(
     const body = (await readJsonBody(request)) as UpdateOwnerRequest;
 
     const owner = owners.update(ownerId as never, body);
+    await owners.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -277,6 +279,7 @@ export async function handleOwnersRoutes(
     }
 
     const owner = owners.update(ownerId as never, { status: 'inactive' });
+    await owners.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,

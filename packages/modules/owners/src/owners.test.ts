@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { AccountId, OwnerId, OwnerSummary } from '@cvg-his-v2/shared-types';
-import { OwnersService } from './index.js';
+import { OwnersService, type OwnerRepository } from './index.js';
 import { InMemoryOwnerRepository } from './repositories/in-memory-owner.repository.js';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 const ACCOUNT_ID = 'acc_test' as AccountId;
 const ACCOUNT_ID_2 = 'acc_other' as AccountId;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function makeOwner(
   overrides?: Partial<{
@@ -37,6 +38,7 @@ describe('OwnersService', () => {
   describe('create', () => {
     it('creates an owner with required fields', () => {
       const owner = service.create(ACCOUNT_ID, makeOwner());
+      expect(owner.id).toMatch(UUID_PATTERN);
       expect(owner.fullName).toBe('Maria Silva');
       expect(owner.documentId).toBe('123.456.789-00');
       expect(owner.status).toBe('active');
@@ -56,6 +58,56 @@ describe('OwnersService', () => {
     it('creates owner with administrativeNotes', () => {
       const owner = service.create(ACCOUNT_ID, makeOwner({ administrativeNotes: 'VIP client' }));
       expect(owner.administrativeNotes).toBe('VIP client');
+    });
+
+    it('creates owner with Vetus operational fields', () => {
+      const owner = service.create(ACCOUNT_ID, {
+        fullName: 'Cliente Vetus',
+        documentId: '123.456.789-00',
+        contacts: [
+          { label: 'Celular', value: '+55 11 99999-1234', type: 'whatsapp', primary: true },
+          { label: 'E-mail', value: 'cliente@example.com', type: 'email', primary: false }
+        ],
+        address: {
+          zipCode: '01234-567',
+          street: 'Rua Vetus',
+          number: '100',
+          complement: 'Sala 2',
+          state: 'SP',
+          city: 'Sao Paulo',
+          district: 'Centro',
+          reference: 'Proximo ao metro',
+          cityCode: '3550308'
+        },
+        profile: {
+          birthDate: '1988-02-03',
+          sex: 'female',
+          group: 'VIP',
+          receiveSms: true,
+          personType: 'individual',
+          rg: '11.222.333-4'
+        },
+        financialProfile: {
+          allowedDebtLimit: 250,
+          creditBalance: 35.5,
+          availablePoints: 120,
+          blockedPoints: 15
+        },
+        financialResponsible: true,
+        administrativeNotes: 'Cliente com cadastro Vetus completo',
+        legacyVetusId: '3835',
+        originalCreatedAt: '2024-05-03'
+      });
+
+      expect(owner.address).toMatchObject({ street: 'Rua Vetus', cityCode: '3550308' });
+      expect(owner.profile).toMatchObject({ group: 'VIP', receiveSms: true, rg: '11.222.333-4' });
+      expect(owner.financialProfile).toMatchObject({
+        creditBalance: 35.5,
+        availablePoints: 120,
+        blockedPoints: 15
+      });
+      expect(owner.legacyVetusId).toBe('3835');
+      expect(owner.originalCreatedAt).toBe('2024-05-03');
     });
 
     it('throws ValidationError when contacts are empty', () => {
@@ -126,6 +178,20 @@ describe('OwnersService', () => {
       expect(service.list('99999')).toHaveLength(1);
     });
 
+    it('filters owners by Vetus-like operational fields', () => {
+      service.create(ACCOUNT_ID, {
+        ...makeOwner({ fullName: 'Legacy Owner' }),
+        address: { city: 'Sao Paulo', district: 'Moema' },
+        profile: { group: 'Tutor VIP', receiveSms: true },
+        financialProfile: { availablePoints: 200 },
+        legacyVetusId: '3835'
+      });
+
+      expect(service.list('3835')).toHaveLength(1);
+      expect(service.list('Tutor VIP')).toHaveLength(1);
+      expect(service.list('Moema')).toHaveLength(1);
+    });
+
     it('returns empty array for no matches', () => {
       service.create(ACCOUNT_ID, makeOwner());
       expect(service.list('xyz')).toHaveLength(0);
@@ -177,6 +243,42 @@ describe('OwnersService', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
       const updated = service.update(created.id, { administrativeNotes: 'Updated notes' });
       expect(updated.administrativeNotes).toBe('Updated notes');
+    });
+
+    it('updates Vetus operational fields', () => {
+      const created = service.create(ACCOUNT_ID, makeOwner());
+      const updated = service.update(created.id, {
+        address: {
+          zipCode: '04567-000',
+          street: 'Av. Atualizada',
+          number: '500',
+          city: 'Sao Paulo',
+          state: 'SP',
+          district: 'Brooklin',
+          reference: 'Portaria azul',
+          cityCode: '3550308'
+        },
+        profile: {
+          group: 'Particular',
+          receiveSms: true,
+          personType: 'individual',
+          rg: '99.888.777-6'
+        },
+        financialProfile: {
+          allowedDebtLimit: 400,
+          creditBalance: 80,
+          availablePoints: 300,
+          blockedPoints: 20
+        },
+        legacyVetusId: '220319',
+        originalCreatedAt: '2024-05-03'
+      });
+
+      expect(updated.address).toMatchObject({ district: 'Brooklin', reference: 'Portaria azul' });
+      expect(updated.profile).toMatchObject({ group: 'Particular', receiveSms: true });
+      expect(updated.financialProfile).toMatchObject({ creditBalance: 80, availablePoints: 300 });
+      expect(updated.legacyVetusId).toBe('220319');
+      expect(updated.originalCreatedAt).toBe('2024-05-03');
     });
 
     it('preserves unchanged fields after update', () => {
@@ -238,6 +340,35 @@ describe('OwnersService with repository', () => {
     await new Promise((r) => setTimeout(r, 10));
     const found = await repo.findById(owner.id);
     expect(found).toBeNull();
+  });
+
+  it('rolls back a newly created owner from memory when repository persistence fails', async () => {
+    const failingRepository: OwnerRepository = {
+      async create() {
+        throw new Error('database unavailable');
+      },
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByAccountId() {
+        return [];
+      },
+      async delete() {}
+    };
+    const failingService = new OwnersService({
+      ownerRepository: failingRepository,
+      seedOwners: []
+    });
+
+    const owner = failingService.create(
+      ACCOUNT_ID,
+      makeOwner({ fullName: 'Should Roll Back' })
+    );
+
+    await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
+    expect(() => failingService.getOrThrow(owner.id)).toThrow(NotFoundError);
+    expect(failingService.list('Should Roll Back')).toHaveLength(0);
   });
 });
 

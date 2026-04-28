@@ -159,6 +159,17 @@ describe('PatientFormPage', () => {
         active: true,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: 'breed-yorkshire-terrier',
+        accountId: 'acc-1',
+        name: 'Yorkshire Terrier',
+        code: 'CAN-YORKSHIRE-TERRIER',
+        species: 'canine',
+        description: 'Raça canina seedada para paridade Vetus',
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
       }
     ]);
     mockAnimalSpeciesListFn.mockResolvedValue([
@@ -245,6 +256,37 @@ describe('PatientFormPage', () => {
     expect(wrapper.find('#breed').exists()).toBe(true);
     expect(wrapper.find('#size').exists()).toBe(true);
     expect(wrapper.find('#baseWeightKg').exists()).toBe(true);
+    expect(wrapper.find('#isNeutered').exists()).toBe(true);
+    expect(wrapper.find('#microchip').exists()).toBe(true);
+    expect(wrapper.find('#pedigreeNumber').exists()).toBe(true);
+    expect(wrapper.find('#color').exists()).toBe(true);
+    expect(wrapper.find('#chronicDisease').exists()).toBe(true);
+    expect(wrapper.find('#allergy').exists()).toBe(true);
+    expect(wrapper.find('#temperament').exists()).toBe(true);
+    expect(wrapper.find('#legacyVetusId').exists()).toBe(true);
+    expect(wrapper.find('#originalCreatedAt').exists()).toBe(true);
+    expect(wrapper.find('#generalNotes').exists()).toBe(true);
+  });
+
+  it('shows Yorkshire Terrier as a selectable seeded breed', async () => {
+    const PatientFormPage = (await import('../PatientFormPage.vue')).default;
+    const wrapper = mount(PatientFormPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    await wrapper.find('#species').setValue('canine');
+    await wrapper.vm.$nextTick();
+
+    const breedOptions = wrapper.findAll('#breed option').map((option) => option.text());
+    expect(breedOptions).toContain('Yorkshire Terrier');
   });
 
   it('loads owner list on mount', async () => {

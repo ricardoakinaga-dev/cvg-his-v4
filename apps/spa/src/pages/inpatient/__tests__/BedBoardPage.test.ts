@@ -214,6 +214,6 @@ describe('BedBoardPage', () => {
     const wrapper = mount(BedBoardPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Canino');
+    expect(wrapper.text()).toContain('Canina');
   });
 });

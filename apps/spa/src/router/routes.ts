@@ -1719,10 +1719,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/icms',
         name: 'FiscalICMS',
+        alias: [
+          '/icms',
+          '/estoque/configuracoes-fiscais/icms',
+          '/estoque/configuracoes-fiscais/tabela-icms'
+        ],
         component: () => import('@/pages/fiscal/FiscalICMSPage.vue'),
         meta: {
-          title: 'ICMS',
-          breadcrumb: 'ICMS',
+          title: 'Tabela ICMS',
+          breadcrumb: 'Tabela ICMS',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }
@@ -1730,11 +1735,27 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/ipi',
         name: 'FiscalIpi',
+        alias: [
+          '/ipi',
+          '/estoque/configuracoes-fiscais/ipi',
+          '/estoque/configuracoes-fiscais/tabela-ipi'
+        ],
+        component: () => import('@/pages/fiscal/FiscalIPIPage.vue'),
+        meta: {
+          title: 'Tabela IPI',
+          breadcrumb: 'Tabela IPI',
+          breadcrumbParent: 'Configurações Fiscais',
+          icon: '🏷️'
+        }
+      },
+      {
+        path: 'fiscal/ipi-operacional',
+        name: 'FiscalIpiOperacional',
         component: () => import('@/pages/fiscal/FiscalTaxOperationPage.vue'),
         props: { mode: 'ipi' },
         meta: {
-          title: 'IPI',
-          breadcrumb: 'IPI',
+          title: 'IPI Operacional',
+          breadcrumb: 'IPI Operacional',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '🏷️'
         }

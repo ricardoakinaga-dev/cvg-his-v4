@@ -23,8 +23,12 @@ const mockOwner = {
     zipCode: '01234-567',
     street: 'Rua das Flores',
     number: '100',
+    complement: 'Casa',
     city: 'Sao Paulo',
-    state: 'SP'
+    state: 'SP',
+    district: 'Centro',
+    reference: 'Proximo ao metro',
+    cityCode: '3550308'
   },
   financialProfile: {
     allowedDebtLimit: 200,
@@ -34,6 +38,8 @@ const mockOwner = {
   },
   financialResponsible: true,
   administrativeNotes: 'Cliente preferencial',
+  legacyVetusId: '3835',
+  originalCreatedAt: '2024-05-03',
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z'
@@ -93,10 +99,16 @@ describe('OwnerFormPage', () => {
     expect(wrapper.find('#birthDate').exists()).toBe(true);
     expect(wrapper.find('#phone1').exists()).toBe(true);
     expect(wrapper.find('#mobile').exists()).toBe(true);
+    expect(wrapper.find('#legacyVetusId').exists()).toBe(true);
+    expect(wrapper.find('#originalCreatedAt').exists()).toBe(true);
     expect(wrapper.find('#documentId').exists()).toBe(true);
     expect(wrapper.find('#zipCode').exists()).toBe(true);
+    expect(wrapper.find('#cityCode').exists()).toBe(true);
     expect(wrapper.find('#notes').exists()).toBe(true);
     expect(wrapper.find('#allowedDebtLimit').exists()).toBe(true);
+    expect(wrapper.find('#creditBalance').exists()).toBe(true);
+    expect(wrapper.find('#availablePoints').exists()).toBe(true);
+    expect(wrapper.find('#blockedPoints').exists()).toBe(true);
     expect(wrapper.text()).toContain('Identificação do Cliente');
     expect(wrapper.text()).toContain('Informações de Contato');
     expect(wrapper.text()).toContain('Documentação do Cliente');
@@ -139,7 +151,10 @@ describe('OwnerFormPage', () => {
     await wrapper.find('#email').setValue('joao@email.com');
     await wrapper.find('#documentId').setValue('123.456.789-00');
     await wrapper.find('#zipCode').setValue('01234-567');
+    await wrapper.find('#cityCode').setValue('3550308');
     await wrapper.find('#allowedDebtLimit').setValue('150');
+    await wrapper.find('#legacyVetusId').setValue('3835');
+    await wrapper.find('#originalCreatedAt').setValue('2024-05-03');
 
     await wrapper.find('form').trigger('submit');
     await flushPromises();
@@ -153,7 +168,9 @@ describe('OwnerFormPage', () => {
           expect.objectContaining({ type: 'email', value: 'joao@email.com' })
         ]),
         address: expect.objectContaining({ zipCode: '01234-567' }),
-        financialProfile: expect.objectContaining({ allowedDebtLimit: 150 })
+        financialProfile: expect.objectContaining({ allowedDebtLimit: 150 }),
+        legacyVetusId: '3835',
+        originalCreatedAt: '2024-05-03'
       })
     );
     expect(wrapper.text()).toContain('Cliente cadastrado com sucesso');
@@ -172,5 +189,9 @@ describe('OwnerFormPage', () => {
     expect((wrapper.find('#group').element as HTMLInputElement).value).toBe('VIP');
     expect((wrapper.find('#mobile').element as HTMLInputElement).value).toBe('(11) 99999-1111');
     expect((wrapper.find('#zipCode').element as HTMLInputElement).value).toBe('01234-567');
+    expect((wrapper.find('#reference').element as HTMLInputElement).value).toBe('Proximo ao metro');
+    expect((wrapper.find('#cityCode').element as HTMLInputElement).value).toBe('3550308');
+    expect((wrapper.find('#legacyVetusId').element as HTMLInputElement).value).toBe('3835');
+    expect((wrapper.find('#originalCreatedAt').element as HTMLInputElement).value).toBe('2024-05-03');
   });
 });

@@ -505,6 +505,45 @@ test('bootstrap serves extracted owners and patients routes over HTTP semantics'
   assert.equal(patientsPayload.items[0]?.patientId, 'patient_luna');
 });
 
+test('bootstrap registers prescription routes over HTTP semantics', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const createResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/prescriptions',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      medicalRecordId: 'mr-http-prescription',
+      encounterId: 'enc-http-prescription',
+      patientId: 'patient_luna',
+      medicationName: 'Dipirona',
+      dosage: '25 mg/kg',
+      route: 'Oral',
+      frequency: '12/12h'
+    }
+  });
+  assert.equal(createResponse.statusCode, 201);
+  const created = createResponse.bodyJson<{ id: string; medicationName: string }>();
+  assert.equal(created.medicationName, 'Dipirona');
+
+  const listResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/prescriptions?patientId=patient_luna',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(listResponse.statusCode, 200);
+  const payload = listResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.ok(payload.items.some((item) => item.id === created.id));
+});
+
 test('bootstrap serves administrative financial routes over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
@@ -1039,6 +1078,44 @@ test('medical records expose revision history and archive semantics over HTTP', 
 test('catalog endpoints respect frontend search filters over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const seededBreedsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/breeds?active=true&species=canine',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(seededBreedsResponse.statusCode, 200);
+  const seededBreeds = seededBreedsResponse.bodyJson<{
+    items: Array<{ name: string; code: string | null; species: string; active: boolean }>;
+  }>();
+  assert.equal(
+    seededBreeds.items.some(
+      (item) => item.name === 'Yorkshire Terrier' && item.species === 'canine' && item.active
+    ),
+    true
+  );
+
+  const seededSpeciesResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/species?active=true&systemCode=canine',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(seededSpeciesResponse.statusCode, 200);
+  const seededSpecies = seededSpeciesResponse.bodyJson<{
+    items: Array<{ name: string; code: string | null; systemCode: string; active: boolean }>;
+  }>();
+  assert.equal(
+    seededSpecies.items.some(
+      (item) => item.name === 'Canina' && item.systemCode === 'canine' && item.active
+    ),
+    true
+  );
 
   const createProductResponse = await performRequest(server, {
     method: 'POST',

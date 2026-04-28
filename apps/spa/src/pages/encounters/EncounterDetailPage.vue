@@ -22,8 +22,8 @@
           <span class="muted">{{ patientName || 'Paciente em carregamento' }}</span>
         </template>
         <template #actions>
-          <DsButton variant="primary" tag="a" :to="workflowLink('/counter-sales')">
-            Comanda
+          <DsButton variant="primary" tag="a" :to="`/billing/${encounter.id}`">
+            Cobrança
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/encounters">Voltar</DsButton>
         </template>
@@ -179,11 +179,11 @@
             <template v-else-if="activeWorkflowStep === 'billing'">
               <div class="workflow-panel__header">
                 <div>
-                  <span class="workflow-panel__eyebrow">Serviços / Comanda</span>
+                  <span class="workflow-panel__eyebrow">Serviços / Cobrança</span>
                   <h2>Lançar serviços e fechar cobrança</h2>
                 </div>
-                <DsButton variant="primary" tag="a" :to="workflowLink('/counter-sales')">
-                  Abrir comanda
+                <DsButton variant="primary" tag="a" :to="`/billing/${encounter.id}`">
+                  Abrir cobrança
                 </DsButton>
               </div>
               <div class="detail-grid">
@@ -225,7 +225,7 @@
                 <p>{{ encounter.closeReason }}</p>
               </div>
               <p v-else class="muted">
-                Revise comanda, exames, receituário e prontuário antes de fechar o caso.
+                Revise cobrança, exames, receituário e prontuário antes de fechar o caso.
               </p>
             </template>
           </section>
@@ -412,7 +412,7 @@ const workflowSteps = computed(() => [
   { key: 'quote', index: '2', label: 'Orçamento', hint: 'Plano e autorização' },
   { key: 'exams', index: '3', label: 'Exames', hint: `${encounterSummary.value?.diagnostics.pendingOrders ?? 0} pendente(s)` },
   { key: 'medications', index: '4', label: 'Medicações', hint: 'Receituário e aplicação' },
-  { key: 'billing', index: '5', label: 'Serviços / Comanda', hint: formatMoney(financialSummary.value?.balanceDue ?? 0) },
+  { key: 'billing', index: '5', label: 'Serviços / Cobrança', hint: formatMoney(financialSummary.value?.balanceDue ?? 0) },
   { key: 'close', index: '6', label: 'Fechamento', hint: encounter.value?.status === 'closed' ? 'Finalizado' : 'Em aberto' }
 ]);
 

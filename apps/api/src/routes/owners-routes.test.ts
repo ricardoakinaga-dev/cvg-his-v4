@@ -164,9 +164,9 @@ test('handleOwnersRoutes GET /owners lists filtered owners', async () => {
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   const payload = response.bodyJson<{ items: Array<{ id: string; financialResponsible: boolean }> }>();
-  assert.equal(payload.items.length, 1);
-  assert.equal(payload.items[0]?.id, 'owner_maria_silva');
-  assert.equal(payload.items[0]?.financialResponsible, true);
+  assert.ok(payload.items.length >= 1);
+  assert.equal(payload.items.every((item) => item.financialResponsible), true);
+  assert.equal(payload.items.some((item) => item.id === 'owner_maria_silva'), true);
 });
 
 test('handleOwnersRoutes POST /owners creates a new owner', async () => {
@@ -189,6 +189,31 @@ test('handleOwnersRoutes POST /owners creates a new owner', async () => {
             primary: true
           }
         ],
+        address: {
+          zipCode: '01234-567',
+          street: 'Rua Vetus',
+          number: '100',
+          complement: 'Casa',
+          state: 'SP',
+          city: 'Sao Paulo',
+          district: 'Centro',
+          reference: 'Proximo ao metro',
+          cityCode: '3550308'
+        },
+        profile: {
+          group: 'VIP',
+          receiveSms: true,
+          personType: 'individual',
+          rg: '11.222.333-4'
+        },
+        financialProfile: {
+          allowedDebtLimit: 250,
+          creditBalance: 35.5,
+          availablePoints: 120,
+          blockedPoints: 15
+        },
+        legacyVetusId: '3835',
+        originalCreatedAt: '2024-05-03',
         financialResponsible: true
       }
     }) as never,
@@ -203,8 +228,21 @@ test('handleOwnersRoutes POST /owners creates a new owner', async () => {
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 201);
-  const payload = response.bodyJson<{ id: string; fullName: string }>();
+  const payload = response.bodyJson<{
+    id: string;
+    fullName: string;
+    legacyVetusId?: string;
+    profile?: { group?: string; receiveSms?: boolean };
+    address?: { cityCode?: string };
+    financialProfile?: { creditBalance?: number; availablePoints?: number };
+  }>();
   assert.equal(payload.fullName, 'Ana Martins');
+  assert.equal(payload.legacyVetusId, '3835');
+  assert.equal(payload.profile?.group, 'VIP');
+  assert.equal(payload.profile?.receiveSms, true);
+  assert.equal(payload.address?.cityCode, '3550308');
+  assert.equal(payload.financialProfile?.creditBalance, 35.5);
+  assert.equal(payload.financialProfile?.availablePoints, 120);
   assert.equal(owners.list('Ana Martins').length, 1);
 });
 

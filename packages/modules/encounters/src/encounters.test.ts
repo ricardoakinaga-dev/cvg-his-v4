@@ -5,7 +5,9 @@ import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
-import { EncountersService } from './index.js';
+import { EncountersService, type EncounterRepository } from './index.js';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function createEncountersService() {
   const owners = new OwnersService();
@@ -25,6 +27,7 @@ test('EncountersService: openEncounter creates a new encounter', () => {
   });
 
   assert.ok(encounter.id);
+  assert.match(encounter.id, UUID_PATTERN);
   assert.equal(encounter.status, 'reception');
   assert.equal(encounter.patientId, 'patient_luna');
 });
@@ -256,4 +259,45 @@ test('EncountersService: onEncounterStatusChanged callback is invoked on closeEn
 
   assert.equal(callbackInvoked, true);
   assert.equal(capturedPreviousStatus, 'reception');
+});
+
+test('EncountersService: openEncounter rolls back memory when repository persistence fails', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const failingRepository: EncounterRepository = {
+    async create() {
+      throw new Error('database unavailable');
+    },
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findActiveByPatientId() {
+      return null;
+    },
+    async findAll() {
+      return [];
+    },
+    async findActive() {
+      return [];
+    },
+    async delete() {}
+  };
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    encounterRepository: failingRepository
+  });
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Rollback test'
+  });
+
+  await assert.rejects(() => encounters.waitForPersistence(), /database unavailable/);
+  assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
+  assert.equal(encounters.listActive().some((item) => item.id === encounter.id), false);
 });

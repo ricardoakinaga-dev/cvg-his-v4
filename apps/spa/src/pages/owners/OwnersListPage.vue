@@ -74,7 +74,7 @@
           <div class="owner-card__facts">
             <div class="fact-row">
               <span class="fact-row__label">ID</span>
-              <span>{{ owner.id }}</span>
+              <span>{{ owner.legacyVetusId || owner.id }}</span>
             </div>
             <div class="fact-row">
               <span class="fact-row__label">CPF/CNPJ</span>
@@ -127,8 +127,8 @@
                     <DsButton tag="a" :to="`/patients/${patient.id}`" variant="ghost" size="sm">
                       Ver Detalhes
                     </DsButton>
-                    <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
-                      Abrir Comanda
+                    <DsButton tag="a" :to="encounterSelectionPath(owner.id, patient.id)" variant="secondary" size="sm">
+                      Selecionar atendimento para cobrança
                     </DsButton>
                   </div>
                 </div>
@@ -145,8 +145,8 @@
             <DsButton tag="a" :to="`/owners/${owner.id}`" variant="secondary" size="sm">
               Detalhes
             </DsButton>
-            <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
-              Abrir comanda
+            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" size="sm">
+              Selecionar atendimento para cobrança
             </DsButton>
             <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
               Cadastrar Novo Animal
@@ -274,6 +274,14 @@ const headerPrimaryAction = computed(() => ({
 
 function patientsByOwner(ownerId: string): PatientSummary[] {
   return ownerPatientMap.value.get(ownerId) ?? [];
+}
+
+function encounterSelectionPath(ownerId: string, patientId?: string): string {
+  const params = new URLSearchParams({ ownerId });
+  if (patientId) {
+    params.set('patientId', patientId);
+  }
+  return `/encounters?${params.toString()}`;
 }
 
 function primaryContact(owner: OwnerSummary): string {

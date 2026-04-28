@@ -48,6 +48,8 @@ export {
 export {
   FiscalService,
   type FiscalCfopFilters,
+  type FiscalIcmsTableFilters,
+  type FiscalIpiTableFilters,
   type FiscalIcmsRuleFilters,
   type FiscalIcmsMatrixFilters,
   type FiscalNcmEntryFilters,
@@ -59,6 +61,8 @@ export {
 export {
   DatabaseFiscalRepository,
   type DbCfopFilters,
+  type DbIcmsTableFilters,
+  type DbIpiTableFilters,
   type DbIcmsRuleFilters,
   type DbNcmEntryFilters,
   type DbPisCofinsRuleFilters,

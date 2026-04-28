@@ -79,6 +79,7 @@ export class MedicalRecordsService {
   readonly #timeline = new Map<MedicalRecordId, ClinicalTimelineEventSummary[]>();
   readonly #revisions = new Map<ClinicalEntryId, EntryRevisionSummary[]>();
   #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: MedicalRecordsServiceOptions) {
     this.#encounters = options.encounters;
@@ -90,11 +91,25 @@ export class MedicalRecordsService {
   }
 
   public async waitForPersistence(): Promise<void> {
-    await this.#pendingPersist;
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
   }
 
-  #enqueuePersist(operation: () => Promise<void>): void {
-    this.#pendingPersist = this.#pendingPersist.then(operation).catch(() => {});
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
   }
 
   public ensureRecord(encounterId: EncounterId): MedicalRecordSummary {
@@ -121,9 +136,21 @@ export class MedicalRecordsService {
     this.#entries.set(record.id, []);
 
     if (this.#medicalRecordRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#medicalRecordRepository!.create(record);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#medicalRecordRepository!.create(record);
+        },
+        () => {
+          if (this.#records.get(record.id) === record) {
+            this.#records.delete(record.id);
+          }
+          if (this.#recordByEncounterId.get(encounterId) === record.id) {
+            this.#recordByEncounterId.delete(encounterId);
+          }
+          this.#entries.delete(record.id);
+          this.#timeline.delete(record.id);
+        }
+      );
     }
 
     this.appendTimeline(record.id, {
@@ -246,9 +273,18 @@ export class MedicalRecordsService {
     });
 
     if (this.#clinicalEntryRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#clinicalEntryRepository!.create(entry);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#clinicalEntryRepository!.create(entry);
+        },
+        () => {
+          const entries = this.#entries.get(record.id) ?? [];
+          this.#entries.set(
+            record.id,
+            entries.filter((item) => item.id !== entry.id)
+          );
+        }
+      );
     }
 
     this.appendTimeline(record.id, {
@@ -318,9 +354,14 @@ export class MedicalRecordsService {
     this.#revisions.set(entryId, entryRevisions);
 
     if (this.#entryRevisionRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#entryRevisionRepository!.create(revision);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#entryRevisionRepository!.create(revision);
+        },
+        () => {
+          this.#revisions.set(entryId, entryRevisions.filter((item) => item.id !== revision.id));
+        }
+      );
     }
 
     const updatedEntry: ClinicalEntrySummary = {
@@ -336,9 +377,19 @@ export class MedicalRecordsService {
     this.#entries.set(foundRecordId, entries);
 
     if (this.#clinicalEntryRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#clinicalEntryRepository!.update(updatedEntry);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#clinicalEntryRepository!.update(updatedEntry);
+        },
+        () => {
+          const currentEntries = this.#entries.get(foundRecordId!) ?? [];
+          const currentIndex = currentEntries.findIndex((item) => item.id === entryId);
+          if (currentIndex !== -1) {
+            currentEntries[currentIndex] = foundEntry!;
+            this.#entries.set(foundRecordId!, currentEntries);
+          }
+        }
+      );
     }
 
     const record = this.#records.get(foundRecordId)!;
@@ -409,9 +460,14 @@ export class MedicalRecordsService {
     this.#revisions.set(entryId, entryRevisions);
 
     if (this.#entryRevisionRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#entryRevisionRepository!.create(revision);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#entryRevisionRepository!.create(revision);
+        },
+        () => {
+          this.#revisions.set(entryId, entryRevisions.filter((item) => item.id !== revision.id));
+        }
+      );
     }
 
     const archivedEntry: ClinicalEntrySummary = {
@@ -428,9 +484,19 @@ export class MedicalRecordsService {
     this.#entries.set(foundRecordId, entries);
 
     if (this.#clinicalEntryRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#clinicalEntryRepository!.update(archivedEntry);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#clinicalEntryRepository!.update(archivedEntry);
+        },
+        () => {
+          const currentEntries = this.#entries.get(foundRecordId!) ?? [];
+          const currentIndex = currentEntries.findIndex((item) => item.id === entryId);
+          if (currentIndex !== -1) {
+            currentEntries[currentIndex] = foundEntry!;
+            this.#entries.set(foundRecordId!, currentEntries);
+          }
+        }
+      );
     }
 
     const record = this.#records.get(foundRecordId)!;
@@ -610,9 +676,18 @@ export class MedicalRecordsService {
     this.#timeline.set(medicalRecordId, current);
 
     if (this.#clinicalTimelineRepository) {
-      this.#enqueuePersist(async () => {
-        await this.#clinicalTimelineRepository!.create(event);
-      });
+      this.#enqueuePersist(
+        async () => {
+          await this.#clinicalTimelineRepository!.create(event);
+        },
+        () => {
+          const events = this.#timeline.get(medicalRecordId) ?? [];
+          this.#timeline.set(
+            medicalRecordId,
+            events.filter((item) => item.id !== event.id)
+          );
+        }
+      );
     }
 
     return event;

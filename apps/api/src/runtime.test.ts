@@ -323,6 +323,27 @@ test('runtime does not preload demo seeds when repository-backed services are co
   assert.equal(runtime.staff.list().length, 0);
 });
 
+test('runtime can preserve owner and patient registry seeds with repository-backed services', () => {
+  const runtime = createApiRuntime({
+    authSecret: 'test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    repositories: {
+      owner: {} as never,
+      patient: {} as never,
+      ownerPatientLink: {} as never
+    },
+    preserveSeedMasterDataWithRepository: true
+  });
+
+  const patient = runtime.patients.getOrThrow('patient_mogeb6qv_5b0gq64z' as never);
+  const owner = runtime.owners.getOrThrow('owner_ricardo_akinaga' as never);
+
+  assert.equal(patient.name, 'DANI');
+  assert.equal(patient.primaryOwnerId, owner.id);
+  assert.equal(owner.fullName, 'RICARDO AKINAGA');
+});
+
 test('backend enforcement denies audit access to a role without permission', async () => {
   const runtime = createTestRuntime();
   const login = await runtime.auth.login(
@@ -989,6 +1010,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
     contacts: [{ label: 'Phone', value: '+55 11 99999-0000', type: 'phone', primary: true }],
     financialResponsible: true
   });
+  await runtimeA.owners.waitForPersistence();
 
   // Create patient
   const patientA = runtimeA.patients.create(loginA.principal.user.accountId, {
@@ -998,6 +1020,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
     sex: 'male',
     primaryOwnerId: ownerA.id
   });
+  await runtimeA.patients.waitForPersistence();
 
   // Create encounter
   const encounterA = runtimeA.encounters.openEncounter(
@@ -1011,6 +1034,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
       reason: 'Teste de persistencia'
     }
   );
+  await runtimeA.encounters.waitForPersistence();
 
   // Check session in repository
   const sessionInRepoA = await repositories.session?.findById(sessionA.sessionId);
@@ -1080,6 +1104,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
     contacts: [{ label: 'Email', value: 'joao@test.com', type: 'email', primary: true }],
     financialResponsible: false
   });
+  await runtimeB.owners.waitForPersistence();
 
   // Verify it is in the shared repository
   const ownerCInRepo = await repositories.owner?.findById(ownerC.id);
@@ -1095,6 +1120,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
     contacts: [{ label: 'Phone', value: '+55 11 88888-0000', type: 'phone', primary: true }],
     financialResponsible: false
   });
+  await runtimeC.owners.waitForPersistence();
 
   // Verify all owners exist in repository
   const allOwners = await repositories.owner?.findByAccountId(loginA.principal.user.accountId);

@@ -98,7 +98,7 @@
             <th>Em atendimento com</th>
             <th>Atendimento</th>
             <th>Urgência</th>
-            <th>Comanda</th>
+            <th>Cobrança</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -145,7 +145,14 @@
               </DsBadge>
             </td>
             <td>
-              <a class="queue-link" href="/counter-sales">Comandas</a>
+              <a
+                v-if="row.entry.encounterId"
+                class="queue-link"
+                :href="`/billing/${row.entry.encounterId}`"
+              >
+                Cobrança
+              </a>
+              <a v-else class="queue-link" href="/counter-sales">Comandas</a>
             </td>
             <td class="table__actions-col">
               <div class="actions-group">

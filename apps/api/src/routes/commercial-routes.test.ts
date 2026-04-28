@@ -64,8 +64,12 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
-function createAudit() {
-  return { write: () => {} };
+function createAudit(events?: Array<{ action: string; entityId: string; payloadSummary: string }>) {
+  return {
+    write: (event: { action: string; entityId: string; payloadSummary: string }) => {
+      events?.push(event);
+    }
+  };
 }
 
 function request(method: string, body?: unknown, url?: string): never {
@@ -78,10 +82,10 @@ function request(method: string, body?: unknown, url?: string): never {
   } as never;
 }
 
-function handlers(commercial: CommercialService) {
+function handlers(commercial: CommercialService, audit = createAudit() as never) {
   return {
     commercial,
-    audit: createAudit() as never,
+    audit,
     requirePrincipal: () => createPrincipal()
   };
 }
@@ -191,26 +195,53 @@ test('handleCommercialRoutes creates, updates, archives price tables and items',
   assert.equal(deleteResponse.statusCode, 204);
 });
 
-test('handleCommercialRoutes creates and updates POS sync jobs', async () => {
+test('handleCommercialRoutes runs POS sync jobs and writes audit events', async () => {
   const commercial = new CommercialService();
+  const events: Array<{ action: string; entityId: string; payloadSummary: string }> = [];
+  const routeHandlers = handlers(commercial, createAudit(events) as never);
+  const table = await commercial.createPriceTable(createPrincipal().user.accountId, {
+    legacyId: '1',
+    description: 'Tabela PDV'
+  });
+  await commercial.addPriceTableItem(createPrincipal().user.accountId, table.id, {
+    itemKind: 'product',
+    itemId: 'prod-1',
+    price: 15
+  });
+
   const createResponse = new MockResponse();
   await handleCommercialRoutes(
     '/pos-sync/jobs',
     request('POST', { syncKind: 'stock', metadata: { origin: 'pdv' } }),
     createResponse as never,
     'corr-pos-1',
-    handlers(commercial)
+    routeHandlers
   );
-  const job = createResponse.bodyJson<{ id: string; status: string }>();
-  assert.equal(job.status, 'queued');
+  const job = createResponse.bodyJson<{ id: string; status: string; processedCount: number; startedAt: string; finishedAt: string }>();
+  assert.equal(createResponse.statusCode, 201);
+  assert.equal(job.status, 'completed');
+  assert.equal(job.processedCount, 2);
+  assert.ok(job.startedAt);
+  assert.ok(job.finishedAt);
+  assert.deepEqual(events.map((event) => event.action), ['start_pos_sync_job', 'complete_pos_sync_job']);
+
+  const listResponse = new MockResponse();
+  await handleCommercialRoutes(
+    '/pos-sync/jobs',
+    request('GET', undefined, '/pos-sync/jobs?syncKind=stock&status=completed'),
+    listResponse as never,
+    'corr-pos-2',
+    routeHandlers
+  );
+  assert.equal(listResponse.bodyJson<{ items: Array<{ id: string }> }>().items[0]?.id, job.id);
 
   const updateResponse = new MockResponse();
   await handleCommercialRoutes(
     `/pos-sync/jobs/${job.id}`,
     request('PATCH', { status: 'completed', processedCount: 15 }),
     updateResponse as never,
-    'corr-pos-2',
-    handlers(commercial)
+    'corr-pos-3',
+    routeHandlers
   );
   const updated = updateResponse.bodyJson<{ status: string; processedCount: number }>();
   assert.equal(updated.status, 'completed');

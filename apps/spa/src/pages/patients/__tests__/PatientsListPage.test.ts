@@ -163,8 +163,8 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Canino');
-    expect(wrapper.text()).toContain('Felino');
+    expect(wrapper.text()).toContain('Canina');
+    expect(wrapper.text()).toContain('Felina');
   });
 
   it('shows sex labels for each patient', async () => {
@@ -298,7 +298,10 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Abrir comanda');
+    expect(wrapper.text()).toContain('Selecionar atendimento para cobrança');
+    expect(wrapper.findAll('a').map((link) => link.attributes('href'))).toContain(
+      '/encounters?ownerId=owner-1&patientId=pat-1'
+    );
     expect(wrapper.text()).toContain('Abrir atendimento');
     expect(wrapper.text()).toContain('Agendar');
   });

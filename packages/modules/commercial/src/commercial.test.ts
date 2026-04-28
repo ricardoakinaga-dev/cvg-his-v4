@@ -129,3 +129,28 @@ test('CommercialService creates and updates POS sync jobs', async () => {
   assert.equal(completed.processedCount, 42);
   assert.ok(completed.finishedAt);
 });
+
+test('CommercialService runs POS sync jobs through backend-owned lifecycle', async () => {
+  const service = new CommercialService();
+  const table = await service.createPriceTable(ACCOUNT, {
+    legacyId: '1',
+    description: 'Tabela PDV'
+  });
+  await service.addPriceTableItem(ACCOUNT, table.id, {
+    itemKind: 'product',
+    itemId: 'prod-1',
+    price: 12.5
+  });
+
+  const job = await service.runPosSyncJob(ACCOUNT, USER, {
+    syncKind: 'stock',
+    metadata: { source: 'spa' }
+  });
+
+  assert.equal(job.status, 'completed');
+  assert.equal(job.processedCount, 2);
+  assert.ok(job.startedAt);
+  assert.ok(job.finishedAt);
+  assert.deepEqual(job.metadata.scope, ['products', 'inventory', 'price-tables']);
+  assert.equal(service.listPosSyncJobs(ACCOUNT)[0]?.id, job.id);
+});

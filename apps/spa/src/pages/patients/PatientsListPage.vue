@@ -39,12 +39,17 @@
       <div v-if="showAdvanced" class="advanced-filters">
         <DsInput v-model="filters.species" label="Espécie" type="select">
           <option value="">Todas</option>
-          <option value="canine">Canino</option>
-          <option value="feline">Felino</option>
-          <option value="avian">Aves</option>
+          <option value="not_defined">Não Definido</option>
+          <option value="avian">Avícola</option>
+          <option value="bovine">Bovino</option>
+          <option value="canine">Canina</option>
+          <option value="rabbit">Cunícula</option>
+          <option value="equine">Equina</option>
+          <option value="feline">Felina</option>
+          <option value="other">Outras</option>
+          <option value="primate">Primata</option>
           <option value="rodent">Roedor</option>
           <option value="reptile">Réptil</option>
-          <option value="other">Outro</option>
         </DsInput>
         <DsInput v-model="filters.status" label="Status" type="select">
           <option value="all">Todos</option>
@@ -182,8 +187,8 @@
           <DsButton tag="a" :to="`/patients/${patient.id}`" variant="secondary" size="sm">
             Detalhes
           </DsButton>
-          <DsButton tag="a" to="/counter-sales" variant="secondary" size="sm">
-            Abrir comanda
+          <DsButton tag="a" :to="patientEncounterSelectionPath(patient)" variant="secondary" size="sm">
+            Selecionar atendimento para cobrança
           </DsButton>
           <DsButton
             tag="a"
@@ -351,6 +356,14 @@ const headerPrimaryAction = computed(() => ({
 function readOwnerIdFilter(): string {
   if (typeof window === 'undefined') return '';
   return new URLSearchParams(window.location.search).get('ownerId')?.trim() || '';
+}
+
+function patientEncounterSelectionPath(patient: PatientSummary): string {
+  const params = new URLSearchParams({
+    ownerId: patient.primaryOwnerId,
+    patientId: patient.id
+  });
+  return `/encounters?${params.toString()}`;
 }
 
 function statusVariant(status: string) {

@@ -26,7 +26,9 @@
           <span class="muted">{{ owner.legacyVetusId ? `Vetus ${owner.legacyVetusId}` : owner.id }}</span>
         </template>
         <template #actions>
-          <DsButton tag="a" :to="counterSalesPath(owner.id)" variant="primary">Abrir Nova Comanda</DsButton>
+          <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="primary">
+            Selecionar atendimento para cobrança
+          </DsButton>
           <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary">
             Cadastrar Novo Animal
           </DsButton>
@@ -75,8 +77,8 @@
             >
               Ver animais deste tutor
             </DsButton>
-            <DsButton tag="a" :to="counterSalesPath(owner.id)" variant="secondary" icon="🧾">
-              Abrir Comanda
+            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" icon="🧾">
+              Selecionar atendimento para cobrança
             </DsButton>
             <DsButton
               v-if="whatsappContact"
@@ -293,7 +295,7 @@
         <article class="vetus-client-card">
           <div class="vetus-client-card__header">
             <h2>Comandas e Vendas</h2>
-            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Histórico</DsButton>
+            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" size="sm">Selecionar atendimento</DsButton>
           </div>
           <div class="vetus-client-card__metrics">
             <div>
@@ -347,7 +349,7 @@
         <article class="vetus-client-card">
           <div class="vetus-client-card__header">
             <h2>Situação Financeira</h2>
-            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Histórico</DsButton>
+            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" size="sm">Selecionar atendimento</DsButton>
           </div>
           <div class="vetus-client-card__metrics">
             <div>
@@ -435,7 +437,7 @@
           </div>
 
           <div class="quick-actions">
-            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Abrir financeiro</DsButton>
+            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" size="sm">Selecionar atendimento para cobrança</DsButton>
             <DsButton tag="a" to="/quotes" variant="secondary" size="sm">Abrir orçamentos</DsButton>
             <DsButton
               variant="ghost"
@@ -527,11 +529,11 @@
                 </DsButton>
                 <DsButton
                   tag="a"
-                  :to="counterSalesPath(owner.id, patient.id)"
+                  :to="patientFinancialPath(owner.id, patient.id)"
                   size="sm"
                   variant="secondary"
                 >
-                  Abrir Comanda
+                  {{ patientFinancialActionLabel(patient.id) }}
                 </DsButton>
               </div>
             </div>
@@ -1081,10 +1083,27 @@ function buildWhatsAppLink(message: string): string | null {
   return `${whatsappContact.value}?text=${encodeURIComponent(message)}`;
 }
 
-function counterSalesPath(ownerId: string, patientId?: string): string {
+function encounterSelectionPath(ownerId: string, patientId?: string): string {
   const params = new URLSearchParams({ ownerId });
   if (patientId) params.set('patientId', patientId);
-  return `/counter-sales?${params.toString()}`;
+  return `/encounters?${params.toString()}`;
+}
+
+function activeEncounterForPatient(patientId: string): EncounterSummary | null {
+  return (
+    encounters.value
+      .filter((encounter) => encounter.patientId === patientId && encounter.status !== 'closed')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null
+  );
+}
+
+function patientFinancialPath(ownerId: string, patientId: string): string {
+  const activeEncounter = activeEncounterForPatient(patientId);
+  return activeEncounter ? `/billing/${activeEncounter.id}` : encounterSelectionPath(ownerId, patientId);
+}
+
+function patientFinancialActionLabel(patientId: string): string {
+  return activeEncounterForPatient(patientId) ? 'Abrir Cobrança' : 'Selecionar atendimento para cobrança';
 }
 
 function requestRelationshipQuoteConfirmation() {

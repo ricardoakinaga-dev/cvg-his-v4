@@ -1,4 +1,6 @@
 import type {
+  CreateFiscalIcmsTableRequest,
+  CreateFiscalIpiTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   FiscalNfseDocumentFilters,
@@ -6,12 +8,16 @@ import type {
   FiscalDashboardSummary,
   FiscalIcmsMatrixRowSummary,
   FiscalIcmsRuleSummary,
+  FiscalIcmsTableSummary,
+  FiscalIpiTableSummary,
   FiscalNfseDocumentSummary,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutSummary,
   FiscalPisCofinsRuleSummary,
   FiscalTaxPreview,
   CancelFiscalNfseDocumentRequest,
+  UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIpiTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -37,6 +43,14 @@ export interface FiscalIcmsRuleFilters {
   readonly ufDestination?: string;
   readonly ncm?: string;
   readonly operationType?: FiscalIcmsRuleSummary['operationType'];
+}
+
+export interface FiscalIcmsTableFilters {
+  readonly search?: string;
+}
+
+export interface FiscalIpiTableFilters {
+  readonly search?: string;
 }
 
 export interface FiscalPisCofinsRuleFilters {
@@ -178,6 +192,48 @@ const ICMS_RULES: readonly FiscalIcmsRuleSummary[] = [
   }
 ] as const;
 
+const ICMS_TABLES: readonly FiscalIcmsTableSummary[] = [
+  {
+    id: 'icms-table-18',
+    code: '18',
+    description: 'ICMS 18%',
+    percent: 18
+  },
+  {
+    id: 'icms-table-12',
+    code: '12',
+    description: 'ICMS 12%',
+    percent: 12
+  },
+  {
+    id: 'icms-table-7',
+    code: '7',
+    description: 'ICMS 7%',
+    percent: 7
+  }
+] as const;
+
+const IPI_TABLES: readonly FiscalIpiTableSummary[] = [
+  {
+    id: 'ipi-table-0',
+    code: '0',
+    description: 'IPI 0%',
+    percent: 0
+  },
+  {
+    id: 'ipi-table-3-25',
+    code: '3,25',
+    description: 'IPI 3,25%',
+    percent: 3.25
+  },
+  {
+    id: 'ipi-table-5',
+    code: '5',
+    description: 'IPI 5%',
+    percent: 5
+  }
+] as const;
+
 const PIS_COFINS_RULES: readonly FiscalPisCofinsRuleSummary[] = [
   {
     id: 'pis-cofins-simples-ambos',
@@ -273,6 +329,8 @@ const NFSE_LAYOUTS: readonly FiscalNfseLayoutSummary[] = [
 ] as const;
 
 const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({ ...layout }));
+const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => ({ ...table }));
+const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
 
 type NfseIssuerDocument = NfseDocument & {
@@ -339,12 +397,39 @@ function sanitizeLayoutId(city: string, state: string): string {
   return `nfse-${state.toLowerCase()}-${normalizedCity}-${Date.now().toString(36)}`;
 }
 
+function sanitizeIcmsTableId(code: string): string {
+  const normalized = code
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `icms-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
+function sanitizeIpiTableId(code: string): string {
+  const normalized = code
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `ipi-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
 function assertNonEmpty(value: string | undefined, field: string): string {
   const normalized = value?.trim();
   if (!normalized) {
     throw new Error(`${field} is required`);
   }
   return normalized;
+}
+
+function assertPercent(value: number | undefined, field: string): number {
+  if (value === undefined || !Number.isFinite(value) || value < 0 || value > 100) {
+    throw new Error(`${field} must be a number between 0 and 100`);
+  }
+  return Number(value.toFixed(2));
 }
 
 function assertPositiveInteger(value: number | undefined, field: string, fallback?: number): number {
@@ -512,6 +597,164 @@ export class FiscalService {
       && matchesExact(rule.ncm, filters.ncm)
       && (!filters.operationType || rule.operationType === filters.operationType)
     );
+  }
+
+  public async listIcmsTables(filters: FiscalIcmsTableFilters = {}): Promise<FiscalIcmsTableSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listIcmsTables({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
+
+    return inMemoryIcmsTables.filter((table) =>
+      matchesContains(`${table.code} ${table.description} ${table.percent}`, filters.search)
+    );
+  }
+
+  public async createIcmsTable(
+    payload: CreateFiscalIcmsTableRequest
+  ): Promise<FiscalIcmsTableSummary> {
+    const code = assertNonEmpty(payload.code, 'code');
+    const percent = assertPercent(payload.percent, 'percent');
+    const description = payload.description?.trim() || `ICMS ${percent}%`;
+
+    const existing = await this.listIcmsTables();
+    if (existing.some((table) => table.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    const table: FiscalIcmsTableSummary = {
+      id: sanitizeIcmsTableId(code),
+      code,
+      description,
+      percent
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createIcmsTable(this.accountId!, table);
+    }
+
+    inMemoryIcmsTables.unshift(table);
+    return table;
+  }
+
+  public async updateIcmsTable(
+    id: string,
+    payload: UpdateFiscalIcmsTableRequest
+  ): Promise<FiscalIcmsTableSummary | null> {
+    const nextPayload: UpdateFiscalIcmsTableRequest = {
+      code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
+      description: payload.description?.trim(),
+      percent: payload.percent === undefined ? undefined : assertPercent(payload.percent, 'percent')
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateIcmsTable(this.accountId!, id, nextPayload);
+    }
+
+    const index = inMemoryIcmsTables.findIndex((table) => table.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryIcmsTables[index];
+    const code = nextPayload.code ?? current.code;
+    const duplicate = inMemoryIcmsTables.some(
+      (table) => table.id !== id && table.code.toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    const next: FiscalIcmsTableSummary = {
+      ...current,
+      code,
+      description: nextPayload.description ?? current.description,
+      percent: nextPayload.percent ?? current.percent
+    };
+
+    inMemoryIcmsTables[index] = next;
+    return next;
+  }
+
+  public async listIpiTables(filters: FiscalIpiTableFilters = {}): Promise<FiscalIpiTableSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listIpiTables({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
+
+    return inMemoryIpiTables.filter((table) =>
+      matchesContains(`${table.code} ${table.description} ${table.percent}`, filters.search)
+    );
+  }
+
+  public async createIpiTable(
+    payload: CreateFiscalIpiTableRequest
+  ): Promise<FiscalIpiTableSummary> {
+    const code = assertNonEmpty(payload.code, 'code');
+    const percent = assertPercent(payload.percent, 'percent');
+    const description = payload.description?.trim() || `IPI ${percent}%`;
+
+    const existing = await this.listIpiTables();
+    if (existing.some((table) => table.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    const table: FiscalIpiTableSummary = {
+      id: sanitizeIpiTableId(code),
+      code,
+      description,
+      percent
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createIpiTable(this.accountId!, table);
+    }
+
+    inMemoryIpiTables.unshift(table);
+    return table;
+  }
+
+  public async updateIpiTable(
+    id: string,
+    payload: UpdateFiscalIpiTableRequest
+  ): Promise<FiscalIpiTableSummary | null> {
+    const nextPayload: UpdateFiscalIpiTableRequest = {
+      code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
+      description: payload.description?.trim(),
+      percent: payload.percent === undefined ? undefined : assertPercent(payload.percent, 'percent')
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateIpiTable(this.accountId!, id, nextPayload);
+    }
+
+    const index = inMemoryIpiTables.findIndex((table) => table.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryIpiTables[index];
+    const code = nextPayload.code ?? current.code;
+    const duplicate = inMemoryIpiTables.some(
+      (table) => table.id !== id && table.code.toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    const next: FiscalIpiTableSummary = {
+      ...current,
+      code,
+      description: nextPayload.description ?? current.description,
+      percent: nextPayload.percent ?? current.percent
+    };
+
+    inMemoryIpiTables[index] = next;
+    return next;
   }
 
   public async listPisCofinsRules(

@@ -34,6 +34,19 @@ function isMissingRelationError(error: unknown): boolean {
   return candidate.code === '42P01';
 }
 
+function isInvalidUuidSyntaxError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: unknown; message?: unknown };
+  return (
+    candidate.code === '22P02' &&
+    typeof candidate.message === 'string' &&
+    candidate.message.includes('invalid input syntax for type uuid')
+  );
+}
+
 export class DatabaseMedicalRecordRepository implements MedicalRecordRepository {
   readonly #db: DatabaseClient;
 
@@ -95,7 +108,7 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
         .where(eq(medicalRecords.encounterId, encounterId))
         .limit(1);
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (isMissingRelationError(error) || isInvalidUuidSyntaxError(error)) {
         return null;
       }
       throw error;

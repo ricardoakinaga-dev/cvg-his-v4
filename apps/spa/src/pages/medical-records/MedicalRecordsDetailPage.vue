@@ -13,21 +13,23 @@
     </DsAlert>
 
     <template v-else-if="record">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Prontuário Clínico', patientName || 'Detalhes']">
-        <template #title>Prontuário Clínico</template>
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Prontuário Clínico', displayPatientName]">
+        <template #title>{{ displayPatientName }}</template>
         <template #subtitle>
           <StatusBadge
-            :label="record.status === 'open' ? 'Aberto' : 'Concluído'"
+            :label="record.status === 'open' ? 'Atendimento aberto' : 'Atendimento concluído'"
             :variant="record.status === 'open' ? 'warning' : 'success'"
           />
-          <span class="muted">Paciente: {{ patientName }}</span>
+          <span class="muted">{{ patientClinicalSummary }}</span>
+          <span class="muted">Tutor: {{ ownerName || 'Não informado' }}</span>
+          <span class="muted">Contato: {{ ownerPrimaryContact }}</span>
         </template>
         <template #actions>
-          <DsButton variant="primary" tag="a" :to="`/encounters/${record.encounterId}`">Abrir atendimento</DsButton>
-          <DsButton variant="secondary" tag="a" :to="`/billing/${record.encounterId}`">Comanda</DsButton>
-          <DsButton variant="secondary" tag="a" :to="`/patients/${record.patientId}`">Ver paciente</DsButton>
-          <DsButton variant="secondary" @click="showNewEntryModal = true">Nova Entrada</DsButton>
           <DsButton variant="ghost" tag="a" to="/medical-records">Voltar</DsButton>
+          <DsButton variant="secondary" tag="a" :to="`/encounters/${record.encounterId}`">
+            Continuar atendimento
+          </DsButton>
+          <DsButton variant="primary" @click="showNewEntryModal = true">Salvar entrada clínica</DsButton>
         </template>
       </AppPageHeader>
 
@@ -38,106 +40,197 @@
         {{ successMessage }}
       </DsAlert>
       <DsAlert v-if="contextWarnings.length" variant="info" dismissible>
-        Visão parcial: {{ contextWarnings.join(', ') }}.
+        Algumas informações complementares não carregaram: {{ contextWarnings.join(', ') }}. A leitura clínica principal continua disponível.
       </DsAlert>
 
-      <section class="record-cockpit" aria-label="Cockpit clínico do atendimento">
-        <aside class="patient-rail">
-          <div class="patient-rail__identity">
-            <span class="patient-rail__avatar" aria-hidden="true">🐾</span>
-            <div>
-              <span class="patient-rail__eyebrow">Paciente em atendimento</span>
-              <strong>{{ patientName || 'Paciente em carregamento' }}</strong>
-              <span>{{ ownerName || 'Tutor em carregamento' }}</span>
-            </div>
-          </div>
+      <section v-if="clinicalAlerts.length" class="clinical-alerts" aria-label="Alertas clínicos">
+        <DsAlert
+          v-for="alert in clinicalAlerts"
+          :key="alert.title"
+          :variant="alert.variant"
+          dismissible
+        >
+          <strong>{{ alert.title }}</strong> - {{ alert.message }}
+        </DsAlert>
+      </section>
 
-          <div class="rail-section">
-            <h2>Ficha do animal</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>ID</dt>
-                <dd>{{ patient?.id || record.patientId }}</dd>
-              </div>
-              <div>
-                <dt>Espécie</dt>
-                <dd>{{ patient?.species || 'Não informada' }}</dd>
-              </div>
-              <div>
-                <dt>Raça</dt>
-                <dd>{{ patient?.breed || 'Não informada' }}</dd>
-              </div>
-              <div>
-                <dt>Sexo</dt>
-                <dd>{{ patient ? sexLabel(patient.sex) : 'Não informado' }}</dd>
-              </div>
-              <div>
-                <dt>Peso base</dt>
-                <dd>{{ currentWeightLabel }}</dd>
-              </div>
-              <div>
-                <dt>Cadastro</dt>
-                <dd>{{ patient?.createdAt ? formatDate(patient.createdAt) : 'Não informado' }}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div class="rail-section rail-section--warning">
-            <h2>Segurança clínica</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>Doença crônica</dt>
-                <dd>Não informado</dd>
-              </div>
-              <div>
-                <dt>Alergia</dt>
-                <dd>Não informado</dd>
-              </div>
-              <div>
-                <dt>Temperamento</dt>
-                <dd>Não informado</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div class="rail-section">
-            <h2>Cliente</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>Tutor</dt>
-                <dd>{{ ownerName || 'Não informado' }}</dd>
-              </div>
-              <div>
-                <dt>Contato</dt>
-                <dd>{{ ownerPrimaryContact }}</dd>
-              </div>
-              <div>
-                <dt>Documento</dt>
-                <dd>{{ owner?.documentId || 'Não informado' }}</dd>
-              </div>
-            </dl>
-            <div class="rail-actions">
-              <DsButton v-if="owner" size="sm" variant="secondary" tag="a" :to="`/owners/${owner.id}`">
-                Ver cadastro do cliente
-              </DsButton>
-            </div>
-          </div>
-        </aside>
-
-        <main class="clinical-workbench">
-          <section class="summary-strip" aria-label="Resumo do prontuário">
-            <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-              <span class="summary-card__label">{{ card.label }}</span>
-              <strong class="summary-card__value">{{ card.value }}</strong>
-              <span class="summary-card__hint">{{ card.hint }}</span>
-            </article>
-          </section>
-
-          <section class="clinical-sheet" aria-label="Ficha de atendimento">
+      <section class="clinical-record-layout" aria-label="Prontuário clínico estruturado">
+        <main class="clinical-record-main">
+          <section class="clinical-section clinical-section--chief">
             <div class="section-heading">
               <div>
-                <span class="section-heading__eyebrow">Ficha de atendimento</span>
-                <h2>Registro clínico estruturado</h2>
+                <span class="section-heading__eyebrow">1. Motivo do atendimento</span>
+                <h2>Queixa principal</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" tag="a" :to="`/encounters/${record.encounterId}`">
+                Editar atendimento
+              </DsButton>
+            </div>
+            <p v-if="chiefComplaint" class="clinical-text clinical-text--lead">{{ chiefComplaint }}</p>
+            <p v-else class="empty-clinical-state">Nenhuma queixa principal registrada.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">2. Relato do tutor</span>
+                <h2>Anamnese</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('anamnesis')">Adicionar anamnese</DsButton>
+            </div>
+            <article v-if="latestEntry('anamnesis')" class="clinical-entry">
+              <h3>{{ latestEntry('anamnesis')?.title }}</h3>
+              <p>{{ latestEntry('anamnesis')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('anamnesis')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">Nenhuma anamnese registrada neste atendimento.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">3. Achados objetivos</span>
+                <h2>Exame físico</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')">Registrar exame</DsButton>
+            </div>
+            <article v-if="latestEntry('physical_exam')" class="clinical-entry">
+              <h3>{{ latestEntry('physical_exam')?.title }}</h3>
+              <p>{{ latestEntry('physical_exam')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('physical_exam')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">Nenhum exame físico registrado neste atendimento.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">4. Sinais vitais</span>
+                <h2>Parâmetros vitais</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')">Registrar parâmetros</DsButton>
+            </div>
+            <div v-if="hasVitalContext" class="vitals-grid">
+              <div v-for="item in vitalSigns" :key="item.label" class="vital-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <small v-if="item.hint">{{ item.hint }}</small>
+              </div>
+            </div>
+            <p v-else class="empty-clinical-state">
+              Parâmetros vitais ainda não registrados neste atendimento.
+            </p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
+                <h2>Exames solicitados / recomendados</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
+                Abrir exames
+              </DsButton>
+            </div>
+            <div v-if="diagnosticEntries.length" class="clinical-list">
+              <article v-for="entry in diagnosticEntries.slice(0, 4)" :key="entry.id" class="clinical-entry">
+                <h3>{{ entry.title }}</h3>
+                <p>{{ entry.content || entryTypeLabel(entry.entryType) }}</p>
+                <span>{{ formatDateTime(entry.updatedAt) }}</span>
+              </article>
+            </div>
+            <p v-else class="empty-clinical-state">Nenhum exame solicitado ou recomendado neste atendimento.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
+                <h2>Suspeita diagnóstica / avaliação clínica</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('assessment')">Registrar avaliação</DsButton>
+            </div>
+            <article v-if="latestEntry('assessment')" class="clinical-entry">
+              <h3>{{ latestEntry('assessment')?.title }}</h3>
+              <p>{{ latestEntry('assessment')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('assessment')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">Nenhuma suspeita diagnóstica ou avaliação registrada.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">7. Tratamento</span>
+                <h2>Terapêutica / plano de tratamento</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('plan')">Registrar plano</DsButton>
+            </div>
+            <article v-if="latestEntry('plan')" class="clinical-entry">
+              <h3>{{ latestEntry('plan')?.title }}</h3>
+              <p>{{ latestEntry('plan')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('plan')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">Nenhuma terapêutica ou plano de tratamento registrado.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">8. Medicações</span>
+                <h2>Prescrição / receituário</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('prescription')">Registrar prescrição</DsButton>
+            </div>
+            <div v-if="prescriptionEntries.length" class="clinical-list">
+              <article v-for="entry in prescriptionEntries.slice(0, 3)" :key="entry.id" class="clinical-entry">
+                <h3>{{ entry.title }}</h3>
+                <p>{{ entry.content }}</p>
+                <span>{{ formatDateTime(entry.updatedAt) }}</span>
+              </article>
+            </div>
+            <p v-else class="empty-clinical-state">Nenhuma prescrição registrada para este atendimento.</p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
+                <h2>Conduta e próximos passos</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('conduct')">Registrar conduta</DsButton>
+            </div>
+            <article v-if="latestEntry('conduct')" class="clinical-entry">
+              <h3>{{ latestEntry('conduct')?.title }}</h3>
+              <p>{{ latestEntry('conduct')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('conduct')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">
+              Nenhum retorno, orientação ao tutor ou próximo passo registrado.
+            </p>
+          </section>
+
+          <section class="clinical-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">10. Complementos</span>
+                <h2>Observações</h2>
+              </div>
+              <DsButton variant="secondary" size="sm" @click="startEntry('progress_note')">Registrar observação</DsButton>
+            </div>
+            <article v-if="latestEntry('progress_note')" class="clinical-entry">
+              <h3>{{ latestEntry('progress_note')?.title }}</h3>
+              <p>{{ latestEntry('progress_note')?.content }}</p>
+              <span>{{ formatDateTime(latestEntry('progress_note')?.updatedAt ?? '') }}</span>
+            </article>
+            <p v-else class="empty-clinical-state">Nenhuma observação complementar registrada.</p>
+          </section>
+
+          <section class="clinical-sheet" aria-label="Registrar informação clínica">
+            <div class="section-heading">
+              <div>
+                <span class="section-heading__eyebrow">Registro</span>
+                <h2>Adicionar informações ao prontuário</h2>
               </div>
               <div class="section-heading__actions">
                 <DsButton variant="secondary" :disabled="submittingClinicalSheet" @click="clearClinicalSheet">
@@ -154,11 +247,6 @@
               </div>
             </div>
 
-            <div v-if="encounter" class="chief-complaint">
-              <span>Queixa principal / motivo de abertura</span>
-              <strong>{{ encounter.reason }}</strong>
-            </div>
-
             <div class="clinical-form-grid">
               <label v-for="section in clinicalSheetSections" :key="section.key" class="clinical-field">
                 <span>{{ section.label }}</span>
@@ -172,8 +260,64 @@
               </label>
             </div>
           </section>
+        </main>
 
-          <section class="vetus-card-grid" aria-label="Resumo clínico Vetus-like">
+        <aside class="clinical-record-aside" aria-label="Resumo do paciente e tutor">
+          <section class="patient-summary-card">
+            <span class="patient-rail__avatar" aria-hidden="true">🐾</span>
+            <div>
+              <span class="patient-rail__eyebrow">Paciente</span>
+              <strong>{{ displayPatientName }}</strong>
+              <p>{{ patientClinicalSummary }}</p>
+            </div>
+          </section>
+
+          <section class="clinical-side-card">
+            <h2>Tutor</h2>
+            <dl class="detail-list">
+              <div>
+                <dt>Nome</dt>
+                <dd>{{ ownerName || 'Não informado' }}</dd>
+              </div>
+              <div>
+                <dt>Contato</dt>
+                <dd>{{ ownerPrimaryContact }}</dd>
+              </div>
+            </dl>
+            <div class="rail-actions">
+              <DsButton v-if="owner" size="sm" variant="secondary" tag="a" :to="`/owners/${owner.id}`">
+                Ver tutor
+              </DsButton>
+              <DsButton v-if="patient" size="sm" variant="secondary" tag="a" :to="`/patients/${patient.id}`">
+                Ver paciente
+              </DsButton>
+            </div>
+          </section>
+
+          <section class="clinical-side-card">
+            <h2>Resumo</h2>
+            <dl class="detail-list">
+              <div>
+                <dt>Status</dt>
+                <dd>{{ record.status === 'open' ? 'Aberto' : 'Concluído' }}</dd>
+              </div>
+              <div>
+                <dt>Entradas ativas</dt>
+                <dd>{{ activeEntries.length }}</dd>
+              </div>
+              <div>
+                <dt>Prescrições</dt>
+                <dd>{{ prescriptionEntries.length }}</dd>
+              </div>
+            </dl>
+          </section>
+        </aside>
+      </section>
+
+      <section class="secondary-record-area" aria-label="Blocos secundários do prontuário">
+        <details class="secondary-disclosure">
+          <summary>Blocos operacionais e contexto complementar</summary>
+          <section class="vetus-card-grid" aria-label="Blocos operacionais secundários">
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Últimos Atendimentos</h3>
@@ -190,7 +334,7 @@
                   <span>{{ formatDateTime(encounter.openedAt) }}</span>
                 </div>
               </div>
-              <p v-else class="muted">Atendimento não carregado.</p>
+              <p v-else class="muted">Dados do atendimento indisponíveis neste momento.</p>
             </article>
 
             <article class="vetus-card">
@@ -214,6 +358,48 @@
 
             <article class="vetus-card">
               <div class="vetus-card__header">
+                <h3>Vacinas e Vermífugos</h3>
+                <DsButton size="sm" variant="secondary" tag="a" :to="newPatientAppointmentPath">
+                  Incluir Nova Vacina/Vermífugo
+                </DsButton>
+              </div>
+              <div v-if="preventiveEntries.length" class="record-list">
+                <div v-for="entry in preventiveEntries.slice(0, 3)" :key="entry.id" class="record-list__item">
+                  <div>
+                    <strong>{{ entry.title }}</strong>
+                    <p>{{ entry.content }}</p>
+                  </div>
+                  <span>{{ formatDateTime(entry.updatedAt) }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">Esse animal não possui vacinas ou vermífugos registrados neste prontuário.</p>
+            </article>
+
+            <article class="vetus-card">
+              <div class="vetus-card__header">
+                <h3>Agenda</h3>
+                <DsButton size="sm" variant="secondary" tag="a" :to="patientAppointmentsPath">
+                  Ver Agenda
+                </DsButton>
+              </div>
+              <dl class="detail-list">
+                <div>
+                  <dt>Atendimento</dt>
+                  <dd>{{ encounter ? encounter.reason : 'Não carregado' }}</dd>
+                </div>
+                <div>
+                  <dt>Entrada</dt>
+                  <dd>{{ encounter ? formatDateTime(encounter.openedAt) : 'Não informada' }}</dd>
+                </div>
+                <div>
+                  <dt>Paciente</dt>
+                  <dd>{{ displayPatientName }}</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="vetus-card">
+              <div class="vetus-card__header">
                 <h3>Exames</h3>
                 <DsButton size="sm" variant="secondary" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
                   Ver mais Exames
@@ -229,6 +415,25 @@
                 </div>
               </div>
               <p v-else class="muted">Esse animal não possui exames registrados.</p>
+            </article>
+
+            <article class="vetus-card">
+              <div class="vetus-card__header">
+                <h3>Internação</h3>
+                <DsButton size="sm" variant="secondary" tag="a" to="/inpatient">
+                  Ver Internações
+                </DsButton>
+              </div>
+              <div v-if="inpatientEvents.length" class="record-list">
+                <div v-for="event in inpatientEvents.slice(0, 3)" :key="event.id" class="record-list__item">
+                  <div>
+                    <strong>{{ timelineEventTypeLabel(event.eventType) }}</strong>
+                    <p>{{ event.summary }}</p>
+                  </div>
+                  <span>{{ formatDateTime(event.occurredAt) }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">Esse animal não possui internação vinculada a este prontuário.</p>
             </article>
 
             <article class="vetus-card">
@@ -252,9 +457,54 @@
 
             <article class="vetus-card">
               <div class="vetus-card__header">
-                <h3>Comanda</h3>
+                <h3>Gráfico de peso</h3>
+                <DsButton size="sm" variant="secondary" tag="a" :to="`/patients/${record.patientId}/edit`">
+                  Atualizar peso
+                </DsButton>
+              </div>
+              <div class="weight-card">
+                <div class="weight-card__chart" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <dl class="detail-list">
+                  <div>
+                    <dt>Peso atual</dt>
+                    <dd>{{ currentWeightLabel }}</dd>
+                  </div>
+                  <div>
+                    <dt>Origem</dt>
+                    <dd>{{ patient?.baseWeightKg ? 'Cadastro do animal' : 'Não informado' }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </article>
+
+            <article class="vetus-card">
+              <div class="vetus-card__header">
+                <h3>Imagens</h3>
+                <DsButton size="sm" variant="secondary" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
+                  Incluir Imagem
+                </DsButton>
+              </div>
+              <div v-if="imageEvents.length" class="record-list">
+                <div v-for="event in imageEvents.slice(0, 3)" :key="event.id" class="record-list__item">
+                  <div>
+                    <strong>{{ timelineEventTypeLabel(event.eventType) }}</strong>
+                    <p>{{ event.summary }}</p>
+                  </div>
+                  <span>{{ formatDateTime(event.occurredAt) }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">Esse animal não possui imagens anexadas a este prontuário.</p>
+            </article>
+
+            <article class="vetus-card">
+              <div class="vetus-card__header">
+                <h3>Cobrança</h3>
                 <DsButton size="sm" variant="secondary" tag="a" :to="`/billing/${record.encounterId}`">
-                  Abrir Comanda
+                  Abrir Cobrança
                 </DsButton>
               </div>
               <dl class="detail-list">
@@ -301,7 +551,10 @@
               <p v-else class="muted">Escreva aqui o histórico clínico do animal usando a ficha de atendimento.</p>
             </article>
           </section>
+        </details>
 
+        <details class="secondary-disclosure">
+          <summary>Entradas clínicas brutas e auditoria</summary>
           <section class="clinical-history-grid">
             <AppDetailSection title="Entradas Clínicas">
               <div v-if="entries.length === 0" class="muted">
@@ -323,7 +576,7 @@
                   <h3 class="entry-card__title">{{ entry.title }}</h3>
                   <p class="entry-card__content">{{ entry.content }}</p>
                   <div class="entry-card__footer">
-                    <span class="muted">Por: {{ entry.authoredByUserId.slice(0, 8) }}...</span>
+                    <span class="muted">Autor técnico: {{ entry.authoredByUserId.slice(0, 8) }}...</span>
                     <div class="entry-card__actions">
                       <DsButton
                         v-if="!entry.deletedAt"
@@ -350,7 +603,12 @@
                 </div>
               </div>
             </AppDetailSection>
+          </section>
+        </details>
 
+        <details class="secondary-disclosure">
+          <summary>Timeline técnica e IDs</summary>
+          <section class="clinical-history-grid">
             <AppDetailSection title="Timeline Clínica">
               <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
               <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado ainda neste prontuário.</div>
@@ -362,19 +620,48 @@
                 </div>
               </div>
             </AppDetailSection>
+
+            <AppDetailSection title="Detalhes técnicos">
+              <dl class="detail-list">
+                <div>
+                  <dt>Prontuário</dt>
+                  <dd>{{ record.id }}</dd>
+                </div>
+                <div>
+                  <dt>Atendimento</dt>
+                  <dd>{{ record.encounterId }}</dd>
+                </div>
+                <div>
+                  <dt>Paciente</dt>
+                  <dd>{{ record.patientId }}</dd>
+                </div>
+                <div v-if="owner">
+                  <dt>Tutor</dt>
+                  <dd>{{ owner.id }}</dd>
+                </div>
+                <div>
+                  <dt>Criado em</dt>
+                  <dd>{{ formatDateTime(record.createdAt) }}</dd>
+                </div>
+              </dl>
+            </AppDetailSection>
           </section>
-        </main>
+        </details>
       </section>
     </template>
 
     <DsModal
       :open="showNewEntryModal || showEditEntryModal"
       :teleport="false"
-      :title="editingEntry ? 'Editar Entrada' : 'Nova Entrada Clínica'"
+      :title="entryModalTitle"
       size="lg"
       @close="closeEntryModal"
     >
       <DsAlert v-if="entryFormError" variant="danger">{{ entryFormError }}</DsAlert>
+      <p v-if="entryForm.entryType === 'anamnesis'" class="entry-modal-hint">
+        Use este espaço para o relato do tutor: início dos sinais, apetite, vômitos, diarreia,
+        comportamento, medicações em uso e evolução percebida.
+      </p>
 
       <DsInput id="entryType" v-model="entryForm.entryType" type="select" label="Tipo" required>
         <option value="anamnesis">Anamnese</option>
@@ -399,8 +686,8 @@
         v-model="entryForm.content"
         type="textarea"
         label="Conteúdo"
-        placeholder="Conteúdo clínico..."
-        :rows="8"
+        :placeholder="entryContentPlaceholder"
+        :rows="entryForm.entryType === 'anamnesis' ? 10 : 8"
         required
       />
 
@@ -502,6 +789,12 @@ interface ClinicalSheetSection {
   placeholder: string;
 }
 
+interface ClinicalAlert {
+  variant: 'warning' | 'danger' | 'info';
+  title: string;
+  message: string;
+}
+
 const route = useRoute();
 const routeRecordId = String(route.params.id ?? '');
 const entityCache = useEntityCache();
@@ -572,66 +865,152 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
   {
     key: 'assessment',
     entryType: 'assessment',
-    label: 'Avaliação / hipóteses',
-    title: 'Avaliação clínica',
+    label: 'Suspeita diagnóstica / avaliação clínica',
+    title: 'Suspeita diagnóstica / avaliação clínica',
     hint: 'Raciocínio diagnóstico, problemas ativos e exames necessários.',
     placeholder: 'Ex.: principais suspeitas, diferenciais, gravidade, exames solicitados e justificativa.'
   },
   {
     key: 'plan',
     entryType: 'plan',
-    label: 'Plano terapêutico',
-    title: 'Plano terapêutico',
+    label: 'Terapêutica / plano de tratamento',
+    title: 'Terapêutica / plano de tratamento',
     hint: 'Conduta planejada para o caso.',
     placeholder: 'Ex.: medicações, fluidoterapia, exames complementares, retorno, internação, orientações de monitoramento.'
   },
   {
     key: 'prescription',
     entryType: 'prescription',
-    label: 'Receituário',
-    title: 'Receituário',
+    label: 'Prescrição / receituário',
+    title: 'Prescrição / receituário',
     hint: 'Prescrições emitidas ou ajustadas no atendimento.',
     placeholder: 'Ex.: medicamento, dose, via, frequência, duração, observações e restrições.'
   },
   {
     key: 'conduct',
     entryType: 'conduct',
-    label: 'Conduta / orientações finais',
-    title: 'Conduta e orientações',
+    label: 'Conduta e próximos passos',
+    title: 'Conduta e próximos passos',
     hint: 'Fechamento clínico e comunicação ao tutor.',
     placeholder: 'Ex.: orientações ao tutor, sinais de alerta, retorno recomendado, pendências e acompanhamento.'
   }
 ];
 
 const activeEntries = computed(() => entries.value.filter((entry) => !entry.deletedAt));
-const archivedEntries = computed(() => entries.value.filter((entry) => !!entry.deletedAt).length);
-const timelineCount = computed(() => timeline.value.length);
 const anamnesisEntries = computed(() => activeEntries.value.filter((entry) => entry.entryType === 'anamnesis'));
+const preventiveEntries = computed(() =>
+  activeEntries.value.filter((entry) => hasPreventiveText(entry.title) || hasPreventiveText(entry.content))
+);
+const inpatientEvents = computed(() =>
+  timeline.value.filter((event) => event.eventType.startsWith('inpatient_'))
+);
+const imageEvents = computed(() =>
+  timeline.value.filter((event) => event.eventType === 'attachment_added')
+);
 const prescriptionEntries = computed(() => {
   const ownEntries = activeEntries.value.filter((entry) => entry.entryType === 'prescription');
   const byId = new Map([...ownEntries, ...patientPrescriptions.value].map((entry) => [entry.id, entry]));
   return Array.from(byId.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 });
 
+const latestEntriesByType = computed(() => {
+  const grouped = new Map<ClinicalEntryType, ClinicalEntrySummary>();
+  for (const entry of [...activeEntries.value].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
+    if (!grouped.has(entry.entryType)) {
+      grouped.set(entry.entryType, entry);
+    }
+  }
+  return grouped;
+});
+
 const hasClinicalSheetContent = computed(() =>
   clinicalSheetSections.some((section) => clinicalSheet[section.key].trim().length > 0)
 );
 
-const summaryCards = computed(() => {
-  if (!record.value) return [];
+const displayPatientName = computed(() => patientName.value || patient.value?.name || 'Paciente não identificado');
+
+const patientClinicalSummary = computed(() => {
+  if (!patient.value) return 'Espécie, raça, sexo, idade e peso não carregados';
   return [
-    { label: 'Paciente', value: patientName.value || '-', hint: 'Identificação clínica' },
-    {
-      label: 'Status',
-      value: record.value.status === 'open' ? 'Aberto' : 'Concluído',
-      hint: 'Situação operacional'
-    },
-    { label: 'Entradas', value: activeEntries.value.length.toString(), hint: 'Entradas ativas' },
-    { label: 'Arquivadas', value: archivedEntries.value.toString(), hint: 'Entradas retiradas' },
-    { label: 'Timeline', value: timelineCount.value.toString(), hint: 'Eventos rastreados' },
-    { label: 'Comanda', value: billingRecord.value ? billingStatusLabel(billingRecord.value.status) : 'Não aberta', hint: 'Últimos lançamentos' }
-  ];
+    patient.value.species || 'Espécie não informada',
+    patient.value.breed || 'Raça não informada',
+    sexLabel(patient.value.sex),
+    patientAgeLabel.value,
+    currentWeightLabel.value
+  ].join(' · ');
 });
+
+const patientAgeLabel = computed(() => {
+  if (!patient.value?.birthDateApproximate) return 'Idade não informada';
+  const birthDate = new Date(patient.value.birthDateApproximate);
+  if (Number.isNaN(birthDate.getTime())) return 'Idade não informada';
+  const now = new Date();
+  let years = now.getFullYear() - birthDate.getFullYear();
+  const monthDelta = now.getMonth() - birthDate.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < birthDate.getDate())) {
+    years -= 1;
+  }
+  return years > 0 ? `${years} ano(s)` : 'Menos de 1 ano';
+});
+
+const chiefComplaint = computed(() => encounter.value?.reason?.trim() || '');
+
+const clinicalAlerts = computed<ClinicalAlert[]>(() => {
+  const alerts: ClinicalAlert[] = [];
+  if (patient.value?.allergy) {
+    alerts.push({
+      variant: 'danger',
+      title: 'Alergia registrada',
+      message: patient.value.allergy
+    });
+  }
+  if (patient.value?.chronicDisease) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Doença crônica',
+      message: patient.value.chronicDisease
+    });
+  }
+  if (patient.value?.temperament) {
+    alerts.push({
+      variant: 'warning',
+      title: 'Temperamento / manejo',
+      message: patient.value.temperament
+    });
+  }
+  if (!patient.value?.baseWeightKg) {
+    alerts.push({
+      variant: 'info',
+      title: 'Peso não registrado',
+      message: 'Atualize o peso antes de prescrever medicações dependentes de dose.'
+    });
+  }
+  if (!latestEntry('physical_exam')) {
+    alerts.push({
+      variant: 'info',
+      title: 'Exame físico pendente',
+      message: 'Registre achados objetivos e parâmetros vitais quando aplicável.'
+    });
+  }
+  return alerts;
+});
+
+const vitalSigns = computed(() => [
+  { label: 'Temperatura', value: 'Não registrada', hint: '' },
+  { label: 'Frequência cardíaca', value: 'Não registrada', hint: '' },
+  { label: 'Frequência respiratória', value: 'Não registrada', hint: '' },
+  {
+    label: 'Peso',
+    value: patient.value?.baseWeightKg ? currentWeightLabel.value : 'Não registrado',
+    hint: patient.value?.baseWeightKg ? 'Peso do cadastro do paciente' : ''
+  },
+  { label: 'Mucosas', value: 'Não registradas', hint: '' },
+  { label: 'TPC', value: 'Não registrado', hint: '' },
+  { label: 'Hidratação', value: 'Não registrada', hint: '' },
+  { label: 'Dor', value: 'Não registrada', hint: '' }
+]);
+
+const hasVitalContext = computed(() => Boolean(patient.value?.baseWeightKg));
 
 const ownerPrimaryContact = computed(() => {
   const contacts = owner.value?.contacts ?? [];
@@ -644,16 +1023,41 @@ const currentWeightLabel = computed(() => {
   return `${patient.value.baseWeightKg.toLocaleString('pt-BR')} kg`;
 });
 
+const patientAppointmentsPath = computed(() => {
+  if (!record.value) return '/appointments';
+  return `/appointments?patientId=${record.value.patientId}`;
+});
+
+const newPatientAppointmentPath = computed(() => {
+  if (!record.value) return '/appointments/new';
+  const params = new URLSearchParams({ patientId: record.value.patientId });
+  if (patient.value?.primaryOwnerId) params.set('ownerId', patient.value.primaryOwnerId);
+  return `/appointments/new?${params.toString()}`;
+});
+
 const isEntryFormValid = computed(() => entryForm.value.title.trim() && entryForm.value.content.trim());
+
+const entryModalTitle = computed(() => {
+  if (editingEntry.value) {
+    return `Editar ${entryTypeLabel(editingEntry.value.entryType)}`;
+  }
+  return entryForm.value.entryType === 'anamnesis' ? 'Nova Anamnese' : 'Nova Entrada Clínica';
+});
+
+const entryContentPlaceholder = computed(() =>
+  entryForm.value.entryType === 'anamnesis'
+    ? 'Relato do tutor: início dos sinais, apetite, ingestão hídrica, vômitos, diarreia, comportamento, medicações em uso e evolução percebida.'
+    : 'Conteúdo clínico...'
+);
 
 const entryTypeMap: Record<ClinicalEntryType, string> = {
   anamnesis: 'Anamnese',
   physical_exam: 'Exame Físico',
-  progress_note: 'Nota de Evolução',
-  assessment: 'Avaliação',
-  plan: 'Plano',
-  prescription: 'Prescrição',
-  conduct: 'Conduta'
+  progress_note: 'Observação clínica',
+  assessment: 'Suspeita diagnóstica / avaliação clínica',
+  plan: 'Terapêutica / plano de tratamento',
+  prescription: 'Prescrição / receituário',
+  conduct: 'Conduta e próximos passos'
 };
 
 const timelineEventTypeMap: Record<string, string> = {
@@ -671,6 +1075,10 @@ const timelineEventTypeMap: Record<string, string> = {
 
 function entryTypeLabel(type: ClinicalEntryType) {
   return entryTypeMap[type] || type;
+}
+
+function latestEntry(type: ClinicalEntryType) {
+  return latestEntriesByType.value.get(type);
 }
 
 function timelineEventTypeLabel(type: string) {
@@ -694,6 +1102,10 @@ function billingStatusLabel(status: BillingStatus) {
     settled: 'Fechada'
   };
   return labels[status] || status;
+}
+
+function hasPreventiveText(value: string) {
+  return /vacina|vacinacao|vacinal|vermif|verme/i.test(value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
 }
 
 function formatCurrency(value: number, currency: string) {
@@ -729,6 +1141,18 @@ function startEntry(entryType: ClinicalEntryType) {
   editingEntry.value = null;
   editReason.value = '';
   showNewEntryModal.value = true;
+}
+
+function focusClinicalAnamnesis() {
+  const field = document.querySelector<HTMLTextAreaElement>('[data-testid="clinical-anamnesis"]');
+  field?.focus();
+}
+
+function routeEntryType(): ClinicalEntryType | null {
+  const value = route.query?.entry ?? route.query?.newEntry;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  return Object.prototype.hasOwnProperty.call(entryTypeMap, raw) ? (raw as ClinicalEntryType) : null;
 }
 
 function openEditEntry(entry: ClinicalEntrySummary) {
@@ -973,6 +1397,10 @@ onMounted(async () => {
   try {
     await loadRecord();
     await loadTimeline();
+    const requestedEntryType = routeEntryType();
+    if (requestedEntryType) {
+      startEntry(requestedEntryType);
+    }
   } finally {
     loading.value = false;
   }
@@ -987,6 +1415,186 @@ onMounted(async () => {
   margin-top: 16px;
 }
 
+.clinical-alerts {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.clinical-record-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 16px;
+  align-items: start;
+}
+
+.clinical-record-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clinical-record-aside {
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 84px;
+}
+
+.clinical-section,
+.patient-summary-card,
+.clinical-side-card,
+.secondary-disclosure,
+.record-cockpit {
+  min-width: 0;
+}
+
+.clinical-section,
+.patient-summary-card,
+.clinical-side-card,
+.secondary-disclosure {
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.clinical-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.clinical-section--chief {
+  border-color: var(--color-primary-200, #bfdbfe);
+  background: var(--color-primary-50, #eff6ff);
+}
+
+.clinical-text,
+.clinical-entry p,
+.empty-clinical-state {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.clinical-text--lead {
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.clinical-entry {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.clinical-entry h3 {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 15px;
+}
+
+.clinical-entry span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clinical-list {
+  display: grid;
+  gap: 10px;
+}
+
+.empty-clinical-state {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vital-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.vital-item span,
+.vital-item small {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vital-item strong {
+  color: var(--color-text, #0f172a);
+  overflow-wrap: anywhere;
+}
+
+.patient-summary-card,
+.clinical-side-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.patient-summary-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.patient-summary-card strong {
+  display: block;
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+}
+
+.patient-summary-card p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.clinical-side-card h2 {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 16px;
+}
+
+.secondary-record-area {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.secondary-disclosure {
+  padding: 12px 14px;
+}
+
+.secondary-disclosure summary {
+  cursor: pointer;
+  color: var(--color-text, #0f172a);
+  font-weight: 900;
+}
+
+.secondary-disclosure[open] summary {
+  margin-bottom: 12px;
+}
+
 .record-cockpit {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
@@ -996,6 +1604,7 @@ onMounted(async () => {
 
 .patient-rail,
 .clinical-sheet,
+.anamnesis-command,
 .vetus-card,
 .summary-card {
   border: 1px solid var(--color-border, #dbe3ef);
@@ -1137,6 +1746,34 @@ onMounted(async () => {
   padding: 16px;
 }
 
+.anamnesis-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-color: var(--color-primary-200, #bfdbfe);
+  background: var(--color-primary-50, #eff6ff);
+}
+
+.anamnesis-command h2,
+.anamnesis-command p {
+  margin: 0;
+}
+
+.anamnesis-command p {
+  margin-top: 4px;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.45;
+}
+
+.anamnesis-command__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .section-heading,
 .vetus-card__header,
 .entry-card__header,
@@ -1168,6 +1805,15 @@ onMounted(async () => {
 
 .chief-complaint strong {
   color: var(--color-text, #0f172a);
+}
+
+.entry-modal-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-primary-50, #eff6ff);
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.45;
 }
 
 .clinical-form-grid {
@@ -1226,6 +1872,40 @@ onMounted(async () => {
 
 .record-list--compact {
   margin-top: 4px;
+}
+
+.weight-card {
+  display: grid;
+  gap: 12px;
+}
+
+.weight-card__chart {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  height: 74px;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.weight-card__chart span {
+  display: block;
+  border-radius: 6px 6px 0 0;
+  background: var(--color-primary-500, #2563eb);
+}
+
+.weight-card__chart span:nth-child(1) {
+  height: 42%;
+}
+
+.weight-card__chart span:nth-child(2) {
+  height: 64%;
+}
+
+.weight-card__chart span:nth-child(3) {
+  height: 82%;
 }
 
 .record-list__item {
@@ -1322,19 +2002,33 @@ onMounted(async () => {
 }
 
 @media (max-width: 1180px) {
-  .record-cockpit {
+  .record-cockpit,
+  .clinical-record-layout {
     grid-template-columns: 1fr;
   }
 
-  .patient-rail {
+  .patient-rail,
+  .clinical-record-aside {
     position: static;
   }
 }
 
 @media (max-width: 820px) {
+  .anamnesis-command,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .anamnesis-command__actions,
+  .section-heading__actions {
+    justify-content: flex-start;
+  }
+
   .clinical-form-grid,
   .vetus-card-grid,
-  .clinical-history-grid {
+  .clinical-history-grid,
+  .vitals-grid {
     grid-template-columns: 1fr;
   }
 

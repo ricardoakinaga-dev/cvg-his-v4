@@ -3,16 +3,21 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fiscal';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
+  CreateFiscalIcmsTableRequest,
+  CreateFiscalIpiTableRequest,
   CreateFiscalNfseLayoutRequest,
   CreateFiscalNfseDocumentRequest,
   CancelFiscalNfseDocumentRequest,
   FiscalCfopListResponse,
   FiscalIcmsMatrixListResponse,
-  FiscalIcmsRuleListResponse,
+  FiscalIcmsTableListResponse,
+  FiscalIpiTableListResponse,
   FiscalNfseDocumentListResponse,
   FiscalNcmEntryListResponse,
   FiscalNfseLayoutListResponse,
   FiscalPisCofinsRuleListResponse,
+  UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIpiTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
@@ -128,23 +133,137 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/icms') {
-    if (request.method !== 'GET') {
-      return false;
-    }
-    const principal = requirePrincipal(request, 'fiscal.read');
-    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const payload: FiscalIcmsRuleListResponse = {
-      items: await scopedFiscal.listIcmsRules({
-        ufOrigin: url.searchParams.get('ufOrigin') ?? undefined,
-        ufDestination: url.searchParams.get('ufDestination') ?? undefined,
-        ncm: url.searchParams.get('ncm') ?? undefined,
-        operationType:
-          (url.searchParams.get('operationType') as 'interna' | 'interestadual' | null)
-          ?? undefined
-      })
-    };
-    return json(response, 200, payload);
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalIcmsTableListResponse = {
+        items: await scopedFiscal.listIcmsTables({
+          search: url.searchParams.get('search') ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalIcmsTableRequest;
+      const created = await scopedFiscal.createIcmsTable(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'icms-table',
+        entityId: created.id,
+        payloadSummary: `ICMS table ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const icmsTableMatch = pathname.match(/^\/fiscal\/icms\/([^/]+)$/);
+  if (icmsTableMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalIcmsTableRequest;
+    const updated = await scopedFiscal.updateIcmsTable(
+      decodeURIComponent(icmsTableMatch[1] ?? ''),
+      payload
+    );
+
+    if (!updated) {
+      return json(response, 404, { code: 'ICMS_TABLE_NOT_FOUND', message: 'ICMS table not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'icms-table',
+      entityId: updated.id,
+      payloadSummary: `ICMS table ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
+  }
+
+  if (pathname === '/fiscal/ipi') {
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalIpiTableListResponse = {
+        items: await scopedFiscal.listIpiTables({
+          search: url.searchParams.get('search') ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalIpiTableRequest;
+      const created = await scopedFiscal.createIpiTable(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'ipi-table',
+        entityId: created.id,
+        payloadSummary: `IPI table ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const ipiTableMatch = pathname.match(/^\/fiscal\/ipi\/([^/]+)$/);
+  if (ipiTableMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalIpiTableRequest;
+    const updated = await scopedFiscal.updateIpiTable(
+      decodeURIComponent(ipiTableMatch[1] ?? ''),
+      payload
+    );
+
+    if (!updated) {
+      return json(response, 404, { code: 'IPI_TABLE_NOT_FOUND', message: 'IPI table not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'ipi-table',
+      entityId: updated.id,
+      payloadSummary: `IPI table ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
   }
 
   if (pathname === '/fiscal/pis-cofins') {

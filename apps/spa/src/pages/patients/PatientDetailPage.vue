@@ -17,8 +17,8 @@
       <AppPageHeader :breadcrumbs="['Animais', 'Detalhes do Animal']">
         <template #title>Detalhes do Animal</template>
         <template #actions>
-          <DsButton tag="a" to="/counter-sales" variant="primary">
-            Abrir Nova Comanda
+          <DsButton tag="a" :to="patientBillingPath" variant="primary">
+            {{ patientBillingActionLabel }}
           </DsButton>
         </template>
       </AppPageHeader>
@@ -191,6 +191,14 @@
             <strong>{{ anamnesisEntries.length }} registro(s)</strong>
             <p>{{ latestAnamnesisSummary }}</p>
           </div>
+          <div class="vetus-accordion-card__quick">
+            <DsButton tag="a" :to="anamnesisActionPath" variant="primary" size="sm">
+              {{ focalEncounter ? 'Adicionar anamnese' : 'Abrir atendimento para anamnese' }}
+            </DsButton>
+            <DsButton tag="a" :to="medicalRecordPath" variant="secondary" size="sm">
+              Abrir prontuário
+            </DsButton>
+          </div>
           <div v-if="isPatientCardExpanded('anamnesis')" class="vetus-accordion-card__body">
             <div class="vetus-module-summary">
               <strong>{{ anamnesisEntries.length }} registro(s)</strong>
@@ -213,11 +221,19 @@
             <div class="quick-actions">
               <DsButton
                 tag="a"
-                :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
+                :to="anamnesisActionPath"
+                variant="primary"
+                size="sm"
+              >
+                {{ focalEncounter ? 'Adicionar anamnese' : 'Abrir atendimento para anamnese' }}
+              </DsButton>
+              <DsButton
+                tag="a"
+                :to="medicalRecordPath"
                 variant="secondary"
                 size="sm"
               >
-                Ver mais
+                Ver prontuário
               </DsButton>
             </div>
           </div>
@@ -835,6 +851,44 @@ const focalEncounter = computed<EncounterSummary | null>(
   () => activeEncounters.value[0] ?? sortedEncounters.value[0] ?? null
 );
 
+const medicalRecordPath = computed(() =>
+  focalEncounter.value ? `/medical-records/${focalEncounter.value.id}` : '/medical-records'
+);
+
+const patientBillingPath = computed(() => {
+  const activeEncounter = activeEncounters.value[0];
+  if (activeEncounter) {
+    return `/billing/${activeEncounter.id}`;
+  }
+
+  const params = new URLSearchParams();
+  if (patient.value?.primaryOwnerId) {
+    params.set('ownerId', patient.value.primaryOwnerId);
+  }
+  if (patient.value?.id) {
+    params.set('patientId', patient.value.id);
+  }
+  const query = params.toString();
+  return query ? `/encounters?${query}` : '/encounters';
+});
+
+const patientBillingActionLabel = computed(() =>
+  activeEncounters.value[0] ? 'Abrir cobrança do atendimento' : 'Selecionar atendimento para cobrança'
+);
+
+const anamnesisActionPath = computed(() => {
+  if (focalEncounter.value) {
+    return `/medical-records/${focalEncounter.value.id}?entry=anamnesis`;
+  }
+
+  const ownerId = patient.value?.primaryOwnerId;
+  const params = new URLSearchParams({ patientId: patient.value?.id ?? patientId.value });
+  if (ownerId) {
+    params.set('ownerId', ownerId);
+  }
+  return `/encounters/new?${params.toString()}`;
+});
+
 const upcomingAppointments = computed(() =>
   [...patientAppointments.value]
     .filter(
@@ -1092,7 +1146,7 @@ const currentCareSummary = computed(() => {
   const parts = [
     encounterStatusLabel(focalEncounter.value.status),
     focalTriage.value ? `triagem ${triagePriorityLabel(focalTriage.value.priority)}` : 'triagem pendente',
-    focalBilling.value ? `comanda ${billingStatusLabel(focalBilling.value.status).toLowerCase()}` : 'sem comanda'
+    focalBilling.value ? `cobrança ${billingStatusLabel(focalBilling.value.status).toLowerCase()}` : 'sem cobrança'
   ];
   return parts.join(' · ');
 });
@@ -2293,8 +2347,8 @@ watch(
 .vetus-accordion-card__summary {
   display: grid;
   gap: 4px;
-  min-height: 88px;
-  padding: 14px;
+  min-height: 72px;
+  padding: 14px 14px 8px;
 }
 
 .vetus-accordion-card__summary strong,
@@ -2315,6 +2369,13 @@ watch(
   gap: 14px;
   padding: 0 18px 18px;
   border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.vetus-accordion-card__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 14px;
 }
 
 .vetus-module-summary {

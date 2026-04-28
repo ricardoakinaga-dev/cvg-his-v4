@@ -185,6 +185,8 @@ export interface CreateOwnerRequest {
   };
   readonly financialResponsible: boolean;
   readonly administrativeNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
 }
 
 export interface UpdateOwnerRequest {
@@ -223,6 +225,8 @@ export interface UpdateOwnerRequest {
   };
   readonly financialResponsible?: boolean;
   readonly administrativeNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly status?: 'active' | 'inactive';
 }
 
@@ -238,6 +242,16 @@ export interface CreatePatientRequest {
   readonly size?: 'small' | 'medium' | 'large';
   readonly baseWeightKg?: number;
   readonly birthDateApproximate?: string;
+  readonly isNeutered?: boolean;
+  readonly microchip?: string;
+  readonly pedigreeNumber?: string;
+  readonly color?: string;
+  readonly chronicDisease?: string;
+  readonly allergy?: string;
+  readonly temperament?: string;
+  readonly generalNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly primaryOwnerId: string;
   readonly status?: 'active' | 'inactive' | 'deceased';
 }
@@ -250,6 +264,16 @@ export interface UpdatePatientRequest {
   readonly size?: 'small' | 'medium' | 'large';
   readonly baseWeightKg?: number;
   readonly birthDateApproximate?: string;
+  readonly isNeutered?: boolean;
+  readonly microchip?: string;
+  readonly pedigreeNumber?: string;
+  readonly color?: string;
+  readonly chronicDisease?: string;
+  readonly allergy?: string;
+  readonly temperament?: string;
+  readonly generalNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly primaryOwnerId?: string;
   readonly status?: 'active' | 'inactive' | 'deceased';
 }
@@ -425,6 +449,44 @@ export interface FiscalIcmsRuleSummary {
   readonly operationType: 'interna' | 'interestadual';
 }
 
+export interface FiscalIcmsTableSummary {
+  readonly id: string;
+  readonly code: string;
+  readonly description: string;
+  readonly percent: number;
+}
+
+export interface CreateFiscalIcmsTableRequest {
+  readonly code: string;
+  readonly description?: string;
+  readonly percent: number;
+}
+
+export interface UpdateFiscalIcmsTableRequest {
+  readonly code?: string;
+  readonly description?: string;
+  readonly percent?: number;
+}
+
+export interface FiscalIpiTableSummary {
+  readonly id: string;
+  readonly code: string;
+  readonly description: string;
+  readonly percent: number;
+}
+
+export interface CreateFiscalIpiTableRequest {
+  readonly code: string;
+  readonly description?: string;
+  readonly percent: number;
+}
+
+export interface UpdateFiscalIpiTableRequest {
+  readonly code?: string;
+  readonly description?: string;
+  readonly percent?: number;
+}
+
 export interface FiscalPisCofinsRuleSummary {
   readonly id: string;
   readonly regime: FiscalTaxRegime;
@@ -587,6 +649,14 @@ export interface FiscalTaxPreview {
 
 export interface FiscalIcmsRuleListResponse {
   readonly items: readonly FiscalIcmsRuleSummary[];
+}
+
+export interface FiscalIcmsTableListResponse {
+  readonly items: readonly FiscalIcmsTableSummary[];
+}
+
+export interface FiscalIpiTableListResponse {
+  readonly items: readonly FiscalIpiTableSummary[];
 }
 
 export interface FiscalPisCofinsRuleListResponse {

@@ -283,12 +283,17 @@
       <div class="modal-form">
         <DsInput id="quick-patient-name" v-model="patientDraft.name" label="Nome do paciente" required />
         <DsInput id="quick-patient-species" v-model="patientDraft.species" type="select" label="Espécie">
-          <option value="canine">Canino</option>
-          <option value="feline">Felino</option>
-          <option value="avian">Ave</option>
+          <option value="not_defined">Não Definido</option>
+          <option value="avian">Avícola</option>
+          <option value="bovine">Bovino</option>
+          <option value="canine">Canina</option>
+          <option value="rabbit">Cunícula</option>
+          <option value="equine">Equina</option>
+          <option value="feline">Felina</option>
+          <option value="other">Outras</option>
+          <option value="primate">Primata</option>
           <option value="rodent">Roedor</option>
           <option value="reptile">Réptil</option>
-          <option value="other">Outro</option>
         </DsInput>
         <DsInput id="quick-patient-sex" v-model="patientDraft.sex" type="select" label="Sexo">
           <option value="male">Macho</option>

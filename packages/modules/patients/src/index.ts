@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import type {
   CreateOwnerPatientLinkRequest,
@@ -62,8 +64,37 @@ function createSeedPatients(): PatientSummary[] {
       status: 'active',
       createdAt,
       updatedAt: createdAt
+    },
+    {
+      id: 'patient_mogeb6qv_5b0gq64z' as PatientId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      name: 'DANI',
+      species: 'canine',
+      breed: 'SRD CANINO',
+      sex: 'female',
+      size: undefined,
+      baseWeightKg: 0,
+      birthDateApproximate: '2025-01-01',
+      isNeutered: undefined,
+      microchip: undefined,
+      pedigreeNumber: undefined,
+      color: undefined,
+      chronicDisease: undefined,
+      allergy: undefined,
+      temperament: undefined,
+      generalNotes: 'Cadastro pareado do Vetus animal ID 9621 para auditoria autorizada.',
+      legacyVetusId: '9621',
+      originalCreatedAt: '2026-02-27',
+      primaryOwnerId: 'owner_ricardo_akinaga' as OwnerId,
+      status: 'active',
+      createdAt: '2026-02-27T00:00:00.000Z',
+      updatedAt: '2026-02-27T00:00:00.000Z'
     }
   ];
+}
+
+function normalizeOptionalBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
 }
 
 function createSeedLinks(): OwnerPatientLinkSummary[] {
@@ -76,6 +107,15 @@ function createSeedLinks(): OwnerPatientLinkSummary[] {
       relationshipType: 'primary',
       financialResponsible: true,
       createdAt: '2026-03-25T00:00:00.000Z'
+    },
+    {
+      id: 'link_ricardo_dani_primary' as OwnerPatientLinkId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      ownerId: 'owner_ricardo_akinaga' as OwnerId,
+      patientId: 'patient_mogeb6qv_5b0gq64z' as PatientId,
+      relationshipType: 'primary',
+      financialResponsible: true,
+      createdAt: '2026-02-27T00:00:00.000Z'
     }
   ];
 }
@@ -96,6 +136,8 @@ export class PatientsService {
   readonly #patientRepository?: PatientRepository;
   readonly #ownerPatientLinkRepository?: OwnerPatientLinkRepository;
   readonly #onPatientCreated?: (patient: PatientSummary) => Promise<void>;
+  #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: PatientsServiceOptions) {
     this.#owners = options.owners;
@@ -137,6 +179,28 @@ export class PatientsService {
     }
   }
 
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+  }
+
   public list(search?: string): readonly PatientSummary[] {
     const query = search?.trim().toLowerCase();
     const patients = Array.from(this.#patients.values());
@@ -151,6 +215,10 @@ export class PatientsService {
         patient.name.toLowerCase().includes(query) ||
         patient.species.toLowerCase().includes(query) ||
         patient.breed?.toLowerCase().includes(query) ||
+        patient.microchip?.toLowerCase().includes(query) ||
+        patient.legacyVetusId?.toLowerCase().includes(query) ||
+        patient.color?.toLowerCase().includes(query) ||
+        patient.pedigreeNumber?.toLowerCase().includes(query) ||
         owner.fullName.toLowerCase().includes(query)
       );
     });
@@ -206,7 +274,7 @@ export class PatientsService {
 
     const now = nowIso();
     const patient: PatientSummary = {
-      id: createCorrelationId('patient') as PatientId,
+      id: randomUUID() as PatientId,
       accountId,
       name,
       species,
@@ -215,20 +283,51 @@ export class PatientsService {
       size: payload.size,
       baseWeightKg: requireOptionalPositiveNumber(payload.baseWeightKg),
       birthDateApproximate: requireOptionalString(payload.birthDateApproximate),
+      isNeutered: normalizeOptionalBoolean(payload.isNeutered),
+      microchip: requireOptionalString(payload.microchip),
+      pedigreeNumber: requireOptionalString(payload.pedigreeNumber),
+      color: requireOptionalString(payload.color),
+      chronicDisease: requireOptionalString(payload.chronicDisease),
+      allergy: requireOptionalString(payload.allergy),
+      temperament: requireOptionalString(payload.temperament),
+      generalNotes: requireOptionalString(payload.generalNotes),
+      legacyVetusId: requireOptionalString(payload.legacyVetusId),
+      originalCreatedAt: requireOptionalString(payload.originalCreatedAt),
       primaryOwnerId,
       status: payload.status ?? 'active',
       createdAt: now,
       updatedAt: now
     };
 
-    this.#patients.set(patient.id, patient);
-    this.ensurePrimaryLink(accountId, patient.id, primaryOwnerId);
+    const linkId = createCorrelationId('link') as OwnerPatientLinkId;
+    const primaryLink: OwnerPatientLinkSummary = {
+      id: linkId,
+      accountId,
+      ownerId: primaryOwnerId,
+      patientId: patient.id,
+      relationshipType: 'primary',
+      financialResponsible: true,
+      createdAt: nowIso()
+    };
 
-    // Persist to database if repository is available
-    if (this.#patientRepository) {
-      this.#patientRepository.create(patient).catch((err) => {
-        console.error('Failed to persist patient to database:', err);
-      });
+    this.#patients.set(patient.id, patient);
+    this.#links.set(primaryLink.id, primaryLink);
+
+    if (this.#patientRepository || this.#ownerPatientLinkRepository) {
+      this.#enqueuePersist(
+        async () => {
+          await this.#patientRepository?.create(patient);
+          await this.#ownerPatientLinkRepository?.create(primaryLink);
+        },
+        () => {
+          if (this.#patients.get(patient.id) === patient) {
+            this.#patients.delete(patient.id);
+          }
+          if (this.#links.get(primaryLink.id) === primaryLink) {
+            this.#links.delete(primaryLink.id);
+          }
+        }
+      );
     }
 
     void this.#onPatientCreated?.(patient);
@@ -262,6 +361,38 @@ export class PatientsService {
         payload.birthDateApproximate !== undefined
           ? requireOptionalString(payload.birthDateApproximate)
           : current.birthDateApproximate,
+      isNeutered:
+        payload.isNeutered !== undefined
+          ? normalizeOptionalBoolean(payload.isNeutered)
+          : current.isNeutered,
+      microchip:
+        payload.microchip !== undefined ? requireOptionalString(payload.microchip) : current.microchip,
+      pedigreeNumber:
+        payload.pedigreeNumber !== undefined
+          ? requireOptionalString(payload.pedigreeNumber)
+          : current.pedigreeNumber,
+      color: payload.color !== undefined ? requireOptionalString(payload.color) : current.color,
+      chronicDisease:
+        payload.chronicDisease !== undefined
+          ? requireOptionalString(payload.chronicDisease)
+          : current.chronicDisease,
+      allergy: payload.allergy !== undefined ? requireOptionalString(payload.allergy) : current.allergy,
+      temperament:
+        payload.temperament !== undefined
+          ? requireOptionalString(payload.temperament)
+          : current.temperament,
+      generalNotes:
+        payload.generalNotes !== undefined
+          ? requireOptionalString(payload.generalNotes)
+          : current.generalNotes,
+      legacyVetusId:
+        payload.legacyVetusId !== undefined
+          ? requireOptionalString(payload.legacyVetusId)
+          : current.legacyVetusId,
+      originalCreatedAt:
+        payload.originalCreatedAt !== undefined
+          ? requireOptionalString(payload.originalCreatedAt)
+          : current.originalCreatedAt,
       primaryOwnerId: nextPrimaryOwnerId,
       status: payload.status ?? current.status,
       updatedAt: nowIso()
@@ -272,9 +403,12 @@ export class PatientsService {
 
     // Persist to database if repository is available
     if (this.#patientRepository) {
-      this.#patientRepository.update(updated).catch((err) => {
-        console.error('Failed to update patient in database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#patientRepository!.update(updated),
+        () => {
+          this.#patients.set(patientId, current);
+        }
+      );
     }
 
     return updated;
@@ -316,9 +450,14 @@ export class PatientsService {
 
     // Persist to database if repository is available
     if (this.#ownerPatientLinkRepository) {
-      this.#ownerPatientLinkRepository.create(link).catch((err) => {
-        console.error('Failed to persist owner-patient link to database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#ownerPatientLinkRepository!.create(link),
+        () => {
+          if (this.#links.get(link.id) === link) {
+            this.#links.delete(link.id);
+          }
+        }
+      );
     }
 
     return link;
@@ -356,10 +495,18 @@ export class PatientsService {
 
     if (existing && existing.ownerId !== ownerId) {
       this.#links.delete(existing.id);
+      if (this.#ownerPatientLinkRepository) {
+        this.#enqueuePersist(
+          () => this.#ownerPatientLinkRepository!.delete(existing.id),
+          () => {
+            this.#links.set(existing.id, existing);
+          }
+        );
+      }
     }
 
     const linkId = createCorrelationId('link') as OwnerPatientLinkId;
-    this.#links.set(linkId, {
+    const link: OwnerPatientLinkSummary = {
       id: linkId,
       accountId,
       ownerId,
@@ -367,7 +514,19 @@ export class PatientsService {
       relationshipType: 'primary',
       financialResponsible: true,
       createdAt: nowIso()
-    });
+    };
+    this.#links.set(linkId, link);
+
+    if (this.#ownerPatientLinkRepository) {
+      this.#enqueuePersist(
+        () => this.#ownerPatientLinkRepository!.create(link),
+        () => {
+          if (this.#links.get(link.id) === link) {
+            this.#links.delete(link.id);
+          }
+        }
+      );
+    }
   }
 }
 

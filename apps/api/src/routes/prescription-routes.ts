@@ -76,6 +76,7 @@ export async function handlePrescriptionRoutes(
     const principal = requirePrincipal(request, 'prescriptions.write');
     const payload = (await readJsonBody(request)) as CreatePrescriptionRequest;
     const rx = prescriptions.create(principal.user.accountId, principal.user.id, payload);
+    await prescriptions.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -121,6 +122,7 @@ export async function handlePrescriptionRoutes(
       const principal = requirePrincipal(request, 'prescriptions.write');
       const payload = (await readJsonBody(request)) as UpdatePrescriptionRequest;
       const rx = prescriptions.update(prescriptionId as never, principal.user.id, payload);
+      await prescriptions.waitForPersistence();
 
       appendAudit(audit, {
         actorId: principal.user.id,
@@ -142,6 +144,7 @@ export async function handlePrescriptionRoutes(
       const principal = requirePrincipal(request, 'prescriptions.write');
       const payload = (await readJsonBody(request)) as ArchivePrescriptionRequest;
       const rx = prescriptions.archive(prescriptionId as never, principal.user.id, payload);
+      await prescriptions.waitForPersistence();
 
       appendAudit(audit, {
         actorId: principal.user.id,

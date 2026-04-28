@@ -12,6 +12,16 @@ export interface PatientSummary {
   size?: PatientSize;
   baseWeightKg?: number;
   birthDateApproximate?: string;
+  isNeutered?: boolean;
+  microchip?: string;
+  pedigreeNumber?: string;
+  color?: string;
+  chronicDisease?: string;
+  allergy?: string;
+  temperament?: string;
+  generalNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
   primaryOwnerId: string;
   status: PatientStatus;
   createdAt: string;
@@ -26,6 +36,16 @@ export interface CreatePatientRequest {
   size?: PatientSize;
   baseWeightKg?: number;
   birthDateApproximate?: string;
+  isNeutered?: boolean;
+  microchip?: string;
+  pedigreeNumber?: string;
+  color?: string;
+  chronicDisease?: string;
+  allergy?: string;
+  temperament?: string;
+  generalNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
   primaryOwnerId: string;
   status?: PatientStatus;
 }
@@ -38,6 +58,16 @@ export interface UpdatePatientRequest {
   size?: PatientSize;
   baseWeightKg?: number;
   birthDateApproximate?: string;
+  isNeutered?: boolean;
+  microchip?: string;
+  pedigreeNumber?: string;
+  color?: string;
+  chronicDisease?: string;
+  allergy?: string;
+  temperament?: string;
+  generalNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
   primaryOwnerId?: string;
   status?: PatientStatus;
 }

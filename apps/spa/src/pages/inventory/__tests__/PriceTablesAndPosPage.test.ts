@@ -6,7 +6,6 @@ import PointOfSaleSyncPage from '../PointOfSaleSyncPage.vue';
 import {
   addPriceTableItem,
   archivePriceTable,
-  completePosSyncJob,
   createPosSyncJob,
   createPriceTable,
   getPriceTableDetail,
@@ -25,7 +24,6 @@ vi.mock('@/services/commercial', () => ({
   archivePriceTable: vi.fn(),
   addPriceTableItem: vi.fn(),
   createPosSyncJob: vi.fn(),
-  completePosSyncJob: vi.fn(),
   listPosSyncJobs: vi.fn()
 }));
 
@@ -162,18 +160,10 @@ beforeEach(() => {
   vi.mocked(createPosSyncJob).mockResolvedValue({
     id: 'pos-job-1',
     syncKind: 'stock',
-    status: 'queued',
-    processedCount: 0,
-    requestedAt: '2026-04-24T00:00:00.000Z',
-    finishedAt: null,
-    errorMessage: null
-  });
-  vi.mocked(completePosSyncJob).mockResolvedValue({
-    id: 'pos-job-1',
-    syncKind: 'stock',
     status: 'completed',
     processedCount: 128,
     requestedAt: '2026-04-24T00:00:00.000Z',
+    startedAt: '2026-04-24T00:00:01.000Z',
     finishedAt: '2026-04-24T00:00:10.000Z',
     errorMessage: null
   });
@@ -184,6 +174,7 @@ beforeEach(() => {
       status: 'completed',
       processedCount: 64,
       requestedAt: '2026-04-24T00:00:00.000Z',
+      startedAt: '2026-04-24T00:00:01.000Z',
       finishedAt: '2026-04-24T00:00:10.000Z',
       errorMessage: null
     }
@@ -279,5 +270,6 @@ describe('PointOfSaleSyncPage', () => {
     expect(wrapper.text()).toContain('background');
     expect(wrapper.text()).toContain('Sincronização finalizada');
     expect(wrapper.text()).toContain('pos-job-1');
+    expect(createPosSyncJob).toHaveBeenCalledWith('stock');
   });
 });

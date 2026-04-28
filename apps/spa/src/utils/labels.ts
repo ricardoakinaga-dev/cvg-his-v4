@@ -1,10 +1,15 @@
 export const speciesMap: Record<string, string> = {
-  canine: '🐕 Canino',
-  feline: '🐈 Felino',
-  avian: '🐦 Aves',
+  not_defined: '❓ Não Definido',
+  avian: '🐦 Avícola',
+  bovine: '🐄 Bovino',
+  canine: '🐕 Canina',
+  rabbit: '🐇 Cunícula',
+  equine: '🐎 Equina',
+  feline: '🐈 Felina',
+  other: '🐾 Outras',
+  primate: '🐒 Primata',
   rodent: '🐹 Roedor',
-  reptile: '🦎 Réptil',
-  other: '🐾 Outro'
+  reptile: '🦎 Réptil'
 };
 
 export function speciesLabel(s: string): string {

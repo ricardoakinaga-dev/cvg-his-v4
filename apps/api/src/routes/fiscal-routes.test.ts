@@ -154,18 +154,35 @@ test('handleFiscalRoutes filters CFOP rows using query params', async () => {
   assert.ok(payload.items.some((item) => item.category === 'servico'));
 });
 
-test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params', async () => {
+test('handleFiscalRoutes filters simple ICMS, IPI and NFS-e tables using real query params', async () => {
   const icmsResponse = new MockResponse();
+  const ipiResponse = new MockResponse();
   const nfseResponse = new MockResponse();
 
   const icmsHandled = await handleFiscalRoutes(
     '/fiscal/icms',
     {
       method: 'GET',
-      url: '/fiscal/icms?ufDestination=RJ&operationType=interestadual'
+      url: '/fiscal/icms?search=18'
     } as never,
     icmsResponse as never,
     'corr-fiscal-4',
+    {
+      fiscal: new FiscalService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  const ipiHandled = await handleFiscalRoutes(
+    '/fiscal/ipi',
+    {
+      method: 'GET',
+      url: '/fiscal/ipi?search=3%2C25'
+    } as never,
+    ipiResponse as never,
+    'corr-fiscal-ipi-list',
     {
       fiscal: new FiscalService(),
       audit: { write: () => ({}) } as never,
@@ -191,21 +208,146 @@ test('handleFiscalRoutes filters ICMS and NFS-e tables using real query params',
   );
 
   assert.equal(icmsHandled, true);
+  assert.equal(ipiHandled, true);
   assert.equal(nfseHandled, true);
 
   const icmsPayload = icmsResponse.bodyJson<{
-    items: Array<{ ufDestination: string; operationType: string }>;
+    items: Array<{ code: string; description: string; percent: number }>;
+  }>();
+  const ipiPayload = ipiResponse.bodyJson<{
+    items: Array<{ code: string; description: string; percent: number }>;
   }>();
   const nfsePayload = nfseResponse.bodyJson<{
     items: Array<{ state: string; active: boolean }>;
   }>();
 
   assert.ok(icmsPayload.items.length > 0);
-  assert.ok(icmsPayload.items.every((item) => item.ufDestination === 'RJ'));
-  assert.ok(icmsPayload.items.every((item) => item.operationType === 'interestadual'));
+  assert.ok(icmsPayload.items.every((item) => `${item.code} ${item.description}`.includes('18')));
+  assert.ok(ipiPayload.items.length > 0);
+  assert.ok(ipiPayload.items.every((item) => `${item.code} ${item.description}`.includes('3,25')));
   assert.ok(nfsePayload.items.length > 0);
   assert.ok(nfsePayload.items.every((item) => item.state === 'SP'));
   assert.ok(nfsePayload.items.every((item) => item.active));
+});
+
+test('handleFiscalRoutes creates and updates simple ICMS table entries when enabled', async () => {
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/icms',
+    createMockRequest('POST', '/fiscal/icms', {
+      code: '20',
+      description: 'ICMS 20%',
+      percent: 20
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-icms-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ id: string; code: string; percent: number }>();
+  assert.equal(createdPayload.code, '20');
+  assert.equal(createdPayload.percent, 20);
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/icms/${createdPayload.id}`,
+    createMockRequest('PATCH', `/fiscal/icms/${createdPayload.id}`, {
+      description: 'ICMS interno 20%',
+      percent: 20.5
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-icms-update',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ description: string; percent: number }>();
+  assert.equal(updatedPayload.description, 'ICMS interno 20%');
+  assert.equal(updatedPayload.percent, 20.5);
+});
+
+test('handleFiscalRoutes creates and updates simple IPI table entries when enabled', async () => {
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/ipi',
+    createMockRequest('POST', '/fiscal/ipi', {
+      code: '9',
+      description: 'IPI 9%',
+      percent: 9
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-ipi-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ id: string; code: string; percent: number }>();
+  assert.equal(createdPayload.code, '9');
+  assert.equal(createdPayload.percent, 9);
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/ipi/${createdPayload.id}`,
+    createMockRequest('PATCH', `/fiscal/ipi/${createdPayload.id}`, {
+      description: 'IPI interno 9%',
+      percent: 9.5
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-ipi-update',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ description: string; percent: number }>();
+  assert.equal(updatedPayload.description, 'IPI interno 9%');
+  assert.equal(updatedPayload.percent, 9.5);
 });
 
 test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffice is enabled', async () => {

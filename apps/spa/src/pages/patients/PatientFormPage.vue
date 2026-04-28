@@ -185,6 +185,37 @@
               <option value="deceased">✝ Falecido</option>
             </DsInput>
           </div>
+          <div class="form-row form-row--3">
+            <DsInput id="isNeutered" v-model="form.isNeutered" type="select" label="Castrado">
+              <option value="">Não informado</option>
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </DsInput>
+            <DsInput id="microchip" v-model="form.microchip" label="Número do chip" />
+            <DsInput id="pedigreeNumber" v-model="form.pedigreeNumber" label="Número pedigree" />
+          </div>
+          <div class="form-row form-row--3">
+            <DsInput id="color" v-model="form.color" label="Cor" />
+            <DsInput id="temperament" v-model="form.temperament" label="Temperamento" />
+            <DsInput id="legacyVetusId" v-model="form.legacyVetusId" label="ID legado Vetus" />
+          </div>
+          <div class="form-row form-row--3">
+            <DsInput id="chronicDisease" v-model="form.chronicDisease" label="Doença crônica" />
+            <DsInput id="allergy" v-model="form.allergy" label="Alergia" />
+            <DsInput
+              id="originalCreatedAt"
+              v-model="form.originalCreatedAt"
+              type="date"
+              label="Data de cadastro original"
+            />
+          </div>
+          <DsInput
+            id="generalNotes"
+            v-model="form.generalNotes"
+            type="textarea"
+            label="Observações gerais"
+            :rows="3"
+          />
         </DsCard>
 
         <div class="form-actions">
@@ -253,6 +284,16 @@ const form = reactive({
   size: '' as 'small' | 'medium' | 'large' | '',
   baseWeightKg: undefined as number | undefined,
   birthDateApproximate: '',
+  isNeutered: '' as '' | 'true' | 'false',
+  microchip: '',
+  pedigreeNumber: '',
+  color: '',
+  chronicDisease: '',
+  allergy: '',
+  temperament: '',
+  generalNotes: '',
+  legacyVetusId: '',
+  originalCreatedAt: '',
   primaryOwnerId: '',
   status: 'active' as 'active' | 'inactive' | 'deceased'
 });
@@ -321,8 +362,18 @@ const summaryCards = computed(() => [
     value:
       form.status === 'active' ? 'Ativo' : form.status === 'inactive' ? 'Inativo' : 'Falecido',
     hint: 'Situação operacional'
+  },
+  {
+    label: 'Alerta',
+    value: form.allergy.trim() || form.chronicDisease.trim() || 'Sem alerta',
+    hint: 'Alergia/doença crônica'
   }
 ]);
+
+const neuteredValue = computed(() => {
+  if (form.isNeutered === '') return undefined;
+  return form.isNeutered === 'true';
+});
 
 const validation = useFormValidation({
   rules: {
@@ -360,6 +411,16 @@ async function onSubmit() {
       size: (form.size as 'small' | 'medium' | 'large') || undefined,
       baseWeightKg: form.baseWeightKg,
       birthDateApproximate: form.birthDateApproximate || undefined,
+      isNeutered: neuteredValue.value,
+      microchip: form.microchip.trim() || undefined,
+      pedigreeNumber: form.pedigreeNumber.trim() || undefined,
+      color: form.color.trim() || undefined,
+      chronicDisease: form.chronicDisease.trim() || undefined,
+      allergy: form.allergy.trim() || undefined,
+      temperament: form.temperament.trim() || undefined,
+      generalNotes: form.generalNotes.trim() || undefined,
+      legacyVetusId: form.legacyVetusId.trim() || undefined,
+      originalCreatedAt: form.originalCreatedAt || undefined,
       primaryOwnerId: form.primaryOwnerId,
       status: form.status
     };
@@ -431,6 +492,17 @@ onMounted(async () => {
       form.size = patient.size || '';
       form.baseWeightKg = patient.baseWeightKg;
       form.birthDateApproximate = patient.birthDateApproximate || '';
+      form.isNeutered =
+        patient.isNeutered === true ? 'true' : patient.isNeutered === false ? 'false' : '';
+      form.microchip = patient.microchip || '';
+      form.pedigreeNumber = patient.pedigreeNumber || '';
+      form.color = patient.color || '';
+      form.chronicDisease = patient.chronicDisease || '';
+      form.allergy = patient.allergy || '';
+      form.temperament = patient.temperament || '';
+      form.generalNotes = patient.generalNotes || '';
+      form.legacyVetusId = patient.legacyVetusId || '';
+      form.originalCreatedAt = patient.originalCreatedAt || '';
       form.primaryOwnerId = patient.primaryOwnerId;
       form.status = patient.status;
     } catch (err: unknown) {

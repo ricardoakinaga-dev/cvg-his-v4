@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -69,6 +71,8 @@ export class EncountersService {
     encounter: EncounterSummary,
     previousStatus: EncounterSummary['status']
   ) => Promise<void>;
+  #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: EncountersServiceOptions) {
     this.#owners = options.owners;
@@ -115,6 +119,28 @@ export class EncountersService {
     return encounter;
   }
 
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+  }
+
   public openEncounter(
     accountId: AccountId,
     actorUserId: UserId,
@@ -134,7 +160,7 @@ export class EncountersService {
 
     const now = nowIso();
     const encounter: EncounterSummary = {
-      id: createCorrelationId('enc') as EncounterId,
+      id: randomUUID() as EncounterId,
       accountId,
       patientId,
       ownerId,
@@ -150,19 +176,26 @@ export class EncountersService {
     };
 
     this.#encounters.set(encounter.id, encounter);
+
+    // Persist to database if repository is available
+    if (this.#encounterRepository) {
+      this.#enqueuePersist(
+        () => this.#encounterRepository!.create(encounter),
+        () => {
+          if (this.#encounters.get(encounter.id) === encounter) {
+            this.#encounters.delete(encounter.id);
+          }
+          this.#timeline.delete(encounter.id);
+        }
+      );
+    }
+
     this.appendTimeline(encounter.id, {
       accountId,
       eventType: 'encounter_opened',
       summary: `Encounter opened from ${encounter.origin}`,
       actorUserId
     });
-
-    // Persist to database if repository is available
-    if (this.#encounterRepository) {
-      this.#encounterRepository.create(encounter).catch((err) => {
-        console.error('Failed to persist encounter to database:', err);
-      });
-    }
 
     void this.#onEncounterCreated?.(encounter);
 
@@ -200,9 +233,12 @@ export class EncountersService {
 
     // Persist to database if repository is available
     if (this.#encounterRepository) {
-      this.#encounterRepository.update(updated).catch((err) => {
-        console.error('Failed to update encounter in database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#encounterRepository!.update(updated),
+        () => {
+          this.#encounters.set(encounterId, current);
+        }
+      );
     }
 
     void this.#onEncounterStatusChanged?.(updated, current.status);
@@ -239,9 +275,12 @@ export class EncountersService {
 
     // Persist to database if repository is available
     if (this.#encounterRepository) {
-      this.#encounterRepository.update(updated).catch((err) => {
-        console.error('Failed to close encounter in database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#encounterRepository!.update(updated),
+        () => {
+          this.#encounters.set(encounterId, current);
+        }
+      );
     }
 
     void this.#onEncounterStatusChanged?.(updated, current.status);
@@ -250,14 +289,19 @@ export class EncountersService {
   }
 
   public deleteEncounter(encounterId: EncounterId): void {
-    this.getOrThrow(encounterId);
+    const current = this.getOrThrow(encounterId);
+    const currentTimeline = this.#timeline.get(encounterId) ?? [];
     this.#encounters.delete(encounterId);
     this.#timeline.delete(encounterId);
 
     if (this.#encounterRepository) {
-      this.#encounterRepository.delete(encounterId).catch((err) => {
-        console.error('Failed to delete encounter from database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#encounterRepository!.delete(encounterId),
+        () => {
+          this.#encounters.set(encounterId, current);
+          this.#timeline.set(encounterId, currentTimeline);
+        }
+      );
     }
   }
 
@@ -311,9 +355,16 @@ export class EncountersService {
 
     // Persist to database if repository is available
     if (this.#encounterTimelineRepository) {
-      this.#encounterTimelineRepository.create(event).catch((err) => {
-        console.error('Failed to persist timeline event to database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#encounterTimelineRepository!.create(event),
+        () => {
+          const events = this.#timeline.get(encounterId) ?? [];
+          this.#timeline.set(
+            encounterId,
+            events.filter((item) => item.id !== event.id)
+          );
+        }
+      );
     }
 
     return event;

@@ -90,6 +90,7 @@ import { handleAdministrativeReportsRoutes } from './routes/administrative-repor
 import { handleDischargesRoutes } from './routes/discharges-routes.js';
 import { handleBillingRoutes } from './routes/billing-routes.js';
 import { handleExpensesCatalogRoutes } from './routes/expenses-catalog-routes.js';
+import { handlePrescriptionRoutes } from './routes/prescription-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
 import { handleInventoryRoutes } from './routes/inventory-routes.js';
 import { handleInventoryWarehousesRoutes } from './routes/inventory-warehouses-routes.js';
@@ -210,6 +211,8 @@ export interface ApiServerOptions {
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
   /** Gates distributed runtime state (Redis-backed session, encounter timeline, etc.) */
   readonly runtimeDistributedStateEnabled?: boolean;
+  /** Keeps canonical owner/patient registry seeds available with repository-backed runtime. */
+  readonly preserveSeedMasterDataWithRepository?: boolean;
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
   /** When true, forces LocalPixPaymentGateway (mock) even if pagarme keys are set. Default: false (PagarMe default). */
@@ -762,7 +765,18 @@ function createResponsibilityTermStore(): ResponsibilityTermStore {
   }
 }
 
-type BreedSpecies = 'canine' | 'feline' | 'avian' | 'rodent' | 'reptile' | 'other';
+type BreedSpecies =
+  | 'not_defined'
+  | 'avian'
+  | 'bovine'
+  | 'canine'
+  | 'rabbit'
+  | 'equine'
+  | 'feline'
+  | 'other'
+  | 'primate'
+  | 'rodent'
+  | 'reptile';
 
 interface BreedSummary {
   readonly id: string;
@@ -799,16 +813,84 @@ interface BreedStore {
 }
 
 const breedSpeciesValues = new Set<BreedSpecies>([
-  'canine',
-  'feline',
+  'not_defined',
   'avian',
+  'bovine',
+  'canine',
+  'rabbit',
+  'equine',
+  'feline',
+  'other',
+  'primate',
   'rodent',
-  'reptile',
-  'other'
+  'reptile'
 ]);
 const breedMaxNameLength = 160;
 const breedMaxCodeLength = 80;
 const breedMaxDescriptionLength = 1000;
+
+const defaultBreedSeeds: readonly Omit<BreedSummary, 'id' | 'accountId' | 'createdAt' | 'updatedAt'>[] = [
+  {
+    name: 'Yorkshire Terrier',
+    code: 'CAN-YORKSHIRE-TERRIER',
+    species: 'canine',
+    description: 'Raca canina de pequeno porte usada no cadastro Vetus-like.',
+    active: true
+  },
+  {
+    name: 'Golden Retriever',
+    code: 'CAN-GOLDEN-RETRIEVER',
+    species: 'canine',
+    description: 'Raca canina de grande porte.',
+    active: true
+  },
+  {
+    name: 'Shih Tzu',
+    code: 'CAN-SHIH-TZU',
+    species: 'canine',
+    description: 'Raca canina de pequeno porte.',
+    active: true
+  },
+  {
+    name: 'Poodle',
+    code: 'CAN-POODLE',
+    species: 'canine',
+    description: 'Raca canina comum em atendimento clinico.',
+    active: true
+  },
+  {
+    name: 'Sem raca definida',
+    code: 'CAN-SRD',
+    species: 'canine',
+    description: 'Paciente canino sem raca definida.',
+    active: true
+  },
+  {
+    name: 'Persa',
+    code: 'FEL-PERSA',
+    species: 'feline',
+    description: 'Raca felina Persa.',
+    active: true
+  },
+  {
+    name: 'Siamês',
+    code: 'FEL-SIAMES',
+    species: 'feline',
+    description: 'Raca felina Siames.',
+    active: true
+  },
+  {
+    name: 'Sem raca definida',
+    code: 'FEL-SRD',
+    species: 'feline',
+    description: 'Paciente felino sem raca definida.',
+    active: true
+  }
+];
+
+function createCatalogSeedId(prefix: string, accountId: string, code: string): string {
+  return `${prefix}_${accountId}_${code}`.toLowerCase().replace(/[^a-z0-9_-]+/g, '_');
+}
 
 function normalizeBreedSpecies(value: BreedSpecies | undefined): BreedSpecies {
   if (!value) return 'canine';
@@ -859,6 +941,25 @@ function mapBreedRow(row: Record<string, unknown>): BreedSummary {
 class InMemoryBreedStore implements BreedStore {
   readonly #breeds = new Map<string, BreedSummary>();
 
+  #ensureSeedData(accountId: string): void {
+    const now = new Date().toISOString();
+    for (const seed of defaultBreedSeeds) {
+      const alreadyExists = Array.from(this.#breeds.values()).some(
+        (breed) => breed.accountId === accountId && breed.code === seed.code
+      );
+      if (alreadyExists || !seed.code) continue;
+
+      const breed: BreedSummary = {
+        id: createCatalogSeedId('breed', accountId, seed.code),
+        accountId,
+        ...seed,
+        createdAt: now,
+        updatedAt: now
+      };
+      this.#breeds.set(breed.id, breed);
+    }
+  }
+
   async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
     const now = new Date().toISOString();
     const breed: BreedSummary = {
@@ -905,6 +1006,7 @@ class InMemoryBreedStore implements BreedStore {
   }
 
   async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
+    this.#ensureSeedData(accountId);
     let items = Array.from(this.#breeds.values()).filter((breed) => breed.accountId === accountId);
 
     if (filters.active !== undefined) {
@@ -934,6 +1036,52 @@ class InMemoryBreedStore implements BreedStore {
 }
 
 class DatabaseBreedStore implements BreedStore {
+  async #ensureSeedData(accountId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      const now = new Date();
+      for (const seed of defaultBreedSeeds) {
+        if (!seed.code) continue;
+        await client.query(
+          `INSERT INTO breeds (
+             id,
+             account_id,
+             name,
+             code,
+             species,
+             description,
+             active,
+             created_at,
+             updated_at
+           )
+           SELECT
+             $1::varchar,
+             $2::uuid,
+             $3::varchar,
+             $4::varchar,
+             $5::varchar,
+             $6::text,
+             $7::boolean,
+             $8::timestamptz,
+             $9::timestamptz
+           WHERE NOT EXISTS (
+             SELECT 1 FROM breeds WHERE account_id = $2::uuid AND code = $4::varchar
+           )`,
+          [
+            createCatalogSeedId('breed', accountId, seed.code),
+            accountId,
+            seed.name,
+            seed.code,
+            seed.species,
+            seed.description,
+            seed.active,
+            now,
+            now
+          ]
+        );
+      }
+    });
+  }
+
   async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
     const now = new Date();
     const breed: BreedSummary = {
@@ -1034,6 +1182,7 @@ class DatabaseBreedStore implements BreedStore {
   }
 
   async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
+    await this.#ensureSeedData(accountId);
     return await withTenantQuery(getPool(), async (client) => {
       let sql = 'SELECT * FROM breeds WHERE account_id = $1';
       const params: unknown[] = [accountId];
@@ -1079,7 +1228,18 @@ function createBreedStore(): BreedStore {
   }
 }
 
-type AnimalSpeciesSystemCode = 'canine' | 'feline' | 'avian' | 'rodent' | 'reptile' | 'other';
+type AnimalSpeciesSystemCode =
+  | 'not_defined'
+  | 'avian'
+  | 'bovine'
+  | 'canine'
+  | 'rabbit'
+  | 'equine'
+  | 'feline'
+  | 'other'
+  | 'primate'
+  | 'rodent'
+  | 'reptile';
 
 interface AnimalSpeciesSummary {
   readonly id: string;
@@ -1116,16 +1276,104 @@ interface AnimalSpeciesStore {
 }
 
 const animalSpeciesSystemCodes = new Set<AnimalSpeciesSystemCode>([
-  'canine',
-  'feline',
+  'not_defined',
   'avian',
+  'bovine',
+  'canine',
+  'rabbit',
+  'equine',
+  'feline',
+  'other',
+  'primate',
   'rodent',
-  'reptile',
-  'other'
+  'reptile'
 ]);
 const animalSpeciesMaxNameLength = 160;
 const animalSpeciesMaxCodeLength = 80;
 const animalSpeciesMaxDescriptionLength = 1000;
+
+const defaultAnimalSpeciesSeeds: readonly Omit<
+  AnimalSpeciesSummary,
+  'id' | 'accountId' | 'createdAt' | 'updatedAt'
+>[] = [
+  {
+    name: 'Não Definido',
+    code: 'NOT_DEFINED',
+    systemCode: 'not_defined',
+    description: 'Opcao Vetus para especie nao definida.',
+    active: true
+  },
+  {
+    name: 'Avicola',
+    code: 'AVIAN',
+    systemCode: 'avian',
+    description: 'Opcao Vetus para especies avicolas.',
+    active: true
+  },
+  {
+    name: 'Bovino',
+    code: 'BOVINE',
+    systemCode: 'bovine',
+    description: 'Opcao Vetus para bovinos.',
+    active: true
+  },
+  {
+    name: 'Canina',
+    code: 'CANINE',
+    systemCode: 'canine',
+    description: 'Pacientes caes.',
+    active: true
+  },
+  {
+    name: 'Cunicula',
+    code: 'RABBIT',
+    systemCode: 'rabbit',
+    description: 'Opcao Vetus para lagomorfos/coelhos.',
+    active: true
+  },
+  {
+    name: 'Equina',
+    code: 'EQUINE',
+    systemCode: 'equine',
+    description: 'Opcao Vetus para equinos.',
+    active: true
+  },
+  {
+    name: 'Felina',
+    code: 'FELINE',
+    systemCode: 'feline',
+    description: 'Pacientes gatos.',
+    active: true
+  },
+  {
+    name: 'Outro',
+    code: 'OTHER',
+    systemCode: 'other',
+    description: 'Outras especies cadastradas para atendimento.',
+    active: true
+  },
+  {
+    name: 'Primata',
+    code: 'PRIMATE',
+    systemCode: 'primate',
+    description: 'Opcao Vetus para primatas.',
+    active: true
+  },
+  {
+    name: 'Roedor',
+    code: 'RODENT',
+    systemCode: 'rodent',
+    description: 'Pacientes roedores.',
+    active: true
+  },
+  {
+    name: 'Reptil',
+    code: 'REPTILE',
+    systemCode: 'reptile',
+    description: 'Pacientes repteis.',
+    active: true
+  }
+];
 
 function normalizeAnimalSpeciesSystemCode(
   value: AnimalSpeciesSystemCode | undefined
@@ -1177,6 +1425,25 @@ function mapAnimalSpeciesRow(row: Record<string, unknown>): AnimalSpeciesSummary
 
 class InMemoryAnimalSpeciesStore implements AnimalSpeciesStore {
   readonly #species = new Map<string, AnimalSpeciesSummary>();
+
+  #ensureSeedData(accountId: string): void {
+    const now = new Date().toISOString();
+    for (const seed of defaultAnimalSpeciesSeeds) {
+      const alreadyExists = Array.from(this.#species.values()).some(
+        (species) => species.accountId === accountId && species.code === seed.code
+      );
+      if (alreadyExists || !seed.code) continue;
+
+      const species: AnimalSpeciesSummary = {
+        id: createCatalogSeedId('species', accountId, seed.code),
+        accountId,
+        ...seed,
+        createdAt: now,
+        updatedAt: now
+      };
+      this.#species.set(species.id, species);
+    }
+  }
 
   async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
     const now = new Date().toISOString();
@@ -1233,6 +1500,7 @@ class InMemoryAnimalSpeciesStore implements AnimalSpeciesStore {
     accountId: string,
     filters: AnimalSpeciesListFilters
   ): Promise<AnimalSpeciesSummary[]> {
+    this.#ensureSeedData(accountId);
     let items = Array.from(this.#species.values()).filter((species) => species.accountId === accountId);
 
     if (filters.active !== undefined) {
@@ -1263,6 +1531,52 @@ class InMemoryAnimalSpeciesStore implements AnimalSpeciesStore {
 }
 
 class DatabaseAnimalSpeciesStore implements AnimalSpeciesStore {
+  async #ensureSeedData(accountId: string): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      const now = new Date();
+      for (const seed of defaultAnimalSpeciesSeeds) {
+        if (!seed.code) continue;
+        await client.query(
+          `INSERT INTO animal_species (
+             id,
+             account_id,
+             name,
+             code,
+             system_code,
+             description,
+             active,
+             created_at,
+             updated_at
+           )
+           SELECT
+             $1::varchar,
+             $2::uuid,
+             $3::varchar,
+             $4::varchar,
+             $5::varchar,
+             $6::text,
+             $7::boolean,
+             $8::timestamptz,
+             $9::timestamptz
+           WHERE NOT EXISTS (
+             SELECT 1 FROM animal_species WHERE account_id = $2::uuid AND code = $4::varchar
+           )`,
+          [
+            createCatalogSeedId('species', accountId, seed.code),
+            accountId,
+            seed.name,
+            seed.code,
+            seed.systemCode,
+            seed.description,
+            seed.active,
+            now,
+            now
+          ]
+        );
+      }
+    });
+  }
+
   async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
     const now = new Date();
     const species: AnimalSpeciesSummary = {
@@ -1372,6 +1686,7 @@ class DatabaseAnimalSpeciesStore implements AnimalSpeciesStore {
     accountId: string,
     filters: AnimalSpeciesListFilters
   ): Promise<AnimalSpeciesSummary[]> {
+    await this.#ensureSeedData(accountId);
     return await withTenantQuery(getPool(), async (client) => {
       let sql = 'SELECT * FROM animal_species WHERE account_id = $1';
       const params: unknown[] = [accountId];
@@ -2761,6 +3076,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     notifications,
     audit,
     discharges,
+    prescriptions,
     prescriptionExecutions,
     products,
     services,
@@ -2789,7 +3105,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
     notificationsWhatsappRemindersEnabled:
       options.featureFlags?.notificationsWhatsappRemindersEnabled,
-    preserveSeedUsersWithRepository: options.environment === 'test'
+    preserveSeedUsersWithRepository: options.environment === 'test',
+    preserveSeedMasterDataWithRepository:
+      options.preserveSeedMasterDataWithRepository ?? options.environment !== 'test'
   });
   // PagarMe is preferred only when both credentials are present.
   // Without complete credentials, the runtime must fall back to LocalPix so
@@ -3491,6 +3809,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             request
           );
           const entry = medicalRecords.addEntry(principal.user.id, payload);
+          await medicalRecords.waitForPersistence();
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -3539,6 +3858,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (request.method === 'PATCH' && medicalRecordEntryParts.length === 4) {
             const payload = (await readJsonBody(request)) as UpdateClinicalEntryRequest;
             const entry = medicalRecords.updateEntry(principal.user.id, entryId as never, payload);
+            await medicalRecords.waitForPersistence();
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -3560,6 +3880,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               () => ({}) as ArchiveClinicalEntryRequest
             )) as ArchiveClinicalEntryRequest;
             const entry = medicalRecords.archiveEntry(principal.user.id, entryId as never, payload);
+            await medicalRecords.waitForPersistence();
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -3847,6 +4168,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               });
             }
           }
+          await encounters.waitForPersistence();
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -3902,6 +4224,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             payload
           );
           await syncQueueWithEncounter(encounter.id, encounter.status);
+          await encounters.waitForPersistence();
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -3932,6 +4255,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             payload
           );
           await syncQueueWithEncounter(encounter.id, encounter.status);
+          await encounters.waitForPersistence();
           appendAudit(
             principal.user.id,
             principal.user.accountId,
@@ -5359,6 +5683,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           audit,
           requirePrincipal,
           enforceAbac
+        })) { return; }
+
+        // --- Prescriptions (delegated) ---
+        if (await handlePrescriptionRoutes(pathname, request, response, correlationId, {
+          prescriptions,
+          audit,
+          requirePrincipal
         })) { return; }
 
         // --- Prescription Executions (delegated) ---

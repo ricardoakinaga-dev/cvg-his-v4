@@ -1,4 +1,4 @@
-import { eq, and, or, ilike } from 'drizzle-orm';
+import { eq, and, or, ilike, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { owners } from '@cvg-his-v2/shared-database';
 import type {
@@ -14,22 +14,28 @@ import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 interface StoredOwnerMetadata {
   readonly version: 2;
+  readonly contacts?: readonly OwnerContact[];
   readonly address?: OwnerAddress;
   readonly profile?: OwnerProfile;
   readonly financialProfile?: OwnerFinancialProfile;
   readonly administrativeNotes?: string;
   readonly financialResponsible?: boolean;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
   readonly status?: 'active' | 'inactive';
 }
 
 function serializeOwnerMetadata(owner: OwnerSummary): StoredOwnerMetadata | null {
   const metadata: StoredOwnerMetadata = {
     version: 2,
+    contacts: owner.contacts,
     address: owner.address,
     profile: owner.profile,
     financialProfile: owner.financialProfile,
     administrativeNotes: owner.administrativeNotes,
     financialResponsible: owner.financialResponsible,
+    legacyVetusId: owner.legacyVetusId,
+    originalCreatedAt: owner.originalCreatedAt,
     status: owner.status
   };
 
@@ -53,6 +59,24 @@ function readNumber(record: Record<string, unknown>, key: string): number | unde
 function readBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
   const value = record[key];
   return typeof value === 'boolean' ? value : undefined;
+}
+
+function parseOwnerContact(raw: unknown, index: number): OwnerContact | null {
+  if (!isRecord(raw)) return null;
+  const label = readString(raw, 'label');
+  const value = readString(raw, 'value');
+  const type = raw.type === 'email' || raw.type === 'whatsapp' || raw.type === 'phone' ? raw.type : null;
+
+  if (!label || !value || !type) {
+    return null;
+  }
+
+  return {
+    label,
+    value,
+    type,
+    primary: readBoolean(raw, 'primary') ?? index === 0
+  };
 }
 
 function parseOwnerMetadata(raw: unknown): StoredOwnerMetadata | null {
@@ -102,9 +126,15 @@ function parseOwnerMetadata(raw: unknown): StoredOwnerMetadata | null {
         blockedPoints: readNumber(financialSource, 'blockedPoints')
       }
     : undefined;
+  const contacts = Array.isArray(raw.contacts)
+    ? raw.contacts
+        .map((contact, index) => parseOwnerContact(contact, index))
+        .filter((contact): contact is OwnerContact => contact !== null)
+    : undefined;
 
   return {
     version: 2,
+    contacts: contacts && contacts.length > 0 ? contacts : undefined,
     address: Object.values(address).some((value) => value !== undefined) ? address : undefined,
     profile:
       profile && Object.values(profile).some((value) => value !== undefined) ? profile : undefined,
@@ -114,6 +144,8 @@ function parseOwnerMetadata(raw: unknown): StoredOwnerMetadata | null {
         : undefined,
     administrativeNotes: readString(raw, 'administrativeNotes'),
     financialResponsible: readBoolean(raw, 'financialResponsible'),
+    legacyVetusId: readString(raw, 'legacyVetusId'),
+    originalCreatedAt: readString(raw, 'originalCreatedAt'),
     status: raw.status === 'inactive' ? 'inactive' : raw.status === 'active' ? 'active' : undefined
   };
 }
@@ -208,7 +240,9 @@ export class DatabaseOwnerRepository implements OwnerRepository {
               ilike(owners.fullName, searchTerm),
               ilike(owners.document, searchTerm),
               ilike(owners.email, searchTerm),
-              ilike(owners.phoneMain, searchTerm)
+              ilike(owners.phoneMain, searchTerm),
+              ilike(owners.phoneAlt, searchTerm),
+              sql`${owners.addressJson}::text ILIKE ${searchTerm}`
             )
           )
         );
@@ -225,30 +259,32 @@ export class DatabaseOwnerRepository implements OwnerRepository {
 
   private mapRowToOwner(row: typeof owners.$inferSelect): OwnerSummary {
     const metadata = parseOwnerMetadata(row.addressJson);
-    const contacts: Array<OwnerContact> = [];
-    if (row.phoneMain) {
-      contacts.push({
-        label: 'Telefone',
-        value: row.phoneMain,
-        type: 'phone',
-        primary: true
-      });
-    }
-    if (row.email) {
-      contacts.push({
-        label: 'Email',
-        value: row.email,
-        type: 'email',
-        primary: !row.phoneMain
-      });
-    }
-    if (row.phoneAlt) {
-      contacts.push({
-        label: 'Telefone 2',
-        value: row.phoneAlt,
-        type: 'phone',
-        primary: false
-      });
+    const contacts: Array<OwnerContact> = metadata?.contacts ? [...metadata.contacts] : [];
+    if (contacts.length === 0) {
+      if (row.phoneMain) {
+        contacts.push({
+          label: 'Telefone',
+          value: row.phoneMain,
+          type: 'phone',
+          primary: true
+        });
+      }
+      if (row.email) {
+        contacts.push({
+          label: 'Email',
+          value: row.email,
+          type: 'email',
+          primary: !row.phoneMain
+        });
+      }
+      if (row.phoneAlt) {
+        contacts.push({
+          label: 'Telefone 2',
+          value: row.phoneAlt,
+          type: 'phone',
+          primary: false
+        });
+      }
     }
 
     return {
@@ -262,6 +298,8 @@ export class DatabaseOwnerRepository implements OwnerRepository {
       financialProfile: metadata?.financialProfile,
       financialResponsible: metadata?.financialResponsible ?? true,
       administrativeNotes: metadata?.administrativeNotes,
+      legacyVetusId: metadata?.legacyVetusId,
+      originalCreatedAt: metadata?.originalCreatedAt,
       status: metadata?.status ?? 'active',
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()

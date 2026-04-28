@@ -504,7 +504,8 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Detalhes do Animal');
     expect(wrapper.text()).toContain('João Silva');
-    expect(wrapper.text()).toContain('Abrir Nova Comanda');
+    expect(wrapper.text()).toContain('Abrir cobrança do atendimento');
+    expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Ver cadastro do cliente');
     expect(wrapper.text()).toContain('Editar Cadastro');
     expect(wrapper.text()).toContain('Doença Crônica');
@@ -515,6 +516,8 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Ver mais Informações do Animal');
     expect(wrapper.text()).toContain('Ver Informações de Contato');
     expect(wrapper.text()).toContain('Anamneses');
+    expect(wrapper.text()).toContain('Adicionar anamnese');
+    expect(wrapper.text()).toContain('Abrir prontuário');
     expect(wrapper.text()).toContain('Vacinas e Vermífugos');
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Exames');
@@ -561,6 +564,16 @@ describe('PatientDetailPage', () => {
       .findAll('a')
       .find((link) => link.text().includes('Ver cadastro do cliente'));
     expect(ownerLink?.attributes('href')).toBe('/owners/owner-1');
+
+    const anamnesisLink = wrapper
+      .findAll('a')
+      .find((link) => link.text().includes('Adicionar anamnese'));
+    expect(anamnesisLink?.attributes('href')).toBe('/medical-records/enc-1?entry=anamnesis');
+
+    const medicalRecordLink = wrapper
+      .findAll('a')
+      .find((link) => link.text().includes('Abrir prontuário'));
+    expect(medicalRecordLink?.attributes('href')).toBe('/medical-records/enc-1');
   });
 
   it('shows error state when loading fails', async () => {

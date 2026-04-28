@@ -6,6 +6,7 @@
  *
  * Uses the Drizzle schemas created in packages/db/src/schema/:
  * - cfop_entries
+ * - icms_tables
  * - icms_rules
  * - ncm_entries
  * - pis_cofins_rules
@@ -16,10 +17,14 @@ import { getPool } from '@cvg-his-v2/shared-database';
 import type { AccountId } from '@cvg-his-v2/shared-types';
 import type {
   FiscalCfopSummary,
+  FiscalIcmsTableSummary,
+  FiscalIpiTableSummary,
   FiscalIcmsRuleSummary,
   FiscalNcmEntrySummary,
   FiscalPisCofinsRuleSummary,
   FiscalNfseLayoutSummary,
+  UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIpiTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -42,6 +47,14 @@ export interface DbIcmsRuleFilters extends DbFiscalFilters {
   readonly ufDestination?: string;
   readonly ncm?: string;
   readonly operationType?: string;
+}
+
+export interface DbIcmsTableFilters extends DbFiscalFilters {
+  readonly search?: string;
+}
+
+export interface DbIpiTableFilters extends DbFiscalFilters {
+  readonly search?: string;
 }
 
 export interface DbNcmEntryFilters extends DbFiscalFilters {
@@ -146,6 +159,170 @@ export class DatabaseFiscalRepository {
       pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
       ipiRelevant: Boolean(row.ipi_relevant),
       documentTypesLabel: (JSON.parse(row.applicable_to as string) as string[]).join(', ').toUpperCase()
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // ICMS Tables
+  // --------------------------------------------------------------------------
+
+  async listIcmsTables(filters: DbIcmsTableFilters): Promise<FiscalIcmsTableSummary[]> {
+    const pool = this.pool;
+    const params: unknown[] = [];
+    let where = '';
+
+    if (filters.search) {
+      where = `WHERE (
+        code ILIKE $1 OR
+        description ILIKE $1 OR
+        CAST(percent AS TEXT) ILIKE $1
+      )`;
+      params.push(`%${filters.search}%`);
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM icms_tables ${where} ORDER BY code`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    })) as FiscalIcmsTableSummary[];
+  }
+
+  async createIcmsTable(
+    _accountId: AccountId,
+    table: FiscalIcmsTableSummary
+  ): Promise<FiscalIcmsTableSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO icms_tables (id, code, description, percent)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [table.id, table.code, table.description, table.percent]
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    };
+  }
+
+  async updateIcmsTable(
+    _accountId: AccountId,
+    id: string,
+    payload: UpdateFiscalIcmsTableRequest
+  ): Promise<FiscalIcmsTableSummary | null> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `UPDATE icms_tables
+       SET
+         code = COALESCE($2, code),
+         description = COALESCE($3, description),
+         percent = COALESCE($4, percent),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, payload.code, payload.description, payload.percent]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // IPI Tables
+  // --------------------------------------------------------------------------
+
+  async listIpiTables(filters: DbIpiTableFilters): Promise<FiscalIpiTableSummary[]> {
+    const pool = this.pool;
+    const params: unknown[] = [];
+    let where = '';
+
+    if (filters.search) {
+      where = `WHERE (
+        code ILIKE $1 OR
+        description ILIKE $1 OR
+        CAST(percent AS TEXT) ILIKE $1
+      )`;
+      params.push(`%${filters.search}%`);
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM ipi_tables ${where} ORDER BY code`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    })) as FiscalIpiTableSummary[];
+  }
+
+  async createIpiTable(
+    _accountId: AccountId,
+    table: FiscalIpiTableSummary
+  ): Promise<FiscalIpiTableSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO ipi_tables (id, code, description, percent)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [table.id, table.code, table.description, table.percent]
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
+    };
+  }
+
+  async updateIpiTable(
+    _accountId: AccountId,
+    id: string,
+    payload: UpdateFiscalIpiTableRequest
+  ): Promise<FiscalIpiTableSummary | null> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `UPDATE ipi_tables
+       SET
+         code = COALESCE($2, code),
+         description = COALESCE($3, description),
+         percent = COALESCE($4, percent),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, payload.code, payload.description, payload.percent]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      percent: parseFloat(row.percent as string)
     };
   }
 

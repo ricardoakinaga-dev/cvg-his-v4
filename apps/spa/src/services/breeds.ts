@@ -1,6 +1,17 @@
 import { apiRequest } from './api';
 
-export type BreedSpecies = 'canine' | 'feline' | 'avian' | 'rodent' | 'reptile' | 'other';
+export type BreedSpecies =
+  | 'not_defined'
+  | 'avian'
+  | 'bovine'
+  | 'canine'
+  | 'rabbit'
+  | 'equine'
+  | 'feline'
+  | 'other'
+  | 'primate'
+  | 'rodent'
+  | 'reptile';
 
 export interface BreedSummary {
   readonly id: string;
@@ -35,12 +46,17 @@ export interface CreateBreedPayload {
 export type UpdateBreedPayload = Partial<CreateBreedPayload>;
 
 export const breedSpeciesOptions: readonly { value: BreedSpecies; label: string }[] = [
-  { value: 'canine', label: 'Canino' },
-  { value: 'feline', label: 'Felino' },
-  { value: 'avian', label: 'Aves' },
+  { value: 'not_defined', label: 'Não Definido' },
+  { value: 'avian', label: 'Avícola' },
+  { value: 'bovine', label: 'Bovino' },
+  { value: 'canine', label: 'Canina' },
+  { value: 'rabbit', label: 'Cunícula' },
+  { value: 'equine', label: 'Equina' },
+  { value: 'feline', label: 'Felina' },
+  { value: 'other', label: 'Outras' },
+  { value: 'primate', label: 'Primata' },
   { value: 'rodent', label: 'Roedor' },
-  { value: 'reptile', label: 'Réptil' },
-  { value: 'other', label: 'Outro' }
+  { value: 'reptile', label: 'Réptil' }
 ];
 
 export const breedsService = {

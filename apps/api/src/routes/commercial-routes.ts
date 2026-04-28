@@ -39,6 +39,18 @@ function parseBoolean(value: string | null): boolean | undefined {
   throw new ValidationError('active must be true or false');
 }
 
+function parsePosSyncKind(value: string | null): PosSyncKind | undefined {
+  if (value === null) return undefined;
+  if (value === 'stock' || value === 'clients') return value;
+  throw new ValidationError('syncKind must be stock or clients');
+}
+
+function parsePosSyncStatus(value: string | null): PosSyncStatus | undefined {
+  if (value === null) return undefined;
+  if (value === 'queued' || value === 'running' || value === 'completed' || value === 'failed') return value;
+  throw new ValidationError('status must be queued, running, completed or failed');
+}
+
 const priceTableCollectionPaths = new Set([
   '/price-tables',
   '/tabelas-de-preco',
@@ -298,8 +310,8 @@ export async function handleCommercialRoutes(
     const url = query(request, pathname);
     return json(response, 200, {
       items: commercial.listPosSyncJobs(principal.user.accountId, {
-        syncKind: url.searchParams.get('syncKind') as PosSyncKind | null ?? undefined,
-        status: url.searchParams.get('status') as PosSyncStatus | null ?? undefined
+        syncKind: parsePosSyncKind(url.searchParams.get('syncKind')),
+        status: parsePosSyncStatus(url.searchParams.get('status'))
       })
     });
   }
@@ -310,15 +322,26 @@ export async function handleCommercialRoutes(
       syncKind: PosSyncKind;
       metadata?: Record<string, unknown>;
     };
-    const job = await commercial.createPosSyncJob(principal.user.accountId, principal.user.id, payload);
+    const job = await commercial.runPosSyncJob(principal.user.accountId, principal.user.id, payload);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'commercial',
-      action: 'create_pos_sync_job',
+      action: 'start_pos_sync_job',
       entityType: 'pos-sync-job',
       entityId: job.id,
-      payloadSummary: `POS sync job ${job.syncKind} created`,
+      payloadSummary: `POS sync job ${job.syncKind} started`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'complete_pos_sync_job',
+      entityType: 'pos-sync-job',
+      entityId: job.id,
+      payloadSummary: `POS sync job ${job.syncKind} completed with ${job.processedCount} records`,
       riskLevel: 'medium',
       correlationId
     });

@@ -21,7 +21,10 @@
       <div v-if="syncStarted" class="sync-finished">
         <strong>Sincronização finalizada</strong>
         <p>{{ currentSyncLabel }} concluída para o ambiente de ponto de venda.</p>
-        <p v-if="currentJob">Job {{ currentJob.id }} processou {{ currentJob.processedCount }} registros.</p>
+        <p v-if="currentJob && currentJob.processedCount > 0">
+          Job {{ currentJob.id }} processou {{ currentJob.processedCount }} registros.
+        </p>
+        <p v-else-if="currentJob">Job {{ currentJob.id }} finalizado sem registros alterados.</p>
         <DsButton size="sm" variant="secondary" @click="syncStarted = false">Ok</DsButton>
       </div>
     </DsCard>
@@ -44,6 +47,12 @@
         empty-description="As sincronizações solicitadas aparecerão neste relatório."
         variant="hoverable"
       >
+        <template #cell-id="{ row }">
+          <span class="job-id">{{ (row as PosSyncJobSummary).id }}</span>
+        </template>
+        <template #cell-syncKind="{ row }">
+          {{ syncKindLabel((row as PosSyncJobSummary).syncKind) }}
+        </template>
         <template #cell-status="{ row }">
           <DsBadge :variant="jobStatusVariant((row as PosSyncJobSummary).status)" size="sm">
             {{ jobStatusLabel((row as PosSyncJobSummary).status) }}
@@ -51,6 +60,9 @@
         </template>
         <template #cell-requestedAt="{ row }">
           {{ formatDate((row as PosSyncJobSummary).requestedAt) }}
+        </template>
+        <template #cell-startedAt="{ row }">
+          {{ (row as PosSyncJobSummary).startedAt ? formatDate((row as PosSyncJobSummary).startedAt!) : 'Aguardando' }}
         </template>
         <template #cell-finishedAt="{ row }">
           {{ (row as PosSyncJobSummary).finishedAt ? formatDate((row as PosSyncJobSummary).finishedAt!) : 'Em aberto' }}
@@ -66,7 +78,6 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import {
-  completePosSyncJob,
   createPosSyncJob,
   listPosSyncJobs,
   type PosSyncJobSummary
@@ -92,6 +103,7 @@ const jobColumns: DataTableColumn[] = [
   { key: 'status', label: 'Status' },
   { key: 'processedCount', label: 'Registros' },
   { key: 'requestedAt', label: 'Solicitado em' },
+  { key: 'startedAt', label: 'Iniciado em' },
   { key: 'finishedAt', label: 'Finalizado em' }
 ];
 
@@ -110,6 +122,11 @@ const dependencies = [
     scope: 'Background',
     title: 'Processamento assíncrono',
     description: 'A tela dispara o job e permite continuar navegando enquanto o processo executa.'
+  },
+  {
+    scope: 'Auditoria',
+    title: 'Trilha operacional',
+    description: 'Cada sincronização gera job persistido, status e auditoria no módulo comercial.'
   }
 ];
 
@@ -123,10 +140,10 @@ async function startSync(kind: SyncKind) {
   errorMessage.value = '';
   syncStarted.value = false;
   try {
-    const job = await createPosSyncJob(kind);
-    currentJob.value = await completePosSyncJob(job.id, kind === 'stock' ? 128 : 64);
+    currentJob.value = await createPosSyncJob(kind);
     jobs.value = [currentJob.value, ...jobs.value.filter((item) => item.id !== currentJob.value?.id)];
     syncStarted.value = true;
+    await loadJobs();
   } catch {
     errorMessage.value = 'Não foi possível iniciar a sincronização com o PDV.';
   } finally {
@@ -161,6 +178,10 @@ function jobStatusLabel(status: PosSyncJobSummary['status']): string {
   }[status];
 }
 
+function syncKindLabel(syncKind: SyncKind): string {
+  return syncKind === 'stock' ? 'Estoque' : 'Clientes';
+}
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -182,7 +203,7 @@ onMounted(loadJobs);
 
 .panel,
 .dependency-card {
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .sync-actions {
@@ -198,7 +219,7 @@ onMounted(loadJobs);
 .sync-finished {
   margin-top: 14px;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-bg-subtle, #f8fafc);
 }
@@ -217,7 +238,12 @@ onMounted(loadJobs);
 .dependency-card {
   padding: 14px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: var(--color-surface, #ffffff);
+}
+
+.job-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
 }
 
 .dependency-card span {

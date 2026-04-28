@@ -2236,34 +2236,127 @@ paths:
 
   /fiscal/icms:
     get:
-      operationId: listFiscalIcmsRules
-      summary: List ICMS rules
+      operationId: listFiscalIcmsTables
+      summary: List simple ICMS table entries
       tags: [Fiscal]
       parameters:
-        - name: ufOrigin
+        - name: search
           in: query
           schema:
             type: string
-        - name: ufDestination
-          in: query
-          schema:
-            type: string
-        - name: ncm
-          in: query
-          schema:
-            type: string
-        - name: operationType
-          in: query
-          schema:
-            type: string
-            enum: [interna, interestadual]
       responses:
         '200':
-          description: ICMS rules
+          description: Simple ICMS table entries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FiscalIcmsRuleListResponse'
+                $ref: '#/components/schemas/FiscalIcmsTableListResponse'
+    post:
+      operationId: createFiscalIcmsTable
+      summary: Create simple ICMS table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalIcmsTableRequest'
+      responses:
+        '201':
+          description: Created ICMS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIcmsTableSummary'
+
+  /fiscal/icms/{id}:
+    patch:
+      operationId: updateFiscalIcmsTable
+      summary: Update simple ICMS table entry
+      tags: [Fiscal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalIcmsTableRequest'
+      responses:
+        '200':
+          description: Updated ICMS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIcmsTableSummary'
+        '404':
+          description: ICMS table entry not found
+
+  /fiscal/ipi:
+    get:
+      operationId: listFiscalIpiTables
+      summary: List simple IPI table entries
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simple IPI table entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIpiTableListResponse'
+    post:
+      operationId: createFiscalIpiTable
+      summary: Create simple IPI table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalIpiTableRequest'
+      responses:
+        '201':
+          description: Created IPI table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIpiTableSummary'
+
+  /fiscal/ipi/{id}:
+    patch:
+      operationId: updateFiscalIpiTable
+      summary: Update simple IPI table entry
+      tags: [Fiscal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalIpiTableRequest'
+      responses:
+        '200':
+          description: Updated IPI table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIpiTableSummary'
+        '404':
+          description: IPI table entry not found
 
   /fiscal/pis-cofins:
     get:
@@ -2898,7 +2991,7 @@ paths:
                       type: object
     post:
       operationId: createPosSyncJob
-      summary: Create POS synchronization job
+      summary: Create and run POS synchronization job
       tags: [Commercial]
       requestBody:
         required: true
@@ -2915,7 +3008,7 @@ paths:
                   type: object
       responses:
         '201':
-          description: POS synchronization job created
+          description: POS synchronization job created and processed by the backend lifecycle
 
   /pos-sync/jobs/{jobId}:
     patch:
@@ -8487,6 +8580,80 @@ components:
           type: string
           enum: [interna, interestadual]
 
+    FiscalIcmsTableSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+
+    CreateFiscalIcmsTableRequest:
+      type: object
+      required: [code, percent]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    UpdateFiscalIcmsTableRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    FiscalIpiTableSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+
+    CreateFiscalIpiTableRequest:
+      type: object
+      required: [code, percent]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    UpdateFiscalIpiTableRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
     FiscalPisCofinsRuleSummary:
       type: object
       properties:
@@ -8795,6 +8962,22 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FiscalIcmsRuleSummary'
+
+    FiscalIcmsTableListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalIcmsTableSummary'
+
+    FiscalIpiTableListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalIpiTableSummary'
 
     FiscalPisCofinsRuleListResponse:
       type: object

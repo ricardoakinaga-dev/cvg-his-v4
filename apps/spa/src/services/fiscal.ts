@@ -1,12 +1,16 @@
 import type {
+  CreateFiscalIcmsTableRequest,
+  CreateFiscalIpiTableRequest,
   CreateFiscalNfseLayoutRequest,
   FiscalCfopListResponse,
   FiscalCfopSummary,
   FiscalDashboardSummary,
   FiscalIcmsMatrixListResponse,
   FiscalIcmsMatrixRowSummary,
-  FiscalIcmsRuleListResponse,
-  FiscalIcmsRuleSummary,
+  FiscalIcmsTableListResponse,
+  FiscalIcmsTableSummary,
+  FiscalIpiTableListResponse,
+  FiscalIpiTableSummary,
   FiscalNcmEntryListResponse,
   FiscalNcmEntrySummary,
   FiscalNfseLayoutListResponse,
@@ -14,25 +18,33 @@ import type {
   FiscalPisCofinsRuleListResponse,
   FiscalPisCofinsRuleSummary,
   FiscalTaxPreview,
+  UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIpiTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
 import { apiRequest } from './api';
 
-export type FiscalIcmsRule = FiscalIcmsRuleSummary;
+export type FiscalIcmsTable = FiscalIcmsTableSummary;
+export type FiscalIpiTable = FiscalIpiTableSummary;
 export type FiscalPisCofinsRule = FiscalPisCofinsRuleSummary;
 export type FiscalCfopRow = FiscalCfopSummary;
 export type FiscalNcmEntry = FiscalNcmEntrySummary;
 export type FiscalIcmsMatrixRow = FiscalIcmsMatrixRowSummary;
 export type FiscalNfseLayout = FiscalNfseLayoutSummary;
+export type CreateFiscalIcmsTable = CreateFiscalIcmsTableRequest;
+export type UpdateFiscalIcmsTable = UpdateFiscalIcmsTableRequest;
+export type CreateFiscalIpiTable = CreateFiscalIpiTableRequest;
+export type UpdateFiscalIpiTable = UpdateFiscalIpiTableRequest;
 export type CreateFiscalNfseLayout = CreateFiscalNfseLayoutRequest;
 export type UpdateFiscalNfseLayout = UpdateFiscalNfseLayoutRequest;
 
-export interface FiscalIcmsRuleFilters {
-  ufOrigin?: string;
-  ufDestination?: string;
-  ncm?: string;
-  operationType?: FiscalIcmsRule['operationType'];
+export interface FiscalIcmsTableFilters {
+  search?: string;
+}
+
+export interface FiscalIpiTableFilters {
+  search?: string;
 }
 
 export interface FiscalPisCofinsRuleFilters {
@@ -77,11 +89,46 @@ function buildQuery(params: Record<string, string | boolean | undefined>): strin
 }
 
 export const fiscalService = {
-  async listIcmsRules(filters: FiscalIcmsRuleFilters = {}): Promise<FiscalIcmsRule[]> {
-    const response = await apiRequest<FiscalIcmsRuleListResponse>(
+  async listIcmsTables(filters: FiscalIcmsTableFilters = {}): Promise<FiscalIcmsTable[]> {
+    const response = await apiRequest<FiscalIcmsTableListResponse>(
       `/fiscal/icms${buildQuery({ ...filters })}`
     );
     return [...(response.items ?? [])];
+  },
+
+  async createIcmsTable(payload: CreateFiscalIcmsTable): Promise<FiscalIcmsTable> {
+    return apiRequest<FiscalIcmsTable>('/fiscal/icms', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateIcmsTable(id: string, payload: UpdateFiscalIcmsTable): Promise<FiscalIcmsTable> {
+    return apiRequest<FiscalIcmsTable>(`/fiscal/icms/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async listIpiTables(filters: FiscalIpiTableFilters = {}): Promise<FiscalIpiTable[]> {
+    const response = await apiRequest<FiscalIpiTableListResponse>(
+      `/fiscal/ipi${buildQuery({ ...filters })}`
+    );
+    return [...(response.items ?? [])];
+  },
+
+  async createIpiTable(payload: CreateFiscalIpiTable): Promise<FiscalIpiTable> {
+    return apiRequest<FiscalIpiTable>('/fiscal/ipi', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateIpiTable(id: string, payload: UpdateFiscalIpiTable): Promise<FiscalIpiTable> {
+    return apiRequest<FiscalIpiTable>(`/fiscal/ipi/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listPisCofinsRules(

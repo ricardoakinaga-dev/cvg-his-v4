@@ -156,9 +156,20 @@ export async function handlePatientsRoutes(
       size: body.size,
       birthDateApproximate: body.birthDateApproximate,
       baseWeightKg: body.baseWeightKg,
+      isNeutered: body.isNeutered,
+      microchip: body.microchip,
+      pedigreeNumber: body.pedigreeNumber,
+      color: body.color,
+      chronicDisease: body.chronicDisease,
+      allergy: body.allergy,
+      temperament: body.temperament,
+      generalNotes: body.generalNotes,
+      legacyVetusId: body.legacyVetusId,
+      originalCreatedAt: body.originalCreatedAt,
       primaryOwnerId: body.primaryOwnerId,
       status: body.status
     });
+    await patients.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -217,9 +228,20 @@ export async function handlePatientsRoutes(
       size: body.size,
       birthDateApproximate: body.birthDateApproximate,
       baseWeightKg: body.baseWeightKg,
+      isNeutered: body.isNeutered,
+      microchip: body.microchip,
+      pedigreeNumber: body.pedigreeNumber,
+      color: body.color,
+      chronicDisease: body.chronicDisease,
+      allergy: body.allergy,
+      temperament: body.temperament,
+      generalNotes: body.generalNotes,
+      legacyVetusId: body.legacyVetusId,
+      originalCreatedAt: body.originalCreatedAt,
       primaryOwnerId: body.primaryOwnerId,
       status: body.status
     });
+    await patients.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -245,6 +267,7 @@ export async function handlePatientsRoutes(
     const patientId = match[1];
 
     const patient = patients.update(patientId as never, { status: 'inactive' });
+    await patients.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -320,6 +343,7 @@ export async function handlePatientsRoutes(
     const principal = requirePrincipal(request, 'patients.manage');
     const payload = (await readJsonBody(request)) as CreateOwnerPatientLinkRequest;
     const link = patients.createLink(principal.user.accountId, payload);
+    await patients.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,

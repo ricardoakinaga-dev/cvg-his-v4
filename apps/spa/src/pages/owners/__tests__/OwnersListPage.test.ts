@@ -259,6 +259,6 @@ describe('OwnersListPage', () => {
     expect(wrapper.text()).toContain('Informações de Contato');
     expect(wrapper.text()).toContain('Animais do Cliente');
     expect(wrapper.text()).toContain('Ver Detalhes');
-    expect(wrapper.text()).toContain('Abrir Comanda');
+    expect(wrapper.text()).toContain('Selecionar atendimento para cobrança');
   });
 });

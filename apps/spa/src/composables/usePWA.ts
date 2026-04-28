@@ -65,14 +65,6 @@ export function usePWA() {
     onOfflineReady() {
       console.log('[PWA] App ready to work offline');
       offlineReady.value = true;
-      messages.value.push({
-        type: 'success',
-        message: 'Pronto para usar offline!'
-      });
-      // Auto-hide after 3 seconds
-      setTimeout(() => {
-        dismissMessage();
-      }, 3000);
     },
     onRegistered(registration) {
       console.log('[PWA] SW registered:', registration);

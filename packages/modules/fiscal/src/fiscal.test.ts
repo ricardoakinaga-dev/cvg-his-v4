@@ -13,21 +13,75 @@ test('FiscalService returns searchable CFOP data from the backend catalog', asyn
   assert.ok(rows.some((row) => row.category === 'servico'));
 });
 
-test('FiscalService filters ICMS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
+test('FiscalService filters ICMS, IPI, PIS/COFINS and NFS-e tables using backend criteria', async () => {
   const service = new FiscalService();
 
-  const icmsRows = await service.listIcmsRules({ ufDestination: 'RJ', operationType: 'interestadual' });
+  const icmsRows = await service.listIcmsTables({ search: '18' });
+  const ipiRows = await service.listIpiTables({ search: '3,25' });
   const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
   const nfseLayouts = await service.listNfseLayouts({ state: 'SP', active: true });
 
   assert.ok(icmsRows.length > 0);
-  assert.ok(icmsRows.every((row) => row.ufDestination === 'RJ'));
-  assert.ok(icmsRows.every((row) => row.operationType === 'interestadual'));
+  assert.ok(icmsRows.every((row) => `${row.code} ${row.description}`.includes('18')));
+  assert.ok(ipiRows.length > 0);
+  assert.ok(ipiRows.every((row) => `${row.code} ${row.description}`.includes('3,25')));
   assert.ok(pisCofinsRows.length > 0);
   assert.ok(pisCofinsRows.every((row) => row.regime === 'lucro_real'));
   assert.ok(pisCofinsRows.every((row) => row.appliesTo === 'servico'));
   assert.ok(nfseLayouts.length > 0);
   assert.ok(nfseLayouts.every((row) => row.state === 'SP' && row.active));
+});
+
+test('FiscalService creates and updates simple ICMS table entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createIcmsTable({
+    code: '19',
+    description: 'ICMS 19%',
+    percent: 19
+  });
+
+  assert.equal(created.code, '19');
+  assert.equal(created.description, 'ICMS 19%');
+  assert.equal(created.percent, 19);
+
+  const updated = await service.updateIcmsTable(created.id, {
+    description: 'ICMS interno 19%',
+    percent: 19.5
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'ICMS interno 19%');
+  assert.equal(updated?.percent, 19.5);
+
+  const filtered = await service.listIcmsTables({ search: 'interno' });
+  assert.ok(filtered.some((table) => table.id === created.id));
+});
+
+test('FiscalService creates and updates simple IPI table entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createIpiTable({
+    code: '8',
+    description: 'IPI 8%',
+    percent: 8
+  });
+
+  assert.equal(created.code, '8');
+  assert.equal(created.description, 'IPI 8%');
+  assert.equal(created.percent, 8);
+
+  const updated = await service.updateIpiTable(created.id, {
+    description: 'IPI interno 8%',
+    percent: 8.5
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'IPI interno 8%');
+  assert.equal(updated?.percent, 8.5);
+
+  const filtered = await service.listIpiTables({ search: 'interno' });
+  assert.ok(filtered.some((table) => table.id === created.id));
 });
 
 test('FiscalService builds dashboard and tax preview from real module data', async () => {

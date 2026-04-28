@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { CreateOwnerRequest, UpdateOwnerRequest } from '@cvg-his-v2/shared-contracts';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
@@ -9,7 +11,7 @@ import type {
   OwnerProfile,
   OwnerSummary
 } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { nowIso } from '@cvg-his-v2/shared-utils';
 import {
   requireBoolean,
   requireNonEmptyString,
@@ -103,6 +105,26 @@ function normalizeFinancialProfile(
   return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
 }
 
+function matchesOptionalText(value: unknown, query: string): boolean {
+  if (typeof value === 'string') {
+    return value.toLowerCase().includes(query);
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value).toLowerCase().includes(query);
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => matchesOptionalText(item, query));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) => matchesOptionalText(item, query));
+  }
+
+  return false;
+}
+
 function createSeedOwners(): OwnerSummary[] {
   const createdAt = '2026-03-25T00:00:00.000Z';
 
@@ -150,6 +172,26 @@ function createSeedOwners(): OwnerSummary[] {
       status: 'active',
       createdAt,
       updatedAt: createdAt
+    },
+    {
+      id: 'owner_ricardo_akinaga' as OwnerId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      fullName: 'RICARDO AKINAGA',
+      contacts: [
+        {
+          label: 'Telefone',
+          value: 'Nao Informado',
+          type: 'phone',
+          primary: true
+        }
+      ],
+      financialResponsible: true,
+      administrativeNotes: 'Cadastro pareado do Vetus cliente ID 3835 para auditoria autorizada.',
+      legacyVetusId: '3835',
+      originalCreatedAt: '2024-05-03',
+      status: 'active',
+      createdAt: '2024-05-03T00:00:00.000Z',
+      updatedAt: createdAt
     }
   ];
 }
@@ -162,6 +204,8 @@ export interface OwnersServiceOptions {
 export class OwnersService {
   readonly #owners = new Map<OwnerId, OwnerSummary>();
   readonly #ownerRepository?: OwnerRepository;
+  #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: OwnersServiceOptions = {}) {
     const seedOwners = options.seedOwners ?? createSeedOwners();
@@ -183,6 +227,28 @@ export class OwnersService {
     }
   }
 
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+  }
+
   public list(search?: string): readonly OwnerSummary[] {
     const query = search?.trim().toLowerCase();
     const owners = Array.from(this.#owners.values());
@@ -196,7 +262,12 @@ export class OwnersService {
       return (
         owner.fullName.toLowerCase().includes(query) ||
         owner.documentId?.toLowerCase().includes(query) ||
-        primaryContact.some((value) => value.includes(query))
+        owner.legacyVetusId?.toLowerCase().includes(query) ||
+        owner.originalCreatedAt?.toLowerCase().includes(query) ||
+        primaryContact.some((value) => value.includes(query)) ||
+        matchesOptionalText(owner.address, query) ||
+        matchesOptionalText(owner.profile, query) ||
+        matchesOptionalText(owner.financialProfile, query)
       );
     });
   }
@@ -228,7 +299,7 @@ export class OwnersService {
 
     const now = nowIso();
     const owner: OwnerSummary = {
-      id: createCorrelationId('owner') as OwnerId,
+      id: randomUUID() as OwnerId,
       accountId,
       fullName,
       documentId,
@@ -238,6 +309,8 @@ export class OwnersService {
       financialProfile: normalizeFinancialProfile(payload.financialProfile),
       financialResponsible: requireBoolean(payload.financialResponsible, 'financialResponsible'),
       administrativeNotes: requireOptionalString(payload.administrativeNotes),
+      legacyVetusId: requireOptionalString(payload.legacyVetusId),
+      originalCreatedAt: requireOptionalString(payload.originalCreatedAt),
       status: 'active',
       createdAt: now,
       updatedAt: now
@@ -247,9 +320,14 @@ export class OwnersService {
 
     // Persist to database if repository is available
     if (this.#ownerRepository) {
-      this.#ownerRepository.create(owner).catch((err) => {
-        console.error('Failed to persist owner to database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#ownerRepository!.create(owner),
+        () => {
+          if (this.#owners.get(owner.id) === owner) {
+            this.#owners.delete(owner.id);
+          }
+        }
+      );
     }
 
     return owner;
@@ -283,6 +361,14 @@ export class OwnersService {
         payload.administrativeNotes !== undefined
           ? requireOptionalString(payload.administrativeNotes)
           : current.administrativeNotes,
+      legacyVetusId:
+        payload.legacyVetusId !== undefined
+          ? requireOptionalString(payload.legacyVetusId)
+          : current.legacyVetusId,
+      originalCreatedAt:
+        payload.originalCreatedAt !== undefined
+          ? requireOptionalString(payload.originalCreatedAt)
+          : current.originalCreatedAt,
       status: payload.status ?? current.status,
       updatedAt: nowIso()
     };
@@ -291,9 +377,12 @@ export class OwnersService {
 
     // Persist to database if repository is available
     if (this.#ownerRepository) {
-      this.#ownerRepository.update(updated).catch((err) => {
-        console.error('Failed to update owner in database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#ownerRepository!.update(updated),
+        () => {
+          this.#owners.set(ownerId, current);
+        }
+      );
     }
 
     return updated;

@@ -1,4 +1,4 @@
-import { eq, ilike, or, and } from 'drizzle-orm';
+import { eq, ilike, or, and, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { patients, ownerPatientLinks } from '@cvg-his-v2/shared-database';
 import type {
@@ -33,6 +33,78 @@ export interface OwnerPatientLinkRepository {
   delete(id: OwnerPatientLinkId): Promise<void>;
 }
 
+interface StoredPatientMetadata {
+  readonly version: 2;
+  readonly size?: PatientSummary['size'];
+  readonly status?: PatientSummary['status'];
+  readonly isNeutered?: boolean;
+  readonly pedigreeNumber?: string;
+  readonly color?: string;
+  readonly chronicDisease?: string;
+  readonly allergy?: string;
+  readonly temperament?: string;
+  readonly generalNotes?: string;
+  readonly legacyVetusId?: string;
+  readonly originalCreatedAt?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function readBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+  return typeof record[key] === 'boolean' ? record[key] : undefined;
+}
+
+function serializePatientMetadata(patient: PatientSummary): StoredPatientMetadata {
+  return {
+    version: 2,
+    size: patient.size,
+    status: patient.status,
+    isNeutered: patient.isNeutered,
+    pedigreeNumber: patient.pedigreeNumber,
+    color: patient.color,
+    chronicDisease: patient.chronicDisease,
+    allergy: patient.allergy,
+    temperament: patient.temperament,
+    generalNotes: patient.generalNotes,
+    legacyVetusId: patient.legacyVetusId,
+    originalCreatedAt: patient.originalCreatedAt
+  };
+}
+
+function parsePatientMetadata(raw: unknown): StoredPatientMetadata {
+  if (!isRecord(raw)) {
+    return { version: 2 };
+  }
+
+  const size = readString(raw, 'size');
+  const status = readString(raw, 'status');
+
+  return {
+    version: 2,
+    size: size === 'small' || size === 'medium' || size === 'large' ? size : undefined,
+    status:
+      status === 'active' || status === 'inactive' || status === 'deceased'
+        ? status
+        : undefined,
+    isNeutered: readBoolean(raw, 'isNeutered'),
+    pedigreeNumber: readString(raw, 'pedigreeNumber'),
+    color: readString(raw, 'color'),
+    chronicDisease: readString(raw, 'chronicDisease'),
+    allergy: readString(raw, 'allergy'),
+    temperament: readString(raw, 'temperament'),
+    generalNotes: readString(raw, 'generalNotes'),
+    legacyVetusId: readString(raw, 'legacyVetusId'),
+    originalCreatedAt: readString(raw, 'originalCreatedAt')
+  };
+}
+
 export class DatabasePatientRepository implements PatientRepository {
   readonly #db: DatabaseClient;
 
@@ -52,7 +124,8 @@ export class DatabasePatientRepository implements PatientRepository {
       sex: patient.sex ?? null,
       birthDate: patient.birthDateApproximate ?? null,
       weightKg: patient.baseWeightKg?.toString() ?? null,
-      alertsJson: {},
+      microchip: patient.microchip ?? null,
+      alertsJson: serializePatientMetadata(patient),
       createdAt: new Date(patient.createdAt),
       updatedAt: new Date(patient.updatedAt)
     });
@@ -70,6 +143,8 @@ export class DatabasePatientRepository implements PatientRepository {
         sex: patient.sex ?? null,
         birthDate: patient.birthDateApproximate ?? null,
         weightKg: patient.baseWeightKg?.toString() ?? null,
+        microchip: patient.microchip ?? null,
+        alertsJson: serializePatientMetadata(patient),
         updatedAt: new Date(patient.updatedAt)
       })
       .where(eq(patients.id, patient.id));
@@ -104,7 +179,9 @@ export class DatabasePatientRepository implements PatientRepository {
             or(
               ilike(patients.name, searchTerm),
               ilike(patients.species, searchTerm),
-              ilike(patients.breed, searchTerm)
+              ilike(patients.breed, searchTerm),
+              ilike(patients.microchip, searchTerm),
+              sql`${patients.alertsJson}::text ILIKE ${searchTerm}`
             )
           )
         );
@@ -120,6 +197,8 @@ export class DatabasePatientRepository implements PatientRepository {
   }
 
   private mapRowToPatient(row: typeof patients.$inferSelect): PatientSummary {
+    const metadata = parsePatientMetadata(row.alertsJson);
+
     return {
       id: row.id as PatientId,
       accountId: row.accountId as AccountId,
@@ -127,11 +206,21 @@ export class DatabasePatientRepository implements PatientRepository {
       species: row.species ?? 'unknown',
       breed: row.breed ?? undefined,
       sex: (row.sex ?? 'unknown') as 'male' | 'female' | 'unknown',
-      size: undefined,
+      size: metadata.size,
       baseWeightKg: row.weightKg ? parseFloat(row.weightKg) : undefined,
       birthDateApproximate: row.birthDate ?? undefined,
+      isNeutered: metadata.isNeutered,
+      microchip: row.microchip ?? undefined,
+      pedigreeNumber: metadata.pedigreeNumber,
+      color: metadata.color,
+      chronicDisease: metadata.chronicDisease,
+      allergy: metadata.allergy,
+      temperament: metadata.temperament,
+      generalNotes: metadata.generalNotes,
+      legacyVetusId: metadata.legacyVetusId,
+      originalCreatedAt: metadata.originalCreatedAt,
       primaryOwnerId: row.ownerId as OwnerId,
-      status: 'active',
+      status: metadata.status ?? 'active',
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     };

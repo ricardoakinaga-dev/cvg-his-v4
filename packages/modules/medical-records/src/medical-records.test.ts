@@ -4,6 +4,7 @@ import test from 'node:test';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 import {
+  DatabaseMedicalRecordRepository,
   MedicalRecordsService,
   type ClinicalEntryRepository,
   type ClinicalTimelineRepository,
@@ -91,6 +92,35 @@ function createService() {
   return { service, medicalRecords, entries, timeline, revisions };
 }
 
+test('DatabaseMedicalRecordRepository treats prefixed encounter IDs rejected by UUID columns as missing', async () => {
+  const invalidUuidError = Object.assign(
+    new Error('invalid input syntax for type uuid: "enc_moged3a3_m57y9s5p"'),
+    { code: '22P02' }
+  );
+  const db = {
+    select() {
+      return {
+        from() {
+          return {
+            where() {
+              return {
+                async limit() {
+                  throw invalidUuidError;
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  } as never;
+
+  const repository = new DatabaseMedicalRecordRepository(db);
+  const record = await repository.findByEncounterId('enc_moged3a3_m57y9s5p' as never);
+
+  assert.equal(record, null);
+});
+
 test('MedicalRecordsService ensureRecord creates record and initial timeline event', async () => {
   const { service, medicalRecords, timeline } = createService();
 
@@ -137,6 +167,75 @@ test('MedicalRecordsService addEntry stores entry and appends timeline', async (
   assert.equal(service.listEntriesByEncounter('encounter_1' as never).length, 1);
   assert.equal(service.listTimelineByEncounter('encounter_1' as never).length, 2);
   assert.equal(service.listTimelineByEncounter('encounter_1' as never)[0].eventType, 'entry_added');
+});
+
+test('MedicalRecordsService addEntry rolls back memory when entry persistence fails', async () => {
+  const failingService = new MedicalRecordsService({
+    encounters: {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          createdByUserId: 'user_creator'
+        };
+      }
+    } as never,
+    patients: {
+      getOrThrow(patientId: string) {
+        return {
+          id: patientId
+        };
+      }
+    } as never,
+    medicalRecordRepository: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByEncounterId() {
+        return null;
+      },
+      async findAll() {
+        return [];
+      }
+    },
+    clinicalEntryRepository: {
+      async create() {
+        throw new Error('database unavailable');
+      },
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByMedicalRecordId() {
+        return [];
+      }
+    },
+    clinicalTimelineRepository: {
+      async create() {},
+      async findByMedicalRecordId() {
+        return [];
+      }
+    }
+  });
+
+  const entry = failingService.addEntry('doctor_1' as never, {
+    encounterId: 'encounter_rollback',
+    patientId: 'patient_1',
+    entryType: 'anamnesis',
+    title: 'Historico',
+    content: 'Conteudo'
+  });
+
+  await assert.rejects(() => failingService.waitForPersistence(), /database unavailable/);
+  assert.equal(
+    failingService
+      .listEntriesByEncounter('encounter_rollback' as never, { includeArchived: true })
+      .some((item) => item.id === entry.id),
+    false
+  );
 });
 
 test('MedicalRecordsService addEntry rejects patient mismatch', () => {

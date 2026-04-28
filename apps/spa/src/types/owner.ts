@@ -44,6 +44,8 @@ export interface OwnerSummary {
   financialProfile?: OwnerFinancialProfile;
   financialResponsible: boolean;
   administrativeNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
@@ -63,6 +65,8 @@ export interface CreateOwnerRequest {
   financialProfile?: OwnerFinancialProfile;
   financialResponsible: boolean;
   administrativeNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
 }
 
 export interface UpdateOwnerRequest {
@@ -79,6 +83,8 @@ export interface UpdateOwnerRequest {
   financialProfile?: OwnerFinancialProfile;
   financialResponsible?: boolean;
   administrativeNotes?: string;
+  legacyVetusId?: string;
+  originalCreatedAt?: string;
   status?: 'active' | 'inactive';
 }
 

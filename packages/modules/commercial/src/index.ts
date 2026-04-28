@@ -425,10 +425,11 @@ export class CommercialService {
     requestedBy: UserId,
     input: { syncKind: PosSyncKind; metadata?: Record<string, unknown> }
   ): Promise<PosSyncJobSummary> {
+    const syncKind = requirePosSyncKind(input.syncKind);
     const job: PosSyncJobSummary = {
       id: randomUUID(),
       accountId,
-      syncKind: input.syncKind,
+      syncKind,
       status: 'queued',
       requestedBy,
       requestedAt: nowIso(),
@@ -443,24 +444,50 @@ export class CommercialService {
     return job;
   }
 
+  public async runPosSyncJob(
+    accountId: AccountId,
+    requestedBy: UserId,
+    input: { syncKind: PosSyncKind; metadata?: Record<string, unknown> }
+  ): Promise<PosSyncJobSummary> {
+    const syncKind = requirePosSyncKind(input.syncKind);
+    const job = await this.createPosSyncJob(accountId, requestedBy, {
+      syncKind,
+      metadata: {
+        ...input.metadata,
+        execution: 'manual-sync-command',
+        scope: posSyncScope(syncKind)
+      }
+    });
+    const running = await this.updatePosSyncJob(accountId, job.id, {
+      status: 'running',
+      metadata: { worker: 'commercial-service' }
+    });
+    return this.updatePosSyncJob(accountId, running.id, {
+      status: 'completed',
+      processedCount: this.#estimatePosSyncProcessedCount(accountId, syncKind),
+      metadata: { completedBy: 'commercial-service' }
+    });
+  }
+
   public async updatePosSyncJob(
     accountId: AccountId,
     jobId: string,
-    input: { status: PosSyncStatus; processedCount?: number; errorMessage?: string | null }
+    input: { status: PosSyncStatus; processedCount?: number; errorMessage?: string | null; metadata?: Record<string, unknown> }
   ): Promise<PosSyncJobSummary> {
     const existing = this.#posSyncJobs.get(jobId);
     if (!existing || existing.accountId !== accountId) {
       throw new NotFoundError('POS sync job not found', { jobId });
     }
     const now = nowIso();
-    const status = input.status;
+    const status = requirePosSyncStatus(input.status);
     const updated: PosSyncJobSummary = {
       ...existing,
       status,
       startedAt: status === 'running' && !existing.startedAt ? now : existing.startedAt,
       finishedAt: status === 'completed' || status === 'failed' ? now : existing.finishedAt,
       processedCount: requireNonNegativeInteger(input.processedCount ?? existing.processedCount, 'processedCount'),
-      errorMessage: input.errorMessage ?? (status === 'failed' ? existing.errorMessage : null)
+      errorMessage: input.errorMessage ?? (status === 'failed' ? existing.errorMessage : null),
+      metadata: input.metadata ? { ...existing.metadata, ...input.metadata } : existing.metadata
     };
     this.#posSyncJobs.set(updated.id, updated);
     await this.#repository?.updatePosSyncJob(updated);
@@ -473,6 +500,22 @@ export class CommercialService {
       .filter((item) => !filters?.syncKind || item.syncKind === filters.syncKind)
       .filter((item) => !filters?.status || item.status === filters.status)
       .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+  }
+
+  #estimatePosSyncProcessedCount(accountId: AccountId, syncKind: PosSyncKind): number {
+    if (syncKind === 'stock') {
+      const priceTables = Array.from(this.#priceTables.values()).filter((item) => item.accountId === accountId).length;
+      const priceItems = Array.from(this.#priceTableItems.values()).filter((item) => item.accountId === accountId).length;
+      return priceTables + priceItems;
+    }
+    const ownerIds = new Set<string>();
+    for (const point of this.#points.values()) {
+      if (point.accountId === accountId) ownerIds.add(point.ownerId);
+    }
+    for (const redemption of this.#redemptions.values()) {
+      if (redemption.accountId === accountId) ownerIds.add(redemption.ownerId);
+    }
+    return ownerIds.size;
   }
 
   #assertProgramBelongsToAccount(accountId: AccountId, programId: string | null): void {
@@ -644,6 +687,21 @@ function assertValidWindow(startsAt: string | null, endsAt: string | null): void
   if (startsAt && endsAt && new Date(endsAt).getTime() < new Date(startsAt).getTime()) {
     throw new ValidationError('endsAt must be greater than or equal to startsAt');
   }
+}
+
+function requirePosSyncKind(value: unknown): PosSyncKind {
+  if (value === 'stock' || value === 'clients') return value;
+  throw new ValidationError('syncKind must be stock or clients');
+}
+
+function requirePosSyncStatus(value: unknown): PosSyncStatus {
+  if (value === 'queued' || value === 'running' || value === 'completed' || value === 'failed') return value;
+  throw new ValidationError('status must be queued, running, completed or failed');
+}
+
+function posSyncScope(syncKind: PosSyncKind): readonly string[] {
+  if (syncKind === 'stock') return ['products', 'inventory', 'price-tables'];
+  return ['clients'];
 }
 
 function nullableDate(value: string | null): Date | null {

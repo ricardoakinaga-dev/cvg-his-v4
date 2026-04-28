@@ -9,7 +9,7 @@
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadOverview">Atualizar</DsButton>
         <DsButton variant="secondary" tag="a" href="/queue">Esteira</DsButton>
-        <DsButton variant="secondary" tag="a" href="/counter-sales">Comandas</DsButton>
+        <DsButton variant="secondary" tag="a" href="/encounters">Selecionar atendimento para cobrança</DsButton>
       </template>
     </AppPageHeader>
 

@@ -58,6 +58,21 @@
                 <DsCheckbox id="receiveSms" v-model="form.receiveSms" label="Receber SMS" />
               </div>
             </div>
+
+            <div class="form-row form-row--2">
+              <DsInput
+                id="legacyVetusId"
+                v-model="form.legacyVetusId"
+                label="ID Vetus"
+                placeholder="ID legado do cliente"
+              />
+              <DsInput
+                id="originalCreatedAt"
+                v-model="form.originalCreatedAt"
+                label="Data de Cadastro Vetus"
+                type="date"
+              />
+            </div>
           </div>
         </details>
 
@@ -296,7 +311,9 @@ const form = reactive({
   allowedDebtLimit: '' as number | '',
   creditBalance: '' as number | '',
   availablePoints: '' as number | '',
-  blockedPoints: '' as number | ''
+  blockedPoints: '' as number | '',
+  legacyVetusId: '',
+  originalCreatedAt: ''
 });
 
 const validation = useFormValidation({
@@ -457,7 +474,9 @@ async function onSubmit() {
         blockedPoints: normalizeNumber(form.blockedPoints)
       },
       financialResponsible: form.financialResponsible,
-      administrativeNotes: normalizeString(form.administrativeNotes)
+      administrativeNotes: normalizeString(form.administrativeNotes),
+      legacyVetusId: normalizeString(form.legacyVetusId),
+      originalCreatedAt: normalizeString(form.originalCreatedAt)
     };
 
     if (isEdit.value) {
@@ -510,6 +529,8 @@ onMounted(async () => {
     form.creditBalance = owner.financialProfile?.creditBalance ?? '';
     form.availablePoints = owner.financialProfile?.availablePoints ?? '';
     form.blockedPoints = owner.financialProfile?.blockedPoints ?? '';
+    form.legacyVetusId = owner.legacyVetusId ?? '';
+    form.originalCreatedAt = owner.originalCreatedAt ?? '';
     assignContacts(owner);
   } catch (err: unknown) {
     formError.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
