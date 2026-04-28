@@ -118,4 +118,22 @@ describe('VetusAssistedImportPage', () => {
     expect(wrapper.text()).toContain('Importado');
     expect(vetusImportService.list).toHaveBeenCalledTimes(2);
   });
+
+  it('does not show success when every Vetus row import fails', async () => {
+    vi.mocked(vetusImportService.create).mockRejectedValueOnce(new Error('Importação recusada'));
+    const wrapper = mount(VetusAssistedImportPage);
+    await flushPromises();
+
+    await wrapper.find('textarea').setValue(
+      'ID Cliente Vetus;Cliente;Telefone;Email;ID Animal Vetus;Animal;Especie;Raca;Sexo;Peso;Historico;Origem;Revisor\n' +
+      '3835;Maria Silva;(11) 99999-1111;maria@example.com;10115;Luna;Canina;SRD;Femea;12,4;Historico Vetus;planilha-animais-abril;Maria Recepcao'
+    );
+    await wrapper.findAll('button').find((button) => button.text() === 'Validar')!.trigger('click');
+    await wrapper.findAll('button').find((button) => button.text() === 'Importar')!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('0 registro(s) importado(s).');
+    expect(wrapper.text()).toContain('1 registro(s) não foram importados.');
+    expect(wrapper.text()).toContain('Importação recusada');
+  });
 });

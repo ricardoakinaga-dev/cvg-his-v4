@@ -17,6 +17,9 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+    <DsAlert v-if="warningMessage" variant="warning" dismissible @dismiss="warningMessage = ''">
+      {{ warningMessage }}
+    </DsAlert>
 
     <section class="clinical-overview">
       <DsCard title="Resumo diagnóstico">
@@ -217,6 +220,7 @@ const submittingRequest = ref(false);
 const submittingAttachment = ref(false);
 const error = ref('');
 const successMessage = ref('');
+const warningMessage = ref('');
 
 const requestForm = ref({
   title: '',
@@ -393,6 +397,7 @@ async function submitRequest() {
   submittingRequest.value = true;
   error.value = '';
   successMessage.value = '';
+  warningMessage.value = '';
 
   try {
     await laboratoryService.createOrder({
@@ -418,15 +423,17 @@ async function submitRequest() {
           .join('\n')
       });
       successMessage.value = 'Pedido laboratorial registrado e vinculado ao prontuário.';
-    } catch {
-      successMessage.value =
-        'Pedido laboratorial registrado. A anotação clínica não foi persistida na mesma tentativa.';
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : 'Erro ao registrar anotação clínica';
+      warningMessage.value =
+        `Pedido laboratorial registrado, mas a anotação clínica não foi persistida: ${detail}`;
     }
 
     resetRequestForm();
     await refreshContext();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao registrar solicitação';
+    warningMessage.value = '';
   } finally {
     submittingRequest.value = false;
   }
@@ -441,6 +448,7 @@ async function submitAttachment() {
   submittingAttachment.value = true;
   error.value = '';
   successMessage.value = '';
+  warningMessage.value = '';
 
   try {
     const attachment = await diagnosticsService.uploadAttachment(selectedEncounter.value.id, {
@@ -473,6 +481,7 @@ async function submitAttachment() {
     await refreshContext();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao enviar anexo';
+    warningMessage.value = '';
   } finally {
     submittingAttachment.value = false;
   }

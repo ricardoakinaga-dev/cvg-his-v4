@@ -298,9 +298,12 @@ async function importRows() {
   }
 
   importing.value = false;
-  success.value = `${imported} registro(s) importado(s).`;
   if (failed > 0) {
-    error.value = `${failed} registro(s) não foram importados.`;
+    error.value = imported > 0
+      ? `${imported} registro(s) importado(s); ${failed} registro(s) não foram importados.`
+      : `${failed} registro(s) não foram importados.`;
+  } else if (imported > 0) {
+    success.value = `${imported} registro(s) importado(s).`;
   }
   await loadRecentImports();
 }

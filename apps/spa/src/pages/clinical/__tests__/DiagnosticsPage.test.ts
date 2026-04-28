@@ -205,4 +205,24 @@ describe('DiagnosticsPage', () => {
     expect(mockAttachmentsUpload).toHaveBeenCalled();
     expect(mockLaboratoryRecordResult).toHaveBeenCalled();
   });
+
+  it('does not show success when the clinical diagnostic note fails after order creation', async () => {
+    mockDiagnosticsCreate.mockRejectedValueOnce(new Error('Prontuário indisponível'));
+    const DiagnosticsPage = (await import('../DiagnosticsPage.vue')).default;
+    const wrapper = mount(DiagnosticsPage);
+    await flushPromises();
+
+    const selects = wrapper.findAll('select');
+    await selects[1].setValue('cat_001');
+    const textareas = wrapper.findAll('textarea');
+    await textareas[0].setValue('Solicitação clínica');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(mockLaboratoryCreateOrder).toHaveBeenCalled();
+    expect(mockDiagnosticsCreate).toHaveBeenCalled();
+    expect(wrapper.find('[variant="success"]').exists()).toBe(false);
+    expect(wrapper.find('[variant="warning"]').text()).toContain('Pedido laboratorial registrado');
+    expect(wrapper.find('[variant="warning"]').text()).toContain('Prontuário indisponível');
+  });
 });

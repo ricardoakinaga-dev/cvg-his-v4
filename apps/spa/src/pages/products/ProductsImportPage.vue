@@ -293,9 +293,12 @@ async function importRows() {
   }
 
   importing.value = false;
-  success.value = `${imported} produto(s) importado(s).`;
   if (failed > 0) {
-    error.value = `${failed} produto(s) nao foram importados.`;
+    error.value = imported > 0
+      ? `${imported} produto(s) importado(s); ${failed} produto(s) nao foram importados.`
+      : `${failed} produto(s) nao foram importados.`;
+  } else if (imported > 0) {
+    success.value = `${imported} produto(s) importado(s).`;
   }
   await loadCatalog();
 }

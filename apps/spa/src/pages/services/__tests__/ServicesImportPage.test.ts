@@ -75,4 +75,18 @@ describe('ServicesImportPage', () => {
     expect(wrapper.text()).toContain('1 serviço(s) importado(s).');
     expect(wrapper.text()).toContain('Importado');
   });
+
+  it('does not show success when every service import fails', async () => {
+    vi.mocked(servicesService.create).mockRejectedValueOnce(new Error('API indisponível'));
+    const wrapper = mount(ServicesImportPage);
+
+    await wrapper.find('textarea').setValue('Id;Descrição;Valor;Ativo\nCONS-001;Consulta Veterinária;150,00;Sim');
+    await wrapper.findAll('button').find((button) => button.text() === 'Validar')!.trigger('click');
+    await wrapper.findAll('button').find((button) => button.text() === 'Importar')!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('0 serviço(s) importado(s).');
+    expect(wrapper.text()).toContain('1 serviço(s) não foram importados.');
+    expect(wrapper.text()).toContain('API indisponível');
+  });
 });

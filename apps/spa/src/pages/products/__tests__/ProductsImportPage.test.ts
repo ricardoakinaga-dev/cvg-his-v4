@@ -115,4 +115,21 @@ describe('ProductsImportPage', () => {
     expect(wrapper.text()).toContain('2 produto(s) importado(s).');
     expect(wrapper.text()).toContain('Importado');
   });
+
+  it('does not show success when every product import fails', async () => {
+    vi.mocked(productsService.create).mockRejectedValueOnce(new Error('Falha no banco'));
+    const wrapper = mount(ProductsImportPage);
+    await flushPromises();
+
+    await wrapper
+      .get('[data-testid="products-import-data"]')
+      .setValue('Codigo;Produto;Descricao;Preco Base;Ativo\nSER-003;Seringa 3ml;Material;8,50;Sim');
+    await wrapper.findAll('button').find((button) => button.text() === 'Validar')!.trigger('click');
+    await wrapper.findAll('button').find((button) => button.text() === 'Importar')!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('0 produto(s) importado(s).');
+    expect(wrapper.text()).toContain('1 produto(s) nao foram importados.');
+    expect(wrapper.text()).toContain('Falha no banco');
+  });
 });

@@ -221,9 +221,12 @@ async function importRows() {
   }
 
   importing.value = false;
-  success.value = `${imported} serviço(s) importado(s).`;
   if (failed > 0) {
-    error.value = `${failed} serviço(s) não foram importados.`;
+    error.value = imported > 0
+      ? `${imported} serviço(s) importado(s); ${failed} serviço(s) não foram importados.`
+      : `${failed} serviço(s) não foram importados.`;
+  } else if (imported > 0) {
+    success.value = `${imported} serviço(s) importado(s).`;
   }
 }
 

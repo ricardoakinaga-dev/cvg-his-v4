@@ -408,8 +408,9 @@ Checkpoint em 2026-04-28:
 - P2-03 foi implementado em escopo focado para vacinas e vermifugos como modulo proprio.
 - P2-04 foi implementado em escopo focado para internacao vinculada ao animal e prontuario.
 - P2-05 foi implementado em escopo focado para importacao assistida Vetus-like.
+- P3-01 foi implementado em escopo focado para auditoria de mensagens de sucesso.
 
-Proxima acao recomendada: executar `P3-01 - Auditoria de mensagens de sucesso`.
+Proxima acao recomendada: executar `P3-02 - Padronizar estados vazios`.
 
 Justificativa:
 
@@ -418,31 +419,55 @@ Justificativa:
 - vacinas e vermifugos agora aparecem no detalhe do animal a partir do modulo preventivo proprio, com proximas doses e historico por `patientId`/`ownerId`;
 - internacao agora lista por animal, mostra internacoes ativas/historicas no cockpit do paciente e grava evolucao/alta/transferencia na timeline do prontuario;
 - a importacao assistida Vetus-like agora cria ou vincula tutor/animal revisados, preservando ID legado, origem, revisor, data e notas de auditoria no cadastro;
-- a proxima lacuna operacional passa a ser eliminar mensagens de sucesso sem confirmacao real em telas/API.
+- importacoes de servicos, produtos e Vetus-like nao exibem mais sucesso verde quando ha falha total ou parcial no lote;
+- a Central Diagnostica nao mostra sucesso quando o pedido laboratorial e criado, mas a anotacao clinica vinculada falha;
+- a proxima lacuna operacional passa a ser padronizar estados vazios para indicar claramente o que falta e a acao correta.
 
-Escopo minimo de `P3-01`:
+Escopo minimo de `P3-02`:
 
-1. Inventariar telas que exibem sucesso apos chamadas assincronas.
-2. Garantir que sucesso dependa de resposta real do backend e persistencia esperada.
-3. Padronizar erro visivel quando API, validacao ou persistencia falham.
-4. Criar/ajustar testes focados nos fluxos mais criticos.
+1. Inventariar cards/listas com estado vazio generico ou ambiguo.
+2. Padronizar mensagem curta indicando qual dado esta ausente.
+3. Exibir acao contextual correta quando o usuario puder resolver o vazio.
+4. Criar/ajustar testes focados nos principais cards operacionais.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P3-01`:
+Criterio de aceite de `P3-02`:
 
-- nenhuma tela auditada mostra sucesso quando a chamada falha;
-- estados de loading, erro e sucesso ficam consistentes nos fluxos auditados;
-- testes focados cobrem os principais caminhos de sucesso/falha;
+- cards/listas vazios indicam o que esta faltando;
+- acoes de criacao, importacao ou vinculo aparecem somente quando fazem sentido para o contexto;
+- testes focados cobrem os estados vazios alterados;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
 Observacao de sequenciamento:
 
-- Este plano de GAPs continua agora por P2.
+- Este plano de GAPs continua agora por P3.
 - O workflow macro Vetus fiscal deve retomar por `Estoque > Configuracoes Fiscais > Tabela NFS-e`, conforme sequenciamento definido pelo responsavel. Isso nao invalida o P2; apenas separa a correcao de GAP clinico/operacional da trilha macro fiscal.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P3-01 Auditoria de mensagens de sucesso
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- importacoes de servicos, produtos e Vetus-like so exibem alerta verde quando todas as linhas importaveis foram confirmadas;
+- falha total ou parcial em lote passa a usar alerta de erro com contagem consolidada e mensagem por linha;
+- Central Diagnostica trocou sucesso parcial por alerta de aviso quando o pedido laboratorial e criado, mas a anotacao clinica vinculada nao e persistida;
+- testes de regressao cobrem falso sucesso em importacoes e diagnostico.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/services/__tests__/ServicesImportPage.test.ts src/pages/products/__tests__/ProductsImportPage.test.ts src/pages/imports/__tests__/VetusAssistedImportPage.test.ts src/pages/clinical/__tests__/DiagnosticsPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, API local `http://127.0.0.1:3003/health` 200 e SPAs locais `/products/import`, `/services/import`, `/vetus-imports` e `/diagnostics` retornando 200;
+- HTTPS publico validado com SPA `/diagnostics`, SPA `/vetus-imports` e API health retornando 200.
+
+Proxima frente recomendada: `P3-02 - Padronizar estados vazios`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P2-05 Importacao assistida Vetus-like
 
