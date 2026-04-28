@@ -288,10 +288,23 @@ test('EncountersService: openEncounter rolls back memory when repository persist
     patients,
     encounterRepository: failingRepository
   });
+  const accountId = '550e8400-e29b-41d4-a716-446655440000' as never;
+  const actorUserId = '550e8400-e29b-41d4-a716-446655440001' as never;
+  const owner = owners.create(accountId, {
+    fullName: 'Tutor Persistencia',
+    contacts: [{ label: 'Telefone', value: '+55 11 99999-0000', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = patients.create(accountId, {
+    name: 'Paciente Persistencia',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: owner.id
+  });
 
-  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
-    patientId: 'patient_luna',
-    ownerId: 'owner_maria_silva',
+  const encounter = encounters.openEncounter(accountId, actorUserId, {
+    patientId: patient.id,
+    ownerId: owner.id,
     visitType: 'walk_in',
     origin: 'reception',
     reason: 'Rollback test'
@@ -300,4 +313,53 @@ test('EncountersService: openEncounter rolls back memory when repository persist
   await assert.rejects(() => encounters.waitForPersistence(), /database unavailable/);
   assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
   assert.equal(encounters.listActive().some((item) => item.id === encounter.id), false);
+});
+
+test('EncountersService: openEncounter rejects legacy ids before database persistence', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  let persisted = false;
+  const repository: EncounterRepository = {
+    async create() {
+      persisted = true;
+    },
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findActiveByPatientId() {
+      return null;
+    },
+    async findAll() {
+      return [];
+    },
+    async findActive() {
+      return [];
+    },
+    async delete() {}
+  };
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    encounterRepository: repository
+  });
+
+  assert.throws(
+    () =>
+      encounters.openEncounter(
+        '550e8400-e29b-41d4-a716-446655440000' as never,
+        '550e8400-e29b-41d4-a716-446655440001' as never,
+        {
+          patientId: 'patient_mogeb6qv_5b0gq64z',
+          ownerId: 'owner_ricardo_akinaga',
+          visitType: 'walk_in',
+          origin: 'reception',
+          reason: 'Consulta'
+        }
+      ),
+    ValidationError
+  );
+  await encounters.waitForPersistence();
+  assert.equal(persisted, false);
+  assert.equal(encounters.listActive().length, 0);
 });

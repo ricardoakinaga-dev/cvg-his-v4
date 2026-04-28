@@ -12,6 +12,7 @@
 
     <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
     <DsAlert v-if="successMessage" variant="success">{{ successMessage }}</DsAlert>
+    <DsAlert v-if="legacyIdentifierWarning" variant="warning">{{ legacyIdentifierWarning }}</DsAlert>
 
     <div class="encounter-form-page__layout">
       <form class="encounter-form" @submit.prevent="onSubmit">
@@ -58,7 +59,7 @@
         </DsCard>
 
         <div class="form-actions">
-          <DsButton type="submit" variant="primary" :disabled="submitting">
+          <DsButton type="submit" variant="primary" :disabled="submitting || Boolean(legacyIdentifierWarning)">
             {{ submitting ? 'Abrindo...' : 'Abrir Atendimento' }}
           </DsButton>
           <DsButton variant="secondary" tag="a" href="/encounters">Cancelar</DsButton>
@@ -137,6 +138,14 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+
+const legacyIdentifierWarning = computed(() => {
+  if (form.patientId.startsWith('patient_') || form.ownerId.startsWith('owner_')) {
+    return 'Este cadastro ainda usa identificador legado do Vetus. Migre ou selecione um paciente/tutor persistido antes de abrir atendimento.';
+  }
+
+  return '';
+});
 
 const summaryCards = computed(() => [
   { label: 'Paciente', value: patientName.value || '—', hint: 'Animal selecionado' },
@@ -227,6 +236,10 @@ async function applyPrefill() {
 
 async function onSubmit() {
   if (!validate(getValues())) return;
+  if (legacyIdentifierWarning.value) {
+    formError.value = legacyIdentifierWarning.value;
+    return;
+  }
 
   submitting.value = true;
   formError.value = '';

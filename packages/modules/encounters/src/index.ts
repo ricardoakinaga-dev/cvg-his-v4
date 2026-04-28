@@ -47,6 +47,12 @@ const allowedTransitions: Record<
   closed: []
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_PATTERN.test(value);
+}
+
 export interface EncountersServiceOptions {
   readonly owners: OwnersService;
   readonly patients: PatientsService;
@@ -150,6 +156,17 @@ export class EncountersService {
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
     this.#patients.getOrThrow(patientId);
     this.#owners.getOrThrow(ownerId);
+
+    if (this.#encounterRepository && (!isUuid(patientId) || !isUuid(ownerId))) {
+      throw new ValidationError(
+        'Patient and owner must be persisted with UUID identifiers before opening an encounter',
+        {
+          patientId,
+          ownerId,
+          reason: 'non_uuid_identifier'
+        }
+      );
+    }
 
     const existingActive = this.listActive().find((encounter) => encounter.patientId === patientId);
     if (existingActive) {

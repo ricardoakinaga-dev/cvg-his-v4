@@ -275,6 +275,51 @@ describe('EncounterFormPage', () => {
     });
   });
 
+  it('blocks legacy Vetus identifiers before submitting encounter creation', async () => {
+    mockListFn.mockResolvedValue([
+      ...mockPatients,
+      {
+        id: 'patient_mogeb6qv_5b0gq64z',
+        accountId: 'acc-1',
+        name: 'DANI',
+        species: 'canine' as const,
+        breed: 'SRD',
+        sex: 'female' as const,
+        primaryOwnerId: 'owner_ricardo_akinaga',
+        status: 'active' as const,
+        createdAt: '2026-02-27T00:00:00Z',
+        updatedAt: '2026-02-27T00:00:00Z'
+      }
+    ]);
+    history.replaceState(
+      {},
+      '',
+      '/encounters/new?patientId=patient_mogeb6qv_5b0gq64z&ownerId=owner_ricardo_akinaga'
+    );
+
+    const EncounterFormPage = (await import('../EncounterFormPage.vue')).default;
+    const wrapper = mount(EncounterFormPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('identificador legado do Vetus');
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined();
+
+    await wrapper.find('#reason').setValue('Consulta');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(mockCreateFn).not.toHaveBeenCalled();
+  });
+
   it('shows error alert when create fails', async () => {
     mockCreateFn.mockRejectedValue(new Error('Paciente ja em atendimento'));
 
