@@ -78,6 +78,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Clientes', path: '/owners', icon: '👤', keywords: ['clientes', 'tutores'] },
           { label: 'Serviços', path: '/services', icon: '🛠️', keywords: ['servicos', 'catalogo'] },
           { label: 'Importar Dados Serviços', path: '/services/import', icon: '⬆️', keywords: ['importar servicos'] },
+          { label: 'Importação Assistida Vetus', path: '/vetus-imports', icon: '⬆️', keywords: ['vetus', 'importacao', 'legado'] },
           { label: 'Termos de Responsabilidade', path: '/responsibility-terms', icon: '📄', keywords: ['termos', 'responsabilidade'] },
           { label: 'Raças', path: '/breeds', icon: '🧬', keywords: ['racas', 'breed'] },
           { label: 'Espécies', path: '/species', icon: '🦴', keywords: ['especies', 'species'] },

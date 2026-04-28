@@ -108,6 +108,10 @@ import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
 import { handleCounterSalesRoutes } from './routes/counter-sales-routes.js';
 import { handleOwnersRoutes } from './routes/owners-routes.js';
 import { handlePatientsRoutes } from './routes/patients-routes.js';
+import {
+  handleVetusImportRoutes,
+  type VetusImportSummary
+} from './routes/vetus-import-routes.js';
 import { handleUsersStaffQuotesRoutes } from './routes/users-staff-quotes-routes.js';
 import {
   ChaosEngine,
@@ -3220,6 +3224,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const coatColors = createCoatColorStore();
   const customerGroups = createCustomerGroupStore();
   const preventiveEvents = createPreventiveEventStore();
+  const vetusImportLogStore = new Map<string, VetusImportSummary>();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -4573,6 +4578,18 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           await handleCommercialRoutes(pathname, request, response, correlationId, {
             commercial,
             audit,
+            requirePrincipal
+          })
+        ) {
+          return;
+        }
+
+        if (
+          await handleVetusImportRoutes(pathname, request, response, correlationId, {
+            owners,
+            patients,
+            audit,
+            importLogStore: vetusImportLogStore,
             requirePrincipal
           })
         ) {

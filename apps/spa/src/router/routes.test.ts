@@ -242,6 +242,15 @@ describe('router convergence', () => {
         '/estoque/cadastros/importar-dados-produtos'
       ])
     );
+    expect(findChildRoute('vetus-imports')?.meta?.title).toBe('Importação Assistida Vetus');
+    expect(findChildRoute('vetus-imports')?.meta?.breadcrumbParent).toBe('Cadastros');
+    expect(findChildRoute('vetus-imports')?.alias).toEqual(
+      expect.arrayContaining([
+        '/vetus/importacao-assistida',
+        '/importacao-vetus',
+        '/atendimento/importacao-vetus'
+      ])
+    );
     expect(findChildRoute('suppliers')?.meta?.title).toBe('Fornecedores e Despesas');
     expect(findChildRoute('suppliers')?.alias).toEqual(
       expect.arrayContaining([

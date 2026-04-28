@@ -989,6 +989,39 @@ paths:
               schema:
                 type: object
 
+  /vetus-imports:
+    get:
+      operationId: listVetusImports
+      summary: List assisted Vetus imports
+      description: Returns the assisted Vetus import log for audit review.
+      tags: [Owners, Patients]
+      responses:
+        '200':
+          description: Assisted Vetus import log
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportListResponse'
+
+    post:
+      operationId: createVetusImport
+      summary: Import reviewed Vetus owner and animal
+      description: Creates or links a reviewed Vetus owner and animal row, preserving source traceability.
+      tags: [Owners, Patients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVetusImportRequest'
+      responses:
+        '201':
+          description: Vetus row imported or linked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportSummary'
+
   /owners:
     get:
       operationId: listOwners
@@ -7665,6 +7698,102 @@ components:
         addressJson:
           type: object
           additionalProperties: true
+
+    CreateVetusImportRequest:
+      type: object
+      required: [owner, patient]
+      properties:
+        sourceSystem:
+          type: string
+          default: Vetus
+        sourceReference:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: string
+          nullable: true
+        owner:
+          type: object
+          required: [fullName]
+          properties:
+            legacyVetusId:
+              type: string
+            fullName:
+              type: string
+            documentId:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+              format: email
+            originalCreatedAt:
+              type: string
+              format: date-time
+        patient:
+          type: object
+          required: [name, species]
+          properties:
+            legacyVetusId:
+              type: string
+            name:
+              type: string
+            species:
+              type: string
+            breed:
+              type: string
+            sex:
+              type: string
+              enum: [male, female, unknown]
+            baseWeightKg:
+              type: number
+            generalNotes:
+              type: string
+            originalCreatedAt:
+              type: string
+              format: date-time
+
+    VetusImportSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        sourceSystem:
+          type: string
+        sourceReference:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [imported, linked]
+        ownerId:
+          type: string
+        ownerName:
+          type: string
+        patientId:
+          type: string
+        patientName:
+          type: string
+        importedByUserId:
+          type: string
+        reviewedBy:
+          type: string
+          nullable: true
+        importedAt:
+          type: string
+          format: date-time
+        summary:
+          type: string
+
+    VetusImportListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VetusImportSummary'
 
     Patient:
       type: object

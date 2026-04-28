@@ -407,8 +407,9 @@ Checkpoint em 2026-04-28:
 - P2-02 foi implementado em escopo focado para comanda integrada ao atendimento.
 - P2-03 foi implementado em escopo focado para vacinas e vermifugos como modulo proprio.
 - P2-04 foi implementado em escopo focado para internacao vinculada ao animal e prontuario.
+- P2-05 foi implementado em escopo focado para importacao assistida Vetus-like.
 
-Proxima acao recomendada: executar `P2-05 - Importacao assistida Vetus-like`.
+Proxima acao recomendada: executar `P3-01 - Auditoria de mensagens de sucesso`.
 
 Justificativa:
 
@@ -416,22 +417,22 @@ Justificativa:
 - a comanda agora aparece no detalhe do animal, filtra por paciente/tutor/atendimento e lista itens do atendimento focal;
 - vacinas e vermifugos agora aparecem no detalhe do animal a partir do modulo preventivo proprio, com proximas doses e historico por `patientId`/`ownerId`;
 - internacao agora lista por animal, mostra internacoes ativas/historicas no cockpit do paciente e grava evolucao/alta/transferencia na timeline do prontuario;
-- a proxima lacuna operacional passa a ser a importacao assistida Vetus-like.
+- a importacao assistida Vetus-like agora cria ou vincula tutor/animal revisados, preservando ID legado, origem, revisor, data e notas de auditoria no cadastro;
+- a proxima lacuna operacional passa a ser eliminar mensagens de sucesso sem confirmacao real em telas/API.
 
-Escopo minimo de `P2-05`:
+Escopo minimo de `P3-01`:
 
-1. Mapear quais dados legados precisam de entrada assistida sem acesso direto ao banco.
-2. Definir fluxo operacional para importar/cadastrar dados Vetus-like com revisao humana.
-3. Garantir auditoria, origem do dado, responsavel e rastreabilidade por animal/tutor/atendimento.
-4. Criar/ajustar testes focados de API e SPA para o caminho principal de importacao assistida.
+1. Inventariar telas que exibem sucesso apos chamadas assincronas.
+2. Garantir que sucesso dependa de resposta real do backend e persistencia esperada.
+3. Padronizar erro visivel quando API, validacao ou persistencia falham.
+4. Criar/ajustar testes focados nos fluxos mais criticos.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P2-05`:
+Criterio de aceite de `P3-01`:
 
-- operador consegue registrar dados legados por fluxo assistido, sem SQL manual;
-- origem, responsavel e data da importacao ficam visiveis/auditaveis;
-- dados importados aparecem no contexto correto de animal/tutor/atendimento;
-- testes focados cobrem caminho API/SPA principal;
+- nenhuma tela auditada mostra sucesso quando a chamada falha;
+- estados de loading, erro e sucesso ficam consistentes nos fluxos auditados;
+- testes focados cobrem os principais caminhos de sucesso/falha;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
 Observacao de sequenciamento:
@@ -442,6 +443,34 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P2-05 Importacao assistida Vetus-like
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- criada rota `/vetus-imports` para registrar linha Vetus revisada, exigindo permissoes de pacientes e clientes;
+- a API cria ou vincula tutor/animal por ID legado Vetus, documento/nome do tutor e nome do animal, evitando duplicidade em reprocessamento;
+- origem, referencia, revisor, usuario importador, data e resumo ficam no retorno da importacao, no audit log e nas notas administrativas/clinicas do cadastro;
+- a importacao valida contato minimo do tutor para respeitar regra existente de cadastro;
+- criada tela `/vetus-imports` com entrada por arquivo ou dados colados, modelo CSV, validacao previa, importacao linha a linha e log recente;
+- menu Vetus-like ganhou `Atendimento > Cadastros > Importacao Assistida Vetus`;
+- OpenAPI passou a documentar `GET/POST /vetus-imports`.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/api run build`;
+- `pnpm --filter @cvg-his-v2/api exec node --test dist/routes/vetus-import-routes.test.js`;
+- `pnpm --filter @cvg-his-v2/api run test`;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/imports/__tests__/VetusAssistedImportPage.test.ts src/router/routes.test.ts src/navigation.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm validate:openapi`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/vetus-imports` 200, API local `http://127.0.0.1:3003/health` 200 e rota protegida `/vetus-imports` retornando 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA `/vetus-imports` e API health retornando 200.
+
+Proxima frente recomendada: `P3-01 - Auditoria de mensagens de sucesso`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P2-04 Internacao vinculada ao animal e prontuario
 

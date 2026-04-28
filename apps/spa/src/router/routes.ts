@@ -2122,6 +2122,18 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'vetus-imports',
+        name: 'VetusAssistedImport',
+        alias: ['/vetus/importacao-assistida', '/importacao-vetus', '/atendimento/importacao-vetus'],
+        component: () => import('@/pages/imports/VetusAssistedImportPage.vue'),
+        meta: {
+          title: 'Importação Assistida Vetus',
+          breadcrumb: 'Importação Assistida Vetus',
+          breadcrumbParent: 'Cadastros',
+          icon: '⬆️'
+        }
+      },
+      {
         path: 'responsibility-terms',
         name: 'ResponsibilityTerms',
         alias: ['/termos-de-responsabilidade', '/cadastros/termos-de-responsabilidade'],
