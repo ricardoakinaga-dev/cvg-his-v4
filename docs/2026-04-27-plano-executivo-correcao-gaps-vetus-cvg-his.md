@@ -399,26 +399,66 @@ Antes de publicar qualquer correcao desse roadmap:
 
 ## 10. Proxima acao recomendada
 
-Comecar por `P0-01`, `P0-02` e `P0-05` em conjunto.
+Checkpoint em 2026-04-28:
+
+- P0 foi implementado em escopo focado e publicado no compose v2 existente.
+- P1 foi implementado em escopo focado e publicado no compose v2 existente.
+- O proximo passo deste plano de GAPs nao e mais P0/P1. A proxima frente e `P2-01 - Agenda historica e futura por animal`.
+
+Proxima acao recomendada: executar `P2-01`.
 
 Justificativa:
 
-- o mesmo problema de persistencia afeta tutor, animal, atendimento e prontuario;
-- o falso sucesso clinico e risco operacional grave;
-- sem corrigir isso, qualquer evolucao de UX ou modulo clinico continuara fragil.
+- o card Agenda do animal ainda precisa deixar de ser apenas um resumo de futuro e passar a funcionar como historico operacional do paciente;
+- a agenda e a ponte mais curta entre cockpit clinico, retornos, vacina/vermifugo, atendimento e comanda;
+- antes de mexer em comanda/financeiro, o sistema precisa saber mostrar passado e futuro do animal sem perder contexto;
+- isso reduz risco no P2-02, porque a abertura de comanda pelo animal/atendimento depende de uma jornada assistencial bem localizada.
 
-Sequencia imediata:
+Escopo minimo de `P2-01`:
 
-1. Criar teste de integracao para criar owner/patient/encounter com repositorio database.
-2. Reproduzir erro de UUID.
-3. Definir padrao unico de ID: UUID real no banco ou schema textual consistente.
-4. Corrigir persistencia e leitura.
-5. Criar teste de entrada clinica persistida.
-6. Validar pelo navegador no dominio HTTPS existente.
+1. Observar novamente no Vetus, apenas em modo observacional, como o detalhe do animal e a agenda expõem eventos passados e futuros.
+2. Mapear no `cvg-his-v2` as fontes atuais de `appointments`, `encounters`, vacinas/vermifugos e retornos.
+3. Ajustar o card Agenda do detalhe do animal para mostrar eventos passados e futuros com status, data, motivo e link de aprofundamento.
+4. Garantir filtros ou separacao clara entre `Proximos`, `Historico` e `Cancelados/nao compareceu`, se o fluxo Vetus justificar.
+5. Criar/ajustar testes focados de SPA e API para agenda por animal.
+6. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
+
+Criterio de aceite de `P2-01`:
+
+- card Agenda do animal lista historico e proximos eventos do mesmo paciente;
+- eventos passados nao desaparecem por filtro de data futura;
+- status de agenda fica legivel e consistente com o vocabulario operacional;
+- links levam para a agenda ou detalhe correspondente sem perder contexto do animal/tutor;
+- teste focado cobre ao menos um evento passado e um futuro;
+- health local e HTTPS publico permanecem 200 apos publicacao.
+
+Observacao de sequenciamento:
+
+- Este plano de GAPs continua agora por P2.
+- O workflow macro de espelhamento Vetus (`2026-04-26-vetus-parity-workflow-e-plano.md`) continua apontando `Estoque > Cadastros > Ponto de Venda` como proximo item quando a frente voltar para a ordem geral do navbar. Isso nao invalida o P2-01; apenas separa a correcao de GAP clinico/operacional da trilha macro de novos modulos.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - Atualizacao de proximo passo apos P1
+
+Status: documentacao atualizada.
+
+Decisao:
+
+- P0 e P1 deixam de ser a recomendacao de inicio porque ja foram executados e publicados em escopo focado;
+- proxima frente deste plano de GAPs passa a ser `P2-01 - Agenda historica e futura por animal`;
+- `P2-01` deve ser executado antes de `P2-02` porque comanda/financeiro dependem de contexto assistencial claro no cockpit do animal;
+- a ordem macro do workflow Vetus permanece separada: ao retomar espelhamento geral do navbar, o proximo item segue sendo `Estoque > Cadastros > Ponto de Venda`.
+
+Guardrails reafirmados:
+
+- sem nova porta;
+- sem alteracao de DNS, SSL, Caddy ou nginx;
+- sem dependencia nova sem aprovacao;
+- Vetus somente observacional;
+- publicacao apenas nos servicos existentes do `docker-compose.v2.yml`.
 
 ### 2026-04-28 - P1 paridade clinica Vetus do animal
 
