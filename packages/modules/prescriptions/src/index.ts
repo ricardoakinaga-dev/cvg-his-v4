@@ -203,17 +203,43 @@ export class PrescriptionsService {
   readonly #prescriptionRepository?: PrescriptionRepository;
   readonly #prescriptions = new Map<PrescriptionId, ClinicalEntrySummary>();
   #pendingPersist = Promise.resolve();
+  #lastPersist = Promise.resolve();
 
   public constructor(options: PrescriptionsServiceOptions = {}) {
     this.#prescriptionRepository = options.prescriptionRepository;
   }
 
-  public async waitForPersistence(): Promise<void> {
-    await this.#pendingPersist;
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#prescriptionRepository) {
+      return;
+    }
+
+    const prescriptions = await this.#prescriptionRepository.findByAccountId(accountId);
+    for (const prescription of prescriptions) {
+      this.#prescriptions.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
+    }
   }
 
-  #enqueuePersist(op: () => Promise<void>): void {
-    this.#pendingPersist = this.#pendingPersist.then(op).catch(() => {});
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(op: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await op();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
   }
 
   #validateCreate(payload: CreatePrescriptionRequest): void {
@@ -249,7 +275,16 @@ export class PrescriptionsService {
 
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(entry);
-      if (prescription) this.#enqueuePersist(() => this.#prescriptionRepository!.create(prescription));
+      if (prescription) {
+        this.#enqueuePersist(
+          () => this.#prescriptionRepository!.create(prescription),
+          () => {
+            if (this.#prescriptions.get(entry.id as PrescriptionId) === entry) {
+              this.#prescriptions.delete(entry.id as PrescriptionId);
+            }
+          }
+        );
+      }
     }
 
     const prescription = toPrescriptionSummary(entry);
@@ -307,7 +342,14 @@ export class PrescriptionsService {
     this.#prescriptions.set(prescriptionId, updated);
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(updated);
-      if (prescription) this.#enqueuePersist(() => this.#prescriptionRepository!.update(prescription));
+      if (prescription) {
+        this.#enqueuePersist(
+          () => this.#prescriptionRepository!.update(prescription),
+          () => {
+            this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
+          }
+        );
+      }
     }
 
     const prescription = toPrescriptionSummary(updated);
@@ -337,7 +379,14 @@ export class PrescriptionsService {
     this.#prescriptions.set(prescriptionId, updated);
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(updated);
-      if (prescription) this.#enqueuePersist(() => this.#prescriptionRepository!.update(prescription));
+      if (prescription) {
+        this.#enqueuePersist(
+          () => this.#prescriptionRepository!.update(prescription),
+          () => {
+            this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
+          }
+        );
+      }
     }
 
     const prescription = toPrescriptionSummary(updated);

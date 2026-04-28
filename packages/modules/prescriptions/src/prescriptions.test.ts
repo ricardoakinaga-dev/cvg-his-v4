@@ -3,7 +3,8 @@ import {
   PrescriptionsService,
   InMemoryPrescriptionRepository,
   type CreatePrescriptionRequest,
-  type PrescriptionId
+  type PrescriptionId,
+  type PrescriptionRepository
 } from './index.js';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, EncounterId, PatientId, UserId } from '@cvg-his-v2/shared-types';
@@ -104,6 +105,50 @@ describe('PrescriptionsService', () => {
       const found = await repo.findById(rx.id);
       expect(found).not.toBeNull();
       expect(found!.medicationName).toBe('Amoxicilina');
+    });
+
+    it('should hydrate prescriptions from repository by account', async () => {
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      await service.waitForPersistence();
+
+      const rehydrated = new PrescriptionsService({ prescriptionRepository: repo });
+      await rehydrated.hydrateFromDatabase(ACCOUNT_ID);
+
+      expect(rehydrated.getById(rx.id).medicationName).toBe('Amoxicilina');
+      expect(rehydrated.listByPatient(PATIENT_1)).toHaveLength(1);
+    });
+
+    it('should roll back memory when repository persistence fails', async () => {
+      const failingRepository: PrescriptionRepository = {
+        async create() {
+          throw new Error('database unavailable');
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByEncounterId() {
+          return [];
+        },
+        async findByPatientId() {
+          return [];
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async findByAccountIdPaginated() {
+          return { items: [], total: 0 };
+        }
+      };
+      const failingService = new PrescriptionsService({
+        prescriptionRepository: failingRepository
+      });
+
+      const rx = failingService.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+
+      await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
+      expect(() => failingService.getById(rx.id)).toThrow(NotFoundError);
+      expect(failingService.listByEncounter(ENCOUNTER_1)).toHaveLength(0);
     });
   });
 

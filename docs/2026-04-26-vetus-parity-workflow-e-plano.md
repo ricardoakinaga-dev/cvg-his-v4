@@ -215,6 +215,12 @@ Checkpoint posterior em 2026-04-26: para `Estoque > Cadastros > Tabelas de Preco
 
 Checkpoint posterior em 2026-04-26: auditoria profunda do fluxo de atendimento/prontuario. O acesso ao Vetus estava autenticado e foi usado somente em modo observacional para revisar `/cadastro/animais`, `/cadastro/animais/detalhes/10115`, `/cadastro/clientes`, `/comandas` e `/agenda`; nao houve escrita, criacao, edicao, exclusao, importacao, exportacao, confirmacao ou salvamento no Vetus. A estrutura confirmada para o cockpit clinico do animal mantem identidade do paciente e tutor, seguranca clinica, ultimos atendimentos, anamneses, vacinas/vermifugos, agenda, exames, internacao, receituario, grafico de peso, imagens e historico clinico, com comanda como integracao operacional/financeira.
 
+Checkpoint posterior em 2026-04-27: login observacional no Vetus retomado com sucesso para pareamento fino de prontuario, cliente e animal autorizados explicitamente pelo responsavel na sessao. O escopo autorizado permite abrir cards e formularios dentro desses registros especificos, mas a restricao permanece para todo o restante do ERP Vetus: nao criar, alterar, excluir, baixar, enviar mensagem, abrir comanda ou confirmar operacoes fora do escopo autorizado. Nesta rodada foram inspecionados detalhes de cliente e animal, sidebars de edicao/cadastro, formularios de anamnese, vacina/vermifugo, upload de exame, receituario, peso e historico clinico; nenhuma acao de salvar, excluir, baixar arquivo, enviar mensagem ou confirmar operacao foi executada. Relatorio sanitizado publicado em `docs/vetus/guides/2026-04-27-relatorio-prontuario-cliente-animal-autorizados.md`.
+
+Checkpoint posterior em 2026-04-27: pareamento fino aplicado no `cvg-his-v2` para detalhe de cliente, detalhe de animal e prontuario clinico usando apenas a stack canonica existente. A publicacao foi corrigida para seguir este workflow: sem novas portas, sem novas dependencias, sem alteracao de DNS/SSL, sem mudanca em compose/nginx/Caddy; rebuild e recreate somente do servico `cvg-his-v2-spa` pelo `docker-compose.v2.yml`, mantendo SPA em `http://127.0.0.1:3002` e dominio HTTPS existente `https://his.centroveterinarioguarapiranga.com/` via Caddy para `127.0.0.1:3002`.
+
+Checkpoint posterior em 2026-04-27: pagina de detalhe do animal/paciente revisada para reduzir excesso de informacao aberta e aproximar o comportamento do ERP Vetus. O topo ficou restrito a ficha, contexto longitudinal, seguranca clinica e contato do cliente; os blocos operacionais passaram para cards Vetus-like colapsaveis com resumo sempre visivel e botao `Ver Mais`/`Recolher` para explorar detalhes. Foram consolidados em cards colapsaveis: cockpit operacional, prontuario, anamneses, vacinas/vermifugos, agenda, ultimos atendimentos, exames, internacao, receituario, grafico de peso, imagens, historico clinico, timeline, financeiro e relacionamento/CRM/mensagens. Publicado somente no servico `cvg-his-v2-spa` existente via `docker-compose.v2.yml`, mantendo DNS/SSL e portas canonicas sem alteracao.
+
 ## Regra de sequenciamento
 
 A partir deste checkpoint, a sequencia correta e:
@@ -662,6 +668,22 @@ Um modulo so deve ser considerado espelhado quando tiver:
 - O `cvg-his-v2` ja tem infraestrutura funcional. Nao criar portas ou dependencias paralelas.
 
 ## Proximo passo recomendado
+
+Atualizacao 2026-04-28:
+
+- P0 do plano de correcao de GAPs foi executado em escopo focado.
+- Persistencia critica de tutor, paciente, atendimento e entrada clinica foi validada contra Postgres real com rehidratacao em novas instancias.
+- Billing/comanda por atendimento foi protegido contra repositorio DB incompativel com o schema migrado atual, evitando 500 por tabelas ausentes.
+- A suite DB ampla ainda precisa de saneamento separado por fixtures textuais antigas incompativeis com UUID.
+
+Atualizacao posterior 2026-04-28:
+
+- P1 do plano de correcao de GAPs foi executado em escopo focado para animal/prontuario.
+- Detalhe do animal passou a consolidar historico longitudinal por paciente, pedidos diagnosticos, anexos de prontuario e anexos de `diagnostic_order`.
+- Receituario foi ligado ao repositorio de prescricoes no runtime/API, com hidratacao a partir de `clinical_entries`.
+- Cards Vetus-like centrais mantem resumo visivel quando colapsados e preservam a navegacao de aprofundamento.
+- Validacao concluida com teste focado de `PatientDetailPage`, typecheck da SPA, teste do modulo de prescricoes, typecheck da API e suite completa da API.
+- Publicacao corrigida para o workflow canonico: servidor temporario fora do compose encerrado, rebuild/recreate somente de `cvg-his-v2-api` e `cvg-his-v2-spa` via `docker-compose.v2.yml` com `.env.v2`, mantendo SPA em `3002`, API em `3003`, DNS/SSL/Caddy/nginx sem alteracao e HTTPS publico retornando 200.
 
 Apos concluir `Estoque > Cadastros > Tabelas de Preco`, continuar pela ordem do grupo `Estoque > Cadastros`:
 

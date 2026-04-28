@@ -74,6 +74,8 @@ import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
 import type { CounterSalesRepository } from '@cvg-his-v2/module-counter-sales';
 import type { QuotesRepository } from '@cvg-his-v2/module-quotes';
 import type { CashRepository } from '@cvg-his-v2/module-cash';
+import { PrescriptionsService } from '@cvg-his-v2/module-prescriptions';
+import type { PrescriptionRepository } from '@cvg-his-v2/module-prescriptions';
 import { PrescriptionExecutionsService } from '@cvg-his-v2/module-prescription-executions';
 import type {
   PrescriptionExecutionRepository,
@@ -157,6 +159,7 @@ export interface RuntimeRepositories {
   readonly discharge?: DischargeRepository;
   readonly prescriptionExecution?: PrescriptionExecutionRepository;
   readonly administrationEvent?: AdministrationEventRepository;
+  readonly prescription?: PrescriptionRepository;
   readonly billing?: BillingRepository;
   readonly commercial?: CommercialRepository;
   readonly inventory?: InventoryRepository;
@@ -199,10 +202,16 @@ export interface ApiRuntimeOptions {
   readonly notificationsWhatsappRemindersEnabled?: boolean;
   /** Keeps canonical seed principals even when a users repository is configured. */
   readonly preserveSeedUsersWithRepository?: boolean;
+  /** Keeps canonical owner/patient registry seeds even when repositories are configured. */
+  readonly preserveSeedMasterDataWithRepository?: boolean;
 }
 
-function createRuntimeSeeds<T>(repository: unknown, fallbackSeeds: readonly T[]): readonly T[] {
-  return repository ? [] : fallbackSeeds;
+function createRuntimeSeeds<T>(
+  repository: unknown,
+  fallbackSeeds: readonly T[],
+  preserveWithRepository = false
+): readonly T[] {
+  return repository && !preserveWithRepository ? [] : fallbackSeeds;
 }
 
 function resolveBootstrapAccountId(
@@ -226,13 +235,19 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     repository: repos.users,
     seedUsersEnabled: repos.users === undefined || options.preserveSeedUsersWithRepository === true
   });
+  const preserveSeedMasterDataWithRepository =
+    options.preserveSeedMasterDataWithRepository === true;
   const staff = new StaffService(
     { repository: repos.staff },
     createRuntimeSeeds(repos.staff, createSeedStaff())
   );
   const owners = new OwnersService({
     ownerRepository: repos.owner,
-    seedOwners: createRuntimeSeeds(repos.owner, createSeedOwners())
+    seedOwners: createRuntimeSeeds(
+      repos.owner,
+      createSeedOwners(),
+      preserveSeedMasterDataWithRepository
+    )
   });
   const webhooks = new WebhooksService({ repository: repos.webhook ?? inMemoryRepos.webhook });
   const apiKeys = new ApiKeysService(repos.apiKey ?? inMemoryRepos.apiKey);
@@ -288,8 +303,16 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     owners,
     patientRepository: repos.patient,
     ownerPatientLinkRepository: repos.ownerPatientLink,
-    seedPatients: createRuntimeSeeds(repos.patient, createSeedPatients()),
-    seedLinks: createRuntimeSeeds(repos.ownerPatientLink, createSeedLinks()),
+    seedPatients: createRuntimeSeeds(
+      repos.patient,
+      createSeedPatients(),
+      preserveSeedMasterDataWithRepository
+    ),
+    seedLinks: createRuntimeSeeds(
+      repos.ownerPatientLink,
+      createSeedLinks(),
+      preserveSeedMasterDataWithRepository
+    ),
     async onPatientCreated(patient) {
       await publishEvent('patients' as ModuleName, 'patient.created', {
         id: patient.id,
@@ -584,6 +607,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const audit = new AuditService({ auditRepository: repos.audit });
   audit.seedSystemEvent('Phase 8 administrative care bridge initialized');
   const discharges = new DischargesService({ dischargeRepository: repos.discharge });
+  const prescriptions = new PrescriptionsService({
+    prescriptionRepository: repos.prescription
+  });
   const prescriptionExecutions = new PrescriptionExecutionsService({
     executionRepository: repos.prescriptionExecution,
     eventRepository: repos.administrationEvent
@@ -695,6 +721,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     notifications,
     audit,
     discharges,
+    prescriptions,
     prescriptionExecutions,
     products,
     services,
@@ -743,7 +770,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             services.hydrateFromDatabase(bootstrapAccountId),
             counterSales.hydrateFromDatabase(bootstrapAccountId),
             quotes.hydrateFromDatabase(bootstrapAccountId),
-            cash.hydrateFromDatabase(bootstrapAccountId)
+            cash.hydrateFromDatabase(bootstrapAccountId),
+            prescriptions.hydrateFromDatabase(bootstrapAccountId)
           ]
         : [];
 

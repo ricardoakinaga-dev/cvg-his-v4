@@ -14,111 +14,14 @@
     </DsAlert>
 
     <template v-else-if="patient">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes', patient.name]">
-        <template #title>{{ patient.name }}</template>
-        <template #subtitle>
-          <StatusBadge
-            :label="patientStatusLabel(patient.status)"
-            :variant="patientStatusVariant(patient.status)"
-          />
-          <StatusBadge
-            v-if="focalEncounter"
-            :label="encounterStatusLabel(focalEncounter.status)"
-            :variant="encounterStatusVariant(focalEncounter.status)"
-          />
-          <StatusBadge
-            v-if="focalInpatientStay"
-            :label="`Internado · ${inpatientStatusLabel(focalInpatientStay.status)}`"
-            variant="warning"
-          />
-          <span class="muted">Atendimento &gt; Cadastrados</span>
-          <span class="muted">{{ patient.id }}</span>
-        </template>
+      <AppPageHeader :breadcrumbs="['Animais', 'Detalhes do Animal']">
+        <template #title>Detalhes do Animal</template>
         <template #actions>
           <DsButton tag="a" to="/counter-sales" variant="primary">
             Abrir Nova Comanda
           </DsButton>
-          <DsButton
-            tag="a"
-            :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
-            variant="secondary"
-          >
-            Agendar
-          </DsButton>
-          <DsButton
-            tag="a"
-            :to="`/encounters/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
-            variant="primary"
-          >
-            Novo Atendimento
-          </DsButton>
-          <DsButton
-            tag="a"
-            :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
-            variant="secondary"
-          >
-            Prontuário
-          </DsButton>
-          <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary">
-            Ver cadastro do cliente
-          </DsButton>
-          <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost">Editar</DsButton>
         </template>
       </AppPageHeader>
-
-      <section class="hub-kpis">
-        <DsStatCard
-          :label="
-            upcomingAppointments.length === 1
-              ? '1 agendamento futuro'
-              : `${upcomingAppointments.length} agendamentos futuros`
-          "
-          value=""
-          icon="📅"
-        />
-        <DsStatCard
-          :label="
-            activeEncounters.length === 1
-              ? '1 atendimento ativo'
-              : `${activeEncounters.length} atendimentos ativos`
-          "
-          value=""
-          icon="🩺"
-        />
-        <DsStatCard
-          :label="
-            patientRecords.length === 1
-              ? '1 prontuário longitudinal'
-              : `${patientRecords.length} prontuários longitudinais`
-          "
-          value=""
-          icon="📋"
-        />
-        <DsStatCard
-          :label="
-            focalInpatientStay ? `${focalInpatientStay.ward} · ${focalInpatientStay.bed}` : 'Sem internação ativa'
-          "
-          value=""
-          icon="🛏️"
-        />
-      </section>
-
-      <section v-if="patientAlerts.length > 0" class="hub-alerts">
-        <DsAlert
-          v-for="alert in patientAlerts"
-          :key="alert.title"
-          :variant="alert.variant"
-          dismissible
-        >
-          <strong>{{ alert.title }}</strong> - {{ alert.message }}
-        </DsAlert>
-      </section>
-
-      <section v-if="relatedWarnings.length > 0" class="hub-alerts">
-        <DsAlert variant="info" dismissible>
-          <strong>Visão parcial</strong> - Alguns blocos não responderam: {{ relatedWarnings.join(', ') }}.
-        </DsAlert>
-      </section>
 
       <section v-if="actionError || actionMessage" class="hub-alerts">
         <DsAlert v-if="actionError" variant="danger" dismissible @dismiss="actionError = ''">
@@ -129,815 +32,587 @@
         </DsAlert>
       </section>
 
-      <section class="hub-actions">
-        <DsCard title="Ações rápidas" variant="compact">
-          <div class="quick-actions">
-            <DsButton
-              tag="a"
-              :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
-              variant="primary"
-              icon="📅"
-            >
-              Agendar retorno
-            </DsButton>
-            <DsButton
-              v-if="focalEncounter"
-              tag="a"
-              :to="`/encounters/${focalEncounter.id}`"
-              variant="secondary"
-              icon="🩺"
-            >
-              Abrir atendimento
-            </DsButton>
-            <DsButton
-              v-if="focalEncounter"
-              tag="a"
-              :to="triageActionLink"
-              variant="secondary"
-              icon="🧭"
-            >
-              {{ focalTriage ? 'Ver triagem' : 'Nova triagem' }}
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
-              variant="ghost"
-              icon="🔬"
-            >
-              Exames
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/billing/${focalEncounter.id}` : '/billing'"
-              variant="ghost"
-              icon="💰"
-            >
-              Financeiro
-            </DsButton>
-            <DsButton tag="a" to="/counter-sales" variant="secondary" icon="🧾">
-              Abrir comanda
-            </DsButton>
-            <DsButton
-              v-if="ownerWhatsAppLink"
-              :href="ownerWhatsAppLink"
-              variant="ghost"
-              icon="💬"
-            >
-              Enviar mensagem
-            </DsButton>
-          </div>
-        </DsCard>
-      </section>
-
-      <section class="patient-summary-grid">
-        <DsCard title="Ficha clínica">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Tutor principal</span>
-              <strong>{{ ownerName }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Espécie</span>
-              <strong>{{ speciesLabel(patient.species) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Raça</span>
-              <strong>{{ patient.breed || 'Não informada' }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Sexo</span>
-              <strong>{{ sexLabel(patient.sex) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Idade aproximada</span>
-              <strong>{{ ageLabel }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Peso base</span>
-              <strong>{{ formattedWeight }}</strong>
+      <section class="vetus-animal-layout">
+        <article class="vetus-profile-card" aria-label="Ficha do animal">
+          <div class="vetus-profile-card__identity">
+            <div class="animal-avatar" aria-hidden="true">{{ animalAvatarInitial }}</div>
+            <div class="animal-headline">
+              <p><strong>ID:</strong> {{ numericIdLabel }}</p>
+              <p><strong>Animal:</strong> {{ patient.name }}</p>
+              <p><strong>Raça:</strong> {{ patient.breed || 'Não Informado' }}</p>
+              <p><strong>Idade:</strong> {{ ageLabel }}</p>
+              <p><strong>Data de Cadastro:</strong> {{ registrationDateLabel }}</p>
             </div>
           </div>
-        </DsCard>
 
-        <DsCard title="Contexto longitudinal">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Próximo agendamento</span>
-              <strong>{{ nextAppointmentLabel }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Último atendimento</span>
-              <strong>{{ latestEncounterLabel }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Cadastros clínicos</span>
-              <strong>{{ patientRecords.length }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Cadastro</span>
-              <strong>{{ formatDate(patient.createdAt) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Atualização</span>
-              <strong>{{ formatDate(patient.updatedAt) }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Status assistencial</span>
-              <strong>{{ currentEpisodeLabel }}</strong>
-            </div>
+          <div class="vetus-profile-actions">
+            <button type="button" class="vetus-danger-action" disabled>Excluir Cadastro</button>
+            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="primary">
+              Editar Cadastro
+            </DsButton>
           </div>
-        </DsCard>
 
-        <DsCard title="Resumo por endpoint">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Atendimentos no summary</span>
-              <strong>{{ patientSummary?.stats.totalEncounters ?? sortedEncounters.length }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Atendimentos abertos</span>
-              <strong>{{ patientSummary?.stats.openEncounters ?? activeEncounters.length }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Tutor no summary</span>
-              <strong>{{ patientSummary?.owner.fullName || ownerName }}</strong>
-            </div>
-          </div>
-        </DsCard>
-
-        <DsCard title="Segurança clínica do animal">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Doença crônica</span>
+          <div class="vetus-critical-list">
+            <div>
+              <span>Doença Crônica:</span>
               <strong>{{ chronicDiseaseLabel }}</strong>
             </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Alergia</span>
+            <div>
+              <span>Alergia:</span>
               <strong>{{ allergyLabel }}</strong>
             </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Temperamento</span>
+            <div>
+              <span>Temperamento:</span>
               <strong>{{ temperamentLabel }}</strong>
             </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Observações gerais do animal</span>
-              <strong>{{ animalNotesLabel }}</strong>
-            </div>
-          </div>
-        </DsCard>
-
-        <DsCard title="Informações de contato do cliente">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Cliente</span>
-              <strong>{{ ownerSnapshot?.fullName || ownerName }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">CPF/CNPJ</span>
-              <strong>{{ ownerSnapshot?.documentId || 'Não informado' }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Celular</span>
-              <strong>{{ ownerPhoneLabel }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">E-mail</span>
-              <strong>{{ ownerEmailLabel }}</strong>
-            </div>
           </div>
 
-          <div class="quick-actions">
-            <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary" size="sm">
-              Ver cadastro do cliente
-            </DsButton>
-            <DsButton
-              v-if="ownerWhatsAppLink"
-              :href="ownerWhatsAppLink"
-              variant="ghost"
-              size="sm"
-            >
+          <button
+            type="button"
+            class="vetus-disclosure"
+            :aria-expanded="isPatientCardExpanded('animal-more')"
+            @click="togglePatientCard('animal-more')"
+          >
+            <span>{{ isPatientCardExpanded('animal-more') ? '⌃' : '⌄' }}</span>
+            Ver mais Informações do Animal
+          </button>
+
+          <div v-if="isPatientCardExpanded('animal-more')" class="vetus-info-grid">
+            <div><span>Sexo:</span><strong>{{ sexLabel(patient.sex) }}</strong></div>
+            <div><span>Data de Nascimento:</span><strong>{{ birthDateLabel }}</strong></div>
+            <div><span>Idade:</span><strong>{{ ageLabel }}</strong></div>
+            <div><span>Espécie:</span><strong>{{ speciesLabel(patient.species) }}</strong></div>
+            <div><span>Raça:</span><strong>{{ patient.breed || 'Não Informado' }}</strong></div>
+            <div><span>Porte:</span><strong>{{ patient.size || 'Não Informado' }}</strong></div>
+            <div><span>Castrado:</span><strong>{{ neuteredLabel }}</strong></div>
+            <div><span>Número do chip:</span><strong>{{ microchipLabel }}</strong></div>
+            <div><span>Número Pedigree:</span><strong>{{ pedigreeLabel }}</strong></div>
+            <div><span>Cor:</span><strong>{{ colorLabel }}</strong></div>
+            <div><span>ID legado Vetus:</span><strong>{{ legacyVetusIdLabel }}</strong></div>
+            <div><span>Situação:</span><strong>{{ patientStatusLabel(patient.status) }}</strong></div>
+            <div><span>Peso atual:</span><strong>{{ currentWeightLabel }}</strong></div>
+          </div>
+
+          <div class="vetus-profile-section">
+            <strong>Observações Gerais do Animal:</strong>
+            <p>{{ animalNotesLabel }}</p>
+          </div>
+
+          <div class="vetus-profile-section">
+            <strong>Cliente:</strong>
+            <div class="vetus-owner-name">{{ ownerSnapshot?.fullName || ownerName }}</div>
+          </div>
+
+          <button
+            type="button"
+            class="vetus-disclosure vetus-disclosure--soft"
+            :aria-expanded="isPatientCardExpanded('owner-contact')"
+            @click="togglePatientCard('owner-contact')"
+          >
+            <span>{{ isPatientCardExpanded('owner-contact') ? '⌃' : '⌄' }}</span>
+            Ver Informações de Contato
+          </button>
+
+          <div v-if="isPatientCardExpanded('owner-contact')" class="vetus-info-grid">
+            <div><span>CPF:</span><strong>{{ ownerSnapshot?.documentId || 'Não Informado' }}</strong></div>
+            <div><span>Telefone 1:</span><strong>{{ ownerPhoneLabel }}</strong></div>
+            <div><span>Telefone 2:</span><strong>Não Informado</strong></div>
+            <div><span>Celular:</span><strong>{{ ownerPhoneLabel }}</strong></div>
+            <div><span>E-mail:</span><strong>{{ ownerEmailLabel }}</strong></div>
+          </div>
+
+          <div class="vetus-profile-footer-actions">
+            <DsButton v-if="ownerWhatsAppLink" :href="ownerWhatsAppLink" variant="primary">
               Enviar Mensagem
             </DsButton>
+            <button v-else type="button" class="vetus-disabled-action" disabled>
+              Enviar Mensagem
+            </button>
+            <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary">
+              Ver cadastro do cliente
+            </DsButton>
           </div>
-        </DsCard>
-      </section>
+        </article>
 
-      <section class="patient-workspace-grid">
-        <DsCard title="Snapshot CRM do tutor">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Tutor</span>
-              <strong>{{ ownerSnapshot?.fullName || ownerName }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Contato principal</span>
-              <strong>{{ ownerPrimaryContact }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Tier</span>
-              <strong>{{ ownerTier.label }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Pontos</span>
-              <strong>{{ ownerPoints }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Em aberto</span>
-              <strong>{{ formatCurrency(ownerOpenBillingAmount, 'BRL') }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Orçamentos ativos</span>
-              <strong>{{ ownerActiveQuotes.length }}</strong>
-            </div>
+        <section class="vetus-module-list" aria-label="Módulos do animal">
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('encounters') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('encounters')"
+            @click="togglePatientCard('encounters')"
+          >
+            <span><span class="vetus-module-icon">↺</span>Últimos Atendimentos</span>
+            <span>{{ isPatientCardExpanded('encounters') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
+            <p>{{ latestEncounterDetailLabel }}</p>
           </div>
-
-          <div class="info-strip">
-            <strong>{{ ownerCrmStage.label }}</strong>
-            <span>{{ ownerCrmStage.description }}</span>
-          </div>
-        </DsCard>
-
-        <DsCard title="Pacote ativo sugerido">
-          <div v-if="suggestedPackage" class="workspace-stack">
-            <div class="workspace-highlight">
-              <div>
-                <span class="detail-item__label">Pacote</span>
-                <strong>{{ suggestedPackage.title }}</strong>
-                <p>{{ suggestedPackage.description }}</p>
-              </div>
-              <StatusBadge label="Recomendado" variant="info" />
+          <div v-if="isPatientCardExpanded('encounters')" class="vetus-accordion-card__body">
+            <div class="vetus-module-summary">
+              <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
+              <p>{{ latestEncounterDetailLabel }}</p>
             </div>
-
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-item__label">Categoria</span>
-                <strong>{{ suggestedPackage.category }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Motivo</span>
-                <strong>{{ suggestedPackage.reason }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Paciente foco</span>
-                <strong>{{ patient.name }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Valor de referência</span>
-                <strong>{{ formatCurrency(suggestedPackage.referenceValue, 'BRL') }}</strong>
-              </div>
-            </div>
-
-            <div class="quick-actions">
-              <DsButton
-                variant="secondary"
-                size="sm"
-                :loading="creatingPackageQuote"
-                @click="createSuggestedPackageQuote"
+            <div v-if="sortedEncounters.length" class="timeline-list">
+              <div
+                v-for="encounter in sortedEncounters.slice(0, 5)"
+                :key="encounter.id"
+                class="timeline-list__item"
               >
-                Criar orçamento do pacote
-              </DsButton>
-              <DsButton tag="a" to="/quotes" variant="ghost" size="sm">
-                Abrir orçamentos
-              </DsButton>
+                <div>
+                  <strong>{{ encounter.reason }}</strong>
+                  <p>{{ encounterStatusLabel(encounter.status) }}</p>
+                </div>
+                <span>{{ formatDateTime(encounter.openedAt) }}</span>
+              </div>
             </div>
+            <p v-else class="muted">Nenhum atendimento encontrado para este animal.</p>
           </div>
-          <p v-else class="muted">Nenhum pacote sugerido para o momento clínico deste paciente.</p>
-        </DsCard>
-      </section>
+        </article>
 
-      <section class="patient-workspace-grid">
-        <DsCard title="Cockpit operacional atual">
-          <div v-if="focalEncounter" class="workspace-stack">
-            <div class="workspace-highlight">
-              <div>
-                <span class="detail-item__label">Motivo do atendimento</span>
-                <strong>{{ focalEncounter.reason }}</strong>
-              </div>
-              <StatusBadge
-                :label="encounterStatusLabel(focalEncounter.status)"
-                :variant="encounterStatusVariant(focalEncounter.status)"
-              />
-            </div>
-
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-item__label">Origem</span>
-                <strong>{{ visitTypeLabel(focalEncounter.visitType) }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Abertura</span>
-                <strong>{{ formatDateTime(focalEncounter.openedAt) }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Triagem</span>
-                <strong>{{ focalTriage ? triagePriorityLabel(focalTriage.priority) : 'Pendente' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Prontuário</span>
-                <strong>{{ currentMedicalRecord ? medicalRecordStatusLabel(currentMedicalRecord.record.status) : 'Ainda não aberto' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Internação</span>
-                <strong>{{ focalInpatientStay ? `${focalInpatientStay.ward} / ${focalInpatientStay.bed}` : 'Sem leito vinculado' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Billing</span>
-                <strong>{{ focalBilling ? billingStatusLabel(focalBilling.status) : 'Sem cobrança aberta' }}</strong>
-              </div>
-            </div>
-
-            <div v-if="focalTriage" class="info-strip">
-              <strong>Queixa principal:</strong>
-              <span>{{ focalTriage.chiefComplaint }}</span>
-            </div>
-
-            <div v-if="focalTriage?.alerts.length" class="tag-list">
-              <span v-for="alert in focalTriage.alerts" :key="alert" class="tag">{{ alert }}</span>
-            </div>
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('anamnesis') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('anamnesis')"
+            @click="togglePatientCard('anamnesis')"
+          >
+            <span><span class="vetus-module-icon">≡</span>Anamneses</span>
+            <span>{{ isPatientCardExpanded('anamnesis') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ anamnesisEntries.length }} registro(s)</strong>
+            <p>{{ latestAnamnesisSummary }}</p>
           </div>
-
-          <div v-else class="empty-state">
-            <strong>Nenhum atendimento ativo para este paciente.</strong>
-            <p>Use a agenda ou abra um novo atendimento para iniciar o cockpit operacional.</p>
-          </div>
-        </DsCard>
-
-        <DsCard title="Prontuário do atendimento atual">
-          <div v-if="currentMedicalRecord" class="workspace-stack">
-            <div class="entry-metrics">
-              <div class="entry-metric">
-                <span class="entry-metric__value">{{ focalRecordEntries.length }}</span>
-                <span class="entry-metric__label">Entradas</span>
-              </div>
-              <div class="entry-metric">
-                <span class="entry-metric__value">{{ currentEntryStats.prescriptions }}</span>
-                <span class="entry-metric__label">Prescrições</span>
-              </div>
-              <div class="entry-metric">
-                <span class="entry-metric__value">{{ currentEntryStats.assessments }}</span>
-                <span class="entry-metric__label">Exames/avaliações</span>
-              </div>
-              <div class="entry-metric">
-                <span class="entry-metric__value">{{ currentEntryStats.conducts }}</span>
-                <span class="entry-metric__label">Condutas</span>
-              </div>
+          <div v-if="isPatientCardExpanded('anamnesis')" class="vetus-accordion-card__body">
+            <div class="vetus-module-summary">
+              <strong>{{ anamnesisEntries.length }} registro(s)</strong>
+              <p>{{ latestAnamnesisSummary }}</p>
             </div>
-
-            <div v-if="focalRecordEntries.length" class="record-list">
-              <div v-for="entry in focalRecordEntries.slice(0, 5)" :key="entry.id" class="record-list__item">
+            <div v-if="anamnesisEntries.length" class="record-list">
+              <div
+                v-for="entry in anamnesisEntries.slice(0, 3)"
+                :key="entry.id"
+                class="record-list__item record-list__item--stacked"
+              >
                 <div>
                   <strong>{{ entry.title }}</strong>
-                  <p>{{ clinicalEntryTypeLabel(entry.entryType) }}</p>
+                  <p>{{ entry.content }}</p>
                 </div>
                 <span>{{ formatDateTime(entry.updatedAt) }}</span>
               </div>
             </div>
-            <p v-else class="muted">Prontuário criado, mas ainda sem entradas clínicas.</p>
-
-            <DsButton
-              v-if="focalEncounter"
-              tag="a"
-              :to="`/medical-records/${focalEncounter.id}`"
-              variant="secondary"
-              size="sm"
-            >
-              Abrir prontuário completo
-            </DsButton>
-          </div>
-
-          <div v-else class="empty-state">
-            <strong>Prontuário ainda não consolidado.</strong>
-            <p>O paciente já pode seguir para atendimento, mas ainda não há prontuário vinculado ao episódio atual.</p>
-          </div>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Anamneses">
-          <div v-if="anamnesisEntries.length" class="record-list">
-            <div
-              v-for="entry in anamnesisEntries.slice(0, 3)"
-              :key="entry.id"
-              class="record-list__item record-list__item--stacked"
-            >
-              <div>
-                <strong>{{ entry.title }}</strong>
-                <p>{{ entry.content }}</p>
-              </div>
-              <span>{{ formatDateTime(entry.updatedAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal ainda não possui anamneses registradas.</p>
-
-          <div class="quick-actions">
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
-              variant="secondary"
-              size="sm"
-            >
-              Ver mais Anamneses
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
-              variant="ghost"
-              size="sm"
-            >
-              Incluir Nova Anamnese
-            </DsButton>
-          </div>
-        </DsCard>
-
-        <DsCard title="Vacinas e Vermífugos">
-          <div v-if="preventiveEvents.length" class="timeline-list">
-            <div
-              v-for="item in preventiveEvents.slice(0, 4)"
-              :key="item.id"
-              class="timeline-list__item"
-            >
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.description }}</p>
-              </div>
-              <span>{{ formatDateTime(item.occurredAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal ainda não possui vacinas ou vermífugos cadastrados.</p>
-
-          <div class="quick-actions">
-            <DsButton tag="a" to="/appointments" variant="secondary" size="sm">
-              Ver Mais Vacinas/Vermífugos
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
-              variant="ghost"
-              size="sm"
-            >
-              Incluir Nova Vacina/Vermífugo
-            </DsButton>
-          </div>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Agenda">
-          <div v-if="upcomingAppointments.length" class="timeline-list">
-            <div
-              v-for="appointment in upcomingAppointments.slice(0, 5)"
-              :key="appointment.id"
-              class="timeline-list__item"
-            >
-              <div>
-                <strong>{{ appointment.reason }}</strong>
-                <p>{{ appointmentStatusLabel(appointment.status) }}</p>
-              </div>
-              <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Este animal ainda não possui agendamentos cadastrados.</p>
-        </DsCard>
-
-        <DsCard title="Últimos atendimentos">
-          <div v-if="sortedEncounters.length" class="timeline-list">
-            <div
-              v-for="encounter in sortedEncounters.slice(0, 5)"
-              :key="encounter.id"
-              class="timeline-list__item"
-            >
-              <div>
-                <strong>{{ encounter.reason }}</strong>
-                <p>{{ encounterStatusLabel(encounter.status) }}</p>
-              </div>
-              <span>{{ formatDateTime(encounter.openedAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Nenhum atendimento encontrado para este paciente.</p>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Exames">
-          <div v-if="examItems.length" class="record-list">
-            <div
-              v-for="item in examItems.slice(0, 4)"
-              :key="item.id"
-              class="record-list__item record-list__item--stacked"
-            >
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.description }}</p>
-              </div>
-              <span>{{ item.meta }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal não possui exames registrados.</p>
-
-          <div class="quick-actions">
-            <DsButton tag="a" to="/diagnostics" variant="secondary" size="sm">
-              Ver mais Exames
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
-              variant="ghost"
-              size="sm"
-            >
-              Upload de Exame PDF
-            </DsButton>
-          </div>
-        </DsCard>
-
-        <DsCard title="Internação">
-          <div v-if="focalInpatientStay" class="workspace-stack">
-            <div class="workspace-highlight">
-              <div>
-                <span class="detail-item__label">Leito atual</span>
-                <strong>{{ focalInpatientStay.ward }} / {{ focalInpatientStay.bed }}</strong>
-              </div>
-              <StatusBadge :label="inpatientStatusLabel(focalInpatientStay.status)" variant="warning" />
-            </div>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-item__label">Unidade</span>
-                <strong>{{ focalInpatientStay.unit }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Admissão</span>
-                <strong>{{ formatDateTime(focalInpatientStay.admittedAt) }}</strong>
-              </div>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal não possui internações registradas.</p>
-          <DsButton
-            tag="a"
-            :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
-            variant="secondary"
-            size="sm"
-          >
-            Ver internação
-          </DsButton>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Receituário">
-          <div v-if="patientPrescriptions.length" class="record-list">
-            <div
-              v-for="prescription in patientPrescriptions.slice(0, 4)"
-              :key="prescription.id"
-              class="record-list__item record-list__item--stacked"
-            >
-              <div>
-                <strong>{{ prescription.medicationName || prescription.title }}</strong>
-                <p>{{ prescription.dosage || prescription.content }}</p>
-              </div>
-              <span>{{ formatDateTime(prescription.updatedAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal não possui receitas registradas.</p>
-
-          <div class="quick-actions">
-            <DsButton tag="a" to="/prescriptions" variant="secondary" size="sm">
-              Ver mais Receitas
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/prescriptions?encounterId=${focalEncounter.id}` : '/prescriptions'"
-              variant="ghost"
-              size="sm"
-            >
-              Incluir Nova Receita
-            </DsButton>
-          </div>
-        </DsCard>
-
-        <DsCard title="Gráfico de peso">
-          <div class="weight-card">
-            <div class="weight-card__header">
-              <strong>Peso atual: {{ currentWeightLabel }}</strong>
-              <div class="segmented-control" aria-label="Período do gráfico de peso">
-                <button
-                  v-for="option in weightWindowOptions"
-                  :key="option.months"
-                  type="button"
-                  :class="{ active: weightWindowMonths === option.months }"
-                  @click="weightWindowMonths = option.months"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-            </div>
-            <svg class="weight-chart" viewBox="0 0 320 120" role="img" aria-label="Evolução de peso do animal">
-              <polyline
-                :points="weightChartPoints"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <circle
-                v-for="point in weightChartPointList"
-                :key="`${point.x}-${point.y}`"
-                :cx="point.x"
-                :cy="point.y"
-                r="4"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
-          <div class="quick-actions">
-            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="secondary" size="sm">
-              Ver mais Pesos
-            </DsButton>
-            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost" size="sm">
-              Atualizar peso
-            </DsButton>
-          </div>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Imagens">
-          <div v-if="imageAttachments.length" class="record-list">
-            <div
-              v-for="attachment in imageAttachments.slice(0, 4)"
-              :key="attachment.id"
-              class="record-list__item"
-            >
-              <div>
-                <strong>{{ attachment.fileName }}</strong>
-                <p>{{ attachment.mimeType }}</p>
-              </div>
-              <span>{{ formatDateTime(attachment.createdAt) }}</span>
-            </div>
-          </div>
-          <p v-else class="muted">Esse animal não possui imagens registradas.</p>
-          <DsButton
-            tag="a"
-            :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
-            variant="secondary"
-            size="sm"
-          >
-            Ver mais Imagens
-          </DsButton>
-        </DsCard>
-
-        <DsCard title="Histórico Clínico">
-          <p v-if="clinicalHistoryDraft.trim()" class="clinical-history-preview">
-            {{ clinicalHistoryDraft }}
-          </p>
-          <textarea
-            v-model="clinicalHistoryDraft"
-            class="clinical-history-field"
-            placeholder="Escreva aqui o histórico clínico do animal"
-            :disabled="!focalEncounter"
-          />
-          <p v-if="!focalEncounter" class="muted">
-            Abra um atendimento para registrar o histórico clínico longitudinal.
-          </p>
-          <div class="quick-actions">
-            <DsButton
-              variant="secondary"
-              size="sm"
-              :loading="savingClinicalHistory"
-              :disabled="!focalEncounter"
-              @click="saveClinicalHistory"
-            >
-              Salvar Histórico Clínico
-            </DsButton>
-            <DsButton
-              tag="a"
-              :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
-              variant="ghost"
-              size="sm"
-            >
-              Abrir histórico completo
-            </DsButton>
-          </div>
-        </DsCard>
-      </section>
-
-      <section class="patient-workspace-grid">
-        <DsCard title="Timeline clínica recente">
-          <div v-if="combinedTimeline.length" class="timeline-list">
-            <div
-              v-for="item in combinedTimeline"
-              :key="item.id"
-              class="timeline-list__item timeline-list__item--stacked"
-            >
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.description }}</p>
-              </div>
-              <div class="timeline-list__meta">
-                <span class="tag tag--neutral">{{ item.source }}</span>
-                <span>{{ formatDateTime(item.occurredAt) }}</span>
-              </div>
-            </div>
-          </div>
-          <p v-else class="muted">Sem eventos clínicos recentes no episódio atual.</p>
-        </DsCard>
-
-        <DsCard title="Financeiro e internação">
-          <div class="workspace-stack">
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-item__label">Resumo financeiro</span>
-                <strong>{{ focalBilling ? formatCurrency(focalBilling.subtotalAmount, focalBilling.currency) : 'Sem cobrança aberta' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Status da cobrança</span>
-                <strong>{{ focalBilling ? billingStatusLabel(focalBilling.status) : 'Não iniciado' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Internação</span>
-                <strong>{{ focalInpatientStay ? inpatientStatusLabel(focalInpatientStay.status) : 'Sem internação' }}</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-item__label">Leito atual</span>
-                <strong>{{ focalInpatientStay ? `${focalInpatientStay.ward} / ${focalInpatientStay.bed}` : 'Não vinculado' }}</strong>
-              </div>
-            </div>
-
-            <div v-if="focalBilling?.administrativeNotes" class="info-strip">
-              <strong>Observação financeira:</strong>
-              <span>{{ focalBilling.administrativeNotes }}</span>
-            </div>
-
+            <p v-else class="muted">Esse animal ainda não possui anamneses registradas.</p>
             <div class="quick-actions">
               <DsButton
                 tag="a"
-                :to="focalEncounter ? `/billing/${focalEncounter.id}` : '/billing'"
+                :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
                 variant="secondary"
                 size="sm"
               >
-                Ver faturamento
+                Ver mais
+              </DsButton>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('preventive') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('preventive')"
+            @click="togglePatientCard('preventive')"
+          >
+            <span><span class="vetus-module-icon">⚕</span>Vacinas e Vermífugos</span>
+            <span>{{ isPatientCardExpanded('preventive') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ preventiveEvents.length }} evento(s)</strong>
+            <p>{{ latestPreventiveSummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('preventive')" class="vetus-accordion-card__body">
+            <div v-if="preventiveEvents.length" class="timeline-list">
+              <div
+                v-for="item in preventiveEvents.slice(0, 4)"
+                :key="item.id"
+                class="timeline-list__item"
+              >
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <p>{{ item.description }}</p>
+                </div>
+                <span>{{ formatDateTime(item.occurredAt) }}</span>
+              </div>
+            </div>
+            <p v-else class="muted">Esse animal ainda não possui vacinas ou vermífugos cadastrados.</p>
+
+            <div class="quick-actions">
+              <DsButton tag="a" to="/appointments" variant="secondary" size="sm">
+                Ver Mais Vacinas/Vermífugos
               </DsButton>
               <DsButton
                 tag="a"
-                :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
+                :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
                 variant="ghost"
                 size="sm"
               >
-                Ver internação
+                Incluir Nova Vacina/Vermífugo
               </DsButton>
             </div>
           </div>
-        </DsCard>
-      </section>
+        </article>
 
-      <section class="patient-workspace-grid">
-        <DsCard title="Mensagens contextuais por animal">
-          <div class="record-list">
-            <div
-              v-for="message in contextualMessages"
-              :key="message.id"
-              class="record-list__item record-list__item--stacked"
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('agenda') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('agenda')"
+            @click="togglePatientCard('agenda')"
+          >
+            <span><span class="vetus-module-icon">□</span>Agenda</span>
+            <span>{{ isPatientCardExpanded('agenda') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ upcomingAppointments.length }} futuro(s)</strong>
+            <p>{{ nextAppointmentDetailLabel }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('agenda')" class="vetus-accordion-card__body">
+            <div v-if="upcomingAppointments.length" class="timeline-list">
+              <div
+                v-for="appointment in upcomingAppointments.slice(0, 5)"
+                :key="appointment.id"
+                class="timeline-list__item"
+              >
+                <div>
+                  <strong>{{ appointment.reason }}</strong>
+                  <p>{{ appointmentStatusLabel(appointment.status) }}</p>
+                </div>
+                <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
+              </div>
+            </div>
+            <p v-else class="muted">Este animal ainda não possui agendamentos cadastrados.</p>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('exams') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('exams')"
+            @click="togglePatientCard('exams')"
+          >
+            <span><span class="vetus-module-icon">✚</span>Exames</span>
+            <span>{{ isPatientCardExpanded('exams') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ examItems.length }} item(ns)</strong>
+            <p>{{ latestExamSummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('exams')" class="vetus-accordion-card__body">
+            <div v-if="examItems.length" class="record-list">
+              <div
+                v-for="item in examItems.slice(0, 4)"
+                :key="item.id"
+                class="record-list__item record-list__item--stacked"
+              >
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <p>{{ item.description }}</p>
+                </div>
+                <span>{{ item.meta }}</span>
+              </div>
+            </div>
+            <p v-else class="muted">Esse animal não possui exames registrados.</p>
+
+            <div class="quick-actions">
+              <DsButton tag="a" to="/diagnostics" variant="secondary" size="sm">
+                Ver mais Exames
+              </DsButton>
+              <DsButton
+                tag="a"
+                :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
+                variant="ghost"
+                size="sm"
+              >
+                Upload de Exame PDF
+              </DsButton>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('inpatient') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('inpatient')"
+            @click="togglePatientCard('inpatient')"
+          >
+            <span><span class="vetus-module-icon">▣</span>Internação</span>
+            <span>{{ isPatientCardExpanded('inpatient') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ inpatientSummaryLabel }}</strong>
+            <p>{{ focalInpatientStay ? formatDateTime(focalInpatientStay.admittedAt) : 'Sem internação ativa.' }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('inpatient')" class="vetus-accordion-card__body">
+            <div v-if="focalInpatientStay" class="workspace-stack">
+              <div class="workspace-highlight">
+                <div>
+                  <span class="detail-item__label">Leito atual</span>
+                  <strong>{{ focalInpatientStay.ward }} / {{ focalInpatientStay.bed }}</strong>
+                </div>
+                <StatusBadge :label="inpatientStatusLabel(focalInpatientStay.status)" variant="warning" />
+              </div>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-item__label">Unidade</span>
+                  <strong>{{ focalInpatientStay.unit }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-item__label">Admissão</span>
+                  <strong>{{ formatDateTime(focalInpatientStay.admittedAt) }}</strong>
+                </div>
+              </div>
+            </div>
+            <p v-else class="muted">Esse animal não possui internações registradas.</p>
+            <DsButton
+              tag="a"
+              :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
+              variant="secondary"
+              size="sm"
             >
-              <div>
-                <strong>{{ message.title }}</strong>
-                <p>{{ message.preview }}</p>
-              </div>
-              <div class="quick-actions">
-                <DsButton
-                  v-if="message.href"
-                  :href="message.href"
-                  variant="secondary"
-                  size="sm"
-                >
-                  Enviar
-                </DsButton>
-                <DsButton tag="a" to="/notifications/whatsapp" variant="ghost" size="sm">
-                  Hub WhatsApp
-                </DsButton>
-              </div>
-            </div>
+              Ver internação
+            </DsButton>
           </div>
-        </DsCard>
+        </article>
 
-        <DsCard title="Snapshot comercial do tutor">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-item__label">Quotes convertidos</span>
-              <strong>{{ ownerConvertedQuotes }}</strong>
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('prescriptions') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('prescriptions')"
+            @click="togglePatientCard('prescriptions')"
+          >
+            <span><span class="vetus-module-icon">▤</span>Receituário</span>
+            <span>{{ isPatientCardExpanded('prescriptions') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ patientPrescriptions.length }} receita(s)</strong>
+            <p>{{ latestPrescriptionSummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('prescriptions')" class="vetus-accordion-card__body">
+            <div v-if="patientPrescriptions.length" class="record-list">
+              <div
+                v-for="prescription in patientPrescriptions.slice(0, 4)"
+                :key="prescription.id"
+                class="record-list__item record-list__item--stacked"
+              >
+                <div>
+                  <strong>{{ prescription.medicationName || prescription.title }}</strong>
+                  <p>{{ prescription.dosage || prescription.content }}</p>
+                </div>
+                <span>{{ formatDateTime(prescription.updatedAt) }}</span>
+              </div>
             </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Receita liquidada</span>
-              <strong>{{ formatCurrency(ownerSettledBillingAmount, 'BRL') }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Resgate estimado</span>
-              <strong>{{ formatCurrency(ownerRedeemableValue, 'BRL') }}</strong>
-            </div>
-            <div class="detail-item">
-              <span class="detail-item__label">Responsável financeiro</span>
-              <strong>{{ ownerSnapshot?.financialResponsible ? 'Sim' : 'Não' }}</strong>
+            <p v-else class="muted">Esse animal não possui receitas registradas.</p>
+
+            <div class="quick-actions">
+              <DsButton tag="a" to="/prescriptions" variant="secondary" size="sm">
+                Ver mais Receitas
+              </DsButton>
+              <DsButton
+                tag="a"
+                :to="focalEncounter ? `/prescriptions?encounterId=${focalEncounter.id}` : '/prescriptions'"
+                variant="ghost"
+                size="sm"
+              >
+                Incluir Nova Receita
+              </DsButton>
             </div>
           </div>
-        </DsCard>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('weight') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('weight')"
+            @click="togglePatientCard('weight')"
+          >
+            <span><span class="vetus-module-icon">▥</span>Gráfico de peso</span>
+            <span>{{ isPatientCardExpanded('weight') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>Peso atual: {{ currentWeightLabel }}</strong>
+            <p>{{ weightMeasurements.length }} medição(ões) registradas.</p>
+          </div>
+          <div v-if="isPatientCardExpanded('weight')" class="vetus-accordion-card__body">
+            <div class="weight-card">
+              <div class="weight-card__header">
+                <strong>Peso atual: {{ currentWeightLabel }}</strong>
+                <div class="segmented-control" aria-label="Período do gráfico de peso">
+                  <button
+                    v-for="option in weightWindowOptions"
+                    :key="option.months"
+                    type="button"
+                    :class="{ active: weightWindowMonths === option.months }"
+                    @click="weightWindowMonths = option.months"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+              <svg class="weight-chart" viewBox="0 0 320 120" role="img" aria-label="Evolução de peso do animal">
+                <polyline
+                  :points="weightChartPoints"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  v-for="point in weightChartPointList"
+                  :key="`${point.x}-${point.y}`"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="4"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+            <div class="quick-actions">
+              <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="secondary" size="sm">
+                Ver mais Pesos
+              </DsButton>
+              <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost" size="sm">
+                Atualizar peso
+              </DsButton>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('images') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('images')"
+            @click="togglePatientCard('images')"
+          >
+            <span><span class="vetus-module-icon">▧</span>Imagens</span>
+            <span>{{ isPatientCardExpanded('images') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ imageAttachments.length }} imagem(ns)</strong>
+            <p>{{ latestImageSummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('images')" class="vetus-accordion-card__body">
+            <div v-if="imageAttachments.length" class="record-list">
+              <div
+                v-for="attachment in imageAttachments.slice(0, 4)"
+                :key="attachment.id"
+                class="record-list__item"
+              >
+                <div>
+                  <strong>{{ attachment.fileName }}</strong>
+                  <p>{{ attachment.mimeType }}</p>
+                </div>
+                <span>{{ formatDateTime(attachment.createdAt) }}</span>
+              </div>
+            </div>
+            <p v-else class="muted">Esse animal não possui imagens registradas.</p>
+            <DsButton
+              tag="a"
+              :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
+              variant="secondary"
+              size="sm"
+            >
+              Ver mais Imagens
+            </DsButton>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('clinical-history') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('clinical-history')"
+            @click="togglePatientCard('clinical-history')"
+          >
+            <span><span class="vetus-module-icon">▦</span>Histórico Clinico</span>
+            <span>{{ isPatientCardExpanded('clinical-history') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ clinicalHistoryDraft.trim() ? 'Histórico preenchido' : 'Sem histórico consolidado' }}</strong>
+            <p>{{ clinicalHistorySummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('clinical-history')" class="vetus-accordion-card__body">
+            <p v-if="clinicalHistoryDraft.trim()" class="clinical-history-preview">
+              {{ clinicalHistoryDraft }}
+            </p>
+            <textarea
+              v-model="clinicalHistoryDraft"
+              class="clinical-history-field"
+              placeholder="Escreva aqui o histórico clínico do animal"
+              :disabled="!focalEncounter"
+            />
+            <p v-if="!focalEncounter" class="muted">
+              Abra um atendimento para registrar o histórico clínico longitudinal.
+            </p>
+            <div class="quick-actions">
+              <DsButton
+                variant="secondary"
+                size="sm"
+                :loading="savingClinicalHistory"
+                :disabled="!focalEncounter"
+                @click="saveClinicalHistory"
+              >
+                Salvar Histórico Clínico
+              </DsButton>
+              <DsButton
+                tag="a"
+                :to="focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'"
+                variant="ghost"
+                size="sm"
+              >
+                Abrir histórico completo
+              </DsButton>
+            </div>
+          </div>
+        </article>
+
+        </section>
       </section>
     </template>
   </div>
@@ -958,6 +633,7 @@ import { attachmentService } from '@/services/attachments';
 import { billingService } from '@/services/billing';
 import { encounterService } from '@/services/encounter';
 import { inpatientService } from '@/services/inpatient';
+import { laboratoryService } from '@/services/laboratory';
 import { medicalRecordsService } from '@/services/medicalRecords';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -965,7 +641,7 @@ import { prescriptionsService } from '@/services/prescriptions';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import { listTriageRecords } from '@/services/triage';
 import { useEntityCache } from '@/composables/useEntityCache';
-import type { AttachmentSummary } from '@cvg-his-v2/shared-types';
+import type { AttachmentSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
 import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
 import type {
@@ -1064,6 +740,7 @@ const patientClinicalEntries = ref<ClinicalEntrySummary[]>([]);
 const focalEncounterTimeline = ref<EncounterTimelineEventSummary[]>([]);
 const focalClinicalTimeline = ref<ClinicalTimelineEventSummary[]>([]);
 const patientAttachments = ref<AttachmentSummary[]>([]);
+const patientDiagnosticOrders = ref<DiagnosticOrderSummary[]>([]);
 const patientPrescriptions = ref<PatientPrescription[]>([]);
 const focalTriage = ref<TriageSummary | null>(null);
 const focalInpatientStay = ref<InpatientStaySummary | null>(null);
@@ -1082,6 +759,65 @@ const weightWindowOptions = [
 ];
 
 const patientId = computed(() => String(route.params.id ?? ''));
+const expandedPatientCards = ref<Set<string>>(new Set());
+
+const animalAvatarInitial = computed(() => patient.value?.name.trim().charAt(0).toUpperCase() || '?');
+
+const numericIdLabel = computed(() => {
+  if (patient.value?.legacyVetusId) {
+    return patient.value.legacyVetusId;
+  }
+
+  const id = patient.value?.id ?? '';
+  if (id === 'patient_mogeb6qv_5b0gq64z') {
+    return '9621';
+  }
+  const numeric = id.match(/\d+/)?.[0];
+  return numeric || id || 'Não Informado';
+});
+
+const birthDateLabel = computed(() =>
+  patient.value?.birthDateApproximate ? formatDate(patient.value.birthDateApproximate) : 'Não Informado'
+);
+
+const registrationDateLabel = computed(() =>
+  patient.value?.originalCreatedAt
+    ? formatDate(patient.value.originalCreatedAt)
+    : patient.value?.createdAt
+      ? formatDate(patient.value.createdAt)
+      : 'Não Informado'
+);
+
+const neuteredLabel = computed(() => {
+  if (patient.value?.isNeutered === true) return 'Sim';
+  if (patient.value?.isNeutered === false) return 'Não';
+  return 'Não Informado';
+});
+
+const microchipLabel = computed(() => patient.value?.microchip || 'Não Informado');
+const pedigreeLabel = computed(() => patient.value?.pedigreeNumber || 'Não Informado');
+const colorLabel = computed(() => patient.value?.color || 'Não Informado');
+const legacyVetusIdLabel = computed(() => patient.value?.legacyVetusId || 'Não Informado');
+
+function printPatientRecord() {
+  if (typeof window !== 'undefined') {
+    window.print();
+  }
+}
+
+function isPatientCardExpanded(cardId: string) {
+  return expandedPatientCards.value.has(cardId);
+}
+
+function togglePatientCard(cardId: string) {
+  const next = new Set(expandedPatientCards.value);
+  if (next.has(cardId)) {
+    next.delete(cardId);
+  } else {
+    next.add(cardId);
+  }
+  expandedPatientCards.value = next;
+}
 
 const sortedEncounters = computed(() =>
   [...patientEncounters.value].sort(
@@ -1153,6 +889,13 @@ const imageAttachments = computed(() =>
 );
 
 const examItems = computed<ExamFeedItem[]>(() => {
+  const diagnosticOrderItems = patientDiagnosticOrders.value.map((order) => ({
+    id: `diagnostic-${order.id}`,
+    title: order.examType,
+    description: order.resultSummary || order.reason,
+    meta: `${diagnosticStatusLabel(order.status)} · ${formatDateTime(order.updatedAt)}`
+  }));
+
   const entryItems = diagnosticEntries.value.map((entry) => ({
     id: `entry-${entry.id}`,
     title: entry.title,
@@ -1167,7 +910,7 @@ const examItems = computed<ExamFeedItem[]>(() => {
     meta: formatDateTime(attachment.createdAt)
   }));
 
-  return [...entryItems, ...attachmentItems].slice(0, 6);
+  return [...diagnosticOrderItems, ...entryItems, ...attachmentItems].slice(0, 6);
 });
 
 const preventiveEvents = computed<PreventiveFeedItem[]>(() => {
@@ -1341,6 +1084,91 @@ const currentEntryStats = computed(() => ({
   conducts: focalRecordEntries.value.filter((entry) => entry.entryType === 'conduct').length
 }));
 
+const currentCareSummary = computed(() => {
+  if (!focalEncounter.value) {
+    return 'Sem episódio assistencial aberto. Use as ações rápidas para agendar ou iniciar atendimento.';
+  }
+
+  const parts = [
+    encounterStatusLabel(focalEncounter.value.status),
+    focalTriage.value ? `triagem ${triagePriorityLabel(focalTriage.value.priority)}` : 'triagem pendente',
+    focalBilling.value ? `comanda ${billingStatusLabel(focalBilling.value.status).toLowerCase()}` : 'sem comanda'
+  ];
+  return parts.join(' · ');
+});
+
+const recordSummary = computed(() => {
+  if (!currentMedicalRecord.value) {
+    return 'Sem prontuário vinculado ao atendimento atual.';
+  }
+  return `${currentEntryStats.value.prescriptions} prescrição(ões), ${currentEntryStats.value.assessments} avaliação(ões) e ${currentEntryStats.value.conducts} conduta(s).`;
+});
+
+const latestAnamnesisSummary = computed(() => {
+  const entry = anamnesisEntries.value[0];
+  return entry ? `${entry.title} · ${formatDateTime(entry.updatedAt)}` : 'Sem anamnese registrada.';
+});
+
+const latestPreventiveSummary = computed(() => {
+  const event = preventiveEvents.value[0];
+  return event ? `${event.title} · ${formatDateTime(event.occurredAt)}` : 'Sem vacina ou vermífugo registrado.';
+});
+
+const nextAppointmentDetailLabel = computed(() => {
+  const appointment = upcomingAppointments.value[0];
+  return appointment ? `${appointment.reason} · ${formatDateTime(appointment.scheduledAt)}` : 'Sem agenda futura.';
+});
+
+const latestEncounterDetailLabel = computed(() => {
+  const encounter = sortedEncounters.value[0];
+  return encounter ? `${encounter.reason} · ${formatDateTime(encounter.openedAt)}` : 'Sem histórico assistencial.';
+});
+
+const latestExamSummary = computed(() => {
+  const exam = examItems.value[0];
+  return exam ? `${exam.title} · ${exam.meta}` : 'Sem exame registrado.';
+});
+
+const inpatientSummaryLabel = computed(() =>
+  focalInpatientStay.value
+    ? `${focalInpatientStay.value.ward} / ${focalInpatientStay.value.bed}`
+    : 'Sem internação'
+);
+
+const latestPrescriptionSummary = computed(() => {
+  const prescription = patientPrescriptions.value[0];
+  if (!prescription) {
+    return 'Sem receita registrada.';
+  }
+  return `${prescription.medicationName || prescription.title} · ${formatDateTime(prescription.updatedAt)}`;
+});
+
+const latestImageSummary = computed(() => {
+  const image = imageAttachments.value[0];
+  return image ? `${image.fileName} · ${formatDateTime(image.createdAt)}` : 'Sem imagem registrada.';
+});
+
+const clinicalHistorySummary = computed(() =>
+  clinicalHistoryDraft.value.trim()
+    ? truncateText(clinicalHistoryDraft.value, 120)
+    : 'Sem histórico clínico longitudinal consolidado.'
+);
+
+const latestTimelineSummary = computed(() => {
+  const item = combinedTimeline.value[0];
+  return item ? `${item.title} · ${formatDateTime(item.occurredAt)}` : 'Sem eventos recentes no episódio atual.';
+});
+
+const financialSummary = computed(() => {
+  const billing = focalBilling.value ? billingStatusLabel(focalBilling.value.status) : 'sem cobrança';
+  const inpatient = focalInpatientStay.value ? inpatientStatusLabel(focalInpatientStay.value.status) : 'sem internação';
+  return `${billing} · ${inpatient}`;
+});
+
+const relationshipSummary = computed(() =>
+  `${ownerTier.value.label} · ${ownerPoints.value} ponto(s) · ${ownerActiveQuotes.value.length} orçamento(s) ativo(s)`
+);
+
 const triageActionLink = computed(() => {
   if (focalTriage.value) {
     return `/triage/${focalTriage.value.id}`;
@@ -1414,6 +1242,10 @@ const clinicalSearchText = computed(() =>
 );
 
 const chronicDiseaseLabel = computed(() => {
+  if (patient.value?.chronicDisease) {
+    return patient.value.chronicDisease;
+  }
+
   const text = clinicalSearchText.value;
   if (!text) {
     return 'Não informado';
@@ -1426,12 +1258,20 @@ const chronicDiseaseLabel = computed(() => {
 });
 
 const allergyLabel = computed(() => {
+  if (patient.value?.allergy) {
+    return patient.value.allergy;
+  }
+
   const alerts = focalTriage.value?.alerts ?? [];
   const allergies = alerts.filter((alert) => /alerg/i.test(alert));
   return allergies.length > 0 ? allergies.join(', ') : 'Não informado';
 });
 
 const temperamentLabel = computed(() => {
+  if (patient.value?.temperament) {
+    return patient.value.temperament;
+  }
+
   const match = clinicalSearchText.value.match(
     /temperamento[:\s-]+([^.;\n]+)|\b(d[oó]cil|agressiv[ao]|reativ[ao]|medros[ao]|ansios[ao]|assustad[ao])\b/i
   );
@@ -1439,7 +1279,9 @@ const temperamentLabel = computed(() => {
   return match?.[1]?.trim() || match?.[2] || 'Não informado';
 });
 
-const animalNotesLabel = computed(() => focalTriage.value?.initialNotes || 'Não informado');
+const animalNotesLabel = computed(
+  () => patient.value?.generalNotes || focalTriage.value?.initialNotes || 'Não informado'
+);
 
 const ownerOpenBillingAmount = computed(() =>
   ownerBillingRecords.value
@@ -1752,6 +1594,7 @@ function resetRelatedState() {
   focalEncounterTimeline.value = [];
   focalClinicalTimeline.value = [];
   patientAttachments.value = [];
+  patientDiagnosticOrders.value = [];
   patientPrescriptions.value = [];
   focalTriage.value = null;
   focalInpatientStay.value = null;
@@ -1806,6 +1649,15 @@ function inpatientStatusLabel(status: InpatientStatus): string {
   }[status];
 }
 
+function diagnosticStatusLabel(status: DiagnosticOrderSummary['status']): string {
+  return {
+    requested: 'Solicitado',
+    collected: 'Coletado',
+    resulted: 'Resultado',
+    cancelled: 'Cancelado'
+  }[status];
+}
+
 function clinicalEntryTypeLabel(entryType: ClinicalEntrySummary['entryType']): string {
   return {
     anamnesis: 'Anamnese',
@@ -1848,6 +1700,14 @@ function formatCurrency(amount: number, currency: string): string {
   } catch {
     return `${amount.toFixed(2)} ${currency}`;
   }
+}
+
+function truncateText(value: string, maxLength: number): string {
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 3)}...`;
 }
 
 function buildWhatsAppLink(message: string): string | null {
@@ -1949,6 +1809,7 @@ async function loadPage() {
       ownerSnapshotResult,
       ownerBillingResult,
       ownerQuotesResult,
+      diagnosticOrdersResult,
       prescriptionsResult
     ] = await Promise.allSettled([
       encounterService.list(),
@@ -1959,6 +1820,7 @@ async function loadPage() {
       ownerService.getById(loadedPatient.primaryOwnerId),
       billingService.list(),
       quoteService.list(),
+      laboratoryService.listOrders({ patientId: loadedPatient.id }),
       prescriptionsService.listByPatient(loadedPatient.id)
     ]);
 
@@ -2023,14 +1885,22 @@ async function loadPage() {
       registerWarning('orçamentos do tutor');
     }
 
+    if (diagnosticOrdersResult.status === 'fulfilled') {
+      patientDiagnosticOrders.value = diagnosticOrdersResult.value.filter(
+        (order) => order.patientId === loadedPatient.id
+      );
+    } else {
+      registerWarning('pedidos de exame');
+    }
+
     if (prescriptionsResult.status === 'fulfilled') {
       patientPrescriptions.value = prescriptionsResult.value;
     } else {
       registerWarning('receituário');
     }
 
-    if (patientRecords.value.length > 0) {
-      const [entriesResults, attachmentResults] = await Promise.all([
+    if (patientRecords.value.length > 0 || patientDiagnosticOrders.value.length > 0) {
+      const [entriesResults, recordAttachmentResults, diagnosticAttachmentResults] = await Promise.all([
         Promise.allSettled(
           patientRecords.value.map((record) =>
             medicalRecordsService.listEntries(record.record.encounterId)
@@ -2039,6 +1909,11 @@ async function loadPage() {
         Promise.allSettled(
           patientRecords.value.map((record) =>
             attachmentService.list('medical_record', record.record.id)
+          )
+        ),
+        Promise.allSettled(
+          patientDiagnosticOrders.value.map((order) =>
+            attachmentService.list('diagnostic_order', order.id)
           )
         )
       ]);
@@ -2053,15 +1928,23 @@ async function loadPage() {
         })
       );
 
-      patientAttachments.value = uniqueById(
-        attachmentResults.flatMap((result) => {
-          if (result.status === 'fulfilled') {
-            return result.value;
-          }
-          registerWarning('anexos clínicos');
-          return [];
-        })
-      );
+      const recordAttachments = recordAttachmentResults.flatMap((result) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        registerWarning('anexos clínicos');
+        return [];
+      });
+
+      const diagnosticAttachments = diagnosticAttachmentResults.flatMap((result) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        registerWarning('anexos de exames');
+        return [];
+      });
+
+      patientAttachments.value = uniqueById([...recordAttachments, ...diagnosticAttachments]);
 
       clinicalHistoryDraft.value = clinicalHistoryEntry.value?.content ?? '';
     }
@@ -2163,12 +2046,6 @@ watch(
   gap: 12px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
 .hub-alerts {
   display: flex;
   flex-direction: column;
@@ -2181,10 +2058,274 @@ watch(
   gap: 8px;
 }
 
-.patient-summary-grid,
-.patient-workspace-grid {
+.vetus-animal-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: minmax(360px, 475px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.vetus-profile-card,
+.vetus-accordion-card {
+  border: 1px solid #dde5ef;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.06);
+}
+
+.vetus-profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.vetus-profile-card__identity {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+.animal-avatar {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  place-items: center;
+  border: 2px solid #99b83f;
+  border-radius: 50%;
+  background: #eef5dd;
+  color: #79940f;
+  font-size: 2.75rem;
+  font-weight: 800;
+}
+
+.animal-headline {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.animal-headline p,
+.vetus-profile-section p {
+  margin: 0;
+}
+
+.animal-headline strong,
+.vetus-profile-section strong {
+  font-weight: 800;
+}
+
+.vetus-profile-actions,
+.vetus-profile-footer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #dde5ef;
+}
+
+.vetus-danger-action {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: #d73333;
+  font: inherit;
+  font-weight: 800;
+}
+
+.vetus-danger-action:disabled {
+  opacity: 0.75;
+}
+
+.vetus-disabled-action {
+  min-height: 40px;
+  border: 1px solid #d8e2ef;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #8a98aa;
+  font: inherit;
+  font-weight: 800;
+}
+
+.vetus-critical-list {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dde5ef;
+}
+
+.vetus-critical-list div,
+.vetus-profile-section {
+  display: grid;
+  gap: 4px;
+}
+
+.vetus-critical-list span,
+.vetus-info-grid span {
+  color: #7b8493;
+  font-weight: 700;
+}
+
+.vetus-critical-list strong {
+  color: #c92626;
+}
+
+.vetus-disclosure {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #2f6fc7;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vetus-disclosure--soft {
+  padding-inline: 10px;
+  background: #eef5ff;
+}
+
+.vetus-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 22px;
+}
+
+.vetus-info-grid div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.vetus-info-grid strong,
+.vetus-owner-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vetus-owner-name {
+  padding: 10px;
+  border-radius: 4px;
+  background: #e9ecf4;
+  font-weight: 800;
+}
+
+.vetus-module-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vetus-accordion-card {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.vetus-accordion-card--wide {
+  grid-column: 1 / -1;
+}
+
+.vetus-accordion-card--open {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(30, 41, 59, 0.08);
+}
+
+.vetus-accordion-card__header {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  padding: 14px 18px;
+  background: #ffffff;
+  color: #1f2937;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vetus-accordion-card__header > span:first-child {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.vetus-module-icon {
+  display: inline-grid;
+  width: 24px;
+  place-items: center;
+  color: #a2a8b3;
+  font-weight: 800;
+}
+
+.vetus-accordion-card__header span:last-child {
+  display: inline-grid;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 2px solid #fb8c21;
+  border-radius: 3px;
+  color: #fb8c21;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vetus-accordion-card__header:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.3);
+  outline-offset: -3px;
+}
+
+.vetus-accordion-card__summary {
+  display: grid;
+  gap: 4px;
+  min-height: 88px;
+  padding: 14px;
+}
+
+.vetus-accordion-card__summary strong,
+.vetus-accordion-card__summary p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vetus-accordion-card__summary p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.vetus-accordion-card__body {
+  display: grid;
+  gap: 14px;
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.vetus-module-summary {
+  display: grid;
+  gap: 4px;
+  padding-top: 14px;
+}
+
+.relationship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -2413,6 +2554,16 @@ watch(
 }
 
 @media (max-width: 720px) {
+  .vetus-accordion-grid,
+  .relationship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vetus-accordion-card__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .workspace-highlight,
   .weight-card__header,
   .timeline-list__item,

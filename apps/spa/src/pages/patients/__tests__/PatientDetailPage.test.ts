@@ -26,6 +26,16 @@ const mockPatient = {
   size: 'large' as const,
   baseWeightKg: 30.5,
   birthDateApproximate: '2020-05-15',
+  isNeutered: true,
+  microchip: '985141000000001',
+  pedigreeNumber: 'PED-123',
+  color: 'Dourado',
+  chronicDisease: 'Doenca renal cronica',
+  allergy: 'Dipirona',
+  temperament: 'Docil',
+  generalNotes: 'Paciente usa coleira vermelha.',
+  legacyVetusId: '9621',
+  originalCreatedAt: '2024-05-03',
   primaryOwnerId: 'owner-1',
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
@@ -211,6 +221,22 @@ const mockBillingRecords = [
   }
 ];
 
+const mockDiagnosticOrders = [
+  {
+    id: 'diag-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Radiografia',
+    reason: 'Avaliar membro anterior',
+    status: 'resulted' as const,
+    resultSummary: 'Sem fratura aparente',
+    resultAttachmentId: 'att-3',
+    createdAt: '2024-01-03T09:21:00Z',
+    updatedAt: '2024-01-03T09:27:00Z'
+  }
+];
+
 const mockQuotes = [
   {
     id: 'quote-1',
@@ -256,6 +282,7 @@ const mockMedicalRecordTimelineList = vi.fn().mockResolvedValue(mockClinicalTime
 const mockTriageList = vi.fn().mockResolvedValue(mockTriageRecords);
 const mockInpatientList = vi.fn().mockResolvedValue(mockInpatientStays);
 const mockBillingList = vi.fn().mockResolvedValue(mockBillingRecords);
+const mockLaboratoryListOrders = vi.fn().mockResolvedValue(mockDiagnosticOrders);
 const mockQuoteList = vi.fn().mockResolvedValue(mockQuotes);
 const mockQuoteCreate = vi.fn().mockResolvedValue({
   ...mockQuotes[0],
@@ -270,7 +297,7 @@ const mockPrescriptionListByPatient = vi.fn().mockResolvedValue([
     frequency: '12/12h'
   }
 ]);
-const mockAttachmentList = vi.fn().mockResolvedValue([
+const mockRecordAttachments = [
   {
     id: 'att-1',
     accountId: 'acc-1',
@@ -299,7 +326,26 @@ const mockAttachmentList = vi.fn().mockResolvedValue([
     uploadedByUserId: 'usr-1',
     createdAt: '2024-01-03T09:26:00Z'
   }
-]);
+];
+const mockDiagnosticAttachments = [
+  {
+    id: 'att-3',
+    accountId: 'acc-1',
+    linkedEntityType: 'diagnostic_order',
+    linkedEntityId: 'diag-1',
+    category: 'lab',
+    fileName: 'radiografia-laudo.pdf',
+    storageKey: 'local/radiografia-laudo.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'sha256:diag',
+    source: 'upload',
+    uploadedByUserId: 'usr-1',
+    createdAt: '2024-01-03T09:27:00Z'
+  }
+];
+const mockAttachmentList = vi.fn().mockImplementation((linkedEntityType: string) =>
+  Promise.resolve(linkedEntityType === 'diagnostic_order' ? mockDiagnosticAttachments : mockRecordAttachments)
+);
 const mockGetOwnerName = vi.fn().mockResolvedValue('João Silva');
 
 vi.mock('@/services/patient', () => ({
@@ -349,6 +395,12 @@ vi.mock('@/services/inpatient', () => ({
 vi.mock('@/services/billing', () => ({
   billingService: {
     list: (...args: unknown[]) => mockBillingList(...args)
+  }
+}));
+
+vi.mock('@/services/laboratory', () => ({
+  laboratoryService: {
+    listOrders: (...args: unknown[]) => mockLaboratoryListOrders(...args)
   }
 }));
 
@@ -413,6 +465,7 @@ describe('PatientDetailPage', () => {
     mockTriageList.mockResolvedValue(mockTriageRecords);
     mockInpatientList.mockResolvedValue(mockInpatientStays);
     mockBillingList.mockResolvedValue(mockBillingRecords);
+    mockLaboratoryListOrders.mockResolvedValue(mockDiagnosticOrders);
     mockQuoteList.mockResolvedValue(mockQuotes);
     mockQuoteCreate.mockResolvedValue({
       ...mockQuotes[0],
@@ -427,36 +480,9 @@ describe('PatientDetailPage', () => {
         frequency: '12/12h'
       }
     ]);
-    mockAttachmentList.mockResolvedValue([
-      {
-        id: 'att-1',
-        accountId: 'acc-1',
-        linkedEntityType: 'medical_record',
-        linkedEntityId: 'mr-1',
-        category: 'image',
-        fileName: 'lesao-pata.png',
-        storageKey: 'local/lesao-pata.png',
-        mimeType: 'image/png',
-        checksum: 'sha256:image',
-        source: 'upload',
-        uploadedByUserId: 'usr-1',
-        createdAt: '2024-01-03T09:25:00Z'
-      },
-      {
-        id: 'att-2',
-        accountId: 'acc-1',
-        linkedEntityType: 'medical_record',
-        linkedEntityId: 'mr-1',
-        category: 'lab',
-        fileName: 'hemograma.pdf',
-        storageKey: 'local/hemograma.pdf',
-        mimeType: 'application/pdf',
-        checksum: 'sha256:lab',
-        source: 'upload',
-        uploadedByUserId: 'usr-1',
-        createdAt: '2024-01-03T09:26:00Z'
-      }
-    ]);
+    mockAttachmentList.mockImplementation((linkedEntityType: string) =>
+      Promise.resolve(linkedEntityType === 'diagnostic_order' ? mockDiagnosticAttachments : mockRecordAttachments)
+    );
     mockGetOwnerName.mockResolvedValue('João Silva');
   });
 
@@ -476,46 +502,65 @@ describe('PatientDetailPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Rex');
-    expect(wrapper.text()).toContain('Atendimento > Cadastrados');
+    expect(wrapper.text()).toContain('Detalhes do Animal');
     expect(wrapper.text()).toContain('João Silva');
-    expect(wrapper.text()).toContain('Cockpit operacional atual');
-    expect(wrapper.text()).toContain('Prontuário do atendimento atual');
-    expect(wrapper.text()).toContain('Agendar retorno');
     expect(wrapper.text()).toContain('Abrir Nova Comanda');
     expect(wrapper.text()).toContain('Ver cadastro do cliente');
-    expect(wrapper.text()).toContain('Segurança clínica do animal');
-    expect(wrapper.text()).toContain('Doença crônica');
-    expect(wrapper.text()).toContain('Informações de contato do cliente');
-    expect(wrapper.text()).toContain('Claudicação em membro anterior');
-    expect(wrapper.text()).toContain('UTI / B-02');
-    expect(wrapper.text()).toContain('Prescrição adicionada');
-    expect(wrapper.text()).toContain('Snapshot CRM do tutor');
-    expect(wrapper.text()).toContain('Pacote ativo sugerido');
-    expect(wrapper.text()).toContain('Mensagens contextuais por animal');
+    expect(wrapper.text()).toContain('Editar Cadastro');
+    expect(wrapper.text()).toContain('Doença Crônica');
+    expect(wrapper.text()).toContain('Doenca renal cronica');
+    expect(wrapper.text()).toContain('Dipirona');
+    expect(wrapper.text()).toContain('Docil');
+    expect(wrapper.text()).toContain('Paciente usa coleira vermelha.');
+    expect(wrapper.text()).toContain('Ver mais Informações do Animal');
+    expect(wrapper.text()).toContain('Ver Informações de Contato');
     expect(wrapper.text()).toContain('Anamneses');
-    expect(wrapper.text()).toContain('Anamnese ortopédica');
     expect(wrapper.text()).toContain('Vacinas e Vermífugos');
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Exames');
-    expect(wrapper.text()).toContain('hemograma.pdf');
     expect(wrapper.text()).toContain('Internação');
     expect(wrapper.text()).toContain('Receituário');
-    expect(wrapper.text()).toContain('Anti-inflamatório');
     expect(wrapper.text()).toContain('Gráfico de peso');
-    expect(wrapper.text()).toContain('Peso atual: 30.5 kg');
     expect(wrapper.text()).toContain('Imagens');
+    expect(wrapper.text()).toContain('Histórico Clinico');
+    expect(wrapper.text()).toContain('Anti-inflamatório');
     expect(wrapper.text()).toContain('lesao-pata.png');
-    expect(wrapper.text()).toContain('Histórico Clínico');
     expect(wrapper.text()).toContain('Paciente com histórico ortopédico recorrente.');
+    expect(wrapper.text()).toContain('Radiografia');
+    expect(wrapper.text()).toContain('Resultado');
+    expect(wrapper.text()).not.toContain('Tutor relata claudicação após passeio.');
+
+    const expandCard = async (label: string) => {
+      const trigger = wrapper
+        .findAll('button')
+        .find((button) => button.text().includes(label));
+      await trigger!.trigger('click');
+      await flushPromises();
+    };
+
+    await expandCard('Anamneses');
+    expect(wrapper.text()).toContain('Tutor relata claudicação após passeio.');
+
+    await expandCard('Exames');
+    expect(wrapper.text()).toContain('hemograma.pdf');
+    expect(wrapper.text()).toContain('radiografia-laudo.pdf');
+
+    await expandCard('Receituário');
+    expect(wrapper.text()).toContain('Anti-inflamatório');
+
+    await expandCard('Imagens');
+    expect(wrapper.text()).toContain('lesao-pata.png');
 
     expect(mockMedicalRecordEntriesList).toHaveBeenCalledWith('enc-1');
     expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
+    expect(mockLaboratoryListOrders).toHaveBeenCalledWith({ patientId: 'pat-1' });
     expect(mockAttachmentList).toHaveBeenCalledWith('medical_record', 'mr-1');
+    expect(mockAttachmentList).toHaveBeenCalledWith('diagnostic_order', 'diag-1');
 
-    const newEncounterLink = wrapper
+    const ownerLink = wrapper
       .findAll('a')
-      .find((link) => link.text().includes('Novo Atendimento'));
-    expect(newEncounterLink?.attributes('href')).toBe('/encounters/new?patientId=pat-1&ownerId=owner-1');
+      .find((link) => link.text().includes('Ver cadastro do cliente'));
+    expect(ownerLink?.attributes('href')).toBe('/owners/owner-1');
   });
 
   it('shows error state when loading fails', async () => {

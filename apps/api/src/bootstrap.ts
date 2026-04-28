@@ -3,6 +3,7 @@ import {
   closeDatabaseClient,
   checkDatabaseHealth,
   getDatabaseClient,
+  getPool,
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
@@ -130,6 +131,7 @@ import type {
 
 import type { RuntimeRepositories } from './runtime.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
+import { DatabasePrescriptionRepository } from './repositories/database-prescription.repository.js';
 
 export interface BootstrapOptions {
   databaseUrl?: string;
@@ -189,6 +191,14 @@ async function connectWithRetry(
   }
 
   return { healthy: false, detail: `Failed after ${maxRetries} attempts: ${lastError}` };
+}
+
+async function databaseTableExists(tableName: string): Promise<boolean> {
+  const result = await getPool().query<{ exists: boolean }>(
+    'SELECT to_regclass($1) IS NOT NULL AS exists',
+    [`public.${tableName}`]
+  );
+  return result.rows[0]?.exists === true;
 }
 
 export interface DependencyCheckResult {
@@ -708,6 +718,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
 
       // Get the database client and create real repositories
       const db = getDatabaseClient();
+      const ownerPatientLinksReady = await databaseTableExists('owner_patient_links');
+      const clinicalEntriesReady = await databaseTableExists('clinical_entries');
+      const billingTablesReady =
+        (await databaseTableExists('billing_records')) &&
+        (await databaseTableExists('billing_items'));
 
       results.repositories = {
         // Sessions remain in-memory in the runtime until the canonical
@@ -716,7 +731,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         audit: new DatabaseAuditRepository(db),
         owner: new DatabaseOwnerRepository(db),
         patient: new DatabasePatientRepository(db),
-        ownerPatientLink: new DatabaseOwnerPatientLinkRepository(db),
+        ownerPatientLink: ownerPatientLinksReady
+          ? new DatabaseOwnerPatientLinkRepository(db)
+          : undefined,
         encounter: new DatabaseEncounterRepository(db),
         encounterTimeline: new DatabaseEncounterTimelineRepository(db),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
@@ -733,7 +750,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         discharge: new DatabaseDischargeRepository(),
         prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
         administrationEvent: new DatabaseAdministrationEventRepository(),
-        billing: new DatabaseBillingRepository(),
+        prescription: clinicalEntriesReady ? new DatabasePrescriptionRepository(db) : undefined,
+        billing: billingTablesReady ? new DatabaseBillingRepository() : undefined,
         encounterFinancial: new DatabaseEncounterFinancialRepository(),
         inventory: new DatabaseInventoryRepository(),
         scheduling: new DatabaseSchedulingRepository(),
@@ -756,6 +774,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       logger.info('Database repositories initialized for critical auth/encounter runtime', {
         auditPersistence: 'database',
         sessionPersistence: 'in-memory',
+        ownerPatientLinkPersistence: ownerPatientLinksReady ? 'database' : 'derived-from-patient',
+        prescriptionPersistence: clinicalEntriesReady ? 'database' : 'in-memory',
+        billingPersistence: billingTablesReady ? 'database' : 'in-memory',
         encounterTimelinePersistence: 'database'
       });
     } else {
