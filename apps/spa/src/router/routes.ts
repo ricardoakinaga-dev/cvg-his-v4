@@ -1842,10 +1842,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/cfop',
         name: 'FiscalCfop',
+        alias: [
+          '/cfop',
+          '/estoque/configuracoes-fiscais/cfop',
+          '/estoque/configuracoes-fiscais/tabela-cfop'
+        ],
         component: () => import('@/pages/fiscal/FiscalCfopPage.vue'),
         meta: {
-          title: 'CFOP',
-          breadcrumb: 'CFOP',
+          title: 'Tabela CFOP',
+          breadcrumb: 'Tabela CFOP',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '🔢'
         }

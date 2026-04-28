@@ -101,6 +101,27 @@ function mapNfseLayoutRow(row: Record<string, unknown>): FiscalNfseLayoutSummary
   };
 }
 
+function mapCfopRow(row: Record<string, unknown>): FiscalCfopSummary {
+  const rawApplicableTo = row.applicable_to;
+  const applicableTo = (
+    Array.isArray(rawApplicableTo)
+      ? rawApplicableTo
+      : JSON.parse(rawApplicableTo as string)
+  ) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[];
+
+  return {
+    code: row.code as string,
+    description: row.description as string,
+    section: row.section as 'entrada' | 'saida',
+    category: row.category as string,
+    applicableTo,
+    icmsRelevant: Boolean(row.icms_relevant),
+    pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
+    ipiRelevant: Boolean(row.ipi_relevant),
+    documentTypesLabel: applicableTo.join(', ').toUpperCase()
+  };
+}
+
 // ============================================================================
 // Database Fiscal Repository
 // ============================================================================
@@ -137,17 +158,7 @@ export class DatabaseFiscalRepository {
     const query = `SELECT * FROM cfop_entries ${where} ORDER BY code`;
     const result = await pool.query(query, params);
 
-    let items = result.rows.map((row) => ({
-      code: row.code as string,
-      description: row.description as string,
-      section: row.section as 'entrada' | 'saida',
-      category: row.category as string,
-      applicableTo: JSON.parse(row.applicable_to as string) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[],
-      icmsRelevant: Boolean(row.icms_relevant),
-      pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
-      ipiRelevant: Boolean(row.ipi_relevant),
-      documentTypesLabel: (JSON.parse(row.applicable_to as string) as string[]).join(', ').toUpperCase()
-    })) as FiscalCfopSummary[];
+    let items = result.rows.map((row) => mapCfopRow(row));
 
     if (filters.documentType) {
       items = items.filter((item) => item.applicableTo.includes(filters.documentType as 'nfe' | 'nfce' | 'nfse' | 'cte'));
@@ -163,18 +174,78 @@ export class DatabaseFiscalRepository {
       [code]
     );
     if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      code: row.code as string,
-      description: row.description as string,
-      section: row.section as 'entrada' | 'saida',
-      category: row.category as string,
-      applicableTo: JSON.parse(row.applicable_to as string) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[],
-      icmsRelevant: Boolean(row.icms_relevant),
-      pisCofinsRelevant: Boolean(row.pis_cofins_relevant),
-      ipiRelevant: Boolean(row.ipi_relevant),
-      documentTypesLabel: (JSON.parse(row.applicable_to as string) as string[]).join(', ').toUpperCase()
-    };
+    return mapCfopRow(result.rows[0]);
+  }
+
+  async createCfop(
+    _accountId: AccountId,
+    cfop: FiscalCfopSummary
+  ): Promise<FiscalCfopSummary> {
+    const result = await this.pool.query(
+      `INSERT INTO cfop_entries (
+        code,
+        description,
+        section,
+        category,
+        applicable_to,
+        icms_relevant,
+        pis_cofins_relevant,
+        ipi_relevant
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [
+        cfop.code,
+        cfop.description,
+        cfop.section,
+        cfop.category,
+        JSON.stringify(cfop.applicableTo),
+        cfop.icmsRelevant,
+        cfop.pisCofinsRelevant,
+        cfop.ipiRelevant
+      ]
+    );
+
+    return mapCfopRow(result.rows[0]);
+  }
+
+  async updateCfop(
+    _accountId: AccountId,
+    code: string,
+    payload: FiscalCfopSummary
+  ): Promise<FiscalCfopSummary | null> {
+    const result = await this.pool.query(
+      `UPDATE cfop_entries
+       SET
+         code = $2,
+         description = $3,
+         section = $4,
+         category = $5,
+         applicable_to = $6,
+         icms_relevant = $7,
+         pis_cofins_relevant = $8,
+         ipi_relevant = $9,
+         updated_at = NOW()
+       WHERE code = $1
+       RETURNING *`,
+      [
+        code,
+        payload.code,
+        payload.description,
+        payload.section,
+        payload.category,
+        JSON.stringify(payload.applicableTo),
+        payload.icmsRelevant,
+        payload.pisCofinsRelevant,
+        payload.ipiRelevant
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return mapCfopRow(result.rows[0]);
   }
 
   // --------------------------------------------------------------------------

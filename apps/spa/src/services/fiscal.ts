@@ -1,4 +1,5 @@
 import type {
+  CreateFiscalCfopRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
@@ -28,6 +29,7 @@ import type {
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
+  UpdateFiscalCfopRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -39,6 +41,8 @@ export type FiscalPisTable = FiscalPisTableSummary;
 export type FiscalCofinsTable = FiscalCofinsTableSummary;
 export type FiscalPisCofinsRule = FiscalPisCofinsRuleSummary;
 export type FiscalCfopRow = FiscalCfopSummary;
+export type CreateFiscalCfop = CreateFiscalCfopRequest;
+export type UpdateFiscalCfop = UpdateFiscalCfopRequest;
 export type FiscalNcmEntry = FiscalNcmEntrySummary;
 export type FiscalIcmsMatrixRow = FiscalIcmsMatrixRowSummary;
 export type FiscalNfseLayout = FiscalNfseLayoutSummary;
@@ -209,6 +213,20 @@ export const fiscalService = {
       `/fiscal/cfop${buildQuery({ ...filters })}`
     );
     return [...(response.items ?? [])];
+  },
+
+  async createCfop(payload: CreateFiscalCfop): Promise<FiscalCfopRow> {
+    return apiRequest<FiscalCfopRow>('/fiscal/cfop', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateCfop(code: string, payload: UpdateFiscalCfop): Promise<FiscalCfopRow> {
+    return apiRequest<FiscalCfopRow>(`/fiscal/cfop/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listNcmEntries(filters: FiscalNcmFilters = {}): Promise<FiscalNcmEntry[]> {

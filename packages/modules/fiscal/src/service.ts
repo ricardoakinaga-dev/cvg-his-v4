@@ -1,4 +1,5 @@
 import type {
+  CreateFiscalCfopRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
@@ -24,6 +25,7 @@ import type {
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
+  UpdateFiscalCfopRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -43,6 +45,8 @@ export interface FiscalCfopFilters {
   readonly section?: CfopSection;
   readonly documentType?: FiscalCfopSummary['applicableTo'][number];
 }
+
+const FISCAL_DOCUMENT_TYPES = ['nfe', 'nfce', 'nfse', 'cte'] as const;
 
 export interface FiscalIcmsRuleFilters {
   readonly ufOrigin?: string;
@@ -389,6 +393,10 @@ const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => 
 const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
 const inMemoryPisTables: FiscalPisTableSummary[] = PIS_TABLES.map((table) => ({ ...table }));
 const inMemoryCofinsTables: FiscalCofinsTableSummary[] = COFINS_TABLES.map((table) => ({ ...table }));
+const inMemoryCfopEntries: FiscalCfopSummary[] = CFOP_TABLE.map((entry) => ({
+  ...entry,
+  documentTypesLabel: entry.applicableTo.join(', ').toUpperCase()
+}));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
 
 type NfseIssuerDocument = NfseDocument & {
@@ -508,6 +516,48 @@ function assertPercent(value: number | undefined, field: string): number {
     throw new Error(`${field} must be a number between 0 and 100`);
   }
   return Number(value.toFixed(2));
+}
+
+function normalizeCfopPayload(
+  payload: CreateFiscalCfopRequest | UpdateFiscalCfopRequest,
+  current?: FiscalCfopSummary
+): FiscalCfopSummary {
+  const code = payload.code === undefined ? current?.code : assertNonEmpty(payload.code, 'code');
+  const description = payload.description === undefined
+    ? current?.description
+    : assertNonEmpty(payload.description, 'description');
+  const section = payload.section ?? current?.section ?? 'saida';
+  const category = payload.category === undefined
+    ? (current?.category ?? 'geral')
+    : assertNonEmpty(payload.category, 'category');
+  const applicableTo = payload.applicableTo ?? current?.applicableTo ?? FISCAL_DOCUMENT_TYPES;
+
+  if (!code || !description) {
+    throw new Error('code and description are required');
+  }
+
+  if (section !== 'entrada' && section !== 'saida') {
+    throw new Error('section must be entrada or saida');
+  }
+
+  if (
+    applicableTo.length === 0
+    || applicableTo.some((item: (typeof FISCAL_DOCUMENT_TYPES)[number]) => !FISCAL_DOCUMENT_TYPES.includes(item))
+  ) {
+    throw new Error('applicableTo must include valid fiscal document types');
+  }
+
+  return {
+    code,
+    description,
+    section,
+    category,
+    applicableTo,
+    icmsRelevant: payload.icmsRelevant ?? current?.icmsRelevant ?? false,
+    pisCofinsRelevant: payload.pisCofinsRelevant ?? current?.pisCofinsRelevant ?? false,
+    ipiRelevant: payload.ipiRelevant ?? current?.ipiRelevant ?? false,
+    documentTypesLabel: applicableTo.join(', ').toUpperCase()
+  };
 }
 
 function assertPositiveInteger(value: number | undefined, field: string, fallback?: number): number {
@@ -1020,21 +1070,63 @@ export class FiscalService {
     }
     const normalizedSearch = normalizeTerm(filters.search);
 
-    return CFOP_TABLE
+    return inMemoryCfopEntries
       .filter((entry) => !filters.section || entry.section === filters.section)
       .filter(
         (entry) => !filters.documentType || entry.applicableTo.includes(filters.documentType)
       )
-      .map((entry) => ({
-        ...entry,
-        documentTypesLabel: entry.applicableTo.join(', ').toUpperCase()
-      }))
       .filter((entry) =>
         normalizedSearch.length === 0
           || `${entry.code} ${entry.description} ${entry.category} ${entry.section}`
             .toLowerCase()
             .includes(normalizedSearch)
       );
+  }
+
+  public async createCfop(payload: CreateFiscalCfopRequest): Promise<FiscalCfopSummary> {
+    const cfop = normalizeCfopPayload(payload);
+    const existing = await this.listCfop();
+
+    if (existing.some((entry) => entry.code.toLowerCase() === cfop.code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createCfop(this.accountId!, cfop);
+    }
+
+    inMemoryCfopEntries.unshift(cfop);
+    return cfop;
+  }
+
+  public async updateCfop(
+    code: string,
+    payload: UpdateFiscalCfopRequest
+  ): Promise<FiscalCfopSummary | null> {
+    const currentCode = assertNonEmpty(code, 'code');
+    const existing = await this.listCfop();
+    const current = existing.find((entry) => entry.code === currentCode);
+
+    if (!current) {
+      return null;
+    }
+
+    const next = normalizeCfopPayload(payload, current);
+    const duplicate = existing.some(
+      (entry) => entry.code !== currentCode && entry.code.toLowerCase() === next.code.toLowerCase()
+    );
+
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateCfop(this.accountId!, currentCode, next);
+    }
+
+    const index = inMemoryCfopEntries.findIndex((entry) => entry.code === currentCode);
+    inMemoryCfopEntries[index] = next;
+    return next;
   }
 
   public async listNcmEntries(filters: FiscalNcmEntryFilters = {}): Promise<FiscalNcmEntrySummary[]> {

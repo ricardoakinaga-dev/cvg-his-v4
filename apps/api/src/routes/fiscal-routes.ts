@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fiscal';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
+  CreateFiscalCfopRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
@@ -24,6 +25,7 @@ import type {
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
+  UpdateFiscalCfopRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
@@ -427,22 +429,71 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/cfop') {
-    if (request.method !== 'GET') {
-      return false;
-    }
-    const principal = requirePrincipal(request, 'fiscal.read');
-    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const payload: FiscalCfopListResponse = {
-      items: await scopedFiscal.listCfop({
-        search: url.searchParams.get('search') ?? undefined,
-        section: (url.searchParams.get('section') as 'entrada' | 'saida' | null) ?? undefined,
-        documentType:
-          (url.searchParams.get('documentType') as 'nfe' | 'nfce' | 'nfse' | 'cte' | null)
-          ?? undefined
-      })
-    };
-    return json(response, 200, payload);
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalCfopListResponse = {
+        items: await scopedFiscal.listCfop({
+          search: url.searchParams.get('search') ?? undefined,
+          section: (url.searchParams.get('section') as 'entrada' | 'saida' | null) ?? undefined,
+          documentType:
+            (url.searchParams.get('documentType') as 'nfe' | 'nfce' | 'nfse' | 'cte' | null)
+            ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalCfopRequest;
+      const created = await scopedFiscal.createCfop(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'cfop',
+        entityId: created.code,
+        payloadSummary: `CFOP ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const cfopMatch = pathname.match(/^\/fiscal\/cfop\/([^/]+)$/);
+  if (cfopMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalCfopRequest;
+    const updated = await scopedFiscal.updateCfop(decodeURIComponent(cfopMatch[1] ?? ''), payload);
+
+    if (!updated) {
+      return json(response, 404, { code: 'CFOP_NOT_FOUND', message: 'CFOP not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'cfop',
+      entityId: updated.code,
+      payloadSummary: `CFOP ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
   }
 
   if (pathname === '/fiscal/nfse' && request.method === 'GET') {

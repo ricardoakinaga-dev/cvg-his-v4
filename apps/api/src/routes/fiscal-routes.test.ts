@@ -154,6 +154,68 @@ test('handleFiscalRoutes filters CFOP rows using query params', async () => {
   assert.ok(payload.items.some((item) => item.category === 'servico'));
 });
 
+test('handleFiscalRoutes creates and updates simple CFOP entries when enabled', async () => {
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/cfop',
+    createMockRequest('POST', '/fiscal/cfop', {
+      code: '9.999',
+      description: 'Operacao fiscal veterinaria',
+      section: 'saida',
+      category: 'servico',
+      applicableTo: ['nfse']
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-cfop-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ code: string; documentTypesLabel: string }>();
+  assert.equal(createdPayload.code, '9.999');
+  assert.equal(createdPayload.documentTypesLabel, 'NFSE');
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/cfop/${encodeURIComponent(createdPayload.code)}`,
+    createMockRequest('PATCH', `/fiscal/cfop/${encodeURIComponent(createdPayload.code)}`, {
+      description: 'Operacao fiscal veterinaria atualizada',
+      applicableTo: ['nfe']
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-cfop-update',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ description: string; documentTypesLabel: string }>();
+  assert.equal(updatedPayload.description, 'Operacao fiscal veterinaria atualizada');
+  assert.equal(updatedPayload.documentTypesLabel, 'NFE');
+});
+
 test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables using real query params', async () => {
   const icmsResponse = new MockResponse();
   const ipiResponse = new MockResponse();

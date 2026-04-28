@@ -2509,7 +2509,7 @@ paths:
   /fiscal/cfop:
     get:
       operationId: listFiscalCfop
-      summary: List CFOP rules
+      summary: List simple CFOP table entries
       tags: [Fiscal]
       parameters:
         - name: search
@@ -2533,6 +2533,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FiscalCfopListResponse'
+    post:
+      operationId: createFiscalCfop
+      summary: Create simple CFOP table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalCfopRequest'
+      responses:
+        '201':
+          description: Created CFOP table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCfopSummary'
+
+  /fiscal/cfop/{code}:
+    patch:
+      operationId: updateFiscalCfop
+      summary: Update simple CFOP table entry
+      tags: [Fiscal]
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalCfopRequest'
+      responses:
+        '200':
+          description: Updated CFOP table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalCfopSummary'
+        '404':
+          description: CFOP entry not found
 
   /fiscal/ncm:
     get:
@@ -8895,6 +8939,55 @@ components:
           type: boolean
         documentTypesLabel:
           type: string
+
+    CreateFiscalCfopRequest:
+      type: object
+      required: [code, description]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        section:
+          type: string
+          enum: [entrada, saida]
+        category:
+          type: string
+        applicableTo:
+          type: array
+          items:
+            type: string
+            enum: [nfe, nfce, nfse, cte]
+        icmsRelevant:
+          type: boolean
+        pisCofinsRelevant:
+          type: boolean
+        ipiRelevant:
+          type: boolean
+
+    UpdateFiscalCfopRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        section:
+          type: string
+          enum: [entrada, saida]
+        category:
+          type: string
+        applicableTo:
+          type: array
+          items:
+            type: string
+            enum: [nfe, nfce, nfse, cte]
+        icmsRelevant:
+          type: boolean
+        pisCofinsRelevant:
+          type: boolean
+        ipiRelevant:
+          type: boolean
 
     FiscalNcmEntrySummary:
       type: object

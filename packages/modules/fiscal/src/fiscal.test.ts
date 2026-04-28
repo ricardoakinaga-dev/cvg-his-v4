@@ -13,6 +13,34 @@ test('FiscalService returns searchable CFOP data from the backend catalog', asyn
   assert.ok(rows.some((row) => row.category === 'servico'));
 });
 
+test('FiscalService creates and updates simple CFOP entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createCfop({
+    code: '9.999',
+    description: 'Operacao fiscal veterinaria',
+    section: 'saida',
+    category: 'servico',
+    applicableTo: ['nfse']
+  });
+
+  assert.equal(created.code, '9.999');
+  assert.equal(created.description, 'Operacao fiscal veterinaria');
+  assert.equal(created.documentTypesLabel, 'NFSE');
+
+  const updated = await service.updateCfop(created.code, {
+    description: 'Operacao fiscal veterinaria atualizada',
+    applicableTo: ['nfe']
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'Operacao fiscal veterinaria atualizada');
+  assert.equal(updated?.documentTypesLabel, 'NFE');
+
+  const filtered = await service.listCfop({ search: 'atualizada' });
+  assert.ok(filtered.some((row) => row.code === created.code));
+});
+
 test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables using backend criteria', async () => {
   const service = new FiscalService();
 

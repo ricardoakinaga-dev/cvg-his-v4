@@ -546,6 +546,28 @@ export interface FiscalCfopSummary {
   readonly documentTypesLabel: string;
 }
 
+export interface CreateFiscalCfopRequest {
+  readonly code: string;
+  readonly description: string;
+  readonly section?: 'entrada' | 'saida';
+  readonly category?: string;
+  readonly applicableTo?: readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[];
+  readonly icmsRelevant?: boolean;
+  readonly pisCofinsRelevant?: boolean;
+  readonly ipiRelevant?: boolean;
+}
+
+export interface UpdateFiscalCfopRequest {
+  readonly code?: string;
+  readonly description?: string;
+  readonly section?: 'entrada' | 'saida';
+  readonly category?: string;
+  readonly applicableTo?: readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[];
+  readonly icmsRelevant?: boolean;
+  readonly pisCofinsRelevant?: boolean;
+  readonly ipiRelevant?: boolean;
+}
+
 export interface FiscalNcmEntrySummary {
   readonly id: string;
   readonly ncm: string;
