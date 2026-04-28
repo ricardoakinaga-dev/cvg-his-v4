@@ -23,10 +23,10 @@
           />
           <StatusBadge v-if="owner.financialResponsible" label="Resp. Financeiro" variant="info" />
           <span class="muted">Atendimento &gt; Cadastros</span>
-          <span class="muted">{{ owner.id }}</span>
+          <span class="muted">{{ owner.legacyVetusId ? `Vetus ${owner.legacyVetusId}` : owner.id }}</span>
         </template>
         <template #actions>
-          <DsButton tag="a" to="/counter-sales" variant="primary">Abrir Nova Comanda</DsButton>
+          <DsButton tag="a" :to="counterSalesPath(owner.id)" variant="primary">Abrir Nova Comanda</DsButton>
           <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary">
             Cadastrar Novo Animal
           </DsButton>
@@ -42,9 +42,9 @@
         <DsStatCard :label="primaryContact(owner)" value="" icon="📞" />
       </section>
 
-      <section v-if="ownerAlerts.length > 0" class="hub-alerts">
+      <section v-if="ownerTopAlerts.length > 0" class="hub-alerts">
         <DsAlert
-          v-for="(alert, index) in ownerAlerts"
+          v-for="(alert, index) in ownerTopAlerts"
           :key="index"
           :variant="alert.variant"
           dismissible
@@ -67,8 +67,15 @@
             >
               Agendar
             </DsButton>
-            <DsButton tag="a" to="/patients" variant="ghost" icon="🧾">Animais Cadastrados</DsButton>
-            <DsButton tag="a" to="/counter-sales" variant="secondary" icon="🧾">
+            <DsButton
+              tag="a"
+              :to="`/patients?ownerId=${encodeURIComponent(owner.id)}`"
+              variant="ghost"
+              icon="🧾"
+            >
+              Ver animais deste tutor
+            </DsButton>
+            <DsButton tag="a" :to="counterSalesPath(owner.id)" variant="secondary" icon="🧾">
               Abrir Comanda
             </DsButton>
             <DsButton
@@ -77,7 +84,7 @@
               variant="secondary"
               icon="💬"
             >
-              Enviar mensagem
+              Abrir WhatsApp externo
             </DsButton>
           </div>
         </DsCard>
@@ -91,8 +98,16 @@
               <strong>{{ owner.documentId || 'Não informado' }}</strong>
             </div>
             <div class="detail-item">
+              <span class="detail-item__label">ID Vetus</span>
+              <strong>{{ owner.legacyVetusId || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
               <span class="detail-item__label">Contato principal</span>
               <strong>{{ primaryContact(owner) }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Cadastro Vetus</span>
+              <strong>{{ owner.originalCreatedAt ? formatDate(owner.originalCreatedAt) : 'Não informado' }}</strong>
             </div>
             <div class="detail-item">
               <span class="detail-item__label">Cadastro</span>
@@ -176,6 +191,14 @@
               <span class="detail-item__label">Cidade/UF</span>
               <strong>{{ ownerCityState }}</strong>
             </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Referência</span>
+              <strong>{{ owner.address?.reference || 'Não informado' }}</strong>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Cód. Município</span>
+              <strong>{{ owner.address?.cityCode || 'Não informado' }}</strong>
+            </div>
           </div>
         </DsCard>
 
@@ -207,15 +230,137 @@
               <strong>{{ ownerSummary?.stats.totalPatients ?? patients.length }}</strong>
             </div>
             <div class="detail-item">
-              <span class="detail-item__label">Atendimentos no summary</span>
+              <span class="detail-item__label">Atendimentos registrados</span>
               <strong>{{ ownerSummary?.stats.totalEncounters ?? recentEncounters.length }}</strong>
             </div>
             <div class="detail-item">
-              <span class="detail-item__label">Resumo exposto</span>
-              <strong>{{ ownerSummary ? 'Sim' : 'Fallback local' }}</strong>
+              <span class="detail-item__label">Dados consolidados</span>
+              <strong>{{ ownerSummary ? 'Atualizados' : 'Calculados nesta tela' }}</strong>
             </div>
           </div>
         </DsCard>
+      </section>
+
+      <section class="vetus-client-grid" aria-label="Hub operacional Vetus-like do cliente">
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Resgate de Pontos</h2>
+            <DsButton tag="a" to="/loyalty" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__metrics">
+            <div>
+              <span>Disponíveis</span>
+              <strong>{{ owner.financialProfile?.availablePoints ?? loyaltyPoints }}</strong>
+            </div>
+            <div>
+              <span>Bloqueados</span>
+              <strong>{{ owner.financialProfile?.blockedPoints ?? 0 }}</strong>
+            </div>
+          </div>
+          <p>Resgate estimado: {{ formatCurrency(redeemableValue) }}</p>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Live Animal e Live Lab</h2>
+            <DsButton tag="a" to="/notifications/whatsapp" variant="secondary" size="sm">Configurar</DsButton>
+          </div>
+          <div class="vetus-client-card__row">
+            <span>Canal do cliente</span>
+            <strong>{{ whatsappContact ? 'WhatsApp disponível' : 'Sem canal digital' }}</strong>
+          </div>
+          <div class="vetus-client-card__row">
+            <span>Integração laboratorial</span>
+            <strong>{{ labContextLabel }}</strong>
+          </div>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Agenda</h2>
+            <DsButton tag="a" to="/appointments" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__row">
+            <span>Próximo atendimento</span>
+            <strong>{{ nextAppointmentLabel }}</strong>
+          </div>
+          <div class="vetus-client-card__row">
+            <span>Paciente</span>
+            <strong>{{ nextAppointment ? patientName(nextAppointment.patientId) : 'Não informado' }}</strong>
+          </div>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Comandas e Vendas</h2>
+            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__metrics">
+            <div>
+              <span>Total</span>
+              <strong>{{ ownerBillingRecords.length }}</strong>
+            </div>
+            <div>
+              <span>Em aberto</span>
+              <strong>{{ openBillingRecordsCount }}</strong>
+            </div>
+          </div>
+          <p>Movimento: {{ formatCurrency(ownerBillingTotalAmount) }}</p>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Pacotes</h2>
+            <DsButton tag="a" to="/packages" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__metrics">
+            <div>
+              <span>Sugeridos</span>
+              <strong>{{ packageRecommendations.length }}</strong>
+            </div>
+            <div>
+              <span>Convertidos</span>
+              <strong>{{ activeQuotes.length }}</strong>
+            </div>
+          </div>
+          <p>{{ packageRecommendations[0]?.title || 'Sem pacote sugerido no momento.' }}</p>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Orçamentos</h2>
+            <DsButton tag="a" to="/quotes" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__metrics">
+            <div>
+              <span>Ativos</span>
+              <strong>{{ activeQuotes.length }}</strong>
+            </div>
+            <div>
+              <span>Total</span>
+              <strong>{{ ownerQuotes.length }}</strong>
+            </div>
+          </div>
+          <p>{{ lastQuoteLabel }}</p>
+        </article>
+
+        <article class="vetus-client-card">
+          <div class="vetus-client-card__header">
+            <h2>Situação Financeira</h2>
+            <DsButton tag="a" to="/billing" variant="secondary" size="sm">Histórico</DsButton>
+          </div>
+          <div class="vetus-client-card__metrics">
+            <div>
+              <span>Crédito</span>
+              <strong>{{ formatCurrency(owner.financialProfile?.creditBalance ?? 0) }}</strong>
+            </div>
+            <div>
+              <span>Pendente</span>
+              <strong>{{ formatCurrency(openBillingAmount) }}</strong>
+            </div>
+          </div>
+          <p>Limite: {{ formatCurrency(owner.financialProfile?.allowedDebtLimit ?? 0) }}</p>
+        </article>
       </section>
 
       <section v-if="relatedWarnings.length > 0" class="hub-alerts">
@@ -230,6 +375,17 @@
         </DsAlert>
         <DsAlert v-if="actionMessage" variant="success" dismissible @dismiss="actionMessage = ''">
           {{ actionMessage }}
+        </DsAlert>
+      </section>
+
+      <section v-if="ownerOpportunityAlerts.length > 0" class="hub-alerts">
+        <DsAlert
+          v-for="(alert, index) in ownerOpportunityAlerts"
+          :key="index"
+          :variant="alert.variant"
+          dismissible
+        >
+          <strong>{{ alert.title }}</strong> - {{ alert.message }}
         </DsAlert>
       </section>
 
@@ -284,11 +440,41 @@
             <DsButton
               variant="ghost"
               size="sm"
-              :loading="creatingRelationshipQuote"
-              @click="createRelationshipQuote"
+              :disabled="Boolean(pendingQuoteConfirmation)"
+              @click="requestRelationshipQuoteConfirmation"
             >
               Gerar orçamento-base
             </DsButton>
+          </div>
+          <div
+            v-if="pendingQuoteConfirmation?.kind === 'relationship'"
+            class="quote-confirmation"
+            role="group"
+            aria-label="Confirmação de orçamento-base"
+          >
+            <strong>Confirmar criação de orçamento</strong>
+            <p><span>Tutor:</span> {{ owner.fullName }}</p>
+            <p><span>Tipo:</span> {{ pendingQuoteConfirmation.title }}</p>
+            <p><span>Observação:</span> {{ pendingQuoteConfirmation.notes }}</p>
+            <p v-if="quoteActionError" class="quote-confirmation__error">{{ quoteActionError }}</p>
+            <div class="quick-actions">
+              <DsButton
+                variant="primary"
+                size="sm"
+                :loading="creatingRelationshipQuote"
+                @click="confirmPendingQuote"
+              >
+                Confirmar criação
+              </DsButton>
+              <DsButton
+                variant="ghost"
+                size="sm"
+                :disabled="creatingRelationshipQuote"
+                @click="cancelPendingQuote"
+              >
+                Cancelar
+              </DsButton>
+            </div>
           </div>
         </DsCard>
       </section>
@@ -339,7 +525,12 @@
                 <DsButton tag="a" :to="`/patients/${patient.id}`" size="sm" variant="ghost">
                   Detalhes
                 </DsButton>
-                <DsButton tag="a" to="/counter-sales" size="sm" variant="secondary">
+                <DsButton
+                  tag="a"
+                  :to="counterSalesPath(owner.id, patient.id)"
+                  size="sm"
+                  variant="secondary"
+                >
                   Abrir Comanda
                 </DsButton>
               </div>
@@ -403,8 +594,8 @@
                 <DsButton
                   variant="secondary"
                   size="sm"
-                  :loading="creatingPackageQuoteId === pkg.id"
-                  @click="createPackageQuote(pkg)"
+                  :disabled="Boolean(pendingQuoteConfirmation)"
+                  @click="requestPackageQuoteConfirmation(pkg)"
                 >
                   Criar orçamento
                 </DsButton>
@@ -412,9 +603,39 @@
             </div>
           </div>
           <p v-else class="muted">Ainda não há recomendação de pacote para este relacionamento.</p>
+          <div
+            v-if="pendingQuoteConfirmation?.kind === 'package'"
+            class="quote-confirmation"
+            role="group"
+            aria-label="Confirmação de orçamento de pacote"
+          >
+            <strong>Confirmar criação de orçamento</strong>
+            <p><span>Tutor:</span> {{ owner.fullName }}</p>
+            <p><span>Tipo:</span> {{ pendingQuoteConfirmation.title }}</p>
+            <p><span>Observação:</span> {{ pendingQuoteConfirmation.notes }}</p>
+            <p v-if="quoteActionError" class="quote-confirmation__error">{{ quoteActionError }}</p>
+            <div class="quick-actions">
+              <DsButton
+                variant="primary"
+                size="sm"
+                :loading="creatingPackageQuoteId === pendingQuoteConfirmation.packageId"
+                @click="confirmPendingQuote"
+              >
+                Confirmar criação
+              </DsButton>
+              <DsButton
+                variant="ghost"
+                size="sm"
+                :disabled="Boolean(creatingPackageQuoteId)"
+                @click="cancelPendingQuote"
+              >
+                Cancelar
+              </DsButton>
+            </div>
+          </div>
         </DsCard>
 
-        <DsCard title="Mensageria contextual">
+        <DsCard title="Mensageria contextual (rascunhos)">
           <div class="message-list">
             <div
               v-for="message in contextualMessages"
@@ -432,7 +653,7 @@
                   variant="secondary"
                   size="sm"
                 >
-                  Enviar
+                  Abrir rascunho externo
                 </DsButton>
                 <DsButton tag="a" to="/notifications/whatsapp" variant="ghost" size="sm">
                   Hub WhatsApp
@@ -481,10 +702,26 @@ const ownerSummary = ref<OwnerSummaryResponse | null>(null);
 const relatedWarnings = ref<string[]>([]);
 const actionError = ref('');
 const actionMessage = ref('');
+const quoteActionError = ref('');
 const creatingRelationshipQuote = ref(false);
 const creatingPackageQuoteId = ref('');
 const loading = ref(true);
 const error = ref('');
+
+type PendingQuoteConfirmation =
+  | {
+      kind: 'relationship';
+      title: string;
+      notes: string;
+    }
+  | {
+      kind: 'package';
+      title: string;
+      notes: string;
+      packageId: string;
+    };
+
+const pendingQuoteConfirmation = ref<PendingQuoteConfirmation | null>(null);
 
 const activePatientsCount = computed(
   () => patients.value.filter((patient) => patient.status === 'active').length
@@ -504,6 +741,12 @@ const ownerBillingRecords = computed(() => billingRecords.value.filter((record) 
 const ownerQuotes = computed(() => quotes.value.filter((quote) => quote.ownerId === owner.value?.id));
 const activeQuotes = computed(() =>
   ownerQuotes.value.filter((quote) => quote.status === 'draft' || quote.status === 'approved')
+);
+const openBillingRecordsCount = computed(
+  () => ownerBillingRecords.value.filter((record) => record.status !== 'settled').length
+);
+const ownerBillingTotalAmount = computed(() =>
+  ownerBillingRecords.value.reduce((sum, record) => sum + record.subtotalAmount, 0)
 );
 const openBillingAmount = computed(() =>
   ownerBillingRecords.value
@@ -592,6 +835,28 @@ const upcomingAppointments = computed(() => {
   return [...appointments.value]
     .filter((appointment) => new Date(appointment.scheduledAt).getTime() >= now)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+});
+
+const nextAppointment = computed(() => upcomingAppointments.value[0] ?? null);
+
+const nextAppointmentLabel = computed(() => {
+  if (!nextAppointment.value) return 'Sem agendamento futuro';
+  return `${formatDate(nextAppointment.value.scheduledAt)} - ${nextAppointment.value.reason}`;
+});
+
+const diagnosticContextLabel = computed(() =>
+  patients.value.length > 0 ? 'Pronto para exames vinculados' : 'Sem animal vinculado'
+);
+
+const labContextLabel = computed(() => {
+  if (recentEncounters.value.length > 0) return `${recentEncounters.value.length} atendimento(s) no contexto`;
+  return diagnosticContextLabel.value;
+});
+
+const lastQuoteLabel = computed(() => {
+  const quote = [...ownerQuotes.value].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  if (!quote) return 'Nenhum orçamento registrado.';
+  return `${quote.number} - ${formatCurrency(quote.total)}`;
 });
 
 const whatsappContact = computed(() => {
@@ -734,7 +999,7 @@ interface OwnerAlert {
   message: string;
 }
 
-const ownerAlerts = computed<OwnerAlert[]>(() => {
+const ownerTopAlerts = computed<OwnerAlert[]>(() => {
   if (!owner.value) return [];
 
   const alerts: OwnerAlert[] = [];
@@ -779,11 +1044,17 @@ const ownerAlerts = computed<OwnerAlert[]>(() => {
     });
   }
 
+  return alerts;
+});
+
+const ownerOpportunityAlerts = computed<OwnerAlert[]>(() => {
+  const alerts: OwnerAlert[] = [];
+
   if (activeQuotes.value.length > 0) {
     alerts.push({
       variant: 'info',
-      title: 'Oportunidade comercial ativa',
-      message: `${activeQuotes.value.length} orçamento(s) exigem acompanhamento comercial.`
+      title: 'Oportunidade comercial',
+      message: `${activeQuotes.value.length} orçamento(s) em acompanhamento.`
     });
   }
 
@@ -810,42 +1081,68 @@ function buildWhatsAppLink(message: string): string | null {
   return `${whatsappContact.value}?text=${encodeURIComponent(message)}`;
 }
 
-async function createRelationshipQuote() {
-  if (!owner.value) return;
-  creatingRelationshipQuote.value = true;
-  actionError.value = '';
-  actionMessage.value = '';
-
-  try {
-    const quote = await quoteService.create({
-      ownerId: owner.value.id,
-      notes: `Orçamento-base gerado a partir do hub enterprise do cliente ${owner.value.fullName}.`
-    });
-    quotes.value = [quote, ...quotes.value];
-    actionMessage.value = `Orçamento ${quote.number} criado em rascunho para o cliente.`;
-  } catch (err: unknown) {
-    actionError.value = err instanceof Error ? err.message : 'Erro ao criar orçamento-base';
-  } finally {
-    creatingRelationshipQuote.value = false;
-  }
+function counterSalesPath(ownerId: string, patientId?: string): string {
+  const params = new URLSearchParams({ ownerId });
+  if (patientId) params.set('patientId', patientId);
+  return `/counter-sales?${params.toString()}`;
 }
 
-async function createPackageQuote(pkg: SuggestedPackage) {
+function requestRelationshipQuoteConfirmation() {
   if (!owner.value) return;
-  creatingPackageQuoteId.value = pkg.id;
+  quoteActionError.value = '';
+  pendingQuoteConfirmation.value = {
+    kind: 'relationship',
+    title: 'Orçamento-base',
+    notes: `Orçamento-base gerado a partir do hub enterprise do cliente ${owner.value.fullName}.`
+  };
+}
+
+function requestPackageQuoteConfirmation(pkg: SuggestedPackage) {
+  if (!owner.value) return;
+  quoteActionError.value = '';
+  pendingQuoteConfirmation.value = {
+    kind: 'package',
+    title: pkg.title,
+    packageId: pkg.id,
+    notes: `Pacote sugerido: ${pkg.title}. Motivo: ${pkg.reason}. Valor de referência: ${formatCurrency(pkg.referenceValue)}.`
+  };
+}
+
+function cancelPendingQuote() {
+  if (creatingRelationshipQuote.value || creatingPackageQuoteId.value) return;
+  pendingQuoteConfirmation.value = null;
+  quoteActionError.value = '';
+}
+
+async function confirmPendingQuote() {
+  if (!owner.value || !pendingQuoteConfirmation.value) return;
+
+  const confirmation = pendingQuoteConfirmation.value;
+  if (confirmation.kind === 'relationship') {
+    creatingRelationshipQuote.value = true;
+  } else {
+    creatingPackageQuoteId.value = confirmation.packageId;
+  }
+
   actionError.value = '';
   actionMessage.value = '';
+  quoteActionError.value = '';
 
   try {
     const quote = await quoteService.create({
       ownerId: owner.value.id,
-      notes: `Pacote sugerido: ${pkg.title}. Motivo: ${pkg.reason}. Valor de referência: ${formatCurrency(pkg.referenceValue)}.`
+      notes: confirmation.notes
     });
     quotes.value = [quote, ...quotes.value];
-    actionMessage.value = `Orçamento ${quote.number} criado para o pacote ${pkg.title}.`;
+    actionMessage.value =
+      confirmation.kind === 'relationship'
+        ? `Orçamento ${quote.number} criado em rascunho para o cliente.`
+        : `Orçamento ${quote.number} criado para o pacote ${confirmation.title}.`;
+    pendingQuoteConfirmation.value = null;
   } catch (err: unknown) {
-    actionError.value = err instanceof Error ? err.message : 'Erro ao criar orçamento do pacote';
+    quoteActionError.value = err instanceof Error ? err.message : 'Erro ao criar orçamento';
   } finally {
+    creatingRelationshipQuote.value = false;
     creatingPackageQuoteId.value = '';
   }
 }
@@ -941,6 +1238,65 @@ onMounted(async () => {
   gap: 16px;
 }
 
+.vetus-client-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.vetus-client-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.vetus-client-card__header,
+.vetus-client-card__metrics,
+.vetus-client-card__row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vetus-client-card__header h2 {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 16px;
+}
+
+.vetus-client-card__metrics > div,
+.vetus-client-card__row {
+  min-width: 0;
+}
+
+.vetus-client-card__metrics > div {
+  display: grid;
+  gap: 3px;
+}
+
+.vetus-client-card span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.vetus-client-card strong,
+.vetus-client-card p {
+  overflow-wrap: anywhere;
+}
+
+.vetus-client-card p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1016,6 +1372,31 @@ onMounted(async () => {
   color: #1d4ed8;
 }
 
+.quote-confirmation {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.quote-confirmation p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+}
+
+.quote-confirmation span {
+  color: var(--color-text-muted, #64748b);
+  font-weight: 800;
+}
+
+.quote-confirmation__error {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 @media (max-width: 720px) {
   .detail-grid {
     grid-template-columns: 1fr;
@@ -1025,8 +1406,11 @@ onMounted(async () => {
   .patient-list__item,
   .timeline-list__item,
   .message-list__item,
-  .package-list__item {
+  .package-list__item,
+  .vetus-client-card__header,
+  .vetus-client-card__row {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
