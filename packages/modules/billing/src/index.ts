@@ -30,6 +30,12 @@ export interface BillingServiceOptions {
   ) => Promise<void>;
 }
 
+export interface BillingRecordFilters {
+  readonly encounterId?: string;
+  readonly patientId?: string;
+  readonly ownerId?: string;
+}
+
 export class BillingService {
   readonly #encounters: EncountersService;
   readonly #repository?: BillingRepository;
@@ -109,10 +115,19 @@ export class BillingService {
     return record;
   }
 
-  public list(encounterId?: string): readonly BillingRecordSummary[] {
-    return Array.from(this.#records.values()).filter(
-      (record) => !encounterId || record.encounterId === encounterId
-    );
+  public list(filters?: string | BillingRecordFilters): readonly BillingRecordSummary[] {
+    const normalized =
+      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+    return Array.from(this.#records.values())
+      .filter((record) =>
+        normalized.encounterId ? record.encounterId === normalized.encounterId : true
+      )
+      .filter((record) =>
+        normalized.patientId ? record.patientId === normalized.patientId : true
+      )
+      .filter((record) =>
+        normalized.ownerId ? record.ownerId === normalized.ownerId : true
+      );
   }
 
   public async getByEncounterOrThrow(encounterId: EncounterId): Promise<BillingRecordSummary> {

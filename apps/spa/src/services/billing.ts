@@ -10,9 +10,14 @@ import type {
 } from '@/types/billing';
 
 export const billingService = {
-  async list(encounterId?: string): Promise<BillingRecordSummary[]> {
-    const params = encounterId ? `?encounterId=${encodeURIComponent(encounterId)}` : '';
-    const response = await apiRequest<BillingListResponse>(`/billing${params}`);
+  async list(filters?: string | { encounterId?: string; patientId?: string; ownerId?: string }): Promise<BillingRecordSummary[]> {
+    const normalized = typeof filters === 'string' ? { encounterId: filters } : filters;
+    const search = new URLSearchParams();
+    if (normalized?.encounterId) search.set('encounterId', normalized.encounterId);
+    if (normalized?.patientId) search.set('patientId', normalized.patientId);
+    if (normalized?.ownerId) search.set('ownerId', normalized.ownerId);
+    const query = search.toString();
+    const response = await apiRequest<BillingListResponse>(query ? `/billing?${query}` : '/billing');
     return response.items ?? [];
   },
 

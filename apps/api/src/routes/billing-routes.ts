@@ -42,21 +42,25 @@ export async function handleBillingRoutes(
 ): Promise<boolean> {
   const { billing, audit, requirePrincipal, enforceAbac } = handlers;
 
-  // GET /billing — list billing records (optionally filtered by encounterId)
+  // GET /billing — list billing records (optionally filtered by encounter/patient/owner)
   if (pathname === '/billing' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const encounterId = url.searchParams.get('encounterId') || undefined;
-    const items = await billing.list(encounterId);
+    const filters = {
+      encounterId: url.searchParams.get('encounterId') || undefined,
+      patientId: url.searchParams.get('patientId') || undefined,
+      ownerId: url.searchParams.get('ownerId') || undefined
+    };
+    const items = await billing.list(filters);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'billing',
       action: 'list',
       entityType: 'billing-record',
-      entityId: encounterId || 'all',
-      payloadSummary: encounterId
-        ? `Billing record for encounter ${encounterId}`
+      entityId: filters.encounterId || filters.patientId || filters.ownerId || 'all',
+      payloadSummary: filters.encounterId
+        ? `Billing record for encounter ${filters.encounterId}`
         : 'Billing records listed',
       riskLevel: 'low',
       correlationId

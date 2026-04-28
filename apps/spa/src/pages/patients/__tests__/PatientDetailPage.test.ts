@@ -245,6 +245,35 @@ const mockBillingRecords = [
   }
 ];
 
+const mockBillingItems = [
+  {
+    id: 'bill-item-1',
+    billingRecordId: 'bill-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    itemType: 'service' as const,
+    description: 'Consulta veterinária',
+    quantity: 1,
+    unitPriceAmount: 180,
+    totalAmount: 180,
+    createdByUserId: 'usr-1',
+    createdAt: '2024-01-03T09:20:00Z'
+  },
+  {
+    id: 'bill-item-2',
+    billingRecordId: 'bill-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    itemType: 'exam' as const,
+    description: 'Radiografia',
+    quantity: 1,
+    unitPriceAmount: 60.5,
+    totalAmount: 60.5,
+    createdByUserId: 'usr-1',
+    createdAt: '2024-01-03T09:25:00Z'
+  }
+];
+
 const mockDiagnosticOrders = [
   {
     id: 'diag-1',
@@ -306,6 +335,7 @@ const mockMedicalRecordTimelineList = vi.fn().mockResolvedValue(mockClinicalTime
 const mockTriageList = vi.fn().mockResolvedValue(mockTriageRecords);
 const mockInpatientList = vi.fn().mockResolvedValue(mockInpatientStays);
 const mockBillingList = vi.fn().mockResolvedValue(mockBillingRecords);
+const mockBillingListItems = vi.fn().mockResolvedValue(mockBillingItems);
 const mockLaboratoryListOrders = vi.fn().mockResolvedValue(mockDiagnosticOrders);
 const mockQuoteList = vi.fn().mockResolvedValue(mockQuotes);
 const mockQuoteCreate = vi.fn().mockResolvedValue({
@@ -418,7 +448,8 @@ vi.mock('@/services/inpatient', () => ({
 
 vi.mock('@/services/billing', () => ({
   billingService: {
-    list: (...args: unknown[]) => mockBillingList(...args)
+    list: (...args: unknown[]) => mockBillingList(...args),
+    listItems: (...args: unknown[]) => mockBillingListItems(...args)
   }
 }));
 
@@ -493,6 +524,7 @@ describe('PatientDetailPage', () => {
     mockTriageList.mockResolvedValue(mockTriageRecords);
     mockInpatientList.mockResolvedValue(mockInpatientStays);
     mockBillingList.mockResolvedValue(mockBillingRecords);
+    mockBillingListItems.mockResolvedValue(mockBillingItems);
     mockLaboratoryListOrders.mockResolvedValue(mockDiagnosticOrders);
     mockQuoteList.mockResolvedValue(mockQuotes);
     mockQuoteCreate.mockResolvedValue({
@@ -532,7 +564,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Detalhes do Animal');
     expect(wrapper.text()).toContain('João Silva');
-    expect(wrapper.text()).toContain('Abrir cobrança do atendimento');
+    expect(wrapper.text()).toContain('Abrir comanda do atendimento');
     expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Ver cadastro do cliente');
     expect(wrapper.text()).toContain('Editar Cadastro');
@@ -548,6 +580,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Abrir prontuário');
     expect(wrapper.text()).toContain('Vacinas e Vermífugos');
     expect(wrapper.text()).toContain('Agenda');
+    expect(wrapper.text()).toContain('Comanda');
     expect(wrapper.text()).toContain('Exames');
     expect(wrapper.text()).toContain('Internação');
     expect(wrapper.text()).toContain('Receituário');
@@ -583,6 +616,14 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Consulta cancelada');
     expect(wrapper.find('a[href="/appointments/apt-2"]').exists()).toBe(true);
 
+    await expandCard('Comanda');
+    expect(wrapper.text()).toContain('Aberto');
+    expect(wrapper.text()).toContain('240,50');
+    expect(wrapper.text()).toContain('2 item(ns)');
+    expect(wrapper.text()).toContain('Consulta veterinária');
+    expect(wrapper.text()).toContain('Radiografia');
+    expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
+
     await expandCard('Exames');
     expect(wrapper.text()).toContain('hemograma.pdf');
     expect(wrapper.text()).toContain('radiografia-laudo.pdf');
@@ -595,6 +636,9 @@ describe('PatientDetailPage', () => {
 
     expect(mockMedicalRecordEntriesList).toHaveBeenCalledWith('enc-1');
     expect(mockAppointmentList).toHaveBeenCalledWith({ patientId: 'pat-1' });
+    expect(mockBillingList).toHaveBeenCalledWith({ ownerId: 'owner-1' });
+    expect(mockBillingList).toHaveBeenCalledWith({ encounterId: 'enc-1', patientId: 'pat-1' });
+    expect(mockBillingListItems).toHaveBeenCalledWith('enc-1');
     expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
     expect(mockLaboratoryListOrders).toHaveBeenCalledWith({ patientId: 'pat-1' });
     expect(mockAttachmentList).toHaveBeenCalledWith('medical_record', 'mr-1');

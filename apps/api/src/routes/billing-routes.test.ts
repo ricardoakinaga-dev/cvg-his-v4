@@ -72,7 +72,7 @@ function createPrincipal(): AuthenticatedPrincipal {
 
 function createMockBilling() {
   return {
-    list: async (_encounterId?: string) => [
+    list: async (_filters?: unknown) => [
       { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
     ],
     listItems: async (_encounterId: string) => [{ id: 'bi-1', description: 'item 1' }],
@@ -149,11 +149,18 @@ test('handleBillingRoutes GET /billing lists billing records', async () => {
 
 test('handleBillingRoutes GET /billing with encounterId filter', async () => {
   const response = new MockResponse();
-  const mockBilling = createMockBilling();
+  let receivedFilters: unknown;
+  const mockBilling = {
+    ...createMockBilling(),
+    list: async (filters?: unknown) => {
+      receivedFilters = filters;
+      return [{ id: 'br-1', encounterId: 'enc-1', patientId: 'pat-1', ownerId: 'owner-1' }];
+    }
+  };
 
   const handled = await handleBillingRoutes(
     '/billing',
-    { method: 'GET', url: '/billing?encounterId=enc-1' } as never,
+    { method: 'GET', url: '/billing?encounterId=enc-1&patientId=pat-1&ownerId=owner-1' } as never,
     response as never,
     'corr-billing-2',
     {
@@ -166,6 +173,11 @@ test('handleBillingRoutes GET /billing with encounterId filter', async () => {
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
+  assert.deepEqual(receivedFilters, {
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1'
+  });
 });
 
 test('handleBillingRoutes GET /billing/:encounterId/items lists items', async () => {

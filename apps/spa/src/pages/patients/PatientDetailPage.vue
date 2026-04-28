@@ -375,6 +375,68 @@
 
         <article
           class="vetus-accordion-card"
+          :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('billing') }"
+        >
+          <button
+            type="button"
+            class="vetus-accordion-card__header"
+            :aria-expanded="isPatientCardExpanded('billing')"
+            @click="togglePatientCard('billing')"
+          >
+            <span><span class="vetus-module-icon">▤</span>Comanda</span>
+            <span>{{ isPatientCardExpanded('billing') ? '−' : '+' }}</span>
+          </button>
+          <div class="vetus-accordion-card__summary">
+            <strong>{{ patientBillingRecords.length }} comanda(s)</strong>
+            <p>{{ focalBillingSummary }}</p>
+          </div>
+          <div v-if="isPatientCardExpanded('billing')" class="vetus-accordion-card__body">
+            <div v-if="patientBillingRecords.length" class="record-list">
+              <div
+                v-for="record in patientBillingRecords.slice(0, 4)"
+                :key="record.id"
+                class="record-list__item"
+              >
+                <div>
+                  <strong>{{ billingStatusLabel(record.status) }} · {{ formatCurrency(record.subtotalAmount, record.currency) }}</strong>
+                  <p>Atendimento {{ record.encounterId }}</p>
+                </div>
+                <RouterLink :to="`/billing/${record.encounterId}`">Gerenciar</RouterLink>
+              </div>
+            </div>
+            <p v-else class="muted">Esse animal ainda não possui comanda vinculada.</p>
+
+            <section class="billing-items-group" aria-label="Itens da comanda do atendimento atual">
+              <h4>Itens do atendimento atual</h4>
+              <div v-if="focalBillingItems.length" class="record-list">
+                <div
+                  v-for="item in focalBillingItems.slice(0, 5)"
+                  :key="item.id"
+                  class="record-list__item"
+                >
+                  <div>
+                    <strong>{{ item.description }}</strong>
+                    <p>{{ billingItemTypeLabel(item.itemType) }} · {{ item.quantity }} x {{ formatCurrency(item.unitPriceAmount, 'BRL') }}</p>
+                  </div>
+                  <span>{{ formatCurrency(item.totalAmount, 'BRL') }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">Nenhum item lançado no atendimento atual.</p>
+            </section>
+
+            <div class="quick-actions">
+              <DsButton tag="a" :to="patientBillingPath" variant="primary" size="sm">
+                {{ patientBillingActionLabel }}
+              </DsButton>
+              <DsButton tag="a" to="/billing" variant="secondary" size="sm">
+                Ver comandas
+              </DsButton>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="vetus-accordion-card"
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('exams') }"
         >
           <button
@@ -709,7 +771,7 @@ import { listTriageRecords } from '@/services/triage';
 import { useEntityCache } from '@/composables/useEntityCache';
 import type { AttachmentSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
-import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
+import type { BillingItemSummary, BillingRecordSummary, BillingStatus, BillingItemType } from '@/types/billing';
 import type {
   EncounterSummary,
   EncounterTimelineEventSummary,
@@ -811,6 +873,7 @@ const patientPrescriptions = ref<PatientPrescription[]>([]);
 const focalTriage = ref<TriageSummary | null>(null);
 const focalInpatientStay = ref<InpatientStaySummary | null>(null);
 const focalBilling = ref<BillingRecordSummary | null>(null);
+const focalBillingItems = ref<BillingItemSummary[]>([]);
 const actionError = ref('');
 const actionMessage = ref('');
 const creatingPackageQuote = ref(false);
@@ -906,9 +969,8 @@ const medicalRecordPath = computed(() =>
 );
 
 const patientBillingPath = computed(() => {
-  const activeEncounter = activeEncounters.value[0];
-  if (activeEncounter) {
-    return `/billing/${activeEncounter.id}`;
+  if (focalEncounter.value) {
+    return `/billing/${focalEncounter.value.id}`;
   }
 
   const params = new URLSearchParams();
@@ -923,7 +985,7 @@ const patientBillingPath = computed(() => {
 });
 
 const patientBillingActionLabel = computed(() =>
-  activeEncounters.value[0] ? 'Abrir cobrança do atendimento' : 'Selecionar atendimento para cobrança'
+  focalEncounter.value ? 'Abrir comanda do atendimento' : 'Abrir atendimento para comanda'
 );
 
 const anamnesisActionPath = computed(() => {
@@ -1433,6 +1495,24 @@ const ownerOpenBillingAmount = computed(() =>
     .reduce((sum, record) => sum + record.subtotalAmount, 0)
 );
 
+const patientBillingRecords = computed(() =>
+  ownerBillingRecords.value
+    .filter((record) => record.patientId === patient.value?.id)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+);
+
+const focalBillingSummary = computed(() => {
+  if (!focalEncounter.value) {
+    return 'Abra um atendimento para iniciar uma comanda.';
+  }
+
+  if (!focalBilling.value) {
+    return 'Atendimento sem comanda criada.';
+  }
+
+  return `${billingStatusLabel(focalBilling.value.status)} · ${formatCurrency(focalBilling.value.subtotalAmount, focalBilling.value.currency)} · ${focalBillingItems.value.length} item(ns)`;
+});
+
 const ownerSettledBillingAmount = computed(() =>
   ownerBillingRecords.value
     .filter((record) => record.status === 'settled')
@@ -1743,6 +1823,7 @@ function resetRelatedState() {
   focalTriage.value = null;
   focalInpatientStay.value = null;
   focalBilling.value = null;
+  focalBillingItems.value = [];
   actionError.value = '';
   actionMessage.value = '';
   clinicalHistoryDraft.value = '';
@@ -1782,6 +1863,17 @@ function billingStatusLabel(status: BillingStatus): string {
     open: 'Aberto',
     settled: 'Liquidado'
   }[status];
+}
+
+function billingItemTypeLabel(type: BillingItemType): string {
+  return {
+    service: 'Serviço',
+    supply: 'Material',
+    procedure: 'Procedimento',
+    exam: 'Exame',
+    daily_rate: 'Diária',
+    other: 'Outro'
+  }[type];
 }
 
 function inpatientStatusLabel(status: InpatientStatus): string {
@@ -1962,7 +2054,7 @@ async function loadPage() {
       patientService.getSummary(loadedPatient.id),
       getOwnerName(loadedPatient.primaryOwnerId),
       ownerService.getById(loadedPatient.primaryOwnerId),
-      billingService.list(),
+      billingService.list({ ownerId: loadedPatient.primaryOwnerId }),
       quoteService.list(),
       laboratoryService.listOrders({ patientId: loadedPatient.id }),
       prescriptionsService.listByPatient(loadedPatient.id)
@@ -2107,7 +2199,7 @@ async function loadPage() {
         encounterService.getTimeline(selectedEncounter.id),
         listTriageRecords(selectedEncounter.id),
         inpatientService.list(selectedEncounter.id),
-        billingService.list(selectedEncounter.id)
+        billingService.list({ encounterId: selectedEncounter.id, patientId: loadedPatient.id })
       ]);
 
     let entriesResult: PromiseSettledResult<ClinicalEntrySummary[]> | undefined;
@@ -2140,6 +2232,14 @@ async function loadPage() {
 
     if (billingResult?.status === 'fulfilled') {
       focalBilling.value = billingResult.value[0] ?? null;
+      if (focalBilling.value) {
+        try {
+          focalBillingItems.value = await billingService.listItems(selectedEncounter.id);
+        } catch {
+          focalBillingItems.value = [];
+          registerWarning('itens da comanda');
+        }
+      }
     } else if (billingResult) {
       registerWarning('financeiro');
     }

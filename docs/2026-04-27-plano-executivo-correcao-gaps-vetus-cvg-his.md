@@ -404,28 +404,29 @@ Checkpoint em 2026-04-28:
 - P0 foi implementado em escopo focado e publicado no compose v2 existente.
 - P1 foi implementado em escopo focado e publicado no compose v2 existente.
 - P2-01 foi implementado em escopo focado para a agenda historica e futura por animal.
+- P2-02 foi implementado em escopo focado para comanda integrada ao atendimento.
 
-Proxima acao recomendada: executar `P2-02 - Comanda integrada ao atendimento`.
+Proxima acao recomendada: executar `P2-03 - Vacinas e vermifugos como modulo proprio`.
 
 Justificativa:
 
-- o card Agenda do animal agora mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
-- a proxima lacuna operacional de maior impacto passa a ser a abertura/listagem de comanda a partir do animal ou atendimento;
-- com a jornada assistencial localizada, P2-02 pode conectar financeiro/comercial sem depender de contexto manual.
+- o card Agenda do animal ja mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
+- a comanda agora aparece no detalhe do animal, filtra por paciente/tutor/atendimento e lista itens do atendimento focal;
+- a proxima lacuna operacional passa a ser transformar vacinas e vermifugos em modulo proprio, reduzindo dependencia de agenda/texto solto.
 
-Escopo minimo de `P2-02`:
+Escopo minimo de `P2-03`:
 
-1. Mapear as fontes atuais de billing/comandas, itens de atendimento e itens comerciais ja disponiveis no `cvg-his-v2`.
-2. Ajustar o detalhe do animal/atendimento para abrir ou listar comanda sem perder paciente, tutor e atendimento de origem.
-3. Garantir que itens da comanda aparecam com status, valores e origem operacional.
-4. Criar/ajustar testes focados de API e SPA para comanda por animal/atendimento.
+1. Mapear as fontes atuais de vacinas/vermifugos e eventos preventivos ja disponiveis no `cvg-his-v2`.
+2. Separar a experiencia preventiva da agenda generica quando houver fluxo proprio.
+3. Garantir listagem por animal, proximas doses, historico, status e responsavel.
+4. Criar/ajustar testes focados de API e SPA para eventos preventivos por animal.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P2-02`:
+Criterio de aceite de `P2-03`:
 
-- a comanda pode ser aberta ou acessada a partir do animal/atendimento;
-- itens ficam vinculados ao contexto assistencial correto;
-- a tela mostra status, valores e origem sem dados fake;
+- vacinas e vermifugos aparecem como modulo proprio por animal;
+- proximas doses e historico ficam claros sem depender de texto solto;
+- eventos preventivos preservam contexto do animal/tutor e status operacional;
 - testes focados cobrem caminho API/SPA principal;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
@@ -437,6 +438,36 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P2-02 Comanda integrada ao atendimento
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- `BillingService.list` passou a aceitar filtros por `encounterId`, `patientId` e `ownerId`, mantendo compatibilidade com o filtro legado por string de atendimento;
+- `GET /billing` passou a expor esses filtros no handler e no OpenAPI;
+- `billingService.list` na SPA passou a montar query estruturada para atendimento, animal e tutor;
+- o detalhe do animal ganhou card `Comanda`, com status/valor da comanda focal, lista de comandas do animal, itens do atendimento atual e link direto para `/billing/:encounterId`;
+- o carregamento do detalhe do animal passou a buscar comandas por tutor e atendimento por animal, reduzindo leitura global e preservando contexto assistencial;
+- os scripts de teste/typecheck da API passaram a recompilar `@cvg-his-v2/module-billing`, e o teste do modulo billing passou a compilar antes de rodar `dist`.
+
+Validacao:
+
+- teste do modulo billing cobre filtros por animal, tutor e atendimento;
+- teste de rota cobre repasse de `encounterId`, `patientId` e `ownerId` em `GET /billing`;
+- teste focado do `PatientDetailPage` cobre card `Comanda`, itens e link para gerenciamento;
+- `pnpm --filter @cvg-his-v2/module-billing run test`;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/api run test`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/api run typecheck`;
+- `pnpm validate:openapi`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/patients/patient_luna` 200, API local `http://127.0.0.1:3003/health` 200 e rota protegida `/billing?patientId=patient_luna` retornando 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA e API health retornando 200.
+
+Proxima frente recomendada: `P2-03 - Vacinas e vermifugos como modulo proprio`.
 
 ### 2026-04-28 - P2-01 Agenda historica e futura por animal
 

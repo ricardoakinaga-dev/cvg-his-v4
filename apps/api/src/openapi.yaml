@@ -1690,6 +1690,18 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter billing records for a single patient/animal.
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter billing records for a single tutor/owner.
       responses:
         '200':
           description: Medical records

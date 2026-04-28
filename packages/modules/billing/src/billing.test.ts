@@ -138,6 +138,36 @@ test('BillingService list filters by encounter', async () => {
   assert.equal(service.list('encounter_1')[0].encounterId, 'encounter_1');
 });
 
+test('BillingService list filters by patient and owner without losing encounter filter compatibility', async () => {
+  const service = new BillingService({
+    getOrThrow(encounterId: string) {
+      const isSecondEncounter = encounterId === 'encounter_2';
+      return {
+        id: encounterId,
+        accountId: 'acc_test',
+        patientId: isSecondEncounter ? 'patient_2' : 'patient_1',
+        ownerId: isSecondEncounter ? 'owner_2' : 'owner_1'
+      };
+    }
+  } as never);
+
+  await service.createEstimate({
+    encounterId: 'encounter_1',
+    administrativeNotes: 'Comanda do paciente 1'
+  });
+  await service.createEstimate({
+    encounterId: 'encounter_2',
+    administrativeNotes: 'Comanda do paciente 2'
+  });
+
+  assert.equal(service.list({ patientId: 'patient_1' }).length, 1);
+  assert.equal(service.list({ patientId: 'patient_1' })[0].encounterId, 'encounter_1');
+  assert.equal(service.list({ ownerId: 'owner_2' }).length, 1);
+  assert.equal(service.list({ ownerId: 'owner_2' })[0].patientId, 'patient_2');
+  assert.equal(service.list({ encounterId: 'encounter_2', patientId: 'patient_2' }).length, 1);
+  assert.equal(service.list('encounter_1').length, 1);
+});
+
 test('BillingService hydrates records and items from repository', async () => {
   const repository = createRepository({
     async findRecordsByAccountId() {
