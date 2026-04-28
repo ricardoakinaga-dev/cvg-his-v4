@@ -9,8 +9,15 @@ import type {
 } from '@/types/appointment';
 
 export const appointmentService = {
-  async list(): Promise<AppointmentSummary[]> {
-    const response = await apiRequest<AppointmentsListResponse>('/appointments');
+  async list(filters?: { patientId?: string }): Promise<AppointmentSummary[]> {
+    const search = new URLSearchParams();
+    if (filters?.patientId) {
+      search.set('patientId', filters.patientId);
+    }
+    const query = search.toString();
+    const response = await apiRequest<AppointmentsListResponse>(
+      query ? `/appointments?${query}` : '/appointments'
+    );
     return response.items ?? [];
   },
 

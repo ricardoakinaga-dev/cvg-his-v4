@@ -73,6 +73,7 @@ export async function handleSchedulingRoutes(
       items: scheduling.listAppointments(principal.user.accountId, {
         startAt: url.searchParams.get('startAt') ?? undefined,
         endAt: url.searchParams.get('endAt') ?? undefined,
+        patientId: url.searchParams.get('patientId') ?? undefined,
         statuses: parseStatuses(url),
         practitionerStaffId:
           (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ?? undefined,

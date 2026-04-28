@@ -71,6 +71,30 @@ const mockAppointments = [
     status: 'scheduled' as const,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'apt-2',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    scheduledAt: '2024-01-02T11:00:00Z',
+    visitType: 'return' as const,
+    reason: 'Retorno ortopédico',
+    status: 'completed' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-02T12:00:00Z'
+  },
+  {
+    id: 'apt-3',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    scheduledAt: '2024-01-04T14:00:00Z',
+    visitType: 'scheduled' as const,
+    reason: 'Consulta cancelada',
+    status: 'cancelled' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-04T12:00:00Z'
   }
 ];
 
@@ -370,7 +394,7 @@ vi.mock('@/services/encounter', () => ({
 
 vi.mock('@/services/appointment', () => ({
   appointmentService: {
-    list: () => mockAppointmentList()
+    list: (...args: unknown[]) => mockAppointmentList(...args)
   }
 }));
 
@@ -430,6 +454,10 @@ vi.mock('@/composables/useEntityCache', () => ({
 }));
 
 vi.mock('vue-router', () => ({
+  RouterLink: {
+    props: ['to'],
+    template: '<a :href="to"><slot /></a>'
+  },
   useRoute: () => ({
     params: { id: 'pat-1' }
   })
@@ -532,6 +560,8 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Radiografia');
     expect(wrapper.text()).toContain('Resultado');
     expect(wrapper.text()).not.toContain('Tutor relata claudicação após passeio.');
+    expect(wrapper.text()).toContain('1 próximo(s) · 1 histórico · 1 cancelado(s)');
+    expect(wrapper.text()).toContain('Próximo: Vacina anual');
 
     const expandCard = async (label: string) => {
       const trigger = wrapper
@@ -544,6 +574,15 @@ describe('PatientDetailPage', () => {
     await expandCard('Anamneses');
     expect(wrapper.text()).toContain('Tutor relata claudicação após passeio.');
 
+    await expandCard('Agenda');
+    expect(wrapper.text()).toContain('Próximos');
+    expect(wrapper.text()).toContain('Vacina anual');
+    expect(wrapper.text()).toContain('Histórico');
+    expect(wrapper.text()).toContain('Retorno ortopédico');
+    expect(wrapper.text()).toContain('Cancelados / não compareceu');
+    expect(wrapper.text()).toContain('Consulta cancelada');
+    expect(wrapper.find('a[href="/appointments/apt-2"]').exists()).toBe(true);
+
     await expandCard('Exames');
     expect(wrapper.text()).toContain('hemograma.pdf');
     expect(wrapper.text()).toContain('radiografia-laudo.pdf');
@@ -555,6 +594,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('lesao-pata.png');
 
     expect(mockMedicalRecordEntriesList).toHaveBeenCalledWith('enc-1');
+    expect(mockAppointmentList).toHaveBeenCalledWith({ patientId: 'pat-1' });
     expect(mockPrescriptionListByPatient).toHaveBeenCalledWith('pat-1');
     expect(mockLaboratoryListOrders).toHaveBeenCalledWith({ patientId: 'pat-1' });
     expect(mockAttachmentList).toHaveBeenCalledWith('medical_record', 'mr-1');

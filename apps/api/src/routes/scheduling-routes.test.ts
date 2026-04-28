@@ -289,6 +289,84 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
   assert.equal(cancelled.reason, 'Reagendamento solicitado');
 });
 
+test('handleSchedulingRoutes lists patient appointments across past and future dates', async () => {
+  const scheduling = createSchedulingService();
+  const handlers = {
+    scheduling,
+    smartScheduling: createSmartSchedulingService(),
+    audit: createAudit() as never,
+    requirePrincipal: () => createPrincipal()
+  };
+
+  const pastResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/appointments',
+    createJsonRequest('POST', '/appointments', {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2024-01-02T09:00:00.000Z',
+      visitType: 'return',
+      reason: 'Retorno historico'
+    }),
+    pastResponse as never,
+    'corr-scheduling-patient-history-past',
+    handlers
+  );
+  const pastAppointment = pastResponse.bodyJson<{ id: string }>();
+
+  const futureResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/appointments',
+    createJsonRequest('POST', '/appointments', {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2099-01-01T10:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Vacina futura'
+    }),
+    futureResponse as never,
+    'corr-scheduling-patient-history-future',
+    handlers
+  );
+  const futureAppointment = futureResponse.bodyJson<{ id: string }>();
+
+  const otherPatientResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/appointments',
+    createJsonRequest('POST', '/appointments', {
+      patientId: 'patient_mogeb6qv_5b0gq64z',
+      ownerId: 'owner_ricardo_akinaga',
+      scheduledAt: '2099-01-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta de outro animal'
+    }),
+    otherPatientResponse as never,
+    'corr-scheduling-patient-history-other',
+    handlers
+  );
+  const otherPatientAppointment = otherPatientResponse.bodyJson<{ id: string }>();
+
+  const listResponse = new MockResponse();
+  const listHandled = await handleSchedulingRoutes(
+    '/appointments',
+    createJsonRequest('GET', '/appointments?patientId=patient_luna'),
+    listResponse as never,
+    'corr-scheduling-patient-history-list',
+    handlers
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(listResponse.statusCode, 200);
+  const listed = listResponse.bodyJson<{
+    items: Array<{ id: string; patientId: string; scheduledAt: string }>;
+  }>();
+  const listedIds = listed.items.map((item) => item.id);
+  assert.ok(listedIds.includes(pastAppointment.id));
+  assert.ok(listedIds.includes(futureAppointment.id));
+  assert.ok(!listedIds.includes(otherPatientAppointment.id));
+  assert.ok(listed.items.every((item) => item.patientId === 'patient_luna'));
+});
+
 test('handleSchedulingRoutes processes the operational queue flow', async () => {
   const scheduling = createSchedulingService();
 

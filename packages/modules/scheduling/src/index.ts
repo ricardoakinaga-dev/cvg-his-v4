@@ -92,6 +92,7 @@ export interface SchedulingServiceOptions {
 export interface SchedulingAppointmentFilters {
   readonly startAt?: string;
   readonly endAt?: string;
+  readonly patientId?: string;
   readonly statuses?: readonly SchedulingAppointmentSummary['status'][];
   readonly practitionerStaffId?: string | 'unassigned';
   readonly serviceId?: string;
@@ -304,6 +305,7 @@ export class SchedulingService {
       .filter((appointment) =>
         filters?.statuses?.length ? filters.statuses.includes(appointment.status) : true
       )
+      .filter((appointment) => (filters?.patientId ? appointment.patientId === filters.patientId : true))
       .filter((appointment) => {
         if (!filters?.practitionerStaffId) return true;
         if (filters.practitionerStaffId === 'unassigned') {

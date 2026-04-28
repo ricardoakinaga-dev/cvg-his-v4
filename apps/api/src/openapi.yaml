@@ -1455,6 +1455,12 @@ paths:
       operationId: listAppointments
       summary: List appointments
       tags: [Appointments]
+      parameters:
+        - in: query
+          name: patientId
+          schema:
+            type: string
+          description: Filter appointments for a single patient, including past and future records when no date window is provided.
       responses:
         '200':
           description: List of appointments

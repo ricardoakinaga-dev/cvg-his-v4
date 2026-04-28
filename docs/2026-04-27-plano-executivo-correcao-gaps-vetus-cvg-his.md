@@ -403,33 +403,30 @@ Checkpoint em 2026-04-28:
 
 - P0 foi implementado em escopo focado e publicado no compose v2 existente.
 - P1 foi implementado em escopo focado e publicado no compose v2 existente.
-- O proximo passo deste plano de GAPs nao e mais P0/P1. A proxima frente e `P2-01 - Agenda historica e futura por animal`.
+- P2-01 foi implementado em escopo focado para a agenda historica e futura por animal.
 
-Proxima acao recomendada: executar `P2-01`.
+Proxima acao recomendada: executar `P2-02 - Comanda integrada ao atendimento`.
 
 Justificativa:
 
-- o card Agenda do animal ainda precisa deixar de ser apenas um resumo de futuro e passar a funcionar como historico operacional do paciente;
-- a agenda e a ponte mais curta entre cockpit clinico, retornos, vacina/vermifugo, atendimento e comanda;
-- antes de mexer em comanda/financeiro, o sistema precisa saber mostrar passado e futuro do animal sem perder contexto;
-- isso reduz risco no P2-02, porque a abertura de comanda pelo animal/atendimento depende de uma jornada assistencial bem localizada.
+- o card Agenda do animal agora mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
+- a proxima lacuna operacional de maior impacto passa a ser a abertura/listagem de comanda a partir do animal ou atendimento;
+- com a jornada assistencial localizada, P2-02 pode conectar financeiro/comercial sem depender de contexto manual.
 
-Escopo minimo de `P2-01`:
+Escopo minimo de `P2-02`:
 
-1. Observar novamente no Vetus, apenas em modo observacional, como o detalhe do animal e a agenda expõem eventos passados e futuros.
-2. Mapear no `cvg-his-v2` as fontes atuais de `appointments`, `encounters`, vacinas/vermifugos e retornos.
-3. Ajustar o card Agenda do detalhe do animal para mostrar eventos passados e futuros com status, data, motivo e link de aprofundamento.
-4. Garantir filtros ou separacao clara entre `Proximos`, `Historico` e `Cancelados/nao compareceu`, se o fluxo Vetus justificar.
-5. Criar/ajustar testes focados de SPA e API para agenda por animal.
-6. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
+1. Mapear as fontes atuais de billing/comandas, itens de atendimento e itens comerciais ja disponiveis no `cvg-his-v2`.
+2. Ajustar o detalhe do animal/atendimento para abrir ou listar comanda sem perder paciente, tutor e atendimento de origem.
+3. Garantir que itens da comanda aparecam com status, valores e origem operacional.
+4. Criar/ajustar testes focados de API e SPA para comanda por animal/atendimento.
+5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P2-01`:
+Criterio de aceite de `P2-02`:
 
-- card Agenda do animal lista historico e proximos eventos do mesmo paciente;
-- eventos passados nao desaparecem por filtro de data futura;
-- status de agenda fica legivel e consistente com o vocabulario operacional;
-- links levam para a agenda ou detalhe correspondente sem perder contexto do animal/tutor;
-- teste focado cobre ao menos um evento passado e um futuro;
+- a comanda pode ser aberta ou acessada a partir do animal/atendimento;
+- itens ficam vinculados ao contexto assistencial correto;
+- a tela mostra status, valores e origem sem dados fake;
+- testes focados cobrem caminho API/SPA principal;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
 Observacao de sequenciamento:
@@ -440,6 +437,34 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P2-01 Agenda historica e futura por animal
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- o card `Agenda` do detalhe do animal deixou de exibir apenas proximos eventos e passou a separar `Proximos`, `Historico` e `Cancelados / nao compareceu`;
+- cada item mostra motivo, status operacional, data/hora e link `Ver na agenda` para o detalhe do agendamento;
+- o carregamento da SPA passou a consultar `/appointments?patientId=...`, preservando o filtro por animal desde a API;
+- `SchedulingService.listAppointments` passou a aceitar `patientId`, mantendo os filtros existentes de periodo, status, profissional, servico, especialidade, unidade e busca;
+- o script de teste/typecheck da API passou a recompilar `@cvg-his-v2/module-scheduling`, evitando tipos obsoletos quando o contrato de agendamento muda.
+
+Validacao:
+
+- teste focado do `PatientDetailPage` cobre um agendamento futuro, um historico e um cancelado do mesmo animal;
+- teste focado de rota cobre `GET /appointments?patientId=patient_luna` retornando eventos passados e futuros e excluindo outro animal;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/module-scheduling run test`;
+- `pnpm --filter @cvg-his-v2/api run test`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/api run typecheck`;
+- `pnpm validate:openapi`;
+- rebuild/recreate executado somente em `cvg-his-v2-api` e `cvg-his-v2-spa` no `docker-compose.v2.yml`;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/patients/patient_luna` 200, API local `http://127.0.0.1:3003/health` 200 e rota protegida `/appointments?patientId=patient_luna` retornando 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA e API health retornando 200.
+
+Proxima frente recomendada: `P2-02 - Comanda integrada ao atendimento`.
 
 ### 2026-04-28 - Atualizacao de proximo passo apos P1
 

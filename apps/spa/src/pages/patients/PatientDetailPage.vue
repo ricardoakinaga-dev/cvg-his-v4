@@ -302,22 +302,72 @@
             <span>{{ isPatientCardExpanded('agenda') ? '−' : '+' }}</span>
           </button>
           <div class="vetus-accordion-card__summary">
-            <strong>{{ upcomingAppointments.length }} futuro(s)</strong>
-            <p>{{ nextAppointmentDetailLabel }}</p>
+            <strong>{{ agendaSummaryLabel }}</strong>
+            <p>{{ agendaDetailLabel }}</p>
           </div>
           <div v-if="isPatientCardExpanded('agenda')" class="vetus-accordion-card__body">
-            <div v-if="upcomingAppointments.length" class="timeline-list">
-              <div
-                v-for="appointment in upcomingAppointments.slice(0, 5)"
-                :key="appointment.id"
-                class="timeline-list__item"
-              >
-                <div>
-                  <strong>{{ appointment.reason }}</strong>
-                  <p>{{ appointmentStatusLabel(appointment.status) }}</p>
+            <div v-if="patientAppointments.length" class="agenda-groups">
+              <section class="agenda-group" aria-label="Próximos agendamentos">
+                <h4>Próximos</h4>
+                <div v-if="upcomingAppointments.length" class="timeline-list">
+                  <div
+                    v-for="appointment in upcomingAppointments.slice(0, 5)"
+                    :key="appointment.id"
+                    class="timeline-list__item"
+                  >
+                    <div>
+                      <strong>{{ appointment.reason }}</strong>
+                      <p>{{ appointmentStatusLabel(appointment.status) }}</p>
+                    </div>
+                    <div class="timeline-list__meta">
+                      <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
+                      <RouterLink :to="appointmentDetailPath(appointment.id)">Ver na agenda</RouterLink>
+                    </div>
+                  </div>
                 </div>
-                <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
-              </div>
+                <p v-else class="muted">Sem próximos agendamentos para este animal.</p>
+              </section>
+
+              <section class="agenda-group" aria-label="Histórico de agenda">
+                <h4>Histórico</h4>
+                <div v-if="historicalAppointments.length" class="timeline-list">
+                  <div
+                    v-for="appointment in historicalAppointments.slice(0, 5)"
+                    :key="appointment.id"
+                    class="timeline-list__item"
+                  >
+                    <div>
+                      <strong>{{ appointment.reason }}</strong>
+                      <p>{{ appointmentStatusLabel(appointment.status) }}</p>
+                    </div>
+                    <div class="timeline-list__meta">
+                      <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
+                      <RouterLink :to="appointmentDetailPath(appointment.id)">Ver na agenda</RouterLink>
+                    </div>
+                  </div>
+                </div>
+                <p v-else class="muted">Sem histórico de agenda para este animal.</p>
+              </section>
+
+              <section v-if="cancelledAppointments.length" class="agenda-group" aria-label="Agendamentos cancelados">
+                <h4>Cancelados / não compareceu</h4>
+                <div class="timeline-list">
+                  <div
+                    v-for="appointment in cancelledAppointments.slice(0, 3)"
+                    :key="appointment.id"
+                    class="timeline-list__item"
+                  >
+                    <div>
+                      <strong>{{ appointment.reason }}</strong>
+                      <p>{{ appointmentStatusLabel(appointment.status) }}</p>
+                    </div>
+                    <div class="timeline-list__meta">
+                      <span>{{ formatDateTime(appointment.scheduledAt) }}</span>
+                      <RouterLink :to="appointmentDetailPath(appointment.id)">Ver na agenda</RouterLink>
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
             <p v-else class="muted">Este animal ainda não possui agendamentos cadastrados.</p>
           </div>
@@ -636,7 +686,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
@@ -897,6 +947,22 @@ const upcomingAppointments = computed(() =>
         new Date(appointment.scheduledAt).getTime() >= Date.now()
     )
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+);
+
+const historicalAppointments = computed(() =>
+  [...patientAppointments.value]
+    .filter((appointment) => {
+      const scheduledAt = new Date(appointment.scheduledAt).getTime();
+      return appointment.status !== 'cancelled'
+        && (appointment.status === 'completed' || scheduledAt < Date.now());
+    })
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+);
+
+const cancelledAppointments = computed(() =>
+  [...patientAppointments.value]
+    .filter((appointment) => appointment.status === 'cancelled')
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
 );
 
 const currentMedicalRecord = computed<MedicalRecordListSummary | null>(() => {
@@ -1168,10 +1234,34 @@ const latestPreventiveSummary = computed(() => {
   return event ? `${event.title} · ${formatDateTime(event.occurredAt)}` : 'Sem vacina ou vermífugo registrado.';
 });
 
-const nextAppointmentDetailLabel = computed(() => {
-  const appointment = upcomingAppointments.value[0];
-  return appointment ? `${appointment.reason} · ${formatDateTime(appointment.scheduledAt)}` : 'Sem agenda futura.';
+const agendaSummaryLabel = computed(() => {
+  const parts = [
+    `${upcomingAppointments.value.length} próximo(s)`,
+    `${historicalAppointments.value.length} histórico`,
+    `${cancelledAppointments.value.length} cancelado(s)`
+  ];
+  return parts.join(' · ');
 });
+
+const agendaDetailLabel = computed(() => {
+  const nextAppointment = upcomingAppointments.value[0];
+  if (nextAppointment) {
+    return `Próximo: ${nextAppointment.reason} · ${formatDateTime(nextAppointment.scheduledAt)}`;
+  }
+
+  const latestAppointment = historicalAppointments.value[0];
+  if (latestAppointment) {
+    return `Último: ${latestAppointment.reason} · ${formatDateTime(latestAppointment.scheduledAt)}`;
+  }
+
+  return cancelledAppointments.value.length
+    ? 'Sem agenda ativa; há cancelamentos no histórico.'
+    : 'Sem agenda registrada.';
+});
+
+function appointmentDetailPath(id: string): string {
+  return `/appointments/${id}`;
+}
 
 const latestEncounterDetailLabel = computed(() => {
   const encounter = sortedEncounters.value[0];
@@ -1867,7 +1957,7 @@ async function loadPage() {
       prescriptionsResult
     ] = await Promise.allSettled([
       encounterService.list(),
-      appointmentService.list(),
+      appointmentService.list({ patientId: loadedPatient.id }),
       medicalRecordsService.listAll(),
       patientService.getSummary(loadedPatient.id),
       getOwnerName(loadedPatient.primaryOwnerId),
@@ -2488,6 +2578,25 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.agenda-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.agenda-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agenda-group h4 {
+  margin: 0;
+  color: #374151;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .timeline-list__item,
