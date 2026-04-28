@@ -767,4 +767,75 @@ describe('PatientDetailPage', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('Falha ao carregar paciente');
   });
+
+  it('shows actionable empty states for missing operational modules', async () => {
+    mockEncounterList.mockResolvedValue([]);
+    mockAppointmentList.mockResolvedValue([]);
+    mockMedicalRecordsList.mockResolvedValue([]);
+    mockMedicalRecordEntriesList.mockResolvedValue([]);
+    mockMedicalRecordTimelineList.mockResolvedValue([]);
+    mockTriageList.mockResolvedValue([]);
+    mockInpatientList.mockResolvedValue([]);
+    mockBillingList.mockResolvedValue([]);
+    mockBillingListItems.mockResolvedValue([]);
+    mockPreventiveList.mockResolvedValue([]);
+    mockLaboratoryListOrders.mockResolvedValue([]);
+    mockPrescriptionListByPatient.mockResolvedValue([]);
+    mockAttachmentList.mockResolvedValue([]);
+
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const expandCard = async (label: string) => {
+      const trigger = wrapper
+        .findAll('button')
+        .find((button) => button.text().includes(label));
+      await trigger!.trigger('click');
+      await flushPromises();
+    };
+    const hasLink = (href: string, label: string) =>
+      wrapper
+        .findAll('a')
+        .some((link) => link.attributes('href') === href && link.text().includes(label));
+
+    await expandCard('Vacinas e Vermífugos');
+    expect(wrapper.text()).toContain('Nenhuma vacina ou vermífugo lançado para Rex.');
+    expect(hasLink('/vaccines-dewormers?patientId=pat-1&ownerId=owner-1', 'Incluir vacina/vermífugo')).toBe(true);
+
+    await expandCard('Agenda');
+    expect(wrapper.text()).toContain('Nenhum agendamento cadastrado para Rex.');
+    expect(hasLink('/appointments/new?patientId=pat-1&ownerId=owner-1', 'Agendar atendimento')).toBe(true);
+
+    await expandCard('Comanda');
+    expect(wrapper.text()).toContain('Nenhuma comanda vinculada a Rex.');
+    expect(wrapper.text()).toContain('Abra um atendimento para iniciar a comanda.');
+    expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para comanda')).toBe(true);
+
+    await expandCard('Exames');
+    expect(wrapper.text()).toContain('Nenhum exame registrado para Rex.');
+    expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para exames')).toBe(true);
+
+    await expandCard('Internação');
+    expect(wrapper.text()).toContain('Nenhuma internação registrada para Rex.');
+    expect(hasLink('/inpatient?patientId=pat-1', 'Ver internações do animal')).toBe(true);
+
+    await expandCard('Receituário');
+    expect(wrapper.text()).toContain('Nenhuma receita registrada para Rex.');
+    expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para receita')).toBe(true);
+
+    await expandCard('Imagens');
+    expect(wrapper.text()).toContain('Nenhuma imagem anexada ao prontuário de Rex.');
+    expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para anexos')).toBe(true);
+  });
 });

@@ -294,11 +294,14 @@
                 <p v-else class="muted">Sem aplicação registrada no histórico.</p>
               </section>
             </div>
-            <p v-else class="muted">Esse animal ainda não possui vacinas ou vermífugos cadastrados.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhuma vacina ou vermífugo lançado para {{ patient.name }}.</strong>
+              <p>Inclua a primeira dose no módulo preventivo para criar agenda, histórico e lembretes do animal.</p>
+            </div>
 
             <div class="quick-actions">
               <DsButton tag="a" :to="patientPreventivePath" variant="secondary" size="sm">
-                Ver Mais Vacinas/Vermífugos
+                {{ patientPreventiveEvents.length ? 'Ver Mais Vacinas/Vermífugos' : 'Incluir vacina/vermífugo' }}
               </DsButton>
               <DsButton
                 tag="a"
@@ -306,7 +309,7 @@
                 variant="ghost"
                 size="sm"
               >
-                Incluir Nova Vacina/Vermífugo
+                {{ patientPreventiveEvents.length ? 'Incluir Nova Vacina/Vermífugo' : 'Ver módulo preventivo' }}
               </DsButton>
             </div>
           </div>
@@ -393,7 +396,13 @@
                 </div>
               </section>
             </div>
-            <p v-else class="muted">Este animal ainda não possui agendamentos cadastrados.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhum agendamento cadastrado para {{ patient.name }}.</strong>
+              <p>Agende uma consulta, retorno ou procedimento para manter a próxima ação assistencial visível.</p>
+              <DsButton tag="a" :to="appointmentCreatePath" variant="primary" size="sm">
+                Agendar atendimento
+              </DsButton>
+            </div>
           </div>
         </article>
 
@@ -428,7 +437,10 @@
                 <RouterLink :to="`/billing/${record.encounterId}`">Gerenciar</RouterLink>
               </div>
             </div>
-            <p v-else class="muted">Esse animal ainda não possui comanda vinculada.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhuma comanda vinculada a {{ patient.name }}.</strong>
+              <p>{{ focalEncounter ? 'Abra a comanda do atendimento para lançar serviços, exames e produtos.' : 'Abra um atendimento para iniciar a comanda.' }}</p>
+            </div>
 
             <section class="billing-items-group" aria-label="Itens da comanda do atendimento atual">
               <h4>Itens do atendimento atual</h4>
@@ -445,7 +457,9 @@
                   <span>{{ formatCurrency(item.totalAmount, 'BRL') }}</span>
                 </div>
               </div>
-              <p v-else class="muted">Nenhum item lançado no atendimento atual.</p>
+              <p v-else class="muted">
+                {{ focalEncounter ? 'Nenhum item lançado no atendimento atual.' : 'Abra um atendimento para iniciar a comanda.' }}
+              </p>
             </section>
 
             <div class="quick-actions">
@@ -490,11 +504,14 @@
                 <span>{{ item.meta }}</span>
               </div>
             </div>
-            <p v-else class="muted">Esse animal não possui exames registrados.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhum exame registrado para {{ patient.name }}.</strong>
+              <p>{{ focalEncounter ? 'Solicite ou anexe exames no atendimento atual para alimentar a timeline diagnóstica.' : 'Abra um atendimento antes de solicitar ou anexar exames.' }}</p>
+            </div>
 
             <div class="quick-actions">
-              <DsButton tag="a" to="/diagnostics" variant="secondary" size="sm">
-                Ver mais Exames
+              <DsButton tag="a" :to="diagnosticsPrimaryPath" variant="secondary" size="sm">
+                {{ diagnosticsPrimaryLabel }}
               </DsButton>
               <DsButton
                 tag="a"
@@ -555,7 +572,10 @@
                 </div>
               </div>
             </div>
-            <p v-else class="muted">Esse animal não possui internações registradas.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhuma internação registrada para {{ patient.name }}.</strong>
+              <p>Consulte a lista filtrada do animal ou admita a partir de um atendimento quando houver indicação clínica.</p>
+            </div>
             <div v-if="historicalInpatientStays.length" class="workspace-stack">
               <h4>Histórico de internações</h4>
               <ul class="compact-feed">
@@ -570,11 +590,11 @@
             </div>
             <DsButton
               tag="a"
-              :to="focalInpatientStay ? `/inpatient/${focalInpatientStay.id}` : '/inpatient'"
+              :to="inpatientPrimaryPath"
               variant="secondary"
               size="sm"
             >
-              Ver internação
+              {{ inpatientPrimaryLabel }}
             </DsButton>
             <DsButton
               v-if="focalInpatientStay"
@@ -619,11 +639,14 @@
                 <span>{{ formatDateTime(prescription.updatedAt) }}</span>
               </div>
             </div>
-            <p v-else class="muted">Esse animal não possui receitas registradas.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhuma receita registrada para {{ patient.name }}.</strong>
+              <p>{{ focalEncounter ? 'Inclua uma receita no atendimento atual para manter o tratamento rastreável.' : 'Abra um atendimento antes de emitir a primeira receita.' }}</p>
+            </div>
 
             <div class="quick-actions">
-              <DsButton tag="a" to="/prescriptions" variant="secondary" size="sm">
-                Ver mais Receitas
+              <DsButton tag="a" :to="prescriptionsPrimaryPath" variant="secondary" size="sm">
+                {{ prescriptionsPrimaryLabel }}
               </DsButton>
               <DsButton
                 tag="a"
@@ -731,14 +754,17 @@
                 <span>{{ formatDateTime(attachment.createdAt) }}</span>
               </div>
             </div>
-            <p v-else class="muted">Esse animal não possui imagens registradas.</p>
+            <div v-else class="vetus-empty-state">
+              <strong>Nenhuma imagem anexada ao prontuário de {{ patient.name }}.</strong>
+              <p>{{ focalEncounter ? 'Anexe imagens ou laudos no atendimento atual para compor o histórico clínico.' : 'Abra um atendimento antes de anexar imagens ao prontuário.' }}</p>
+            </div>
             <DsButton
               tag="a"
-              :to="focalEncounter ? `/diagnostics?encounter=${focalEncounter.id}` : '/diagnostics'"
+              :to="imagePrimaryPath"
               variant="secondary"
               size="sm"
             >
-              Ver mais Imagens
+              {{ imagePrimaryLabel }}
             </DsButton>
           </div>
         </article>
@@ -1024,20 +1050,32 @@ const medicalRecordPath = computed(() =>
   focalEncounter.value ? `/medical-records/${focalEncounter.value.id}` : '/medical-records'
 );
 
+const patientContextQuery = computed(() => {
+  const params = new URLSearchParams();
+  if (patient.value?.id) {
+    params.set('patientId', patient.value.id);
+  } else if (patientId.value) {
+    params.set('patientId', patientId.value);
+  }
+  if (patient.value?.primaryOwnerId) {
+    params.set('ownerId', patient.value.primaryOwnerId);
+  }
+  return params.toString();
+});
+
+const patientEncounterCreatePath = computed(() =>
+  `/encounters/new${patientContextQuery.value ? `?${patientContextQuery.value}` : ''}`
+);
+
+const appointmentCreatePath = computed(() =>
+  `/appointments/new${patientContextQuery.value ? `?${patientContextQuery.value}` : ''}`
+);
+
 const patientBillingPath = computed(() => {
   if (focalEncounter.value) {
     return `/billing/${focalEncounter.value.id}`;
   }
-
-  const params = new URLSearchParams();
-  if (patient.value?.primaryOwnerId) {
-    params.set('ownerId', patient.value.primaryOwnerId);
-  }
-  if (patient.value?.id) {
-    params.set('patientId', patient.value.id);
-  }
-  const query = params.toString();
-  return query ? `/encounters?${query}` : '/encounters';
+  return patientEncounterCreatePath.value;
 });
 
 const patientBillingActionLabel = computed(() =>
@@ -1056,13 +1094,45 @@ const anamnesisActionPath = computed(() => {
     return `/medical-records/${focalEncounter.value.id}?entry=anamnesis`;
   }
 
-  const ownerId = patient.value?.primaryOwnerId;
-  const params = new URLSearchParams({ patientId: patient.value?.id ?? patientId.value });
-  if (ownerId) {
-    params.set('ownerId', ownerId);
-  }
-  return `/encounters/new?${params.toString()}`;
+  return patientEncounterCreatePath.value;
 });
+
+const diagnosticsPrimaryPath = computed(() =>
+  focalEncounter.value ? `/diagnostics?encounter=${focalEncounter.value.id}` : patientEncounterCreatePath.value
+);
+
+const diagnosticsPrimaryLabel = computed(() =>
+  focalEncounter.value ? 'Ver mais Exames' : 'Abrir atendimento para exames'
+);
+
+const inpatientPrimaryPath = computed(() => {
+  if (focalInpatientStay.value) {
+    return `/inpatient/${focalInpatientStay.value.id}`;
+  }
+
+  const id = patient.value?.id ?? patientId.value;
+  return id ? `/inpatient?patientId=${encodeURIComponent(id)}` : '/inpatient';
+});
+
+const inpatientPrimaryLabel = computed(() =>
+  focalInpatientStay.value ? 'Ver internação' : 'Ver internações do animal'
+);
+
+const prescriptionsPrimaryPath = computed(() =>
+  focalEncounter.value ? `/prescriptions?encounterId=${focalEncounter.value.id}` : patientEncounterCreatePath.value
+);
+
+const prescriptionsPrimaryLabel = computed(() =>
+  focalEncounter.value ? 'Ver mais Receitas' : 'Abrir atendimento para receita'
+);
+
+const imagePrimaryPath = computed(() =>
+  focalEncounter.value ? `/diagnostics?encounter=${focalEncounter.value.id}` : patientEncounterCreatePath.value
+);
+
+const imagePrimaryLabel = computed(() =>
+  focalEncounter.value ? 'Ver mais Imagens' : 'Abrir atendimento para anexos'
+);
 
 const upcomingAppointments = computed(() =>
   [...patientAppointments.value]
@@ -2421,6 +2491,26 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.vetus-empty-state {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 4px;
+  background: #f8fafc;
+}
+
+.vetus-empty-state strong {
+  color: var(--color-text, #0f172a);
+}
+
+.vetus-empty-state p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.45;
 }
 
 .vetus-animal-layout {

@@ -409,8 +409,9 @@ Checkpoint em 2026-04-28:
 - P2-04 foi implementado em escopo focado para internacao vinculada ao animal e prontuario.
 - P2-05 foi implementado em escopo focado para importacao assistida Vetus-like.
 - P3-01 foi implementado em escopo focado para auditoria de mensagens de sucesso.
+- P3-02 foi implementado em escopo focado para padronizar estados vazios no cockpit do animal.
 
-Proxima acao recomendada: executar `P3-02 - Padronizar estados vazios`.
+Proxima acao recomendada: executar `P3-03 - Reduzir densidade visual da pagina do paciente`.
 
 Justificativa:
 
@@ -421,21 +422,22 @@ Justificativa:
 - a importacao assistida Vetus-like agora cria ou vincula tutor/animal revisados, preservando ID legado, origem, revisor, data e notas de auditoria no cadastro;
 - importacoes de servicos, produtos e Vetus-like nao exibem mais sucesso verde quando ha falha total ou parcial no lote;
 - a Central Diagnostica nao mostra sucesso quando o pedido laboratorial e criado, mas a anotacao clinica vinculada falha;
-- a proxima lacuna operacional passa a ser padronizar estados vazios para indicar claramente o que falta e a acao correta.
+- os cards vazios de agenda, comanda, vacinas/vermifugos, exames, internacao, receituario e imagens no cockpit do animal indicam o que falta e levam para a proxima acao com `patientId`/`ownerId`;
+- a proxima lacuna operacional passa a ser reduzir a densidade visual da pagina do paciente para priorizar identidade, riscos e resumo dos cards na primeira dobra.
 
-Escopo minimo de `P3-02`:
+Escopo minimo de `P3-03`:
 
-1. Inventariar cards/listas com estado vazio generico ou ambiguo.
-2. Padronizar mensagem curta indicando qual dado esta ausente.
-3. Exibir acao contextual correta quando o usuario puder resolver o vazio.
-4. Criar/ajustar testes focados nos principais cards operacionais.
+1. Revisar a primeira dobra do detalhe do animal em desktop e mobile.
+2. Reduzir repeticao de informacoes e excesso de texto aberto nos cards.
+3. Manter visiveis identidade, riscos clinicos, tutor e resumo dos modulos.
+4. Criar/ajustar testes focados para garantir que a navegacao e os CTAs principais permanecem.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P3-02`:
+Criterio de aceite de `P3-03`:
 
-- cards/listas vazios indicam o que esta faltando;
-- acoes de criacao, importacao ou vinculo aparecem somente quando fazem sentido para o contexto;
-- testes focados cobrem os estados vazios alterados;
+- primeira dobra mostra ficha do animal, riscos e resumo operacional sem exigir rolagem excessiva;
+- cards mantem `Ver mais`/acoes contextuais sem esconder caminhos clinicos criticos;
+- testes focados cobrem os CTAs e estados principais da pagina do paciente;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
 Observacao de sequenciamento:
@@ -446,6 +448,28 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-28 - P3-02 Padronizar estados vazios
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- cockpit do animal passou a mostrar estados vazios acionaveis para agenda, comanda, vacinas/vermifugos, exames, internacao, receituario e imagens;
+- mensagens vazias agora indicam o dado ausente e o proximo passo operacional;
+- acoes vazias preservam contexto do animal/tutor com `patientId` e `ownerId` quando a rota suporta pre-preenchimento;
+- comanda, exames, receituario e imagens direcionam para abertura de atendimento quando nao ha episodio assistencial focal.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, API local `http://127.0.0.1:3003/health` 200 e SPAs locais `/patients/pat-1`, `/appointments/new?patientId=pat-1&ownerId=owner-1`, `/inpatient?patientId=pat-1` e `/vaccines-dewormers?patientId=pat-1&ownerId=owner-1` retornando 200;
+- HTTPS publico validado com SPA `/patients/pat-1`, SPA `/appointments/new?patientId=pat-1&ownerId=owner-1` e API health retornando 200.
+
+Proxima frente recomendada: `P3-03 - Reduzir densidade visual da pagina do paciente`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P3-01 Auditoria de mensagens de sucesso
 
