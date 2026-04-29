@@ -265,7 +265,12 @@ export const navGroups: AppNavGroup[] = [
         id: 'financeiro-governanca',
         label: 'Cadastros',
         items: [
-          { label: 'Formas de Pagamento', path: '/payment-methods', icon: '💳', keywords: ['formas de pagamento', 'meios'] },
+          {
+            label: 'Formas de Pagamento',
+            path: '/payment-methods',
+            icon: '💳',
+            keywords: ['formas de pagamento', 'meios', 'cadastro pagamento', 'tef', 'maquininha', 'pix', 'dinheiro']
+          },
           { label: 'Centros de Custo', path: '/cost-centers', icon: '📊', keywords: ['centros de custo', 'rateio'] },
           { label: 'Custos e Despesas', path: '/expenses', icon: '🧾', keywords: ['despesas', 'custos'] },
           { label: 'Cartões Débito/Crédito', path: '/cards', icon: '💳', keywords: ['cartoes', 'maquininha'] },

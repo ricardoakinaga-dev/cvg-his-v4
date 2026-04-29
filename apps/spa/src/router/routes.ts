@@ -1514,6 +1514,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'payment-methods',
         name: 'PaymentMethods',
+        alias: [
+          '/financeiro/cadastros/formas-de-pagamento',
+          '/financeiro/cadastros/formas-pagamento',
+          '/formas-de-pagamento'
+        ],
         component: () => import('@/pages/finance/PaymentMethodsPage.vue'),
         meta: {
           title: 'Formas de Pagamento',

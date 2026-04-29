@@ -424,8 +424,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Pagamento Dashboard` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Formas de Pagamento`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Centros de Custo`.
 
 Justificativa:
 
@@ -451,14 +452,15 @@ Justificativa:
 - `Exportador de Split` ja foi convertido em superficie operacional somente leitura de previa de exportacao, recebedores, formato e repasses no `cvg-his-v2`;
 - `Habilitar Pagamento` ja foi convertido em superficie operacional somente leitura de credenciamento, domicilio bancario, status de habilitacao e bloqueios por provedor no `cvg-his-v2`;
 - `Pagamento Dashboard` ja foi convertido em superficie operacional somente leitura de indicadores de captura, conciliacao, repasse previsto, provedor e unidade no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Formas de Pagamento`;
-- resolver `Formas de Pagamento` agora preserva a ordem Vetus depois de fechar a trilha `Maquininha de Cartao`.
+- `Formas de Pagamento` ja foi convertido em superficie operacional somente leitura de meios de pagamento, tipo, integracao, status e uso financeiro no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Centros de Custo`;
+- resolver `Centros de Custo` agora preserva a ordem Vetus depois de fechar `Formas de Pagamento`.
 
-Escopo minimo de `Financeiro > Cadastros > Formas de Pagamento`:
+Escopo minimo de `Financeiro > Cadastros > Centros de Custo`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Formas de Pagamento` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Centros de Custo` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, lista de formas de pagamento, status, tipo, integracoes e acoes principais sem executar baixa, conciliacao, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, lista de centros, status, classificacao/rateio e acoes principais sem executar rateio real, baixa, conciliacao, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -487,11 +489,55 @@ Observacao de sequenciamento:
 - `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Pagamento Dashboard` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Cadastros > Formas de Pagamento`.
+- `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Cadastros > Centros de Custo`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Cadastros > Formas de Pagamento
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/payment-methods` virou superficie Vetus-like de `Formas de Pagamento`;
+- aliases adicionados para `/financeiro/cadastros/formas-de-pagamento`, `/financeiro/cadastros/formas-pagamento` e `/formas-de-pagamento`;
+- tela com breadcrumbs `Financeiro / Cadastros / Formas de Pagamento`;
+- filtros `Pesquisar`, `Tipo`, `Status` e `Integracao`;
+- KPIs `Registros`, `Ativas`, `Digitais` e `Integradas`;
+- tabela com `Forma`, `Tipo`, `Integracao`, `Status`, `Uso` e `Proxima Acao`;
+- acoes `Nova Forma` bloqueada, `Gaveta`, `Contas a Receber`, `Pagamento Dashboard` e `Atualizar`;
+- dados conservadores somente leitura para representar dinheiro, PIX, cartoes e faturamento a prazo.
+
+Restricoes mantidas:
+
+- sem criacao real de forma de pagamento;
+- sem edicao real de regras;
+- sem alteracao real de integracao;
+- sem baixa financeira;
+- sem conciliacao real;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `PaymentMethodsPage`;
+- teste geral de cadastros financeiros;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/payment-methods` 200, `/financeiro/cadastros/formas-de-pagamento` 200 e `/health` 200;
+- smokes publicos: SPA `/payment-methods` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Cadastros > Centros de Custo`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Pagamento Dashboard
 
