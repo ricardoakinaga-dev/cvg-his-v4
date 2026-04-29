@@ -365,6 +365,12 @@ describe('router convergence', () => {
       ])
     );
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
+    expect(findChildRoute('finance/advance-payments')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/pagamento-antecipado',
+        '/pagamento-antecipado'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');

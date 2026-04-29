@@ -408,8 +408,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Pagamento Antecipado`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas Adm. Cartao`.
 
 Justificativa:
 
@@ -419,14 +420,15 @@ Justificativa:
 - a `Gaveta` observada no Vetus ja foi convertida em superficie operacional de caixa no `cvg-his-v2`;
 - `Contas a Receber` ja foi convertida em superficie operacional de titulos no `cvg-his-v2`;
 - `Contas a Pagar` ja foi convertida em superficie operacional de obrigacoes no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Pagamento Antecipado`;
-- resolver `Pagamento Antecipado` agora preserva a ordem Vetus depois de contas a pagar e antes de `Contas Adm. Cartao`.
+- `Pagamento Antecipado` ja foi convertido em superficie operacional de creditos antecipados no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas Adm. Cartao`;
+- resolver `Contas Adm. Cartao` agora preserva a ordem Vetus depois de pagamento antecipado e antes de `Cheques`.
 
-Escopo minimo de `Financeiro > Controles > Pagamento Antecipado`:
+Escopo minimo de `Financeiro > Controles > Contas Adm. Cartao`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Pagamento Antecipado` antes de escrever codigo.
-2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar pagamento real no Vetus.
+1. Revalidar artefatos Vetus read-only especificos de `Contas Adm. Cartao` antes de escrever codigo.
+2. Comparar a tela/fluxo Vetus com a superficie financeira/cartoes atual do `cvg-his-v2`.
+3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar conciliacao real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -439,11 +441,44 @@ Observacao de sequenciamento:
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Pagamento Antecipado`.
+- `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Contas Adm. Cartao`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Pagamento Antecipado
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/advance-payments` foi convertido de placeholder para superficie Vetus-like de `Pagamento Antecipado`;
+- aliases adicionados: `/financeiro/controles/pagamento-antecipado` e `/pagamento-antecipado`;
+- filtros alinhados ao dominio: `Cliente`, `Emissao de`, `Ate` e `Status`;
+- status exibido como `Disponivel`, mantendo `Compensado` e `Cancelado` como opcoes de filtro visual para paridade operacional futura;
+- tabela alinhada com `Cliente`, `Emissao`, `Total`, `Compensado`, `Saldo`, `Origem`, `Status` e `Abrir`;
+- acoes de tela `Gerar Pagamento Antecipado` e `Compensar Em Lote` foram posicionadas na superficie sem acionar escrita nova;
+- a tela consome a API existente `/owners`, usando `financialProfile.creditBalance` positivo como credito disponivel para compensacao futura.
+
+Validacao:
+
+- teste focado de `AdvancePaymentsPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/advance-payments` 200, `/financeiro/controles/pagamento-antecipado` 200 e `/health` 200;
+- rota protegida `/owners?page=1&pageSize=1` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/advance-payments` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Contas Adm. Cartao`.
 
 ### 2026-04-29 - Financeiro > Controles > Contas a Pagar
 

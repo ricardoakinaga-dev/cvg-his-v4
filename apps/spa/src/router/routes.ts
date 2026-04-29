@@ -22,7 +22,6 @@ function placeholderRoute(
 
 const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
-  placeholderRoute('finance/advance-payments', 'FinanceAdvancePayments', 'Pagamento Antecipado', 'Financeiro', '⏩'),
   placeholderRoute('finance/card-accounts', 'FinanceCardAccounts', 'Contas Adm. Cartão', 'Financeiro', '💳'),
   placeholderRoute('finance/timeline', 'FinanceTimeline', 'Linha do Tempo', 'Financeiro', '🕒'),
   placeholderRoute('finance/card-machines', 'FinanceCardMachines', 'Maquininhas', 'Financeiro', '💳'),
@@ -972,6 +971,21 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Contas a Pagar',
           breadcrumbParent: 'Financeiro',
           icon: '💸'
+        }
+      },
+      {
+        path: 'finance/advance-payments',
+        name: 'FinanceAdvancePayments',
+        component: () => import('@/pages/finance/AdvancePaymentsPage.vue'),
+        alias: [
+          '/financeiro/controles/pagamento-antecipado',
+          '/pagamento-antecipado'
+        ],
+        meta: {
+          title: 'Pagamento Antecipado',
+          breadcrumb: 'Pagamento Antecipado',
+          breadcrumbParent: 'Financeiro',
+          icon: '⏩'
         }
       },
       {
