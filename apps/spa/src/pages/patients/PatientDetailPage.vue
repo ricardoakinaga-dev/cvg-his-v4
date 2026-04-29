@@ -85,52 +85,68 @@
           </div>
 
           <button
+            :id="patientCardTriggerId('animal-more')"
             type="button"
             class="vetus-disclosure"
             :aria-expanded="isPatientCardExpanded('animal-more')"
+            :aria-controls="patientCardPanelId('animal-more')"
             @click="togglePatientCard('animal-more')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'animal-more')"
           >
             <span>{{ isPatientCardExpanded('animal-more') ? '⌃' : '⌄' }}</span>
             Ver mais Informações do Animal
           </button>
 
-          <div v-if="isPatientCardExpanded('animal-more')" class="vetus-info-grid">
-            <div><span>Sexo:</span><strong>{{ sexLabel(patient.sex) }}</strong></div>
-            <div><span>Data de Nascimento:</span><strong>{{ birthDateLabel }}</strong></div>
-            <div><span>Idade:</span><strong>{{ ageLabel }}</strong></div>
-            <div><span>Espécie:</span><strong>{{ speciesLabel(patient.species) }}</strong></div>
-            <div><span>Raça:</span><strong>{{ patient.breed || 'Não Informado' }}</strong></div>
-            <div><span>Porte:</span><strong>{{ patient.size || 'Não Informado' }}</strong></div>
-            <div><span>Castrado:</span><strong>{{ neuteredLabel }}</strong></div>
-            <div><span>Número do chip:</span><strong>{{ microchipLabel }}</strong></div>
-            <div><span>Número Pedigree:</span><strong>{{ pedigreeLabel }}</strong></div>
-            <div><span>Cor:</span><strong>{{ colorLabel }}</strong></div>
-            <div><span>ID legado Vetus:</span><strong>{{ legacyVetusIdLabel }}</strong></div>
-            <div><span>Situação:</span><strong>{{ patientStatusLabel(patient.status) }}</strong></div>
-            <div><span>Peso atual:</span><strong>{{ currentWeightLabel }}</strong></div>
-            <div><span>Data de Cadastro:</span><strong>{{ registrationDateLabel }}</strong></div>
-          </div>
-
-          <div
+          <section
             v-if="isPatientCardExpanded('animal-more')"
-            class="vetus-profile-section"
-            data-testid="patient-profile-notes"
+            :id="patientCardPanelId('animal-more')"
+            class="vetus-disclosure-panel"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('animal-more')"
           >
-            <strong>Observações Gerais do Animal:</strong>
-            <p>{{ animalNotesLabel }}</p>
-          </div>
+            <div class="vetus-info-grid">
+              <div><span>Sexo:</span><strong>{{ sexLabel(patient.sex) }}</strong></div>
+              <div><span>Data de Nascimento:</span><strong>{{ birthDateLabel }}</strong></div>
+              <div><span>Idade:</span><strong>{{ ageLabel }}</strong></div>
+              <div><span>Espécie:</span><strong>{{ speciesLabel(patient.species) }}</strong></div>
+              <div><span>Raça:</span><strong>{{ patient.breed || 'Não Informado' }}</strong></div>
+              <div><span>Porte:</span><strong>{{ patient.size || 'Não Informado' }}</strong></div>
+              <div><span>Castrado:</span><strong>{{ neuteredLabel }}</strong></div>
+              <div><span>Número do chip:</span><strong>{{ microchipLabel }}</strong></div>
+              <div><span>Número Pedigree:</span><strong>{{ pedigreeLabel }}</strong></div>
+              <div><span>Cor:</span><strong>{{ colorLabel }}</strong></div>
+              <div><span>ID legado Vetus:</span><strong>{{ legacyVetusIdLabel }}</strong></div>
+              <div><span>Situação:</span><strong>{{ patientStatusLabel(patient.status) }}</strong></div>
+              <div><span>Peso atual:</span><strong>{{ currentWeightLabel }}</strong></div>
+              <div><span>Data de Cadastro:</span><strong>{{ registrationDateLabel }}</strong></div>
+            </div>
+
+            <div class="vetus-profile-section" data-testid="patient-profile-notes">
+              <strong>Observações Gerais do Animal:</strong>
+              <p>{{ animalNotesLabel }}</p>
+            </div>
+          </section>
 
           <button
+            :id="patientCardTriggerId('owner-contact')"
             type="button"
             class="vetus-disclosure vetus-disclosure--soft"
             :aria-expanded="isPatientCardExpanded('owner-contact')"
+            :aria-controls="patientCardPanelId('owner-contact')"
             @click="togglePatientCard('owner-contact')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'owner-contact')"
           >
             <span>{{ isPatientCardExpanded('owner-contact') ? '⌃' : '⌄' }}</span>
             Ver Informações de Contato
           </button>
 
-          <div v-if="isPatientCardExpanded('owner-contact')" class="vetus-info-grid">
+          <div
+            v-if="isPatientCardExpanded('owner-contact')"
+            :id="patientCardPanelId('owner-contact')"
+            class="vetus-info-grid"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('owner-contact')"
+          >
             <div><span>CPF:</span><strong>{{ ownerSnapshot?.documentId || 'Não Informado' }}</strong></div>
             <div><span>Telefone 1:</span><strong>{{ ownerPhoneLabel }}</strong></div>
             <div><span>Telefone 2:</span><strong>Não Informado</strong></div>
@@ -145,10 +161,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('encounters') }"
         >
           <button
+            :id="patientCardTriggerId('encounters')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('encounters')"
+            :aria-controls="patientCardPanelId('encounters')"
             @click="togglePatientCard('encounters')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'encounters')"
           >
             <span><span class="vetus-module-icon">↺</span>Últimos Atendimentos</span>
             <span>{{ isPatientCardExpanded('encounters') ? '−' : '+' }}</span>
@@ -157,7 +176,13 @@
             <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
             <p>{{ latestEncounterDetailLabel }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('encounters')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('encounters')"
+            :id="patientCardPanelId('encounters')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('encounters')"
+          >
             <div class="vetus-module-summary">
               <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
               <p>{{ latestEncounterDetailLabel }}</p>
@@ -184,10 +209,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('anamnesis') }"
         >
           <button
+            :id="patientCardTriggerId('anamnesis')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('anamnesis')"
+            :aria-controls="patientCardPanelId('anamnesis')"
             @click="togglePatientCard('anamnesis')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'anamnesis')"
           >
             <span><span class="vetus-module-icon">≡</span>Anamneses</span>
             <span>{{ isPatientCardExpanded('anamnesis') ? '−' : '+' }}</span>
@@ -204,7 +232,13 @@
               Abrir prontuário
             </DsButton>
           </div>
-          <div v-if="isPatientCardExpanded('anamnesis')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('anamnesis')"
+            :id="patientCardPanelId('anamnesis')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('anamnesis')"
+          >
             <div class="vetus-module-summary">
               <strong>{{ anamnesisEntries.length }} registro(s)</strong>
               <p>{{ latestAnamnesisSummary }}</p>
@@ -249,10 +283,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('preventive') }"
         >
           <button
+            :id="patientCardTriggerId('preventive')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('preventive')"
+            :aria-controls="patientCardPanelId('preventive')"
             @click="togglePatientCard('preventive')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'preventive')"
           >
             <span><span class="vetus-module-icon">⚕</span>Vacinas e Vermífugos</span>
             <span>{{ isPatientCardExpanded('preventive') ? '−' : '+' }}</span>
@@ -261,7 +298,13 @@
             <strong>{{ preventiveSummaryLabel }}</strong>
             <p>{{ latestPreventiveSummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('preventive')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('preventive')"
+            :id="patientCardPanelId('preventive')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('preventive')"
+          >
             <div v-if="patientPreventiveEvents.length" class="agenda-groups">
               <section class="agenda-group" aria-label="Próximas doses preventivas">
                 <h4>Próximas doses</h4>
@@ -325,10 +368,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('agenda') }"
         >
           <button
+            :id="patientCardTriggerId('agenda')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('agenda')"
+            :aria-controls="patientCardPanelId('agenda')"
             @click="togglePatientCard('agenda')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'agenda')"
           >
             <span><span class="vetus-module-icon">□</span>Agenda</span>
             <span>{{ isPatientCardExpanded('agenda') ? '−' : '+' }}</span>
@@ -337,7 +383,13 @@
             <strong>{{ agendaSummaryLabel }}</strong>
             <p>{{ agendaDetailLabel }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('agenda')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('agenda')"
+            :id="patientCardPanelId('agenda')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('agenda')"
+          >
             <div v-if="patientAppointments.length" class="agenda-groups">
               <section class="agenda-group" aria-label="Próximos agendamentos">
                 <h4>Próximos</h4>
@@ -416,10 +468,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('billing') }"
         >
           <button
+            :id="patientCardTriggerId('billing')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('billing')"
+            :aria-controls="patientCardPanelId('billing')"
             @click="togglePatientCard('billing')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'billing')"
           >
             <span><span class="vetus-module-icon">▤</span>Comanda</span>
             <span>{{ isPatientCardExpanded('billing') ? '−' : '+' }}</span>
@@ -428,7 +483,13 @@
             <strong>{{ patientBillingRecords.length }} comanda(s)</strong>
             <p>{{ focalBillingSummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('billing')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('billing')"
+            :id="patientCardPanelId('billing')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('billing')"
+          >
             <div v-if="patientBillingRecords.length" class="record-list">
               <div
                 v-for="record in patientBillingRecords.slice(0, 4)"
@@ -483,10 +544,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('exams') }"
         >
           <button
+            :id="patientCardTriggerId('exams')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('exams')"
+            :aria-controls="patientCardPanelId('exams')"
             @click="togglePatientCard('exams')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'exams')"
           >
             <span><span class="vetus-module-icon">✚</span>Exames</span>
             <span>{{ isPatientCardExpanded('exams') ? '−' : '+' }}</span>
@@ -495,7 +559,13 @@
             <strong>{{ examItems.length }} item(ns)</strong>
             <p>{{ latestExamSummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('exams')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('exams')"
+            :id="patientCardPanelId('exams')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('exams')"
+          >
             <div v-if="examItems.length" class="record-list">
               <div
                 v-for="item in examItems.slice(0, 4)"
@@ -535,10 +605,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('inpatient') }"
         >
           <button
+            :id="patientCardTriggerId('inpatient')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('inpatient')"
+            :aria-controls="patientCardPanelId('inpatient')"
             @click="togglePatientCard('inpatient')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'inpatient')"
           >
             <span><span class="vetus-module-icon">▣</span>Internação</span>
             <span>{{ isPatientCardExpanded('inpatient') ? '−' : '+' }}</span>
@@ -547,7 +620,13 @@
             <strong>{{ inpatientSummaryLabel }}</strong>
             <p>{{ focalInpatientStay ? formatDateTime(focalInpatientStay.admittedAt) : 'Sem internação ativa.' }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('inpatient')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('inpatient')"
+            :id="patientCardPanelId('inpatient')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('inpatient')"
+          >
             <div v-if="focalInpatientStay" class="workspace-stack">
               <div class="workspace-highlight">
                 <div>
@@ -618,10 +697,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('prescriptions') }"
         >
           <button
+            :id="patientCardTriggerId('prescriptions')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('prescriptions')"
+            :aria-controls="patientCardPanelId('prescriptions')"
             @click="togglePatientCard('prescriptions')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'prescriptions')"
           >
             <span><span class="vetus-module-icon">▤</span>Receituário</span>
             <span>{{ isPatientCardExpanded('prescriptions') ? '−' : '+' }}</span>
@@ -630,7 +712,13 @@
             <strong>{{ patientPrescriptions.length }} receita(s)</strong>
             <p>{{ latestPrescriptionSummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('prescriptions')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('prescriptions')"
+            :id="patientCardPanelId('prescriptions')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('prescriptions')"
+          >
             <div v-if="patientPrescriptions.length" class="record-list">
               <div
                 v-for="prescription in patientPrescriptions.slice(0, 4)"
@@ -670,10 +758,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('weight') }"
         >
           <button
+            :id="patientCardTriggerId('weight')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('weight')"
+            :aria-controls="patientCardPanelId('weight')"
             @click="togglePatientCard('weight')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'weight')"
           >
             <span><span class="vetus-module-icon">▥</span>Gráfico de peso</span>
             <span>{{ isPatientCardExpanded('weight') ? '−' : '+' }}</span>
@@ -682,7 +773,13 @@
             <strong>Peso atual: {{ currentWeightLabel }}</strong>
             <p>{{ weightMeasurements.length }} medição(ões) registradas.</p>
           </div>
-          <div v-if="isPatientCardExpanded('weight')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('weight')"
+            :id="patientCardPanelId('weight')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('weight')"
+          >
             <div class="weight-card">
               <div class="weight-card__header">
                 <strong>Peso atual: {{ currentWeightLabel }}</strong>
@@ -733,10 +830,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('images') }"
         >
           <button
+            :id="patientCardTriggerId('images')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('images')"
+            :aria-controls="patientCardPanelId('images')"
             @click="togglePatientCard('images')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'images')"
           >
             <span><span class="vetus-module-icon">▧</span>Imagens</span>
             <span>{{ isPatientCardExpanded('images') ? '−' : '+' }}</span>
@@ -745,7 +845,13 @@
             <strong>{{ imageAttachments.length }} imagem(ns)</strong>
             <p>{{ latestImageSummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('images')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('images')"
+            :id="patientCardPanelId('images')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('images')"
+          >
             <div v-if="imageAttachments.length" class="record-list">
               <div
                 v-for="attachment in imageAttachments.slice(0, 4)"
@@ -779,10 +885,13 @@
           :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('clinical-history') }"
         >
           <button
+            :id="patientCardTriggerId('clinical-history')"
             type="button"
             class="vetus-accordion-card__header"
             :aria-expanded="isPatientCardExpanded('clinical-history')"
+            :aria-controls="patientCardPanelId('clinical-history')"
             @click="togglePatientCard('clinical-history')"
+            @keydown="handlePatientCardTriggerKeydown($event, 'clinical-history')"
           >
             <span><span class="vetus-module-icon">▦</span>Histórico Clinico</span>
             <span>{{ isPatientCardExpanded('clinical-history') ? '−' : '+' }}</span>
@@ -791,7 +900,13 @@
             <strong>{{ clinicalHistoryDraft.trim() ? 'Histórico preenchido' : 'Sem histórico consolidado' }}</strong>
             <p>{{ clinicalHistorySummary }}</p>
           </div>
-          <div v-if="isPatientCardExpanded('clinical-history')" class="vetus-accordion-card__body">
+          <div
+            v-if="isPatientCardExpanded('clinical-history')"
+            :id="patientCardPanelId('clinical-history')"
+            class="vetus-accordion-card__body"
+            role="region"
+            :aria-labelledby="patientCardTriggerId('clinical-history')"
+          >
             <p v-if="clinicalHistoryDraft.trim()" class="clinical-history-preview">
               {{ clinicalHistoryDraft }}
             </p>
@@ -976,6 +1091,21 @@ const weightWindowOptions = [
 
 const patientId = computed(() => String(route.params.id ?? ''));
 const expandedPatientCards = ref<Set<string>>(new Set());
+const patientCardNavigationOrder = [
+  'animal-more',
+  'owner-contact',
+  'encounters',
+  'anamnesis',
+  'preventive',
+  'agenda',
+  'billing',
+  'exams',
+  'inpatient',
+  'prescriptions',
+  'weight',
+  'images',
+  'clinical-history'
+] as const;
 
 const animalAvatarInitial = computed(() => patient.value?.name.trim().charAt(0).toUpperCase() || '?');
 
@@ -1033,6 +1163,45 @@ function togglePatientCard(cardId: string) {
     next.add(cardId);
   }
   expandedPatientCards.value = next;
+}
+
+function patientCardTriggerId(cardId: string) {
+  return `patient-card-${cardId}-trigger`;
+}
+
+function patientCardPanelId(cardId: string) {
+  return `patient-card-${cardId}-panel`;
+}
+
+function focusPatientCardTrigger(cardId: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.getElementById(patientCardTriggerId(cardId))?.focus();
+}
+
+function handlePatientCardTriggerKeydown(event: KeyboardEvent, cardId: string) {
+  const currentIndex = patientCardNavigationOrder.indexOf(cardId as (typeof patientCardNavigationOrder)[number]);
+  if (currentIndex === -1) {
+    return;
+  }
+
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+    nextIndex = (currentIndex + 1) % patientCardNavigationOrder.length;
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+    nextIndex = (currentIndex - 1 + patientCardNavigationOrder.length) % patientCardNavigationOrder.length;
+  } else if (event.key === 'Home') {
+    nextIndex = 0;
+  } else if (event.key === 'End') {
+    nextIndex = patientCardNavigationOrder.length - 1;
+  } else {
+    return;
+  }
+
+  event.preventDefault();
+  focusPatientCardTrigger(patientCardNavigationOrder[nextIndex]);
 }
 
 const sortedEncounters = computed(() =>
@@ -2717,6 +2886,16 @@ watch(
 .vetus-disclosure--soft {
   padding-inline: 10px;
   background: #eef5ff;
+}
+
+.vetus-disclosure:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.3);
+  outline-offset: 2px;
+}
+
+.vetus-disclosure-panel {
+  display: grid;
+  gap: 10px;
 }
 
 .vetus-info-grid {

@@ -411,8 +411,9 @@ Checkpoint em 2026-04-28:
 - P3-01 foi implementado em escopo focado para auditoria de mensagens de sucesso.
 - P3-02 foi implementado em escopo focado para padronizar estados vazios no cockpit do animal.
 - P3-03 foi implementado em escopo focado para reduzir densidade visual da pagina do paciente.
+- P3-04 foi implementado em escopo focado para acessibilidade e teclado nos acordeoes.
 
-Proxima acao recomendada: executar `P3-04 - Acessibilidade e teclado nos acordeoes`.
+Proxima acao recomendada: executar `P3-05 - Relatorio semanal de notas de compatibilidade`.
 
 Justificativa:
 
@@ -426,23 +427,23 @@ Justificativa:
 - os cards vazios de agenda, comanda, vacinas/vermifugos, exames, internacao, receituario e imagens no cockpit do animal indicam o que falta e levam para a proxima acao com `patientId`/`ownerId`;
 - a primeira dobra do paciente agora prioriza identidade compacta, riscos clinicos, tutor/acoes essenciais e resumo dos modulos;
 - observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
-- a proxima lacuna operacional passa a ser acessibilidade e navegacao por teclado nos acordeoes do cockpit do animal.
+- os acordeoes do cockpit do animal agora possuem `aria-expanded`, `aria-controls`, paineis `region`/`aria-labelledby`, foco visivel e navegacao por setas/Home/End;
+- a proxima lacuna operacional passa a ser consolidar notas de compatibilidade Vetus vs CVG por modulo.
 
-Escopo minimo de `P3-04`:
+Escopo minimo de `P3-05`:
 
-1. Auditar botoes e acordeoes do cockpit do animal por teclado.
-2. Garantir `aria-expanded`, labels e ordem de foco consistentes.
-3. Ajustar foco visivel e semantica sem mudar contratos de API.
-4. Criar/ajustar testes focados para teclado e atributos ARIA.
-5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
+1. Consolidar os GAPs ja implementados e pendentes por modulo Vetus.
+2. Definir score Vetus vs CVG por dominio operacional, com criterio simples e auditavel.
+3. Destacar riscos, pendencias e proxima acao recomendada por frente.
+4. Registrar o relatorio semanal em documento versionado, sem copiar dados reais do Vetus.
+5. Publicar codigo somente se houver componente/tela alterada; caso contrario, validar por revisao documental e diff.
 
-Criterio de aceite de `P3-04`:
+Criterio de aceite de `P3-05`:
 
-- cards e botoes principais sao navegaveis por teclado;
-- acordeoes informam estado expandido/recolhido com ARIA correto;
-- foco visivel fica claro em desktop sem quebrar mobile;
-- testes focados cobrem teclado e atributos ARIA principais da pagina do paciente;
-- health local e HTTPS publico permanecem 200 apos publicacao.
+- relatorio lista modulos Vetus avaliados, status CVG, score e justificativa curta;
+- pendencias ficam separadas por operacional, fiscal, financeiro, clinico e UX/QA;
+- proxima acao recomendada continua alinhada com a ordem definida pelo responsavel;
+- nenhum dado pessoal real do Vetus e transcrito no relatorio.
 
 Observacao de sequenciamento:
 
@@ -452,6 +453,29 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - P3-04 Acessibilidade e teclado nos acordeoes
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- acordeoes e disclosures do cockpit do animal receberam IDs estaveis para gatilho e painel;
+- gatilhos passaram a expor `aria-expanded` e `aria-controls`;
+- paineis expandidos passaram a usar `role="region"` com `aria-labelledby` apontando para o gatilho correspondente;
+- navegacao por teclado entre gatilhos passou a aceitar setas, Home e End, preservando o comportamento nativo de botao para ativacao;
+- foco visivel foi padronizado tambem nos disclosures da ficha do animal.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, API local `http://127.0.0.1:3003/health` 200 e SPAs locais `/patients/pat-1`, `/appointments/new?patientId=pat-1&ownerId=owner-1`, `/inpatient?patientId=pat-1` retornando 200;
+- HTTPS publico validado com SPA `/patients/pat-1` e API health retornando 200.
+
+Proxima frente recomendada: `P3-05 - Relatorio semanal de notas de compatibilidade`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-29 - P3-03 Reduzir densidade visual da pagina do paciente
 

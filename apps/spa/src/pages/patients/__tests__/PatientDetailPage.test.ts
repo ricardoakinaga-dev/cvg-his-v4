@@ -773,6 +773,72 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Falha ao carregar paciente');
   });
 
+  it('keeps patient accordions labelled and navigable by keyboard', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage, {
+      attachTo: host,
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const animalMoreTrigger = wrapper.get('#patient-card-animal-more-trigger');
+    expect(animalMoreTrigger.attributes('aria-expanded')).toBe('false');
+    expect(animalMoreTrigger.attributes('aria-controls')).toBe('patient-card-animal-more-panel');
+
+    await animalMoreTrigger.trigger('click');
+    await flushPromises();
+
+    expect(animalMoreTrigger.attributes('aria-expanded')).toBe('true');
+    const animalMorePanel = wrapper.get('#patient-card-animal-more-panel');
+    expect(animalMorePanel.attributes('role')).toBe('region');
+    expect(animalMorePanel.attributes('aria-labelledby')).toBe('patient-card-animal-more-trigger');
+
+    const anamnesisTrigger = wrapper.get('#patient-card-anamnesis-trigger');
+    expect(anamnesisTrigger.attributes('aria-controls')).toBe('patient-card-anamnesis-panel');
+
+    await anamnesisTrigger.trigger('click');
+    await flushPromises();
+
+    const anamnesisPanel = wrapper.get('#patient-card-anamnesis-panel');
+    expect(anamnesisTrigger.attributes('aria-expanded')).toBe('true');
+    expect(anamnesisPanel.attributes('role')).toBe('region');
+    expect(anamnesisPanel.attributes('aria-labelledby')).toBe('patient-card-anamnesis-trigger');
+
+    const preventiveTrigger = wrapper.get('#patient-card-preventive-trigger');
+    const agendaTrigger = wrapper.get('#patient-card-agenda-trigger');
+    const animalMoreElement = animalMoreTrigger.element as HTMLButtonElement;
+    const anamnesisElement = anamnesisTrigger.element as HTMLButtonElement;
+    const preventiveElement = preventiveTrigger.element as HTMLButtonElement;
+    const agendaElement = agendaTrigger.element as HTMLButtonElement;
+
+    anamnesisElement.focus();
+    await anamnesisTrigger.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(preventiveElement);
+
+    await preventiveTrigger.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(agendaElement);
+
+    await agendaTrigger.trigger('keydown', { key: 'Home' });
+    expect(document.activeElement).toBe(animalMoreElement);
+
+    await animalMoreTrigger.trigger('keydown', { key: 'End' });
+    expect(document.activeElement).toBe(wrapper.get('#patient-card-clinical-history-trigger').element);
+
+    wrapper.unmount();
+    host.remove();
+  });
+
   it('shows actionable empty states for missing operational modules', async () => {
     mockEncounterList.mockResolvedValue([]);
     mockAppointmentList.mockResolvedValue([]);
