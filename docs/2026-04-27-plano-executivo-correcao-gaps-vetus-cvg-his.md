@@ -429,8 +429,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- O navbar `Marketing` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 
-Proxima acao recomendada: revalidar o navbar `Marketing` no Vetus.
+Proxima acao recomendada: implementar a paridade segura de `Marketing > Envios > Envio de SMS Simples`.
 
 Justificativa:
 
@@ -462,15 +463,17 @@ Justificativa:
 - `Cartoes Debito/Credito` ja foi convertido em superficie operacional somente leitura de cartoes, bandeiras, administradoras, status e conciliacao no `cvg-his-v2`;
 - `Bancos` ja foi convertido em superficie operacional somente leitura de bancos, agencia, conta, tipo, status, uso e conciliacao no `cvg-his-v2`;
 - a sequencia principal revalidada de `Financeiro` ficou fechada ate o ultimo item listado em `Cadastros > Bancos`;
-- a proxima acao macro e revalidar o navbar `Marketing` para continuar a ordem Vetus por evidencia read-only.
+- o navbar `Marketing` foi revalidado por evidencia read-only e a ordem confirmada e `Envios > Envio de SMS Simples`, `Envios > Campanhas de SMS Marketing`, `Configuracoes > Layout de Email de Vacina` e `Configuracoes > Configuracoes de SMS`;
+- a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal; `WhatsApp Operacional` permanece como extensao CVG em `Canais CVG`;
+- a proxima divergencia pela ordem Vetus esta em `Marketing > Envios > Envio de SMS Simples`, porque `/marketing/sms` ainda esta em placeholder.
 
-Escopo minimo de revalidacao de `Marketing`:
+Escopo minimo de `Marketing > Envios > Envio de SMS Simples`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Marketing` antes de escrever codigo.
-2. Mapear submenu, ordem real, rotas legacy, telas e acoes disponiveis.
-3. Comparar o submenu Vetus com as superficies atuais de campanhas, comunicacoes e preventivo no `cvg-his-v2`.
-4. Definir o primeiro GAP macro de `Marketing` sem disparar comunicacao real, envio de SMS/email, automacao ou escrita no Vetus.
-5. Atualizar a matriz executiva com o proximo item operacional.
+1. Revalidar os artefatos Vetus read-only especificos de `SMSSimples.htm` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: saldo de SMS, cliente, celular, corpo do SMS, contador de 150 caracteres, historico e acao de envio bloqueada.
+3. Implementar preparacao/simulacao segura sem disparar SMS real e sem consumir saldo.
+4. Reaproveitar contratos de notificacoes/SMS existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
+5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
 
@@ -502,11 +505,48 @@ Observacao de sequenciamento:
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29.
-- A proxima frente macro e revalidar o navbar `Marketing` no Vetus.
+- O navbar `Marketing` foi revalidado em 2026-04-29.
+- A proxima frente macro e `Marketing > Envios > Envio de SMS Simples`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Revalidacao do navbar Marketing
+
+Status: revalidado e documentado.
+
+Evidencias:
+
+- `docs/vetus/guides/2026-04-24-relatorio-entidade-marketing.md`;
+- `docs/vetus/guides/15-modulo-rh-marketing-relatorios.md`;
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- capturas/JSON autenticados em `docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/`.
+
+Ordem confirmada:
+
+- `Envios > Envio de SMS Simples`;
+- `Envios > Campanhas de SMS Marketing`;
+- `Configuracoes > Layout de Email de Vacina`;
+- `Configuracoes > Configuracoes de SMS`.
+
+Comparacao com `cvg-his-v2`:
+
+- a navegacao ja possui `Marketing > Envios` e `Marketing > Configuracoes`;
+- `Campanhas de SMS Marketing` aponta para `/notifications`, superficie concreta existente;
+- `Envio de SMS Simples`, `Layout de Email de Vacina` e `Configuracoes de SMS` ainda usam placeholder;
+- `WhatsApp Operacional` foi mantido como extensao CVG em `Canais CVG`, fora da ordem Vetus.
+
+Restricoes mantidas:
+
+- sem envio real de SMS;
+- sem criacao de campanha;
+- sem edicao de layout de email;
+- sem salvamento de configuracao;
+- sem automacao real;
+- sem escrita no Vetus.
+
+Proxima frente recomendada: `Marketing > Envios > Envio de SMS Simples`.
 
 ### 2026-04-29 - Financeiro > Cadastros > Bancos
 
