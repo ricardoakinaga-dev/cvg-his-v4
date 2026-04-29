@@ -56,6 +56,14 @@ export interface DbIcmsRuleFilters extends DbFiscalFilters {
   readonly operationType?: string;
 }
 
+export interface DbCreateIcmsMatrixRule {
+  readonly ufOrigin: string;
+  readonly ufDestination: string;
+  readonly rate: number;
+  readonly cst: string;
+  readonly operationType: 'interna' | 'interestadual';
+}
+
 export interface DbIcmsTableFilters extends DbFiscalFilters {
   readonly search?: string;
 }
@@ -618,6 +626,35 @@ export class DatabaseFiscalRepository {
       cst: row.cst as string,
       operationType: row.operation_type as 'interna' | 'interestadual'
     })) as FiscalIcmsRuleSummary[];
+  }
+
+  async createIcmsMatrixRule(
+    _accountId: AccountId,
+    payload: DbCreateIcmsMatrixRule
+  ): Promise<FiscalIcmsRuleSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO icms_rules (uf_origin, uf_destination, ncm, rate, cst, operation_type)
+       VALUES ($1, $2, NULL, $3, $4, $5)
+       RETURNING *`,
+      [
+        payload.ufOrigin,
+        payload.ufDestination,
+        payload.rate,
+        payload.cst,
+        payload.operationType
+      ]
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      ufOrigin: row.uf_origin as string,
+      ufDestination: row.uf_destination as string,
+      ncm: (row.ncm as string | null) ?? '',
+      rate: parseFloat(row.rate as string),
+      cst: row.cst as string,
+      operationType: row.operation_type as 'interna' | 'interestadual'
+    };
   }
 
   // --------------------------------------------------------------------------

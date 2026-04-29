@@ -1,6 +1,7 @@
 import type {
   CreateFiscalCfopRequest,
   CreateFiscalIcmsTableRequest,
+  CreateFiscalIcmsMatrixRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
   CreateFiscalCofinsTableRequest,
@@ -81,6 +82,7 @@ export interface FiscalNcmEntryFilters {
 }
 
 export interface FiscalIcmsMatrixFilters {
+  readonly search?: string;
   readonly ufOrigin?: string;
   readonly ufDestination?: string;
   readonly operationType?: FiscalIcmsMatrixRowSummary['operationType'];
@@ -210,6 +212,8 @@ const ICMS_RULES: readonly FiscalIcmsRuleSummary[] = [
     operationType: 'interna'
   }
 ] as const;
+
+const inMemoryIcmsRules: FiscalIcmsRuleSummary[] = [...ICMS_RULES];
 
 const ICMS_TABLES: readonly FiscalIcmsTableSummary[] = [
   {
@@ -474,6 +478,14 @@ function sanitizeIcmsTableId(code: string): string {
   return `icms-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
 }
 
+function toIcmsMatrixId(
+  ufOrigin: string,
+  ufDestination: string,
+  operationType: FiscalIcmsMatrixRowSummary['operationType']
+): string {
+  return `matrix-${ufOrigin.toLowerCase()}-${ufDestination.toLowerCase()}-${operationType}`;
+}
+
 function sanitizeIpiTableId(code: string): string {
   const normalized = code
     .normalize('NFD')
@@ -517,6 +529,25 @@ function assertPercent(value: number | undefined, field: string): number {
     throw new Error(`${field} must be a number between 0 and 100`);
   }
   return Number(value.toFixed(2));
+}
+
+function assertUf(value: string | undefined, field: string): string {
+  const normalized = assertNonEmpty(value, field).toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    throw new Error(`${field} must be a valid UF`);
+  }
+  return normalized;
+}
+
+function normalizeIcmsOperationType(
+  value: CreateFiscalIcmsMatrixRequest['operationType'],
+  ufOrigin: string,
+  ufDestination: string
+): FiscalIcmsMatrixRowSummary['operationType'] {
+  if (value === 'interna' || value === 'interestadual') {
+    return value;
+  }
+  return ufOrigin === ufDestination ? 'interna' : 'interestadual';
 }
 
 function normalizeCfopPayload(
@@ -720,7 +751,7 @@ export class FiscalService {
         operationType: filters.operationType
       });
     }
-    return ICMS_RULES.filter((rule) =>
+    return inMemoryIcmsRules.filter((rule) =>
       matchesExact(rule.ufOrigin, filters.ufOrigin)
       && matchesExact(rule.ufDestination, filters.ufDestination)
       && matchesExact(rule.ncm, filters.ncm)
@@ -1155,7 +1186,7 @@ export class FiscalService {
 
       if (!current || rule.rate > current.rate) {
         rows.set(id, {
-          id: `matrix-${id.toLowerCase()}`,
+          id: toIcmsMatrixId(rule.ufOrigin, rule.ufDestination, rule.operationType),
           ufOrigin: rule.ufOrigin,
           ufDestination: rule.ufDestination,
           rate: rule.rate,
@@ -1165,10 +1196,65 @@ export class FiscalService {
     }
 
     return Array.from(rows.values()).filter((row) =>
-      matchesExact(row.ufOrigin, filters.ufOrigin)
+      matchesContains(
+        `${row.id} ${row.ufOrigin} ${row.ufDestination} ${row.operationType} ${row.rate}`,
+        filters.search
+      )
+      && matchesExact(row.ufOrigin, filters.ufOrigin)
       && matchesExact(row.ufDestination, filters.ufDestination)
       && (!filters.operationType || row.operationType === filters.operationType)
     );
+  }
+
+  public async createIcmsMatrix(
+    payload: CreateFiscalIcmsMatrixRequest
+  ): Promise<FiscalIcmsMatrixRowSummary> {
+    const ufOrigin = assertUf(payload.ufOrigin, 'ufOrigin');
+    const ufDestination = assertUf(payload.ufDestination, 'ufDestination');
+    const operationType = normalizeIcmsOperationType(payload.operationType, ufOrigin, ufDestination);
+    const rate = assertPercent(payload.rate, 'rate');
+    const cst = payload.cst === undefined ? '000' : assertNonEmpty(payload.cst, 'cst');
+
+    const existing = await this.listIcmsMatrix({ ufOrigin, ufDestination, operationType });
+    if (existing.length > 0) {
+      throw new Error('matrix entry already exists');
+    }
+
+    const rule: FiscalIcmsRuleSummary = {
+      id: `icms-${ufOrigin.toLowerCase()}-${ufDestination.toLowerCase()}-${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`,
+      ufOrigin,
+      ufDestination,
+      ncm: '',
+      rate,
+      cst,
+      operationType
+    };
+
+    if (this.hasDbRepo()) {
+      const created = await this.dbRepo!.createIcmsMatrixRule(this.accountId!, {
+        ufOrigin,
+        ufDestination,
+        rate,
+        cst,
+        operationType
+      });
+      return {
+        id: toIcmsMatrixId(created.ufOrigin, created.ufDestination, created.operationType),
+        ufOrigin: created.ufOrigin,
+        ufDestination: created.ufDestination,
+        rate: created.rate,
+        operationType: created.operationType
+      };
+    }
+
+    inMemoryIcmsRules.unshift(rule);
+    return {
+      id: toIcmsMatrixId(rule.ufOrigin, rule.ufDestination, rule.operationType),
+      ufOrigin: rule.ufOrigin,
+      ufDestination: rule.ufDestination,
+      rate: rule.rate,
+      operationType: rule.operationType
+    };
   }
 
   public async listNfseLayouts(filters: FiscalNfseLayoutFilters = {}): Promise<FiscalNfseLayoutSummary[]> {

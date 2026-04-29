@@ -1885,10 +1885,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/icms-matrix',
         name: 'FiscalICMSMatrix',
+        alias: [
+          '/matriz-icms',
+          '/estoque/configuracoes-fiscais/matriz-icms',
+          '/estoque/configuracoes-fiscais/matriz-estado-icms'
+        ],
         component: () => import('@/pages/fiscal/FiscalICMSMatrixPage.vue'),
         meta: {
-          title: 'Matriz ICMS',
-          breadcrumb: 'Matriz ICMS',
+          title: 'Matriz Estado ICMS',
+          breadcrumb: 'Matriz Estado ICMS',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '📊'
         }

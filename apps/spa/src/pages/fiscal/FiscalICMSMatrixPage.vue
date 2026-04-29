@@ -1,8 +1,12 @@
 <template>
   <div class="fiscal-icms-matrix-page">
-    <AppPageHeader title="Matriz ICMS" :breadcrumbs="['Estoque', 'Configurações Fiscais', 'Matriz ICMS']" subtitle="Visão consolidada da matriz interestadual por UF de destino">
+    <AppPageHeader
+      title="Matriz Estado ICMS"
+      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'Matriz Estado ICMS']"
+    >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
+        <DsButton icon="+" @click="openCreate">Incluir Nova Matriz</DsButton>
       </template>
     </AppPageHeader>
 
@@ -10,34 +14,22 @@
       {{ error }}
     </DsAlert>
 
-    <DsAlert variant="info">
-      Matriz publicada apenas para consulta operacional. Não há edição de alíquota nem versionamento
-      fiscal nesta tela.
+    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
+      {{ successMessage }}
     </DsAlert>
 
-    <section class="filter-bar">
-      <DsInput v-model="ufOrigin" type="select" label="UF origem">
-        <option value="">Todas</option>
-        <option v-for="option in ufOptions" :key="option" :value="option">{{ option }}</option>
-      </DsInput>
-      <DsInput v-model="ufDestination" type="select" label="UF destino">
-        <option value="">Todas</option>
-        <option v-for="option in ufOptions" :key="option" :value="option">{{ option }}</option>
-      </DsInput>
-      <DsInput v-model="operationType" type="select" label="Operação">
-        <option value="">Todas</option>
-        <option value="interna">Interna</option>
-        <option value="interestadual">Interestadual</option>
-      </DsInput>
-      <div class="filter-actions">
-        <DsButton variant="secondary" @click="load">Aplicar filtros</DsButton>
+    <section class="matrix-toolbar" aria-label="Filtros da Matriz Estado ICMS">
+      <DsInput
+        v-model="search"
+        type="search"
+        label="Buscar"
+        placeholder="Buscar por ID ou UF Destino"
+        @keyup.enter="load"
+      />
+      <div class="toolbar-actions">
+        <DsButton variant="secondary" @click="load">Buscar</DsButton>
         <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
       </div>
-    </section>
-
-    <section class="hub-kpis">
-      <DsStatCard :label="`${rows.length} combinação(ões)`" value="" icon="📊" />
-      <DsStatCard :label="maxRate" value="" icon="🧮" />
     </section>
 
     <DataTable
@@ -45,10 +37,13 @@
       :rows="rows"
       :loading="loading"
       empty-icon="📊"
-      empty-title="Nenhuma combinação de ICMS encontrada"
-      empty-description="A matriz será exibida quando a base fiscal estiver carregada."
+      empty-title="Nenhum registro cadastrado"
+      empty-description="Use Incluir Nova Matriz para cadastrar a primeira matriz de ICMS por estado."
       variant="hoverable"
     >
+      <template #emptyAction>
+        <DsButton icon="+" @click="openCreate">Incluir Nova Matriz</DsButton>
+      </template>
       <template #cell-rate="{ row }">
         {{ formatRate((row as FiscalIcmsMatrixRow).rate) }}
       </template>
@@ -56,38 +51,66 @@
         {{ formatOperationType((row as FiscalIcmsMatrixRow).operationType) }}
       </template>
     </DataTable>
+
+    <DsModal :open="modalOpen" title="Incluir Nova Matriz" size="md" @close="closeModal">
+      <form class="matrix-form" @submit.prevent="createMatrix">
+        <DsInput v-model="form.ufOrigin" type="select" label="UF origem" required>
+          <option value="">Selecione</option>
+          <option v-for="option in ufOptions" :key="`origin-${option}`" :value="option">{{ option }}</option>
+        </DsInput>
+        <DsInput v-model="form.ufDestination" type="select" label="UF destino" required>
+          <option value="">Selecione</option>
+          <option v-for="option in ufOptions" :key="`destination-${option}`" :value="option">{{ option }}</option>
+        </DsInput>
+        <DsInput v-model="form.operationType" type="select" label="Operação" required>
+          <option value="interna">Interna</option>
+          <option value="interestadual">Interestadual</option>
+        </DsInput>
+        <DsInput v-model="form.rate" type="number" min="0" max="100" step="0.01" label="Alíquota" required />
+      </form>
+
+      <template #footer>
+        <DsButton variant="ghost" @click="closeModal">Cancelar</DsButton>
+        <DsButton :loading="saving" @click="createMatrix">Salvar</DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import { fiscalService, type FiscalIcmsMatrixRow } from '@/services/fiscal';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const rows = ref<FiscalIcmsMatrixRow[]>([]);
 const loading = ref(false);
+const saving = ref(false);
 const error = ref('');
+const successMessage = ref('');
+const search = ref('');
+const modalOpen = ref(false);
 
 const columns: DataTableColumn[] = [
-  { key: 'ufOrigin', label: 'UF Origem' },
-  { key: 'ufDestination', label: 'UF Destino' },
+  { key: 'id', label: 'ID' },
+  { key: 'ufOrigin', label: 'UF origem' },
+  { key: 'ufDestination', label: 'UF destino' },
   { key: 'operationType', label: 'Operação' },
   { key: 'rate', label: 'Alíquota' }
 ];
 
-const ufOptions = ['SP', 'RJ', 'MG', 'PR', 'RS', 'SC'];
-const maxRate = computed(() => {
-  if (rows.value.length === 0) return '0,00%';
-  return `${Math.max(...rows.value.map((item) => item.rate)).toFixed(2)}% máxima`;
+const ufOptions = ['SP', 'RJ', 'MG', 'PR', 'RS', 'SC', 'BA', 'ES', 'GO', 'DF'];
+const form = reactive({
+  ufOrigin: '',
+  ufDestination: '',
+  operationType: 'interestadual' as FiscalIcmsMatrixRow['operationType'],
+  rate: ''
 });
-const ufOrigin = ref('');
-const ufDestination = ref('');
-const operationType = ref<FiscalIcmsMatrixRow['operationType'] | ''>('');
 
 function formatRate(value: number): string {
   return `${value.toFixed(2)}%`;
@@ -102,22 +125,62 @@ async function load() {
   error.value = '';
   try {
     rows.value = await fiscalService.listIcmsMatrix({
-      ufOrigin: ufOrigin.value || undefined,
-      ufDestination: ufDestination.value || undefined,
-      operationType: operationType.value || undefined
+      search: search.value.trim() || undefined
     });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar matriz ICMS';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar Matriz Estado ICMS';
   } finally {
     loading.value = false;
   }
 }
 
 function resetFilters() {
-  ufOrigin.value = '';
-  ufDestination.value = '';
-  operationType.value = '';
+  search.value = '';
   void load();
+}
+
+function resetForm() {
+  form.ufOrigin = '';
+  form.ufDestination = '';
+  form.operationType = 'interestadual';
+  form.rate = '';
+}
+
+function openCreate() {
+  resetForm();
+  modalOpen.value = true;
+}
+
+function closeModal() {
+  if (!saving.value) {
+    modalOpen.value = false;
+  }
+}
+
+async function createMatrix() {
+  saving.value = true;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    if (!form.rate.trim()) {
+      throw new Error('Informe a aliquota da Matriz Estado ICMS');
+    }
+
+    await fiscalService.createIcmsMatrix({
+      ufOrigin: form.ufOrigin,
+      ufDestination: form.ufDestination,
+      operationType: form.operationType,
+      rate: Number(form.rate)
+    });
+    successMessage.value = 'Matriz Estado ICMS cadastrada com sucesso.';
+    modalOpen.value = false;
+    await load();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao salvar Matriz Estado ICMS';
+  } finally {
+    saving.value = false;
+  }
 }
 
 onMounted(load);
@@ -130,22 +193,23 @@ onMounted(load);
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.filter-bar {
+.matrix-toolbar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
 }
 
-.filter-actions {
+.toolbar-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.matrix-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
 }
 </style>

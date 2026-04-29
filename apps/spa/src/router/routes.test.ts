@@ -464,6 +464,23 @@ describe('router convergence', () => {
     );
   });
 
+  it('uses a Vetus-like concrete route for fiscal ICMS state matrix', () => {
+    const matrixRoute = findChildRoute('fiscal/icms-matrix');
+
+    expect(matrixRoute?.name).toBe('FiscalICMSMatrix');
+    expect(matrixRoute?.component).toBeTruthy();
+    expect(matrixRoute?.meta?.title).toBe('Matriz Estado ICMS');
+    expect(matrixRoute?.meta?.breadcrumb).toBe('Matriz Estado ICMS');
+    expect(matrixRoute?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
+    expect(matrixRoute?.alias).toEqual(
+      expect.arrayContaining([
+        '/matriz-icms',
+        '/estoque/configuracoes-fiscais/matriz-icms',
+        '/estoque/configuracoes-fiscais/matriz-estado-icms'
+      ])
+    );
+  });
+
   it('uses a concrete route for atendimento vendas', () => {
     const salesRoute = findChildRoute('sales');
 

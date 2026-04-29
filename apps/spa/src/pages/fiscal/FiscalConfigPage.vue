@@ -75,10 +75,10 @@
             Consultar NCM
           </DsButton>
         </DsCard>
-        <DsCard title="Matriz ICMS" icon="📊">
-          <p class="card-description">Consulta consolidada da matriz de ICMS interestadual por UF.</p>
+        <DsCard title="Matriz Estado ICMS" icon="📊">
+          <p class="card-description">Cadastro da matriz de ICMS por estado de origem e destino.</p>
           <DsButton variant="secondary" tag="a" to="/fiscal/icms-matrix" size="sm">
-            Consultar matriz
+            Abrir matriz
           </DsButton>
         </DsCard>
       </div>

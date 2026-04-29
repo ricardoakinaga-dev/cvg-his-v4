@@ -190,7 +190,11 @@ test('FiscalService exposes filtered NCM catalog and consolidated ICMS matrix', 
   const service = new FiscalService();
 
   const ncmRows = await service.listNcmEntries({ search: 'imagem' });
-  const matrixRows = await service.listIcmsMatrix({ ufOrigin: 'SP', operationType: 'interestadual' });
+  const matrixRows = await service.listIcmsMatrix({
+    search: 'RJ',
+    ufOrigin: 'SP',
+    operationType: 'interestadual'
+  });
 
   assert.equal(ncmRows.length, 1);
   assert.equal(ncmRows[0]?.ncm, '9022');
@@ -199,7 +203,27 @@ test('FiscalService exposes filtered NCM catalog and consolidated ICMS matrix', 
   assert.ok(matrixRows.length > 0);
   assert.ok(matrixRows.every((row) => row.ufOrigin === 'SP'));
   assert.ok(matrixRows.every((row) => row.operationType === 'interestadual'));
+  assert.ok(matrixRows.every((row) => `${row.id} ${row.ufDestination}`.includes('RJ')));
   assert.ok(matrixRows.some((row) => row.ufDestination === 'RJ' && row.rate === 12));
+});
+
+test('FiscalService creates ICMS state matrix entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createIcmsMatrix({
+    ufOrigin: 'SP',
+    ufDestination: 'BA',
+    operationType: 'interestadual',
+    rate: 7
+  });
+
+  assert.equal(created.ufOrigin, 'SP');
+  assert.equal(created.ufDestination, 'BA');
+  assert.equal(created.operationType, 'interestadual');
+  assert.equal(created.rate, 7);
+
+  const filtered = await service.listIcmsMatrix({ search: 'BA' });
+  assert.ok(filtered.some((row) => row.id === created.id));
 });
 
 test('FiscalService creates and updates NFS-e layouts in backoffice mode', async () => {

@@ -414,7 +414,7 @@ Checkpoint em 2026-04-29:
 - P3-04 foi implementado em escopo focado para acessibilidade e teclado nos acordeoes.
 - P3-05 foi implementado em escopo documental para consolidar o relatorio semanal de compatibilidade Vetus vs CVG-HIS.
 
-Proxima acao recomendada: seguir a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`.
+Proxima acao recomendada: seguir a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`.
 
 Justificativa:
 
@@ -430,19 +430,19 @@ Justificativa:
 - observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
 - os acordeoes do cockpit do animal agora possuem `aria-expanded`, `aria-controls`, paineis `region`/`aria-labelledby`, foco visivel e navegacao por setas/Home/End;
 - o relatorio semanal de compatibilidade registra score consolidado de 86/100, score clinico central de 91/100 e pendencias por categoria sem transcrever dados reais do Vetus;
-- P3 esta fechado na ordem operacional definida e `Tabela NFS-e` ja foi alinhada, entao a proxima frente deve seguir a trilha fiscal macro.
+- P3 esta fechado na ordem operacional definida e `Tabela NFS-e`/`Matriz Estado ICMS` ja foram alinhadas, entao a proxima frente deve seguir a trilha fiscal macro.
 
-Escopo minimo de `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`:
+Escopo minimo de `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`:
 
-1. Revalidar os artefatos Vetus read-only de `Matriz Estado ICMS`, incluindo screenshot e guia fiscal existentes.
-2. Comparar a superficie Vetus com `/fiscal/icms-matrix`, preservando a separacao ja criada entre `Tabela ICMS` e matriz fiscal por UF/estado.
-3. Ajustar a tela principal para paridade Vetus-like se a superficie atual estiver mais tecnica do que a tela observada.
+1. Revalidar os artefatos Vetus read-only de `Tabela IBS/CBS`, incluindo screenshot e guia fiscal existentes.
+2. Comparar a superficie Vetus com as rotas fiscais atuais, sem misturar com ICMS/IPI/PIS/COFINS ja separados.
+3. Ajustar ou criar a tela principal para paridade Vetus-like se a superficie atual estiver ausente ou mais tecnica do que a tela observada.
 4. Preservar contratos fiscais existentes e nao executar acao fiscal real durante observacao.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
-Criterio de aceite de `Matriz Estado ICMS`:
+Criterio de aceite de `Tabela IBS/CBS`:
 
-- caminho `Estoque > Configuracoes Fiscais > Matriz Estado ICMS` fica mapeado para rota CVG-HIS coerente;
+- caminho `Estoque > Configuracoes Fiscais > Tabela IBS/CBS` fica mapeado para rota CVG-HIS coerente;
 - tela principal mostra busca/listagem/estado vazio e acao principal equivalentes ao Vetus ou documenta claramente a diferenca;
 - API fiscal, OpenAPI e testes permanecem verdes;
 - publicacao usa somente `docker-compose.v2.yml` e servicos existentes;
@@ -452,11 +452,44 @@ Observacao de sequenciamento:
 
 - A frente P3 operacional foi fechada com P3-05.
 - `Tabela NFS-e` foi alinhada em 2026-04-29.
-- O workflow macro Vetus fiscal deve seguir agora por `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`, conforme a ordem documentada do navbar.
+- `Matriz Estado ICMS` foi alinhada em 2026-04-29.
+- O workflow macro Vetus fiscal deve seguir agora por `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`, conforme a ordem documentada do navbar.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Estoque > Configuracoes Fiscais > Matriz Estado ICMS
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- `/fiscal/icms-matrix` passou de consulta tecnica/read-only para superficie Vetus-like de `Matriz Estado ICMS`;
+- adicionados aliases SPA `/matriz-icms`, `/estoque/configuracoes-fiscais/matriz-icms` e `/estoque/configuracoes-fiscais/matriz-estado-icms`;
+- cabecalho, breadcrumb, busca unica `Buscar por ID ou UF Destino`, acao `Incluir Nova Matriz` e estado vazio `Nenhum registro cadastrado` foram alinhados ao screenshot Vetus;
+- o formulario de cadastro foi movido para modal com UF origem, UF destino, operacao e aliquota;
+- `GET /fiscal/icms-matrix` passou a aceitar `search`, e `POST /fiscal/icms-matrix` cria matriz com auditoria e persistencia em `icms_rules`;
+- `Tabela ICMS` permaneceu separada em `/fiscal/icms`, sem misturar cadastro simples de aliquota com matriz por UF/estado.
+
+Validacao:
+
+- teste focado de `FiscalICMSMatrixPage` cobre cabecalho/breadcrumb/estado vazio Vetus-like, busca e abertura do modal;
+- teste de rotas SPA cobre aliases e breadcrumb de `Matriz Estado ICMS`;
+- teste do modulo fiscal cobre filtro `search`, criacao e bloqueio de duplicidade;
+- teste focado da rota fiscal da API cobre repasse de `search` e criacao protegida por permissao;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/fiscal/__tests__/FiscalICMSMatrixPage.test.ts src/router/routes.test.ts`;
+- `pnpm --filter @cvg-his-v2/shared-contracts run build && pnpm --filter @cvg-his-v2/module-fiscal run build && pnpm --filter @cvg-his-v2/module-fiscal exec node --test dist/fiscal.test.js`;
+- `pnpm --filter @cvg-his-v2/shared-contracts run build && pnpm --filter @cvg-his-v2/module-fiscal run build && pnpm --filter @cvg-his-v2/api run build && pnpm --filter @cvg-his-v2/api exec node --test dist/routes/fiscal-routes.test.js`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- `pnpm validate:openapi`.
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/fiscal/icms-matrix` 200, alias `http://127.0.0.1:3002/estoque/configuracoes-fiscais/matriz-estado-icms` 200 e API local `http://127.0.0.1:3003/health` 200;
+- rota protegida `/fiscal/icms-matrix?search=RJ` retorna 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA `/fiscal/icms-matrix` e API health retornando 200.
+
+Proxima frente recomendada: `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`.
 
 ### 2026-04-29 - Estoque > Configuracoes Fiscais > Tabela NFS-e
 

@@ -4,6 +4,7 @@ import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fisc
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
   CreateFiscalCfopRequest,
+  CreateFiscalIcmsMatrixRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
@@ -701,22 +702,46 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/icms-matrix') {
-    if (request.method !== 'GET') {
-      return false;
-    }
-    const principal = requirePrincipal(request, 'fiscal.read');
-    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const payload: FiscalIcmsMatrixListResponse = {
-      items: await scopedFiscal.listIcmsMatrix({
-        ufOrigin: url.searchParams.get('ufOrigin') ?? undefined,
-        ufDestination: url.searchParams.get('ufDestination') ?? undefined,
-        operationType:
-          (url.searchParams.get('operationType') as 'interna' | 'interestadual' | null)
-          ?? undefined
-      })
-    };
-    return json(response, 200, payload);
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalIcmsMatrixListResponse = {
+        items: await scopedFiscal.listIcmsMatrix({
+          search: url.searchParams.get('search') ?? undefined,
+          ufOrigin: url.searchParams.get('ufOrigin') ?? undefined,
+          ufDestination: url.searchParams.get('ufDestination') ?? undefined,
+          operationType:
+            (url.searchParams.get('operationType') as 'interna' | 'interestadual' | null)
+            ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalIcmsMatrixRequest;
+      const created = await scopedFiscal.createIcmsMatrix(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'icms-state-matrix',
+        entityId: created.id,
+        payloadSummary: `ICMS matrix ${created.ufOrigin}/${created.ufDestination} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
   }
 
   return false;

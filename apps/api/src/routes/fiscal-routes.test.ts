@@ -339,6 +339,78 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
   assert.ok(nfsePayload.items.every((item) => `${item.city} ${item.provider} ${item.municipalityCode}`.includes('ISS SP')));
 });
 
+test('handleFiscalRoutes filters and creates ICMS state matrix entries', async () => {
+  const listResponse = new MockResponse();
+  const createResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const listHandled = await handleFiscalRoutes(
+    '/fiscal/icms-matrix',
+    {
+      method: 'GET',
+      url: '/fiscal/icms-matrix?search=RJ&ufOrigin=SP&operationType=interestadual'
+    } as never,
+    listResponse as never,
+    'corr-fiscal-matrix-list',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(requiredPermission, 'fiscal.read');
+  assert.equal(listResponse.statusCode, 200);
+  const listPayload = listResponse.bodyJson<{
+    items: Array<{ id: string; ufOrigin: string; ufDestination: string; operationType: string }>;
+  }>();
+  assert.ok(listPayload.items.length > 0);
+  assert.ok(listPayload.items.every((item) => item.ufOrigin === 'SP'));
+  assert.ok(listPayload.items.every((item) => item.operationType === 'interestadual'));
+  assert.ok(listPayload.items.every((item) => `${item.id} ${item.ufDestination}`.includes('RJ')));
+
+  const createHandled = await handleFiscalRoutes(
+    '/fiscal/icms-matrix',
+    createMockRequest('POST', '/fiscal/icms-matrix', {
+      ufOrigin: 'SP',
+      ufDestination: 'BA',
+      operationType: 'interestadual',
+      rate: 7
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-matrix-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{
+    ufOrigin: string;
+    ufDestination: string;
+    rate: number;
+    operationType: string;
+  }>();
+  assert.equal(createdPayload.ufOrigin, 'SP');
+  assert.equal(createdPayload.ufDestination, 'BA');
+  assert.equal(createdPayload.rate, 7);
+  assert.equal(createdPayload.operationType, 'interestadual');
+});
+
 test('handleFiscalRoutes creates and updates simple ICMS table entries when enabled', async () => {
   const createResponse = new MockResponse();
   const updateResponse = new MockResponse();

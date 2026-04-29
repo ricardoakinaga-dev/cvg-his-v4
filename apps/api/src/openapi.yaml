@@ -2746,6 +2746,10 @@ paths:
       summary: List ICMS matrix
       tags: [Fiscal]
       parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
         - name: ufOrigin
           in: query
           schema:
@@ -2766,6 +2770,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FiscalIcmsMatrixListResponse'
+    post:
+      operationId: createFiscalIcmsMatrix
+      summary: Create ICMS state matrix entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalIcmsMatrixRequest'
+      responses:
+        '201':
+          description: Created ICMS state matrix entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIcmsMatrixRowSummary'
 
   /fiscal/nfse:
     get:
@@ -9283,6 +9304,22 @@ components:
         operationType:
           type: string
           enum: [interna, interestadual]
+
+    CreateFiscalIcmsMatrixRequest:
+      type: object
+      required: [ufOrigin, ufDestination, rate]
+      properties:
+        ufOrigin:
+          type: string
+        ufDestination:
+          type: string
+        rate:
+          type: number
+        operationType:
+          type: string
+          enum: [interna, interestadual]
+        cst:
+          type: string
 
     FiscalNfseCustomerSummary:
       type: object

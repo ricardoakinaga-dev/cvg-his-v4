@@ -1,5 +1,6 @@
 import type {
   CreateFiscalCfopRequest,
+  CreateFiscalIcmsMatrixRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
   CreateFiscalPisTableRequest,
@@ -45,6 +46,7 @@ export type CreateFiscalCfop = CreateFiscalCfopRequest;
 export type UpdateFiscalCfop = UpdateFiscalCfopRequest;
 export type FiscalNcmEntry = FiscalNcmEntrySummary;
 export type FiscalIcmsMatrixRow = FiscalIcmsMatrixRowSummary;
+export type CreateFiscalIcmsMatrix = CreateFiscalIcmsMatrixRequest;
 export type FiscalNfseLayout = FiscalNfseLayoutSummary;
 export type CreateFiscalIcmsTable = CreateFiscalIcmsTableRequest;
 export type UpdateFiscalIcmsTable = UpdateFiscalIcmsTableRequest;
@@ -89,6 +91,7 @@ export interface FiscalNcmFilters {
 }
 
 export interface FiscalIcmsMatrixFilters {
+  search?: string;
   ufOrigin?: string;
   ufDestination?: string;
   operationType?: FiscalIcmsMatrixRow['operationType'];
@@ -242,6 +245,13 @@ export const fiscalService = {
       `/fiscal/icms-matrix${buildQuery({ ...filters })}`
     );
     return [...(response.items ?? [])];
+  },
+
+  async createIcmsMatrix(payload: CreateFiscalIcmsMatrix): Promise<FiscalIcmsMatrixRow> {
+    return apiRequest<FiscalIcmsMatrixRow>('/fiscal/icms-matrix', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listNfseLayouts(filters: FiscalNfseLayoutFilters = {}): Promise<FiscalNfseLayout[]> {

@@ -657,6 +657,14 @@ export interface FiscalIcmsMatrixRowSummary {
   readonly operationType: 'interna' | 'interestadual';
 }
 
+export interface CreateFiscalIcmsMatrixRequest {
+  readonly ufOrigin: string;
+  readonly ufDestination: string;
+  readonly rate: number;
+  readonly operationType?: 'interna' | 'interestadual';
+  readonly cst?: string;
+}
+
 export interface FiscalNfseLayoutSummary {
   readonly id: string;
   readonly city: string;
