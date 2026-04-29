@@ -1530,6 +1530,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'banks',
         name: 'Banks',
+        alias: ['/financeiro/cadastros/bancos', '/financeiro/bancos', '/bancos'],
         component: () => import('@/pages/finance/BanksPage.vue'),
         meta: {
           title: 'Bancos',

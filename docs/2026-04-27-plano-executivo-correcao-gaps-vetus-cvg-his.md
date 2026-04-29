@@ -428,8 +428,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Bancos`.
+Proxima acao recomendada: revalidar o navbar `Marketing` no Vetus.
 
 Justificativa:
 
@@ -459,16 +460,17 @@ Justificativa:
 - `Centros de Custo` ja foi convertido em superficie operacional somente leitura de classificacoes, responsaveis, status, rateio e uso financeiro no `cvg-his-v2`;
 - `Custos e Despesas` ja foi convertido em superficie operacional somente leitura de despesas, categorias, centro de custo, natureza, status e uso financeiro no `cvg-his-v2`;
 - `Cartoes Debito/Credito` ja foi convertido em superficie operacional somente leitura de cartoes, bandeiras, administradoras, status e conciliacao no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Bancos`;
-- resolver `Bancos` agora fecha a sequencia principal de cadastros financeiros revalidada depois de `Cartoes Debito/Credito`.
+- `Bancos` ja foi convertido em superficie operacional somente leitura de bancos, agencia, conta, tipo, status, uso e conciliacao no `cvg-his-v2`;
+- a sequencia principal revalidada de `Financeiro` ficou fechada ate o ultimo item listado em `Cadastros > Bancos`;
+- a proxima acao macro e revalidar o navbar `Marketing` para continuar a ordem Vetus por evidencia read-only.
 
-Escopo minimo de `Financeiro > Cadastros > Bancos`:
+Escopo minimo de revalidacao de `Marketing`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Bancos` antes de escrever codigo.
-2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, lista de bancos/contas, agencia, conta, status e acoes principais sem executar transferencia real, conciliacao, baixa, repasse ou escrita real no Vetus.
-4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
-5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
+1. Revalidar artefatos Vetus read-only especificos de `Marketing` antes de escrever codigo.
+2. Mapear submenu, ordem real, rotas legacy, telas e acoes disponiveis.
+3. Comparar o submenu Vetus com as superficies atuais de campanhas, comunicacoes e preventivo no `cvg-his-v2`.
+4. Definir o primeiro GAP macro de `Marketing` sem disparar comunicacao real, envio de SMS/email, automacao ou escrita no Vetus.
+5. Atualizar a matriz executiva com o proximo item operacional.
 
 Observacao de sequenciamento:
 
@@ -499,11 +501,55 @@ Observacao de sequenciamento:
 - `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Cadastros > Bancos`.
+- `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29.
+- A proxima frente macro e revalidar o navbar `Marketing` no Vetus.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Cadastros > Bancos
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/banks` virou superficie Vetus-like de `Bancos`;
+- aliases adicionados para `/financeiro/cadastros/bancos`, `/financeiro/bancos` e `/bancos`;
+- tela com breadcrumbs `Financeiro / Cadastros / Bancos`;
+- filtros `Pesquisar`, `Status`, `Tipo de Conta` e `Uso`;
+- KPIs `Registros`, `Ativos`, `Liquidacao` e `Conciliacao`;
+- tabela com `Banco`, `Agencia/Conta`, `Tipo`, `Status`, `Uso`, `Conciliacao` e `Proxima Acao`;
+- acoes `Novo Banco` bloqueada, `Fluxo de Caixa`, `Contas a Pagar`, `Cartoes Debito/Credito` e `Atualizar`;
+- dados conservadores somente leitura enquanto nao houver contrato financeiro auditavel.
+
+Restricoes mantidas:
+
+- sem cadastro real de banco;
+- sem edicao real de agencia ou conta;
+- sem transferencia real;
+- sem conciliacao real;
+- sem baixa financeira;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `BanksPage`;
+- teste geral de cadastros financeiros;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/banks` 200, `/financeiro/cadastros/bancos` 200 e `/health` 200;
+- smokes publicos: SPA `/banks` 200 e API `/health` 200.
+
+Proxima frente recomendada: revalidar o navbar `Marketing` no Vetus.
 
 ### 2026-04-29 - Financeiro > Cadastros > Cartoes Debito/Credito
 

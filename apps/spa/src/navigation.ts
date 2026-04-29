@@ -289,7 +289,12 @@ export const navGroups: AppNavGroup[] = [
             icon: '💳',
             keywords: ['cartoes', 'cartões', 'debito credito', 'débito crédito', 'bandeira', 'administradora', 'maquininha']
           },
-          { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] }
+          {
+            label: 'Bancos',
+            path: '/banks',
+            icon: '🏦',
+            keywords: ['bancos', 'contas bancarias', 'contas bancárias', 'agencia', 'agência', 'conta corrente', 'domicilio bancario']
+          }
         ]
       },
       {
