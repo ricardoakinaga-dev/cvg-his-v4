@@ -407,8 +407,9 @@ Checkpoint em 2026-04-29:
 - O navbar `Financeiro` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas a Pagar`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Pagamento Antecipado`.
 
 Justificativa:
 
@@ -417,14 +418,15 @@ Justificativa:
 - a ordem revalidada de `Financeiro` comeca por `Gaveta > Gaveta`;
 - a `Gaveta` observada no Vetus ja foi convertida em superficie operacional de caixa no `cvg-his-v2`;
 - `Contas a Receber` ja foi convertida em superficie operacional de titulos no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas a Pagar`;
-- resolver `Contas a Pagar` agora preserva a ordem Vetus depois de contas a receber e antes de `Pagamento Antecipado`.
+- `Contas a Pagar` ja foi convertida em superficie operacional de obrigacoes no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Pagamento Antecipado`;
+- resolver `Pagamento Antecipado` agora preserva a ordem Vetus depois de contas a pagar e antes de `Contas Adm. Cartao`.
 
-Escopo minimo de `Financeiro > Controles > Contas a Pagar`:
+Escopo minimo de `Financeiro > Controles > Pagamento Antecipado`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Contas a Pagar` antes de escrever codigo.
-2. Comparar a tela/fluxo Vetus com a superficie atual de despesas/fornecedores do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar baixa real no Vetus.
+1. Revalidar artefatos Vetus read-only especificos de `Pagamento Antecipado` antes de escrever codigo.
+2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
+3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar pagamento real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -436,11 +438,44 @@ Observacao de sequenciamento:
 - A ordem do navbar `Financeiro` foi revalidada em 2026-04-29.
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Contas a Pagar`.
+- `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Pagamento Antecipado`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Contas a Pagar
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/accounts-payable` foi convertido de operacao financeira generica para superficie Vetus-like de `Contas a Pagar`;
+- aliases adicionados: `/financeiro/controles/contas-a-pagar` e `/contas-a-pagar`;
+- filtros alinhados ao Vetus: `Fornecedor`, `Vencimento de`, `Ate` e `Status`;
+- status exibidos como `A Pagar`, mantendo `Cancelada` e `Paga` como opcoes de filtro visual para paridade do menu legacy;
+- tabela alinhada com `Fornecedor`, `Emissao`, `Vencimento`, `Total`, `Pago`, `A Pagar`, `Origem`, `Status` e `Abrir`;
+- acoes de tela `Gerar Conta Avulsa` e `Baixar Contas Em Lote` foram posicionadas na superficie sem acionar escrita nova;
+- a tela consome a API existente `/expenses-catalog`, abrindo `/expenses` filtrado por fornecedor.
+
+Validacao:
+
+- teste focado de `AccountsPayablePage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/accounts-payable` 200, `/financeiro/controles/contas-a-pagar` 200 e `/health` 200;
+- rota protegida `/expenses-catalog?page=1&pageSize=1` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/accounts-payable` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Pagamento Antecipado`.
 
 ### 2026-04-29 - Financeiro > Controles > Contas a Receber
 

@@ -216,7 +216,7 @@ export const navGroups: AppNavGroup[] = [
         label: 'Controles',
         items: [
           { label: 'Contas a Receber', path: '/billing', icon: '💵', keywords: ['receber', 'recebiveis', 'billing', 'contas a receber'] },
-          { label: 'Contas a Pagar', path: '/finance/accounts-payable', icon: '💸', keywords: ['pagar', 'fornecedores'] },
+          { label: 'Contas a Pagar', path: '/finance/accounts-payable', icon: '💸', keywords: ['pagar', 'fornecedores', 'contas a pagar'] },
           { label: 'Pagamento Antecipado', path: '/finance/advance-payments', icon: '⏩', keywords: ['pagamento antecipado'] },
           { label: 'Contas Adm. Cartão', path: '/finance/card-accounts', icon: '💳', keywords: ['contas cartao'] },
           { label: 'Cheques', path: '/finance/cheques', icon: '📄', keywords: ['cheques'] },

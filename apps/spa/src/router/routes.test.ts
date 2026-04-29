@@ -358,6 +358,12 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
+    expect(findChildRoute('finance/accounts-payable')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/contas-a-pagar',
+        '/contas-a-pagar'
+      ])
+    );
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');

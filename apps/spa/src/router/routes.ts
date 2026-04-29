@@ -962,8 +962,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'finance/accounts-payable',
         name: 'AccountsPayable',
-        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
-        props: { mode: 'accounts-payable' },
+        component: () => import('@/pages/finance/AccountsPayablePage.vue'),
+        alias: [
+          '/financeiro/controles/contas-a-pagar',
+          '/contas-a-pagar'
+        ],
         meta: {
           title: 'Contas a Pagar',
           breadcrumb: 'Contas a Pagar',
