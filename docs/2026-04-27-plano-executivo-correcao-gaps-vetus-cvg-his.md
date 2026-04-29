@@ -418,8 +418,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Maquininhas`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Simulador de Split`.
 
 Justificativa:
 
@@ -439,14 +440,15 @@ Justificativa:
 - `Dashboard Financeiro` ja foi convertido em superficie operacional de indicadores financeiros, recebiveis, caixa, PIX e producao comercial no `cvg-his-v2`;
 - `Linha do Tempo` ja foi convertido em superficie operacional de eventos financeiros, vencimentos, recebimentos e marcos operacionais no `cvg-his-v2`;
 - `Configuracao do Split` ja foi convertido em superficie operacional somente leitura de regras, recebedores, percentuais e repasse planejado no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Maquininhas`;
-- resolver `Maquininhas` agora preserva a ordem Vetus depois de fechar `Configuracao do Split`.
+- `Maquininhas` ja foi convertido em superficie operacional somente leitura de terminais, provedores, unidades e status no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Simulador de Split`;
+- resolver `Simulador de Split` agora preserva a ordem Vetus depois de fechar `Maquininhas`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Maquininhas`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Simulador de Split`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Maquininhas` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Simulador de Split` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, cadastro/listagem de maquininhas, status, provedor, unidade e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, campos de simulacao, percentuais, recebedores, taxas, resultado liquido e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -469,11 +471,52 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Maquininhas`.
+- `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Simulador de Split`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Maquininhas
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/card-machines` deixou de usar placeholder e passou a carregar `CardMachinesPage`;
+- aliases adicionados para `/financeiro/maquininha/maquininhas`, `/financeiro/maquininha-de-cartao/maquininhas` e `/maquininhas`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Maquininhas`;
+- filtros `Unidade`, `Provedor`, `Status` e `Pesquisar`;
+- KPIs `Terminais`, `Ativas`, `Provedores` e `Ultima Conciliacao`;
+- tabela com `Maquininha`, `Serial`, `Unidade`, `Provedor`, `Status` e `Abrir`;
+- acoes `Cadastrar Maquininha` bloqueada, `Configuracao do Split`, `Transacoes de Cartao`, `Habilitar Pagamento` e `Atualizar`.
+
+Restricoes mantidas:
+
+- sem credenciamento;
+- sem ativacao de terminal;
+- sem captura;
+- sem repasse real;
+- sem conciliacao;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `CardMachinesPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/card-machines` 200, `/financeiro/maquininha/maquininhas` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/card-machines` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Simulador de Split`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Configuracao do Split
 
