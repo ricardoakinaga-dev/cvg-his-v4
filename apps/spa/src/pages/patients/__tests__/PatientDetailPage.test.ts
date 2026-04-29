@@ -641,7 +641,8 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Doenca renal cronica');
     expect(wrapper.text()).toContain('Dipirona');
     expect(wrapper.text()).toContain('Docil');
-    expect(wrapper.text()).toContain('Paciente usa coleira vermelha.');
+    expect(wrapper.find('[data-testid="patient-risk-strip"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="patient-profile-notes"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('Ver mais Informações do Animal');
     expect(wrapper.text()).toContain('Ver Informações de Contato');
     expect(wrapper.text()).toContain('Anamneses');
@@ -673,6 +674,10 @@ describe('PatientDetailPage', () => {
       await trigger!.trigger('click');
       await flushPromises();
     };
+
+    await expandCard('Ver mais Informações do Animal');
+    expect(wrapper.find('[data-testid="patient-profile-notes"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Paciente usa coleira vermelha.');
 
     await expandCard('Anamneses');
     expect(wrapper.text()).toContain('Tutor relata claudicação após passeio.');

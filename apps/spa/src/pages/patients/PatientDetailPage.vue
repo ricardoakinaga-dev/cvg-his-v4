@@ -37,22 +37,17 @@
           <div class="vetus-profile-card__identity">
             <div class="animal-avatar" aria-hidden="true">{{ animalAvatarInitial }}</div>
             <div class="animal-headline">
-              <p><strong>ID:</strong> {{ numericIdLabel }}</p>
-              <p><strong>Animal:</strong> {{ patient.name }}</p>
-              <p><strong>Raça:</strong> {{ patient.breed || 'Não Informado' }}</p>
-              <p><strong>Idade:</strong> {{ ageLabel }}</p>
-              <p><strong>Data de Cadastro:</strong> {{ registrationDateLabel }}</p>
+              <span class="animal-kicker">ID {{ numericIdLabel }} · {{ speciesLabel(patient.species) }}</span>
+              <strong class="animal-title">{{ patient.name }}</strong>
+              <div class="animal-summary-chips" aria-label="Resumo do animal">
+                <span>{{ patient.breed || 'Raça não informada' }}</span>
+                <span>{{ ageLabel }}</span>
+                <span>{{ currentWeightLabel }}</span>
+              </div>
             </div>
           </div>
 
-          <div class="vetus-profile-actions">
-            <button type="button" class="vetus-danger-action" disabled>Excluir Cadastro</button>
-            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="primary">
-              Editar Cadastro
-            </DsButton>
-          </div>
-
-          <div class="vetus-critical-list">
+          <div class="vetus-critical-list" data-testid="patient-risk-strip">
             <div>
               <span>Doença Crônica:</span>
               <strong>{{ chronicDiseaseLabel }}</strong>
@@ -65,6 +60,28 @@
               <span>Temperamento:</span>
               <strong>{{ temperamentLabel }}</strong>
             </div>
+          </div>
+
+          <div class="vetus-owner-strip">
+            <div>
+              <span>Cliente</span>
+              <strong>{{ ownerSnapshot?.fullName || ownerName }}</strong>
+            </div>
+            <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary" size="sm">
+              Ver cadastro do cliente
+            </DsButton>
+          </div>
+
+          <div class="vetus-profile-actions">
+            <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="primary" size="sm">
+              Editar Cadastro
+            </DsButton>
+            <DsButton v-if="ownerWhatsAppLink" :href="ownerWhatsAppLink" variant="secondary" size="sm">
+              Enviar mensagem
+            </DsButton>
+            <button v-else type="button" class="vetus-disabled-action" disabled>
+              Enviar mensagem
+            </button>
           </div>
 
           <button
@@ -91,16 +108,16 @@
             <div><span>ID legado Vetus:</span><strong>{{ legacyVetusIdLabel }}</strong></div>
             <div><span>Situação:</span><strong>{{ patientStatusLabel(patient.status) }}</strong></div>
             <div><span>Peso atual:</span><strong>{{ currentWeightLabel }}</strong></div>
+            <div><span>Data de Cadastro:</span><strong>{{ registrationDateLabel }}</strong></div>
           </div>
 
-          <div class="vetus-profile-section">
+          <div
+            v-if="isPatientCardExpanded('animal-more')"
+            class="vetus-profile-section"
+            data-testid="patient-profile-notes"
+          >
             <strong>Observações Gerais do Animal:</strong>
             <p>{{ animalNotesLabel }}</p>
-          </div>
-
-          <div class="vetus-profile-section">
-            <strong>Cliente:</strong>
-            <div class="vetus-owner-name">{{ ownerSnapshot?.fullName || ownerName }}</div>
           </div>
 
           <button
@@ -119,18 +136,6 @@
             <div><span>Telefone 2:</span><strong>Não Informado</strong></div>
             <div><span>Celular:</span><strong>{{ ownerPhoneLabel }}</strong></div>
             <div><span>E-mail:</span><strong>{{ ownerEmailLabel }}</strong></div>
-          </div>
-
-          <div class="vetus-profile-footer-actions">
-            <DsButton v-if="ownerWhatsAppLink" :href="ownerWhatsAppLink" variant="primary">
-              Enviar Mensagem
-            </DsButton>
-            <button v-else type="button" class="vetus-disabled-action" disabled>
-              Enviar Mensagem
-            </button>
-            <DsButton tag="a" :to="`/owners/${patient.primaryOwnerId}`" variant="secondary">
-              Ver cadastro do cliente
-            </DsButton>
           </div>
         </article>
 
@@ -2515,8 +2520,8 @@ watch(
 
 .vetus-animal-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 475px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -2531,27 +2536,27 @@ watch(
 .vetus-profile-card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .vetus-profile-card__identity {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
 }
 
 .animal-avatar {
   display: grid;
-  width: 104px;
-  height: 104px;
+  width: 64px;
+  height: 64px;
   place-items: center;
   border: 2px solid #99b83f;
   border-radius: 50%;
   background: #eef5dd;
   color: #79940f;
-  font-size: 2.75rem;
+  font-size: 1.8rem;
   font-weight: 800;
 }
 
@@ -2560,6 +2565,37 @@ watch(
   min-width: 0;
   flex-direction: column;
   gap: 5px;
+}
+
+.animal-kicker {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.animal-title {
+  color: #0f172a;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.animal-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.animal-summary-chips span {
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid #dbe4ef;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .animal-headline p,
@@ -2576,8 +2612,8 @@ watch(
 .vetus-profile-footer-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding-top: 12px;
+  gap: 8px;
+  padding-top: 8px;
   border-top: 1px solid #dde5ef;
 }
 
@@ -2595,9 +2631,9 @@ watch(
 }
 
 .vetus-disabled-action {
-  min-height: 40px;
+  min-height: 32px;
   border: 1px solid #d8e2ef;
-  border-radius: 8px;
+  border-radius: 4px;
   background: #f8fafc;
   color: #8a98aa;
   font: inherit;
@@ -2606,9 +2642,12 @@ watch(
 
 .vetus-critical-list {
   display: grid;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #dde5ef;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #f3c7c7;
+  border-radius: 4px;
+  background: #fff7f7;
 }
 
 .vetus-critical-list div,
@@ -2620,17 +2659,49 @@ watch(
 .vetus-critical-list span,
 .vetus-info-grid span {
   color: #7b8493;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .vetus-critical-list strong {
   color: #c92626;
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.vetus-owner-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid #dde5ef;
+  border-radius: 4px;
+  background: #f8fafc;
+}
+
+.vetus-owner-strip div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vetus-owner-strip span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.vetus-owner-strip strong {
+  min-width: 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .vetus-disclosure {
   display: flex;
   width: 100%;
-  min-height: 40px;
+  min-height: 34px;
   align-items: center;
   gap: 12px;
   border: 0;
@@ -2651,7 +2722,7 @@ watch(
 .vetus-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 22px;
+  gap: 10px 14px;
 }
 
 .vetus-info-grid div {
@@ -2674,9 +2745,9 @@ watch(
 }
 
 .vetus-module-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 10px;
 }
 
 .vetus-accordion-card {
@@ -2690,6 +2761,7 @@ watch(
 }
 
 .vetus-accordion-card--open {
+  grid-column: 1 / -1;
   border-color: #cbd5e1;
   box-shadow: 0 8px 18px rgba(30, 41, 59, 0.08);
 }
@@ -2697,12 +2769,12 @@ watch(
 .vetus-accordion-card__header {
   display: flex;
   width: 100%;
-  min-height: 58px;
+  min-height: 46px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   border: 0;
-  padding: 14px 18px;
+  padding: 10px 14px;
   background: #ffffff;
   color: #1f2937;
   font: inherit;
@@ -2748,8 +2820,8 @@ watch(
 .vetus-accordion-card__summary {
   display: grid;
   gap: 4px;
-  min-height: 72px;
-  padding: 14px 14px 8px;
+  min-height: 58px;
+  padding: 10px 14px 8px;
 }
 
 .vetus-accordion-card__summary strong,
@@ -3035,8 +3107,13 @@ watch(
 }
 
 @media (max-width: 720px) {
+  .vetus-animal-layout,
   .vetus-accordion-grid,
   .relationship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vetus-module-list {
     grid-template-columns: 1fr;
   }
 

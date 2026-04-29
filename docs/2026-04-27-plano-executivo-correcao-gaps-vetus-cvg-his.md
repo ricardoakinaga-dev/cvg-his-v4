@@ -410,8 +410,9 @@ Checkpoint em 2026-04-28:
 - P2-05 foi implementado em escopo focado para importacao assistida Vetus-like.
 - P3-01 foi implementado em escopo focado para auditoria de mensagens de sucesso.
 - P3-02 foi implementado em escopo focado para padronizar estados vazios no cockpit do animal.
+- P3-03 foi implementado em escopo focado para reduzir densidade visual da pagina do paciente.
 
-Proxima acao recomendada: executar `P3-03 - Reduzir densidade visual da pagina do paciente`.
+Proxima acao recomendada: executar `P3-04 - Acessibilidade e teclado nos acordeoes`.
 
 Justificativa:
 
@@ -423,21 +424,24 @@ Justificativa:
 - importacoes de servicos, produtos e Vetus-like nao exibem mais sucesso verde quando ha falha total ou parcial no lote;
 - a Central Diagnostica nao mostra sucesso quando o pedido laboratorial e criado, mas a anotacao clinica vinculada falha;
 - os cards vazios de agenda, comanda, vacinas/vermifugos, exames, internacao, receituario e imagens no cockpit do animal indicam o que falta e levam para a proxima acao com `patientId`/`ownerId`;
-- a proxima lacuna operacional passa a ser reduzir a densidade visual da pagina do paciente para priorizar identidade, riscos e resumo dos cards na primeira dobra.
+- a primeira dobra do paciente agora prioriza identidade compacta, riscos clinicos, tutor/acoes essenciais e resumo dos modulos;
+- observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
+- a proxima lacuna operacional passa a ser acessibilidade e navegacao por teclado nos acordeoes do cockpit do animal.
 
-Escopo minimo de `P3-03`:
+Escopo minimo de `P3-04`:
 
-1. Revisar a primeira dobra do detalhe do animal em desktop e mobile.
-2. Reduzir repeticao de informacoes e excesso de texto aberto nos cards.
-3. Manter visiveis identidade, riscos clinicos, tutor e resumo dos modulos.
-4. Criar/ajustar testes focados para garantir que a navegacao e os CTAs principais permanecem.
+1. Auditar botoes e acordeoes do cockpit do animal por teclado.
+2. Garantir `aria-expanded`, labels e ordem de foco consistentes.
+3. Ajustar foco visivel e semantica sem mudar contratos de API.
+4. Criar/ajustar testes focados para teclado e atributos ARIA.
 5. Publicar somente nos servicos existentes do `docker-compose.v2.yml`, mantendo portas, DNS, SSL, Caddy/nginx e dependencias inalterados.
 
-Criterio de aceite de `P3-03`:
+Criterio de aceite de `P3-04`:
 
-- primeira dobra mostra ficha do animal, riscos e resumo operacional sem exigir rolagem excessiva;
-- cards mantem `Ver mais`/acoes contextuais sem esconder caminhos clinicos criticos;
-- testes focados cobrem os CTAs e estados principais da pagina do paciente;
+- cards e botoes principais sao navegaveis por teclado;
+- acordeoes informam estado expandido/recolhido com ARIA correto;
+- foco visivel fica claro em desktop sem quebrar mobile;
+- testes focados cobrem teclado e atributos ARIA principais da pagina do paciente;
 - health local e HTTPS publico permanecem 200 apos publicacao.
 
 Observacao de sequenciamento:
@@ -448,6 +452,28 @@ Observacao de sequenciamento:
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - P3-03 Reduzir densidade visual da pagina do paciente
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- ficha do animal foi compactada para identidade, chips de resumo, riscos clinicos e tutor/acoes essenciais;
+- observacoes gerais e detalhes cadastrais sairam da primeira dobra e ficaram dentro de `Ver mais Informacoes do Animal`;
+- lista de modulos do animal passou a usar grade responsiva de cards fechados, com card aberto ocupando a largura completa;
+- cabecalhos/resumos dos cards tiveram altura e espacamento reduzidos sem remover CTAs clinicos.
+
+Validacao:
+
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientDetailPage.test.ts`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, API local `http://127.0.0.1:3003/health` 200 e SPAs locais `/patients/pat-1`, `/appointments/new?patientId=pat-1&ownerId=owner-1`, `/inpatient?patientId=pat-1` retornando 200;
+- HTTPS publico validado com SPA `/patients/pat-1` e API health retornando 200.
+
+Proxima frente recomendada: `P3-04 - Acessibilidade e teclado nos acordeoes`. Quando retomar macro fiscal Vetus: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-28 - P3-02 Padronizar estados vazios
 
