@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('finance/split/simulator', 'FinanceSplitSimulator', 'Simulador de Split', 'Financeiro', '🧮'),
   placeholderRoute('finance/card-transactions', 'FinanceCardTransactions', 'Transações de Cartão', 'Financeiro', '💳'),
   placeholderRoute('finance/split/export', 'FinanceSplitExport', 'Exportador de Split', 'Financeiro', '📤'),
   placeholderRoute('finance/payment-enablement', 'FinancePaymentEnablement', 'Habilitar Pagamento', 'Financeiro', '✅'),
@@ -206,6 +205,22 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Maquininhas',
           breadcrumbParent: 'Financeiro',
           icon: '💳'
+        }
+      },
+      {
+        path: 'finance/split/simulator',
+        name: 'FinanceSplitSimulator',
+        component: () => import('@/pages/finance/SplitSimulatorPage.vue'),
+        alias: [
+          '/financeiro/maquininha/simulador-de-split',
+          '/financeiro/maquininha-de-cartao/simulador-de-split',
+          '/simulador-de-split'
+        ],
+        meta: {
+          title: 'Simulador de Split',
+          breadcrumb: 'Simulador de Split',
+          breadcrumbParent: 'Financeiro',
+          icon: '🧮'
         }
       },
       {

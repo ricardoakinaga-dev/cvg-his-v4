@@ -446,6 +446,14 @@ describe('router convergence', () => {
         '/maquininhas'
       ])
     );
+    expect(findChildRoute('finance/split/simulator')?.meta?.title).toBe('Simulador de Split');
+    expect(findChildRoute('finance/split/simulator')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/maquininha/simulador-de-split',
+        '/financeiro/maquininha-de-cartao/simulador-de-split',
+        '/simulador-de-split'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
@@ -620,6 +628,7 @@ describe('router convergence', () => {
     expect(findChildRoute('finance/timeline')?.meta?.title).toBe('Linha do Tempo');
     expect(findChildRoute('finance/split')?.meta?.title).toBe('Configuração do Split');
     expect(findChildRoute('finance/card-machines')?.meta?.title).toBe('Maquininhas');
+    expect(findChildRoute('finance/split/simulator')?.meta?.title).toBe('Simulador de Split');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');

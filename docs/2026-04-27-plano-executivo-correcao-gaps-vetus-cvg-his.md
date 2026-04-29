@@ -419,8 +419,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Simulador de Split`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Transacoes de Cartao`.
 
 Justificativa:
 
@@ -441,14 +442,15 @@ Justificativa:
 - `Linha do Tempo` ja foi convertido em superficie operacional de eventos financeiros, vencimentos, recebimentos e marcos operacionais no `cvg-his-v2`;
 - `Configuracao do Split` ja foi convertido em superficie operacional somente leitura de regras, recebedores, percentuais e repasse planejado no `cvg-his-v2`;
 - `Maquininhas` ja foi convertido em superficie operacional somente leitura de terminais, provedores, unidades e status no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Simulador de Split`;
-- resolver `Simulador de Split` agora preserva a ordem Vetus depois de fechar `Maquininhas`.
+- `Simulador de Split` ja foi convertido em superficie operacional somente leitura de venda, taxas, recebedores e repasse liquido no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Transacoes de Cartao`;
+- resolver `Transacoes de Cartao` agora preserva a ordem Vetus depois de fechar `Simulador de Split`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Simulador de Split`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Transacoes de Cartao`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Simulador de Split` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Transacoes de Cartao` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, campos de simulacao, percentuais, recebedores, taxas, resultado liquido e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, transacoes, status, provedor, maquininha, valor bruto/liquido e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -472,11 +474,52 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Simulador de Split`.
+- `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Transacoes de Cartao`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Simulador de Split
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/split/simulator` deixou de usar placeholder e passou a carregar `SplitSimulatorPage`;
+- aliases adicionados para `/financeiro/maquininha/simulador-de-split`, `/financeiro/maquininha-de-cartao/simulador-de-split` e `/simulador-de-split`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Simulador de Split`;
+- campos `Valor da Venda`, `Parcelas`, `Taxa MDR`, `Percentual CVG` e `Percentual Plataforma`;
+- KPIs `Valor Bruto`, `Taxa Administradora`, `Liquido Simulado`, `Repasse CVG`, `Repasse Plataforma` e `Parcelas`;
+- tabela com `Recebedor`, `Percentual`, `Valor` e `Repasse`;
+- acoes `Simular Split`, `Configuracao do Split`, `Maquininhas`, `Transacoes de Cartao` e `Exportar Simulacao` bloqueada.
+
+Restricoes mantidas:
+
+- sem habilitacao;
+- sem captura;
+- sem repasse real;
+- sem conciliacao;
+- sem exportacao real;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `SplitSimulatorPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/split/simulator` 200, `/financeiro/maquininha/simulador-de-split` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/split/simulator` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Transacoes de Cartao`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Maquininhas
 
