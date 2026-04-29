@@ -118,10 +118,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'dashboards/curve-abc',
         name: 'DashboardCurveAbc',
-        component: () => import('@/pages/commercial-reports/CommercialReportsPage.vue'),
+        component: () => import('@/pages/finance/CurveAbcProductsPage.vue'),
+        alias: [
+          '/financeiro/controles/curva-abc-produtos',
+          '/curva-abc-produtos'
+        ],
         meta: {
-          title: 'Curva ABC',
-          breadcrumb: 'Curva ABC',
+          title: 'Curva ABC Produtos',
+          breadcrumb: 'Curva ABC Produtos',
           breadcrumbParent: 'Financeiro',
           icon: '📈'
         }

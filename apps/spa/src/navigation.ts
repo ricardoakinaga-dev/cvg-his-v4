@@ -222,7 +222,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Cheques', path: '/finance/cheques', icon: '📄', keywords: ['cheques', 'cheque recebido', 'cheque emitido', 'baixa cheque'] },
           { label: 'Fluxo de Caixa', path: '/finance/cash-flow', icon: '📈', keywords: ['fluxo de caixa', 'tesouraria', 'saldo projetado', 'receitas despesas'] },
           { label: 'Curva ABC Clientes', path: '/dashboards/curve-abc-clients', icon: '📊', keywords: ['curva abc clientes', 'clientes abc', 'ranking clientes', 'faturamento clientes'] },
-          { label: 'Curva ABC Produtos', path: '/dashboards/curve-abc', icon: '📈', keywords: ['curva abc produtos'] },
+          { label: 'Curva ABC Produtos', path: '/dashboards/curve-abc', icon: '📈', keywords: ['curva abc produtos', 'produtos abc', 'ranking produtos', 'faturamento produtos'] },
           { label: 'DashBoard do Multifilial', path: '/dashboards/multifilial', icon: '🏢', keywords: ['multifilial', 'filiais'] },
           { label: 'Dashboard Financeiro', path: '/dashboards/financial', icon: '💰', keywords: ['dashboard financeiro', 'kpi'] },
           { label: 'Linha do Tempo', path: '/finance/timeline', icon: '🕒', keywords: ['linha do tempo'] }

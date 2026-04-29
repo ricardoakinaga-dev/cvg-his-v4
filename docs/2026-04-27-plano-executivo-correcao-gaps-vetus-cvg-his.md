@@ -413,8 +413,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Curva ABC Produtos`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > DashBoard do Multifilial`.
 
 Justificativa:
 
@@ -429,14 +430,15 @@ Justificativa:
 - `Cheques` ja foi convertido em superficie operacional de cheques recebidos/emitidos, vencimento, baixa e devolucao no `cvg-his-v2`;
 - `Fluxo de Caixa` ja foi convertido em superficie operacional de projecao temporal de receitas, despesas, produzido, descontos e saldo no `cvg-his-v2`;
 - `Curva ABC Clientes` ja foi convertido em superficie operacional de ranking de clientes por faturamento, participacao e acumulado no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Curva ABC Produtos`;
-- resolver `Curva ABC Produtos` agora preserva a ordem Vetus depois de `Curva ABC Clientes` e antes de `DashBoard do Multifilial`.
+- `Curva ABC Produtos` ja foi convertido em superficie operacional de ranking de produtos por faturamento, participacao e acumulado no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > DashBoard do Multifilial`;
+- resolver `DashBoard do Multifilial` agora preserva a ordem Vetus depois de `Curva ABC Produtos` e antes de `Dashboard Financeiro`.
 
-Escopo minimo de `Financeiro > Controles > Curva ABC Produtos`:
+Escopo minimo de `Financeiro > Controles > DashBoard do Multifilial`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Curva ABC Produtos` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `DashBoard do Multifilial` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, ranking de produtos/servicos, totais, percentuais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, indicadores por filial/unidade, totais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -454,11 +456,44 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Curva ABC Produtos`.
+- `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > DashBoard do Multifilial`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Curva ABC Produtos
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/dashboards/curve-abc` foi convertido de relatorio comercial generico para superficie Vetus-like de `Curva ABC Produtos`;
+- aliases adicionados: `/financeiro/controles/curva-abc-produtos` e `/curva-abc-produtos`;
+- filtros alinhados ao dominio: `Produto`, `De`, `Ate` e `Classe`;
+- acoes de tela `Exportar Curva`, `Gerar Relatorio`, `Produtos`, `Comandas` e `Atualizar` foram posicionadas sem acionar escrita nova;
+- indicadores alinhados com produtos, faturamento, quantidade e Classe A;
+- tabela alinhada com `Classificacao`, `Produto`, `Faturamento`, `Participacao`, `Acumulado`, `Classe`, `Quantidade`, `Preco Medio` e `Abrir`;
+- a tela consome as APIs existentes `/admin/commercial-dashboard` e `/products`, ranqueando produtos vendidos em comandas fechadas no periodo.
+
+Validacao:
+
+- teste focado de `CurveAbcProductsPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/dashboards/curve-abc` 200, `/financeiro/controles/curva-abc-produtos` 200 e `/health` 200;
+- rota protegida `/admin/commercial-dashboard` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/dashboards/curve-abc` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > DashBoard do Multifilial`.
 
 ### 2026-04-29 - Financeiro > Controles > Curva ABC Clientes
 

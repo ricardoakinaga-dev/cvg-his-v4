@@ -401,6 +401,13 @@ describe('router convergence', () => {
         '/curva-abc-clientes'
       ])
     );
+    expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
+    expect(findChildRoute('dashboards/curve-abc')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/curva-abc-produtos',
+        '/curva-abc-produtos'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
@@ -571,7 +578,7 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('reports/production')?.meta?.breadcrumbParent).toBe('Produção');
     expect(findChildRoute('dashboards/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
-    expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC');
+    expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');
     expect(findChildRoute('reports/registers/services')?.meta?.title).toBe('Serviços');
     expect(findChildRoute('reports/inventory-products')?.meta?.title).toBe('Relatório de Produtos');
