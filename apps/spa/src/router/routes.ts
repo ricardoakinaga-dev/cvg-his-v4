@@ -106,10 +106,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'dashboards/financial',
         name: 'DashboardFinancial',
-        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        component: () => import('@/pages/finance/FinancialDashboardPage.vue'),
+        alias: [
+          '/financeiro/controles/dashboard-financeiro',
+          '/dashboard-financeiro'
+        ],
         meta: {
           title: 'Dashboard Financeiro',
-          breadcrumb: 'Financeiro',
+          breadcrumb: 'Dashboard Financeiro',
           breadcrumbParent: 'Financeiro',
           icon: '💰'
         }

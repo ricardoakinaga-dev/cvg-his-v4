@@ -224,7 +224,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Curva ABC Clientes', path: '/dashboards/curve-abc-clients', icon: '📊', keywords: ['curva abc clientes', 'clientes abc', 'ranking clientes', 'faturamento clientes'] },
           { label: 'Curva ABC Produtos', path: '/dashboards/curve-abc', icon: '📈', keywords: ['curva abc produtos', 'produtos abc', 'ranking produtos', 'faturamento produtos'] },
           { label: 'DashBoard do Multifilial', path: '/dashboards/multifilial', icon: '🏢', keywords: ['multifilial', 'filiais', 'unidades', 'comparativo filial', 'dashboard multifilial'] },
-          { label: 'Dashboard Financeiro', path: '/dashboards/financial', icon: '💰', keywords: ['dashboard financeiro', 'kpi'] },
+          { label: 'Dashboard Financeiro', path: '/dashboards/financial', icon: '💰', keywords: ['dashboard financeiro', 'kpi', 'indicadores financeiros', 'recebiveis caixa pix'] },
           { label: 'Linha do Tempo', path: '/finance/timeline', icon: '🕒', keywords: ['linha do tempo'] }
         ]
       },

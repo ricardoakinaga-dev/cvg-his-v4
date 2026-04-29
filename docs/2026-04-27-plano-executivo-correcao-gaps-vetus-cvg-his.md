@@ -415,8 +415,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Dashboard Financeiro`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Linha do Tempo`.
 
 Justificativa:
 
@@ -433,14 +434,15 @@ Justificativa:
 - `Curva ABC Clientes` ja foi convertido em superficie operacional de ranking de clientes por faturamento, participacao e acumulado no `cvg-his-v2`;
 - `Curva ABC Produtos` ja foi convertido em superficie operacional de ranking de produtos por faturamento, participacao e acumulado no `cvg-his-v2`;
 - `DashBoard do Multifilial` ja foi convertido em superficie operacional de visao consolidada da unidade atual no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Dashboard Financeiro`;
-- resolver `Dashboard Financeiro` agora preserva a ordem Vetus depois de `DashBoard do Multifilial` e antes de `Linha do Tempo`.
+- `Dashboard Financeiro` ja foi convertido em superficie operacional de indicadores financeiros, recebiveis, caixa, PIX e producao comercial no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Linha do Tempo`;
+- resolver `Linha do Tempo` agora preserva a ordem Vetus depois de `Dashboard Financeiro` e antes da trilha `Maquininha de Cartao`.
 
-Escopo minimo de `Financeiro > Controles > Dashboard Financeiro`:
+Escopo minimo de `Financeiro > Controles > Linha do Tempo`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Dashboard Financeiro` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Linha do Tempo` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, indicadores financeiros, totais, tendencias e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, eventos financeiros, marcos operacionais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -460,11 +462,44 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Dashboard Financeiro`.
+- `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Linha do Tempo`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Dashboard Financeiro
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/dashboards/financial` foi convertido de relatorio financeiro generico para superficie Vetus-like de `Dashboard Financeiro`;
+- aliases adicionados: `/financeiro/controles/dashboard-financeiro` e `/dashboard-financeiro`;
+- filtros alinhados ao dominio: `De`, `Ate` e `Visao`;
+- acoes de tela `Exportar Dashboard`, `Contas a Receber`, `Contas a Pagar`, `Fluxo de Caixa` e `Atualizar` foram posicionadas sem acionar escrita nova;
+- indicadores alinhados com receita comercial, recebiveis, caixa aberto, PIX em atencao e pipeline;
+- tabela alinhada com `Indicador`, `Total`, `Detalhe`, `Status` e `Abrir`;
+- a tela consome a API existente `/reports/administrative-hubs`, agregando faturamento, recebiveis, PIX, caixa, producao comercial e pipeline sem nova migration nem nova escrita financeira.
+
+Validacao:
+
+- teste focado de `FinancialDashboardPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/dashboards/financial` 200, `/financeiro/controles/dashboard-financeiro` 200 e `/health` 200;
+- rota protegida `/reports/administrative-hubs` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/dashboards/financial` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Linha do Tempo`.
 
 ### 2026-04-29 - Financeiro > Controles > DashBoard do Multifilial
 
