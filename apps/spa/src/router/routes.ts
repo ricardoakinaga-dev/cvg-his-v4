@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('finance/payments-dashboard', 'FinancePaymentsDashboard', 'Pagamento Dashboard', 'Financeiro', '📊'),
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
   placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
@@ -266,6 +265,22 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Habilitar Pagamento',
           breadcrumbParent: 'Financeiro',
           icon: '✅'
+        }
+      },
+      {
+        path: 'finance/payments-dashboard',
+        name: 'FinancePaymentsDashboard',
+        component: () => import('@/pages/finance/PaymentsDashboardPage.vue'),
+        alias: [
+          '/financeiro/maquininha/pagamento-dashboard',
+          '/financeiro/maquininha-de-cartao/pagamento-dashboard',
+          '/pagamento-dashboard'
+        ],
+        meta: {
+          title: 'Pagamento Dashboard',
+          breadcrumb: 'Pagamento Dashboard',
+          breadcrumbParent: 'Financeiro',
+          icon: '📊'
         }
       },
       {

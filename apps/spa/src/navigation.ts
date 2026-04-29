@@ -253,7 +253,12 @@ export const navGroups: AppNavGroup[] = [
             icon: '✅',
             keywords: ['habilitar pagamento', 'credenciamento pagamento', 'domicilio bancario', 'provedor pagamento', 'ativar maquininha']
           },
-          { label: 'Pagamento Dashboard', path: '/finance/payments-dashboard', icon: '📊', keywords: ['pagamento dashboard'] }
+          {
+            label: 'Pagamento Dashboard',
+            path: '/finance/payments-dashboard',
+            icon: '📊',
+            keywords: ['pagamento dashboard', 'dashboard pagamentos', 'captura pagamento', 'conciliacao pagamento', 'repasse pagamento']
+          }
         ]
       },
       {
