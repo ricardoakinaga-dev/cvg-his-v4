@@ -524,6 +524,8 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('marketing/sms')?.meta?.title).toBe('Envio de SMS Simples');
     expect(findChildRoute('marketing/sms')?.meta?.breadcrumbParent).toBe('Marketing');
+    expect(findChildRoute('notifications')?.meta?.title).toBe('Campanhas de SMS Marketing');
+    expect(findChildRoute('notifications')?.meta?.breadcrumb).toBe('Campanhas de SMS Marketing');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');

@@ -431,8 +431,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - O navbar `Marketing` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 - `Marketing > Envios > Envio de SMS Simples` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real.
+- `Marketing > Envios > Campanhas de SMS Marketing` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real e sem criacao de campanha.
 
-Proxima acao recomendada: implementar a paridade segura de `Marketing > Envios > Campanhas de SMS Marketing`.
+Proxima acao recomendada: implementar a paridade segura de `Marketing > Configuracoes > Layout de Email de Vacina`.
 
 Justificativa:
 
@@ -467,14 +468,15 @@ Justificativa:
 - o navbar `Marketing` foi revalidado por evidencia read-only e a ordem confirmada e `Envios > Envio de SMS Simples`, `Envios > Campanhas de SMS Marketing`, `Configuracoes > Layout de Email de Vacina` e `Configuracoes > Configuracoes de SMS`;
 - a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal; `WhatsApp Operacional` permanece como extensao CVG em `Canais CVG`;
 - `Envio de SMS Simples` ja foi convertido em superficie segura de rascunho unitario, sem disparo real e sem consumo de saldo;
-- a proxima divergencia pela ordem Vetus esta em `Marketing > Envios > Campanhas de SMS Marketing`, porque `/notifications` existe, mas ainda precisa ser alinhado a campanha Vetus com saldo, filtros de descricao/periodo, lista historica e acao segura de nova campanha.
+- `Campanhas de SMS Marketing` ja foi convertido em superficie segura de rascunho local e consulta historica, sem disparo real, sem consumo de saldo e sem criacao de campanha;
+- a proxima divergencia pela ordem Vetus esta em `Marketing > Configuracoes > Layout de Email de Vacina`, porque `/marketing/vaccine-email` ainda esta em placeholder.
 
-Escopo minimo de `Marketing > Envios > Campanhas de SMS Marketing`:
+Escopo minimo de `Marketing > Configuracoes > Layout de Email de Vacina`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `SMSCampanhaP.htm` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: saldo de SMS, acao `Gerar Nova Campanha`, filtros `Descricao`, `Data de`, `Ate`, `Pesquisar`, grade historica e colunas `Descricao`, `Titulo`, `Data`, `Celulares`, `Abrir`.
-3. Implementar preparacao/simulacao segura sem disparar SMS real, sem criar campanha real e sem consumir saldo.
-4. Reaproveitar contratos de notificacoes/SMS existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
+1. Revalidar os artefatos Vetus read-only especificos de `VacinaLayoutEmail.htm` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais do layout de email de vacina observados no Vetus.
+3. Implementar edicao/preparacao segura sem envio real de email e sem salvar template em producao ate existir contrato auditavel.
+4. Reaproveitar contratos existentes de vacinas/notificacoes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -548,6 +550,41 @@ Verificacao:
 - testes de rotas SPA e navegacao.
 
 Proxima frente recomendada: `Marketing > Envios > Campanhas de SMS Marketing`.
+
+### 2026-04-29 - Marketing > Envios > Campanhas de SMS Marketing
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/notifications` foi realinhada para `Campanhas de SMS Marketing`;
+- tela com breadcrumbs `Marketing / Envios / Campanhas de SMS Marketing`;
+- saldo informativo `0 SMS disponiveis`;
+- filtros `Descricao`, `Data de` e `Ate`;
+- acao `Pesquisar`;
+- acao `Gerar Nova Campanha`;
+- rascunho local com `Descricao`, `Titulo`, `Publico`, `Celulares` e mensagem limitada a 150 caracteres;
+- acao `Preparar Campanha`;
+- acao `Enviar Campanha` bloqueada;
+- grade historica com cabecalhos `Descricao`, `Titulo`, `Data`, `Celulares`, `Abrir` e estado vazio `Nenhuma campanha encontrada`;
+- leitura auxiliar de notificacoes/jobs mantida apenas como sinal de fila interna.
+
+Restricoes mantidas:
+
+- sem POST de processamento de pendencias;
+- sem provider externo;
+- sem consumo de saldo;
+- sem criacao de campanha real;
+- sem envio real de SMS;
+- sem nova migration;
+- sem nova escrita.
+
+Verificacao:
+
+- teste focado de `NotificationsPage`;
+- teste de rotas SPA.
+
+Proxima frente recomendada: `Marketing > Configuracoes > Layout de Email de Vacina`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

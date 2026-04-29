@@ -49,21 +49,64 @@ describe('NotificationsPage', () => {
     mockProcessPending.mockResolvedValue(mockNotifications);
   });
 
-  it('renders notifications and processes queued jobs', async () => {
+  it('renders the safe Vetus-like SMS campaign surface', async () => {
     const NotificationsPage = (await import('../NotificationsPage.vue')).default;
     const wrapper = mount(NotificationsPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Notificações');
-    expect(wrapper.text()).toContain('Cobrança pendente');
+    expect(wrapper.text()).toContain('Campanhas de SMS Marketing');
+    expect(wrapper.text()).toContain('Seu saldo é de 0 SMS disponíveis para envio');
+    expect(wrapper.text()).toContain('Gerar Nova Campanha');
+    expect(wrapper.text()).toContain('Descrição');
+    expect(wrapper.text()).toContain('Data de');
+    expect(wrapper.text()).toContain('Até');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Celulares');
+    expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).toContain('Nenhuma campanha encontrada');
     expect(wrapper.text()).toContain('1 jobs em fila');
+    expect(mockListNotifications).toHaveBeenCalledWith();
+    expect(mockListJobs).toHaveBeenCalledWith();
+    expect(mockProcessPending).not.toHaveBeenCalled();
+  });
 
-    // Click the "Processar pendentes" button (2nd button)
-    const buttons = wrapper.findAll('button');
-    await buttons[1].trigger('click');
+  it('prepares a campaign draft locally without sending or creating a real campaign', async () => {
+    const NotificationsPage = (await import('../NotificationsPage.vue')).default;
+    const wrapper = mount(NotificationsPage);
+
     await flushPromises();
 
-    expect(mockProcessPending).toHaveBeenCalledWith(10);
-    expect(wrapper.text()).toContain('processada(s) com sucesso');
+    await wrapper.find('#marketing-campaign-new').trigger('click');
+    await wrapper.find('#marketing-campaign-description').setValue('Retorno vacinal');
+    await wrapper.find('#marketing-campaign-title').setValue('Vacina em dia');
+    await wrapper.find('#marketing-campaign-body').setValue('Agende o reforço anual do seu pet.');
+    await wrapper.find('#marketing-campaign-audience-size').setValue('12');
+    await wrapper.find('#marketing-campaign-preview').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Campanha preparada sem envio real');
+    expect(wrapper.text()).toContain('Retorno vacinal');
+    expect(wrapper.text()).toContain('Vacina em dia');
+    expect(wrapper.text()).toContain('12 celulares estimados');
+    expect(mockProcessPending).not.toHaveBeenCalled();
+  });
+
+  it('reloads campaign signals with search filters and keeps send disabled', async () => {
+    const NotificationsPage = (await import('../NotificationsPage.vue')).default;
+    const wrapper = mount(NotificationsPage);
+
+    await flushPromises();
+    mockListNotifications.mockClear();
+    mockListJobs.mockClear();
+
+    await wrapper.find('#marketing-campaign-search').setValue('vacina');
+    await wrapper.find('#marketing-campaign-submit-search').trigger('click');
+    await flushPromises();
+
+    expect(mockListNotifications).toHaveBeenCalledWith();
+    expect(mockListJobs).toHaveBeenCalledWith();
+    await wrapper.find('#marketing-campaign-new').trigger('click');
+    expect(wrapper.find('#marketing-campaign-send').attributes('disabled')).toBeDefined();
+    expect(mockProcessPending).not.toHaveBeenCalled();
   });
 });

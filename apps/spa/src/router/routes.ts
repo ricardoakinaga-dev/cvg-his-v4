@@ -1481,8 +1481,8 @@ export const routes: RouteRecordRaw[] = [
         name: 'Notifications',
         component: () => import('@/pages/notifications/NotificationsPage.vue'),
         meta: {
-          title: 'Campanhas',
-          breadcrumb: 'Campanhas',
+          title: 'Campanhas de SMS Marketing',
+          breadcrumb: 'Campanhas de SMS Marketing',
           breadcrumbParent: 'Marketing',
           icon: '🔔'
         }
