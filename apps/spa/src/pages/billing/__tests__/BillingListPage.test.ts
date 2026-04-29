@@ -1,173 +1,134 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
-const mockBillingRecords = [
-  {
-    id: 'bill-1',
-    accountId: 'acc-1',
-    encounterId: 'enc-1',
-    patientId: 'pat-1',
-    ownerId: 'owner-1',
-    status: 'open' as const,
-    subtotalAmount: 350.0,
-    discountAmount: 0,
-    totalAmount: 350.0,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T12:00:00Z'
-  },
-  {
-    id: 'bill-2',
-    accountId: 'acc-1',
-    encounterId: 'enc-2',
-    patientId: 'pat-2',
-    ownerId: 'owner-2',
-    status: 'draft' as const,
-    subtotalAmount: 0,
-    discountAmount: 0,
-    totalAmount: 0,
-    createdAt: '2024-01-15T09:00:00Z',
-    updatedAt: '2024-01-15T09:00:00Z'
-  },
-  {
-    id: 'bill-3',
-    accountId: 'acc-1',
-    encounterId: 'enc-3',
-    patientId: 'pat-3',
-    ownerId: 'owner-1',
-    status: 'settled' as const,
-    subtotalAmount: 500.0,
-    discountAmount: 50.0,
-    totalAmount: 450.0,
-    createdAt: '2024-01-14T14:00:00Z',
-    updatedAt: '2024-01-14T16:00:00Z'
-  }
-];
+const mockReceivablesResponse = {
+  data: [
+    {
+      id: 'recv-1',
+      encounterId: 'enc-1',
+      financialAccountId: 'fin-1',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela 1/1',
+      dueAt: '2026-04-30T00:00:00.000Z',
+      status: 'open' as const,
+      amountOriginal: 350,
+      amountPaid: 100,
+      amountOutstanding: 250,
+      issuedAt: '2026-04-20T10:00:00.000Z',
+      settledAt: null,
+      notes: 'Comanda 123',
+      payments: [],
+      encounterStatus: 'open' as const,
+      patientId: 'pat-1',
+      patientName: 'Rex',
+      patientSpecies: 'canine',
+      ownerId: 'owner-1',
+      ownerName: 'João Silva',
+      ownerPhoneMain: '(11) 99999-0000',
+      financialStatus: 'partial' as const,
+      totalAmount: 350,
+      lastClosedAt: null
+    },
+    {
+      id: 'recv-2',
+      encounterId: 'enc-2',
+      financialAccountId: 'fin-2',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela única',
+      dueAt: '2026-04-18T00:00:00.000Z',
+      status: 'settled' as const,
+      amountOriginal: 500,
+      amountPaid: 500,
+      amountOutstanding: 0,
+      issuedAt: '2026-04-10T10:00:00.000Z',
+      settledAt: '2026-04-18T12:00:00.000Z',
+      notes: null,
+      payments: [],
+      encounterStatus: 'closed' as const,
+      patientId: 'pat-2',
+      patientName: 'Mimi',
+      patientSpecies: 'feline',
+      ownerId: 'owner-2',
+      ownerName: 'Maria Santos',
+      ownerPhoneMain: null,
+      financialStatus: 'paid' as const,
+      totalAmount: 500,
+      lastClosedAt: '2026-04-18T12:00:00.000Z'
+    }
+  ],
+  page: 1,
+  pageSize: 20,
+  total: 2,
+  openCount: 1,
+  settledCount: 1,
+  totalOutstanding: 250,
+  totalSettled: 600
+};
 
-const mockListFn = vi.fn().mockResolvedValue(mockBillingRecords);
-const mockGetPatientName = vi
-  .fn()
-  .mockImplementation((id: string) =>
-    Promise.resolve(id === 'pat-1' ? 'Rex' : id === 'pat-2' ? 'Mimi' : 'Buddy')
-  );
-const mockGetOwnerName = vi
-  .fn()
-  .mockImplementation((id: string) =>
-    Promise.resolve(id === 'owner-1' ? 'João Silva' : 'Maria Santos')
-  );
+const mockListReceivables = vi.fn().mockResolvedValue(mockReceivablesResponse);
 
-vi.mock('@/services/billing', () => ({
-  billingService: {
+vi.mock('@/services/financialReceivables', () => ({
+  financialReceivablesService: {
     get list() {
-      return mockListFn;
+      return mockListReceivables;
     }
   }
-}));
-
-vi.mock('@/composables/useEntityCache', () => ({
-  useEntityCache: () => ({
-    getPatientName: mockGetPatientName,
-    getOwnerName: mockGetOwnerName,
-    getUserName: vi.fn().mockResolvedValue(''),
-    preloadUserNames: vi.fn().mockResolvedValue(undefined),
-    loading: new Set()
-  })
 }));
 
 describe('BillingListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListFn.mockResolvedValue(mockBillingRecords);
-    mockGetPatientName.mockImplementation((id: string) =>
-      Promise.resolve(id === 'pat-1' ? 'Rex' : id === 'pat-2' ? 'Mimi' : 'Buddy')
-    );
-    mockGetOwnerName.mockImplementation((id: string) =>
-      Promise.resolve(id === 'owner-1' ? 'João Silva' : 'Maria Santos')
-    );
+    mockListReceivables.mockResolvedValue(mockReceivablesResponse);
   });
 
-  it('renders the page title', async () => {
+  it('renders a Vetus-like accounts receivable page', async () => {
     const BillingListPage = (await import('../BillingListPage.vue')).default;
     const wrapper = mount(BillingListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Faturamento');
-  });
 
-  it('shows loading state initially', async () => {
-    let resolvePromise: (value: any) => void;
-    const slowPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-    mockListFn.mockImplementation(() => slowPromise);
-
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
-
-    await wrapper.vm.$nextTick();
-    expect(wrapper.find('.data-table-loading').exists()).toBe(true);
-
-    resolvePromise!(mockBillingRecords);
-    await flushPromises();
-  });
-
-  it('shows error state when API fails', async () => {
-    mockListFn.mockRejectedValue(new Error('Failed to load billing records'));
-
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
-
-    await flushPromises();
-    expect(wrapper.text()).toContain('Failed to load billing records');
-  });
-
-  it('shows empty state when no billing records exist', async () => {
-    mockListFn.mockResolvedValue([]);
-
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
-
-    await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum registro de faturamento');
-  });
-
-  it('renders billing data in the table', async () => {
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
-
-    await flushPromises();
-    expect(wrapper.text()).toContain('Rex');
-    expect(wrapper.text()).toContain('Mimi');
+    expect(wrapper.text()).toContain('Contas a Receber');
+    expect(wrapper.text()).toContain('Gerar Conta Avulsa');
+    expect(wrapper.text()).toContain('Baixar contas em lote');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('Vencimento entre');
+    expect(wrapper.text()).toContain('até');
+    expect(wrapper.text()).toContain('Status');
+    expect(wrapper.text()).toContain('Origem');
+    expect(wrapper.text()).toContain('Emissão');
+    expect(wrapper.text()).toContain('Vencimento');
+    expect(wrapper.text()).toContain('Total');
+    expect(wrapper.text()).toContain('Recebido');
+    expect(wrapper.text()).toContain('A Receber');
+    expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Maria Santos');
-    expect(wrapper.text()).toContain('Dashboard Financeiro');
-    expect(wrapper.text()).toContain('Camadas financeiras Vetus');
-    expect(wrapper.text()).toContain('Gaveta');
-    expect(wrapper.text()).toContain('Contas a Receber');
-    expect(wrapper.text()).toContain('Contas a Pagar');
-    expect(wrapper.text()).toContain('Transações de Cartão');
-    expect(wrapper.text()).toContain('DESCONTO OFERECIDO');
+    expect(wrapper.text()).toContain('R$\u00A0250,00');
+    expect(wrapper.text()).not.toContain('Dashboard Financeiro');
+    expect(mockListReceivables).toHaveBeenCalledWith({
+      search: '',
+      status: '',
+      page: 1,
+      pageSize: 20
+    });
   });
 
-  it('shows billing status labels', async () => {
+  it('shows empty and error states with accounts receivable wording', async () => {
+    mockListReceivables.mockResolvedValueOnce({ ...mockReceivablesResponse, data: [], total: 0 });
     const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
+    const emptyWrapper = mount(BillingListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Rascunho');
-    expect(wrapper.text()).toContain('Aberto');
-    expect(wrapper.text()).toContain('Quitado');
-  });
+    expect(emptyWrapper.text()).toContain('Nenhuma conta a receber encontrada');
 
-  it('formats currency amounts correctly', async () => {
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage);
+    mockListReceivables.mockRejectedValueOnce(new Error('Falha financeira'));
+    const errorWrapper = mount(BillingListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('R$\u00A0350,00');
-    expect(wrapper.text()).toContain('R$\u00A0500,00');
+    expect(errorWrapper.text()).toContain('Falha financeira');
   });
 
-  it('shows truncated encounter IDs', async () => {
+  it('links each receivable to the encounter billing detail', async () => {
     const BillingListPage = (await import('../BillingListPage.vue')).default;
     const wrapper = mount(BillingListPage, {
       global: {
@@ -181,67 +142,9 @@ describe('BillingListPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('enc-1...');
-    expect(wrapper.text()).toContain('enc-2...');
-    expect(wrapper.text()).toContain('enc-3...');
-  });
-
-  it('shows navigation links to billing management', async () => {
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const manageLinks = wrapper.findAll('a').filter((a) => a.text() === 'Gerenciar');
-    expect(manageLinks).toHaveLength(3);
-    expect(manageLinks[0].attributes('href')).toBe('/billing/enc-1');
-    expect(manageLinks[1].attributes('href')).toBe('/billing/enc-2');
-    expect(manageLinks[2].attributes('href')).toBe('/billing/enc-3');
-  });
-
-  it('shows links to view items', async () => {
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const itemsLinks = wrapper.findAll('a').filter((a) => a.text().includes('Ver itens'));
-    expect(itemsLinks).toHaveLength(3);
-    expect(itemsLinks[0].attributes('href')).toBe('/billing/enc-1');
-  });
-
-  it('shows encounter links', async () => {
-    const BillingListPage = (await import('../BillingListPage.vue')).default;
-    const wrapper = mount(BillingListPage, {
-      global: {
-        stubs: {
-          RouterLink: {
-            template: '<a :href="to"><slot /></a>',
-            props: ['to']
-          }
-        }
-      }
-    });
-
-    await flushPromises();
-    const encounterLinks = wrapper.findAll('a.encounter-link');
-    expect(encounterLinks).toHaveLength(3);
-    expect(encounterLinks[0].attributes('href')).toBe('/encounters/enc-1');
+    const openLinks = wrapper.findAll('a').filter((anchor) => anchor.text() === 'Abrir');
+    expect(openLinks).toHaveLength(2);
+    expect(openLinks[0].attributes('href')).toBe('/billing/enc-1');
+    expect(openLinks[1].attributes('href')).toBe('/billing/enc-2');
   });
 });

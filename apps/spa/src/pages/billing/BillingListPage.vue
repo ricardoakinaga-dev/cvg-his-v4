@@ -1,118 +1,51 @@
 <template>
-  <div class="billing-list-page">
+  <div class="accounts-receivable-page">
     <AppPageHeader
-      title="💰 Faturamento"
-      :breadcrumbs="['Financeiro', 'Controles', 'Faturamento']"
-      subtitle="Contas a receber, cobrança assistencial e leitura executiva do backoffice financeiro"
+      title="Contas a Receber"
+      :breadcrumbs="['Financeiro', 'Controles', 'Contas a Receber']"
+      subtitle="Títulos por cliente com emissão, vencimento, total, recebido e saldo a receber"
       :secondary-actions="headerSecondaryActions"
     />
 
-    <!-- Hub: KPI StatCards -->
-    <section class="hub-kpis">
-      <DsStatCard :label="items.length + ' registro(s)'" value="" icon="📋" />
-      <DsStatCard :label="openCount + ' em aberto'" value="" icon="⏳" :error="openCount > 0 ? 'Há cobranças pendentes' : undefined" />
-      <DsStatCard :label="settledCount + ' quitado(s)'" value="" icon="✅" />
-      <DsStatCard :label="totalAmountFormatted" value="" icon="💵" />
+    <section class="receivable-summary-grid" aria-label="Resumo de contas a receber">
+      <DsStatCard :label="`${response.total} título(s)`" value="Total" />
+      <DsStatCard :label="formatCurrency(totalOriginal)" value="Total" />
+      <DsStatCard :label="formatCurrency(response.totalSettled)" value="Recebido" />
+      <DsStatCard
+        :label="formatCurrency(response.totalOutstanding)"
+        value="A Receber"
+        :error="response.totalOutstanding > 0 ? 'Saldo pendente' : undefined"
+      />
     </section>
 
-    <!-- Hub: Operational Alerts -->
-    <section v-if="billingAlerts.length > 0" class="hub-alerts">
-      <DsAlert
-        v-for="(alert, i) in billingAlerts"
-        :key="i"
-        :variant="alert.variant"
-        dismissible
-      >
-        <strong>{{ alert.title }}</strong> — {{ alert.message }}
-      </DsAlert>
+    <section class="receivable-actions" aria-label="Ações de contas a receber">
+      <DsButton variant="primary" disabled>Gerar Conta Avulsa</DsButton>
+      <DsButton variant="secondary" :disabled="selectedIds.size === 0">Baixar contas em lote</DsButton>
+      <DsButton variant="secondary" tag="a" to="/cash">Gaveta</DsButton>
+      <DsButton variant="ghost" :loading="loading" @click="loadReceivables">Atualizar</DsButton>
     </section>
 
-    <!-- Hub: Quick Actions -->
-    <section class="hub-actions">
-      <DsCard title="Ações rápidas — Financeiro" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="primary" tag="a" to="/billing/new" icon="💰">
-            Novo Faturamento
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/cash" icon="🏦">
-            Gaveta / Caixa
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/quotes" icon="🧾">
-            Orçamentos
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/pix" icon="💸">
-            PIX
-          </DsButton>
-          <DsButton variant="ghost" :loading="loading" @click="reload" icon="🔄">
-            Atualizar
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="billing-story">
-      <DsCard title="Dashboard Financeiro">
-        <div class="story-grid">
-          <div v-for="card in storyCards" :key="card.label" class="story-card">
-            <span class="story-card__label">{{ card.label }}</span>
-            <strong class="story-card__value">{{ card.value }}</strong>
-            <span class="story-card__hint">{{ card.hint }}</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="finance-domain-map">
-      <DsCard title="Camadas financeiras Vetus">
-        <div class="finance-layer-grid">
-          <article v-for="layer in financeLayers" :key="layer.title" class="finance-layer-card">
-            <span>{{ layer.eyebrow }}</span>
-            <strong>{{ layer.title }}</strong>
-            <p>{{ layer.description }}</p>
-          </article>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="finance-legacy-grid">
-      <article v-for="operation in legacyOperations" :key="operation.title" class="legacy-operation-card">
-        <span>{{ operation.route }}</span>
-        <strong>{{ operation.title }}</strong>
-        <p>{{ operation.description }}</p>
-        <small>{{ operation.fields }}</small>
-      </article>
-    </section>
-
-    <section class="finance-dashboard-grid">
-      <DsCard title="Contas a Receber">
-        <div class="receivable-summary">
-          <div class="story-card">
-            <span class="story-card__label">Total</span>
-            <strong class="story-card__value">{{ totalAmountFormatted }}</strong>
-            <span class="story-card__hint">Títulos emitidos no recorte carregado</span>
-          </div>
-          <div class="story-card">
-            <span class="story-card__label">Recebido</span>
-            <strong class="story-card__value">{{ receivedAmountFormatted }}</strong>
-            <span class="story-card__hint">Registros quitados</span>
-          </div>
-          <div class="story-card">
-            <span class="story-card__label">A receber</span>
-            <strong class="story-card__value">{{ outstandingAmountFormatted }}</strong>
-            <span class="story-card__hint">Saldo em aberto</span>
-          </div>
-        </div>
-      </DsCard>
-
-      <DsCard title="Gaveta por Forma de Pagamento">
-        <div class="payment-method-grid">
-          <article v-for="method in paymentMethodSnapshot" :key="method.label" class="payment-method-card">
-            <strong>{{ method.label }}</strong>
-            <span>{{ method.description }}</span>
-          </article>
-        </div>
-      </DsCard>
-    </section>
+    <form class="receivable-filters" aria-label="Filtros de contas a receber" @submit.prevent="loadReceivables">
+      <DsInput
+        id="receivable-client"
+        v-model="filters.search"
+        label="Cliente"
+        type="search"
+        placeholder="Buscar por cliente, paciente ou parcela"
+      />
+      <DsInput id="receivable-due-from" v-model="filters.dueFrom" label="Vencimento entre" type="date" />
+      <DsInput id="receivable-due-to" v-model="filters.dueTo" label="até" type="date" />
+      <DsInput id="receivable-status" v-model="filters.status" label="Status" type="select">
+        <option value="">Todos</option>
+        <option value="open">A Receber</option>
+        <option value="settled">Recebida</option>
+        <option value="cancelled">Cancelada</option>
+      </DsInput>
+      <div class="receivable-filters__actions">
+        <DsButton type="submit" :loading="loading">Pesquisar</DsButton>
+        <DsButton type="button" variant="ghost" @click="clearFilters">Limpar</DsButton>
+      </div>
+    </form>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -120,109 +53,175 @@
 
     <DataTable
       :columns="columns"
-      :rows="billingRows"
+      :rows="filteredRows"
       :loading="loading"
-      empty-icon="💰"
-      empty-title="Nenhum registro de faturamento"
-      empty-description="Os registros aparecem quando atendimentos são abertos."
+      empty-icon="💵"
+      empty-title="Nenhuma conta a receber encontrada"
+      empty-description="Os títulos aparecem quando a conta financeira do atendimento é gerada."
+      caption="Contas a receber"
       variant="hoverable"
     >
-      <template #cell-encounter="{ row }">
-        <router-link
-          :to="`/encounters/${billingRow(row).encounterId}`"
-          class="encounter-link"
-        >
-          {{ billingRow(row).encounterId.slice(0, 8) }}...
-        </router-link>
+      <template #cell-select="{ row }">
+        <input
+          type="checkbox"
+          :aria-label="`Selecionar ${receivableRow(row).installmentLabel}`"
+          :checked="selectedIds.has(receivableRow(row).id)"
+          @change="toggleSelection(receivableRow(row).id)"
+        />
       </template>
-      <template #cell-patient="{ row }">
-        {{ patientName(billingRow(row).patientId) }}
+      <template #cell-origin="{ row }">
+        <span class="origin-cell">Atendimento</span>
+        <small>{{ receivableRow(row).installmentLabel }}</small>
       </template>
-      <template #cell-owner="{ row }">
-        {{ ownerName(billingRow(row).ownerId) }}
+      <template #cell-client="{ row }">
+        <strong>{{ receivableRow(row).ownerName }}</strong>
+        <small>{{ receivableRow(row).patientName }}</small>
+      </template>
+      <template #cell-issuedAt="{ row }">
+        {{ formatDate(receivableRow(row).issuedAt) }}
+      </template>
+      <template #cell-dueAt="{ row }">
+        {{ formatDate(receivableRow(row).dueAt) }}
+      </template>
+      <template #cell-total="{ row }">
+        {{ formatCurrency(receivableRow(row).amountOriginal) }}
+      </template>
+      <template #cell-received="{ row }">
+        {{ formatCurrency(receivableRow(row).amountPaid) }}
+      </template>
+      <template #cell-outstanding="{ row }">
+        <strong>{{ formatCurrency(receivableRow(row).amountOutstanding) }}</strong>
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
-          :label="billingStatusLabel(billingRow(row).status)"
-          :variant="billingStatusVariant(billingRow(row).status)"
+          :label="receivableStatusLabel(receivableRow(row).status)"
+          :variant="receivableStatusVariant(receivableRow(row).status)"
         />
       </template>
-      <template #cell-amount="{ row }">
-        {{ formatCurrency(billingRow(row).subtotalAmount) }}
-      </template>
-      <template #cell-items="{ row }">
-        <DsButton
-          tag="a"
-          :to="`/billing/${billingRow(row).encounterId}`"
-          size="sm"
-          variant="secondary"
-        >
-          Ver itens →
-        </DsButton>
-      </template>
-      <template #cell-actions="{ row }">
-        <DsButton
-          tag="a"
-          :to="`/billing/${billingRow(row).encounterId}`"
-          size="sm"
-          variant="secondary"
-        >
-          Gerenciar
-        </DsButton>
+      <template #cell-open="{ row }">
+        <RouterLink :to="`/billing/${receivableRow(row).encounterId}`" class="open-link">Abrir</RouterLink>
       </template>
     </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { billingService } from '@/services/billing';
-import type { BillingRecordSummary, BillingStatus } from '@/types/billing';
-import { useEntityCache } from '@/composables/useEntityCache';
-import { useListData } from '@/composables/useListData';
-import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { RouterLink } from 'vue-router';
+import { financialReceivablesService } from '@/services/financialReceivables';
+import type {
+  FinancialReceivableListItem,
+  FinancialReceivableListResponse,
+  FinancialReceivableStatus
+} from '@/types/financialReceivables';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
-import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 
-const entityCache = useEntityCache();
-const patientNames = ref<Record<string, string>>({});
-const ownerNames = ref<Record<string, string>>({});
+type FilterStatus = '' | FinancialReceivableStatus | 'cancelled';
+
+const emptyResponse: FinancialReceivableListResponse = {
+  data: [],
+  page: 1,
+  pageSize: 20,
+  total: 0,
+  openCount: 0,
+  settledCount: 0,
+  totalOutstanding: 0,
+  totalSettled: 0
+};
 
 const columns: DataTableColumn[] = [
-  { key: 'encounter', label: 'Atendimento' },
-  { key: 'patient', label: 'Paciente' },
-  { key: 'owner', label: 'Tutor' },
+  { key: 'select', label: '', width: '48px' },
+  { key: 'origin', label: 'Origem' },
+  { key: 'client', label: 'Cliente' },
+  { key: 'issuedAt', label: 'Emissão' },
+  { key: 'dueAt', label: 'Vencimento' },
+  { key: 'total', label: 'Total' },
+  { key: 'received', label: 'Recebido' },
+  { key: 'outstanding', label: 'A Receber' },
   { key: 'status', label: 'Status' },
-  { key: 'amount', label: 'Subtotal' },
-  { key: 'items', label: 'Itens' },
-  { key: 'actions', label: 'Ações', class: 'table__actions-col' }
+  { key: 'open', label: 'Abrir', class: 'table__actions-col' }
 ];
 
-const statusLabelMap: Record<BillingStatus, string> = {
-  draft: 'Rascunho',
-  estimated: 'Estimado',
-  open: 'Aberto',
-  settled: 'Quitado'
-};
+const filters = reactive({
+  search: '',
+  dueFrom: '',
+  dueTo: '',
+  status: '' as FilterStatus
+});
+const response = ref<FinancialReceivableListResponse>({ ...emptyResponse });
+const loading = ref(false);
+const error = ref('');
+const selectedIds = ref(new Set<string>());
 
-const statusVariantMap: Record<BillingStatus, string> = {
-  draft: 'neutral',
-  estimated: 'info',
-  open: 'warning',
-  settled: 'success'
-};
+const rows = computed(() => response.value.data as unknown as DataTableRow[]);
+const filteredRows = computed(() => rows.value.filter((row) => matchesDueFilters(receivableRow(row))));
+const totalOriginal = computed(() =>
+  filteredRows.value.reduce((sum, row) => sum + receivableRow(row).amountOriginal, 0)
+);
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-receivables',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: () => loadReceivables()
+  }
+]);
 
-function billingStatusLabel(s: BillingStatus) {
-  return statusLabelMap[s] || s;
+onMounted(() => {
+  void loadReceivables();
+});
+
+async function loadReceivables() {
+  loading.value = true;
+  error.value = '';
+  try {
+    response.value = await financialReceivablesService.list({
+      search: filters.search.trim(),
+      status: filters.status === 'open' || filters.status === 'settled' ? filters.status : '',
+      page: 1,
+      pageSize: 20
+    });
+    selectedIds.value = new Set([...selectedIds.value].filter((id) => response.value.data.some((row) => row.id === id)));
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível carregar contas a receber.';
+    response.value = { ...emptyResponse };
+  } finally {
+    loading.value = false;
+  }
 }
 
-function billingStatusVariant(s: BillingStatus) {
-  return (statusVariantMap[s] || 'default') as any;
+function clearFilters() {
+  filters.search = '';
+  filters.dueFrom = '';
+  filters.dueTo = '';
+  filters.status = '';
+  void loadReceivables();
+}
+
+function matchesDueFilters(row: FinancialReceivableListItem): boolean {
+  if (!row.dueAt) return !filters.dueFrom && !filters.dueTo;
+  const due = row.dueAt.slice(0, 10);
+  if (filters.dueFrom && due < filters.dueFrom) return false;
+  if (filters.dueTo && due > filters.dueTo) return false;
+  return true;
+}
+
+function toggleSelection(id: string) {
+  const next = new Set(selectedIds.value);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  selectedIds.value = next;
 }
 
 function formatCurrency(value: number): string {
@@ -232,295 +231,86 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function patientName(id: string): string {
-  return patientNames.value[id] || `Paciente ${id.slice(0, 8)}...`;
+function formatDate(value: string | null): string {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
 }
 
-function ownerName(id: string): string {
-  return ownerNames.value[id] || `Tutor ${id.slice(0, 8)}...`;
+function receivableStatusLabel(status: FinancialReceivableStatus): string {
+  return status === 'settled' ? 'Recebida' : 'A Receber';
 }
 
-const openCount = computed(() => items.value.filter((record) => record.status === 'open').length);
-const settledCount = computed(() => items.value.filter((record) => record.status === 'settled').length);
-const billingRows = computed(() => items.value as unknown as DataTableRow[]);
-const totalAmountFormatted = computed(() => formatCurrency(items.value.reduce((sum, record) => sum + record.subtotalAmount, 0)));
-const openRate = computed(() => {
-  if (!items.value.length) return '0%';
-  return `${Math.round((openCount.value / items.value.length) * 100)}%`;
-});
-const averageTicket = computed(() =>
-  items.value.length
-    ? formatCurrency(items.value.reduce((sum, record) => sum + record.subtotalAmount, 0) / items.value.length)
-    : formatCurrency(0)
-);
-const storyCards = computed(() => [
-  { label: 'Recebidos', value: receivedAmountFormatted.value, hint: 'Valor liquidado no contas a receber' },
-  { label: 'Previsão', value: outstandingAmountFormatted.value, hint: 'Saldo previsto ainda em aberto' },
-  { label: 'A receber', value: openRate.value, hint: 'Percentual da carteira em aberto' },
-  { label: 'Pagos', value: String(settledCount.value), hint: 'Registros já liquidados' },
-  { label: 'Ticket médio', value: averageTicket.value, hint: 'Valor médio por faturamento' },
-  { label: 'Base ativa', value: String(items.value.length), hint: 'Registros sob acompanhamento' }
-]);
-const receivedAmount = computed(() =>
-  items.value
-    .filter((record) => record.status === 'settled')
-    .reduce((sum, record) => sum + record.subtotalAmount, 0)
-);
-const outstandingAmount = computed(() =>
-  items.value
-    .filter((record) => record.status !== 'settled')
-    .reduce((sum, record) => sum + record.subtotalAmount, 0)
-);
-const receivedAmountFormatted = computed(() => formatCurrency(receivedAmount.value));
-const outstandingAmountFormatted = computed(() => formatCurrency(outstandingAmount.value));
-
-const financeLayers = [
-  {
-    eyebrow: 'Origem',
-    title: 'Comanda e vendas',
-    description: 'Geram a obrigação econômica que sobe para o cliente financeiro.'
-  },
-  {
-    eyebrow: 'Títulos',
-    title: 'Contas a receber / pagar',
-    description: 'Organizam total, recebido/pago e saldo pendente por cliente ou fornecedor.'
-  },
-  {
-    eyebrow: 'Liquidação',
-    title: 'Gaveta e cartões',
-    description: 'Registram entrada, saída, forma de pagamento, origem e responsável.'
-  },
-  {
-    eyebrow: 'Gestão',
-    title: 'Dashboard Financeiro',
-    description: 'Resume recebidos, previsão, fluxo de caixa, estoque, serviços e clientes.'
-  }
-];
-
-const legacyOperations = [
-  {
-    title: 'Gaveta',
-    route: 'Financeiro/Gaveta.htm',
-    description: 'Último fechamento, entradas, saídas, total em gaveta e extrato cronológico.',
-    fields: 'Forma de Pagamento · Valor · Tipo · Origem · Responsável'
-  },
-  {
-    title: 'Contas a Receber',
-    route: 'Financeiro/ContasAReceber.htm',
-    description: 'Títulos por cliente com total, recebido, saldo, vencimento e status.',
-    fields: 'Cliente · Vencimento · Total · Recebido · A Receber'
-  },
-  {
-    title: 'Contas a Pagar',
-    route: 'Financeiro/ContasAPagar.htm',
-    description: 'Obrigações por fornecedor com total, pago, saldo e origem da despesa.',
-    fields: 'Fornecedor · Vencimento · Total · Pago · A Pagar'
-  },
-  {
-    title: 'Transações de Cartão',
-    route: 'Financeiro/Transacoes.htm',
-    description: 'Esteira de adquirência com valor bruto, líquido, parcelas e status.',
-    fields: 'Cliente · Parcelas · Tipo · Valor · Líquido · Status'
-  }
-];
-
-const paymentMethodSnapshot = [
-  { label: 'DINHEIRO', description: 'Liquidação presencial e fechamento de gaveta.' },
-  { label: 'PIX', description: 'Pagamento instantâneo com conferência operacional.' },
-  { label: 'BOLETO', description: 'Título a prazo conectado ao contas a receber.' },
-  { label: 'CARTÃO DE DÉBITO', description: 'Transação conciliável em adquirência.' },
-  { label: 'CARTÃO DE CRÉDITO', description: 'À vista ou parcelado com valor líquido.' },
-  { label: 'LINK DE PAGAMENTO', description: 'Cobrança remota e rastreável.' },
-  { label: 'DESCONTO OFERECIDO', description: 'Ajuste econômico visível na malha financeira.' }
-];
-
-interface BillingAlert {
-  variant: 'warning' | 'danger' | 'info';
-  title: string;
-  message: string;
+function receivableStatusVariant(status: FinancialReceivableStatus) {
+  return status === 'settled' ? 'success' : 'warning';
 }
 
-const billingAlerts = computed<BillingAlert[]>(() => {
-  const alerts: BillingAlert[] = [];
-  if (openCount.value > 0) {
-    alerts.push({ variant: 'warning', title: 'Cobranças em aberto', message: `${openCount.value} registro(s) aguardando quitação.` });
-  }
-  if (openCount.value === 0 && items.value.length > 0) {
-    alerts.push({ variant: 'info', title: 'Tudo quitado', message: 'Todas as cobranças foram liquidadas.' });
-  }
-  return alerts;
-});
-
-const headerSecondaryActions = computed(() => [
-  {
-    key: 'refresh-billing',
-    label: 'Atualizar',
-    variant: 'secondary' as const,
-    loading: loading.value,
-    onClick: () => reload()
-  }
-]);
-
-const { items, loading, error, load } = useListData<BillingRecordSummary>({
-  fetchFn: async () => {
-    const records = await billingService.list();
-    const patientIds = [...new Set(records.map((r) => r.patientId))];
-    const ownerIds = [...new Set(records.map((r) => r.ownerId))];
-    await Promise.all([
-      ...patientIds.map(async (id) => {
-        patientNames.value[id] = await entityCache.getPatientName(id);
-      }),
-      ...ownerIds.map(async (id) => {
-        ownerNames.value[id] = await entityCache.getOwnerName(id);
-      })
-    ]);
-    return records;
-  },
-  entityLabel: 'faturamentos'
-});
-
-function reload() {
-  void load();
-}
-
-function billingRow(row: unknown): BillingRecordSummary {
-  return row as BillingRecordSummary;
+function receivableRow(row: unknown): FinancialReceivableListItem {
+  return row as FinancialReceivableListItem;
 }
 </script>
 
 <style scoped>
-.billing-list-page {
+.accounts-receivable-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.hub-alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hub-actions {
-  margin-bottom: 0;
-}
-
-.billing-story {
-  margin-bottom: 0;
-}
-
-.finance-domain-map,
-.finance-dashboard-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.finance-layer-grid,
-.finance-legacy-grid,
-.payment-method-grid,
-.receivable-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.finance-layer-card,
-.legacy-operation-card,
-.payment-method-card {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-}
-
-.finance-layer-card span,
-.legacy-operation-card span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
-}
-
-.finance-layer-card p,
-.legacy-operation-card p,
-.legacy-operation-card small,
-.payment-method-card span {
-  margin: 0;
-  color: var(--color-text-secondary, #475569);
-}
-
-.legacy-operation-card small,
-.payment-method-card span {
-  font-size: 12px;
-}
-
-.finance-dashboard-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
-}
-
-.quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.story-grid {
+.receivable-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
-.story-card {
-  padding: 12px;
-  border-radius: 12px;
+.receivable-actions,
+.receivable-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
 }
 
-.story-card__label {
-  display: block;
-  font-size: 12px;
+.receivable-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr)) auto;
+}
+
+.receivable-filters__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.origin-cell,
+.open-link {
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+}
+
+.origin-cell,
+.accounts-receivable-page small {
+  display: block;
+}
+
+.accounts-receivable-page small {
+  margin-top: 3px;
   color: var(--color-text-muted, #64748b);
-}
-
-.story-card__value {
-  display: block;
-  margin-top: 6px;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.story-card__hint {
-  display: block;
-  margin-top: 4px;
   font-size: 12px;
-  color: var(--color-text-muted, #64748b);
 }
 
-.encounter-link {
-  color: var(--color-primary-600, #2563eb);
+.open-link {
+  color: var(--color-primary-700, #1d4ed8);
   text-decoration: none;
-  font-weight: 500;
 }
 
-.encounter-link:hover {
+.open-link:hover {
   text-decoration: underline;
 }
 
-@media (max-width: 920px) {
-  .finance-dashboard-grid {
+@media (max-width: 980px) {
+  .receivable-filters {
     grid-template-columns: 1fr;
   }
 }

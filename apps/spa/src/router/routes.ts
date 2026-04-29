@@ -936,6 +936,11 @@ export const routes: RouteRecordRaw[] = [
         path: 'billing',
         name: 'Billing',
         component: () => import('@/pages/billing/BillingListPage.vue'),
+        alias: [
+          '/finance/accounts-receivable',
+          '/financeiro/controles/contas-a-receber',
+          '/contas-a-receber'
+        ],
         meta: {
           title: 'Contas a Receber',
           breadcrumb: 'Contas a Receber',

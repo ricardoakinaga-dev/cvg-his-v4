@@ -406,8 +406,9 @@ Checkpoint em 2026-04-29:
 - A trilha documentada de `Estoque > Configuracoes Fiscais` esta fechada ate o ultimo item listado no navbar.
 - O navbar `Financeiro` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas a Receber`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas a Pagar`.
 
 Justificativa:
 
@@ -415,13 +416,14 @@ Justificativa:
 - `Tabela IBS/CBS` agora possui rota, aliases, tela Vetus-like, API, OpenAPI, persistencia duravel, testes e publicacao;
 - a ordem revalidada de `Financeiro` comeca por `Gaveta > Gaveta`;
 - a `Gaveta` observada no Vetus ja foi convertida em superficie operacional de caixa no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas a Receber`;
-- resolver `Contas a Receber` agora preserva a ordem Vetus depois da gaveta e antes de `Contas a Pagar`.
+- `Contas a Receber` ja foi convertida em superficie operacional de titulos no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas a Pagar`;
+- resolver `Contas a Pagar` agora preserva a ordem Vetus depois de contas a receber e antes de `Pagamento Antecipado`.
 
-Escopo minimo de `Financeiro > Controles > Contas a Receber`:
+Escopo minimo de `Financeiro > Controles > Contas a Pagar`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Contas a Receber` antes de escrever codigo.
-2. Comparar a tela/fluxo Vetus com a superficie atual de billing/recebiveis do `cvg-his-v2`.
+1. Revalidar artefatos Vetus read-only especificos de `Contas a Pagar` antes de escrever codigo.
+2. Comparar a tela/fluxo Vetus com a superficie atual de despesas/fornecedores do `cvg-his-v2`.
 3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar baixa real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
@@ -433,11 +435,44 @@ Observacao de sequenciamento:
 - `Tabela IBS/CBS` foi alinhada em 2026-04-29.
 - A ordem do navbar `Financeiro` foi revalidada em 2026-04-29.
 - `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Contas a Receber`.
+- `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Contas a Pagar`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Contas a Receber
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/billing` foi convertido de hub amplo de faturamento para superficie Vetus-like de `Contas a Receber`;
+- aliases adicionados: `/finance/accounts-receivable`, `/financeiro/controles/contas-a-receber` e `/contas-a-receber`;
+- filtros alinhados ao Vetus: `Cliente`, `Vencimento entre`, `ate` e `Status`;
+- status exibidos como `A Receber` e `Recebida`, mantendo `Cancelada` como opcao de filtro visual para paridade do menu legacy;
+- tabela alinhada com `Origem`, `Cliente`, `Emissao`, `Vencimento`, `Total`, `Recebido`, `A Receber`, `Status` e `Abrir`;
+- acoes de tela `Gerar Conta Avulsa` e `Baixar contas em lote` foram posicionadas na superficie sem acionar escrita nova;
+- a tela consome a API existente `GET /financial/receivables`, mantendo `/billing/:id` como detalhe operacional do atendimento.
+
+Validacao:
+
+- teste focado de `BillingListPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/billing` 200, `/finance/accounts-receivable` 200, `/financeiro/controles/contas-a-receber` 200 e `/health` 200;
+- rota protegida `/financial/receivables?status=open` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/billing` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Contas a Pagar`.
 
 ### 2026-04-29 - Financeiro > Gaveta > Gaveta
 
