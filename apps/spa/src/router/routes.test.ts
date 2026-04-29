@@ -380,6 +380,13 @@ describe('router convergence', () => {
         '/contas-adm-cartão'
       ])
     );
+    expect(findChildRoute('finance/cheques')?.meta?.title).toBe('Cheques');
+    expect(findChildRoute('finance/cheques')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/cheques',
+        '/cheques'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');

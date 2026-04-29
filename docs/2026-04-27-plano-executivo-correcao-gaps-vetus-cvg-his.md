@@ -410,8 +410,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Cheques`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Fluxo de Caixa`.
 
 Justificativa:
 
@@ -423,14 +424,15 @@ Justificativa:
 - `Contas a Pagar` ja foi convertida em superficie operacional de obrigacoes no `cvg-his-v2`;
 - `Pagamento Antecipado` ja foi convertido em superficie operacional de creditos antecipados no `cvg-his-v2`;
 - `Contas Adm. Cartao` ja foi convertido em superficie operacional de recebimentos por cartao, parcelas, taxas e conciliacao no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Cheques`;
-- resolver `Cheques` agora preserva a ordem Vetus depois de contas administradas de cartao e antes de `Fluxo de Caixa`.
+- `Cheques` ja foi convertido em superficie operacional de cheques recebidos/emitidos, vencimento, baixa e devolucao no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Fluxo de Caixa`;
+- resolver `Fluxo de Caixa` agora preserva a ordem Vetus depois de `Cheques` e antes de `Curva ABC Clientes`.
 
-Escopo minimo de `Financeiro > Controles > Cheques`:
+Escopo minimo de `Financeiro > Controles > Fluxo de Caixa`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Cheques` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Fluxo de Caixa` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar baixa, compensacao ou cancelamento real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, grafico/listagem, detalhe e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -445,11 +447,43 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Cheques`.
+- `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Fluxo de Caixa`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Cheques
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/cheques` foi convertido de tela financeira generica para superficie Vetus-like de `Cheques`;
+- aliases adicionados: `/financeiro/controles/cheques` e `/cheques`;
+- filtros alinhados ao dominio: `Cliente/Referencia`, `Vencimento de`, `Ate`, `Status` e `Tipo`;
+- acoes de tela `Cadastrar Cheque`, `Baixar Cheques Em Lote` e `Comandas` foram posicionadas na superficie sem acionar escrita nova;
+- tabela alinhada com `Referencia`, `Tipo`, `Emissao`, `Vencimento`, `Valor`, `Origem`, `Status` e `Abrir`;
+- a tela consome a API existente `/counter-sales`, usando detalhes de comandas para compor pagamentos com metodo `check`.
+
+Validacao:
+
+- teste focado de `ChequesPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/cheques` 200, `/financeiro/controles/cheques` 200 e `/health` 200;
+- rota protegida `/counter-sales` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/cheques` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Fluxo de Caixa`.
 
 ### 2026-04-29 - Financeiro > Controles > Contas Adm. Cartao
 

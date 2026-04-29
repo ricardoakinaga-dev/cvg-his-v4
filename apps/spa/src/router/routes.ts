@@ -1019,8 +1019,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'finance/cheques',
         name: 'FinanceCheques',
-        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
-        props: { mode: 'cheques' },
+        component: () => import('@/pages/finance/ChequesPage.vue'),
+        alias: [
+          '/financeiro/controles/cheques',
+          '/cheques'
+        ],
         meta: {
           title: 'Cheques',
           breadcrumb: 'Cheques',
