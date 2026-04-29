@@ -1568,6 +1568,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'expenses',
         name: 'Expenses',
+        alias: [
+          '/financeiro/cadastros/custos-e-despesas',
+          '/financeiro/cadastros/custos-despesas',
+          '/custos-e-despesas'
+        ],
         component: () => import('@/pages/finance/ExpensesPage.vue'),
         meta: {
           title: 'Custos e Despesas',

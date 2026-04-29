@@ -277,7 +277,12 @@ export const navGroups: AppNavGroup[] = [
             icon: '📊',
             keywords: ['centros de custo', 'rateio', 'cadastro centro custo', 'classificacao custo', 'rateio financeiro', 'custos despesas']
           },
-          { label: 'Custos e Despesas', path: '/expenses', icon: '🧾', keywords: ['despesas', 'custos'] },
+          {
+            label: 'Custos e Despesas',
+            path: '/expenses',
+            icon: '🧾',
+            keywords: ['despesas', 'custos', 'custos e despesas', 'cadastro despesas', 'centro de custo', 'contas a pagar']
+          },
           { label: 'Cartões Débito/Crédito', path: '/cards', icon: '💳', keywords: ['cartoes', 'maquininha'] },
           { label: 'Bancos', path: '/banks', icon: '🏦', keywords: ['bancos', 'contas bancarias'] }
         ]

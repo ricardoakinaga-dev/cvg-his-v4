@@ -502,6 +502,14 @@ describe('router convergence', () => {
         '/centros-de-custo'
       ])
     );
+    expect(findChildRoute('expenses')?.meta?.title).toBe('Custos e Despesas');
+    expect(findChildRoute('expenses')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/cadastros/custos-e-despesas',
+        '/financeiro/cadastros/custos-despesas',
+        '/custos-e-despesas'
+      ])
+    );
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
@@ -681,6 +689,7 @@ describe('router convergence', () => {
     expect(findChildRoute('finance/payments-dashboard')?.meta?.title).toBe('Pagamento Dashboard');
     expect(findChildRoute('payment-methods')?.meta?.title).toBe('Formas de Pagamento');
     expect(findChildRoute('cost-centers')?.meta?.title).toBe('Centros de Custo');
+    expect(findChildRoute('expenses')?.meta?.title).toBe('Custos e Despesas');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');

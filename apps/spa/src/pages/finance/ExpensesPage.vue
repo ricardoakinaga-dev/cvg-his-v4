@@ -1,510 +1,310 @@
 <template>
-  <div class="finance-catalog-page">
+  <div class="expenses-page">
     <AppPageHeader
       title="Custos e Despesas"
       :breadcrumbs="['Financeiro', 'Cadastros', 'Custos e Despesas']"
-      subtitle="Catálogo financeiro com persistência server-side, categorias padronizadas, vínculo obrigatório a centros de custo e paginação operacional"
-    >
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
-        <DsButton variant="primary" @click="startCreate">+ Incluir</DsButton>
-      </template>
-    </AppPageHeader>
+      subtitle="Cadastro operacional de despesas, categorias e vínculo com centros de custo"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="{ label: 'Incluir Despesa', disabled: true }"
+    />
 
     <DsAlert variant="info">
-      Esta etapa consolida <strong>Custos e Despesas</strong> com backend dedicado, centros de custo compartilhados e paginação server-side.
+      Superfície somente leitura para preservar a ordem Vetus de cadastros financeiros. Incluir despesa, editar
+      categoria, remover lançamento e executar baixa seguem bloqueados até contrato financeiro auditável.
     </DsAlert>
 
-    <section class="catalog-kpis">
-      <DsStatCard :label="`${pagination.totalItems} registro(s)`" value="" icon="🧾" />
-      <DsStatCard :label="`${fixedCount} fixo(s)`" value="" icon="📌" />
-      <DsStatCard :label="`${operationalCount} operacional(is)`" value="" icon="🏥" />
-      <DsStatCard :label="`${categories.length} categoria(s) padronizada(s)`" value="" icon="🗂️" />
-      <DsStatCard :label="`${costCenters.length} centro(s) de custo`" value="" icon="🏷️" />
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
+
+    <form class="expenses-filters" aria-label="Filtros de custos e despesas" @submit.prevent>
+      <DsInput
+        id="expenses-search"
+        v-model="filters.search"
+        label="Pesquisar"
+        placeholder="Buscar por despesa, categoria, centro ou descrição"
+        type="search"
+      />
+      <DsInput id="expenses-category" v-model="filters.category" label="Categoria" type="select">
+        <option value="">Todas</option>
+        <option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option>
+      </DsInput>
+      <DsInput id="expenses-cost-center" v-model="filters.costCenter" label="Centro de Custo" type="select">
+        <option value="">Todos</option>
+        <option v-for="center in costCenterOptions" :key="center.code" :value="center.code">
+          {{ center.name }}
+        </option>
+      </DsInput>
+      <DsInput id="expenses-kind" v-model="filters.kind" label="Natureza" type="select">
+        <option value="">Todas</option>
+        <option value="fixed">Fixa</option>
+        <option value="operational">Operacional</option>
+        <option value="variable">Variável</option>
+      </DsInput>
+    </form>
+
+    <section class="expenses-summary-grid" aria-label="Resumo de custos e despesas">
+      <DsStatCard :label="`${visibleExpenses.length} despesa(s)`" value="Registros" />
+      <DsStatCard :label="`${fixedCount} fixa(s)`" value="Fixas" />
+      <DsStatCard :label="`${operationalCount} operacional(is)`" value="Operacionais" />
+      <DsStatCard :label="`${linkedCostCenterCount} centro(s)`" value="Centros" />
     </section>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
-    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">{{ successMessage }}</DsAlert>
+    <section class="expenses-actions" aria-label="Ações de custos e despesas">
+      <DsButton variant="primary" disabled>Incluir Despesa</DsButton>
+      <DsButton variant="secondary" tag="a" to="/cost-centers">Centro de Custo</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/accounts-payable">Contas a Pagar</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/cash-flow">Fluxo de Caixa</DsButton>
+      <DsButton variant="ghost" type="button" :loading="loading" @click="reload">Atualizar</DsButton>
+    </section>
 
-    <DsCard title="Linha do tempo operacional do Financeiro">
-      <div class="catalog-kpis catalog-kpis--audit">
-        <DsStatCard :label="`${financeAuditKpis.total} evento(s)`" value="" icon="🧭" />
-        <DsStatCard :label="`${financeAuditKpis.expenseEvents} evento(s) de despesas`" value="" icon="🧾" />
-        <DsStatCard :label="`${financeAuditKpis.costCenterEvents} evento(s) de centros`" value="" icon="🏷️" />
-        <DsStatCard :label="`${financeAuditKpis.correlatedTrails} trilha(s) correlacionada(s)`" value="" icon="🔗" />
-      </div>
-
-      <div class="catalog-toolbar catalog-toolbar--three">
-        <input v-model="auditFilters.action" type="search" placeholder="Filtrar por ação ou resumo da trilha" class="catalog-search" />
-        <input v-model="auditFilters.entity" type="search" placeholder="Filtrar por entidade ou id afetado" class="catalog-search" />
-        <input v-model="auditFilters.correlationId" type="search" placeholder="Filtrar por correlationId" class="catalog-search" />
-      </div>
-
-      <div v-if="groupedAuditTrails.length === 0" class="catalog-empty">
-        Nenhum evento financeiro encontrado para os filtros atuais.
-      </div>
-
-      <div v-else class="finance-audit-timeline">
-        <details v-for="trail in groupedAuditTrails" :key="trail.correlationId" class="finance-audit-group" open>
-          <summary class="finance-audit-group__summary">
-            <div>
-              <strong>{{ trail.correlationId }}</strong>
-              <div class="catalog-inline-hint">{{ trail.events.length }} evento(s) na trilha</div>
-            </div>
-            <DsButton tag="a" :to="trail.href" variant="secondary" size="sm">Abrir Auditoria</DsButton>
-          </summary>
-          <article v-for="event in trail.events" :key="event.eventId" class="finance-audit-event">
-            <div class="finance-audit-event__meta">
-              <div>
-                <strong>{{ event.action }}</strong>
-                <div class="catalog-inline-hint">{{ event.entityType }} · {{ event.entityId }}</div>
-              </div>
-              <DsBadge variant="info" size="sm">{{ event.correlationId }}</DsBadge>
-            </div>
-            <p class="finance-audit-event__summary">{{ event.payloadSummary }}</p>
-            <div class="finance-audit-event__footer">
-              <span>{{ new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(event.occurredAt)) }}</span>
-              <span>ator {{ event.actorId }}</span>
-            </div>
-          </article>
-        </details>
-      </div>
-    </DsCard>
-
-    <DsCard v-if="showForm" :title="editingId ? 'Editar custo ou despesa' : 'Novo custo ou despesa'">
-      <form class="creation-form" @submit.prevent="submitExpense">
-        <input v-model="form.name" type="text" placeholder="Nome do lançamento" class="catalog-search" />
-        <input v-model="form.kind" type="text" placeholder="Tipo (ex: Variável)" class="catalog-search" />
-
-        <select v-model="form.category" aria-label="Categoria do lançamento" class="catalog-search">
-          <option value="">Selecione a categoria</option>
-          <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-        </select>
-
-        <select v-model="form.costCenterCode" aria-label="Centro de custo do lançamento" class="catalog-search">
-          <option value="">Selecione o centro de custo</option>
-          <option v-for="center in costCenters" :key="center.code" :value="center.code">
-            {{ center.name }} ({{ center.code }})
-          </option>
-        </select>
-
-        <input v-model="form.description" type="text" placeholder="Descrição operacional" class="catalog-search" />
-        <div class="catalog-toolbar__actions catalog-toolbar__actions--bottom">
-          <DsButton type="submit" variant="primary" :loading="submitting">{{ editingId ? 'Salvar alterações' : 'Salvar registro' }}</DsButton>
-          <DsButton variant="ghost" @click="cancelForm">Cancelar</DsButton>
-        </div>
-      </form>
-    </DsCard>
-
-    <DsCard title="Cadastro de custos e despesas">
-      <div class="catalog-toolbar catalog-toolbar--five">
-        <input v-model="filters.id" type="search" placeholder="Id" class="catalog-search" />
-        <input v-model="filters.name" type="search" placeholder="Nome" class="catalog-search" />
-        <input v-model="filters.category" type="search" placeholder="Categoria" class="catalog-search" />
-        <input v-model="filters.costCenter" type="search" placeholder="Centro de custo" class="catalog-search" />
-        <input v-model="filters.description" type="search" placeholder="Descrição" class="catalog-search" />
-      </div>
-
-      <div class="catalog-toolbar__actions catalog-toolbar__actions--bottom">
-        <DsButton variant="secondary" :loading="loading" @click="searchExpenses">Pesquisar</DsButton>
-      </div>
-
-      <div class="catalog-pagination" v-if="pagination.totalItems > 0">
-        <span class="catalog-inline-hint">
-          Página {{ pagination.page }} de {{ pagination.totalPages }} · {{ pagination.totalItems }} registro(s)
-        </span>
-        <div class="catalog-toolbar__actions">
-          <DsButton variant="ghost" size="sm" :disabled="pagination.page <= 1 || loading" @click="goToPage(pagination.page - 1)">Página anterior</DsButton>
-          <DsButton variant="ghost" size="sm" :disabled="pagination.page >= pagination.totalPages || loading" @click="goToPage(pagination.page + 1)">Próxima página</DsButton>
-        </div>
-      </div>
-
-      <div v-if="expenses.length === 0" class="catalog-empty">
-        Nenhum registro encontrado.
-      </div>
-
-      <table v-else class="catalog-table">
-        <thead>
-          <tr>
-            <th>Id</th>
-            <th>Nome</th>
-            <th>Categoria</th>
-            <th>Centro de custo</th>
-            <th>Descrição</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="expense in expenses" :key="expense.id">
-            <td>{{ expense.id }}</td>
-            <td>{{ expense.name }}</td>
-            <td>{{ expense.category }}</td>
-            <td>
-              <strong>{{ expense.costCenterName }}</strong>
-              <div class="catalog-inline-hint">{{ expense.costCenterCode }}</div>
-            </td>
-            <td>{{ expense.description }}</td>
-            <td>
-              <div class="row-actions">
-                <DsButton variant="secondary" size="sm" @click="startEdit(expense)">Editar</DsButton>
-                <DsButton variant="ghost" size="sm" @click="removeExpense(expense.id)">Remover</DsButton>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </DsCard>
+    <DataTable
+      :columns="columns"
+      :rows="visibleRows"
+      :loading="loading"
+      empty-icon="🧾"
+      empty-title="Nenhuma despesa encontrada"
+      empty-description="Ajuste os filtros para visualizar os custos e despesas cadastrados."
+      caption="Custos e despesas"
+      row-key-field="id"
+      variant="hoverable"
+    >
+      <template #cell-expense="{ row }">
+        <strong>{{ expense(row).name }}</strong>
+        <small>{{ expense(row).id }}</small>
+      </template>
+      <template #cell-category="{ row }">
+        <span>{{ expense(row).category }}</span>
+      </template>
+      <template #cell-costCenter="{ row }">
+        <strong>{{ expense(row).costCenterName }}</strong>
+        <small>{{ expense(row).costCenterCode }}</small>
+      </template>
+      <template #cell-kind="{ row }">
+        <StatusBadge :label="kindLabel(expense(row).kindKey)" :variant="kindVariant(expense(row).kindKey)" />
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge label="Planejada" variant="warning" />
+      </template>
+      <template #cell-usage="{ row }">
+        <span>{{ expense(row).usage }}</span>
+      </template>
+      <template #cell-next="{ row }">
+        <span>{{ expense(row).nextAction }}</span>
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
-import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
-import { auditService } from '@/services/audit';
-import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 import {
   expensesCatalogService,
   type ExpenseCatalogItem,
-  type ExpenseCostCenterItem,
-  type ExpenseCatalogListFilters
+  type ExpenseCostCenterItem
 } from '@/services/expensesCatalog';
 
-const filters = reactive({ id: '', name: '', category: '', costCenter: '', description: '' });
-const auditFilters = reactive({ action: '', entity: '', correlationId: '' });
-const form = reactive({ name: '', kind: '', category: '', costCenterCode: '', description: '' });
-const expenses = ref<ExpenseCatalogItem[]>([]);
+type ExpenseKind = 'fixed' | 'operational' | 'variable';
+
+interface ExpenseView extends ExpenseCatalogItem {
+  kindKey: ExpenseKind;
+  usage: string;
+  nextAction: string;
+}
+
+const columns: DataTableColumn[] = [
+  { key: 'expense', label: 'Despesa' },
+  { key: 'category', label: 'Categoria' },
+  { key: 'costCenter', label: 'Centro de Custo' },
+  { key: 'kind', label: 'Natureza' },
+  { key: 'status', label: 'Status' },
+  { key: 'usage', label: 'Uso' },
+  { key: 'next', label: 'Próxima Ação' }
+];
+
+const expenses = ref<ExpenseView[]>([]);
 const categories = ref<string[]>([]);
 const costCenters = ref<ExpenseCostCenterItem[]>([]);
-const financeAuditEvents = ref<AuditEventSummary[]>([]);
 const loading = ref(false);
-const submitting = ref(false);
 const error = ref('');
-const successMessage = ref('');
-const showForm = ref(true);
-const editingId = ref<string | null>(null);
-const pagination = reactive({ page: 1, pageSize: 10, totalItems: 0, totalPages: 1, sort: 'name', order: 'asc' as 'asc' | 'desc' });
-
-const fixedCount = computed(() => expenses.value.filter((item) => item.kind === 'Fixo').length);
-const operationalCount = computed(() => expenses.value.filter((item) => item.kind === 'Operacional').length);
-const filteredFinanceAuditEvents = computed(() => {
-  const actionNeedle = auditFilters.action.trim().toLowerCase();
-  const entityNeedle = auditFilters.entity.trim().toLowerCase();
-  const correlationNeedle = auditFilters.correlationId.trim().toLowerCase();
-
-  return financeAuditEvents.value.filter((event) => {
-    const matchesAction =
-      !actionNeedle ||
-      [event.action, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(actionNeedle));
-    const matchesEntity =
-      !entityNeedle ||
-      [event.entityType, event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(entityNeedle));
-    const matchesCorrelation = !correlationNeedle || String(event.correlationId ?? '').toLowerCase().includes(correlationNeedle);
-    return matchesAction && matchesEntity && matchesCorrelation;
-  });
+const filters = reactive({
+  search: '',
+  category: '',
+  costCenter: '',
+  kind: ''
 });
-const financeAuditKpis = computed(() => ({
-  total: financeAuditEvents.value.length,
-  expenseEvents: financeAuditEvents.value.filter((event) => event.entityType === 'expense-catalog').length,
-  costCenterEvents: financeAuditEvents.value.filter((event) => event.entityType === 'cost-center-catalog').length,
-  correlatedTrails: new Set(financeAuditEvents.value.map((event) => event.correlationId)).size
-}));
-const groupedAuditTrails = computed(() => {
-  const groups = new Map<string, AuditEventSummary[]>();
-  for (const event of filteredFinanceAuditEvents.value) {
-    const key = event.correlationId || 'sem-correlation-id';
-    groups.set(key, [...(groups.get(key) ?? []), event]);
+
+const visibleExpenses = computed(() => expenses.value.filter(matchesFilters));
+const visibleRows = computed(() => visibleExpenses.value as unknown as DataTableRow[]);
+const categoryOptions = computed(() => categories.value.length > 0 ? categories.value : unique(expenses.value.map((item) => item.category)));
+const costCenterOptions = computed(() => costCenters.value.length > 0 ? costCenters.value : uniqueCostCenters(expenses.value));
+const fixedCount = computed(() => visibleExpenses.value.filter((item) => item.kindKey === 'fixed').length);
+const operationalCount = computed(() => visibleExpenses.value.filter((item) => item.kindKey === 'operational').length);
+const linkedCostCenterCount = computed(() => new Set(visibleExpenses.value.map((item) => item.costCenterCode)).size);
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-expenses',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: reload
   }
-  return [...groups.entries()].map(([correlationId, events]) => ({
-    correlationId,
-    events: [...events].sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()),
-    href: `/audit?q=${encodeURIComponent('billing')}&correlationId=${encodeURIComponent(correlationId)}&entity=${encodeURIComponent(events[0]?.entityId ?? '')}&origin=${encodeURIComponent('/expenses')}&originLabel=${encodeURIComponent('Voltar para Custos e Despesas')}`
-  }));
-});
+]);
 
-function resetForm() {
-  form.name = '';
-  form.kind = '';
-  form.category = '';
-  form.costCenterCode = '';
-  form.description = '';
-  editingId.value = null;
-}
-
-function startCreate() {
-  resetForm();
-  showForm.value = true;
-}
-
-function startEdit(expense: ExpenseCatalogItem) {
-  form.name = expense.name;
-  form.kind = expense.kind;
-  form.category = expense.category;
-  form.costCenterCode = expense.costCenterCode;
-  form.description = expense.description;
-  editingId.value = expense.id;
-  showForm.value = true;
-}
-
-function cancelForm() {
-  resetForm();
-  showForm.value = false;
-}
-
-function buildServerFilters(pageOverride?: number): ExpenseCatalogListFilters {
-  return {
-    search: filters.name || undefined,
-    category: filters.category || undefined,
-    costCenter: filters.costCenter || undefined,
-    page: pageOverride ?? pagination.page,
-    pageSize: pagination.pageSize,
-    sort: pagination.sort as ExpenseCatalogListFilters['sort'],
-    order: pagination.order
-  };
-}
-
-async function loadExpenses(serverFilters?: ExpenseCatalogListFilters) {
+async function loadExpenses() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await expensesCatalogService.list(serverFilters);
-    expenses.value = response.items ?? [];
+    const response = await expensesCatalogService.list({ page: 1, pageSize: 100, sort: 'name', order: 'asc' });
+    expenses.value = (response.items ?? []).map(toExpenseView);
     categories.value = response.categories ?? [];
     costCenters.value = response.costCenters ?? [];
-    pagination.page = response.page ?? 1;
-    pagination.pageSize = response.pageSize ?? pagination.pageSize;
-    pagination.totalItems = response.totalItems ?? expenses.value.length;
-    pagination.totalPages = response.totalPages ?? 1;
-    pagination.sort = response.sort ?? 'name';
-    pagination.order = (response.order as 'asc' | 'desc') ?? 'asc';
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Falha ao carregar custos e despesas';
     expenses.value = [];
     categories.value = [];
     costCenters.value = [];
-    pagination.totalItems = 0;
-    pagination.totalPages = 1;
   } finally {
     loading.value = false;
   }
 }
 
-async function loadFinanceAuditTrail() {
-  try {
-    const events = await auditService.listEvents({
-      module: 'billing',
-      entityTypes: ['expense-catalog', 'cost-center-catalog'],
-      limit: 50
-    });
-    financeAuditEvents.value = events
-      .filter(
-        (event) =>
-          event.module === 'billing' &&
-          (event.entityType === 'expense-catalog' || event.entityType === 'cost-center-catalog')
-      )
-      .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime());
-  } catch {
-    financeAuditEvents.value = [];
-  }
-}
-
 async function reload() {
-  await Promise.all([loadExpenses(buildServerFilters()), loadFinanceAuditTrail()]);
+  await loadExpenses();
 }
 
-async function searchExpenses() {
-  pagination.page = 1;
-  await loadExpenses(buildServerFilters(1));
+function matchesFilters(item: ExpenseView): boolean {
+  if (filters.category && item.category !== filters.category) return false;
+  if (filters.costCenter && item.costCenterCode !== filters.costCenter) return false;
+  if (filters.kind && item.kindKey !== filters.kind) return false;
+  const search = normalize(filters.search);
+  if (!search) return true;
+  return [
+    item.id,
+    item.name,
+    item.kind,
+    item.category,
+    item.costCenterCode,
+    item.costCenterName,
+    item.description,
+    item.usage,
+    item.nextAction
+  ].some((value) => normalize(value).includes(search));
 }
 
-async function goToPage(page: number) {
-  await loadExpenses(buildServerFilters(page));
+function toExpenseView(item: ExpenseCatalogItem): ExpenseView {
+  const kindKey = normalizeKind(item.kind);
+  return {
+    ...item,
+    kindKey,
+    usage: kindKey === 'operational' ? 'Custo ligado à operação assistencial' : 'Despesa administrativa recorrente',
+    nextAction: kindKey === 'operational' ? 'Conferir centro de custo antes da baixa' : 'Acompanhar em Contas a Pagar'
+  };
 }
 
-async function submitExpense() {
-  error.value = '';
-  successMessage.value = '';
-  if (!form.name.trim() || !form.category.trim() || !form.costCenterCode.trim() || !form.description.trim()) {
-    error.value = 'Nome, categoria, centro de custo e descrição são obrigatórios';
-    return;
+function normalizeKind(kind: string): ExpenseKind {
+  const normalized = normalize(kind);
+  if (normalized.includes('fix')) return 'fixed';
+  if (normalized.includes('operacional')) return 'operational';
+  return 'variable';
+}
+
+function kindLabel(kind: ExpenseKind): string {
+  if (kind === 'fixed') return 'Fixa';
+  if (kind === 'operational') return 'Operacional';
+  return 'Variável';
+}
+
+function kindVariant(kind: ExpenseKind): 'info' | 'success' | 'neutral' {
+  if (kind === 'operational') return 'success';
+  if (kind === 'fixed') return 'info';
+  return 'neutral';
+}
+
+function expense(row: DataTableRow): ExpenseView {
+  return row as unknown as ExpenseView;
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, 'pt-BR'));
+}
+
+function uniqueCostCenters(items: ExpenseView[]): ExpenseCostCenterItem[] {
+  const centers = new Map<string, ExpenseCostCenterItem>();
+  for (const item of items) {
+    centers.set(item.costCenterCode, {
+      code: item.costCenterCode,
+      name: item.costCenterName,
+      kind: '',
+      owner: '',
+      description: ''
+    });
   }
-
-  submitting.value = true;
-  try {
-    if (editingId.value) {
-      const updated = await expensesCatalogService.update(editingId.value, {
-        name: form.name,
-        kind: form.kind || 'Variável',
-        category: form.category,
-        costCenterCode: form.costCenterCode,
-        description: form.description
-      });
-      expenses.value = expenses.value.map((item) => (item.id === editingId.value ? updated : item));
-      successMessage.value = 'Registro atualizado com sucesso';
-    } else {
-      const created = await expensesCatalogService.create({
-        name: form.name,
-        kind: form.kind || 'Variável',
-        category: form.category,
-        costCenterCode: form.costCenterCode,
-        description: form.description
-      });
-      expenses.value = [created, ...expenses.value].slice(0, pagination.pageSize);
-      pagination.totalItems += 1;
-      pagination.totalPages = Math.max(1, Math.ceil(pagination.totalItems / pagination.pageSize));
-      successMessage.value = 'Registro criado com sucesso';
-    }
-    resetForm();
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao salvar registro';
-  } finally {
-    submitting.value = false;
-  }
+  return [...centers.values()].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
 }
 
-async function removeExpense(id: string) {
-  error.value = '';
-  successMessage.value = '';
-  try {
-    await expensesCatalogService.remove(id);
-    expenses.value = expenses.value.filter((item) => item.id !== id);
-    pagination.totalItems = Math.max(0, pagination.totalItems - 1);
-    pagination.totalPages = Math.max(1, Math.ceil(Math.max(pagination.totalItems, 1) / pagination.pageSize));
-    successMessage.value = 'Registro removido com sucesso';
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao remover registro';
-  }
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 onMounted(() => {
-  void Promise.all([loadExpenses(buildServerFilters()), loadFinanceAuditTrail()]);
+  void loadExpenses();
 });
 </script>
 
 <style scoped>
-.finance-catalog-page {
+.expenses-page {
   display: grid;
   gap: 16px;
 }
-.catalog-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-.catalog-toolbar {
+
+.expenses-filters {
+  align-items: end;
   display: grid;
   gap: 12px;
-  margin-bottom: 12px;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
 }
-.catalog-toolbar--five {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+
+.expenses-summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.catalog-toolbar--three {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-.catalog-toolbar__actions {
+
+.expenses-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.catalog-toolbar__actions--bottom { margin-bottom: 12px; }
-.catalog-search {
-  width: 100%;
-  min-height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #dbe3ef);
-  padding: 0 14px;
-  background: var(--color-surface, #fff);
-}
-.creation-form {
-  display: grid;
-  gap: 12px;
-}
-.catalog-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.catalog-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.catalog-table th,
-.catalog-table td {
-  text-align: left;
-  padding: 12px;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
-  vertical-align: top;
-}
-.catalog-table th {
-  font-size: 13px;
-  color: #475569;
-}
-.catalog-inline-hint {
+
+.expenses-page small {
+  color: var(--color-text-secondary, #64748b);
+  display: block;
   font-size: 12px;
-  color: #64748b;
-  margin-top: 4px;
+  margin-top: 3px;
 }
-.row-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+
+@media (max-width: 1100px) {
+  .expenses-filters,
+  .expenses-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.catalog-empty {
-  border: 1px dashed var(--color-border, #cbd5e1);
-  border-radius: 14px;
-  padding: 20px;
-  text-align: center;
-  color: #64748b;
-}
-.finance-audit-timeline {
-  display: grid;
-  gap: 12px;
-}
-.finance-audit-group {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  background: linear-gradient(180deg, var(--color-surface, #fff), var(--color-bg-subtle, #f8fafc));
-  overflow: hidden;
-}
-.finance-audit-group__summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
-  cursor: pointer;
-}
-.finance-audit-group__summary::-webkit-details-marker {
-  display: none;
-}
-.finance-audit-event {
-  border-top: 1px solid var(--color-border, #e2e8f0);
-  padding: 14px;
-}
-.finance-audit-event__meta {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.finance-audit-event__summary {
-  margin: 10px 0;
-  color: var(--color-text, #0f172a);
-}
-.finance-audit-event__footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  color: #64748b;
+
+@media (max-width: 720px) {
+  .expenses-filters,
+  .expenses-summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
