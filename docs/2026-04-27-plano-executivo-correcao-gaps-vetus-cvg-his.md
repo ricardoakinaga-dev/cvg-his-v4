@@ -417,8 +417,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Configuracao do Split`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Maquininhas`.
 
 Justificativa:
 
@@ -437,14 +438,15 @@ Justificativa:
 - `DashBoard do Multifilial` ja foi convertido em superficie operacional de visao consolidada da unidade atual no `cvg-his-v2`;
 - `Dashboard Financeiro` ja foi convertido em superficie operacional de indicadores financeiros, recebiveis, caixa, PIX e producao comercial no `cvg-his-v2`;
 - `Linha do Tempo` ja foi convertido em superficie operacional de eventos financeiros, vencimentos, recebimentos e marcos operacionais no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Configuracao do Split`;
-- resolver `Configuracao do Split` agora preserva a ordem Vetus depois de fechar `Controles`.
+- `Configuracao do Split` ja foi convertido em superficie operacional somente leitura de regras, recebedores, percentuais e repasse planejado no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Maquininhas`;
+- resolver `Maquininhas` agora preserva a ordem Vetus depois de fechar `Configuracao do Split`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Configuracao do Split`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Maquininhas`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Configuracao do Split` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Maquininhas` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, regras de split, participantes/recebedores e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, cadastro/listagem de maquininhas, status, provedor, unidade e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -466,11 +468,51 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Configuracao do Split`.
+- `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Maquininhas`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Configuracao do Split
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/split` deixou de usar placeholder e passou a carregar `SplitConfigurationPage`;
+- aliases adicionados para `/financeiro/maquininha/configuracao-do-split`, `/financeiro/maquininha-de-cartao/configuracao-do-split` e `/configuracao-do-split`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Configuracao do Split`;
+- filtros `Unidade`, `Provedor`, `Status` e `Pesquisar`;
+- KPIs `Regras`, `Recebedores`, `Percentual CVG` e `Repasse`;
+- tabela com `Recebedor`, `Regra`, `Percentual`, `Provedor`, `Status` e `Abrir`;
+- acoes `Salvar Configuracao` bloqueada, `Simulador de Split`, `Exportador de Split`, `Transacoes de Cartao` e `Atualizar`.
+
+Restricoes mantidas:
+
+- sem habilitacao de pagamento;
+- sem captura;
+- sem repasse real;
+- sem conciliacao;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `SplitConfigurationPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/split` 200, `/financeiro/maquininha/configuracao-do-split` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/split` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Maquininhas`.
 
 ### 2026-04-29 - Financeiro > Controles > Linha do Tempo
 

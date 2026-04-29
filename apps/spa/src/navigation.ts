@@ -232,7 +232,7 @@ export const navGroups: AppNavGroup[] = [
         id: 'financeiro-maquininha',
         label: 'Maquininha de Cartão',
         items: [
-          { label: 'Configuração do Split', path: '/finance/split', icon: '🧩', keywords: ['split', 'configuracao'] },
+          { label: 'Configuração do Split', path: '/finance/split', icon: '🧩', keywords: ['split', 'configuracao', 'configuração do split', 'recebedores', 'repasse', 'maquininha'] },
           { label: 'Maquininhas', path: '/finance/card-machines', icon: '💳', keywords: ['maquininhas'] },
           { label: 'Simulador de Split', path: '/finance/split/simulator', icon: '🧮', keywords: ['simulador split'] },
           { label: 'Transações de Cartão', path: '/finance/card-transactions', icon: '💳', keywords: ['transacoes cartao'] },
