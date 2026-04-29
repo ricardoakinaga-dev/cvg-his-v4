@@ -561,25 +561,44 @@ Plano:
 
 ### 5. Financeiro
 
-Objetivo: espelhar contas, caixa, pagamentos, recebiveis, cartoes, PIX, despesas, centros de custo, relatórios financeiros e conciliacoes.
+Objetivo: espelhar contas, caixa, pagamentos, recebiveis, cartoes, despesas, centros de custo, relatorios financeiros e conciliacoes.
 
-Itens provaveis a observar:
+Ordem revalidada por artefatos Vetus read-only em 2026-04-29:
 
-- contas a receber;
-- contas a pagar;
-- caixa;
-- cartoes;
-- pagamentos antecipados;
-- PIX;
-- despesas;
-- centros de custo;
-- relatorios;
-- dashboards multifilial;
-- auditoria financeira.
+1. Gaveta
+   - Gaveta
+2. Controles
+   - Contas a Receber
+   - Contas a Pagar
+   - Pagamento Antecipado
+   - Contas Adm. Cartao
+   - Cheques
+   - Fluxo de Caixa
+   - Curva ABC Clientes
+   - Curva ABC Produtos
+   - DashBoard do Multifilial
+   - Dashboard Financeiro
+   - Linha do Tempo
+3. Maquininha de Cartao
+   - Configuracao do Split
+   - Maquininhas
+   - Simulador de Split
+   - Transacoes de Cartao
+   - Exportador de Split
+   - Habilitar Pagamento
+   - Pagamento Dashboard
+4. Cadastros
+   - Formas de Pagamento
+   - Centros de Custo
+   - Custos e Despesas
+   - Cartoes Debito/Credito
+   - Bancos
+
+Checkpoint de revalidacao em 2026-04-29: a ordem acima foi confirmada por `docs/vetus/guides/03-shell-mapa-de-navegacao.md`, pelo relatorio `docs/vetus/guides/2026-04-23-relatorio-entidade-financeiro.md`, pelo anexo `docs/vetus/guides/21-anexo-financeiro.md` e pelo HTML legado autenticado em `docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-gaveta.html`. Nao houve escrita, baixa, fechamento, conciliacao, emissao, cancelamento ou qualquer acao financeira real no Vetus. Comparacao inicial com o `cvg-his-v2`: a navegacao ja contem a mesma estrutura principal de `Gaveta`, `Controles`, `Maquininha de Cartao` e `Cadastros`; `PIX` aparece como extensao CVG em `Pagamentos CVG`, fora da ordem Vetus. Primeiro GAP objetivo pela ordem revalidada: `Financeiro > Gaveta > Gaveta`, pois a rota atual `/cash` ainda se comporta como painel de orcamentos/PIX e nao como gaveta Vetus-like com ultimo fechamento, entradas, saidas, total em gaveta, fechamento, agrupamento por forma de pagamento e extrato.
 
 Plano:
 
-1. Validar ordem real do submenu Financeiro no Vetus.
+1. Ajustar `Financeiro > Gaveta > Gaveta` antes de avancar para `Contas a Receber`.
 2. Reaproveitar os modulos financeiros ja construidos.
 3. Fechar gaps de fluxo operacional:
    - lancamento;
@@ -668,8 +687,8 @@ Plano:
 | Inicio | Parcial | Mapear blocos do dashboard Vetus e comparar com Home atual. |
 | Atendimento | Em andamento | Validar submenu completo e continuar na ordem real, marcando o que ja foi feito. |
 | Laboratorio | Parcial | Observar ordem do submenu e comparar com paginas existentes. |
-| Estoque | Em andamento | Trilha `Configuracoes Fiscais` fechada ate `Tabela IBS/CBS`; proxima acao macro: revalidar a ordem do navbar `Financeiro` no Vetus antes de mexer em codigo. |
-| Financeiro | Parcial/avancado | Revalidar contra ordem Vetus e fechar fluxos de baixa/conciliacao/auditoria. |
+| Estoque | Em andamento | Trilha `Configuracoes Fiscais` fechada ate `Tabela IBS/CBS`; proxima acao macro ja transferida para Financeiro. |
+| Financeiro | Parcial/avancado | Ordem revalidada em 2026-04-29; proxima acao: `Financeiro > Gaveta > Gaveta`. |
 | Marketing | Parcial | Mapear comunicacoes e integrar com preventivo. |
 | RH | Parcial | Mapear submenu e alinhar com staff/users/access-control. |
 | Relatorios | Parcial | Mapear relatorios Vetus por dominio e priorizar os operacionais. |
@@ -775,6 +794,8 @@ Implementacao de `Estoque > Configuracoes Fiscais > Tabela NFS-e` concluida em 2
 Implementacao de `Estoque > Configuracoes Fiscais > Matriz Estado ICMS` concluida em 2026-04-29: `/fiscal/icms-matrix` agora usa superficie Vetus-like de `Matriz Estado ICMS`, com aliases `/matriz-icms`, `/estoque/configuracoes-fiscais/matriz-icms` e `/estoque/configuracoes-fiscais/matriz-estado-icms`, busca unica por ID ou UF destino, acao `Incluir Nova Matriz`, estado vazio `Nenhum registro cadastrado` e formulario modal para UF origem, UF destino, operacao e aliquota. A API `GET /fiscal/icms-matrix` passou a aceitar `search` e `POST /fiscal/icms-matrix` cria a matriz com auditoria, preservando `Tabela ICMS` separada. Verificacao concluida com teste focado de `FiscalICMSMatrixPage`, teste de rotas SPA, build/teste do modulo fiscal, build/teste focado da rota fiscal da API, build de contracts, typecheck/build da SPA e validacao OpenAPI. Publicacao feita com rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico; API e SPA healthy, smokes locais em `/fiscal/icms-matrix` e `/estoque/configuracoes-fiscais/matriz-estado-icms` retornando 200, rota protegida `/fiscal/icms-matrix?search=RJ` retornando 401 sem token quando `x-account-id` e informado, e HTTPS publico de SPA/API retornando 200. Proximo passo macro pela ordem documentada do navbar Vetus: `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`.
 
 Implementacao de `Estoque > Configuracoes Fiscais > Tabela IBS/CBS` concluida em 2026-04-29: `/fiscal/ibs-cbs` agora usa superficie Vetus-like de `Tabela IBS/CBS`, com aliases `/pacote-ibs-cbs`, `/ibs-cbs`, `/estoque/configuracoes-fiscais/ibs-cbs`, `/estoque/configuracoes-fiscais/tabela-ibs-cbs` e `/estoque/cadastros/tabelas-ibs-cbs`, busca unica por ID ou descricao, acao `Incluir Nova Tabela`, estado vazio `Nenhum registro encontrado` e formulario modal para ID, descricao, IBS e CBS. A API `GET /fiscal/ibs-cbs` aceita `search`, `POST /fiscal/ibs-cbs` cria a tabela com auditoria e `PATCH /fiscal/ibs-cbs/:id` atualiza; a persistencia duravel foi adicionada em `ibs_cbs_tables` pela migration `0043_fiscal_ibs_cbs_tables.sql`. Verificacao concluida com teste focado de `FiscalIBSCBSPage`, teste de rotas SPA, build/teste do modulo fiscal, build/teste focado da rota fiscal da API, build de contracts, typecheck/build da SPA, build do pacote DB e validacao OpenAPI. A migration foi aplicada no Postgres do compose canonico. Publicacao feita com rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`; API e SPA healthy, smokes locais em `/fiscal/ibs-cbs`, `/estoque/configuracoes-fiscais/tabela-ibs-cbs` e `/pacote-ibs-cbs` retornando 200, rota protegida `/fiscal/ibs-cbs?search=basica` retornando 401 sem token quando `x-account-id` e informado, e HTTPS publico de SPA/API retornando 200. A ordem documentada de `Estoque > Configuracoes Fiscais` fica fechada ate `Tabela IBS/CBS`; proxima frente macro recomendada: revalidar a ordem do navbar `Financeiro` no Vetus antes de mexer em codigo.
+
+Revalidacao de navbar `Financeiro` concluida em 2026-04-29 a partir de artefatos Vetus read-only: `docs/vetus/guides/03-shell-mapa-de-navegacao.md`, `docs/vetus/guides/2026-04-23-relatorio-entidade-financeiro.md`, `docs/vetus/guides/21-anexo-financeiro.md` e `docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-gaveta.html`. Nao houve baixa, fechamento, conciliacao, emissao, cancelamento, exportacao ou qualquer escrita no Vetus. Ordem confirmada: `Gaveta > Gaveta`; `Controles > Contas a Receber, Contas a Pagar, Pagamento Antecipado, Contas Adm. Cartao, Cheques, Fluxo de Caixa, Curva ABC Clientes, Curva ABC Produtos, DashBoard do Multifilial, Dashboard Financeiro, Linha do Tempo`; `Maquininha de Cartao > Configuracao do Split, Maquininhas, Simulador de Split, Transacoes de Cartao, Exportador de Split, Habilitar Pagamento, Pagamento Dashboard`; `Cadastros > Formas de Pagamento, Centros de Custo, Custos e Despesas, Cartoes Debito/Credito, Bancos`. Comparacao inicial: a navegacao do `cvg-his-v2` ja segue essa estrutura principal, com `PIX` mantido como extensao CVG em `Pagamentos CVG`; a primeira divergencia operacional pela ordem Vetus e `Financeiro > Gaveta > Gaveta`, porque `/cash` ainda esta centrada em orcamentos/PIX e nao espelha a gaveta legacy com ultimo fechamento, total de entradas, total de saidas, total em gaveta, entrada/saida de gaveta, fechar gaveta, agrupamento por forma de pagamento e extrato. Proximo passo macro recomendado: implementar a paridade de `Financeiro > Gaveta > Gaveta`.
 
 Implementacao de contencao de placeholders em `RH` e `Relatorios` iniciada em 2026-04-28 por solicitacao direta do responsavel: `rh/professions` deixou de usar placeholder e passou a ler cargos dos profissionais; telas de comissoes/folgas deixaram de usar dados hardcoded e passaram a compor leitura operacional a partir de equipe e hub administrativo; rotas de relatorios do navbar Vetus que ainda estavam em placeholder foram materializadas em `ReportWorkbenchPage`, usando dados reais do hub administrativo quando existentes e estados vazios quando a fonte especifica ainda nao existe. Verificacao parcial concluida com `npm --prefix apps/spa run typecheck` e testes focados de RH/Relatorios/router. Proximo passo antes de finalizar: publicar o SPA no compose canonico e registrar commit isolando esta frente quando o worktree permitir.
 

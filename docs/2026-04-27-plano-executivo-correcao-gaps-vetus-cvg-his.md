@@ -404,34 +404,94 @@ Checkpoint em 2026-04-29:
 - P0, P1, P2 e P3 foram implementados em escopos focados, validados e publicados no compose v2 existente.
 - `Tabela NFS-e`, `Matriz Estado ICMS` e `Tabela IBS/CBS` foram alinhadas na ordem macro fiscal Vetus.
 - A trilha documentada de `Estoque > Configuracoes Fiscais` esta fechada ate o ultimo item listado no navbar.
+- O navbar `Financeiro` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 
-Proxima acao recomendada: revalidar a ordem do navbar `Financeiro` no Vetus antes de mexer em codigo.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Gaveta > Gaveta`.
 
 Justificativa:
 
 - a ordem de `Estoque > Configuracoes Fiscais` documentada termina em `Tabela IBS/CBS`;
 - `Tabela IBS/CBS` agora possui rota, aliases, tela Vetus-like, API, OpenAPI, persistencia duravel, testes e publicacao;
-- seguir para outro item fiscal de Estoque sem nova observacao criaria uma pendencia nao mapeada no workflow atual;
-- `Financeiro` continua marcado como parcial/avancado e deve ser revalidado contra a ordem real do Vetus para fechar baixa, conciliacao e auditoria sem misturar fluxos.
+- a ordem revalidada de `Financeiro` comeca por `Gaveta > Gaveta`;
+- a navegacao do `cvg-his-v2` ja acompanha a estrutura principal de Financeiro, mas `/cash` ainda esta centrada em orcamentos/PIX;
+- a `Gaveta` observada no Vetus e uma rotina operacional de caixa, com ultimo fechamento, entradas, saidas, total em gaveta, fechamento, resumo por forma de pagamento e extrato;
+- resolver `Gaveta` primeiro preserva a ordem Vetus antes de avancar para `Contas a Receber`.
 
-Escopo minimo da retomada em `Financeiro`:
+Escopo minimo de `Financeiro > Gaveta > Gaveta`:
 
-1. Revalidar o submenu Financeiro no Vetus por observacao read-only ou artefatos autenticados existentes.
-2. Listar a ordem real dos itens e comparar com rotas/menus atuais do `cvg-his-v2`.
-3. Escolher o primeiro GAP objetivo pela ordem Vetus, sem iniciar refatoracao ampla.
-4. Definir criterio de aceite com tela, API, persistencia, testes e smoke publicado quando houver mudanca de codigo.
-5. Manter a regra de nao executar baixa, conciliacao, emissao, cancelamento ou outra acao financeira real durante observacao.
+1. Manter a rota principal `/cash` e adicionar alias Vetus quando fizer sentido, como `/financeiro/gaveta`.
+2. Trocar a superficie centrada em orcamento/PIX por uma tela de gaveta com `Ultimo Fechamento`, `Total de Entradas`, `Total de Saidas`, `Total em Gaveta`, `Entrada de Gaveta`, `Saida de Gaveta`, `Fechar Gaveta`, `Gaveta por Forma de Pagamento` e `Extrato de Movimentacoes da Gaveta`.
+3. Reaproveitar fontes financeiras existentes quando possivel, sem inventar baixa real ou fechamento irreversivel.
+4. Se houver escrita, criar contrato/API/auditoria/persistencia para eventos de gaveta de forma reversivel e testada.
+5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
 Observacao de sequenciamento:
 
 - `Tabela NFS-e` foi alinhada em 2026-04-29.
 - `Matriz Estado ICMS` foi alinhada em 2026-04-29.
 - `Tabela IBS/CBS` foi alinhada em 2026-04-29.
-- A proxima frente macro deixa de ser fiscal de Estoque e passa a ser a revalidacao do navbar `Financeiro`.
+- A ordem do navbar `Financeiro` foi revalidada em 2026-04-29.
+- A proxima frente macro e `Financeiro > Gaveta > Gaveta`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Revalidacao do navbar Financeiro
+
+Status: revalidado por artefatos Vetus read-only.
+
+Evidencias usadas:
+
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-23-relatorio-entidade-financeiro.md`;
+- `docs/vetus/guides/21-anexo-financeiro.md`;
+- `docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-gaveta.html`;
+- navegacao atual do `cvg-his-v2` em `apps/spa/src/navigation.ts`.
+
+Ordem Vetus confirmada:
+
+1. `Gaveta`
+   - `Gaveta`
+2. `Controles`
+   - `Contas a Receber`
+   - `Contas a Pagar`
+   - `Pagamento Antecipado`
+   - `Contas Adm. Cartao`
+   - `Cheques`
+   - `Fluxo de Caixa`
+   - `Curva ABC Clientes`
+   - `Curva ABC Produtos`
+   - `DashBoard do Multifilial`
+   - `Dashboard Financeiro`
+   - `Linha do Tempo`
+3. `Maquininha de Cartao`
+   - `Configuracao do Split`
+   - `Maquininhas`
+   - `Simulador de Split`
+   - `Transacoes de Cartao`
+   - `Exportador de Split`
+   - `Habilitar Pagamento`
+   - `Pagamento Dashboard`
+4. `Cadastros`
+   - `Formas de Pagamento`
+   - `Centros de Custo`
+   - `Custos e Despesas`
+   - `Cartoes Debito/Credito`
+   - `Bancos`
+
+Comparacao inicial:
+
+- A navegacao do `cvg-his-v2` ja acompanha a estrutura principal de `Gaveta`, `Controles`, `Maquininha de Cartao` e `Cadastros`.
+- `PIX` aparece como extensao propria CVG em `Pagamentos CVG`, fora da ordem Vetus.
+- A primeira divergencia operacional pela ordem Vetus esta em `Financeiro > Gaveta > Gaveta`: a rota `/cash` existe, mas ainda e um painel de orcamentos/PIX, nao a gaveta Vetus-like.
+- A gaveta Vetus observada possui `Ultimo Fechamento`, `Total de Entradas`, `Total de Saidas`, `Total em Gaveta`, `Entrada de Gaveta`, `Saida de Gaveta`, `Fechar Gaveta`, `Gaveta por Forma de Pagamento` e `Extrato de Movimentacoes da Gaveta`.
+
+Guardrail:
+
+- Nao houve baixa, fechamento, conciliacao, emissao, cancelamento, exportacao ou qualquer escrita no Vetus.
+
+Proxima frente recomendada: `Financeiro > Gaveta > Gaveta`.
 
 ### 2026-04-29 - Estoque > Configuracoes Fiscais > Tabela IBS/CBS
 
