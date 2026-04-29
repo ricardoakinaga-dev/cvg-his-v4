@@ -430,8 +430,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - O navbar `Marketing` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
+- `Marketing > Envios > Envio de SMS Simples` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real.
 
-Proxima acao recomendada: implementar a paridade segura de `Marketing > Envios > Envio de SMS Simples`.
+Proxima acao recomendada: implementar a paridade segura de `Marketing > Envios > Campanhas de SMS Marketing`.
 
 Justificativa:
 
@@ -465,13 +466,14 @@ Justificativa:
 - a sequencia principal revalidada de `Financeiro` ficou fechada ate o ultimo item listado em `Cadastros > Bancos`;
 - o navbar `Marketing` foi revalidado por evidencia read-only e a ordem confirmada e `Envios > Envio de SMS Simples`, `Envios > Campanhas de SMS Marketing`, `Configuracoes > Layout de Email de Vacina` e `Configuracoes > Configuracoes de SMS`;
 - a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal; `WhatsApp Operacional` permanece como extensao CVG em `Canais CVG`;
-- a proxima divergencia pela ordem Vetus esta em `Marketing > Envios > Envio de SMS Simples`, porque `/marketing/sms` ainda esta em placeholder.
+- `Envio de SMS Simples` ja foi convertido em superficie segura de rascunho unitario, sem disparo real e sem consumo de saldo;
+- a proxima divergencia pela ordem Vetus esta em `Marketing > Envios > Campanhas de SMS Marketing`, porque `/notifications` existe, mas ainda precisa ser alinhado a campanha Vetus com saldo, filtros de descricao/periodo, lista historica e acao segura de nova campanha.
 
-Escopo minimo de `Marketing > Envios > Envio de SMS Simples`:
+Escopo minimo de `Marketing > Envios > Campanhas de SMS Marketing`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `SMSSimples.htm` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: saldo de SMS, cliente, celular, corpo do SMS, contador de 150 caracteres, historico e acao de envio bloqueada.
-3. Implementar preparacao/simulacao segura sem disparar SMS real e sem consumir saldo.
+1. Revalidar os artefatos Vetus read-only especificos de `SMSCampanhaP.htm` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: saldo de SMS, acao `Gerar Nova Campanha`, filtros `Descricao`, `Data de`, `Ate`, `Pesquisar`, grade historica e colunas `Descricao`, `Titulo`, `Data`, `Celulares`, `Abrir`.
+3. Implementar preparacao/simulacao segura sem disparar SMS real, sem criar campanha real e sem consumir saldo.
 4. Reaproveitar contratos de notificacoes/SMS existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
@@ -506,11 +508,46 @@ Observacao de sequenciamento:
 - `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Bancos` foi alinhado em 2026-04-29.
 - O navbar `Marketing` foi revalidado em 2026-04-29.
-- A proxima frente macro e `Marketing > Envios > Envio de SMS Simples`.
+- `Marketing > Envios > Envio de SMS Simples` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Marketing > Envios > Campanhas de SMS Marketing`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Marketing > Envios > Envio de SMS Simples
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/marketing/sms` deixou de usar placeholder;
+- tela com breadcrumbs `Marketing / Envios / Envio de SMS Simples`;
+- saldo informativo `0 SMS disponiveis`;
+- carregamento de clientes ativos;
+- selecao de cliente e preenchimento do celular principal;
+- corpo do SMS limitado a 150 caracteres com contador;
+- acao `Preparar SMS`;
+- acao `Enviar SMS` bloqueada;
+- link para `Campanhas de SMS Marketing`;
+- bloco `Historico de SMS` preparado sem linhas ate contrato auditavel.
+
+Restricoes mantidas:
+
+- sem chamada a `/integrations/sms/messages`;
+- sem provider externo;
+- sem consumo de saldo;
+- sem criacao de notificacao;
+- sem gravacao de historico;
+- sem envio real de SMS;
+- sem nova migration.
+
+Verificacao:
+
+- teste focado de `MarketingSmsPage`;
+- testes de rotas SPA e navegacao.
+
+Proxima frente recomendada: `Marketing > Envios > Campanhas de SMS Marketing`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
