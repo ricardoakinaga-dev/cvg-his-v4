@@ -423,6 +423,13 @@ describe('router convergence', () => {
         '/dashboard-financeiro'
       ])
     );
+    expect(findChildRoute('finance/timeline')?.meta?.title).toBe('Linha do Tempo');
+    expect(findChildRoute('finance/timeline')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/linha-do-tempo',
+        '/linha-do-tempo'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
@@ -594,6 +601,7 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/production')?.meta?.breadcrumbParent).toBe('Produção');
     expect(findChildRoute('dashboards/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('dashboards/financial')?.meta?.title).toBe('Dashboard Financeiro');
+    expect(findChildRoute('finance/timeline')?.meta?.title).toBe('Linha do Tempo');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');

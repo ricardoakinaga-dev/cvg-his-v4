@@ -22,7 +22,6 @@ function placeholderRoute(
 
 const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('finance/split', 'FinanceSplit', 'Split', 'Financeiro', '🧩'),
-  placeholderRoute('finance/timeline', 'FinanceTimeline', 'Linha do Tempo', 'Financeiro', '🕒'),
   placeholderRoute('finance/card-machines', 'FinanceCardMachines', 'Maquininhas', 'Financeiro', '💳'),
   placeholderRoute('finance/split/simulator', 'FinanceSplitSimulator', 'Simulador de Split', 'Financeiro', '🧮'),
   placeholderRoute('finance/card-transactions', 'FinanceCardTransactions', 'Transações de Cartão', 'Financeiro', '💳'),
@@ -162,6 +161,21 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'DashBoard do Multifilial',
           breadcrumbParent: 'Financeiro',
           icon: '🏢'
+        }
+      },
+      {
+        path: 'finance/timeline',
+        name: 'FinanceTimeline',
+        component: () => import('@/pages/finance/FinanceTimelinePage.vue'),
+        alias: [
+          '/financeiro/controles/linha-do-tempo',
+          '/linha-do-tempo'
+        ],
+        meta: {
+          title: 'Linha do Tempo',
+          breadcrumb: 'Linha do Tempo',
+          breadcrumbParent: 'Financeiro',
+          icon: '🕒'
         }
       },
       {

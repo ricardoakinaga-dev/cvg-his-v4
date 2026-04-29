@@ -416,8 +416,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Linha do Tempo`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Configuracao do Split`.
 
 Justificativa:
 
@@ -435,14 +436,15 @@ Justificativa:
 - `Curva ABC Produtos` ja foi convertido em superficie operacional de ranking de produtos por faturamento, participacao e acumulado no `cvg-his-v2`;
 - `DashBoard do Multifilial` ja foi convertido em superficie operacional de visao consolidada da unidade atual no `cvg-his-v2`;
 - `Dashboard Financeiro` ja foi convertido em superficie operacional de indicadores financeiros, recebiveis, caixa, PIX e producao comercial no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Linha do Tempo`;
-- resolver `Linha do Tempo` agora preserva a ordem Vetus depois de `Dashboard Financeiro` e antes da trilha `Maquininha de Cartao`.
+- `Linha do Tempo` ja foi convertido em superficie operacional de eventos financeiros, vencimentos, recebimentos e marcos operacionais no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Configuracao do Split`;
+- resolver `Configuracao do Split` agora preserva a ordem Vetus depois de fechar `Controles`.
 
-Escopo minimo de `Financeiro > Controles > Linha do Tempo`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Configuracao do Split`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Linha do Tempo` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Configuracao do Split` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, eventos financeiros, marcos operacionais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, regras de split, participantes/recebedores e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -463,11 +465,44 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Dashboard Financeiro` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Linha do Tempo`.
+- `Financeiro > Controles > Linha do Tempo` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Configuracao do Split`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Linha do Tempo
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/timeline` foi convertido de placeholder para superficie Vetus-like de `Linha do Tempo`;
+- aliases adicionados: `/financeiro/controles/linha-do-tempo` e `/linha-do-tempo`;
+- filtros alinhados ao dominio: `De`, `Ate`, `Tipo` e `Status`;
+- acoes de tela `Exportar Timeline`, `Dashboard Financeiro`, `Fluxo de Caixa`, `Contas a Receber` e `Atualizar` foram posicionadas sem acionar escrita nova;
+- indicadores alinhados com eventos, entradas, saidas planejadas e pendencias;
+- tabela alinhada com `Data`, `Evento`, `Origem`, `Valor`, `Status` e `Abrir`;
+- a tela consome as APIs existentes `/financial/receivables`, `/counter-sales` e `/expenses-catalog`, compondo eventos de contas a receber emitidas, recebimentos confirmados, comandas e despesas catalogadas sem nova migration nem nova escrita financeira.
+
+Validacao:
+
+- teste focado de `FinanceTimelinePage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/timeline` 200, `/financeiro/controles/linha-do-tempo` 200 e `/health` 200;
+- rotas protegidas `/financial/receivables`, `/counter-sales` e `/expenses-catalog` retornaram 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/timeline` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Configuracao do Split`.
 
 ### 2026-04-29 - Financeiro > Controles > Dashboard Financeiro
 
