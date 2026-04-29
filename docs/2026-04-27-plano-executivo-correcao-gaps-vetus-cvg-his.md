@@ -411,8 +411,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Fluxo de Caixa`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Curva ABC Clientes`.
 
 Justificativa:
 
@@ -425,14 +426,15 @@ Justificativa:
 - `Pagamento Antecipado` ja foi convertido em superficie operacional de creditos antecipados no `cvg-his-v2`;
 - `Contas Adm. Cartao` ja foi convertido em superficie operacional de recebimentos por cartao, parcelas, taxas e conciliacao no `cvg-his-v2`;
 - `Cheques` ja foi convertido em superficie operacional de cheques recebidos/emitidos, vencimento, baixa e devolucao no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Fluxo de Caixa`;
-- resolver `Fluxo de Caixa` agora preserva a ordem Vetus depois de `Cheques` e antes de `Curva ABC Clientes`.
+- `Fluxo de Caixa` ja foi convertido em superficie operacional de projecao temporal de receitas, despesas, produzido, descontos e saldo no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Curva ABC Clientes`;
+- resolver `Curva ABC Clientes` agora preserva a ordem Vetus depois de `Fluxo de Caixa` e antes de `Curva ABC Produtos`.
 
-Escopo minimo de `Financeiro > Controles > Fluxo de Caixa`:
+Escopo minimo de `Financeiro > Controles > Curva ABC Clientes`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Fluxo de Caixa` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Curva ABC Clientes` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, grafico/listagem, detalhe e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, ranking, totais, percentuais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -448,11 +450,44 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Cheques` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Fluxo de Caixa`.
+- `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Curva ABC Clientes`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Fluxo de Caixa
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/cash-flow` foi convertido de tela financeira generica para superficie Vetus-like de `Fluxo de Caixa`;
+- aliases adicionados: `/financeiro/controles/fluxo-de-caixa` e `/fluxo-de-caixa`;
+- filtros alinhados ao dominio: `Fluxo de`, `Ate` e `Agrupar por`;
+- acoes de tela `Gerar Fluxo`, `Exportar Grafico`, `Contas a Receber`, `Contas a Pagar` e `Atualizar` foram posicionadas sem acionar escrita nova;
+- indicadores alinhados com `Total de Receitas`, `Total de Despesas`, `Saldo Final`, `Total Produzido` e `Total Desconto`;
+- tabela alinhada com `Data`, `Natureza`, `Descricao`, `Origem`, `Valor`, `Status`, `Saldo` e `Abrir`;
+- a tela consome APIs existentes `/financial/receivables`, `/counter-sales` e `/expenses-catalog`.
+
+Validacao:
+
+- teste focado de `CashFlowPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/cash-flow` 200, `/financeiro/controles/fluxo-de-caixa` 200 e `/health` 200;
+- rota protegida `/financial/receivables` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/cash-flow` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Curva ABC Clientes`.
 
 ### 2026-04-29 - Financeiro > Controles > Cheques
 

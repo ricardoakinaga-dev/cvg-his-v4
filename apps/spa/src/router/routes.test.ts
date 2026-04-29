@@ -387,6 +387,13 @@ describe('router convergence', () => {
         '/cheques'
       ])
     );
+    expect(findChildRoute('finance/cash-flow')?.meta?.title).toBe('Fluxo de Caixa');
+    expect(findChildRoute('finance/cash-flow')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/fluxo-de-caixa',
+        '/fluxo-de-caixa'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');

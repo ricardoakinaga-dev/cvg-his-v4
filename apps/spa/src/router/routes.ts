@@ -1005,18 +1005,6 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
-        path: 'finance/cash-flow',
-        name: 'FinanceCashFlow',
-        component: () => import('@/pages/finance/FinanceOperationPage.vue'),
-        props: { mode: 'cash-flow' },
-        meta: {
-          title: 'Fluxo de Caixa',
-          breadcrumb: 'Fluxo de Caixa',
-          breadcrumbParent: 'Financeiro',
-          icon: '📈'
-        }
-      },
-      {
         path: 'finance/cheques',
         name: 'FinanceCheques',
         component: () => import('@/pages/finance/ChequesPage.vue'),
@@ -1029,6 +1017,21 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Cheques',
           breadcrumbParent: 'Financeiro',
           icon: '📄'
+        }
+      },
+      {
+        path: 'finance/cash-flow',
+        name: 'FinanceCashFlow',
+        component: () => import('@/pages/finance/CashFlowPage.vue'),
+        alias: [
+          '/financeiro/controles/fluxo-de-caixa',
+          '/fluxo-de-caixa'
+        ],
+        meta: {
+          title: 'Fluxo de Caixa',
+          breadcrumb: 'Fluxo de Caixa',
+          breadcrumbParent: 'Financeiro',
+          icon: '📈'
         }
       },
       {
