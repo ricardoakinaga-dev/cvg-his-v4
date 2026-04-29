@@ -401,63 +401,72 @@ Antes de publicar qualquer correcao desse roadmap:
 
 Checkpoint em 2026-04-29:
 
-- P0 foi implementado em escopo focado e publicado no compose v2 existente.
-- P1 foi implementado em escopo focado e publicado no compose v2 existente.
-- P2-01 foi implementado em escopo focado para a agenda historica e futura por animal.
-- P2-02 foi implementado em escopo focado para comanda integrada ao atendimento.
-- P2-03 foi implementado em escopo focado para vacinas e vermifugos como modulo proprio.
-- P2-04 foi implementado em escopo focado para internacao vinculada ao animal e prontuario.
-- P2-05 foi implementado em escopo focado para importacao assistida Vetus-like.
-- P3-01 foi implementado em escopo focado para auditoria de mensagens de sucesso.
-- P3-02 foi implementado em escopo focado para padronizar estados vazios no cockpit do animal.
-- P3-03 foi implementado em escopo focado para reduzir densidade visual da pagina do paciente.
-- P3-04 foi implementado em escopo focado para acessibilidade e teclado nos acordeoes.
-- P3-05 foi implementado em escopo documental para consolidar o relatorio semanal de compatibilidade Vetus vs CVG-HIS.
+- P0, P1, P2 e P3 foram implementados em escopos focados, validados e publicados no compose v2 existente.
+- `Tabela NFS-e`, `Matriz Estado ICMS` e `Tabela IBS/CBS` foram alinhadas na ordem macro fiscal Vetus.
+- A trilha documentada de `Estoque > Configuracoes Fiscais` esta fechada ate o ultimo item listado no navbar.
 
-Proxima acao recomendada: seguir a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`.
+Proxima acao recomendada: revalidar a ordem do navbar `Financeiro` no Vetus antes de mexer em codigo.
 
 Justificativa:
 
-- o card Agenda do animal ja mostra passado, futuro e cancelamentos do mesmo paciente, com status, data, motivo e link para agenda;
-- a comanda agora aparece no detalhe do animal, filtra por paciente/tutor/atendimento e lista itens do atendimento focal;
-- vacinas e vermifugos agora aparecem no detalhe do animal a partir do modulo preventivo proprio, com proximas doses e historico por `patientId`/`ownerId`;
-- internacao agora lista por animal, mostra internacoes ativas/historicas no cockpit do paciente e grava evolucao/alta/transferencia na timeline do prontuario;
-- a importacao assistida Vetus-like agora cria ou vincula tutor/animal revisados, preservando ID legado, origem, revisor, data e notas de auditoria no cadastro;
-- importacoes de servicos, produtos e Vetus-like nao exibem mais sucesso verde quando ha falha total ou parcial no lote;
-- a Central Diagnostica nao mostra sucesso quando o pedido laboratorial e criado, mas a anotacao clinica vinculada falha;
-- os cards vazios de agenda, comanda, vacinas/vermifugos, exames, internacao, receituario e imagens no cockpit do animal indicam o que falta e levam para a proxima acao com `patientId`/`ownerId`;
-- a primeira dobra do paciente agora prioriza identidade compacta, riscos clinicos, tutor/acoes essenciais e resumo dos modulos;
-- observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
-- os acordeoes do cockpit do animal agora possuem `aria-expanded`, `aria-controls`, paineis `region`/`aria-labelledby`, foco visivel e navegacao por setas/Home/End;
-- o relatorio semanal de compatibilidade registra score consolidado de 86/100, score clinico central de 91/100 e pendencias por categoria sem transcrever dados reais do Vetus;
-- P3 esta fechado na ordem operacional definida e `Tabela NFS-e`/`Matriz Estado ICMS` ja foram alinhadas, entao a proxima frente deve seguir a trilha fiscal macro.
+- a ordem de `Estoque > Configuracoes Fiscais` documentada termina em `Tabela IBS/CBS`;
+- `Tabela IBS/CBS` agora possui rota, aliases, tela Vetus-like, API, OpenAPI, persistencia duravel, testes e publicacao;
+- seguir para outro item fiscal de Estoque sem nova observacao criaria uma pendencia nao mapeada no workflow atual;
+- `Financeiro` continua marcado como parcial/avancado e deve ser revalidado contra a ordem real do Vetus para fechar baixa, conciliacao e auditoria sem misturar fluxos.
 
-Escopo minimo de `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`:
+Escopo minimo da retomada em `Financeiro`:
 
-1. Revalidar os artefatos Vetus read-only de `Tabela IBS/CBS`, incluindo screenshot e guia fiscal existentes.
-2. Comparar a superficie Vetus com as rotas fiscais atuais, sem misturar com ICMS/IPI/PIS/COFINS ja separados.
-3. Ajustar ou criar a tela principal para paridade Vetus-like se a superficie atual estiver ausente ou mais tecnica do que a tela observada.
-4. Preservar contratos fiscais existentes e nao executar acao fiscal real durante observacao.
-5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
-
-Criterio de aceite de `Tabela IBS/CBS`:
-
-- caminho `Estoque > Configuracoes Fiscais > Tabela IBS/CBS` fica mapeado para rota CVG-HIS coerente;
-- tela principal mostra busca/listagem/estado vazio e acao principal equivalentes ao Vetus ou documenta claramente a diferenca;
-- API fiscal, OpenAPI e testes permanecem verdes;
-- publicacao usa somente `docker-compose.v2.yml` e servicos existentes;
-- nenhuma acao fiscal real irreversivel e executada durante observacao ou smoke.
+1. Revalidar o submenu Financeiro no Vetus por observacao read-only ou artefatos autenticados existentes.
+2. Listar a ordem real dos itens e comparar com rotas/menus atuais do `cvg-his-v2`.
+3. Escolher o primeiro GAP objetivo pela ordem Vetus, sem iniciar refatoracao ampla.
+4. Definir criterio de aceite com tela, API, persistencia, testes e smoke publicado quando houver mudanca de codigo.
+5. Manter a regra de nao executar baixa, conciliacao, emissao, cancelamento ou outra acao financeira real durante observacao.
 
 Observacao de sequenciamento:
 
-- A frente P3 operacional foi fechada com P3-05.
 - `Tabela NFS-e` foi alinhada em 2026-04-29.
 - `Matriz Estado ICMS` foi alinhada em 2026-04-29.
-- O workflow macro Vetus fiscal deve seguir agora por `Estoque > Configuracoes Fiscais > Tabela IBS/CBS`, conforme a ordem documentada do navbar.
+- `Tabela IBS/CBS` foi alinhada em 2026-04-29.
+- A proxima frente macro deixa de ser fiscal de Estoque e passa a ser a revalidacao do navbar `Financeiro`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Estoque > Configuracoes Fiscais > Tabela IBS/CBS
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- `/fiscal/ibs-cbs` foi criado como superficie Vetus-like de `Tabela IBS/CBS`;
+- adicionados aliases SPA `/pacote-ibs-cbs`, `/ibs-cbs`, `/estoque/configuracoes-fiscais/ibs-cbs`, `/estoque/configuracoes-fiscais/tabela-ibs-cbs` e `/estoque/cadastros/tabelas-ibs-cbs`;
+- cabecalho, breadcrumb macro, apoio `Quer cadastrar IBS/CBS de forma pratica? Saiba Mais`, busca unica `Buscar por ID ou descricao`, acao `Incluir Nova Tabela` e estado vazio `Nenhum registro encontrado` foram alinhados ao screenshot Vetus;
+- formulario modal cobre `ID`, `Descricao`, `IBS` e `CBS`;
+- API fiscal ganhou `GET /fiscal/ibs-cbs`, `POST /fiscal/ibs-cbs` e `PATCH /fiscal/ibs-cbs/:id`, com auditoria nas escritas;
+- persistencia duravel adicionada em `ibs_cbs_tables` pela migration `0043_fiscal_ibs_cbs_tables.sql`;
+- OpenAPI e contratos compartilhados passaram a expor os payloads e resposta de lista de IBS/CBS.
+
+Validacao:
+
+- teste focado da tela `FiscalIBSCBSPage` cobre textos, busca, CTA e criacao;
+- teste de rotas SPA cobre titulo `Tabela IBS/CBS` e aliases;
+- teste do modulo fiscal cobre criacao, listagem e atualizacao simples;
+- teste focado de rotas fiscais da API cobre listagem, criacao e atualizacao;
+- `pnpm validate:openapi` passou;
+- typecheck/build da SPA, build/teste do modulo fiscal, build da API e build do pacote DB passaram;
+- migration aplicada no Postgres do compose canonico;
+- publicacao feita com rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- smokes locais: `/fiscal/ibs-cbs`, `/estoque/configuracoes-fiscais/tabela-ibs-cbs` e `/pacote-ibs-cbs` retornaram 200;
+- rota protegida `/fiscal/ibs-cbs?search=basica` retornou 401 sem token quando `x-account-id` foi informado;
+- HTTPS publico de SPA/API retornou 200.
+
+Observacao de paridade:
+
+- O screenshot Vetus mostra breadcrumb visual `Estoque > Cadastros > Tabelas IBS e CBS`, enquanto a ordem macro documentada coloca o item em `Estoque > Configuracoes Fiscais`.
+- A implementacao manteve a rota fiscal macro para preservar a sequencia definida e adicionou alias Vetus `/pacote-ibs-cbs` e alias de cadastros.
+
+Proxima frente recomendada: revalidar a ordem do navbar `Financeiro` no Vetus, pois `Estoque > Configuracoes Fiscais` esta fechado ate `Tabela IBS/CBS`.
 
 ### 2026-04-29 - Estoque > Configuracoes Fiscais > Matriz Estado ICMS
 

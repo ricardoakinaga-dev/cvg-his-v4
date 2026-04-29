@@ -2626,6 +2626,68 @@ paths:
         '404':
           description: COFINS table entry not found
 
+  /fiscal/ibs-cbs:
+    get:
+      operationId: listFiscalIbsCbsTables
+      summary: List simple IBS/CBS table entries
+      tags: [Fiscal]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simple IBS/CBS table entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIbsCbsTableListResponse'
+    post:
+      operationId: createFiscalIbsCbsTable
+      summary: Create simple IBS/CBS table entry
+      tags: [Fiscal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFiscalIbsCbsTableRequest'
+      responses:
+        '201':
+          description: Created IBS/CBS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIbsCbsTableSummary'
+
+  /fiscal/ibs-cbs/{id}:
+    patch:
+      operationId: updateFiscalIbsCbsTable
+      summary: Update simple IBS/CBS table entry
+      tags: [Fiscal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFiscalIbsCbsTableRequest'
+      responses:
+        '200':
+          description: Updated IBS/CBS table entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiscalIbsCbsTableSummary'
+        '404':
+          description: IBS/CBS table entry not found
+
   /fiscal/pis-cofins:
     get:
       operationId: listFiscalPisCofinsRules
@@ -9181,6 +9243,53 @@ components:
           minimum: 0
           maximum: 100
 
+    FiscalIbsCbsTableSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        ibsPercent:
+          type: number
+        cbsPercent:
+          type: number
+
+    CreateFiscalIbsCbsTableRequest:
+      type: object
+      required: [code, ibsPercent, cbsPercent]
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        ibsPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        cbsPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    UpdateFiscalIbsCbsTableRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        ibsPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        cbsPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+
     FiscalPisCofinsRuleSummary:
       type: object
       properties:
@@ -9586,6 +9695,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FiscalCofinsTableSummary'
+
+    FiscalIbsCbsTableListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FiscalIbsCbsTableSummary'
 
     FiscalPisCofinsRuleListResponse:
       type: object

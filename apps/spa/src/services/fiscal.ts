@@ -1,5 +1,6 @@
 import type {
   CreateFiscalCfopRequest,
+  CreateFiscalIbsCbsTableRequest,
   CreateFiscalIcmsMatrixRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
@@ -8,6 +9,8 @@ import type {
   CreateFiscalNfseLayoutRequest,
   FiscalCfopListResponse,
   FiscalCfopSummary,
+  FiscalIbsCbsTableListResponse,
+  FiscalIbsCbsTableSummary,
   FiscalDashboardSummary,
   FiscalIcmsMatrixListResponse,
   FiscalIcmsMatrixRowSummary,
@@ -27,6 +30,7 @@ import type {
   FiscalPisCofinsRuleSummary,
   FiscalTaxPreview,
   UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
@@ -40,6 +44,7 @@ export type FiscalIcmsTable = FiscalIcmsTableSummary;
 export type FiscalIpiTable = FiscalIpiTableSummary;
 export type FiscalPisTable = FiscalPisTableSummary;
 export type FiscalCofinsTable = FiscalCofinsTableSummary;
+export type FiscalIbsCbsTable = FiscalIbsCbsTableSummary;
 export type FiscalPisCofinsRule = FiscalPisCofinsRuleSummary;
 export type FiscalCfopRow = FiscalCfopSummary;
 export type CreateFiscalCfop = CreateFiscalCfopRequest;
@@ -56,6 +61,8 @@ export type CreateFiscalPisTable = CreateFiscalPisTableRequest;
 export type UpdateFiscalPisTable = UpdateFiscalPisTableRequest;
 export type CreateFiscalCofinsTable = CreateFiscalCofinsTableRequest;
 export type UpdateFiscalCofinsTable = UpdateFiscalCofinsTableRequest;
+export type CreateFiscalIbsCbsTable = CreateFiscalIbsCbsTableRequest;
+export type UpdateFiscalIbsCbsTable = UpdateFiscalIbsCbsTableRequest;
 export type CreateFiscalNfseLayout = CreateFiscalNfseLayoutRequest;
 export type UpdateFiscalNfseLayout = UpdateFiscalNfseLayoutRequest;
 
@@ -72,6 +79,10 @@ export interface FiscalPisTableFilters {
 }
 
 export interface FiscalCofinsTableFilters {
+  search?: string;
+}
+
+export interface FiscalIbsCbsTableFilters {
   search?: string;
 }
 
@@ -198,6 +209,30 @@ export const fiscalService = {
 
   async updateCofinsTable(id: string, payload: UpdateFiscalCofinsTable): Promise<FiscalCofinsTable> {
     return apiRequest<FiscalCofinsTable>(`/fiscal/cofins/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async listIbsCbsTables(filters: FiscalIbsCbsTableFilters = {}): Promise<FiscalIbsCbsTable[]> {
+    const response = await apiRequest<FiscalIbsCbsTableListResponse>(
+      `/fiscal/ibs-cbs${buildQuery({ ...filters })}`
+    );
+    return [...(response.items ?? [])];
+  },
+
+  async createIbsCbsTable(payload: CreateFiscalIbsCbsTable): Promise<FiscalIbsCbsTable> {
+    return apiRequest<FiscalIbsCbsTable>('/fiscal/ibs-cbs', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async updateIbsCbsTable(
+    id: string,
+    payload: UpdateFiscalIbsCbsTable
+  ): Promise<FiscalIbsCbsTable> {
+    return apiRequest<FiscalIbsCbsTable>(`/fiscal/ibs-cbs/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });

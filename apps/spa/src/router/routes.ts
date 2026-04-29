@@ -1787,11 +1787,17 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/ibs-cbs',
         name: 'FiscalIbsCbs',
-        component: () => import('@/pages/fiscal/FiscalTaxOperationPage.vue'),
-        props: { mode: 'ibs-cbs' },
+        component: () => import('@/pages/fiscal/FiscalIBSCBSPage.vue'),
+        alias: [
+          '/pacote-ibs-cbs',
+          '/ibs-cbs',
+          '/estoque/configuracoes-fiscais/ibs-cbs',
+          '/estoque/configuracoes-fiscais/tabela-ibs-cbs',
+          '/estoque/cadastros/tabelas-ibs-cbs'
+        ],
         meta: {
-          title: 'IBS/CBS',
-          breadcrumb: 'IBS/CBS',
+          title: 'Tabela IBS/CBS',
+          breadcrumb: 'Tabela IBS/CBS',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '🧮'
         }

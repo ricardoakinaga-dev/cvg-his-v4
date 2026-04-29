@@ -171,6 +171,36 @@ test('FiscalService creates and updates simple COFINS table entries', async () =
   assert.ok(filtered.some((table) => table.id === created.id));
 });
 
+test('FiscalService creates and updates simple IBS/CBS table entries', async () => {
+  const service = new FiscalService();
+
+  const created = await service.createIbsCbsTable({
+    code: 'TRANSICAO',
+    description: 'Transicao 2026',
+    ibsPercent: 0.1,
+    cbsPercent: 0.9
+  });
+
+  assert.equal(created.code, 'TRANSICAO');
+  assert.equal(created.description, 'Transicao 2026');
+  assert.equal(created.ibsPercent, 0.1);
+  assert.equal(created.cbsPercent, 0.9);
+
+  const updated = await service.updateIbsCbsTable(created.id, {
+    description: 'Transicao IBS/CBS revisada',
+    ibsPercent: 0.2,
+    cbsPercent: 0.8
+  });
+
+  assert.ok(updated);
+  assert.equal(updated?.description, 'Transicao IBS/CBS revisada');
+  assert.equal(updated?.ibsPercent, 0.2);
+  assert.equal(updated?.cbsPercent, 0.8);
+
+  const filtered = await service.listIbsCbsTables({ search: 'revisada' });
+  assert.ok(filtered.some((table) => table.id === created.id));
+});
+
 test('FiscalService builds dashboard and tax preview from real module data', async () => {
   const service = new FiscalService();
 

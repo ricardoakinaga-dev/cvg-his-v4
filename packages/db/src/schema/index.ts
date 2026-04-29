@@ -63,6 +63,7 @@ export * from './icms-tables.js';
 export * from './ipi-tables.js';
 export * from './pis-tables.js';
 export * from './cofins-tables.js';
+export * from './ibs-cbs-tables.js';
 export * from './icms-rules.js';
 export * from './ncm-entries.js';
 export * from './pis-cofins-rules.js';

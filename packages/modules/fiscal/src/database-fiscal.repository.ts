@@ -1,7 +1,7 @@
 /**
  * DatabaseFiscalRepository — GAP-08
  *
- * Repository that reads fiscal data (CFOP, ICMS, IPI, PIS, COFINS, PIS/COFINS, NFS-e)
+ * Repository that reads fiscal data (CFOP, ICMS, IPI, PIS, COFINS, IBS/CBS, PIS/COFINS, NFS-e)
  * from the database instead of in-memory arrays.
  *
  * Uses the Drizzle schemas created in packages/db/src/schema/:
@@ -10,6 +10,7 @@
  * - ipi_tables
  * - pis_tables
  * - cofins_tables
+ * - ibs_cbs_tables
  * - icms_rules
  * - ncm_entries
  * - pis_cofins_rules
@@ -24,6 +25,7 @@ import type {
   FiscalIpiTableSummary,
   FiscalPisTableSummary,
   FiscalCofinsTableSummary,
+  FiscalIbsCbsTableSummary,
   FiscalIcmsRuleSummary,
   FiscalNcmEntrySummary,
   FiscalPisCofinsRuleSummary,
@@ -32,6 +34,7 @@ import type {
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
+  UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 
@@ -77,6 +80,10 @@ export interface DbPisTableFilters extends DbFiscalFilters {
 }
 
 export interface DbCofinsTableFilters extends DbFiscalFilters {
+  readonly search?: string;
+}
+
+export interface DbIbsCbsTableFilters extends DbFiscalFilters {
   readonly search?: string;
 }
 
@@ -582,6 +589,93 @@ export class DatabaseFiscalRepository {
       code: row.code as string,
       description: (row.description as string) ?? '',
       percent: parseFloat(row.percent as string)
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // IBS/CBS Tables
+  // --------------------------------------------------------------------------
+
+  async listIbsCbsTables(filters: DbIbsCbsTableFilters): Promise<FiscalIbsCbsTableSummary[]> {
+    const pool = this.pool;
+    const params: unknown[] = [];
+    let where = '';
+
+    if (filters.search) {
+      where = `WHERE (
+        code ILIKE $1 OR
+        description ILIKE $1 OR
+        CAST(ibs_percent AS TEXT) ILIKE $1 OR
+        CAST(cbs_percent AS TEXT) ILIKE $1
+      )`;
+      params.push(`%${filters.search}%`);
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM ibs_cbs_tables ${where} ORDER BY code`,
+      params
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      ibsPercent: parseFloat(row.ibs_percent as string),
+      cbsPercent: parseFloat(row.cbs_percent as string)
+    })) as FiscalIbsCbsTableSummary[];
+  }
+
+  async createIbsCbsTable(
+    _accountId: AccountId,
+    table: FiscalIbsCbsTableSummary
+  ): Promise<FiscalIbsCbsTableSummary> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `INSERT INTO ibs_cbs_tables (id, code, description, ibs_percent, cbs_percent)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [table.id, table.code, table.description, table.ibsPercent, table.cbsPercent]
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      ibsPercent: parseFloat(row.ibs_percent as string),
+      cbsPercent: parseFloat(row.cbs_percent as string)
+    };
+  }
+
+  async updateIbsCbsTable(
+    _accountId: AccountId,
+    id: string,
+    payload: UpdateFiscalIbsCbsTableRequest
+  ): Promise<FiscalIbsCbsTableSummary | null> {
+    const pool = this.pool;
+    const result = await pool.query(
+      `UPDATE ibs_cbs_tables
+       SET
+         code = COALESCE($2, code),
+         description = COALESCE($3, description),
+         ibs_percent = COALESCE($4, ibs_percent),
+         cbs_percent = COALESCE($5, cbs_percent),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, payload.code, payload.description, payload.ibsPercent, payload.cbsPercent]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      description: (row.description as string) ?? '',
+      ibsPercent: parseFloat(row.ibs_percent as string),
+      cbsPercent: parseFloat(row.cbs_percent as string)
     };
   }
 

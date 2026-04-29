@@ -81,6 +81,12 @@
             Abrir matriz
           </DsButton>
         </DsCard>
+        <DsCard title="Tabela IBS/CBS" icon="🧮">
+          <p class="card-description">Cadastro de pacotes IBS/CBS por ID, descrição e percentuais.</p>
+          <DsButton variant="secondary" tag="a" to="/fiscal/ibs-cbs" size="sm">
+            Abrir tabela
+          </DsButton>
+        </DsCard>
       </div>
     </section>
 

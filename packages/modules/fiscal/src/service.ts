@@ -1,5 +1,6 @@
 import type {
   CreateFiscalCfopRequest,
+  CreateFiscalIbsCbsTableRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIcmsMatrixRequest,
   CreateFiscalIpiTableRequest,
@@ -10,6 +11,7 @@ import type {
   FiscalNfseDocumentFilters,
   FiscalCfopSummary,
   FiscalDashboardSummary,
+  FiscalIbsCbsTableSummary,
   FiscalIcmsMatrixRowSummary,
   FiscalIcmsRuleSummary,
   FiscalIcmsTableSummary,
@@ -22,6 +24,7 @@ import type {
   FiscalPisCofinsRuleSummary,
   FiscalTaxPreview,
   CancelFiscalNfseDocumentRequest,
+  UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalIcmsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
@@ -69,6 +72,10 @@ export interface FiscalPisTableFilters {
 }
 
 export interface FiscalCofinsTableFilters {
+  readonly search?: string;
+}
+
+export interface FiscalIbsCbsTableFilters {
   readonly search?: string;
 }
 
@@ -299,6 +306,8 @@ const COFINS_TABLES: readonly FiscalCofinsTableSummary[] = [
   }
 ] as const;
 
+const IBS_CBS_TABLES: readonly FiscalIbsCbsTableSummary[] = [] as const;
+
 const PIS_COFINS_RULES: readonly FiscalPisCofinsRuleSummary[] = [
   {
     id: 'pis-cofins-simples-ambos',
@@ -398,6 +407,7 @@ const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => 
 const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
 const inMemoryPisTables: FiscalPisTableSummary[] = PIS_TABLES.map((table) => ({ ...table }));
 const inMemoryCofinsTables: FiscalCofinsTableSummary[] = COFINS_TABLES.map((table) => ({ ...table }));
+const inMemoryIbsCbsTables: FiscalIbsCbsTableSummary[] = IBS_CBS_TABLES.map((table) => ({ ...table }));
 const inMemoryCfopEntries: FiscalCfopSummary[] = CFOP_TABLE.map((entry) => ({
   ...entry,
   documentTypesLabel: entry.applicableTo.join(', ').toUpperCase()
@@ -514,6 +524,16 @@ function sanitizeCofinsTableId(code: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return `cofins-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+}
+
+function sanitizeIbsCbsTableId(code: string): string {
+  const normalized = code
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `ibs-cbs-table-${normalized || Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
 }
 
 function assertNonEmpty(value: string | undefined, field: string): string {
@@ -1072,6 +1092,94 @@ export class FiscalService {
     };
 
     inMemoryCofinsTables[index] = next;
+    return next;
+  }
+
+  public async listIbsCbsTables(
+    filters: FiscalIbsCbsTableFilters = {}
+  ): Promise<FiscalIbsCbsTableSummary[]> {
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.listIbsCbsTables({
+        accountId: this.accountId!,
+        search: filters.search
+      });
+    }
+
+    return inMemoryIbsCbsTables.filter((table) =>
+      matchesContains(
+        `${table.code} ${table.description} ${table.ibsPercent} ${table.cbsPercent}`,
+        filters.search
+      )
+    );
+  }
+
+  public async createIbsCbsTable(
+    payload: CreateFiscalIbsCbsTableRequest
+  ): Promise<FiscalIbsCbsTableSummary> {
+    const code = assertNonEmpty(payload.code, 'code');
+    const ibsPercent = assertPercent(payload.ibsPercent, 'ibsPercent');
+    const cbsPercent = assertPercent(payload.cbsPercent, 'cbsPercent');
+    const description = payload.description?.trim() || `IBS/CBS ${code}`;
+
+    const existing = await this.listIbsCbsTables();
+    if (existing.some((table) => table.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error('code already exists');
+    }
+
+    const table: FiscalIbsCbsTableSummary = {
+      id: sanitizeIbsCbsTableId(code),
+      code,
+      description,
+      ibsPercent,
+      cbsPercent
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.createIbsCbsTable(this.accountId!, table);
+    }
+
+    inMemoryIbsCbsTables.unshift(table);
+    return table;
+  }
+
+  public async updateIbsCbsTable(
+    id: string,
+    payload: UpdateFiscalIbsCbsTableRequest
+  ): Promise<FiscalIbsCbsTableSummary | null> {
+    const nextPayload: UpdateFiscalIbsCbsTableRequest = {
+      code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
+      description: payload.description?.trim(),
+      ibsPercent: payload.ibsPercent === undefined ? undefined : assertPercent(payload.ibsPercent, 'ibsPercent'),
+      cbsPercent: payload.cbsPercent === undefined ? undefined : assertPercent(payload.cbsPercent, 'cbsPercent')
+    };
+
+    if (this.hasDbRepo()) {
+      return this.dbRepo!.updateIbsCbsTable(this.accountId!, id, nextPayload);
+    }
+
+    const index = inMemoryIbsCbsTables.findIndex((table) => table.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = inMemoryIbsCbsTables[index];
+    const code = nextPayload.code ?? current.code;
+    const duplicate = inMemoryIbsCbsTables.some(
+      (table) => table.id !== id && table.code.toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('code already exists');
+    }
+
+    const next: FiscalIbsCbsTableSummary = {
+      ...current,
+      code,
+      description: nextPayload.description ?? current.description,
+      ibsPercent: nextPayload.ibsPercent ?? current.ibsPercent,
+      cbsPercent: nextPayload.cbsPercent ?? current.cbsPercent
+    };
+
+    inMemoryIbsCbsTables[index] = next;
     return next;
   }
 

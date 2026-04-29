@@ -4,6 +4,7 @@ import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fisc
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
   CreateFiscalCfopRequest,
+  CreateFiscalIbsCbsTableRequest,
   CreateFiscalIcmsMatrixRequest,
   CreateFiscalIcmsTableRequest,
   CreateFiscalIpiTableRequest,
@@ -13,6 +14,7 @@ import type {
   CreateFiscalNfseDocumentRequest,
   CancelFiscalNfseDocumentRequest,
   FiscalCfopListResponse,
+  FiscalIbsCbsTableListResponse,
   FiscalIcmsMatrixListResponse,
   FiscalIcmsTableListResponse,
   FiscalIpiTableListResponse,
@@ -23,6 +25,7 @@ import type {
   FiscalNfseLayoutListResponse,
   FiscalPisCofinsRuleListResponse,
   UpdateFiscalIcmsTableRequest,
+  UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalIpiTableRequest,
   UpdateFiscalPisTableRequest,
   UpdateFiscalCofinsTableRequest,
@@ -402,6 +405,73 @@ export async function handleFiscalRoutes(
       entityType: 'cofins-table',
       entityId: updated.id,
       payloadSummary: `COFINS table ${updated.code} updated`,
+      riskLevel: 'high',
+      correlationId
+    });
+
+    return json(response, 200, updated);
+  }
+
+  if (pathname === '/fiscal/ibs-cbs') {
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+
+    if (request.method === 'GET') {
+      const principal = requirePrincipal(request, 'fiscal.read');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload: FiscalIbsCbsTableListResponse = {
+        items: await scopedFiscal.listIbsCbsTables({
+          search: url.searchParams.get('search') ?? undefined
+        })
+      };
+      return json(response, 200, payload);
+    }
+
+    if (request.method === 'POST') {
+      const principal = requirePrincipal(request, 'fiscal.manage');
+      const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+      const payload = (await readJsonBody(request)) as CreateFiscalIbsCbsTableRequest;
+      const created = await scopedFiscal.createIbsCbsTable(payload);
+
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'fiscal',
+        action: 'create',
+        entityType: 'ibs-cbs-table',
+        entityId: created.id,
+        payloadSummary: `IBS/CBS table ${created.code} created`,
+        riskLevel: 'high',
+        correlationId
+      });
+
+      return json(response, 201, created);
+    }
+
+    return false;
+  }
+
+  const ibsCbsTableMatch = pathname.match(/^\/fiscal\/ibs-cbs\/([^/]+)$/);
+  if (ibsCbsTableMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'fiscal.manage');
+    const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
+    const payload = (await readJsonBody(request)) as UpdateFiscalIbsCbsTableRequest;
+    const updated = await scopedFiscal.updateIbsCbsTable(
+      decodeURIComponent(ibsCbsTableMatch[1] ?? ''),
+      payload
+    );
+
+    if (!updated) {
+      return json(response, 404, { code: 'IBS_CBS_TABLE_NOT_FOUND', message: 'IBS/CBS table not found' });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'fiscal',
+      action: 'update',
+      entityType: 'ibs-cbs-table',
+      entityId: updated.id,
+      payloadSummary: `IBS/CBS table ${updated.code} updated`,
       riskLevel: 'high',
       correlationId
     });

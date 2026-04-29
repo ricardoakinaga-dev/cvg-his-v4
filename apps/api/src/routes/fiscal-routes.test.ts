@@ -651,6 +651,91 @@ test('handleFiscalRoutes creates and updates simple COFINS table entries when en
   assert.equal(updatedPayload.percent, 4.1);
 });
 
+test('handleFiscalRoutes lists, creates and updates simple IBS/CBS table entries when enabled', async () => {
+  const listResponse = new MockResponse();
+  const createResponse = new MockResponse();
+  const updateResponse = new MockResponse();
+  let requiredPermission = '';
+  const fiscal = new FiscalService();
+
+  const listHandled = await handleFiscalRoutes(
+    '/fiscal/ibs-cbs',
+    createMockRequest('GET', '/fiscal/ibs-cbs?search=basica') as never,
+    listResponse as never,
+    'corr-fiscal-ibs-cbs-list',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(listHandled, true);
+  assert.equal(requiredPermission, 'fiscal.read');
+  assert.equal(listResponse.statusCode, 200);
+
+  const createdHandled = await handleFiscalRoutes(
+    '/fiscal/ibs-cbs',
+    createMockRequest('POST', '/fiscal/ibs-cbs', {
+      code: 'TRANSICAO',
+      description: 'Transicao 2026',
+      ibsPercent: 0.1,
+      cbsPercent: 0.9
+    }) as never,
+    createResponse as never,
+    'corr-fiscal-ibs-cbs-create',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(createdHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(createResponse.statusCode, 201);
+  const createdPayload = createResponse.bodyJson<{ id: string; code: string; ibsPercent: number; cbsPercent: number }>();
+  assert.equal(createdPayload.code, 'TRANSICAO');
+  assert.equal(createdPayload.ibsPercent, 0.1);
+  assert.equal(createdPayload.cbsPercent, 0.9);
+
+  const updatedHandled = await handleFiscalRoutes(
+    `/fiscal/ibs-cbs/${createdPayload.id}`,
+    createMockRequest('PATCH', `/fiscal/ibs-cbs/${createdPayload.id}`, {
+      description: 'Transicao IBS/CBS revisada',
+      ibsPercent: 0.2,
+      cbsPercent: 0.8
+    }) as never,
+    updateResponse as never,
+    'corr-fiscal-ibs-cbs-update',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermission = permissionCode;
+        return createPrincipal();
+      },
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(updatedHandled, true);
+  assert.equal(requiredPermission, 'fiscal.manage');
+  assert.equal(updateResponse.statusCode, 200);
+  const updatedPayload = updateResponse.bodyJson<{ description: string; ibsPercent: number; cbsPercent: number }>();
+  assert.equal(updatedPayload.description, 'Transicao IBS/CBS revisada');
+  assert.equal(updatedPayload.ibsPercent, 0.2);
+  assert.equal(updatedPayload.cbsPercent, 0.8);
+});
+
 test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffice is enabled', async () => {
   const createResponse = new MockResponse();
   const updateResponse = new MockResponse();
