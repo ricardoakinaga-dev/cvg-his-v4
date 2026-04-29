@@ -1557,10 +1557,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'cards',
         name: 'Cards',
+        alias: [
+          '/financeiro/cadastros/cartoes-debito-credito',
+          '/financeiro/cadastros/cartoes-debito-e-credito',
+          '/cartoes-debito-credito'
+        ],
         component: () => import('@/pages/finance/CardsPage.vue'),
         meta: {
-          title: 'Cartões',
-          breadcrumb: 'Cartões',
+          title: 'Cartões Débito/Crédito',
+          breadcrumb: 'Cartões Débito/Crédito',
           breadcrumbParent: 'Financeiro',
           icon: '💳'
         }

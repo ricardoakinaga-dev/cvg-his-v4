@@ -510,6 +510,14 @@ describe('router convergence', () => {
         '/custos-e-despesas'
       ])
     );
+    expect(findChildRoute('cards')?.meta?.title).toBe('Cartões Débito/Crédito');
+    expect(findChildRoute('cards')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/cadastros/cartoes-debito-credito',
+        '/financeiro/cadastros/cartoes-debito-e-credito',
+        '/cartoes-debito-credito'
+      ])
+    );
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
@@ -690,6 +698,7 @@ describe('router convergence', () => {
     expect(findChildRoute('payment-methods')?.meta?.title).toBe('Formas de Pagamento');
     expect(findChildRoute('cost-centers')?.meta?.title).toBe('Centros de Custo');
     expect(findChildRoute('expenses')?.meta?.title).toBe('Custos e Despesas');
+    expect(findChildRoute('cards')?.meta?.title).toBe('Cartões Débito/Crédito');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');

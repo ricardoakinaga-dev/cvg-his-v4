@@ -1,108 +1,178 @@
 <template>
-  <div class="finance-catalog-page">
+  <div class="cards-page">
     <AppPageHeader
-      title="Cartões"
-      :breadcrumbs="['Financeiro', 'Cadastros', 'Cartões']"
-      subtitle="Primeira entrega funcional conectada à reconciliação operacional de cartões"
-    >
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
-        <DsButton variant="primary">Novo Cartão</DsButton>
-      </template>
-    </AppPageHeader>
+      title="Cartões Débito/Crédito"
+      :breadcrumbs="['Financeiro', 'Cadastros', 'Cartões Débito/Crédito']"
+      subtitle="Cadastro operacional de bandeiras, administradoras e uso financeiro de cartões"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="{ label: 'Novo Cartão', disabled: true }"
+    />
 
     <DsAlert variant="info">
-      Superfície funcional conectada ao relatório operacional de cartões e reconciliação financeira. Esta camada já lê
-      transações reais do domínio de pagamentos antes da futura expansão completa de cadastro.
+      Superfície somente leitura para preservar a ordem Vetus de cadastros financeiros. Cadastrar cartão, alterar
+      bandeira, capturar transação, conciliar pagamento e baixar recebível seguem bloqueados até contrato auditável.
     </DsAlert>
-
-    <section class="catalog-kpis">
-      <DsStatCard :label="`${cards.length} cartão(ões)`" value="" icon="💳" />
-      <DsStatCard :label="`${receivableCount} com conta a receber`" value="" icon="📥" />
-      <DsStatCard :label="`${capturedCount} capturado(s)`" value="" icon="✅" />
-    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
 
-    <DsCard title="Cartões, bandeiras e contas administrativas">
-      <div class="catalog-toolbar">
-        <input v-model="query" type="search" placeholder="Buscar por cartão, bandeira ou administradora" class="catalog-search" />
-        <div class="catalog-toolbar__actions">
-          <DsButton variant="secondary" :loading="loading" @click="reload">Pesquisar</DsButton>
-          <DsButton variant="ghost">Baixa em Lote</DsButton>
-        </div>
-      </div>
+    <form class="cards-filters" aria-label="Filtros de cartões débito e crédito" @submit.prevent>
+      <DsInput
+        id="cards-search"
+        v-model="filters.search"
+        label="Pesquisar"
+        placeholder="Buscar por cartão, bandeira, administradora ou tutor"
+        type="search"
+      />
+      <DsInput id="cards-provider" v-model="filters.provider" label="Administradora" type="select">
+        <option value="">Todas</option>
+        <option v-for="provider in providerOptions" :key="provider" :value="provider">{{ provider }}</option>
+      </DsInput>
+      <DsInput id="cards-status" v-model="filters.status" label="Status" type="select">
+        <option value="">Todos</option>
+        <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
+      </DsInput>
+      <DsInput id="cards-type" v-model="filters.type" label="Tipo" type="select">
+        <option value="">Todos</option>
+        <option value="debit">Débito/à vista</option>
+        <option value="credit">Crédito parcelado</option>
+      </DsInput>
+    </form>
 
-      <div v-if="!loading && filteredCards.length === 0" class="catalog-empty">
-        Nenhum cartão encontrado.
-      </div>
+    <section class="cards-summary-grid" aria-label="Resumo de cartões débito e crédito">
+      <DsStatCard :label="`${visibleCards.length} cartão(ões)`" value="Registros" />
+      <DsStatCard :label="`${capturedCount} capturado(s)`" value="Capturados" />
+      <DsStatCard :label="`${pendingCount} pendente(s)`" value="Pendentes" />
+      <DsStatCard :label="`${providerCount} administradora(s)`" value="Administradoras" />
+    </section>
 
-      <div v-else class="catalog-grid">
-        <article v-for="card in filteredCards" :key="card.transactionId" class="catalog-item">
-          <div class="catalog-item__head">
-            <strong>{{ card.cardHolderName || card.ownerName || card.transactionId }}</strong>
-            <span class="catalog-item__badge" :class="{ 'catalog-item__badge--active': card.status === 'captured' }">
-              {{ statusLabel(card.status) }}
-            </span>
-          </div>
-          <p class="catalog-item__meta">
-            Bandeira: {{ card.cardBrand || '—' }} · Administradora: {{ card.provider }} · Final: {{ card.cardLast4 || '—' }}
-          </p>
-          <p class="catalog-item__hint">{{ card.description }}</p>
-          <p class="catalog-item__detail">Paciente: {{ card.patientName || '—' }} · Tutor: {{ card.ownerName || '—' }}</p>
-        </article>
-      </div>
-    </DsCard>
+    <section class="cards-actions" aria-label="Ações de cartões débito e crédito">
+      <DsButton variant="primary" disabled>Novo Cartão</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-machines">Maquininhas</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-accounts">Contas Adm. Cartão</DsButton>
+      <DsButton variant="ghost" type="button" :loading="loading" @click="reload">Atualizar</DsButton>
+    </section>
+
+    <DataTable
+      :columns="columns"
+      :rows="visibleRows"
+      :loading="loading"
+      empty-icon="💳"
+      empty-title="Nenhum cartão encontrado"
+      empty-description="Ajuste os filtros para visualizar os cartões de débito e crédito cadastrados."
+      caption="Cartões débito e crédito"
+      row-key-field="transactionId"
+      variant="hoverable"
+    >
+      <template #cell-card="{ row }">
+        <strong>{{ card(row).cardHolderName || card(row).ownerName || card(row).transactionId }}</strong>
+        <small>{{ card(row).cardLast4 ? `Final ${card(row).cardLast4}` : card(row).transactionId }}</small>
+      </template>
+      <template #cell-type="{ row }">
+        <StatusBadge :label="cardTypeLabel(card(row))" :variant="card(row).installments > 1 ? 'info' : 'neutral'" />
+      </template>
+      <template #cell-brand="{ row }">
+        <span>{{ brandLabel(card(row).cardBrand) }}</span>
+      </template>
+      <template #cell-provider="{ row }">
+        <strong>{{ card(row).provider }}</strong>
+        <small>{{ card(row).installments }} parcela(s)</small>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge :label="statusLabel(card(row).status)" :variant="statusVariant(card(row).status)" />
+      </template>
+      <template #cell-reconciliation="{ row }">
+        <span>{{ reconciliationLabel(card(row).reconciliationState) }}</span>
+      </template>
+      <template #cell-usage="{ row }">
+        <span>{{ card(row).description }}</span>
+        <small>{{ card(row).patientName || 'Paciente não informado' }} · {{ card(row).ownerName || 'Tutor não informado' }}</small>
+      </template>
+      <template #cell-next="{ row }">
+        <span>{{ nextAction(card(row)) }}</span>
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { financeCardsService, type FinanceCardRow } from '@/services/financeCards';
 
-const query = ref('');
+const columns: DataTableColumn[] = [
+  { key: 'card', label: 'Cartão' },
+  { key: 'type', label: 'Tipo' },
+  { key: 'brand', label: 'Bandeira' },
+  { key: 'provider', label: 'Administradora' },
+  { key: 'status', label: 'Status' },
+  { key: 'reconciliation', label: 'Conciliação' },
+  { key: 'usage', label: 'Uso' },
+  { key: 'next', label: 'Próxima Ação' }
+];
+
 const loading = ref(false);
 const error = ref('');
 const cards = ref<FinanceCardRow[]>([]);
-
-const filteredCards = computed(() => {
-  const normalized = query.value.trim().toLowerCase();
-  if (!normalized) return cards.value;
-  return cards.value.filter((card) => {
-    return [
-      card.cardHolderName,
-      card.ownerName,
-      card.patientName,
-      card.cardBrand,
-      card.provider,
-      card.cardLast4,
-      card.description
-    ].join(' ').toLowerCase().includes(normalized);
-  });
+const filters = reactive({
+  search: '',
+  provider: '',
+  status: '',
+  type: ''
 });
 
-const receivableCount = computed(() => cards.value.filter((item) => item.reconciliationState !== 'reconciled').length);
-const capturedCount = computed(() => cards.value.filter((item) => item.status === 'captured').length);
+const visibleCards = computed(() => cards.value.filter(matchesFilters));
+const visibleRows = computed(() => visibleCards.value as unknown as DataTableRow[]);
+const providerOptions = computed(() => unique(cards.value.map((item) => item.provider)));
+const statusOptions = computed(() => unique(cards.value.map((item) => item.status)));
+const capturedCount = computed(() => visibleCards.value.filter((item) => item.status === 'captured').length);
+const pendingCount = computed(() => visibleCards.value.filter((item) => item.status !== 'captured').length);
+const providerCount = computed(() => new Set(visibleCards.value.map((item) => item.provider)).size);
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-cards',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: reload
+  }
+]);
 
-function statusLabel(status: string) {
-  if (status === 'captured') return 'Capturado';
-  if (status === 'authorized_pending_capture') return 'Pendente';
-  if (status === 'failed' || status === 'not_authorized') return 'Falhou';
-  return status || '—';
+function matchesFilters(item: FinanceCardRow): boolean {
+  if (filters.provider && item.provider !== filters.provider) return false;
+  if (filters.status && item.status !== filters.status) return false;
+  if (filters.type === 'credit' && item.installments <= 1) return false;
+  if (filters.type === 'debit' && item.installments > 1) return false;
+  const search = normalize(filters.search);
+  if (!search) return true;
+  return [
+    item.transactionId,
+    item.cardHolderName,
+    item.ownerName,
+    item.patientName,
+    item.cardBrand,
+    item.provider,
+    item.cardLast4,
+    item.description,
+    statusLabel(item.status),
+    reconciliationLabel(item.reconciliationState)
+  ].some((value) => normalize(String(value ?? '')).includes(search));
 }
 
 async function loadCards() {
   loading.value = true;
   error.value = '';
   try {
-    cards.value = await financeCardsService.list();
+    cards.value = await financeCardsService.list({ page: 1, pageSize: 100 });
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Falha ao carregar cartões';
     cards.value = [];
@@ -115,82 +185,105 @@ async function reload() {
   await loadCards();
 }
 
-onMounted(loadCards);
+function card(row: DataTableRow): FinanceCardRow {
+  return row as unknown as FinanceCardRow;
+}
+
+function cardTypeLabel(item: FinanceCardRow): string {
+  return item.installments > 1 ? 'Crédito parcelado' : 'Débito/à vista';
+}
+
+function statusLabel(status: string): string {
+  if (status === 'captured') return 'Capturado';
+  if (status === 'authorized_pending_capture') return 'Pendente';
+  if (status === 'failed' || status === 'not_authorized') return 'Falhou';
+  return status || 'Não informado';
+}
+
+function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'captured') return 'success';
+  if (status === 'authorized_pending_capture') return 'warning';
+  if (status === 'failed' || status === 'not_authorized') return 'danger';
+  return 'neutral';
+}
+
+function reconciliationLabel(state?: string | null): string {
+  if (state === 'reconciled') return 'Conciliado';
+  if (state === 'pending') return 'Pendente';
+  if (state === 'attention') return 'Atenção';
+  return 'Não conciliado';
+}
+
+function brandLabel(brand?: string | null): string {
+  return brand ? brand : 'Não informada';
+}
+
+function nextAction(item: FinanceCardRow): string {
+  if (item.status !== 'captured') return 'Acompanhar captura em Transações';
+  if (item.reconciliationState !== 'reconciled') return 'Conferir em Contas Adm. Cartão';
+  return 'Manter cadastro para consulta';
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, 'pt-BR'));
+}
+
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+onMounted(() => {
+  void loadCards();
+});
 </script>
 
 <style scoped>
-.finance-catalog-page {
+.cards-page {
   display: grid;
   gap: 16px;
 }
-.catalog-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-.catalog-toolbar {
+
+.cards-filters {
+  align-items: end;
   display: grid;
   gap: 12px;
-  margin-bottom: 12px;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
 }
-.catalog-toolbar__actions {
+
+.cards-summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.cards-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.catalog-search {
-  width: 100%;
-  min-height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #dbe3ef);
-  padding: 0 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-.catalog-item {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-item__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-.catalog-item__badge {
+
+.cards-page small {
+  color: var(--color-text-secondary, #64748b);
+  display: block;
   font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
+  margin-top: 3px;
 }
-.catalog-item__badge--active {
-  background: #dcfce7;
-  color: #15803d;
+
+@media (max-width: 1100px) {
+  .cards-filters,
+  .cards-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.catalog-item__meta {
-  margin: 10px 0 6px;
-  font-size: 13px;
-  color: #475569;
-}
-.catalog-item__hint,
-.catalog-item__detail {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-}
-.catalog-item__detail { margin-top: 8px; }
-.catalog-empty {
-  border: 1px dashed var(--color-border, #cbd5e1);
-  border-radius: 14px;
-  padding: 20px;
-  text-align: center;
-  color: #64748b;
+
+@media (max-width: 720px) {
+  .cards-filters,
+  .cards-summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -427,8 +427,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Cartoes Debito/Credito`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Bancos`.
 
 Justificativa:
 
@@ -457,14 +458,15 @@ Justificativa:
 - `Formas de Pagamento` ja foi convertido em superficie operacional somente leitura de meios de pagamento, tipo, integracao, status e uso financeiro no `cvg-his-v2`;
 - `Centros de Custo` ja foi convertido em superficie operacional somente leitura de classificacoes, responsaveis, status, rateio e uso financeiro no `cvg-his-v2`;
 - `Custos e Despesas` ja foi convertido em superficie operacional somente leitura de despesas, categorias, centro de custo, natureza, status e uso financeiro no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Cartoes Debito/Credito`;
-- resolver `Cartoes Debito/Credito` agora preserva a ordem Vetus depois de fechar `Custos e Despesas`.
+- `Cartoes Debito/Credito` ja foi convertido em superficie operacional somente leitura de cartoes, bandeiras, administradoras, status e conciliacao no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Bancos`;
+- resolver `Bancos` agora fecha a sequencia principal de cadastros financeiros revalidada depois de `Cartoes Debito/Credito`.
 
-Escopo minimo de `Financeiro > Cadastros > Cartoes Debito/Credito`:
+Escopo minimo de `Financeiro > Cadastros > Bancos`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Cartoes Debito/Credito` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Bancos` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, lista de cartoes, tipo, bandeira, operadora, status e acoes principais sem executar captura real, conciliacao, repasse, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, lista de bancos/contas, agencia, conta, status e acoes principais sem executar transferencia real, conciliacao, baixa, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -496,11 +498,55 @@ Observacao de sequenciamento:
 - `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Custos e Despesas` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Cadastros > Cartoes Debito/Credito`.
+- `Financeiro > Cadastros > Cartoes Debito/Credito` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Cadastros > Bancos`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Cadastros > Cartoes Debito/Credito
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/cards` virou superficie Vetus-like de `Cartoes Debito/Credito`;
+- aliases adicionados para `/financeiro/cadastros/cartoes-debito-credito`, `/financeiro/cadastros/cartoes-debito-e-credito` e `/cartoes-debito-credito`;
+- tela com breadcrumbs `Financeiro / Cadastros / Cartoes Debito/Credito`;
+- filtros `Pesquisar`, `Administradora`, `Status` e `Tipo`;
+- KPIs `Registros`, `Capturados`, `Pendentes` e `Administradoras`;
+- tabela com `Cartao`, `Tipo`, `Bandeira`, `Administradora`, `Status`, `Conciliacao`, `Uso` e `Proxima Acao`;
+- acoes `Novo Cartao` bloqueada, `Maquininhas`, `Transacoes de Cartao`, `Contas Adm. Cartao` e `Atualizar`;
+- consumo somente leitura da API existente `/financial/reconciliation/cards`.
+
+Restricoes mantidas:
+
+- sem cadastro real de cartao;
+- sem edicao real de bandeira ou administradora;
+- sem captura real;
+- sem conciliacao real;
+- sem baixa financeira;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `CardsPage`;
+- teste geral de cadastros financeiros;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/cards` 200, `/financeiro/cadastros/cartoes-debito-credito` 200 e `/health` 200;
+- smokes publicos: SPA `/cards` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Cadastros > Bancos`.
 
 ### 2026-04-29 - Financeiro > Cadastros > Custos e Despesas
 

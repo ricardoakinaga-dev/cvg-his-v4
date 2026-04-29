@@ -23,8 +23,8 @@ const pages = [
   },
   {
     loader: () => import('../CardsPage.vue'),
-    title: 'Cartões',
-    breadcrumb: 'FinanceiroCadastrosCartões'
+    title: 'Cartões Débito/Crédito',
+    breadcrumb: 'FinanceiroCadastrosCartões Débito/Crédito'
   },
   {
     loader: () => import('../ExpensesPage.vue'),
