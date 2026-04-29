@@ -2773,6 +2773,10 @@ paths:
       summary: List NFS-e layouts
       tags: [Fiscal]
       parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
         - name: state
           in: query
           schema:

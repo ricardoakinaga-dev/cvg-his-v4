@@ -502,6 +502,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: FiscalNfseLayoutListResponse = {
       items: await scopedFiscal.listNfseLayouts({
+        search: url.searchParams.get('search') ?? undefined,
         state: url.searchParams.get('state') ?? undefined,
         active: parseOptionalBoolean(url.searchParams.get('active'))
       })

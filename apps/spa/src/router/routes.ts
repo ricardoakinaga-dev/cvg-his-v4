@@ -1858,10 +1858,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'fiscal/nfse',
         name: 'FiscalNFSELayout',
+        alias: [
+          '/nfse',
+          '/estoque/configuracoes-fiscais/nfse',
+          '/estoque/configuracoes-fiscais/tabela-nfse'
+        ],
         component: () => import('@/pages/fiscal/FiscalNFSELayoutPage.vue'),
         meta: {
-          title: 'NFS-e',
-          breadcrumb: 'NFS-e',
+          title: 'Tabela NFS-e',
+          breadcrumb: 'Tabela NFS-e',
           breadcrumbParent: 'Configurações Fiscais',
           icon: '📄'
         }

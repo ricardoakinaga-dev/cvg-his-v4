@@ -87,6 +87,7 @@ export interface FiscalIcmsMatrixFilters {
 }
 
 export interface FiscalNfseLayoutFilters {
+  readonly search?: string;
   readonly state?: string;
   readonly active?: boolean;
 }
@@ -1174,12 +1175,17 @@ export class FiscalService {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listNfseLayouts({
         accountId: this.accountId!,
+        search: filters.search,
         state: filters.state,
         active: filters.active
       });
     }
     return inMemoryNfseLayouts.filter((layout) =>
-      matchesExact(layout.state, filters.state)
+      matchesContains(
+        `${layout.id} ${layout.city} ${layout.state} ${layout.municipalityCode} ${layout.provider} ${layout.version} ${layout.serviceCode} ${layout.serviceFocus}`,
+        filters.search
+      )
+      && matchesExact(layout.state, filters.state)
       && (filters.active === undefined || layout.active === filters.active)
     );
   }

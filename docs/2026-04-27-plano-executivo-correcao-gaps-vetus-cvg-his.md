@@ -414,7 +414,7 @@ Checkpoint em 2026-04-29:
 - P3-04 foi implementado em escopo focado para acessibilidade e teclado nos acordeoes.
 - P3-05 foi implementado em escopo documental para consolidar o relatorio semanal de compatibilidade Vetus vs CVG-HIS.
 
-Proxima acao recomendada: retomar a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
+Proxima acao recomendada: seguir a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`.
 
 Justificativa:
 
@@ -430,19 +430,19 @@ Justificativa:
 - observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
 - os acordeoes do cockpit do animal agora possuem `aria-expanded`, `aria-controls`, paineis `region`/`aria-labelledby`, foco visivel e navegacao por setas/Home/End;
 - o relatorio semanal de compatibilidade registra score consolidado de 86/100, score clinico central de 91/100 e pendencias por categoria sem transcrever dados reais do Vetus;
-- P3 esta fechado na ordem operacional definida, entao a proxima frente deve voltar para a trilha fiscal macro ja reservada pelo responsavel.
+- P3 esta fechado na ordem operacional definida e `Tabela NFS-e` ja foi alinhada, entao a proxima frente deve seguir a trilha fiscal macro.
 
-Escopo minimo de `Estoque > Configuracoes Fiscais > Tabela NFS-e`:
+Escopo minimo de `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`:
 
-1. Revalidar os artefatos Vetus read-only de `Tabela NFS-e`, incluindo screenshot e guia fiscal existentes.
-2. Comparar a superficie Vetus com `/fiscal/nfse`, que ja possui backoffice inicial de layouts e contratos API.
-3. Ajustar a tela principal para paridade Vetus-like se a tela atual estiver mais tecnica do que o cadastro observado.
-4. Preservar contratos fiscais existentes e nao executar emissao real de NFS-e durante observacao.
+1. Revalidar os artefatos Vetus read-only de `Matriz Estado ICMS`, incluindo screenshot e guia fiscal existentes.
+2. Comparar a superficie Vetus com `/fiscal/icms-matrix`, preservando a separacao ja criada entre `Tabela ICMS` e matriz fiscal por UF/estado.
+3. Ajustar a tela principal para paridade Vetus-like se a superficie atual estiver mais tecnica do que a tela observada.
+4. Preservar contratos fiscais existentes e nao executar acao fiscal real durante observacao.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
-Criterio de aceite de `Tabela NFS-e`:
+Criterio de aceite de `Matriz Estado ICMS`:
 
-- caminho `Estoque > Configuracoes Fiscais > Tabela NFS-e` fica mapeado para rota CVG-HIS coerente;
+- caminho `Estoque > Configuracoes Fiscais > Matriz Estado ICMS` fica mapeado para rota CVG-HIS coerente;
 - tela principal mostra busca/listagem/estado vazio e acao principal equivalentes ao Vetus ou documenta claramente a diferenca;
 - API fiscal, OpenAPI e testes permanecem verdes;
 - publicacao usa somente `docker-compose.v2.yml` e servicos existentes;
@@ -451,11 +451,45 @@ Criterio de aceite de `Tabela NFS-e`:
 Observacao de sequenciamento:
 
 - A frente P3 operacional foi fechada com P3-05.
-- O workflow macro Vetus fiscal deve retomar agora por `Estoque > Configuracoes Fiscais > Tabela NFS-e`, conforme sequenciamento definido pelo responsavel.
+- `Tabela NFS-e` foi alinhada em 2026-04-29.
+- O workflow macro Vetus fiscal deve seguir agora por `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`, conforme a ordem documentada do navbar.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Estoque > Configuracoes Fiscais > Tabela NFS-e
+
+Status: implementado, validado e publicado no compose v2 existente.
+
+Implementacao:
+
+- `/fiscal/nfse` passou de backoffice tecnico sempre aberto para superficie Vetus-like de `Tabela NFS-e`;
+- adicionados aliases SPA `/nfse`, `/estoque/configuracoes-fiscais/nfse` e `/estoque/configuracoes-fiscais/tabela-nfse`;
+- cabecalho, breadcrumb, busca unica `Buscar por codigo ou descricao`, acao `Incluir Nova Tabela` e estado vazio `Nenhum registro cadastrado` foram alinhados ao padrao fiscal Vetus;
+- o formulario de cadastro/edicao foi movido para modal com campos de municipio, UF, codigo IBGE, descricao/prestador, versao, ambiente, codigo de servico, foco operacional e situacao ativa;
+- `GET /fiscal/nfse` passou a aceitar `search`, com busca por id, municipio, UF, codigo municipal, prestador/layout, versao, codigo de servico e foco operacional;
+- OpenAPI, service SPA, repositorio database e service fiscal em memoria foram atualizados sem alterar contratos de emissao/documentos NFS-e.
+
+Validacao:
+
+- teste focado de `FiscalNFSELayoutPage` cobre cabecalho/breadcrumb/estado vazio Vetus-like e abertura do modal;
+- teste de rotas SPA cobre aliases e breadcrumb de `Tabela NFS-e`;
+- teste do modulo fiscal cobre filtro `search`;
+- teste focado da rota fiscal da API cobre repasse de `search`, `state` e `active`;
+- `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/fiscal/__tests__/FiscalNFSELayoutPage.test.ts src/router/routes.test.ts`;
+- `pnpm --filter @cvg-his-v2/module-fiscal run build && pnpm --filter @cvg-his-v2/module-fiscal exec node --test dist/fiscal.test.js`;
+- `pnpm --filter @cvg-his-v2/api run build && pnpm --filter @cvg-his-v2/api exec node --test dist/routes/fiscal-routes.test.js`;
+- `pnpm --filter @cvg-his-v2/shared-contracts run build`;
+- `pnpm --filter @cvg-his-v2/spa run typecheck`;
+- `pnpm --filter @cvg-his-v2/spa run build`;
+- `pnpm validate:openapi`.
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose canonico;
+- compose validado com API e SPA healthy, SPA local `http://127.0.0.1:3002/fiscal/nfse` 200, alias `http://127.0.0.1:3002/estoque/configuracoes-fiscais/tabela-nfse` 200 e API local `http://127.0.0.1:3003/health` 200;
+- rota protegida `/fiscal/nfse?search=ISS` retorna 401 sem token quando `x-account-id` e informado;
+- HTTPS publico validado com SPA `/fiscal/nfse` e API health retornando 200.
+
+Proxima frente recomendada: `Estoque > Configuracoes Fiscais > Matriz Estado ICMS`.
 
 ### 2026-04-29 - P3-05 Relatorio semanal de notas de compatibilidade
 

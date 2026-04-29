@@ -49,7 +49,7 @@ test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables 
   const pisRows = await service.listPisTables({ search: '0,65' });
   const cofinsRows = await service.listCofinsTables({ search: '7,6' });
   const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
-  const nfseLayouts = await service.listNfseLayouts({ state: 'SP', active: true });
+  const nfseLayouts = await service.listNfseLayouts({ search: 'ISS SP', state: 'SP', active: true });
 
   assert.ok(icmsRows.length > 0);
   assert.ok(icmsRows.every((row) => `${row.code} ${row.description}`.includes('18')));
@@ -64,6 +64,7 @@ test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables 
   assert.ok(pisCofinsRows.every((row) => row.appliesTo === 'servico'));
   assert.ok(nfseLayouts.length > 0);
   assert.ok(nfseLayouts.every((row) => row.state === 'SP' && row.active));
+  assert.ok(nfseLayouts.every((row) => `${row.city} ${row.provider} ${row.municipalityCode}`.includes('ISS SP')));
 });
 
 test('FiscalService creates and updates simple ICMS table entries', async () => {

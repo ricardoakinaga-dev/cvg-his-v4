@@ -291,7 +291,7 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
     '/fiscal/nfse',
     {
       method: 'GET',
-      url: '/fiscal/nfse?state=SP&active=true'
+      url: '/fiscal/nfse?search=ISS%20SP&state=SP&active=true'
     } as never,
     nfseResponse as never,
     'corr-fiscal-5',
@@ -322,7 +322,7 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
     items: Array<{ code: string; description: string; percent: number }>;
   }>();
   const nfsePayload = nfseResponse.bodyJson<{
-    items: Array<{ state: string; active: boolean }>;
+    items: Array<{ city: string; provider: string; municipalityCode: string; state: string; active: boolean }>;
   }>();
 
   assert.ok(icmsPayload.items.length > 0);
@@ -336,6 +336,7 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
   assert.ok(nfsePayload.items.length > 0);
   assert.ok(nfsePayload.items.every((item) => item.state === 'SP'));
   assert.ok(nfsePayload.items.every((item) => item.active));
+  assert.ok(nfsePayload.items.every((item) => `${item.city} ${item.provider} ${item.municipalityCode}`.includes('ISS SP')));
 });
 
 test('handleFiscalRoutes creates and updates simple ICMS table entries when enabled', async () => {

@@ -82,6 +82,7 @@ export interface DbPisCofinsRuleFilters extends DbFiscalFilters {
 }
 
 export interface DbNfseLayoutFilters extends DbFiscalFilters {
+  readonly search?: string;
   readonly state?: string;
   readonly active?: boolean;
 }
@@ -699,6 +700,19 @@ export class DatabaseFiscalRepository {
     if (filters.state) {
       conditions.push(`state = $${params.length + 1}`);
       params.push(filters.state);
+    }
+    if (filters.search) {
+      conditions.push(`(
+        LOWER(id) LIKE LOWER($${params.length + 1})
+        OR LOWER(city) LIKE LOWER($${params.length + 1})
+        OR LOWER(state) LIKE LOWER($${params.length + 1})
+        OR LOWER(COALESCE(municipality_code, '')) LIKE LOWER($${params.length + 1})
+        OR LOWER(provider) LIKE LOWER($${params.length + 1})
+        OR LOWER(version) LIKE LOWER($${params.length + 1})
+        OR LOWER(COALESCE(service_code, '')) LIKE LOWER($${params.length + 1})
+        OR LOWER(COALESCE(service_focus, '')) LIKE LOWER($${params.length + 1})
+      )`);
+      params.push(`%${filters.search}%`);
     }
     if (filters.active !== undefined) {
       conditions.push(`active = $${params.length + 1}`);

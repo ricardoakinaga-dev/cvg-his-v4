@@ -95,6 +95,7 @@ export interface FiscalIcmsMatrixFilters {
 }
 
 export interface FiscalNfseLayoutFilters {
+  search?: string;
   state?: string;
   active?: boolean;
 }

@@ -447,6 +447,23 @@ describe('router convergence', () => {
     expect(findChildRoute('pontos-de-venda')?.meta?.breadcrumbParent).toBe('Estoque');
   });
 
+  it('uses a Vetus-like concrete route for fiscal NFS-e table', () => {
+    const nfseRoute = findChildRoute('fiscal/nfse');
+
+    expect(nfseRoute?.name).toBe('FiscalNFSELayout');
+    expect(nfseRoute?.component).toBeTruthy();
+    expect(nfseRoute?.meta?.title).toBe('Tabela NFS-e');
+    expect(nfseRoute?.meta?.breadcrumb).toBe('Tabela NFS-e');
+    expect(nfseRoute?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
+    expect(nfseRoute?.alias).toEqual(
+      expect.arrayContaining([
+        '/nfse',
+        '/estoque/configuracoes-fiscais/nfse',
+        '/estoque/configuracoes-fiscais/tabela-nfse'
+      ])
+    );
+  });
+
   it('uses a concrete route for atendimento vendas', () => {
     const salesRoute = findChildRoute('sales');
 

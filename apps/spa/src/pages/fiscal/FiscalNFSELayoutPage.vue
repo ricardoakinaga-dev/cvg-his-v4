@@ -1,12 +1,13 @@
 <template>
   <div class="fiscal-nfse-page">
     <AppPageHeader
-      title="NFS-e"
-      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'NFS-e']"
-      subtitle="Backoffice inicial para cadastro e ajuste de layouts municipais de NFS-e"
+      title="Tabela NFS-e"
+      subtitle="Quer cadastrar NFS-e de forma prática? Saiba Mais"
+      :breadcrumbs="['Estoque', 'Configurações Fiscais', 'Tabela NFS-e']"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
+        <DsButton icon="+" @click="openCreate">Incluir Nova Tabela</DsButton>
       </template>
     </AppPageHeader>
 
@@ -14,67 +15,22 @@
       {{ error }}
     </DsAlert>
 
-    <DsAlert variant="info">
-      Esta página já permite cadastro e ajuste operacional de layouts NFS-e. Emissão,
-      cancelamento e transmissão fiscal continuam fora da superfície disponível.
-    </DsAlert>
-
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
 
-    <DsCard title="Novo layout municipal">
-      <form class="layout-form" @submit.prevent="createLayout">
-        <DsInput v-model="form.city" label="Município *" placeholder="Campinas" required />
-        <DsInput v-model="form.state" type="select" label="UF *" required>
-          <option value="">Selecione</option>
-          <option v-for="option in stateOptions" :key="option" :value="option">{{ option }}</option>
-        </DsInput>
-        <DsInput v-model="form.municipalityCode" label="Código IBGE" placeholder="3509502" />
-        <DsInput v-model="form.provider" label="Prestador *" placeholder="ISS Campinas" required />
-        <DsInput v-model="form.version" label="Versão *" placeholder="v2026.1" required />
-        <DsInput v-model="form.environment" type="select" label="Ambiente *" required>
-          <option value="homologacao">Homologação</option>
-          <option value="producao">Produção</option>
-        </DsInput>
-        <DsInput v-model="form.serviceCode" label="Código de serviço" placeholder="0407" />
-        <DsInput
-          v-model="form.serviceFocus"
-          label="Foco operacional"
-          placeholder="Consultas e serviços veterinários"
-        />
-        <label class="toggle-label">
-          <input v-model="form.active" type="checkbox" />
-          <span>Publicar layout como ativo</span>
-        </label>
-        <div class="layout-form__actions">
-          <DsButton type="submit" variant="primary" :loading="submitting">
-            {{ submitting ? 'Salvando...' : 'Cadastrar layout' }}
-          </DsButton>
-          <DsButton type="button" variant="ghost" @click="resetForm">Limpar</DsButton>
-        </div>
-      </form>
-    </DsCard>
-
-    <section class="filter-bar">
-      <DsInput v-model="state" type="select" label="UF">
-        <option value="">Todas</option>
-        <option v-for="option in stateOptions" :key="option" :value="option">{{ option }}</option>
-      </DsInput>
-      <DsInput v-model="activeFilter" type="select" label="Status">
-        <option value="">Todos</option>
-        <option value="true">Ativos</option>
-        <option value="false">Homologação / pausados</option>
-      </DsInput>
-      <div class="filter-actions">
-        <DsButton variant="secondary" @click="load">Aplicar filtros</DsButton>
+    <section class="nfse-toolbar" aria-label="Filtros de NFS-e">
+      <DsInput
+        v-model="search"
+        type="search"
+        label="Buscar"
+        placeholder="Buscar por código ou descrição"
+        @keyup.enter="load"
+      />
+      <div class="toolbar-actions">
+        <DsButton variant="secondary" @click="load">Buscar</DsButton>
         <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
       </div>
-    </section>
-
-    <section class="hub-kpis">
-      <DsStatCard :label="`${nfseLayouts.length} município(s)`" value="" icon="🏙️" />
-      <DsStatCard :label="`${activeLayouts} layout(s) ativos`" value="" icon="📄" />
     </section>
 
     <DataTable
@@ -82,10 +38,13 @@
       :rows="nfseLayouts"
       :loading="loading"
       empty-icon="📄"
-      empty-title="Nenhum layout de NFS-e encontrado"
-      empty-description="A API fiscal ainda não retornou layouts de NFS-e para consulta."
+      empty-title="Nenhum registro cadastrado"
+      empty-description="Use Incluir Nova Tabela para cadastrar a primeira configuração de NFS-e."
       variant="hoverable"
     >
+      <template #emptyAction>
+        <DsButton icon="+" @click="openCreate">Incluir Nova Tabela</DsButton>
+      </template>
       <template #cell-status="{ row }">
         <DsBadge :variant="(row as FiscalNfseLayoutSummary).active ? 'success' : 'warning'" size="sm">
           {{ (row as FiscalNfseLayoutSummary).active ? 'Ativo' : 'Em homologação' }}
@@ -100,14 +59,41 @@
       <template #cell-actions="{ row }">
         <DsButton
           size="sm"
-          variant="secondary"
-          :loading="togglingLayoutId === (row as FiscalNfseLayoutSummary).id"
-          @click="toggleLayoutStatus(row as FiscalNfseLayoutSummary)"
+          variant="ghost"
+          @click="openEdit(row as FiscalNfseLayoutSummary)"
         >
-          {{ (row as FiscalNfseLayoutSummary).active ? 'Pausar' : 'Ativar' }}
+          Editar
         </DsButton>
       </template>
     </DataTable>
+
+    <DsModal :open="modalOpen" :title="modalTitle" size="md" @close="closeModal">
+      <form class="nfse-form" @submit.prevent="saveLayout">
+        <DsInput v-model="form.city" label="Município" required />
+        <DsInput v-model="form.state" type="select" label="UF" required>
+          <option value="">Selecione</option>
+          <option v-for="option in stateOptions" :key="option" :value="option">{{ option }}</option>
+        </DsInput>
+        <DsInput v-model="form.municipalityCode" label="Código" placeholder="Código IBGE" />
+        <DsInput v-model="form.provider" label="Descrição" placeholder="Prestador / layout municipal" required />
+        <DsInput v-model="form.version" label="Versão" required />
+        <DsInput v-model="form.environment" type="select" label="Ambiente" required>
+          <option value="homologacao">Homologação</option>
+          <option value="producao">Produção</option>
+        </DsInput>
+        <DsInput v-model="form.serviceCode" label="Código de serviço" />
+        <DsInput v-model="form.serviceFocus" label="Foco operacional" />
+        <label class="toggle-label">
+          <input v-model="form.active" type="checkbox" />
+          <span>Publicar tabela como ativa</span>
+        </label>
+      </form>
+
+      <template #footer>
+        <DsButton variant="ghost" @click="closeModal">Cancelar</DsButton>
+        <DsButton :loading="saving" @click="saveLayout">Salvar</DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -116,11 +102,10 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import {
   fiscalService,
@@ -129,10 +114,12 @@ import {
 
 const nfseLayouts = ref<FiscalNfseLayoutSummary[]>([]);
 const loading = ref(false);
-const submitting = ref(false);
-const togglingLayoutId = ref('');
+const saving = ref(false);
 const error = ref('');
 const successMessage = ref('');
+const search = ref('');
+const modalOpen = ref(false);
+const editingId = ref<string | null>(null);
 
 const form = reactive({
   city: '',
@@ -147,9 +134,9 @@ const form = reactive({
 });
 
 const columns: DataTableColumn[] = [
-  { key: 'city', label: 'Município' },
+  { key: 'municipalityCode', label: 'Código' },
+  { key: 'city', label: 'Descrição' },
   { key: 'state', label: 'UF' },
-  { key: 'municipalityCode', label: 'Código IBGE' },
   { key: 'provider', label: 'Prestador' },
   { key: 'version', label: 'Versão' },
   { key: 'status', label: 'Status' },
@@ -159,10 +146,8 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Ações', width: '120px' }
 ];
 
-const activeLayouts = computed(() => nfseLayouts.value.filter((item) => item.active).length);
 const stateOptions = ['SP', 'RS', 'PR', 'RJ'];
-const state = ref('');
-const activeFilter = ref<'true' | 'false' | ''>('');
+const modalTitle = computed(() => (editingId.value ? 'Editar Tabela NFS-e' : 'Incluir Nova Tabela'));
 
 function formatEnvironment(value: FiscalNfseLayoutSummary['environment']): string {
   return value === 'producao' ? 'Produção' : 'Homologação';
@@ -173,68 +158,44 @@ async function load() {
   error.value = '';
   try {
     nfseLayouts.value = await fiscalService.listNfseLayouts({
-      state: state.value || undefined,
-      active: activeFilter.value === '' ? undefined : activeFilter.value === 'true'
+      search: search.value.trim() || undefined
     });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar layouts';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar Tabela NFS-e';
   } finally {
     loading.value = false;
   }
 }
 
-async function createLayout() {
-  submitting.value = true;
-  error.value = '';
-  successMessage.value = '';
-
-  try {
-    await fiscalService.createNfseLayout({
-      city: form.city,
-      state: form.state,
-      municipalityCode: form.municipalityCode || undefined,
-      provider: form.provider,
-      version: form.version,
-      active: form.active,
-      environment: form.environment,
-      serviceCode: form.serviceCode || undefined,
-      serviceFocus: form.serviceFocus || undefined
-    });
-    successMessage.value = 'Layout NFS-e cadastrado com sucesso.';
-    resetForm();
-    await load();
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao cadastrar layout';
-  } finally {
-    submitting.value = false;
-  }
-}
-
-async function toggleLayoutStatus(layout: FiscalNfseLayoutSummary) {
-  togglingLayoutId.value = layout.id;
-  error.value = '';
-  successMessage.value = '';
-
-  try {
-    await fiscalService.updateNfseLayout(layout.id, {
-      active: !layout.active,
-      environment: !layout.active ? 'producao' : 'homologacao'
-    });
-    successMessage.value = layout.active
-      ? 'Layout movido para homologação.'
-      : 'Layout ativado para produção.';
-    await load();
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao atualizar layout';
-  } finally {
-    togglingLayoutId.value = '';
-  }
-}
-
 function resetFilters() {
-  state.value = '';
-  activeFilter.value = '';
+  search.value = '';
   void load();
+}
+
+function openCreate() {
+  editingId.value = null;
+  resetForm();
+  modalOpen.value = true;
+}
+
+function openEdit(layout: FiscalNfseLayoutSummary) {
+  editingId.value = layout.id;
+  form.city = layout.city;
+  form.state = layout.state;
+  form.municipalityCode = layout.municipalityCode;
+  form.provider = layout.provider;
+  form.version = layout.version;
+  form.active = layout.active;
+  form.environment = layout.environment;
+  form.serviceCode = layout.serviceCode;
+  form.serviceFocus = layout.serviceFocus;
+  modalOpen.value = true;
+}
+
+function closeModal() {
+  if (!saving.value) {
+    modalOpen.value = false;
+  }
 }
 
 function resetForm() {
@@ -249,6 +210,41 @@ function resetForm() {
   form.serviceFocus = '';
 }
 
+async function saveLayout() {
+  saving.value = true;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const payload = {
+      city: form.city.trim(),
+      state: form.state.trim(),
+      municipalityCode: form.municipalityCode.trim() || undefined,
+      provider: form.provider.trim(),
+      version: form.version.trim(),
+      active: form.active,
+      environment: form.environment,
+      serviceCode: form.serviceCode.trim() || undefined,
+      serviceFocus: form.serviceFocus.trim() || undefined
+    };
+
+    if (editingId.value) {
+      await fiscalService.updateNfseLayout(editingId.value, payload);
+      successMessage.value = 'Tabela NFS-e atualizada com sucesso.';
+    } else {
+      await fiscalService.createNfseLayout(payload);
+      successMessage.value = 'Tabela NFS-e cadastrada com sucesso.';
+    }
+
+    modalOpen.value = false;
+    await load();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao salvar Tabela NFS-e';
+  } finally {
+    saving.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -259,36 +255,24 @@ onMounted(load);
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.filter-bar {
+.nfse-toolbar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
 }
 
-.filter-actions {
+.toolbar-actions {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.layout-form {
+.nfse-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
-}
-
-.layout-form__actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 .toggle-label {
