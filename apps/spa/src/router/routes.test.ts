@@ -455,6 +455,13 @@ describe('router convergence', () => {
       ])
     );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
+    expect(findChildRoute('finance/card-transactions')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/maquininha/transacoes-de-cartao',
+        '/financeiro/maquininha-de-cartao/transacoes-de-cartao',
+        '/transacoes-de-cartao'
+      ])
+    );
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');

@@ -235,7 +235,12 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Configuração do Split', path: '/finance/split', icon: '🧩', keywords: ['split', 'configuracao', 'configuração do split', 'recebedores', 'repasse', 'maquininha'] },
           { label: 'Maquininhas', path: '/finance/card-machines', icon: '💳', keywords: ['maquininhas', 'terminais', 'pos', 'provedor cartao', 'maquininha de cartao'] },
           { label: 'Simulador de Split', path: '/finance/split/simulator', icon: '🧮', keywords: ['simulador split', 'simulação split', 'taxa mdr', 'repasse simulado', 'recebedores'] },
-          { label: 'Transações de Cartão', path: '/finance/card-transactions', icon: '💳', keywords: ['transacoes cartao'] },
+          {
+            label: 'Transações de Cartão',
+            path: '/finance/card-transactions',
+            icon: '💳',
+            keywords: ['transacoes cartao', 'transações de cartão', 'capturas cartão', 'autorização cartão', 'conciliacao cartao']
+          },
           { label: 'Exportador de Split', path: '/finance/split/export', icon: '📤', keywords: ['exportador split'] },
           { label: 'Habilitar Pagamento', path: '/finance/payment-enablement', icon: '✅', keywords: ['habilitar pagamento'] },
           { label: 'Pagamento Dashboard', path: '/finance/payments-dashboard', icon: '📊', keywords: ['pagamento dashboard'] }

@@ -420,8 +420,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Transacoes de Cartao`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Exportador de Split`.
 
 Justificativa:
 
@@ -443,14 +444,15 @@ Justificativa:
 - `Configuracao do Split` ja foi convertido em superficie operacional somente leitura de regras, recebedores, percentuais e repasse planejado no `cvg-his-v2`;
 - `Maquininhas` ja foi convertido em superficie operacional somente leitura de terminais, provedores, unidades e status no `cvg-his-v2`;
 - `Simulador de Split` ja foi convertido em superficie operacional somente leitura de venda, taxas, recebedores e repasse liquido no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Transacoes de Cartao`;
-- resolver `Transacoes de Cartao` agora preserva a ordem Vetus depois de fechar `Simulador de Split`.
+- `Transacoes de Cartao` ja foi convertido em superficie operacional somente leitura de capturas, autorizacoes, taxas, liquido e conciliacao no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Exportador de Split`;
+- resolver `Exportador de Split` agora preserva a ordem Vetus depois de fechar `Transacoes de Cartao`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Transacoes de Cartao`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Exportador de Split`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Transacoes de Cartao` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Exportador de Split` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, transacoes, status, provedor, maquininha, valor bruto/liquido e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, periodos, formato de exportacao, recebedores, status e acoes principais sem executar exportacao, habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -475,11 +477,54 @@ Observacao de sequenciamento:
 - `Financeiro > Maquininha de Cartao > Configuracao do Split` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Transacoes de Cartao`.
+- `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Exportador de Split`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Transacoes de Cartao
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/card-transactions` deixou de usar placeholder e passou a carregar `CardTransactionsPage`;
+- aliases adicionados para `/financeiro/maquininha/transacoes-de-cartao`, `/financeiro/maquininha-de-cartao/transacoes-de-cartao` e `/transacoes-de-cartao`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Transacoes de Cartao`;
+- filtros `Cliente/Cartao/Autorizacao`, `Provedor`, `Status` e `Conciliacao`;
+- KPIs `Valor Bruto`, `Taxas`, `Liquido` e `Atencao`;
+- tabela com `Transacao`, `Cliente`, `Cartao`, `Data`, `Parcelas`, `Valor`, `Taxa`, `Liquido`, `Status` e `Conciliacao`;
+- acoes `Capturar Transacao` bloqueada, `Configuracao do Split`, `Maquininhas`, `Contas Adm. Cartao` e `Atualizar`;
+- consumo da API existente `/financial/reconciliation/cards` com `search`, `provider`, `status` e paginacao.
+
+Restricoes mantidas:
+
+- sem captura real;
+- sem cancelamento;
+- sem baixa financeira;
+- sem conciliacao real;
+- sem repasse;
+- sem exportacao real;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `CardTransactionsPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/card-transactions` 200, `/financeiro/maquininha/transacoes-de-cartao` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/card-transactions` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Exportador de Split`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Simulador de Split
 
