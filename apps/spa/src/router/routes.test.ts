@@ -394,6 +394,13 @@ describe('router convergence', () => {
         '/fluxo-de-caixa'
       ])
     );
+    expect(findChildRoute('dashboards/curve-abc-clients')?.meta?.title).toBe('Curva ABC Clientes');
+    expect(findChildRoute('dashboards/curve-abc-clients')?.alias).toEqual(
+      expect.arrayContaining([
+        '/financeiro/controles/curva-abc-clientes',
+        '/curva-abc-clientes'
+      ])
+    );
     expect(findChildRoute('finance/card-transactions')?.meta?.title).toBe('Transações de Cartão');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');

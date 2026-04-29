@@ -33,8 +33,7 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
   placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
-  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢'),
-  placeholderRoute('dashboards/curve-abc-clients', 'DashboardCurveAbcClients', 'Curva ABC Clientes', 'Financeiro', '📊')
+  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢')
 ];
 
 function reportWorkbenchRoute(
@@ -125,6 +124,21 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Curva ABC',
           breadcrumbParent: 'Financeiro',
           icon: '📈'
+        }
+      },
+      {
+        path: 'dashboards/curve-abc-clients',
+        name: 'DashboardCurveAbcClients',
+        component: () => import('@/pages/finance/CurveAbcClientsPage.vue'),
+        alias: [
+          '/financeiro/controles/curva-abc-clientes',
+          '/curva-abc-clientes'
+        ],
+        meta: {
+          title: 'Curva ABC Clientes',
+          breadcrumb: 'Curva ABC Clientes',
+          breadcrumbParent: 'Financeiro',
+          icon: '📊'
         }
       },
       {
