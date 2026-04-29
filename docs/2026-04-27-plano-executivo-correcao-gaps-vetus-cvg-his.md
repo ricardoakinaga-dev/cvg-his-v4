@@ -421,8 +421,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Exportador de Split`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Habilitar Pagamento`.
 
 Justificativa:
 
@@ -445,14 +446,15 @@ Justificativa:
 - `Maquininhas` ja foi convertido em superficie operacional somente leitura de terminais, provedores, unidades e status no `cvg-his-v2`;
 - `Simulador de Split` ja foi convertido em superficie operacional somente leitura de venda, taxas, recebedores e repasse liquido no `cvg-his-v2`;
 - `Transacoes de Cartao` ja foi convertido em superficie operacional somente leitura de capturas, autorizacoes, taxas, liquido e conciliacao no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Exportador de Split`;
-- resolver `Exportador de Split` agora preserva a ordem Vetus depois de fechar `Transacoes de Cartao`.
+- `Exportador de Split` ja foi convertido em superficie operacional somente leitura de previa de exportacao, recebedores, formato e repasses no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Habilitar Pagamento`;
+- resolver `Habilitar Pagamento` agora preserva a ordem Vetus depois de fechar `Exportador de Split`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Exportador de Split`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Habilitar Pagamento`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Exportador de Split` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Habilitar Pagamento` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, periodos, formato de exportacao, recebedores, status e acoes principais sem executar exportacao, habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, status de habilitacao, provedor, unidade, conta/credenciamento e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -478,11 +480,55 @@ Observacao de sequenciamento:
 - `Financeiro > Maquininha de Cartao > Maquininhas` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Exportador de Split`.
+- `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Habilitar Pagamento`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Exportador de Split
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/split/export` deixou de usar placeholder e passou a carregar `SplitExporterPage`;
+- aliases adicionados para `/financeiro/maquininha/exportador-de-split`, `/financeiro/maquininha-de-cartao/exportador-de-split` e `/exportador-de-split`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Exportador de Split`;
+- filtros `Cliente/Transacao`, `Provedor`, `Status` e `Formato`;
+- KPIs `Linhas`, `Liquido`, `Centro Veterinario Guarapiranga` e `CVG Pagamentos`;
+- tabela com `Transacao`, `Cliente`, `Recebedores`, `Formato`, `Liquido`, `Repasse CVG`, `Repasse Plataforma`, `Status` e `Conciliacao`;
+- acoes `Gerar Arquivo` bloqueada, `Transacoes de Cartao`, `Simulador de Split`, `Configuracao do Split` e `Atualizar`;
+- consumo da API existente `/financial/reconciliation/cards` com calculo local de previa de split.
+
+Restricoes mantidas:
+
+- sem geracao real de arquivo;
+- sem envio ao provedor;
+- sem habilitacao;
+- sem captura;
+- sem baixa financeira;
+- sem conciliacao real;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `SplitExporterPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/split/export` 200, `/financeiro/maquininha/exportador-de-split` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/split/export` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Habilitar Pagamento`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Transacoes de Cartao
 

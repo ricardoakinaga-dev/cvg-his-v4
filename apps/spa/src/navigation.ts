@@ -241,7 +241,12 @@ export const navGroups: AppNavGroup[] = [
             icon: '💳',
             keywords: ['transacoes cartao', 'transações de cartão', 'capturas cartão', 'autorização cartão', 'conciliacao cartao']
           },
-          { label: 'Exportador de Split', path: '/finance/split/export', icon: '📤', keywords: ['exportador split'] },
+          {
+            label: 'Exportador de Split',
+            path: '/finance/split/export',
+            icon: '📤',
+            keywords: ['exportador split', 'exportação split', 'arquivo split', 'repasse split', 'csv split']
+          },
           { label: 'Habilitar Pagamento', path: '/finance/payment-enablement', icon: '✅', keywords: ['habilitar pagamento'] },
           { label: 'Pagamento Dashboard', path: '/finance/payments-dashboard', icon: '📊', keywords: ['pagamento dashboard'] }
         ]

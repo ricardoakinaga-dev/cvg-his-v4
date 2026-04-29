@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('finance/split/export', 'FinanceSplitExport', 'Exportador de Split', 'Financeiro', '📤'),
   placeholderRoute('finance/payment-enablement', 'FinancePaymentEnablement', 'Habilitar Pagamento', 'Financeiro', '✅'),
   placeholderRoute('finance/payments-dashboard', 'FinancePaymentsDashboard', 'Pagamento Dashboard', 'Financeiro', '📊'),
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
@@ -236,6 +235,22 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Transações de Cartão',
           breadcrumbParent: 'Financeiro',
           icon: '💳'
+        }
+      },
+      {
+        path: 'finance/split/export',
+        name: 'FinanceSplitExport',
+        component: () => import('@/pages/finance/SplitExporterPage.vue'),
+        alias: [
+          '/financeiro/maquininha/exportador-de-split',
+          '/financeiro/maquininha-de-cartao/exportador-de-split',
+          '/exportador-de-split'
+        ],
+        meta: {
+          title: 'Exportador de Split',
+          breadcrumb: 'Exportador de Split',
+          breadcrumbParent: 'Financeiro',
+          icon: '📤'
         }
       },
       {
