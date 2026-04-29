@@ -32,8 +32,7 @@ const placeholderRoutes: RouteRecordRaw[] = [
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
   placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
-  placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️'),
-  placeholderRoute('dashboards/multifilial', 'DashboardMultibranch', 'Dashboard Multifilial', 'Financeiro', '🏢')
+  placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️')
 ];
 
 function reportWorkbenchRoute(
@@ -143,6 +142,22 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Curva ABC Clientes',
           breadcrumbParent: 'Financeiro',
           icon: '📊'
+        }
+      },
+      {
+        path: 'dashboards/multifilial',
+        name: 'DashboardMultibranch',
+        component: () => import('@/pages/finance/MultibranchDashboardPage.vue'),
+        alias: [
+          '/financeiro/controles/dashboard-multifilial',
+          '/dashboard-multifilial',
+          '/multifilial'
+        ],
+        meta: {
+          title: 'DashBoard do Multifilial',
+          breadcrumb: 'DashBoard do Multifilial',
+          breadcrumbParent: 'Financeiro',
+          icon: '🏢'
         }
       },
       {

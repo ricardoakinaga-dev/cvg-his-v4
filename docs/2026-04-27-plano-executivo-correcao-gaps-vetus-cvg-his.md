@@ -414,8 +414,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > DashBoard do Multifilial`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Dashboard Financeiro`.
 
 Justificativa:
 
@@ -431,14 +432,15 @@ Justificativa:
 - `Fluxo de Caixa` ja foi convertido em superficie operacional de projecao temporal de receitas, despesas, produzido, descontos e saldo no `cvg-his-v2`;
 - `Curva ABC Clientes` ja foi convertido em superficie operacional de ranking de clientes por faturamento, participacao e acumulado no `cvg-his-v2`;
 - `Curva ABC Produtos` ja foi convertido em superficie operacional de ranking de produtos por faturamento, participacao e acumulado no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > DashBoard do Multifilial`;
-- resolver `DashBoard do Multifilial` agora preserva a ordem Vetus depois de `Curva ABC Produtos` e antes de `Dashboard Financeiro`.
+- `DashBoard do Multifilial` ja foi convertido em superficie operacional de visao consolidada da unidade atual no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Dashboard Financeiro`;
+- resolver `Dashboard Financeiro` agora preserva a ordem Vetus depois de `DashBoard do Multifilial` e antes de `Linha do Tempo`.
 
-Escopo minimo de `Financeiro > Controles > DashBoard do Multifilial`:
+Escopo minimo de `Financeiro > Controles > Dashboard Financeiro`:
 
-1. Revalidar artefatos Vetus read-only especificos de `DashBoard do Multifilial` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Dashboard Financeiro` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, indicadores por filial/unidade, totais e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, filtros, indicadores financeiros, totais, tendencias e acoes principais sem executar fechamento, baixa ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -457,11 +459,44 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Fluxo de Caixa` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Curva ABC Clientes` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Curva ABC Produtos` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > DashBoard do Multifilial`.
+- `Financeiro > Controles > DashBoard do Multifilial` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Dashboard Financeiro`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > DashBoard do Multifilial
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/dashboards/multifilial` foi convertido de placeholder para superficie Vetus-like de `DashBoard do Multifilial`;
+- aliases adicionados: `/financeiro/controles/dashboard-multifilial`, `/dashboard-multifilial` e `/multifilial`;
+- filtros alinhados ao dominio: `Unidade`, `De` e `Ate`;
+- acoes de tela `Exportar Dashboard`, `Dashboard Financeiro`, `Gaveta` e `Atualizar` foram posicionadas sem acionar escrita nova;
+- indicadores alinhados com unidades, receita comercial, recebiveis, caixa e cobertura fiscal;
+- tabela alinhada com `Unidade`, `Receita`, `Recebiveis`, `Caixa`, `Vendas`, `Ticket Medio`, `Cobertura Fiscal`, `Status` e `Abrir`;
+- a tela consome a API existente `/reports/administrative-hubs`, apresentando a unidade operacional atual sem inventar filiais enquanto nao houver endpoint de filiais segregadas.
+
+Validacao:
+
+- teste focado de `MultibranchDashboardPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/dashboards/multifilial` 200, `/financeiro/controles/dashboard-multifilial` 200 e `/health` 200;
+- rota protegida `/reports/administrative-hubs` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/dashboards/multifilial` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Dashboard Financeiro`.
 
 ### 2026-04-29 - Financeiro > Controles > Curva ABC Produtos
 
