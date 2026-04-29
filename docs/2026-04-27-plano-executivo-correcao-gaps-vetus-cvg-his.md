@@ -422,8 +422,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Habilitar Pagamento`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Maquininha de Cartao > Pagamento Dashboard`.
 
 Justificativa:
 
@@ -447,14 +448,15 @@ Justificativa:
 - `Simulador de Split` ja foi convertido em superficie operacional somente leitura de venda, taxas, recebedores e repasse liquido no `cvg-his-v2`;
 - `Transacoes de Cartao` ja foi convertido em superficie operacional somente leitura de capturas, autorizacoes, taxas, liquido e conciliacao no `cvg-his-v2`;
 - `Exportador de Split` ja foi convertido em superficie operacional somente leitura de previa de exportacao, recebedores, formato e repasses no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Habilitar Pagamento`;
-- resolver `Habilitar Pagamento` agora preserva a ordem Vetus depois de fechar `Exportador de Split`.
+- `Habilitar Pagamento` ja foi convertido em superficie operacional somente leitura de credenciamento, domicilio bancario, status de habilitacao e bloqueios por provedor no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Maquininha de Cartao > Pagamento Dashboard`;
+- resolver `Pagamento Dashboard` agora preserva a ordem Vetus depois de fechar `Habilitar Pagamento`.
 
-Escopo minimo de `Financeiro > Maquininha de Cartao > Habilitar Pagamento`:
+Escopo minimo de `Financeiro > Maquininha de Cartao > Pagamento Dashboard`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Habilitar Pagamento` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Pagamento Dashboard` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, status de habilitacao, provedor, unidade, conta/credenciamento e acoes principais sem executar habilitacao, captura, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, indicadores, status de captura/conciliacao/repasse, provedor, unidade e acoes principais sem executar captura, baixa, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -481,11 +483,55 @@ Observacao de sequenciamento:
 - `Financeiro > Maquininha de Cartao > Simulador de Split` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Transacoes de Cartao` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Exportador de Split` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Maquininha de Cartao > Habilitar Pagamento`.
+- `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Maquininha de Cartao > Pagamento Dashboard`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Maquininha de Cartao > Habilitar Pagamento
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/finance/payment-enablement` deixou de usar placeholder e passou a carregar `PaymentEnablementPage`;
+- aliases adicionados para `/financeiro/maquininha/habilitar-pagamento`, `/financeiro/maquininha-de-cartao/habilitar-pagamento` e `/habilitar-pagamento`;
+- tela com breadcrumbs `Financeiro / Maquininha de Cartao / Habilitar Pagamento`;
+- filtros `Unidade`, `Provedor`, `Status` e `Pesquisar`;
+- KPIs `Registros`, `Habilitados`, `Em Analise` e `Bloqueados`;
+- tabela com `Unidade`, `Provedor`, `Credenciamento`, `Domicilio Bancario`, `Status` e `Proxima Acao`;
+- acoes `Habilitar Pagamento` bloqueada, `Maquininhas`, `Configuracao do Split`, `Pagamento Dashboard` e `Atualizar`;
+- dados conservadores somente leitura para representar credenciamento, requisitos, domicilio bancario e bloqueios por provedor.
+
+Restricoes mantidas:
+
+- sem habilitacao real de pagamento;
+- sem credenciamento real de recebedor;
+- sem alteracao de domicilio bancario;
+- sem captura;
+- sem baixa financeira;
+- sem conciliacao real;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `PaymentEnablementPage`;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/payment-enablement` 200, `/financeiro/maquininha/habilitar-pagamento` 200 e `/health` 200;
+- smokes publicos: SPA `/finance/payment-enablement` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Maquininha de Cartao > Pagamento Dashboard`.
 
 ### 2026-04-29 - Financeiro > Maquininha de Cartao > Exportador de Split
 

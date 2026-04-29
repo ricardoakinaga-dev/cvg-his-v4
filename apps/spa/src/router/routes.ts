@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('finance/payment-enablement', 'FinancePaymentEnablement', 'Habilitar Pagamento', 'Financeiro', '✅'),
   placeholderRoute('finance/payments-dashboard', 'FinancePaymentsDashboard', 'Pagamento Dashboard', 'Financeiro', '📊'),
   placeholderRoute('marketing/sms', 'MarketingSms', 'SMS', 'Marketing', '📱'),
   placeholderRoute('marketing/vaccine-email', 'MarketingVaccineEmail', 'Email de Vacina', 'Marketing', '📧'),
@@ -251,6 +250,22 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Exportador de Split',
           breadcrumbParent: 'Financeiro',
           icon: '📤'
+        }
+      },
+      {
+        path: 'finance/payment-enablement',
+        name: 'FinancePaymentEnablement',
+        component: () => import('@/pages/finance/PaymentEnablementPage.vue'),
+        alias: [
+          '/financeiro/maquininha/habilitar-pagamento',
+          '/financeiro/maquininha-de-cartao/habilitar-pagamento',
+          '/habilitar-pagamento'
+        ],
+        meta: {
+          title: 'Habilitar Pagamento',
+          breadcrumb: 'Habilitar Pagamento',
+          breadcrumbParent: 'Financeiro',
+          icon: '✅'
         }
       },
       {

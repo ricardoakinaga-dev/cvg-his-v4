@@ -247,7 +247,12 @@ export const navGroups: AppNavGroup[] = [
             icon: '📤',
             keywords: ['exportador split', 'exportação split', 'arquivo split', 'repasse split', 'csv split']
           },
-          { label: 'Habilitar Pagamento', path: '/finance/payment-enablement', icon: '✅', keywords: ['habilitar pagamento'] },
+          {
+            label: 'Habilitar Pagamento',
+            path: '/finance/payment-enablement',
+            icon: '✅',
+            keywords: ['habilitar pagamento', 'credenciamento pagamento', 'domicilio bancario', 'provedor pagamento', 'ativar maquininha']
+          },
           { label: 'Pagamento Dashboard', path: '/finance/payments-dashboard', icon: '📊', keywords: ['pagamento dashboard'] }
         ]
       },
