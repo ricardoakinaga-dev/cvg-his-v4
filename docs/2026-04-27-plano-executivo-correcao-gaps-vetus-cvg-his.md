@@ -409,8 +409,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas Adm. Cartao`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Cheques`.
 
 Justificativa:
 
@@ -421,14 +422,15 @@ Justificativa:
 - `Contas a Receber` ja foi convertida em superficie operacional de titulos no `cvg-his-v2`;
 - `Contas a Pagar` ja foi convertida em superficie operacional de obrigacoes no `cvg-his-v2`;
 - `Pagamento Antecipado` ja foi convertido em superficie operacional de creditos antecipados no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas Adm. Cartao`;
-- resolver `Contas Adm. Cartao` agora preserva a ordem Vetus depois de pagamento antecipado e antes de `Cheques`.
+- `Contas Adm. Cartao` ja foi convertido em superficie operacional de recebimentos por cartao, parcelas, taxas e conciliacao no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Cheques`;
+- resolver `Cheques` agora preserva a ordem Vetus depois de contas administradas de cartao e antes de `Fluxo de Caixa`.
 
-Escopo minimo de `Financeiro > Controles > Contas Adm. Cartao`:
+Escopo minimo de `Financeiro > Controles > Cheques`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Contas Adm. Cartao` antes de escrever codigo.
-2. Comparar a tela/fluxo Vetus com a superficie financeira/cartoes atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar conciliacao real no Vetus.
+1. Revalidar artefatos Vetus read-only especificos de `Cheques` antes de escrever codigo.
+2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
+3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar baixa, compensacao ou cancelamento real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -442,11 +444,43 @@ Observacao de sequenciamento:
 - `Financeiro > Controles > Contas a Receber` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Contas a Pagar` foi alinhado em 2026-04-29.
 - `Financeiro > Controles > Pagamento Antecipado` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Controles > Contas Adm. Cartao`.
+- `Financeiro > Controles > Contas Adm. Cartao` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Cheques`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Controles > Contas Adm. Cartao
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/finance/card-accounts` foi convertido de placeholder para superficie Vetus-like de `Contas Adm. Cartao`;
+- aliases adicionados: `/financeiro/controles/contas-adm-cartao`, `/financeiro/controles/contas-adm-cartão`, `/contas-adm-cartao` e `/contas-adm-cartão`;
+- filtros alinhados ao dominio: `Cliente/Provedor`, `Data inicial`, `Data final`, `Provedor`, `Status` e `Conciliacao`;
+- acoes de tela `Gerar Conta Avulsa`, `Conciliar Em Lote` e `Transacoes de Cartao` foram posicionadas na superficie sem acionar escrita nova;
+- tabela alinhada com `Cliente`, `Data`, `Parcelas`, `Tipo`, `Valor`, `Liquido`, `Taxa`, `Status`, `Conciliacao` e `Abrir`;
+- a tela consome a API existente `/financial/reconciliation/cards`, usando `search`, `status`, `provider` e paginacao; taxas e liquido usam campos especificos quando presentes e ficam conservadores quando a API ainda nao captura taxa da operadora.
+
+Validacao:
+
+- teste focado de `CardAccountsPage`;
+- testes de rotas SPA e navegacao;
+- typecheck do SPA;
+- build do SPA;
+- rebuild Docker completo de API e SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/finance/card-accounts` 200, `/financeiro/controles/contas-adm-cartao` 200 e `/health` 200;
+- rota protegida `/financial/reconciliation/cards` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/finance/card-accounts` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Cheques`.
 
 ### 2026-04-29 - Financeiro > Controles > Pagamento Antecipado
 

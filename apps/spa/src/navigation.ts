@@ -218,7 +218,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Contas a Receber', path: '/billing', icon: '💵', keywords: ['receber', 'recebiveis', 'billing', 'contas a receber'] },
           { label: 'Contas a Pagar', path: '/finance/accounts-payable', icon: '💸', keywords: ['pagar', 'fornecedores', 'contas a pagar'] },
           { label: 'Pagamento Antecipado', path: '/finance/advance-payments', icon: '⏩', keywords: ['pagamento antecipado', 'adiantamento', 'credito cliente'] },
-          { label: 'Contas Adm. Cartão', path: '/finance/card-accounts', icon: '💳', keywords: ['contas cartao'] },
+          { label: 'Contas Adm. Cartão', path: '/finance/card-accounts', icon: '💳', keywords: ['contas cartao', 'contas adm cartao', 'administracao cartao', 'conciliacao cartao'] },
           { label: 'Cheques', path: '/finance/cheques', icon: '📄', keywords: ['cheques'] },
           { label: 'Fluxo de Caixa', path: '/finance/cash-flow', icon: '📈', keywords: ['fluxo de caixa', 'tesouraria'] },
           { label: 'Curva ABC Clientes', path: '/dashboards/curve-abc-clients', icon: '📊', keywords: ['curva abc clientes'] },
