@@ -425,8 +425,9 @@ Checkpoint em 2026-04-29:
 - `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Maquininha de Cartao > Pagamento Dashboard` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 - `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
+- `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Centros de Custo`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Cadastros > Custos e Despesas`.
 
 Justificativa:
 
@@ -453,14 +454,15 @@ Justificativa:
 - `Habilitar Pagamento` ja foi convertido em superficie operacional somente leitura de credenciamento, domicilio bancario, status de habilitacao e bloqueios por provedor no `cvg-his-v2`;
 - `Pagamento Dashboard` ja foi convertido em superficie operacional somente leitura de indicadores de captura, conciliacao, repasse previsto, provedor e unidade no `cvg-his-v2`;
 - `Formas de Pagamento` ja foi convertido em superficie operacional somente leitura de meios de pagamento, tipo, integracao, status e uso financeiro no `cvg-his-v2`;
-- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Centros de Custo`;
-- resolver `Centros de Custo` agora preserva a ordem Vetus depois de fechar `Formas de Pagamento`.
+- `Centros de Custo` ja foi convertido em superficie operacional somente leitura de classificacoes, responsaveis, status, rateio e uso financeiro no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Cadastros > Custos e Despesas`;
+- resolver `Custos e Despesas` agora preserva a ordem Vetus depois de fechar `Centros de Custo`.
 
-Escopo minimo de `Financeiro > Cadastros > Centros de Custo`:
+Escopo minimo de `Financeiro > Cadastros > Custos e Despesas`:
 
-1. Revalidar artefatos Vetus read-only especificos de `Centros de Custo` antes de escrever codigo.
+1. Revalidar artefatos Vetus read-only especificos de `Custos e Despesas` antes de escrever codigo.
 2. Comparar a tela/fluxo Vetus com a superficie financeira atual do `cvg-his-v2`.
-3. Alinhar rota, titulo, breadcrumbs, lista de centros, status, classificacao/rateio e acoes principais sem executar rateio real, baixa, conciliacao, repasse ou escrita real no Vetus.
+3. Alinhar rota, titulo, breadcrumbs, lista de despesas, fornecedor, centro de custo, vencimento, status e acoes principais sem executar baixa real, conciliacao, repasse ou escrita real no Vetus.
 4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
@@ -490,11 +492,55 @@ Observacao de sequenciamento:
 - `Financeiro > Maquininha de Cartao > Habilitar Pagamento` foi alinhado em 2026-04-29.
 - `Financeiro > Maquininha de Cartao > Pagamento Dashboard` foi alinhado em 2026-04-29.
 - `Financeiro > Cadastros > Formas de Pagamento` foi alinhado em 2026-04-29.
-- A proxima frente macro e `Financeiro > Cadastros > Centros de Custo`.
+- `Financeiro > Cadastros > Centros de Custo` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Cadastros > Custos e Despesas`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Cadastros > Centros de Custo
+
+Status: implementado, validado e publicado.
+
+Entrega:
+
+- `/cost-centers` virou superficie Vetus-like de `Centros de Custo`;
+- aliases adicionados para `/financeiro/cadastros/centros-de-custo`, `/financeiro/cadastros/centros-custo` e `/centros-de-custo`;
+- tela com breadcrumbs `Financeiro / Cadastros / Centros de Custo`;
+- filtros `Pesquisar`, `Classificacao` e `Status`;
+- KPIs `Registros`, `Operacionais`, `Administrativos` e `Rateios`;
+- tabela com `Centro`, `Classificacao`, `Responsavel`, `Status`, `Rateio`, `Uso` e `Proxima Acao`;
+- acoes `Novo Centro` bloqueada, `Custos e Despesas`, `Contas a Pagar`, `Fluxo de Caixa` e `Atualizar`;
+- consumo somente leitura da API existente `/cost-centers-catalog`.
+
+Restricoes mantidas:
+
+- sem criacao real de centro de custo;
+- sem edicao real de classificacao ou rateio;
+- sem remocao real de centro de custo;
+- sem baixa financeira;
+- sem conciliacao real;
+- sem repasse;
+- sem nova migration;
+- sem nova escrita financeira.
+
+Verificacao:
+
+- teste focado de `CostCentersPage`;
+- teste geral de cadastros financeiros;
+- testes de rotas SPA e navegacao;
+- typecheck/build do SPA;
+- rebuild Docker do SPA pelo compose v2 canonico.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-spa`;
+- containers API/SPA healthy;
+- smokes locais: `/cost-centers` 200, `/financeiro/cadastros/centros-de-custo` 200 e `/health` 200;
+- smokes publicos: SPA `/cost-centers` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Cadastros > Custos e Despesas`.
 
 ### 2026-04-29 - Financeiro > Cadastros > Formas de Pagamento
 

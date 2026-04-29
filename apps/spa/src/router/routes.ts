@@ -1541,6 +1541,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'cost-centers',
         name: 'CostCenters',
+        alias: [
+          '/financeiro/cadastros/centros-de-custo',
+          '/financeiro/cadastros/centros-custo',
+          '/centros-de-custo'
+        ],
         component: () => import('@/pages/finance/CostCentersPage.vue'),
         meta: {
           title: 'Centros de Custo',

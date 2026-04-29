@@ -1,193 +1,158 @@
 <template>
-  <div class="finance-catalog-page">
+  <div class="cost-centers-page">
     <AppPageHeader
       title="Centros de Custo"
       :breadcrumbs="['Financeiro', 'Cadastros', 'Centros de Custo']"
-      subtitle="Fonte backend compartilhada para rateio financeiro, leitura gerencial e reaproveitamento em Custos e Despesas"
-    >
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
-        <DsButton variant="primary" @click="startCreate">Novo Centro</DsButton>
-      </template>
-    </AppPageHeader>
+      subtitle="Cadastro operacional de classificações, responsáveis e rateios financeiros"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="{ label: 'Novo Centro', disabled: true }"
+    />
 
     <DsAlert variant="info">
-      Superfície conectada ao backend compartilhado de <strong>Centros de Custo</strong>, agora com CRUD administrável e paginação server-side.
+      Superfície somente leitura para preservar a ordem Vetus de cadastros financeiros. Criar centro, editar rateio,
+      remover classificação e impactar baixa financeira seguem bloqueados até contrato auditável.
     </DsAlert>
 
-    <section class="catalog-kpis">
-      <DsStatCard :label="`${pagination.totalItems} centro(s)`" value="" icon="📊" />
-      <DsStatCard :label="`${operationalCount} operacional(is)`" value="" icon="🏥" />
-      <DsStatCard :label="`${administrativeCount} administrativo(s)`" value="" icon="🧾" />
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
+
+    <form class="cost-centers-filters" aria-label="Filtros de centros de custo" @submit.prevent>
+      <DsInput
+        id="cost-centers-search"
+        v-model="filters.search"
+        label="Pesquisar"
+        placeholder="Buscar por centro, código, responsável ou uso"
+        type="search"
+      />
+      <DsInput id="cost-centers-kind" v-model="filters.kind" label="Classificação" type="select">
+        <option value="">Todas</option>
+        <option value="operational">Operacional</option>
+        <option value="administrative">Administrativo</option>
+      </DsInput>
+      <DsInput id="cost-centers-status" v-model="filters.status" label="Status" type="select">
+        <option value="">Todos</option>
+        <option value="active">Ativo</option>
+        <option value="inactive">Inativo</option>
+      </DsInput>
+    </form>
+
+    <section class="cost-centers-summary-grid" aria-label="Resumo de centros de custo">
+      <DsStatCard :label="`${visibleCostCenters.length} centro(s)`" value="Registros" />
+      <DsStatCard :label="`${operationalCount} operacional(is)`" value="Operacionais" />
+      <DsStatCard :label="`${administrativeCount} administrativo(s)`" value="Administrativos" />
+      <DsStatCard :label="`${allocationCount} com rateio`" value="Rateios" />
     </section>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
-    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">{{ successMessage }}</DsAlert>
+    <section class="cost-centers-actions" aria-label="Ações de centros de custo">
+      <DsButton variant="primary" disabled>Novo Centro</DsButton>
+      <DsButton variant="secondary" tag="a" to="/expenses">Custos e Despesas</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/accounts-payable">Contas a Pagar</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/cash-flow">Fluxo de Caixa</DsButton>
+      <DsButton variant="ghost" type="button" :loading="loading" @click="reload">Atualizar</DsButton>
+    </section>
 
-    <DsCard title="Linha do tempo gerencial dos Centros de Custo">
-      <div class="catalog-toolbar">
-        <input v-model="auditFilters.correlationId" type="search" placeholder="Filtrar por correlationId da trilha" class="catalog-search" />
-      </div>
-
-      <div v-if="groupedAuditTrails.length === 0" class="catalog-empty">Nenhuma trilha gerencial encontrada.</div>
-
-      <div v-else class="audit-trail-grid">
-        <details v-for="trail in groupedAuditTrails" :key="trail.correlationId" class="audit-trail-card" open>
-          <summary class="audit-trail-card__head">
-            <strong>{{ trail.correlationId }}</strong>
-            <DsButton tag="a" :to="trail.href" variant="secondary" size="sm">Abrir Auditoria</DsButton>
-          </summary>
-          <div class="audit-trail-card__events">
-            <div v-for="event in trail.events" :key="event.eventId" class="audit-trail-card__event">
-              <div class="audit-trail-card__meta">
-                <span>{{ event.action }}</span>
-                <DsBadge variant="info" size="sm">{{ event.entityId }}</DsBadge>
-              </div>
-              <p>{{ event.payloadSummary }}</p>
-            </div>
-          </div>
-        </details>
-      </div>
-    </DsCard>
-
-    <DsCard v-if="showForm" :title="editingCode ? 'Editar centro de custo' : 'Novo centro de custo'">
-      <form class="creation-form" @submit.prevent="submitCostCenter">
-        <input v-model="form.code" type="text" placeholder="Código do centro" class="catalog-search" :disabled="Boolean(editingCode)" />
-        <input v-model="form.name" type="text" placeholder="Nome do centro" class="catalog-search" />
-        <select v-model="form.kind" aria-label="Tipo do centro de custo" class="catalog-search">
-          <option value="">Selecione o tipo</option>
-          <option value="Operacional">Operacional</option>
-          <option value="Administrativo">Administrativo</option>
-        </select>
-        <input v-model="form.owner" type="text" placeholder="Responsável pelo centro" class="catalog-search" />
-        <input v-model="form.description" type="text" placeholder="Descrição operacional do centro" class="catalog-search" />
-        <div class="catalog-toolbar__actions catalog-toolbar__actions--bottom">
-          <DsButton type="submit" variant="primary" :loading="submitting">{{ editingCode ? 'Salvar alterações' : 'Salvar centro' }}</DsButton>
-          <DsButton variant="ghost" @click="cancelForm">Cancelar</DsButton>
-        </div>
-      </form>
-    </DsCard>
-
-    <DsCard title="Mapa inicial de centros">
-      <div class="catalog-pagination" v-if="costCenters.length > 0">
-        <span class="catalog-inline-hint">Página {{ pagination.page }} de {{ pagination.totalPages }}</span>
-        <div class="catalog-toolbar__actions">
-          <DsButton variant="ghost" size="sm" :disabled="pagination.page <= 1 || loading" @click="goToPage(pagination.page - 1)">Página anterior</DsButton>
-          <DsButton variant="ghost" size="sm" :disabled="pagination.page >= pagination.totalPages || loading" @click="goToPage(pagination.page + 1)">Próxima página</DsButton>
-        </div>
-      </div>
-
-      <div class="catalog-grid">
-        <article v-for="center in costCenters" :key="center.code" class="catalog-item">
-          <div class="catalog-item__head">
-            <strong>{{ center.name }}</strong>
-            <span class="catalog-item__badge">{{ center.kind }}</span>
-          </div>
-          <p class="catalog-item__meta">Código: {{ center.code }} · Responsável: {{ center.owner }}</p>
-          <p class="catalog-item__hint">{{ center.description }}</p>
-          <div class="catalog-toolbar__actions catalog-toolbar__actions--bottom">
-            <DsButton variant="secondary" size="sm" @click="startEdit(center)">Editar</DsButton>
-            <DsButton variant="ghost" size="sm" @click="removeCostCenter(center.code)">Remover</DsButton>
-          </div>
-        </article>
-      </div>
-    </DsCard>
+    <DataTable
+      :columns="columns"
+      :rows="visibleRows"
+      :loading="loading"
+      empty-icon="📊"
+      empty-title="Nenhum centro de custo encontrado"
+      empty-description="Ajuste os filtros para visualizar as classificações financeiras cadastradas."
+      caption="Centros de custo"
+      row-key-field="code"
+      variant="hoverable"
+    >
+      <template #cell-center="{ row }">
+        <strong>{{ costCenter(row).name }}</strong>
+        <small>{{ costCenter(row).code }}</small>
+      </template>
+      <template #cell-kind="{ row }">
+        <StatusBadge :label="kindLabel(costCenter(row).kindKey)" variant="info" />
+      </template>
+      <template #cell-owner="{ row }">
+        <span>{{ costCenter(row).owner }}</span>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge
+          :label="costCenter(row).status === 'active' ? 'Ativo' : 'Inativo'"
+          :variant="costCenter(row).status === 'active' ? 'success' : 'neutral'"
+        />
+      </template>
+      <template #cell-allocation="{ row }">
+        <span>{{ costCenter(row).allocation }}</span>
+      </template>
+      <template #cell-usage="{ row }">
+        <span>{{ costCenter(row).usage }}</span>
+      </template>
+      <template #cell-next="{ row }">
+        <span>{{ costCenter(row).nextAction }}</span>
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import DataTable from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
-import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
-import { auditService } from '@/services/audit';
-import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 import { costCentersCatalogService, type CostCenterCatalogItem } from '@/services/costCentersCatalog';
 
-const route = useRoute();
-const costCenters = ref<CostCenterCatalogItem[]>([]);
-const financeAuditEvents = ref<AuditEventSummary[]>([]);
+type CostCenterKind = 'operational' | 'administrative';
+type CostCenterStatus = 'active' | 'inactive';
+
+interface CostCenterView extends CostCenterCatalogItem {
+  kindKey: CostCenterKind;
+  status: CostCenterStatus;
+  allocation: string;
+  usage: string;
+  nextAction: string;
+}
+
+const columns: DataTableColumn[] = [
+  { key: 'center', label: 'Centro' },
+  { key: 'kind', label: 'Classificação' },
+  { key: 'owner', label: 'Responsável' },
+  { key: 'status', label: 'Status' },
+  { key: 'allocation', label: 'Rateio' },
+  { key: 'usage', label: 'Uso' },
+  { key: 'next', label: 'Próxima Ação' }
+];
+
+const costCenters = ref<CostCenterView[]>([]);
 const loading = ref(false);
-const submitting = ref(false);
 const error = ref('');
-const successMessage = ref('');
-const showForm = ref(true);
-const editingCode = ref<string | null>(null);
-const form = reactive({ code: '', name: '', kind: '', owner: '', description: '' });
-const auditFilters = reactive({ correlationId: '' });
-const pagination = ref({ page: 1, pageSize: 2, totalItems: 0, totalPages: 1, sort: 'name', order: 'asc' as 'asc' | 'desc' });
-
-const operationalCount = computed(() => costCenters.value.filter((item) => item.kind === 'Operacional').length);
-const administrativeCount = computed(() => costCenters.value.filter((item) => item.kind === 'Administrativo').length);
-const filteredFinanceAuditEvents = computed(() => {
-  const correlationNeedle = auditFilters.correlationId.trim().toLowerCase();
-  return financeAuditEvents.value.filter((event) => !correlationNeedle || event.correlationId.toLowerCase().includes(correlationNeedle));
+const filters = reactive({
+  search: '',
+  kind: '',
+  status: ''
 });
-const groupedAuditTrails = computed(() => {
-  const groups = new Map<string, AuditEventSummary[]>();
-  for (const event of filteredFinanceAuditEvents.value) {
-    const key = event.correlationId || 'sem-correlation-id';
-    groups.set(key, [...(groups.get(key) ?? []), event]);
+
+const visibleCostCenters = computed(() => costCenters.value.filter(matchesFilters));
+const visibleRows = computed(() => visibleCostCenters.value as unknown as DataTableRow[]);
+const operationalCount = computed(() => visibleCostCenters.value.filter((item) => item.kindKey === 'operational').length);
+const administrativeCount = computed(() => visibleCostCenters.value.filter((item) => item.kindKey === 'administrative').length);
+const allocationCount = computed(() => visibleCostCenters.value.filter((item) => item.allocation.length > 0).length);
+const headerSecondaryActions = computed(() => [
+  {
+    key: 'refresh-cost-centers',
+    label: 'Atualizar',
+    variant: 'secondary' as const,
+    loading: loading.value,
+    onClick: reload
   }
-  return [...groups.entries()].map(([correlationId, events]) => ({
-    correlationId,
-    events: [...events].sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()),
-    href: `/audit?q=${encodeURIComponent('cost center')}&correlationId=${encodeURIComponent(correlationId)}&entity=${encodeURIComponent(events[0]?.entityId ?? '')}&origin=${encodeURIComponent('/cost-centers')}&originLabel=${encodeURIComponent('Voltar para Centros de Custo')}`
-  }));
-});
+]);
 
-function resetForm() {
-  form.code = '';
-  form.name = '';
-  form.kind = '';
-  form.owner = '';
-  form.description = '';
-  editingCode.value = null;
-}
-
-function startCreate() {
-  resetForm();
-  showForm.value = true;
-}
-
-function startEdit(center: CostCenterCatalogItem) {
-  form.code = center.code;
-  form.name = center.name;
-  form.kind = center.kind;
-  form.owner = center.owner;
-  form.description = center.description;
-  editingCode.value = center.code;
-  showForm.value = true;
-}
-
-function cancelForm() {
-  resetForm();
-  showForm.value = false;
-}
-
-async function loadCostCenters(page = pagination.value.page) {
+async function loadCostCenters() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await costCentersCatalogService.list({
-      page,
-      pageSize: pagination.value.pageSize,
-      sort: pagination.value.sort as 'name' | 'code' | 'kind' | 'owner',
-      order: pagination.value.order
-    });
-    costCenters.value = response.items ?? [];
-    pagination.value = {
-      page: response.page,
-      pageSize: response.pageSize,
-      totalItems: response.totalItems,
-      totalPages: response.totalPages,
-      sort: response.sort,
-      order: response.order as 'asc' | 'desc'
-    };
+    const response = await costCentersCatalogService.list({ page: 1, pageSize: 100, sort: 'name', order: 'asc' });
+    costCenters.value = (response.items ?? []).map(toCostCenterView);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Falha ao carregar centros de custo';
     costCenters.value = [];
@@ -196,195 +161,107 @@ async function loadCostCenters(page = pagination.value.page) {
   }
 }
 
-async function loadFinanceAuditTrail() {
-  try {
-    const events = await auditService.listEvents({
-      module: 'billing',
-      entityTypes: ['cost-center-catalog'],
-      limit: 50
-    });
-    financeAuditEvents.value = events
-      .filter((event) => event.module === 'billing' && event.entityType === 'cost-center-catalog')
-      .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime());
-  } catch {
-    financeAuditEvents.value = [];
-  }
-}
-
 async function reload() {
-  await Promise.all([loadCostCenters(pagination.value.page), loadFinanceAuditTrail()]);
+  await loadCostCenters();
 }
 
-async function goToPage(page: number) {
-  await loadCostCenters(page);
+function matchesFilters(item: CostCenterView): boolean {
+  if (filters.kind && item.kindKey !== filters.kind) return false;
+  if (filters.status && item.status !== filters.status) return false;
+  const search = normalize(filters.search);
+  if (!search) return true;
+  return [
+    item.code,
+    item.name,
+    item.kind,
+    item.owner,
+    item.description,
+    item.allocation,
+    item.usage,
+    item.nextAction
+  ].some((value) => normalize(value).includes(search));
 }
 
-async function submitCostCenter() {
-  error.value = '';
-  successMessage.value = '';
-  if (!form.code.trim() || !form.name.trim() || !form.kind.trim() || !form.owner.trim() || !form.description.trim()) {
-    error.value = 'Código, nome, tipo, responsável e descrição são obrigatórios';
-    return;
-  }
-
-  submitting.value = true;
-  try {
-    if (editingCode.value) {
-      const updated = await costCentersCatalogService.update(editingCode.value, {
-        code: form.code,
-        name: form.name,
-        kind: form.kind,
-        owner: form.owner,
-        description: form.description
-      });
-      costCenters.value = costCenters.value.map((item) => (item.code === editingCode.value ? updated : item));
-      successMessage.value = 'Registro atualizado com sucesso';
-    } else {
-      const created = await costCentersCatalogService.create({
-        code: form.code,
-        name: form.name,
-        kind: form.kind,
-        owner: form.owner,
-        description: form.description
-      });
-      costCenters.value = [created, ...costCenters.value].slice(0, pagination.value.pageSize);
-      pagination.value.totalItems += 1;
-      pagination.value.totalPages = Math.max(1, Math.ceil(pagination.value.totalItems / pagination.value.pageSize));
-      successMessage.value = 'Registro criado com sucesso';
-    }
-    resetForm();
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao salvar centro de custo';
-  } finally {
-    submitting.value = false;
-  }
+function toCostCenterView(item: CostCenterCatalogItem): CostCenterView {
+  const kindKey = normalizeKind(item.kind);
+  return {
+    ...item,
+    kindKey,
+    status: 'active',
+    allocation: kindKey === 'operational' ? 'Rateio assistencial' : 'Rateio administrativo',
+    usage: kindKey === 'operational' ? 'Consultas, procedimentos e jornada clínica' : 'Compras, estrutura e backoffice',
+    nextAction: kindKey === 'operational' ? 'Conferir em Custos e Despesas' : 'Acompanhar Contas a Pagar'
+  };
 }
 
-async function removeCostCenter(code: string) {
-  error.value = '';
-  successMessage.value = '';
-  try {
-    await costCentersCatalogService.remove(code);
-    costCenters.value = costCenters.value.filter((item) => item.code !== code);
-    pagination.value.totalItems = Math.max(0, pagination.value.totalItems - 1);
-    pagination.value.totalPages = Math.max(1, Math.ceil(Math.max(pagination.value.totalItems, 1) / pagination.value.pageSize));
-    successMessage.value = 'Registro removido com sucesso';
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Falha ao remover centro de custo';
-  }
+function normalizeKind(kind: string): CostCenterKind {
+  return normalize(kind).includes('operacional') ? 'operational' : 'administrative';
+}
+
+function kindLabel(kind: CostCenterKind): string {
+  return kind === 'operational' ? 'Operacional' : 'Administrativo';
+}
+
+function costCenter(row: DataTableRow): CostCenterView {
+  return row as unknown as CostCenterView;
+}
+
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 onMounted(() => {
-  auditFilters.correlationId = typeof route.query.correlationId === 'string' ? route.query.correlationId : '';
-  void Promise.all([loadCostCenters(), loadFinanceAuditTrail()]);
+  void loadCostCenters();
 });
 </script>
 
 <style scoped>
-.finance-catalog-page {
+.cost-centers-page {
   display: grid;
   gap: 16px;
 }
-.catalog-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-.creation-form {
+
+.cost-centers-filters {
+  align-items: end;
   display: grid;
   gap: 12px;
+  grid-template-columns: 2fr 1fr 1fr;
 }
-.catalog-search {
-  width: 100%;
-  min-height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #dbe3ef);
-  padding: 0 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-pagination {
-  display: flex;
-  justify-content: space-between;
+
+.cost-centers-summary-grid {
+  display: grid;
   gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.catalog-toolbar__actions {
+
+.cost-centers-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.catalog-toolbar__actions--bottom {
-  margin-top: 12px;
-}
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-.audit-trail-grid {
-  display: grid;
-  gap: 12px;
-}
-.audit-trail-card {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px;
-  background: linear-gradient(180deg, var(--color-surface, #fff), var(--color-bg-subtle, #f8fafc));
-}
-.audit-trail-card__head,
-.audit-trail-card__meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.audit-trail-card__head {
-  list-style: none;
-  cursor: pointer;
-  padding: 0;
-}
-.audit-trail-card__head::-webkit-details-marker {
-  display: none;
-}
-.audit-trail-card__events {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-}
-.audit-trail-card__event p {
-  margin: 6px 0 0;
-  color: #334155;
-}
-.catalog-item {
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--color-surface, #fff);
-}
-.catalog-item__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-.catalog-item__badge {
+
+.cost-centers-page small {
+  color: var(--color-text-secondary, #64748b);
+  display: block;
   font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  margin-top: 3px;
 }
-.catalog-item__meta {
-  margin: 10px 0 6px;
-  font-size: 13px;
-  color: #475569;
+
+@media (max-width: 1100px) {
+  .cost-centers-filters,
+  .cost-centers-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.catalog-item__hint,
-.catalog-inline-hint {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
+
+@media (max-width: 720px) {
+  .cost-centers-filters,
+  .cost-centers-summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
