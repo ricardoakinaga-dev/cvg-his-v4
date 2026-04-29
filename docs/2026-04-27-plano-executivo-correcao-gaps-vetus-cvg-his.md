@@ -399,7 +399,7 @@ Antes de publicar qualquer correcao desse roadmap:
 
 ## 10. Proxima acao recomendada
 
-Checkpoint em 2026-04-28:
+Checkpoint em 2026-04-29:
 
 - P0 foi implementado em escopo focado e publicado no compose v2 existente.
 - P1 foi implementado em escopo focado e publicado no compose v2 existente.
@@ -412,8 +412,9 @@ Checkpoint em 2026-04-28:
 - P3-02 foi implementado em escopo focado para padronizar estados vazios no cockpit do animal.
 - P3-03 foi implementado em escopo focado para reduzir densidade visual da pagina do paciente.
 - P3-04 foi implementado em escopo focado para acessibilidade e teclado nos acordeoes.
+- P3-05 foi implementado em escopo documental para consolidar o relatorio semanal de compatibilidade Vetus vs CVG-HIS.
 
-Proxima acao recomendada: executar `P3-05 - Relatorio semanal de notas de compatibilidade`.
+Proxima acao recomendada: retomar a macro fiscal Vetus em `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 Justificativa:
 
@@ -428,31 +429,54 @@ Justificativa:
 - a primeira dobra do paciente agora prioriza identidade compacta, riscos clinicos, tutor/acoes essenciais e resumo dos modulos;
 - observacoes gerais e detalhes cadastrais ficaram recolhidos em `Ver mais Informacoes do Animal`, reduzindo texto aberto sem perder acesso;
 - os acordeoes do cockpit do animal agora possuem `aria-expanded`, `aria-controls`, paineis `region`/`aria-labelledby`, foco visivel e navegacao por setas/Home/End;
-- a proxima lacuna operacional passa a ser consolidar notas de compatibilidade Vetus vs CVG por modulo.
+- o relatorio semanal de compatibilidade registra score consolidado de 86/100, score clinico central de 91/100 e pendencias por categoria sem transcrever dados reais do Vetus;
+- P3 esta fechado na ordem operacional definida, entao a proxima frente deve voltar para a trilha fiscal macro ja reservada pelo responsavel.
 
-Escopo minimo de `P3-05`:
+Escopo minimo de `Estoque > Configuracoes Fiscais > Tabela NFS-e`:
 
-1. Consolidar os GAPs ja implementados e pendentes por modulo Vetus.
-2. Definir score Vetus vs CVG por dominio operacional, com criterio simples e auditavel.
-3. Destacar riscos, pendencias e proxima acao recomendada por frente.
-4. Registrar o relatorio semanal em documento versionado, sem copiar dados reais do Vetus.
-5. Publicar codigo somente se houver componente/tela alterada; caso contrario, validar por revisao documental e diff.
+1. Revalidar os artefatos Vetus read-only de `Tabela NFS-e`, incluindo screenshot e guia fiscal existentes.
+2. Comparar a superficie Vetus com `/fiscal/nfse`, que ja possui backoffice inicial de layouts e contratos API.
+3. Ajustar a tela principal para paridade Vetus-like se a tela atual estiver mais tecnica do que o cadastro observado.
+4. Preservar contratos fiscais existentes e nao executar emissao real de NFS-e durante observacao.
+5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
-Criterio de aceite de `P3-05`:
+Criterio de aceite de `Tabela NFS-e`:
 
-- relatorio lista modulos Vetus avaliados, status CVG, score e justificativa curta;
-- pendencias ficam separadas por operacional, fiscal, financeiro, clinico e UX/QA;
-- proxima acao recomendada continua alinhada com a ordem definida pelo responsavel;
-- nenhum dado pessoal real do Vetus e transcrito no relatorio.
+- caminho `Estoque > Configuracoes Fiscais > Tabela NFS-e` fica mapeado para rota CVG-HIS coerente;
+- tela principal mostra busca/listagem/estado vazio e acao principal equivalentes ao Vetus ou documenta claramente a diferenca;
+- API fiscal, OpenAPI e testes permanecem verdes;
+- publicacao usa somente `docker-compose.v2.yml` e servicos existentes;
+- nenhuma acao fiscal real irreversivel e executada durante observacao ou smoke.
 
 Observacao de sequenciamento:
 
-- Este plano de GAPs continua agora por P3.
-- O workflow macro Vetus fiscal deve retomar por `Estoque > Configuracoes Fiscais > Tabela NFS-e`, conforme sequenciamento definido pelo responsavel. Isso nao invalida o P2; apenas separa a correcao de GAP clinico/operacional da trilha macro fiscal.
+- A frente P3 operacional foi fechada com P3-05.
+- O workflow macro Vetus fiscal deve retomar agora por `Estoque > Configuracoes Fiscais > Tabela NFS-e`, conforme sequenciamento definido pelo responsavel.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - P3-05 Relatorio semanal de notas de compatibilidade
+
+Status: implementado e validado como frente documental.
+
+Implementacao:
+
+- criado `docs/2026-04-29-relatorio-semanal-compatibilidade-vetus-cvg-his.md`;
+- relatorio consolidou score por dimensao e por navbar Vetus;
+- pendencias foram separadas por operacional, fiscal, financeiro, clinico e UX/QA;
+- proxima acao recomendada foi alinhada com a retomada macro fiscal em `Estoque > Configuracoes Fiscais > Tabela NFS-e`;
+- nenhum dado pessoal real do Vetus foi transcrito.
+
+Validacao:
+
+- revisao dos documentos vivos de workflow, plano de GAPs e auditoria Vetus Enterprise;
+- contagem atual de rotas SPA com `placeholderRoute(...)`, separando helper de chamadas diretas;
+- verificacao de rotas e contratos existentes de NFS-e antes de recomendar a proxima frente;
+- `git diff --check` nos documentos alterados.
+
+Proxima frente recomendada: `Estoque > Configuracoes Fiscais > Tabela NFS-e`.
 
 ### 2026-04-29 - P3-04 Acessibilidade e teclado nos acordeoes
 
