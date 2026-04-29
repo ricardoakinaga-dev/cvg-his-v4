@@ -1302,11 +1302,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'cash',
         name: 'Cash',
-        alias: ['/cash-register'],
+        alias: ['/cash-register', '/financeiro/gaveta', '/finance/gaveta'],
         component: () => import('@/pages/finance/CashPage.vue'),
         meta: {
-          title: 'Caixa',
-          breadcrumb: 'Caixa',
+          title: 'Gaveta',
+          breadcrumb: 'Gaveta',
           breadcrumbParent: 'Financeiro',
           icon: '🧾'
         }

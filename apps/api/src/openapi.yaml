@@ -2087,6 +2087,81 @@ paths:
                     items:
                       $ref: '#/components/schemas/BillingRecord'
 
+  /cash-register/dashboard:
+    get:
+      operationId: getCashDrawerDashboard
+      summary: Get Vetus-like cash drawer dashboard
+      tags: [Financial]
+      responses:
+        '200':
+          description: Cash drawer dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashDrawerDashboardResponse'
+
+  /cash-register/open:
+    post:
+      operationId: openCashRegister
+      summary: Open cash drawer
+      tags: [Financial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCashRegisterRequest'
+      responses:
+        '201':
+          description: Cash drawer opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashRegister'
+
+  /cash-register/movements:
+    post:
+      operationId: createCashMovement
+      summary: Register cash drawer entry or withdrawal
+      tags: [Financial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCashMovementRequest'
+      responses:
+        '201':
+          description: Cash movement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashMovement'
+
+  /cash-register/close:
+    post:
+      operationId: closeCashRegister
+      summary: Close cash drawer
+      tags: [Financial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseCashRegisterRequest'
+      responses:
+        '200':
+          description: Cash drawer closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  register:
+                    $ref: '#/components/schemas/CashRegister'
+                  difference:
+                    type: number
+
   /billing/{encounterId}/items:
     get:
       operationId: listBillingItems
@@ -8460,6 +8535,203 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    CashMovementType:
+      type: string
+      enum: [opening, closing, payment, supply, withdrawal, adjustment]
+
+    CashRegister:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        openedByUserId:
+          type: string
+        closedByUserId:
+          type: string
+          nullable: true
+        openingAmount:
+          type: number
+        closingAmount:
+          type: number
+          nullable: true
+        expectedClosingAmount:
+          type: number
+          nullable: true
+        difference:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum: [open, closed]
+        openedAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CashMovement:
+      type: object
+      properties:
+        id:
+          type: string
+        cashRegisterId:
+          type: string
+        accountId:
+          type: string
+        movementType:
+          $ref: '#/components/schemas/CashMovementType'
+        amount:
+          type: number
+        runningBalance:
+          type: number
+        reference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CashDrawerDashboardResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        openRegister:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum: [open, closed]
+            openedAt:
+              type: string
+              format: date-time
+            openingAmount:
+              type: number
+            runningBalance:
+              type: number
+            notes:
+              type: string
+              nullable: true
+        lastClosedRegister:
+          $ref: '#/components/schemas/CashClosedRegister'
+        totals:
+          type: object
+          properties:
+            totalEntradas:
+              type: number
+            totalSaidas:
+              type: number
+            totalEmGaveta:
+              type: number
+        byPaymentMethod:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashPaymentMethod'
+        movements:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashDashboardMovement'
+        recentRegisters:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashClosedRegister'
+
+    CashClosedRegister:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        openedAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closingAmount:
+          type: number
+          nullable: true
+        expectedClosingAmount:
+          type: number
+          nullable: true
+        difference:
+          type: number
+          nullable: true
+
+    CashPaymentMethod:
+      type: object
+      properties:
+        method:
+          type: string
+        amount:
+          type: number
+        count:
+          type: integer
+
+    CashDashboardMovement:
+      allOf:
+        - $ref: '#/components/schemas/CashMovement'
+        - type: object
+          properties:
+            movementTypeLabel:
+              type: string
+            paymentMethod:
+              type: string
+
+    OpenCashRegisterRequest:
+      type: object
+      required: [openingAmount]
+      properties:
+        openingAmount:
+          type: number
+        notes:
+          type: string
+          nullable: true
+
+    CreateCashMovementRequest:
+      type: object
+      required: [movementType, amount]
+      properties:
+        movementType:
+          type: string
+          enum: [supply, withdrawal, adjustment]
+        amount:
+          type: number
+        reference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CloseCashRegisterRequest:
+      type: object
+      required: [closingAmount]
+      properties:
+        closingAmount:
+          type: number
+        notes:
+          type: string
+          nullable: true
 
     CreateBillingEstimateRequest:
       type: object

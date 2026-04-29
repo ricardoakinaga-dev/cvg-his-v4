@@ -39,6 +39,7 @@ test('CashService closeRegister closes with difference', async () => {
   await service.recordPaymentMovement(reg.id, ACCOUNT_ID, 50, 'ref-1', 'Payment', USER_ID);
   const result = await service.closeRegister(reg.id, USER_ID, { closingAmount: 140 });
   assert.equal(result.register.status, 'closed');
+  assert.equal(result.register.expectedClosingAmount, 150);
   assert.equal(result.difference, -10);
 });
 

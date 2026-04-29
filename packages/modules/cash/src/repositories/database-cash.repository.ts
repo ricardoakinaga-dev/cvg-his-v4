@@ -37,6 +37,7 @@ export interface CashRepository {
   closeRegister(
     id: string,
     closingAmount: number,
+    expectedClosingAmount: number,
     difference: number,
     closedByUserId: UserId,
     closedAt: string,
@@ -82,6 +83,7 @@ export class DatabaseCashRepository implements CashRepository {
   async closeRegister(
     id: string,
     closingAmount: number,
+    expectedClosingAmount: number,
     difference: number,
     closedByUserId: UserId,
     closedAt: string,
@@ -93,7 +95,7 @@ export class DatabaseCashRepository implements CashRepository {
         [
           id,
           closingAmount.toString(),
-          closingAmount.toString(),
+          expectedClosingAmount.toString(),
           difference.toString(),
           closedByUserId,
           new Date(closedAt),

@@ -78,6 +78,7 @@ import { handlePaymentsRoutes } from './routes/payments-routes.js';
 import { handleEmailRoutes } from './routes/email-routes.js';
 import { handleSmsRoutes } from './routes/sms-routes.js';
 import { handleFinancialRoutes } from './routes/financial-routes.js';
+import { handleCashRoutes } from './routes/cash-routes.js';
 import { handleSchedulingRoutes } from './routes/scheduling-routes.js';
 import { handleAgendaConfigRoutes } from './routes/agenda-config-routes.js';
 import { handleGoogleCalendarRoutes } from './routes/google-calendar-routes.js';
@@ -4349,6 +4350,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           audit,
           pixTransactions,
           cardTransactions,
+          requirePrincipal
+        })) { return; }
+
+        if (await handleCashRoutes(pathname, request, response, correlationId, {
+          cash,
+          audit,
           requirePrincipal
         })) { return; }
 

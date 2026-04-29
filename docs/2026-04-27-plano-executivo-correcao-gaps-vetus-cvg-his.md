@@ -405,24 +405,25 @@ Checkpoint em 2026-04-29:
 - `Tabela NFS-e`, `Matriz Estado ICMS` e `Tabela IBS/CBS` foram alinhadas na ordem macro fiscal Vetus.
 - A trilha documentada de `Estoque > Configuracoes Fiscais` esta fechada ate o ultimo item listado no navbar.
 - O navbar `Financeiro` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
+- `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29, validado e publicado no compose v2 existente.
 
-Proxima acao recomendada: implementar a paridade de `Financeiro > Gaveta > Gaveta`.
+Proxima acao recomendada: implementar a paridade de `Financeiro > Controles > Contas a Receber`.
 
 Justificativa:
 
 - a ordem de `Estoque > Configuracoes Fiscais` documentada termina em `Tabela IBS/CBS`;
 - `Tabela IBS/CBS` agora possui rota, aliases, tela Vetus-like, API, OpenAPI, persistencia duravel, testes e publicacao;
 - a ordem revalidada de `Financeiro` comeca por `Gaveta > Gaveta`;
-- a navegacao do `cvg-his-v2` ja acompanha a estrutura principal de Financeiro, mas `/cash` ainda esta centrada em orcamentos/PIX;
-- a `Gaveta` observada no Vetus e uma rotina operacional de caixa, com ultimo fechamento, entradas, saidas, total em gaveta, fechamento, resumo por forma de pagamento e extrato;
-- resolver `Gaveta` primeiro preserva a ordem Vetus antes de avancar para `Contas a Receber`.
+- a `Gaveta` observada no Vetus ja foi convertida em superficie operacional de caixa no `cvg-his-v2`;
+- a proxima divergencia pela ordem macro revalidada esta em `Controles > Contas a Receber`;
+- resolver `Contas a Receber` agora preserva a ordem Vetus depois da gaveta e antes de `Contas a Pagar`.
 
-Escopo minimo de `Financeiro > Gaveta > Gaveta`:
+Escopo minimo de `Financeiro > Controles > Contas a Receber`:
 
-1. Manter a rota principal `/cash` e adicionar alias Vetus quando fizer sentido, como `/financeiro/gaveta`.
-2. Trocar a superficie centrada em orcamento/PIX por uma tela de gaveta com `Ultimo Fechamento`, `Total de Entradas`, `Total de Saidas`, `Total em Gaveta`, `Entrada de Gaveta`, `Saida de Gaveta`, `Fechar Gaveta`, `Gaveta por Forma de Pagamento` e `Extrato de Movimentacoes da Gaveta`.
-3. Reaproveitar fontes financeiras existentes quando possivel, sem inventar baixa real ou fechamento irreversivel.
-4. Se houver escrita, criar contrato/API/auditoria/persistencia para eventos de gaveta de forma reversivel e testada.
+1. Revalidar artefatos Vetus read-only especificos de `Contas a Receber` antes de escrever codigo.
+2. Comparar a tela/fluxo Vetus com a superficie atual de billing/recebiveis do `cvg-his-v2`.
+3. Alinhar rota, titulo, breadcrumbs, filtros, listagem, detalhe e acoes principais sem executar baixa real no Vetus.
+4. Reaproveitar contratos financeiros existentes quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build, OpenAPI quando aplicavel e smoke publicado.
 
 Observacao de sequenciamento:
@@ -431,11 +432,45 @@ Observacao de sequenciamento:
 - `Matriz Estado ICMS` foi alinhada em 2026-04-29.
 - `Tabela IBS/CBS` foi alinhada em 2026-04-29.
 - A ordem do navbar `Financeiro` foi revalidada em 2026-04-29.
-- A proxima frente macro e `Financeiro > Gaveta > Gaveta`.
+- `Financeiro > Gaveta > Gaveta` foi alinhado em 2026-04-29.
+- A proxima frente macro e `Financeiro > Controles > Contas a Receber`.
 
 ---
 
 ## 11. Log de execucao
+
+### 2026-04-29 - Financeiro > Gaveta > Gaveta
+
+Status: implementado, validado e publicado.
+
+Escopo entregue:
+
+- `/cash` foi convertido de painel de orcamentos/PIX para superficie Vetus-like de `Gaveta`;
+- aliases adicionados: `/cash-register`, `/financeiro/gaveta` e `/finance/gaveta`;
+- a tela passou a exibir `Ultimo Fechamento`, `Total de Entradas`, `Total de Saidas`, `Total em Gaveta`, `Entrada de Gaveta`, `Saida de Gaveta`, `Fechar Gaveta`, `Gaveta por Forma de Pagamento` e `Extrato de Movimentacoes da Gaveta`;
+- API exposta em `/cash-register/dashboard`, `/cash-register/open`, `/cash-register/movements` e `/cash-register/close`, com aliases PT-BR de gaveta;
+- escritas usam permissao financeira, trilha de auditoria e persistencia existente em `cash_registers` e `cash_movements`;
+- fechamento corrigido para preservar `expected_closing_amount` como saldo esperado e manter `closing_amount` como valor contado.
+
+Validacao:
+
+- testes focados da pagina de Gaveta e das rotas SPA;
+- build/teste do modulo cash;
+- build/teste focado da rota API de gaveta;
+- build de shared contracts e build da API;
+- `pnpm validate:openapi`;
+- typecheck/build do SPA;
+- rebuild Docker completo de API e SPA.
+
+Publicacao:
+
+- rebuild/recreate de `cvg-his-v2-api` e `cvg-his-v2-spa` no compose v2 canonico;
+- containers API/SPA healthy;
+- smokes locais: `/cash` 200, `/financeiro/gaveta` 200, `/health` 200;
+- rota protegida `/cash-register/dashboard` retornou 401 sem token com `x-account-id`;
+- smokes publicos: SPA `/cash` 200 e API `/health` 200.
+
+Proxima frente recomendada: `Financeiro > Controles > Contas a Receber`.
 
 ### 2026-04-29 - Revalidacao do navbar Financeiro
 

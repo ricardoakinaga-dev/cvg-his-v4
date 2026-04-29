@@ -1,297 +1,322 @@
 <template>
-  <div class="cash-page">
-    <AppPageHeader title="Caixa / Gaveta" :breadcrumbs="['Financeiro', 'Gaveta', 'Caixa']" subtitle="Abertura, fechamento e liquidação operacional do caixa financeiro">
+  <section class="cash-page">
+    <AppPageHeader
+      title="Gaveta"
+      :breadcrumbs="['Financeiro', 'Gaveta', 'Gaveta']"
+      subtitle="Caixa operacional com abertura, entradas, saídas, fechamento e extrato por forma de pagamento"
+    >
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="loadQuotes">Atualizar recebíveis</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="loadDashboard">Atualizar</DsButton>
       </template>
     </AppPageHeader>
 
-    <!-- Hub: KPI StatCards -->
-    <section class="hub-kpis">
-      <DsStatCard :label="quotes.length + ' orçamento(s)'" value="" icon="🧾" />
-      <DsStatCard :label="preparedAmountFormatted" value="" icon="💵" />
-      <DsStatCard :label="lastIntent?.status || '—'" value="" icon="🏦" />
-      <DsStatCard :label="lastIntent ? '1' : '0'" value="" icon="📥" />
-    </section>
-
-    <!-- Hub: Quick Actions -->
-    <section class="hub-actions">
-      <DsCard title="Ações rápidas — Gaveta / Caixa" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="primary" tag="a" to="/quotes" icon="🧾">
-            Criar Orçamento
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/counter-sales" icon="🛒">
-            Vendas Balcão
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/billing" icon="💰">
-            Faturamento
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/pix" icon="💸">
-            Intent PIX
-          </DsButton>
-          <DsButton variant="ghost" :loading="loading" @click="loadQuotes" icon="🔄">
-            Atualizar
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="cash-story">
-      <DsCard title="Leitura rápida da gaveta">
-        <div class="story-grid">
-          <div v-for="card in storyCards" :key="card.label" class="story-card">
-            <span class="story-card__label">{{ card.label }}</span>
-            <strong class="story-card__value">{{ card.value }}</strong>
-            <span class="story-card__hint">{{ card.hint }}</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
 
-    <div class="cash-grid">
-      <DsCard title="Orçamentos com impacto de caixa">
-        <DataTable
-          :columns="columns"
-          :rows="quoteRows"
-          :loading="loading"
-          empty-icon="🧾"
-          empty-title="Nenhum orçamento disponível"
-          empty-description="Use Orçamentos para criar uma base operacional antes de registrar a entrada PIX."
-          variant="hoverable"
-        >
-          <template #cell-total="{ row }">{{ formatCurrency(quoteRow(row).total) }}</template>
-          <template #cell-status="{ row }">
-            <StatusBadge :label="statusLabel(quoteRow(row).status)" :variant="statusVariant(quoteRow(row).status)" />
-          </template>
-          <template #cell-actions="{ row }">
-            <DsButton size="sm" variant="primary" @click="prepareCharge(quoteRow(row))">Registrar PIX</DsButton>
-          </template>
-        </DataTable>
-      </DsCard>
+    <section class="cash-kpis" aria-label="Resumo da gaveta">
+      <DsStatCard label="Último Fechamento" :value="lastClosingLabel" icon="🧾" />
+      <DsStatCard label="Total de Entradas" :value="formatCurrency(dashboard?.totals.totalEntradas ?? 0)" icon="💵" />
+      <DsStatCard label="Total de Saídas" :value="formatCurrency(dashboard?.totals.totalSaidas ?? 0)" icon="💸" />
+      <DsStatCard label="Total em Gaveta" :value="formatCurrency(dashboard?.totals.totalEmGaveta ?? 0)" icon="🏦" />
+    </section>
 
-      <DsCard title="Registrar entrada">
-        <form class="cash-form" @submit.prevent="createCashEntry">
-          <DsInput id="cash-quote" v-model="chargeForm.quoteLabel" label="Orçamento" disabled />
-          <DsInput id="cash-amount" v-model.number="chargeForm.amount" type="number" label="Valor" required />
-          <DsInput id="cash-description" v-model="chargeForm.description" label="Descrição" required />
-          <DsInput id="cash-billing" v-model="chargeForm.billingRecordId" label="Billing Record ID" placeholder="opcional" />
-          <div class="form-actions">
-            <DsButton variant="primary" :loading="creating">Gerar PIX de entrada</DsButton>
-          </div>
+    <section class="cash-actions" aria-label="Ações da gaveta">
+      <DsCard title="Entrada de Gaveta">
+        <form class="cash-form" @submit.prevent="submitMovement('supply')">
+          <DsInput v-model.number="entryForm.amount" type="number" label="Valor" min="0.01" step="0.01" required />
+          <DsInput v-model="entryForm.reference" label="Origem" placeholder="Ex: reforço de caixa" />
+          <DsInput v-model="entryForm.notes" label="Observação" placeholder="Ex: entrada em dinheiro" />
+          <DsButton variant="primary" :loading="savingAction === 'entry'">Entrada</DsButton>
         </form>
       </DsCard>
 
-      <DsCard title="Última movimentação">
-        <div v-if="lastIntent" class="intent-summary">
-          <div><strong>Orçamento:</strong> {{ chargeForm.quoteLabel }}</div>
-          <div><strong>PIX intent:</strong> <code>{{ lastIntent.id }}</code></div>
-          <div><strong>Valor:</strong> {{ formatCurrency(lastIntent.amount) }}</div>
-          <div><strong>Status:</strong> {{ lastIntent.status }}</div>
-          <div><strong>QR:</strong> <code>{{ lastIntent.qrCodeText }}</code></div>
-        </div>
-        <div v-else class="muted">Nenhuma entrada registrada nesta sessão.</div>
+      <DsCard title="Saída de Gaveta">
+        <form class="cash-form" @submit.prevent="submitMovement('withdrawal')">
+          <DsInput v-model.number="withdrawalForm.amount" type="number" label="Valor" min="0.01" step="0.01" required />
+          <DsInput v-model="withdrawalForm.reference" label="Destino" placeholder="Ex: sangria" />
+          <DsInput v-model="withdrawalForm.notes" label="Observação" placeholder="Ex: retirada autorizada" />
+          <DsButton variant="secondary" :loading="savingAction === 'withdrawal'">Saída</DsButton>
+        </form>
       </DsCard>
-    </div>
-  </div>
+
+      <DsCard title="Fechar Gaveta">
+        <form v-if="dashboard?.openRegister" class="cash-form" @submit.prevent="closeDrawer">
+          <DsInput
+            v-model.number="closingForm.closingAmount"
+            type="number"
+            label="Valor Conferido"
+            min="0"
+            step="0.01"
+            required
+          />
+          <DsInput v-model="closingForm.notes" label="Observação" placeholder="Conferência de fechamento" />
+          <p class="cash-hint">
+            Esperado: {{ formatCurrency(dashboard.openRegister.runningBalance) }}
+          </p>
+          <DsButton variant="primary" :loading="savingAction === 'close'">Fechar Gaveta</DsButton>
+        </form>
+        <form v-else class="cash-form" @submit.prevent="openDrawer">
+          <DsInput
+            v-model.number="openingForm.openingAmount"
+            type="number"
+            label="Valor Inicial"
+            min="0"
+            step="0.01"
+            required
+          />
+          <DsInput v-model="openingForm.notes" label="Observação" placeholder="Abertura da gaveta" />
+          <DsButton variant="primary" :loading="savingAction === 'open'">Abrir Gaveta</DsButton>
+        </form>
+      </DsCard>
+    </section>
+
+    <section class="cash-main">
+      <DsCard title="Gaveta por Forma de Pagamento">
+        <DataTable
+          :columns="paymentColumns"
+          :rows="paymentRows"
+          :loading="loading"
+          empty-title="Nenhuma movimentação encontrada"
+          empty-description="As entradas da gaveta aparecerão agrupadas por forma de pagamento."
+          empty-icon="💳"
+          variant="hoverable"
+        >
+          <template #cell-amount="{ row }">{{ formatCurrency(paymentRow(row).amount) }}</template>
+        </DataTable>
+      </DsCard>
+
+      <DsCard title="Extrato de Movimentações da Gaveta">
+        <DataTable
+          :columns="movementColumns"
+          :rows="movementRows"
+          :loading="loading"
+          empty-title="Nenhum registro encontrado"
+          empty-description="Abra a gaveta ou registre uma entrada/saída para iniciar o extrato."
+          empty-icon="🧾"
+          variant="hoverable"
+        >
+          <template #cell-createdAt="{ row }">{{ formatDateTime(movementRow(row).createdAt) }}</template>
+          <template #cell-amount="{ row }">{{ formatCurrency(movementRow(row).amount) }}</template>
+          <template #cell-runningBalance="{ row }">{{ formatCurrency(movementRow(row).runningBalance) }}</template>
+        </DataTable>
+      </DsCard>
+    </section>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
-import StatusBadge from '@/components/StatusBadge.vue';
+import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import { useListData } from '@/composables/useListData';
-import { quoteService, type QuoteSummary } from '@/services/quotes';
-import { pixService, type PixPaymentIntentResponse } from '@/services/pix';
-import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import { cashService, type CashDrawerDashboard } from '@/services/cash';
+import type {
+  CashMovementDashboardSummary,
+  CashPaymentMethodSummary,
+  CreateCashMovementRequest
+} from '@cvg-his-v2/shared-contracts';
 
-const columns: DataTableColumn[] = [
-  { key: 'number', label: 'Número' },
-  { key: 'status', label: 'Status' },
-  { key: 'total', label: 'Total' },
-  { key: 'actions', label: 'Ações' }
-];
+type SavingAction = 'open' | 'entry' | 'withdrawal' | 'close' | '';
 
-const creating = ref(false);
+const loading = ref(false);
+const savingAction = ref<SavingAction>('');
 const error = ref('');
 const successMessage = ref('');
-const lastIntent = ref<PixPaymentIntentResponse | null>(null);
-const chargeForm = ref({
-  quoteLabel: 'Selecione um orçamento',
+const dashboard = ref<CashDrawerDashboard | null>(null);
+
+const openingForm = ref({
+  openingAmount: 0,
+  notes: ''
+});
+const entryForm = ref({
   amount: 0,
-  description: '',
-  billingRecordId: ''
+  reference: '',
+  notes: ''
+});
+const withdrawalForm = ref({
+  amount: 0,
+  reference: '',
+  notes: ''
+});
+const closingForm = ref({
+  closingAmount: 0,
+  notes: ''
 });
 
-const { items: quotes, loading, load: loadQuotes } = useListData<QuoteSummary>({
-  fetchFn: (search) => quoteService.list(search),
-  entityLabel: 'orçamentos'
+const paymentColumns: DataTableColumn[] = [
+  { key: 'method', label: 'Forma de Pagamento' },
+  { key: 'count', label: 'Movimentos' },
+  { key: 'amount', label: 'Valor' }
+];
+
+const movementColumns: DataTableColumn[] = [
+  { key: 'createdAt', label: 'Data e Hora' },
+  { key: 'movementTypeLabel', label: 'Tipo' },
+  { key: 'paymentMethod', label: 'Forma' },
+  { key: 'reference', label: 'Origem' },
+  { key: 'amount', label: 'Valor' },
+  { key: 'runningBalance', label: 'Saldo' },
+  { key: 'notes', label: 'Observação' }
+];
+
+const paymentRows = computed(() => dashboard.value?.byPaymentMethod as unknown as DataTableRow[] ?? []);
+const movementRows = computed(() => dashboard.value?.movements as unknown as DataTableRow[] ?? []);
+const lastClosingLabel = computed(() => {
+  const lastClosed = dashboard.value?.lastClosedRegister;
+  if (!lastClosed?.closedAt) return 'Sem fechamento';
+  return formatDateTime(lastClosed.closedAt);
 });
 
-const preparedAmountFormatted = computed(() => formatCurrency(chargeForm.value.amount || 0));
-const quoteRows = computed(() => quotes.value as unknown as DataTableRow[]);
-const approvedQuotesCount = computed(() => quotes.value.filter((quote) => quote.status === 'approved').length);
-const convertedQuotesCount = computed(() => quotes.value.filter((quote) => quote.convertedToSaleId).length);
-const storyCards = computed(() => [
-  { label: 'Aprovados', value: String(approvedQuotesCount.value), hint: 'Orçamentos prontos para liquidação' },
-  { label: 'Convertidos', value: String(convertedQuotesCount.value), hint: 'Vendas já concluídas' },
-  { label: 'Valor preparado', value: preparedAmountFormatted.value, hint: 'Montante carregado no formulário' },
-  { label: 'Último evento', value: lastIntent.value?.status ?? 'Sem registro', hint: 'Estado da última intenção PIX' }
-]);
-
-function prepareCharge(quote: QuoteSummary) {
-  chargeForm.value = {
-    quoteLabel: `${quote.number} - ${quote.status}`,
-    amount: quote.total,
-    description: `Liquidação do orçamento ${quote.number}`,
-    billingRecordId: quote.id
-  };
-}
-
-async function createCashEntry() {
-  creating.value = true;
+async function loadDashboard() {
+  loading.value = true;
   error.value = '';
-  successMessage.value = '';
   try {
-    lastIntent.value = await pixService.createIntent({
-      amount: Number(chargeForm.value.amount),
-      description: chargeForm.value.description.trim(),
-      billingRecordId: chargeForm.value.billingRecordId.trim() || null,
-      expirationMinutes: 15
-    });
-    successMessage.value = 'Entrada de caixa registrada via PIX.';
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao registrar caixa';
+    dashboard.value = await cashService.getDashboard();
+    if (dashboard.value.openRegister) {
+      closingForm.value.closingAmount = dashboard.value.openRegister.runningBalance;
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar gaveta';
   } finally {
-    creating.value = false;
+    loading.value = false;
   }
 }
 
-function statusLabel(status: QuoteSummary['status']): string {
-  return { draft: 'Rascunho', approved: 'Aprovado', rejected: 'Rejeitado', expired: 'Expirado', cancelled: 'Cancelado' }[status];
+async function openDrawer() {
+  savingAction.value = 'open';
+  await runAction(async () => {
+    await cashService.openRegister({
+      openingAmount: Number(openingForm.value.openingAmount),
+      notes: optionalText(openingForm.value.notes)
+    });
+    openingForm.value = { openingAmount: 0, notes: '' };
+    successMessage.value = 'Gaveta aberta.';
+  });
 }
 
-function statusVariant(status: QuoteSummary['status']): 'info' | 'success' | 'warning' | 'danger' {
-  if (status === 'approved') return 'success';
-  if (status === 'draft') return 'info';
-  if (status === 'expired') return 'warning';
-  return 'danger';
+async function submitMovement(movementType: CreateCashMovementRequest['movementType']) {
+  const form = movementType === 'withdrawal' ? withdrawalForm.value : entryForm.value;
+  savingAction.value = movementType === 'withdrawal' ? 'withdrawal' : 'entry';
+  await runAction(async () => {
+    await cashService.recordMovement({
+      movementType,
+      amount: Number(form.amount),
+      reference: optionalText(form.reference),
+      notes: optionalText(form.notes)
+    });
+    if (movementType === 'withdrawal') {
+      withdrawalForm.value = { amount: 0, reference: '', notes: '' };
+      successMessage.value = 'Saída de gaveta registrada.';
+    } else {
+      entryForm.value = { amount: 0, reference: '', notes: '' };
+      successMessage.value = 'Entrada de gaveta registrada.';
+    }
+  });
+}
+
+async function closeDrawer() {
+  savingAction.value = 'close';
+  await runAction(async () => {
+    await cashService.closeRegister({
+      closingAmount: Number(closingForm.value.closingAmount),
+      notes: optionalText(closingForm.value.notes)
+    });
+    closingForm.value = { closingAmount: 0, notes: '' };
+    successMessage.value = 'Gaveta fechada.';
+  });
+}
+
+async function runAction(action: () => Promise<void>) {
+  error.value = '';
+  successMessage.value = '';
+  try {
+    await action();
+    await loadDashboard();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao salvar movimentação de gaveta';
+  } finally {
+    savingAction.value = '';
+  }
+}
+
+function optionalText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-onMounted(() => {
-  void loadQuotes();
-});
-
-function quoteRow(row: unknown): QuoteSummary {
-  return row as QuoteSummary;
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(new Date(value));
 }
+
+function paymentRow(row: unknown): CashPaymentMethodSummary {
+  return row as CashPaymentMethodSummary;
+}
+
+function movementRow(row: unknown): CashMovementDashboardSummary {
+  return row as CashMovementDashboardSummary;
+}
+
+onMounted(() => {
+  void loadDashboard();
+});
 </script>
 
 <style scoped>
 .cash-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 16px;
 }
 
-.hub-kpis {
+.cash-kpis,
+.cash-actions,
+.cash-main {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
-.hub-actions {
-  margin-bottom: 0;
-}
-
-.quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.cash-story {
-  margin-bottom: 0;
-}
-
-.cash-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.story-grid {
-  display: grid;
+.cash-kpis {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
 }
 
-.story-card {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+.cash-actions {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
-.story-card__label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
-}
-
-.story-card__value {
-  display: block;
-  margin-top: 6px;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.story-card__hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-text-muted, #64748b);
+.cash-main {
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  align-items: start;
 }
 
 .cash-form {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
-.form-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.intent-summary {
-  display: grid;
-  gap: 8px;
-}
-
-.muted {
+.cash-hint {
+  margin: 0;
   color: var(--color-text-muted, #64748b);
+  font-size: 13px;
 }
 
-code {
-  word-break: break-all;
+@media (max-width: 900px) {
+  .cash-main {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

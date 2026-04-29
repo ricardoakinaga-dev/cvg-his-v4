@@ -55,7 +55,13 @@ describe('router convergence', () => {
   it('aligns finance, fiscal and administration anchors with the requested layout', () => {
     expect(findChildRoute('billing')?.meta?.title).toBe('Contas a Receber');
     expect(findChildRoute('billing')?.meta?.breadcrumbParent).toBe('Financeiro');
+    expect(findChildRoute('cash')?.meta?.title).toBe('Gaveta');
     expect(findChildRoute('cash')?.meta?.breadcrumbParent).toBe('Financeiro');
+    expect(findChildRoute('cash')?.alias).toEqual([
+      '/cash-register',
+      '/financeiro/gaveta',
+      '/finance/gaveta'
+    ]);
     expect(findChildRoute('cards')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('pix')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('fiscal')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');

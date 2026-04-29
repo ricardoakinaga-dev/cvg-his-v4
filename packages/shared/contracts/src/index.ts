@@ -1066,6 +1066,82 @@ export interface BillingItemListResponse {
   readonly items: readonly BillingItemSummary[];
 }
 
+export type CashMovementType =
+  | 'opening'
+  | 'closing'
+  | 'payment'
+  | 'supply'
+  | 'withdrawal'
+  | 'adjustment';
+
+export interface CashRegisterDashboardSummary {
+  readonly id: string;
+  readonly status: 'open' | 'closed';
+  readonly openedAt: string;
+  readonly openingAmount: number;
+  readonly runningBalance: number;
+  readonly notes: string | null;
+}
+
+export interface CashClosedRegisterSummary {
+  readonly id: string;
+  readonly openedAt: string;
+  readonly closedAt: string | null;
+  readonly closingAmount: number | null;
+  readonly expectedClosingAmount: number | null;
+  readonly difference: number | null;
+}
+
+export interface CashMovementDashboardSummary {
+  readonly id: string;
+  readonly cashRegisterId: string;
+  readonly movementType: CashMovementType;
+  readonly movementTypeLabel: string;
+  readonly amount: number;
+  readonly runningBalance: number;
+  readonly reference: string | null;
+  readonly notes: string | null;
+  readonly paymentMethod: string;
+  readonly createdAt: string;
+}
+
+export interface CashPaymentMethodSummary {
+  readonly method: string;
+  readonly amount: number;
+  readonly count: number;
+}
+
+export interface CashDrawerDashboardResponse {
+  readonly generatedAt: string;
+  readonly openRegister: CashRegisterDashboardSummary | null;
+  readonly lastClosedRegister: CashClosedRegisterSummary | null;
+  readonly totals: {
+    readonly totalEntradas: number;
+    readonly totalSaidas: number;
+    readonly totalEmGaveta: number;
+  };
+  readonly byPaymentMethod: readonly CashPaymentMethodSummary[];
+  readonly movements: readonly CashMovementDashboardSummary[];
+  readonly recentRegisters: readonly CashClosedRegisterSummary[];
+}
+
+export interface OpenCashRegisterRequest {
+  readonly openingAmount: number;
+  readonly notes?: string | null;
+}
+
+export interface CreateCashMovementRequest {
+  readonly movementType: 'supply' | 'withdrawal' | 'adjustment';
+  readonly amount: number;
+  readonly reference?: string | null;
+  readonly notes?: string | null;
+}
+
+export interface CloseCashRegisterRequest {
+  readonly closingAmount: number;
+  readonly notes?: string | null;
+}
+
 export interface CreateInventoryConsumptionRequest {
   readonly encounterId: string;
   readonly inventoryItemId: string;

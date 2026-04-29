@@ -182,6 +182,7 @@ export class CashService {
       await this.#repository.closeRegister(
         registerId,
         closingAmount,
+        currentBalance,
         difference,
         closedByUserId,
         now,
