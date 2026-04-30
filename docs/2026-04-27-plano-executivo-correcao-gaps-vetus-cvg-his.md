@@ -437,8 +437,9 @@ Checkpoint em 2026-04-29:
 - O navbar `RH` foi revalidado em 2026-04-30 por artefatos Vetus read-only.
 - `RH > Usuarios > Usuarios` foi alinhado em 2026-04-30, validado em escopo seguro sem mudanca de permissao, grupo ou contrato de backend.
 - `RH > Usuarios > Grupos de Acesso` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou mudanca automatica de permissao.
+- `RH > Comissoes > Calculo de Comissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem fechamento, pagamento, migration ou nova API.
 
-Proxima acao recomendada: alinhar `RH > Comissoes > Calculo de Comissoes`.
+Proxima acao recomendada: alinhar `RH > Cadastros > Profissionais`.
 
 Justificativa:
 
@@ -482,14 +483,15 @@ Justificativa:
 - `Comissoes`, `Folgas` e `Profissoes` ja foram materializadas como superficies operacionais sem dados falsos em 2026-04-28;
 - `Usuarios > Usuarios` ja foi realinhado como superficie de identidade operacional autenticada, separando usuario autenticavel de profissional de agenda e preservando vinculos com grupos, auditoria e contexto organizacional;
 - `Usuarios > Grupos de Acesso` ja foi realinhado como superficie de politicas coletivas de autorizacao, separando grupo de acesso, usuario individual e matriz de permissoes efetivas;
-- a proxima divergencia pela ordem Vetus esta em `RH > Comissoes > Calculo de Comissoes`, porque o Vetus possui rota legada funcional `Comissoes/CalculoDeComissoes.htm`, evidencia `rchk-Calculo-Comissoes.png` e a superficie local `/commission-calculations` precisa ser auditada contra filtros, grade e calculo seguro.
+- `Comissoes > Calculo de Comissoes` ja foi realinhado como superficie de pesquisa e preparacao segura, preservando filtros por profissional/data, acao `Pesquisar`, acao `Incluir` bloqueada e grade de registros sem fechamento/pagamento persistente;
+- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Profissionais`, porque o Vetus possui superficie beta funcional de profissionais e a rota local `/staff` precisa ser auditada contra busca, inclusao, status, ID, informacoes de contato e detalhe.
 
-Escopo minimo de `RH > Comissoes > Calculo de Comissoes`:
+Escopo minimo de `RH > Cadastros > Profissionais`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Comissoes/CalculoDeComissoes.htm`, `rchk-Calculo-Comissoes.png` e `22-anexo-comissoes.md` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: filtro por profissional, data de calculo, acao `Pesquisar`, grade de profissional/data/abrir e acao `Incluir` quando existir contrato seguro.
-3. Manter calculo como leitura/preparacao segura enquanto nao houver contrato auditavel de pagamento/comissao persistente.
-4. Evitar dados falsos; usar producao/relatorios existentes ou estados vazios honestos.
+1. Revalidar os artefatos Vetus read-only especificos de `rh-profissionais-01.png`, relatorio RH e rota beta de profissionais antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: busca por ID/nome, acao `Incluir Novo Profissional`, listagem/cards com status `Ativo`, ID, contato e acao `Ver Detalhes`.
+3. Separar profissional operacional de usuario autenticavel e manter vinculos com agenda, folgas, profissoes e comissoes.
+4. Evitar dados falsos; usar contrato existente de profissionais/equipe ou estados vazios honestos.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -770,6 +772,38 @@ Verificacao:
 - teste focado de `AccessControlPage`.
 
 Proxima frente recomendada: `RH > Comissoes > Calculo de Comissoes`.
+
+### 2026-04-30 - RH > Comissoes > Calculo de Comissoes
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/commission-calculations` mantido como rota concreta de `RH > Comissoes > Calculo de Comissoes`;
+- tela com breadcrumbs `RH / Comissoes / Calculo de Comissoes`;
+- referencia explicita a rota legacy `Comissoes/CalculoDeComissoes.htm`;
+- filtro `Profissional`;
+- filtro `Data do Calculo`;
+- acao `Pesquisar`;
+- acao `Incluir` bloqueada;
+- grade `Registros de calculo` com `Profissional`, `Data de Calculo`, `Base`, `Situacao` e `Abrir`;
+- acao `Abrir` bloqueada enquanto nao houver contrato auditavel de fechamento;
+- leitura de base produtiva e equipe ativa preservada a partir dos contratos existentes.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem fechamento de comissao;
+- sem liquidacao ou pagamento;
+- sem calculo automatico persistente;
+- sem escrita adicional.
+
+Verificacao:
+
+- teste focado de `RhOperationalPages`.
+
+Proxima frente recomendada: `RH > Cadastros > Profissionais`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

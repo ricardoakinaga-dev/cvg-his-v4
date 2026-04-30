@@ -168,9 +168,39 @@ describe('RH operational pages', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Cálculo de Comissões');
+    expect(wrapper.text()).toContain('Comissoes/CalculoDeComissoes.htm');
+    expect(wrapper.text()).toContain('Profissional');
+    expect(wrapper.text()).toContain('Data do Cálculo');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Incluir');
+    expect(wrapper.text()).toContain('Registros de cálculo');
+    expect(wrapper.text()).toContain('Data de Cálculo');
+    expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).toContain('Sem contrato auditável de fechamento');
     expect(wrapper.text()).toContain('Consulta');
     expect(wrapper.text()).toContain('Medicação');
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
+  it('filters commission calculation search by professional before preparing rows', async () => {
+    const wrapper = mount(CommissionCalculationsPage);
+    await flushPromises();
+
+    const professionalSelect = wrapper.find('select#commission-professional');
+    expect(professionalSelect.exists()).toBe(true);
+    await professionalSelect.setValue('staff-2');
+
+    const dateInput = wrapper.find('input#commission-calculation-date');
+    expect(dateInput.exists()).toBe(true);
+    await dateInput.setValue('2026-04-30');
+
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+
+    expect(wrapper.text()).toContain('Pesquisa preparada para Rafael Lima em 30/04/2026');
+    expect(wrapper.text()).toContain('Rafael Lima');
+    expect(wrapper.text()).not.toContain('Ana Paula 30/04/2026');
   });
 
   it('renders time off coverage from active staff without fake leave records', async () => {
