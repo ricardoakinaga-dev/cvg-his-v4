@@ -436,8 +436,9 @@ Checkpoint em 2026-04-29:
 - `Marketing > Configuracoes > Configuracoes de SMS` foi alinhado em 2026-04-30, validado em escopo seguro sem disparo real, sem consumo de saldo e sem salvamento real.
 - O navbar `RH` foi revalidado em 2026-04-30 por artefatos Vetus read-only.
 - `RH > Usuarios > Usuarios` foi alinhado em 2026-04-30, validado em escopo seguro sem mudanca de permissao, grupo ou contrato de backend.
+- `RH > Usuarios > Grupos de Acesso` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou mudanca automatica de permissao.
 
-Proxima acao recomendada: alinhar `RH > Usuarios > Grupos de Acesso`.
+Proxima acao recomendada: alinhar `RH > Comissoes > Calculo de Comissoes`.
 
 Justificativa:
 
@@ -480,14 +481,15 @@ Justificativa:
 - a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal com `/users`, `/access-control`, `/commission-calculations`, `/staff`, `/commission-rules`, `/time-off` e `/rh/professions`;
 - `Comissoes`, `Folgas` e `Profissoes` ja foram materializadas como superficies operacionais sem dados falsos em 2026-04-28;
 - `Usuarios > Usuarios` ja foi realinhado como superficie de identidade operacional autenticada, separando usuario autenticavel de profissional de agenda e preservando vinculos com grupos, auditoria e contexto organizacional;
-- a proxima divergencia pela ordem Vetus esta em `RH > Usuarios > Grupos de Acesso`, porque o Vetus possui rota legada estrutural `Usuarios/GruposDeAcesso.htm`, captura beta indisponivel e a superficie local `/access-control` precisa ser auditada contra grupos, permissoes por rotina e governanca.
+- `Usuarios > Grupos de Acesso` ja foi realinhado como superficie de politicas coletivas de autorizacao, separando grupo de acesso, usuario individual e matriz de permissoes efetivas;
+- a proxima divergencia pela ordem Vetus esta em `RH > Comissoes > Calculo de Comissoes`, porque o Vetus possui rota legada funcional `Comissoes/CalculoDeComissoes.htm`, evidencia `rchk-Calculo-Comissoes.png` e a superficie local `/commission-calculations` precisa ser auditada contra filtros, grade e calculo seguro.
 
-Escopo minimo de `RH > Usuarios > Grupos de Acesso`:
+Escopo minimo de `RH > Comissoes > Calculo de Comissoes`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Usuarios/GruposDeAcesso.htm`, `rh-grupos-acesso-01.png` e o relatorio de governanca antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: grupos, usuarios vinculados, permissoes/rotinas, escopo e auditoria.
-3. Separar visualmente grupo de acesso, usuario individual e matriz de permissoes efetivas.
-4. Manter qualquer mudanca real de grupo/permissao dentro dos contratos auditaveis existentes; se houver escrita, exigir teste de autorizacao e registro de risco.
+1. Revalidar os artefatos Vetus read-only especificos de `Comissoes/CalculoDeComissoes.htm`, `rchk-Calculo-Comissoes.png` e `22-anexo-comissoes.md` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: filtro por profissional, data de calculo, acao `Pesquisar`, grade de profissional/data/abrir e acao `Incluir` quando existir contrato seguro.
+3. Manter calculo como leitura/preparacao segura enquanto nao houver contrato auditavel de pagamento/comissao persistente.
+4. Evitar dados falsos; usar producao/relatorios existentes ou estados vazios honestos.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -736,6 +738,38 @@ Verificacao:
 - teste focado de `UsersListPage`.
 
 Proxima frente recomendada: `RH > Usuarios > Grupos de Acesso`.
+
+### 2026-04-30 - RH > Usuarios > Grupos de Acesso
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/access-control` mantido como rota concreta de `RH > Usuarios > Grupos de Acesso`;
+- tela com breadcrumbs `RH / Usuarios / Grupos de Acesso`;
+- titulo `Grupos de Acesso`;
+- referencia explicita a rota legacy `Usuarios/GruposDeAcesso.htm`;
+- referencia a integracao observada `GET /users/{id}/access-groups`;
+- leitura explicita de grupo de acesso, usuario individual e matriz de permissoes efetivas;
+- aba `Grupos` no lugar de `Equipes`;
+- cadastro/listagem rotulados como grupos de acesso;
+- resumo de grupos, usuarios, permissoes e rotinas;
+- matriz de permissoes por rotina preservada nos contratos existentes.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem criacao automatica de grupo;
+- sem mudanca automatica de permissao;
+- sem alteracao de MFA;
+- sem escrita adicional alem dos fluxos explicitos ja existentes de governanca.
+
+Verificacao:
+
+- teste focado de `AccessControlPage`.
+
+Proxima frente recomendada: `RH > Comissoes > Calculo de Comissoes`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

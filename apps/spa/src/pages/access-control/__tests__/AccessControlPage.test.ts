@@ -158,6 +158,12 @@ describe('AccessControlPage', () => {
     const wrapper = mount(AccessControlPage);
 
     await flushPromises();
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Usuários');
+    expect(wrapper.text()).toContain('Grupos de Acesso');
+    expect(wrapper.text()).toContain('Usuarios/GruposDeAcesso.htm');
+    expect(wrapper.text()).toContain('GET /users/{id}/access-groups');
+    expect(wrapper.text()).toContain('grupo de acesso, usuário individual e matriz de permissões efetivas');
     expect(wrapper.text()).toContain('Catálogo de permissões');
     expect(wrapper.text()).toContain('Mapa Vetus IAM');
     expect(wrapper.text()).toContain('Permissão por rotina');
@@ -166,7 +172,7 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('Rotina');
     expect(wrapper.text()).toContain('Sessão');
     expect(wrapper.text()).toContain('Auditoria');
-    expect(wrapper.text()).toContain('Governança Enterprise');
+    expect(wrapper.text()).toContain('Governança avançada');
     expect(wrapper.text()).toContain('PATIENTS');
     expect(wrapper.text()).toContain('patients.read');
     expect(wrapper.text()).toContain('Administrador');
@@ -198,6 +204,22 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('MFA');
     expect(wrapper.text()).toContain('Tenant');
     expect(mockGetEffectivePermissions).toHaveBeenCalledWith('user-1');
+  });
+
+  it('switches to the groups tab and renders access groups as Vetus groups', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    const groupsTab = wrapper.findAll('button').find((button) => button.text() === 'Grupos');
+    expect(groupsTab).toBeTruthy();
+    await groupsTab!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Novo grupo de acesso');
+    expect(wrapper.text()).toContain('Grupos de acesso cadastrados');
+    expect(wrapper.text()).toContain('Equipe Cirúrgica');
+    expect(wrapper.text()).toContain('surgery');
   });
 
   it('renders routine action coverage in the matrix tab', async () => {

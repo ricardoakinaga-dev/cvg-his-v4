@@ -1,9 +1,9 @@
 <template>
   <div class="access-control-page">
     <AppPageHeader
-      :breadcrumbs="['Console Enterprise', 'Governança', 'Governança de Acesso']"
-      title="🔐 Governança de Acesso"
-      subtitle="Usuários, equipes, setores e matriz de permissões — RH e Console Enterprise"
+      :breadcrumbs="['RH', 'Usuários', 'Grupos de Acesso']"
+      title="Grupos de Acesso"
+      subtitle="Políticas coletivas de autorização, rotinas e permissões efetivas"
     >
       <template #actions>
         <DsBadge variant="info" size="md">{{ catalog?.permissions.length ?? 0 }} permissões</DsBadge>
@@ -11,6 +11,12 @@
         <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
       </template>
     </AppPageHeader>
+
+    <DsAlert variant="info">
+      Superfície Vetus-like para a rota legada Usuarios/GruposDeAcesso.htm. A integração observada
+      GET /users/{id}/access-groups permanece como evidência de que grupo de acesso, usuário individual e matriz de
+      permissões efetivas precisam ficar auditáveis.
+    </DsAlert>
 
     <section class="access-control-page__overview">
       <div class="overview-grid">
@@ -143,11 +149,11 @@
         </div>
       </DsCard>
 
-      <DsCard title="Governança Enterprise" class="panel">
+      <DsCard title="Governança avançada" class="panel">
         <div class="enterprise-grid">
           <div>
             <strong>RH operacional</strong>
-            <p>Usuários, profissionais e grupos ficam descobríveis para o dia a dia administrativo.</p>
+            <p>Usuários, profissionais e grupos de acesso ficam descobríveis para o dia a dia administrativo.</p>
           </div>
           <div>
             <strong>Console Enterprise</strong>
@@ -273,18 +279,18 @@
 
     <section v-else-if="!loading && catalog && activeTab === 'teams'" class="access-control-page__section">
       <div class="creation-grid">
-        <DsCard title="Nova equipe" class="panel">
+        <DsCard title="Novo grupo de acesso" class="panel">
           <div class="form-grid">
-            <DsInput v-model="teamForm.code" label="Código" placeholder="equipe_cirurgica" />
-            <DsInput v-model="teamForm.name" label="Nome" placeholder="Equipe Cirúrgica" />
-            <DsInput v-model="teamForm.description" label="Descrição" placeholder="Agrupamento organizacional" />
+            <DsInput v-model="teamForm.code" label="Código" placeholder="grupo_cirurgico" />
+            <DsInput v-model="teamForm.name" label="Nome" placeholder="Grupo Cirúrgico" />
+            <DsInput v-model="teamForm.description" label="Descrição" placeholder="Política coletiva de acesso" />
           </div>
           <div class="actions-row">
-            <DsButton :loading="teamSaving" @click="createTeam">Criar equipe</DsButton>
+            <DsButton :loading="teamSaving" @click="createTeam">Criar grupo</DsButton>
           </div>
         </DsCard>
 
-        <DsCard title="Equipes cadastradas" class="panel">
+        <DsCard title="Grupos de acesso cadastrados" class="panel">
           <div class="entity-list">
             <article v-for="team in catalog.teams" :key="team.id" class="entity-card">
               <div class="entity-card__header">
@@ -461,7 +467,7 @@ type RoutineActionKey = 'consult' | 'insert' | 'update' | 'delete';
 const tabs: Array<{ value: TabKey; label: string }> = [
   { value: 'summary', label: 'Resumo' },
   { value: 'users', label: 'Usuários' },
-  { value: 'teams', label: 'Equipes' },
+  { value: 'teams', label: 'Grupos' },
   { value: 'sectors', label: 'Setores' },
   { value: 'matrix', label: 'Matriz' }
 ];
