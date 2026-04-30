@@ -165,15 +165,21 @@ describe('ReportWorkbenchPage', () => {
     vi.mocked(auditService.listEvents).mockResolvedValue(auditEvents);
   });
 
-  it('renders receivables report with live administrative hub data', async () => {
+  it('renders accounts receivable financial report as a read-only legacy report', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'accounts-receivable' }
     });
     await flushPromises();
 
     expect(wrapper.text()).toContain('Contas a Receber');
+    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/ContasAReceberRelatorio.htm');
+    expect(wrapper.text()).toContain('Maiores recebíveis em aberto');
     expect(wrapper.text()).toContain('Paciente Teste');
     expect(wrapper.text()).toContain('Tutor Teste');
+    expect(wrapper.text()).toContain('1/1');
+    expect(wrapper.text()).not.toContain('Abrir financeiro');
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 

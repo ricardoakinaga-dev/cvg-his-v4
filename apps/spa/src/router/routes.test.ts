@@ -697,6 +697,9 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/packages')?.meta?.title).toBe('Pacotes');
     expect(findChildRoute('reports/packages')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
     expect(findChildRoute('reports/packages')?.alias).toEqual(['/relatorios/financeiros/pacotes']);
+    expect(findChildRoute('reports/accounts-receivable')?.meta?.title).toBe('Contas a Receber');
+    expect(findChildRoute('reports/accounts-receivable')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
+    expect(findChildRoute('reports/accounts-receivable')?.alias).toEqual(['/relatorios/financeiros/contas-a-receber']);
     expect(findChildRoute('reports/accounts')?.meta?.title).toBe('Contas');
     expect(findChildRoute('reports/sales')?.meta?.title).toBe('Vendas');
     expect(findChildRoute('reports/financial')?.meta?.title).toBe('Fluxo de Caixa');

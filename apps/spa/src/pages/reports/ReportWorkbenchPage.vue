@@ -436,17 +436,22 @@ function uniqueSorted(values: string[]): string[] {
 }
 
 function receivableSpec(title: string, subtitle: string, mode: 'open' | 'received'): ReportSpec {
+  const isOpenReport = mode === 'open';
   return {
     title,
     group: 'Relatórios Financeiros',
     subtitle,
-    icon: mode === 'open' ? '💵' : '✅',
+    icon: isOpenReport ? '💵' : '✅',
     primaryPath: '/finance/accounts-receivable',
-    primaryAction: 'Abrir financeiro',
-    tableTitle: mode === 'open' ? 'Maiores recebíveis em aberto' : 'Indicadores de recebimento',
-    emptyTitle: mode === 'open' ? 'Sem recebíveis em aberto' : 'Sem recebimento consolidado',
+    primaryAction: isOpenReport ? 'Solicitar Excel' : 'Abrir financeiro',
+    primaryDisabled: isOpenReport,
+    tableTitle: isOpenReport ? 'Maiores recebíveis em aberto' : 'Indicadores de recebimento',
+    emptyTitle: isOpenReport ? 'Sem recebíveis em aberto' : 'Sem recebimento consolidado',
     emptyDescription: 'A movimentação financeira aparece aqui conforme o período selecionado.',
-    columns: mode === 'open'
+    note: isOpenReport
+      ? 'A rota Vetus legacy observada e Sistema/Relatorio/ContasAReceberRelatorio.htm. Esta visão é somente leitura, não baixa títulos, não concilia recebíveis e não exporta relatório real.'
+      : undefined,
+    columns: isOpenReport
       ? [
           { key: 'patientName', label: 'Paciente' },
           { key: 'ownerName', label: 'Tutor' },
@@ -465,7 +470,7 @@ function receivableSpec(title: string, subtitle: string, mode: 'open' | 'receive
       { label: 'PIX concluídos', value: money(current?.domains.financial.pix.completedAmount), icon: '💸' }
     ],
     rows: (current) => {
-      if (mode === 'open') {
+      if (isOpenReport) {
         return (current?.domains.financial.receivables.topOpenReceivables ?? []).map((row) => ({
           ...row,
           id: row.receivableId,
