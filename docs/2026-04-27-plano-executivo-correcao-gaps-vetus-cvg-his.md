@@ -444,8 +444,9 @@ Checkpoint em 2026-04-29:
 - `RH > Cadastros > Profissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de profissao, abertura real, migration ou nova API.
 - O navbar `Relatorios` foi revalidado em 2026-04-30 por artefatos Vetus read-only, sem escrita, exportacao real ou geracao de relatorio no Vetus.
 - `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos` foi alinhado em 2026-04-30, validado em escopo seguro sem exportacao real, nova API, migration ou escrita adicional.
+- `Relatorios > Relatorios Financeiros > Gaveta` foi alinhado em 2026-04-30, validado em escopo seguro sem abertura/fechamento de caixa, exportacao real, nova API, migration ou escrita adicional.
 
-Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Gaveta`.
+Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Fluxo de Caixa`.
 
 Justificativa:
 
@@ -498,14 +499,15 @@ Justificativa:
 - o navbar `Relatorios` foi revalidado por evidencia read-only e a ordem confirmada comeca por `Relatorios de Auditorias > Auditoria de Agendamentos`, seguido por blocos financeiros, atendimentos, personalizados, cadastros e estoque;
 - a navegacao do `cvg-his-v2` ja acompanha a ordem principal de `Relatorios`, mantendo `Hubs CVG` apenas como extensao local no fim do grupo;
 - `Auditoria de Agendamentos` ja foi realinhado contra a semantica Vetus da rota beta `relatorios/auditoria/agendamentos`, removendo agregados genericos de caixa/orcamentos/PIX e usando eventos reais de auditoria de agenda;
-- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Gaveta`, porque e o primeiro item do proximo grupo confirmado no navbar e precisa ser validado como relatorio financeiro legado, separado da superficie operacional de caixa ja existente em `Financeiro > Gaveta > Gaveta`.
+- `Relatorios Financeiros > Gaveta` ja foi realinhado como relatorio financeiro legacy somente leitura, separado da superficie operacional de caixa ja existente em `Financeiro > Gaveta > Gaveta`;
+- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Fluxo de Caixa`, porque e o item seguinte confirmado no grupo financeiro e precisa ser validado como relatorio legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm`, separado da superficie operacional `/finance/cash-flow`.
 
-Escopo minimo de `Relatorios > Relatorios Financeiros > Gaveta`:
+Escopo minimo de `Relatorios > Relatorios Financeiros > Fluxo de Caixa`:
 
-1. Revalidar a rota legacy `Sistema/Relatorio/GavetaRelatorio.htm`, a captura/HTML do navbar de relatorios e os artefatos financeiros consolidados.
-2. Comparar `/reports/cash-drawer` com o comportamento do relatorio Vetus de Gaveta, sem confundir com a tela operacional `/cash`.
-3. Alinhar titulo, breadcrumbs, filtros, KPIs, grade, estado vazio e acao de abertura/exportacao conforme o escopo observado.
-4. Manter o fluxo somente leitura, sem abertura/fechamento de caixa, baixa financeira, exportacao real no Vetus ou escrita adicional.
+1. Revalidar a rota legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm`, as capturas de relatorios financeiros e os artefatos financeiros consolidados.
+2. Comparar `/reports/financial` com o comportamento do relatorio Vetus de Fluxo de Caixa, sem confundir com a tela operacional `/finance/cash-flow`.
+3. Alinhar titulo, breadcrumbs, filtros, KPIs, grade, estado vazio e acao de exportacao conforme o escopo observado.
+4. Manter o fluxo somente leitura, sem baixa financeira, conciliacao, exportacao real no Vetus ou escrita adicional.
 5. Validar com testes focados de SPA/router e, se houver UI alterada, reproducao direta no fluxo local.
 
 Observacao de sequenciamento:
@@ -1021,6 +1023,43 @@ Verificacao:
 - `npm --prefix apps/spa run test -- ReportWorkbenchPage routes`.
 
 Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Gaveta`.
+
+### 2026-04-30 - Relatorios > Relatorios Financeiros > Gaveta
+
+Status: implementado e validado.
+
+Evidencias Vetus usadas:
+
+- rota legacy `Sistema/Relatorio/GavetaRelatorio.htm`;
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-relatorios-financeiros.md`;
+- HTML autenticado em `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estoque-legacy-transferencia-estoques.html`.
+
+Alteracoes no `cvg-his-v2`:
+
+- `/reports/cash-drawer` manteve o item do navbar `Relatorios > Relatorios Financeiros`;
+- alias `/relatorios/financeiros/gaveta` adicionado para a rota de relatorio;
+- acao `Solicitar Excel` mantida visivel e bloqueada ate existir contrato local auditavel de exportacao;
+- nota da rota legacy `Sistema/Relatorio/GavetaRelatorio.htm` adicionada;
+- KPIs alinhados para gavetas no periodo, gaveta aberta e saldo aberto;
+- grade alinhada para `Status`, `Abertura`, `Fechamento`, valor de abertura, valor de fechamento, `Saldo` e `Diferenca`;
+- a superficie deixou de ser atalho operacional para abrir caixa e permaneceu somente leitura sobre o hub administrativo existente.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem abertura ou fechamento de caixa;
+- sem baixa financeira;
+- sem exportacao real;
+- sem escrita no Vetus;
+- sem geracao real de relatorio.
+
+Verificacao:
+
+- `npm --prefix apps/spa run test -- ReportWorkbenchPage routes`.
+
+Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Fluxo de Caixa`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

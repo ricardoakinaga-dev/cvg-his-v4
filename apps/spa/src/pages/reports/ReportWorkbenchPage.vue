@@ -76,8 +76,26 @@
         <template #cell-createdAt="{ row }">
           {{ formatDate(stringValue(row, 'createdAt')) }}
         </template>
+        <template #cell-openedAt="{ row }">
+          {{ formatDateTime(stringValue(row, 'openedAt')) }}
+        </template>
+        <template #cell-closedAt="{ row }">
+          {{ formatDateTime(stringValue(row, 'closedAt')) }}
+        </template>
         <template #cell-occurredAt="{ row }">
           {{ formatDateTime(stringValue(row, 'occurredAt')) }}
+        </template>
+        <template #cell-openingAmount="{ row }">
+          {{ formatCurrency(numberValue(row, 'openingAmount')) }}
+        </template>
+        <template #cell-closingAmount="{ row }">
+          {{ formatNullableCurrency(row, 'closingAmount') }}
+        </template>
+        <template #cell-runningBalance="{ row }">
+          {{ formatCurrency(numberValue(row, 'runningBalance')) }}
+        </template>
+        <template #cell-difference="{ row }">
+          {{ formatNullableCurrency(row, 'difference') }}
         </template>
       </DataTable>
     </DsCard>
@@ -188,25 +206,33 @@ const specs: Record<ReportKey, ReportSpec> = {
   'cash-drawer': {
     title: 'Gaveta',
     group: 'Relatórios Financeiros',
-    subtitle: 'Leitura do caixa aberto, saldo corrente e últimos movimentos',
+    subtitle: 'Relatório financeiro legacy de gavetas, saldos e conferência de caixa',
     icon: '🧾',
     primaryPath: '/cash',
-    primaryAction: 'Abrir caixa',
-    tableTitle: 'Últimos caixas',
-    emptyTitle: 'Sem caixas recentes',
-    emptyDescription: 'Os caixas abertos ou fechados recentemente aparecem aqui.',
+    primaryAction: 'Solicitar Excel',
+    primaryDisabled: true,
+    tableTitle: 'Gavetas no período',
+    emptyTitle: 'Sem gavetas no período',
+    emptyDescription: 'Gavetas abertas ou fechadas aparecem aqui quando houver movimento de caixa no período.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/GavetaRelatorio.htm. Esta visão é somente leitura e não abre, fecha ou movimenta caixa.',
     columns: [
       { key: 'status', label: 'Status' },
+      { key: 'openedAt', label: 'Abertura' },
+      { key: 'closedAt', label: 'Fechamento' },
       { key: 'openingAmount', label: 'Abertura' },
+      { key: 'closingAmount', label: 'Fechamento' },
       { key: 'runningBalance', label: 'Saldo' },
-      { key: 'openedAt', label: 'Aberto em' }
+      { key: 'difference', label: 'Diferença' }
     ],
     cards: (current) => [
-      { label: 'Caixa aberto', value: current?.domains.cash.hasOpenRegister ? 'Sim' : 'Não', icon: '🏦' },
-      { label: 'Saldo do caixa aberto', value: money(current?.executive.openCashBalance), icon: '💰' },
-      { label: 'Caixas recentes', value: count(current?.domains.cash.registerCount), icon: '🧾' }
+      { label: 'Gavetas no período', value: count(current?.domains.cash.registerCount), icon: '🧾' },
+      { label: 'Gaveta aberta', value: current?.domains.cash.hasOpenRegister ? 'Sim' : 'Não', icon: '🏦' },
+      { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '💰' }
     ],
-    rows: (current) => (current?.domains.cash.recentRegisters ?? []) as unknown as DataTableRow[]
+    rows: (current) => (current?.domains.cash.recentRegisters ?? []).map((row) => ({
+      ...row,
+      id: row.id
+    })) as unknown as DataTableRow[]
   },
   packages: {
     title: 'Pacotes',
@@ -523,6 +549,11 @@ function stringValue(row: DataTableRow, key: string): string | null {
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function formatNullableCurrency(row: DataTableRow, key: string): string {
+  const value = row[key];
+  return typeof value === 'number' ? formatCurrency(value) : '—';
 }
 
 function formatDate(value: string | null): string {

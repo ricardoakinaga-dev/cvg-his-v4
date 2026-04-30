@@ -188,6 +188,23 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Produto Teste');
   });
 
+  it('renders cash drawer financial report as read-only Vetus report', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'cash-drawer' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Gaveta');
+    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/GavetaRelatorio.htm');
+    expect(wrapper.text()).toContain('Gavetas no período');
+    expect(wrapper.text()).toContain('Saldo aberto');
+    expect(wrapper.text()).toMatch(/R\$\s*500,00/);
+    expect(wrapper.text()).not.toContain('Abrir caixa');
+    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
   it('renders appointment audit report with Vetus filters and audit events only', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'audit-appointments' }
