@@ -1,12 +1,17 @@
 <template>
   <div class="users-list-page">
     <AppPageHeader
-      title="👤 Usuários"
+      title="Usuários"
       :breadcrumbs="['RH', 'Usuários', 'Usuários']"
-      subtitle="Gestão de pessoas, acessos e perfís do quadro de RH"
+      subtitle="Identidade operacional autenticada, perfis e governança de acesso"
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
+
+    <DsAlert variant="info">
+      Superfície Vetus-like para a rota legada Usuarios/Usuarios.htm. Usuário autenticável separado do profissional de
+      agenda, com vínculos de perfil, contexto organizacional, Grupos de Acesso e Auditoria.
+    </DsAlert>
 
     <section class="users-list-page__overview">
       <DsCard title="Resumo de acesso">
@@ -27,22 +32,41 @@
             <span class="overview-metric__value">{{ filteredUsers.length }}</span>
             <span class="overview-metric__label">Resultados atuais</span>
           </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ organizationContexts }}</span>
+            <span class="overview-metric__label">Contexto organizacional</span>
+          </div>
         </div>
       </DsCard>
     </section>
 
     <section class="users-list-page__actions">
-      <DsCard title="Ações rápidas — RH e governança" variant="compact">
+      <DsCard title="Ações rápidas - RH e governança" variant="compact">
         <div class="quick-actions">
-          <DsButton tag="a" to="/staff" variant="primary">Equipe</DsButton>
-          <DsButton tag="a" to="/access-control" variant="secondary">Governança de Acesso</DsButton>
+          <DsButton tag="a" to="/access-control" variant="primary">Grupos de Acesso</DsButton>
+          <DsButton tag="a" to="/staff" variant="secondary">Profissionais</DsButton>
           <DsButton tag="a" to="/audit" variant="secondary">Auditoria</DsButton>
         </div>
       </DsCard>
     </section>
 
+    <section class="users-list-page__governance" aria-label="Governança de usuários">
+      <div>
+        <strong>Rota Vetus legada</strong>
+        <span>Usuarios/Usuarios.htm</span>
+      </div>
+      <div>
+        <strong>Modelo de acesso</strong>
+        <span>Identidade, perfil e grupo de acesso</span>
+      </div>
+      <div>
+        <strong>Rastro operacional</strong>
+        <span>Sessão, MFA e auditoria permanecem como controles de segurança</span>
+      </div>
+    </section>
+
     <div class="users-list-page__toolbar">
-      <DsInput v-model="search" placeholder="Buscar por nome, e-mail..." />
+      <DsInput v-model="search" placeholder="Buscar por nome, usuário ou e-mail" />
       <DsInput
         v-model="roleFilter"
         type="select"
@@ -160,6 +184,7 @@ const filteredUsers = computed(() => {
 
 const activeUsers = computed(() => users.value.filter((u) => u.status === 'active').length);
 const rolesCount = computed(() => new Set(users.value.map((u) => u.roleCode)).size);
+const organizationContexts = computed(() => new Set(users.value.map((u) => u.accountId)).size);
 const userRows = computed(() => filteredUsers.value as unknown as DataTableRow[]);
 
 const emptyText = computed(() => {
@@ -228,10 +253,35 @@ onMounted(fetchData);
   margin-bottom: 4px;
 }
 
-.overview-grid {
+.users-list-page__governance {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.users-list-page__governance > div {
+  display: grid;
+  gap: 4px;
+}
+
+.users-list-page__governance strong {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.users-list-page__governance span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.overview-grid {
+  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .overview-metric {
@@ -274,6 +324,10 @@ onMounted(fetchData);
 
 @media (max-width: 960px) {
   .users-list-page__toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .users-list-page__governance {
     grid-template-columns: 1fr;
   }
 }

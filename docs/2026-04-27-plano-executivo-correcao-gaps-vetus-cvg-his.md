@@ -435,8 +435,9 @@ Checkpoint em 2026-04-29:
 - `Marketing > Configuracoes > Layout de Email de Vacina` foi alinhado em 2026-04-30, validado em escopo seguro sem envio de email e sem salvamento real de template.
 - `Marketing > Configuracoes > Configuracoes de SMS` foi alinhado em 2026-04-30, validado em escopo seguro sem disparo real, sem consumo de saldo e sem salvamento real.
 - O navbar `RH` foi revalidado em 2026-04-30 por artefatos Vetus read-only.
+- `RH > Usuarios > Usuarios` foi alinhado em 2026-04-30, validado em escopo seguro sem mudanca de permissao, grupo ou contrato de backend.
 
-Proxima acao recomendada: alinhar `RH > Usuarios > Usuarios`.
+Proxima acao recomendada: alinhar `RH > Usuarios > Grupos de Acesso`.
 
 Justificativa:
 
@@ -478,14 +479,15 @@ Justificativa:
 - o navbar `RH` foi revalidado por evidencia read-only e a ordem confirmada e `Usuarios > Usuarios`, `Usuarios > Grupos de Acesso`, `Comissoes > Calculo de Comissoes`, `Cadastros > Profissionais`, `Cadastros > Regras de Comissao`, `Cadastros > Folgas` e `Cadastros > Profissoes`;
 - a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal com `/users`, `/access-control`, `/commission-calculations`, `/staff`, `/commission-rules`, `/time-off` e `/rh/professions`;
 - `Comissoes`, `Folgas` e `Profissoes` ja foram materializadas como superficies operacionais sem dados falsos em 2026-04-28;
-- a proxima divergencia pela ordem Vetus esta em `RH > Usuarios > Usuarios`, porque o Vetus possui rota legada estrutural `Usuarios/Usuarios.htm`, a captura beta registra indisponibilidade e a superficie local `/users` precisa ser reavaliada contra identidade operacional, perfis e governanca.
+- `Usuarios > Usuarios` ja foi realinhado como superficie de identidade operacional autenticada, separando usuario autenticavel de profissional de agenda e preservando vinculos com grupos, auditoria e contexto organizacional;
+- a proxima divergencia pela ordem Vetus esta em `RH > Usuarios > Grupos de Acesso`, porque o Vetus possui rota legada estrutural `Usuarios/GruposDeAcesso.htm`, captura beta indisponivel e a superficie local `/access-control` precisa ser auditada contra grupos, permissoes por rotina e governanca.
 
-Escopo minimo de `RH > Usuarios > Usuarios`:
+Escopo minimo de `RH > Usuarios > Grupos de Acesso`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Usuarios/Usuarios.htm` e a captura `rh-usuarios-01.png` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais de identidade operacional: usuarios, perfis, status, busca/filtro e acesso a grupos.
-3. Separar claramente usuario autenticavel de profissional de agenda/equipe, preservando links com `Grupos de Acesso`, auditoria e governanca.
-4. Manter qualquer criacao/edicao/desativacao real dentro dos contratos auditaveis existentes; se houver mudanca de permissao, exigir teste e registro de risco.
+1. Revalidar os artefatos Vetus read-only especificos de `Usuarios/GruposDeAcesso.htm`, `rh-grupos-acesso-01.png` e o relatorio de governanca antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: grupos, usuarios vinculados, permissoes/rotinas, escopo e auditoria.
+3. Separar visualmente grupo de acesso, usuario individual e matriz de permissoes efetivas.
+4. Manter qualquer mudanca real de grupo/permissao dentro dos contratos auditaveis existentes; se houver escrita, exigir teste de autorizacao e registro de risco.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -702,6 +704,38 @@ Restricoes mantidas:
 - sem escrita no Vetus.
 
 Proxima frente recomendada: `RH > Usuarios > Usuarios`.
+
+### 2026-04-30 - RH > Usuarios > Usuarios
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/users` mantido como rota concreta de `RH > Usuarios > Usuarios`;
+- tela com breadcrumbs `RH / Usuarios / Usuarios`;
+- contexto Vetus-like de identidade operacional autenticada;
+- referencia explicita a rota legacy `Usuarios/Usuarios.htm`;
+- separacao entre usuario autenticavel e profissional de agenda;
+- resumo de usuarios cadastrados, ativos, perfis e contexto organizacional;
+- links para `Grupos de Acesso`, `Profissionais` e `Auditoria`;
+- busca por nome, usuario ou email;
+- filtros de perfil e status;
+- tabela de usuarios existente via contrato `/users`.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem alteracao de grupos de acesso;
+- sem mudanca de permissao;
+- sem automacao de MFA;
+- sem escrita adicional alem dos fluxos ja existentes de usuario.
+
+Verificacao:
+
+- teste focado de `UsersListPage`.
+
+Proxima frente recomendada: `RH > Usuarios > Grupos de Acesso`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

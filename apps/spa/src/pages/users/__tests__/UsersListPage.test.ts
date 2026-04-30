@@ -87,6 +87,22 @@ describe('UsersListPage', () => {
     expect(wrapper.text()).toContain('Usuários');
   });
 
+  it('renders the Vetus-like operational identity and governance context', async () => {
+    vi.mocked(userService.list).mockResolvedValue(mockUsers);
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Usuários');
+    expect(wrapper.text()).toContain('Identidade operacional autenticada');
+    expect(wrapper.text()).toContain('Usuário autenticável separado do profissional de agenda');
+    expect(wrapper.text()).toContain('Grupos de Acesso');
+    expect(wrapper.text()).toContain('Auditoria');
+    expect(wrapper.text()).toContain('Rota Vetus legada');
+    expect(wrapper.text()).toContain('Usuarios/Usuarios.htm');
+    expect(wrapper.text()).toContain('Contexto organizacional');
+  });
+
   it('shows loading state', async () => {
     vi.mocked(userService.list).mockReturnValue(new Promise(() => {}));
     const { wrapper } = mountComponent();
@@ -121,7 +137,7 @@ describe('UsersListPage', () => {
   it('has search input with correct placeholder', () => {
     vi.mocked(userService.list).mockResolvedValue([]);
     const { wrapper } = mountComponent();
-    const input = wrapper.find('input[placeholder="Buscar por nome, e-mail..."]');
+    const input = wrapper.find('input[placeholder="Buscar por nome, usuário ou e-mail"]');
     expect(input.exists()).toBe(true);
   });
 
@@ -136,7 +152,7 @@ describe('UsersListPage', () => {
     const { wrapper } = mountComponent();
     await flushPromises();
 
-    const searchInput = wrapper.find('input[placeholder="Buscar por nome, e-mail..."]');
+    const searchInput = wrapper.find('input[placeholder="Buscar por nome, usuário ou e-mail"]');
     await searchInput.setValue('Admin');
     await wrapper.vm.$nextTick();
 
