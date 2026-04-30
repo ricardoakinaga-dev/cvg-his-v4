@@ -205,6 +205,24 @@ describe('ReportWorkbenchPage', () => {
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 
+  it('renders cash flow financial report without using the operational cash-flow page', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'cash-flow' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Fluxo de Caixa');
+    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/FluxoDeCaixaRelatorio.htm');
+    expect(wrapper.text()).toContain('Receita comercial');
+    expect(wrapper.text()).toContain('Recebíveis abertos');
+    expect(wrapper.text()).toContain('Saldo aberto');
+    expect(wrapper.text()).toContain('Receita comercial consolidada');
+    expect(wrapper.text()).not.toContain('Gerar Fluxo');
+    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
   it('renders appointment audit report with Vetus filters and audit events only', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'audit-appointments' }

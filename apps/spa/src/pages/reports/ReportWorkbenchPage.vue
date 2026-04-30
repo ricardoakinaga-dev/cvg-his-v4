@@ -123,6 +123,7 @@ import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 type ReportKey =
   | 'audit-appointments'
   | 'cash-drawer'
+  | 'cash-flow'
   | 'packages'
   | 'accounts-receivable'
   | 'received-accounts'
@@ -233,6 +234,36 @@ const specs: Record<ReportKey, ReportSpec> = {
       ...row,
       id: row.id
     })) as unknown as DataTableRow[]
+  },
+  'cash-flow': {
+    title: 'Fluxo de Caixa',
+    group: 'Relatórios Financeiros',
+    subtitle: 'Relatório financeiro legacy de comportamento temporal de entradas, recebíveis e caixa',
+    icon: '📈',
+    primaryPath: '/finance/cash-flow',
+    primaryAction: 'Solicitar Excel',
+    primaryDisabled: true,
+    tableTitle: 'Indicadores do fluxo',
+    emptyTitle: 'Sem fluxo consolidado',
+    emptyDescription: 'Entradas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/FluxoDeCaixaRelatorio.htm. Esta visão é somente leitura e não baixa, concilia ou exporta fluxo real.',
+    columns: [
+      { key: 'nature', label: 'Natureza' },
+      { key: 'label', label: 'Indicador' },
+      { key: 'amount', label: 'Valor' },
+      { key: 'scope', label: 'Origem' }
+    ],
+    cards: (current) => [
+      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
+      { label: 'Recebíveis abertos', value: money(current?.executive.outstandingReceivables), icon: '💵' },
+      { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '🏦' }
+    ],
+    rows: (current) => [
+      { id: 'commercial-revenue', nature: 'Entrada', label: 'Receita comercial consolidada', amount: current?.executive.commercialRevenue ?? 0, scope: 'Comercial' },
+      { id: 'pix-completed', nature: 'Entrada', label: 'PIX concluídos', amount: current?.domains.financial.pix.completedAmount ?? 0, scope: 'PIX' },
+      { id: 'receivables-open', nature: 'Previsto', label: 'Recebíveis em aberto', amount: current?.executive.outstandingReceivables ?? 0, scope: 'Contas a Receber' },
+      { id: 'open-cash', nature: 'Saldo', label: 'Saldo da gaveta aberta', amount: current?.executive.openCashBalance ?? 0, scope: 'Gaveta' }
+    ] as DataTableRow[]
   },
   packages: {
     title: 'Pacotes',

@@ -1336,12 +1336,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'reports/financial',
         name: 'FinancialReports',
-        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        alias: ['/relatorios/financeiros/fluxo-de-caixa'],
+        component: () => import('@/pages/reports/ReportWorkbenchPage.vue'),
+        props: { reportKey: 'cash-flow' },
         meta: {
-          title: 'Relatórios Financeiros',
-          breadcrumb: 'Relatórios Financeiros',
-          breadcrumbParent: 'Financeiro',
-          icon: '💰'
+          title: 'Fluxo de Caixa',
+          breadcrumb: 'Fluxo de Caixa',
+          breadcrumbParent: 'Relatórios Financeiros',
+          icon: '📈'
         }
       },
       {

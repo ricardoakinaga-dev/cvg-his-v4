@@ -445,8 +445,9 @@ Checkpoint em 2026-04-29:
 - O navbar `Relatorios` foi revalidado em 2026-04-30 por artefatos Vetus read-only, sem escrita, exportacao real ou geracao de relatorio no Vetus.
 - `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos` foi alinhado em 2026-04-30, validado em escopo seguro sem exportacao real, nova API, migration ou escrita adicional.
 - `Relatorios > Relatorios Financeiros > Gaveta` foi alinhado em 2026-04-30, validado em escopo seguro sem abertura/fechamento de caixa, exportacao real, nova API, migration ou escrita adicional.
+- `Relatorios > Relatorios Financeiros > Fluxo de Caixa` foi alinhado em 2026-04-30, validado em escopo seguro sem baixa, conciliacao, exportacao real, nova API, migration ou escrita adicional.
 
-Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Fluxo de Caixa`.
+Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > DRE - Demonstrativo de Resultados`.
 
 Justificativa:
 
@@ -500,14 +501,15 @@ Justificativa:
 - a navegacao do `cvg-his-v2` ja acompanha a ordem principal de `Relatorios`, mantendo `Hubs CVG` apenas como extensao local no fim do grupo;
 - `Auditoria de Agendamentos` ja foi realinhado contra a semantica Vetus da rota beta `relatorios/auditoria/agendamentos`, removendo agregados genericos de caixa/orcamentos/PIX e usando eventos reais de auditoria de agenda;
 - `Relatorios Financeiros > Gaveta` ja foi realinhado como relatorio financeiro legacy somente leitura, separado da superficie operacional de caixa ja existente em `Financeiro > Gaveta > Gaveta`;
-- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Fluxo de Caixa`, porque e o item seguinte confirmado no grupo financeiro e precisa ser validado como relatorio legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm`, separado da superficie operacional `/finance/cash-flow`.
+- `Relatorios Financeiros > Fluxo de Caixa` ja foi realinhado como relatorio financeiro legacy somente leitura, separado da superficie operacional `/finance/cash-flow`;
+- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > DRE - Demonstrativo de Resultados`, porque e o item seguinte confirmado no grupo financeiro e precisa ser validado como relatorio legacy `Sistema/Relatorio/DRE.htm`, separado dos dashboards financeiros ja existentes.
 
-Escopo minimo de `Relatorios > Relatorios Financeiros > Fluxo de Caixa`:
+Escopo minimo de `Relatorios > Relatorios Financeiros > DRE - Demonstrativo de Resultados`:
 
-1. Revalidar a rota legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm`, as capturas de relatorios financeiros e os artefatos financeiros consolidados.
-2. Comparar `/reports/financial` com o comportamento do relatorio Vetus de Fluxo de Caixa, sem confundir com a tela operacional `/finance/cash-flow`.
+1. Revalidar a rota legacy `Sistema/Relatorio/DRE.htm`, as capturas de relatorios financeiros e os artefatos financeiros consolidados.
+2. Comparar `/reports/dre` com o comportamento do relatorio Vetus de DRE, sem confundir com `Dashboard Financeiro`.
 3. Alinhar titulo, breadcrumbs, filtros, KPIs, grade, estado vazio e acao de exportacao conforme o escopo observado.
-4. Manter o fluxo somente leitura, sem baixa financeira, conciliacao, exportacao real no Vetus ou escrita adicional.
+4. Manter o fluxo somente leitura, sem fechamento contábil, baixa financeira, exportacao real no Vetus ou escrita adicional.
 5. Validar com testes focados de SPA/router e, se houver UI alterada, reproducao direta no fluxo local.
 
 Observacao de sequenciamento:
@@ -1060,6 +1062,44 @@ Verificacao:
 - `npm --prefix apps/spa run test -- ReportWorkbenchPage routes`.
 
 Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Fluxo de Caixa`.
+
+### 2026-04-30 - Relatorios > Relatorios Financeiros > Fluxo de Caixa
+
+Status: implementado e validado.
+
+Evidencias Vetus usadas:
+
+- rota legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm`;
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-relatorios-financeiros.md`;
+- `docs/vetus/inspection/2026-04-23T22-00-01-706Z/artifacts.json`;
+- HTML autenticado em `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estoque-legacy-transferencia-estoques.html`.
+
+Alteracoes no `cvg-his-v2`:
+
+- `/reports/financial` passou a representar o item `Relatorios > Relatorios Financeiros > Fluxo de Caixa`;
+- alias `/relatorios/financeiros/fluxo-de-caixa` adicionado para a rota de relatorio;
+- acao `Solicitar Excel` mantida visivel e bloqueada ate existir contrato local auditavel de exportacao;
+- nota da rota legacy `Sistema/Relatorio/FluxoDeCaixaRelatorio.htm` adicionada;
+- KPIs alinhados para receita comercial, recebiveis abertos e saldo aberto;
+- grade alinhada para `Natureza`, `Indicador`, `Valor` e `Origem`;
+- a superficie ficou separada da tela operacional `/finance/cash-flow`, que continua sendo o fluxo financeiro de controle.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem baixa financeira;
+- sem conciliacao;
+- sem exportacao real;
+- sem escrita no Vetus;
+- sem geracao real de relatorio.
+
+Verificacao:
+
+- `npm --prefix apps/spa run test -- ReportWorkbenchPage routes ReportsDomainPages`.
+
+Proxima frente recomendada: `Relatorios > Relatorios Financeiros > DRE - Demonstrativo de Resultados`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
