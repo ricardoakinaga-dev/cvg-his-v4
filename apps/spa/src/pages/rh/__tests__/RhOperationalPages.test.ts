@@ -149,9 +149,42 @@ describe('RH operational pages', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Profissões');
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Cadastros');
+    expect(wrapper.text()).toContain('Cadastros/Profissoes.htm');
+    expect(wrapper.text()).toContain('cadastro mestre classificatório');
+    expect(wrapper.text()).toContain('Incluir');
+    expect(wrapper.text()).toContain('Descrição');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).toContain('Profissionais vinculados');
     expect(wrapper.text()).toContain('Médica Veterinária');
     expect(wrapper.text()).toContain('Bioquímico');
+    expect(wrapper.text()).toContain('Ana Paula');
     expect(staffService.list).toHaveBeenCalled();
+  });
+
+  it('filters professions by description and linked professional', async () => {
+    const wrapper = mount(RhProfessionsPage);
+    await flushPromises();
+
+    const descriptionInput = wrapper.find('input#profession-description');
+    expect(descriptionInput.exists()).toBe(true);
+    await descriptionInput.setValue('Bioquímico');
+
+    const linkedInput = wrapper.find('input#profession-linked');
+    expect(linkedInput.exists()).toBe(true);
+    await linkedInput.setValue('Rafael');
+
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Pesquisa preparada para profissões com descrição Bioquímico e vínculo Rafael');
+    expect(wrapper.text()).toContain('Bioquímico');
+    expect(wrapper.text()).toContain('Rafael Lima');
+    expect(wrapper.text()).not.toContain('Médica VeterináriaClínica');
   });
 
   it('renders commission rules from staff departments and job titles', async () => {

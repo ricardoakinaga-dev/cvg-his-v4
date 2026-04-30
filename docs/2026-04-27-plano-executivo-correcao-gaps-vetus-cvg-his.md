@@ -441,8 +441,9 @@ Checkpoint em 2026-04-29:
 - `RH > Cadastros > Profissionais` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou escrita adicional alem dos fluxos existentes de staff.
 - `RH > Cadastros > Regras de Comissao` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de regra, percentual, migration ou nova API.
 - `RH > Cadastros > Folgas` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia local de folga, POST/DELETE, migration ou nova API.
+- `RH > Cadastros > Profissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de profissao, abertura real, migration ou nova API.
 
-Proxima acao recomendada: alinhar `RH > Cadastros > Profissoes`.
+Proxima acao recomendada: revalidar o navbar `Relatorios` no Vetus.
 
 Justificativa:
 
@@ -490,15 +491,17 @@ Justificativa:
 - `Cadastros > Profissionais` ja foi realinhado como superficie beta Vetus-like, preservando busca por ID/nome, CTA de inclusao, cards com status/ID/contato e acao `Ver Detalhes`;
 - `Cadastros > Regras de Comissao` ja foi realinhado como superficie legacy Vetus-like, preservando `Incluir` bloqueado, filtros `Id`/`Descricao`, `Pesquisar` e grade `Id`/`Descricao`/`Abrir`;
 - `Cadastros > Folgas` ja foi realinhado como superficie legacy Vetus-like, preservando rota `Agenda/Folgas.htm`, filtros `Profissional`, `Data inicial`, `Data final` e `Motivo/Status`, `Pesquisar`, `Incluir` bloqueado e grade de cobertura sem POST/DELETE;
-- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Profissoes`, porque o Vetus possui rota legada `Cadastros/Profissoes.htm` e a superficie local `/rh/professions` precisa ser auditada contra cadastro mestre classificatorio, profissionais vinculados e manutencao segura.
+- `Cadastros > Profissoes` ja foi realinhado como superficie legacy Vetus-like, preservando rota `Cadastros/Profissoes.htm`, filtros `Descricao` e `Profissional vinculado`, `Pesquisar`, `Incluir` bloqueado e grade derivada de cargos reais dos profissionais;
+- a sequencia principal revalidada de `RH` ficou fechada ate `RH > Cadastros > Profissoes`;
+- a proxima frente macro pela ordem do navbar Vetus e revalidar `Relatorios`, porque esse bloco tem varios itens legados e beta ja materializados parcialmente no `cvg-his-v2`, mas precisa de confirmacao de ordem, rotas, lacunas e primeiro GAP atual.
 
-Escopo minimo de `RH > Cadastros > Profissoes`:
+Escopo minimo da revalidacao de `Relatorios`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Cadastros/Profissoes.htm`, relatorio RH e documentacao de API antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais de cadastro mestre classificatorio.
-3. Relacionar profissoes a profissionais reais, sem inventar cargos ou metricas.
-4. Manter criacao/edicao/exclusao em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
-5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
+1. Revalidar artefatos Vetus read-only de `Relatorios`, incluindo mapa de navegacao, relatorios consolidados e capturas/JSON autenticados.
+2. Confirmar a ordem dos grupos e itens do navbar de relatorios.
+3. Comparar cada item com rotas locais ja materializadas e placeholders/remanescentes.
+4. Definir o primeiro GAP operacional de `Relatorios` sem executar escrita no Vetus.
+5. Atualizar os documentos de sequenciamento com a ordem confirmada e o proximo item logico.
 
 Observacao de sequenciamento:
 
@@ -908,6 +911,37 @@ Verificacao:
 - teste focado de `RhOperationalPages`.
 
 Proxima frente recomendada: `RH > Cadastros > Profissoes`.
+
+### 2026-04-30 - RH > Cadastros > Profissoes
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/rh/professions` mantido como rota concreta de `RH > Cadastros > Profissoes`;
+- tela com breadcrumbs `RH / Cadastros / Profissoes`;
+- referencia explicita a rota legacy `Cadastros/Profissoes.htm`;
+- explicacao do papel de cadastro mestre classificatorio;
+- acao `Incluir` bloqueada;
+- filtros `Descricao` e `Profissional vinculado`;
+- acao `Pesquisar`;
+- grade com `Profissao`, `Departamentos`, `Ativos`, `Inativos`, `Profissionais vinculados` e `Abrir`;
+- acao `Abrir` bloqueada;
+- linhas derivadas somente dos cargos reais dos profissionais.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem criacao, edicao ou exclusao de profissao;
+- sem abertura real de registro;
+- sem escrita adicional.
+
+Verificacao:
+
+- teste focado de `RhOperationalPages`.
+
+Proxima frente recomendada: revalidar o navbar `Relatorios` no Vetus.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
