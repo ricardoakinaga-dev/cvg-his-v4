@@ -432,8 +432,9 @@ Checkpoint em 2026-04-29:
 - O navbar `Marketing` foi revalidado em 2026-04-29 por artefatos Vetus read-only.
 - `Marketing > Envios > Envio de SMS Simples` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real.
 - `Marketing > Envios > Campanhas de SMS Marketing` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real e sem criacao de campanha.
+- `Marketing > Configuracoes > Layout de Email de Vacina` foi alinhado em 2026-04-30, validado em escopo seguro sem envio de email e sem salvamento real de template.
 
-Proxima acao recomendada: implementar a paridade segura de `Marketing > Configuracoes > Layout de Email de Vacina`.
+Proxima acao recomendada: implementar a paridade segura de `Marketing > Configuracoes > Configuracoes de SMS`.
 
 Justificativa:
 
@@ -469,14 +470,15 @@ Justificativa:
 - a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal; `WhatsApp Operacional` permanece como extensao CVG em `Canais CVG`;
 - `Envio de SMS Simples` ja foi convertido em superficie segura de rascunho unitario, sem disparo real e sem consumo de saldo;
 - `Campanhas de SMS Marketing` ja foi convertido em superficie segura de rascunho local e consulta historica, sem disparo real, sem consumo de saldo e sem criacao de campanha;
-- a proxima divergencia pela ordem Vetus esta em `Marketing > Configuracoes > Layout de Email de Vacina`, porque `/marketing/vaccine-email` ainda esta em placeholder.
+- `Layout de Email de Vacina` ja foi convertido em superficie segura de template/preparacao local, sem envio de email e sem salvamento real;
+- a proxima divergencia pela ordem Vetus esta em `Marketing > Configuracoes > Configuracoes de SMS`, porque `/marketing/sms-settings` ainda esta em placeholder.
 
-Escopo minimo de `Marketing > Configuracoes > Layout de Email de Vacina`:
+Escopo minimo de `Marketing > Configuracoes > Configuracoes de SMS`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `VacinaLayoutEmail.htm` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais do layout de email de vacina observados no Vetus.
-3. Implementar edicao/preparacao segura sem envio real de email e sem salvar template em producao ate existir contrato auditavel.
-4. Reaproveitar contratos existentes de vacinas/notificacoes quando possivel; se houver escrita nova, exigir auditoria e testes.
+1. Revalidar os artefatos Vetus read-only especificos de `SMSConfiguracao.htm` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: automacoes de SMS de agenda, aniversariantes de animais e aniversariantes de clientes, alem da acao `Salvar`.
+3. Implementar configuracao/preparacao segura sem ativar automacao real, sem consumir saldo e sem salvar configuracao em producao ate existir contrato auditavel.
+4. Reaproveitar contratos existentes de notificacoes/SMS quando possivel; se houver escrita nova, exigir auditoria e testes.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -585,6 +587,39 @@ Verificacao:
 - teste de rotas SPA.
 
 Proxima frente recomendada: `Marketing > Configuracoes > Layout de Email de Vacina`.
+
+### 2026-04-30 - Marketing > Configuracoes > Layout de Email de Vacina
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/marketing/vaccine-email` deixou de usar placeholder;
+- tela com breadcrumbs `Marketing / Configuracoes / Layout de Email de Vacina`;
+- campo `Titulo do Email` com valor padrao `Lembrete Vacinas Anuais`;
+- campo `Corpo do Email`;
+- chaves dinamicas Vetus expostas: `@ESPECIE@`, `@RACA@`, `@COR@`, `@SEXO@`, `@IDADE@`, `@NOME@`, `@CLIENTE@`, `@ENDERECO@`, `@CIDADE@`, `@DATADAVACINA@`, `@VACINA@`, dados da clinica e `@LOGOTIPO@`;
+- insercao local de chaves no corpo;
+- acao `Preparar previa`;
+- previa com dados de exemplo;
+- acao `Salvar` bloqueada.
+
+Restricoes mantidas:
+
+- sem chamada de API;
+- sem provider externo;
+- sem envio real de email;
+- sem salvamento real de template;
+- sem alteracao de automacao;
+- sem nova migration;
+- sem nova escrita.
+
+Verificacao:
+
+- teste focado de `VaccineEmailLayoutPage`;
+- testes de rotas SPA e navegacao.
+
+Proxima frente recomendada: `Marketing > Configuracoes > Configuracoes de SMS`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
