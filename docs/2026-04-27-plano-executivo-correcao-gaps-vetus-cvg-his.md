@@ -440,8 +440,9 @@ Checkpoint em 2026-04-29:
 - `RH > Comissoes > Calculo de Comissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem fechamento, pagamento, migration ou nova API.
 - `RH > Cadastros > Profissionais` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou escrita adicional alem dos fluxos existentes de staff.
 - `RH > Cadastros > Regras de Comissao` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de regra, percentual, migration ou nova API.
+- `RH > Cadastros > Folgas` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia local de folga, POST/DELETE, migration ou nova API.
 
-Proxima acao recomendada: alinhar `RH > Cadastros > Folgas`.
+Proxima acao recomendada: alinhar `RH > Cadastros > Profissoes`.
 
 Justificativa:
 
@@ -488,14 +489,15 @@ Justificativa:
 - `Comissoes > Calculo de Comissoes` ja foi realinhado como superficie de pesquisa e preparacao segura, preservando filtros por profissional/data, acao `Pesquisar`, acao `Incluir` bloqueada e grade de registros sem fechamento/pagamento persistente;
 - `Cadastros > Profissionais` ja foi realinhado como superficie beta Vetus-like, preservando busca por ID/nome, CTA de inclusao, cards com status/ID/contato e acao `Ver Detalhes`;
 - `Cadastros > Regras de Comissao` ja foi realinhado como superficie legacy Vetus-like, preservando `Incluir` bloqueado, filtros `Id`/`Descricao`, `Pesquisar` e grade `Id`/`Descricao`/`Abrir`;
-- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Folgas`, porque o Vetus possui rota legada `Agenda/Folgas.htm`, captura `rh-folgas-01.png` e a superficie local `/time-off` precisa ser auditada contra profissional, periodo, motivo/status e impacto em agenda.
+- `Cadastros > Folgas` ja foi realinhado como superficie legacy Vetus-like, preservando rota `Agenda/Folgas.htm`, filtros `Profissional`, `Data inicial`, `Data final` e `Motivo/Status`, `Pesquisar`, `Incluir` bloqueado e grade de cobertura sem POST/DELETE;
+- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Profissoes`, porque o Vetus possui rota legada `Cadastros/Profissoes.htm` e a superficie local `/rh/professions` precisa ser auditada contra cadastro mestre classificatorio, profissionais vinculados e manutencao segura.
 
-Escopo minimo de `RH > Cadastros > Folgas`:
+Escopo minimo de `RH > Cadastros > Profissoes`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Agenda/Folgas.htm`, `rh-folgas-01.png`, relatorio RH e documentacao de API antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: profissional, periodo, motivo/status, acao de pesquisa e grade/listagem de cobertura.
-3. Manter cadastro/remoção de folga em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
-4. Evitar dados falsos; usar profissionais reais ou estados vazios honestos.
+1. Revalidar os artefatos Vetus read-only especificos de `Cadastros/Profissoes.htm`, relatorio RH e documentacao de API antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais de cadastro mestre classificatorio.
+3. Relacionar profissoes a profissionais reais, sem inventar cargos ou metricas.
+4. Manter criacao/edicao/exclusao em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -873,6 +875,39 @@ Verificacao:
 - teste focado de `RhOperationalPages`.
 
 Proxima frente recomendada: `RH > Cadastros > Folgas`.
+
+### 2026-04-30 - RH > Cadastros > Folgas
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/time-off` mantido como rota concreta de `RH > Cadastros > Folgas`;
+- tela com breadcrumbs `RH / Cadastros / Folgas`;
+- referencia explicita a rota legacy `Agenda/Folgas.htm`;
+- referencia a captura `rh-folgas-01.png`;
+- referencia aos contratos documentados `GET /time-off?professionalId=&dateFrom=&dateTo=`, `POST /time-off` e `DELETE /time-off/{id}`;
+- acao `Incluir` bloqueada;
+- filtros `Profissional`, `Data inicial`, `Data final` e `Motivo/Status`;
+- acao `Pesquisar`;
+- grade `Cobertura por profissional` com periodo preparado, motivo/status, impacto na agenda, vinculo de acesso e `Abrir`;
+- acao `Abrir` bloqueada;
+- cobertura derivada somente de profissionais reais.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem criacao ou exclusao de folga;
+- sem chamada POST/DELETE;
+- sem bloqueio real de agenda;
+- sem escrita adicional.
+
+Verificacao:
+
+- teste focado de `RhOperationalPages`.
+
+Proxima frente recomendada: `RH > Cadastros > Profissoes`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

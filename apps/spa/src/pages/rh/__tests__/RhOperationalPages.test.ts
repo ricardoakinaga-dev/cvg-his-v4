@@ -242,7 +242,50 @@ describe('RH operational pages', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Folgas');
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Cadastros');
+    expect(wrapper.text()).toContain('Agenda/Folgas.htm');
+    expect(wrapper.text()).toContain('rh-folgas-01.png');
+    expect(wrapper.text()).toContain('GET /time-off?professionalId=&dateFrom=&dateTo=');
+    expect(wrapper.text()).toContain('Incluir');
+    expect(wrapper.text()).toContain('Profissional');
+    expect(wrapper.text()).toContain('Data inicial');
+    expect(wrapper.text()).toContain('Data final');
+    expect(wrapper.text()).toContain('Motivo/Status');
+    expect(wrapper.text()).toContain('Pesquisar');
     expect(wrapper.text()).toContain('Cobertura por profissional');
+    expect(wrapper.text()).toContain('Impacto na agenda');
+    expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('Ana Paula');
+  });
+
+  it('prepares time off search by professional, date range, and reason/status', async () => {
+    const wrapper = mount(TimeOffPage);
+    await flushPromises();
+
+    const professionalSelect = wrapper.find('select#time-off-professional');
+    expect(professionalSelect.exists()).toBe(true);
+    await professionalSelect.setValue('staff-2');
+
+    const dateFromInput = wrapper.find('input#time-off-date-from');
+    expect(dateFromInput.exists()).toBe(true);
+    await dateFromInput.setValue('2026-05-01');
+
+    const dateToInput = wrapper.find('input#time-off-date-to');
+    expect(dateToInput.exists()).toBe(true);
+    await dateToInput.setValue('2026-05-03');
+
+    const reasonInput = wrapper.find('input#time-off-reason-status');
+    expect(reasonInput.exists()).toBe(true);
+    await reasonInput.setValue('Férias');
+
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Pesquisa preparada para folgas de Rafael Lima entre 01/05/2026 e 03/05/2026 com motivo/status Férias');
+    expect(wrapper.text()).toContain('Rafael Lima');
+    expect(wrapper.text()).not.toContain('Ana PaulaClínica');
   });
 });
