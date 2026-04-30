@@ -434,8 +434,9 @@ Checkpoint em 2026-04-29:
 - `Marketing > Envios > Campanhas de SMS Marketing` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real e sem criacao de campanha.
 - `Marketing > Configuracoes > Layout de Email de Vacina` foi alinhado em 2026-04-30, validado em escopo seguro sem envio de email e sem salvamento real de template.
 - `Marketing > Configuracoes > Configuracoes de SMS` foi alinhado em 2026-04-30, validado em escopo seguro sem disparo real, sem consumo de saldo e sem salvamento real.
+- O navbar `RH` foi revalidado em 2026-04-30 por artefatos Vetus read-only.
 
-Proxima acao recomendada: revalidar o navbar `RH` no Vetus.
+Proxima acao recomendada: alinhar `RH > Usuarios > Usuarios`.
 
 Justificativa:
 
@@ -474,15 +475,18 @@ Justificativa:
 - `Layout de Email de Vacina` ja foi convertido em superficie segura de template/preparacao local, sem envio de email e sem salvamento real;
 - `Configuracoes de SMS` ja foi convertido em superficie segura de preparo local de automacoes, sem disparo real, sem consumo de saldo e sem salvamento real;
 - a sequencia principal revalidada de `Marketing` ficou fechada ate `Marketing > Configuracoes > Configuracoes de SMS`;
-- o proximo navbar macro na ordem documentada e `RH`, que precisa ser revalidado por evidencia Vetus read-only antes de definir o primeiro GAP concreto.
+- o navbar `RH` foi revalidado por evidencia read-only e a ordem confirmada e `Usuarios > Usuarios`, `Usuarios > Grupos de Acesso`, `Comissoes > Calculo de Comissoes`, `Cadastros > Profissionais`, `Cadastros > Regras de Comissao`, `Cadastros > Folgas` e `Cadastros > Profissoes`;
+- a navegacao do `cvg-his-v2` ja acompanha essa estrutura principal com `/users`, `/access-control`, `/commission-calculations`, `/staff`, `/commission-rules`, `/time-off` e `/rh/professions`;
+- `Comissoes`, `Folgas` e `Profissoes` ja foram materializadas como superficies operacionais sem dados falsos em 2026-04-28;
+- a proxima divergencia pela ordem Vetus esta em `RH > Usuarios > Usuarios`, porque o Vetus possui rota legada estrutural `Usuarios/Usuarios.htm`, a captura beta registra indisponibilidade e a superficie local `/users` precisa ser reavaliada contra identidade operacional, perfis e governanca.
 
-Escopo minimo de revalidacao do navbar `RH`:
+Escopo minimo de `RH > Usuarios > Usuarios`:
 
-1. Revalidar artefatos Vetus read-only do submenu `RH` antes de escrever codigo.
-2. Confirmar ordem real de cadastros, usuarios/grupos de acesso, profissionais, comissoes, escalas e disponibilidade.
-3. Comparar as rotas existentes do `cvg-his-v2` com `staff`, `users`, `access-control` e telas de comissao/folga ja materializadas.
-4. Registrar primeiro GAP concreto pela ordem Vetus, mantendo qualquer escrita real bloqueada ate contrato auditavel.
-5. Validar docs e, quando houver implementacao, testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
+1. Revalidar os artefatos Vetus read-only especificos de `Usuarios/Usuarios.htm` e a captura `rh-usuarios-01.png` antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais de identidade operacional: usuarios, perfis, status, busca/filtro e acesso a grupos.
+3. Separar claramente usuario autenticavel de profissional de agenda/equipe, preservando links com `Grupos de Acesso`, auditoria e governanca.
+4. Manter qualquer criacao/edicao/desativacao real dentro dos contratos auditaveis existentes; se houver mudanca de permissao, exigir teste e registro de risco.
+5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
 
@@ -658,6 +662,46 @@ Verificacao:
 - testes de rotas SPA e navegacao.
 
 Proxima frente recomendada: revalidar o navbar `RH` no Vetus.
+
+### 2026-04-30 - Revalidacao do navbar RH
+
+Status: revalidado e documentado.
+
+Evidencias:
+
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-modulo-rh-usuarios-comissoes-profissionais.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-usuarios-grupos-acesso-governanca-seguranca.md`;
+- `docs/vetus/guides/22-anexo-comissoes.md`;
+- capturas `07-navbar-RH-expanded.png`, `rh-usuarios-01.png`, `rh-grupos-acesso-01.png`, `rh-profissionais-01.png`, `rh-comissoes-01.png`, `rh-regras-comissao-01.png`, `rh-folgas-01.png` e `rchk-Calculo-Comissoes.png`;
+- observacoes em `docs/vetus/inspection/2026-04-24T01-25-00-000Z-rh-usuarios-comissoes-profissionais/` e `docs/vetus/inspection/2026-04-24T01-35-00-000Z-usuarios-grupos-acesso-governanca/`.
+
+Ordem confirmada:
+
+- `Usuarios > Usuarios`;
+- `Usuarios > Grupos de Acesso`;
+- `Comissoes > Calculo de Comissoes`;
+- `Cadastros > Profissionais`;
+- `Cadastros > Regras de Comissao`;
+- `Cadastros > Folgas`;
+- `Cadastros > Profissoes`.
+
+Comparacao com `cvg-his-v2`:
+
+- a navegacao ja possui `RH > Usuarios`, `RH > Comissoes` e `RH > Cadastros`;
+- `/users`, `/access-control`, `/commission-calculations`, `/staff`, `/commission-rules`, `/time-off` e `/rh/professions` estao materializadas;
+- `Profissionais` e a parte de comissoes/cadastros ja possuem superficies operacionais locais, mas a maturidade Vetus e hibrida entre beta e legado;
+- o primeiro GAP pela ordem Vetus e `RH > Usuarios > Usuarios`.
+
+Restricoes mantidas:
+
+- sem criacao ou edicao de usuario no Vetus;
+- sem alteracao de grupo de acesso;
+- sem calculo de comissao;
+- sem cadastro de profissional, regra, folga ou profissao;
+- sem escrita no Vetus.
+
+Proxima frente recomendada: `RH > Usuarios > Usuarios`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
