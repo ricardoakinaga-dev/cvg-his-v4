@@ -10,6 +10,12 @@
       </template>
     </AppPageHeader>
 
+    <DsAlert variant="info">
+      Superfície Vetus-like para a rota beta cadastro/profissionais, registrada no acervo como
+      rh-profissionais-01.png. Profissional representa pessoa operacional de agenda, produção, folgas e comissões;
+      usuário autenticável continua separado em RH / Usuários.
+    </DsAlert>
+
     <section class="list-page__overview">
       <DsCard title="Resumo da equipe">
         <div class="overview-grid">
@@ -39,8 +45,48 @@
 
     <section class="list-page__toolbar">
       <DsCard title="Busca por ID ou nome" variant="compact">
-        <DsInput v-model="search" placeholder="Buscar por ID, nome, cargo ou departamento" />
+        <DsInput v-model="search" placeholder="por ID ou nome" />
       </DsCard>
+    </section>
+
+    <section class="professional-cards" aria-label="Profissionais cadastrados">
+      <article v-for="member in filteredStaff" :key="member.id" class="professional-card">
+        <header class="professional-card__header">
+          <div>
+            <span class="professional-card__id">ID {{ member.id }}</span>
+            <h2>{{ member.fullName }}</h2>
+          </div>
+          <span :class="['status-badge', member.status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
+            {{ member.status === 'active' ? 'Ativo' : 'Inativo' }}
+          </span>
+        </header>
+
+        <dl class="professional-card__facts">
+          <div>
+            <dt>Código</dt>
+            <dd>{{ member.employeeCode }}</dd>
+          </div>
+          <div>
+            <dt>Cargo</dt>
+            <dd>{{ member.jobTitle || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Departamento</dt>
+            <dd>{{ member.department || '—' }}</dd>
+          </div>
+        </dl>
+
+        <details class="professional-card__contact">
+          <summary>Informações de Contato</summary>
+          <p>Contrato atual de profissionais não expõe telefone ou e-mail na listagem.</p>
+        </details>
+
+        <div class="professional-card__actions">
+          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${member.id}`)">
+            Ver Detalhes
+          </DsButton>
+        </div>
+      </article>
     </section>
 
     <section class="list-page__story">
@@ -108,7 +154,7 @@
       <template #cell-actions="{ row }">
         <div class="row-actions">
           <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}`)">
-            Ver
+            Ver Detalhes
           </DsButton>
           <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}/edit`)">
             Editar
@@ -250,6 +296,85 @@ function staffRow(row: unknown): StaffSummary {
 
 .list-page__actions {
   margin-bottom: 4px;
+}
+
+.professional-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.professional-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.professional-card__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.professional-card__header h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.professional-card__id {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted, #64748b);
+}
+
+.professional-card__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.professional-card__facts div {
+  min-width: 0;
+}
+
+.professional-card__facts dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted, #64748b);
+}
+
+.professional-card__facts dd {
+  margin: 2px 0 0;
+  color: var(--color-text, #0f172a);
+}
+
+.professional-card__contact {
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  padding-top: 10px;
+}
+
+.professional-card__contact summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.professional-card__contact p {
+  margin: 8px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+}
+
+.professional-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
 }
 
 .overview-grid {

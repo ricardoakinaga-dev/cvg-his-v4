@@ -438,8 +438,9 @@ Checkpoint em 2026-04-29:
 - `RH > Usuarios > Usuarios` foi alinhado em 2026-04-30, validado em escopo seguro sem mudanca de permissao, grupo ou contrato de backend.
 - `RH > Usuarios > Grupos de Acesso` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou mudanca automatica de permissao.
 - `RH > Comissoes > Calculo de Comissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem fechamento, pagamento, migration ou nova API.
+- `RH > Cadastros > Profissionais` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou escrita adicional alem dos fluxos existentes de staff.
 
-Proxima acao recomendada: alinhar `RH > Cadastros > Profissionais`.
+Proxima acao recomendada: alinhar `RH > Cadastros > Regras de Comissao`.
 
 Justificativa:
 
@@ -484,14 +485,15 @@ Justificativa:
 - `Usuarios > Usuarios` ja foi realinhado como superficie de identidade operacional autenticada, separando usuario autenticavel de profissional de agenda e preservando vinculos com grupos, auditoria e contexto organizacional;
 - `Usuarios > Grupos de Acesso` ja foi realinhado como superficie de politicas coletivas de autorizacao, separando grupo de acesso, usuario individual e matriz de permissoes efetivas;
 - `Comissoes > Calculo de Comissoes` ja foi realinhado como superficie de pesquisa e preparacao segura, preservando filtros por profissional/data, acao `Pesquisar`, acao `Incluir` bloqueada e grade de registros sem fechamento/pagamento persistente;
-- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Profissionais`, porque o Vetus possui superficie beta funcional de profissionais e a rota local `/staff` precisa ser auditada contra busca, inclusao, status, ID, informacoes de contato e detalhe.
+- `Cadastros > Profissionais` ja foi realinhado como superficie beta Vetus-like, preservando busca por ID/nome, CTA de inclusao, cards com status/ID/contato e acao `Ver Detalhes`;
+- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Regras de Comissao`, porque o Vetus possui rota legada funcional `Comissoes/RegrasDeComissao.htm`, evidencia `rchk-Regras-Comissoes.png`/`rh-regras-comissao-01.png` e a superficie local `/commission-rules` precisa ser auditada contra filtros, listagem e manutencao segura.
 
-Escopo minimo de `RH > Cadastros > Profissionais`:
+Escopo minimo de `RH > Cadastros > Regras de Comissao`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `rh-profissionais-01.png`, relatorio RH e rota beta de profissionais antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: busca por ID/nome, acao `Incluir Novo Profissional`, listagem/cards com status `Ativo`, ID, contato e acao `Ver Detalhes`.
-3. Separar profissional operacional de usuario autenticavel e manter vinculos com agenda, folgas, profissoes e comissoes.
-4. Evitar dados falsos; usar contrato existente de profissionais/equipe ou estados vazios honestos.
+1. Revalidar os artefatos Vetus read-only especificos de `Comissoes/RegrasDeComissao.htm`, `rchk-Regras-Comissoes.png`, `rh-regras-comissao-01.png`, anexo de comissoes e relatorio RH antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: acao `Incluir`, filtros por `Id` e `Descricao`, acao `Pesquisar`, grade com `Id`, `Descricao` e `Abrir`.
+3. Manter manutencao de regra em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
+4. Evitar dados falsos; usar profissionais/departamentos reais ou estados vazios honestos.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -804,6 +806,38 @@ Verificacao:
 - teste focado de `RhOperationalPages`.
 
 Proxima frente recomendada: `RH > Cadastros > Profissionais`.
+
+### 2026-04-30 - RH > Cadastros > Profissionais
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/staff` mantido como rota concreta de `RH > Cadastros > Profissionais`;
+- tela com breadcrumbs `RH / Cadastros / Profissionais`;
+- referencia explicita a rota beta `cadastro/profissionais`;
+- referencia a captura `rh-profissionais-01.png`;
+- busca `por ID ou nome`;
+- acao `+ Incluir Novo Profissional` preservada;
+- cards/listagem com `ID`, status `Ativo`/`Inativo`, codigo, cargo e departamento;
+- secao expansivel `Informacoes de Contato`;
+- acao `Ver Detalhes`;
+- integracoes com agenda, folgas, comissoes, profissoes, usuarios e grupos preservadas.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem alteracao de contato;
+- sem criacao ou desativacao automatica de profissional;
+- sem mudanca de usuario ou grupo de acesso;
+- sem escrita adicional alem dos fluxos existentes de staff.
+
+Verificacao:
+
+- teste focado de `StaffListPage`.
+
+Proxima frente recomendada: `RH > Cadastros > Regras de Comissao`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

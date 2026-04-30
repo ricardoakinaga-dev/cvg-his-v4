@@ -59,8 +59,17 @@ describe('StaffListPage', () => {
     const wrapper = mountPage();
     await flushPromises();
 
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Cadastros');
     expect(wrapper.text()).toContain('Profissionais');
+    expect(wrapper.text()).toContain('cadastro/profissionais');
+    expect(wrapper.text()).toContain('rh-profissionais-01.png');
+    expect(wrapper.text()).toContain('+ Incluir Novo Profissional');
     expect(wrapper.text()).toContain('Busca por ID ou nome');
+    expect(wrapper.text()).toContain('ID staff-1');
+    expect(wrapper.text()).toContain('Ativo');
+    expect(wrapper.text()).toContain('Informações de Contato');
+    expect(wrapper.text()).toContain('Ver Detalhes');
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Folgas');
     expect(wrapper.text()).toContain('Comissões');
@@ -71,7 +80,7 @@ describe('StaffListPage', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    const searchInput = wrapper.find('input[placeholder="Buscar por ID, nome, cargo ou departamento"]');
+    const searchInput = wrapper.find('input[placeholder="por ID ou nome"]');
     await searchInput.setValue('LAB-009');
     await flushPromises();
 
