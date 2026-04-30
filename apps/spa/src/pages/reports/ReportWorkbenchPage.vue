@@ -124,6 +124,7 @@ type ReportKey =
   | 'audit-appointments'
   | 'cash-drawer'
   | 'cash-flow'
+  | 'dre'
   | 'packages'
   | 'accounts-receivable'
   | 'received-accounts'
@@ -263,6 +264,37 @@ const specs: Record<ReportKey, ReportSpec> = {
       { id: 'pix-completed', nature: 'Entrada', label: 'PIX concluídos', amount: current?.domains.financial.pix.completedAmount ?? 0, scope: 'PIX' },
       { id: 'receivables-open', nature: 'Previsto', label: 'Recebíveis em aberto', amount: current?.executive.outstandingReceivables ?? 0, scope: 'Contas a Receber' },
       { id: 'open-cash', nature: 'Saldo', label: 'Saldo da gaveta aberta', amount: current?.executive.openCashBalance ?? 0, scope: 'Gaveta' }
+    ] as DataTableRow[]
+  },
+  dre: {
+    title: 'DRE - Demonstrativo de Resultados',
+    group: 'Relatórios Financeiros',
+    subtitle: 'Relatório financeiro legacy de resultado econômico consolidado',
+    icon: '💰',
+    primaryPath: '/dashboards/financial',
+    primaryAction: 'Solicitar Excel',
+    primaryDisabled: true,
+    tableTitle: 'Resultado consolidado',
+    emptyTitle: 'Sem resultado consolidado',
+    emptyDescription: 'Receitas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/DRE.htm. Esta visão é somente leitura e não fecha contabilidade, baixa títulos ou exporta DRE real. Despesas e resultado contábil completo dependem de fonte específica ainda não exposta pelo hub atual.',
+    columns: [
+      { key: 'group', label: 'Grupo' },
+      { key: 'label', label: 'Indicador' },
+      { key: 'amount', label: 'Valor' },
+      { key: 'scope', label: 'Origem' }
+    ],
+    cards: (current) => [
+      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
+      { label: 'Faturamento bruto', value: money(current?.domains.financial.billing.grossAmount), icon: '🧾' },
+      { label: 'Pipeline comercial', value: money(current?.executive.quotePipelineAmount), icon: '📋' }
+    ],
+    rows: (current) => [
+      { id: 'commercial-revenue', group: 'Receita', label: 'Receita comercial consolidada', amount: current?.executive.commercialRevenue ?? 0, scope: 'Comercial' },
+      { id: 'billing-gross', group: 'Receita', label: 'Faturamento bruto registrado', amount: current?.domains.financial.billing.grossAmount ?? 0, scope: 'Faturamento' },
+      { id: 'open-receivables', group: 'Ativo/Previsto', label: 'Recebíveis em aberto', amount: current?.executive.outstandingReceivables ?? 0, scope: 'Contas a Receber' },
+      { id: 'quote-pipeline', group: 'Previsto', label: 'Pipeline comercial', amount: current?.executive.quotePipelineAmount ?? 0, scope: 'Orçamentos' },
+      { id: 'open-cash', group: 'Caixa', label: 'Saldo da gaveta aberta', amount: current?.executive.openCashBalance ?? 0, scope: 'Gaveta' }
     ] as DataTableRow[]
   },
   packages: {

@@ -691,7 +691,9 @@ describe('router convergence', () => {
 
   it('reuses existing report surfaces for the requested reporting and dashboard entries', () => {
     expect(findChildRoute('reports')?.meta?.breadcrumbParent).toBe('Relatórios');
-    expect(findChildRoute('reports/dre')?.meta?.title).toBe('DRE');
+    expect(findChildRoute('reports/dre')?.meta?.title).toBe('DRE - Demonstrativo de Resultados');
+    expect(findChildRoute('reports/dre')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
+    expect(findChildRoute('reports/dre')?.alias).toEqual(['/relatorios/financeiros/dre']);
     expect(findChildRoute('reports/accounts')?.meta?.title).toBe('Contas');
     expect(findChildRoute('reports/sales')?.meta?.title).toBe('Vendas');
     expect(findChildRoute('reports/financial')?.meta?.title).toBe('Fluxo de Caixa');

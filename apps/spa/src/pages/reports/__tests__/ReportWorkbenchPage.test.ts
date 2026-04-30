@@ -223,6 +223,25 @@ describe('ReportWorkbenchPage', () => {
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 
+  it('renders DRE financial report as a read-only legacy report', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'dre' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('DRE - Demonstrativo de Resultados');
+    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/DRE.htm');
+    expect(wrapper.text()).toContain('Receita comercial');
+    expect(wrapper.text()).toContain('Faturamento bruto');
+    expect(wrapper.text()).toContain('Pipeline comercial');
+    expect(wrapper.text()).toContain('Receita comercial consolidada');
+    expect(wrapper.text()).toContain('Faturamento bruto registrado');
+    expect(wrapper.text()).not.toContain('Relatórios Financeiros específicos no menu lateral');
+    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
   it('renders appointment audit report with Vetus filters and audit events only', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'audit-appointments' }

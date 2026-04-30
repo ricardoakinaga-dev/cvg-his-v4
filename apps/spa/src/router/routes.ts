@@ -1349,11 +1349,13 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'reports/dre',
         name: 'DreReports',
-        component: () => import('@/pages/reports/FinancialReportsPage.vue'),
+        alias: ['/relatorios/financeiros/dre'],
+        component: () => import('@/pages/reports/ReportWorkbenchPage.vue'),
+        props: { reportKey: 'dre' },
         meta: {
-          title: 'DRE',
-          breadcrumb: 'DRE',
-          breadcrumbParent: 'Relatórios',
+          title: 'DRE - Demonstrativo de Resultados',
+          breadcrumb: 'DRE - Demonstrativo de Resultados',
+          breadcrumbParent: 'Relatórios Financeiros',
           icon: '💰'
         }
       },
