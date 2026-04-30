@@ -433,8 +433,9 @@ Checkpoint em 2026-04-29:
 - `Marketing > Envios > Envio de SMS Simples` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real.
 - `Marketing > Envios > Campanhas de SMS Marketing` foi alinhado em 2026-04-29, validado em escopo seguro sem disparo real e sem criacao de campanha.
 - `Marketing > Configuracoes > Layout de Email de Vacina` foi alinhado em 2026-04-30, validado em escopo seguro sem envio de email e sem salvamento real de template.
+- `Marketing > Configuracoes > Configuracoes de SMS` foi alinhado em 2026-04-30, validado em escopo seguro sem disparo real, sem consumo de saldo e sem salvamento real.
 
-Proxima acao recomendada: implementar a paridade segura de `Marketing > Configuracoes > Configuracoes de SMS`.
+Proxima acao recomendada: revalidar o navbar `RH` no Vetus.
 
 Justificativa:
 
@@ -471,15 +472,17 @@ Justificativa:
 - `Envio de SMS Simples` ja foi convertido em superficie segura de rascunho unitario, sem disparo real e sem consumo de saldo;
 - `Campanhas de SMS Marketing` ja foi convertido em superficie segura de rascunho local e consulta historica, sem disparo real, sem consumo de saldo e sem criacao de campanha;
 - `Layout de Email de Vacina` ja foi convertido em superficie segura de template/preparacao local, sem envio de email e sem salvamento real;
-- a proxima divergencia pela ordem Vetus esta em `Marketing > Configuracoes > Configuracoes de SMS`, porque `/marketing/sms-settings` ainda esta em placeholder.
+- `Configuracoes de SMS` ja foi convertido em superficie segura de preparo local de automacoes, sem disparo real, sem consumo de saldo e sem salvamento real;
+- a sequencia principal revalidada de `Marketing` ficou fechada ate `Marketing > Configuracoes > Configuracoes de SMS`;
+- o proximo navbar macro na ordem documentada e `RH`, que precisa ser revalidado por evidencia Vetus read-only antes de definir o primeiro GAP concreto.
 
-Escopo minimo de `Marketing > Configuracoes > Configuracoes de SMS`:
+Escopo minimo de revalidacao do navbar `RH`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `SMSConfiguracao.htm` antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: automacoes de SMS de agenda, aniversariantes de animais e aniversariantes de clientes, alem da acao `Salvar`.
-3. Implementar configuracao/preparacao segura sem ativar automacao real, sem consumir saldo e sem salvar configuracao em producao ate existir contrato auditavel.
-4. Reaproveitar contratos existentes de notificacoes/SMS quando possivel; se houver escrita nova, exigir auditoria e testes.
-5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
+1. Revalidar artefatos Vetus read-only do submenu `RH` antes de escrever codigo.
+2. Confirmar ordem real de cadastros, usuarios/grupos de acesso, profissionais, comissoes, escalas e disponibilidade.
+3. Comparar as rotas existentes do `cvg-his-v2` com `staff`, `users`, `access-control` e telas de comissao/folga ja materializadas.
+4. Registrar primeiro GAP concreto pela ordem Vetus, mantendo qualquer escrita real bloqueada ate contrato auditavel.
+5. Validar docs e, quando houver implementacao, testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
 
@@ -620,6 +623,41 @@ Verificacao:
 - testes de rotas SPA e navegacao.
 
 Proxima frente recomendada: `Marketing > Configuracoes > Configuracoes de SMS`.
+
+### 2026-04-30 - Marketing > Configuracoes > Configuracoes de SMS
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/marketing/sms-settings` deixou de usar placeholder;
+- tela com breadcrumbs `Marketing / Configuracoes / Configuracoes de SMS`;
+- tres checkboxes Vetus marcados por padrao;
+- automacao de agendamentos para clientes;
+- automacao de animais aniversariantes do dia;
+- automacao de clientes aniversariantes do dia;
+- aviso `So funcionara se tiver saldo de SMS`;
+- acao `Preparar configuracao`;
+- previa local de status;
+- acao `Salvar` bloqueada.
+
+Restricoes mantidas:
+
+- sem chamada de API;
+- sem provider externo;
+- sem consumo de saldo;
+- sem disparo real de SMS;
+- sem ativacao de automacao real;
+- sem salvamento real de configuracao;
+- sem nova migration;
+- sem nova escrita.
+
+Verificacao:
+
+- teste focado de `MarketingSmsSettingsPage`;
+- testes de rotas SPA e navegacao.
+
+Proxima frente recomendada: revalidar o navbar `RH` no Vetus.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

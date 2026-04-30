@@ -529,6 +529,7 @@ describe('router convergence', () => {
     expect(findChildRoute('marketing/vaccine-email')?.meta?.title).toBe('Layout de Email de Vacina');
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
+    expect(findChildRoute('marketing/sms-settings')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
     expect(findChildRoute('dashboards/multifilial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('vaccines-dewormers')?.meta?.breadcrumbParent).toBe('Atendimento');

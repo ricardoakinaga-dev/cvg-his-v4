@@ -21,7 +21,6 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('marketing/sms-settings', 'MarketingSmsSettings', 'Configurações de SMS', 'Marketing', '⚙️'),
   placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️')
 ];
 
@@ -1495,6 +1494,17 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Layout de Email de Vacina',
           breadcrumbParent: 'Marketing',
           icon: '📧'
+        }
+      },
+      {
+        path: 'marketing/sms-settings',
+        name: 'MarketingSmsSettings',
+        component: () => import('@/pages/marketing/MarketingSmsSettingsPage.vue'),
+        meta: {
+          title: 'Configurações de SMS',
+          breadcrumb: 'Configurações de SMS',
+          breadcrumbParent: 'Marketing',
+          icon: '⚙️'
         }
       },
       {
