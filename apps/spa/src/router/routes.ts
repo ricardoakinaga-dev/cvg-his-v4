@@ -30,11 +30,13 @@ function reportWorkbenchRoute(
   title: string,
   breadcrumbParent: string,
   reportKey: string,
-  icon = '📈'
+  icon = '📈',
+  alias: string[] = []
 ): RouteRecordRaw {
   return {
     path,
     name,
+    ...(alias.length ? { alias } : {}),
     component: () => import('@/pages/reports/ReportWorkbenchPage.vue'),
     props: { reportKey },
     meta: {
@@ -47,7 +49,7 @@ function reportWorkbenchRoute(
 }
 
 const reportWorkbenchRoutes: RouteRecordRaw[] = [
-  reportWorkbenchRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', 'audit-appointments', '🧾'),
+  reportWorkbenchRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', 'audit-appointments', '🧾', ['/relatorios/auditoria/agendamentos']),
   reportWorkbenchRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', 'cash-drawer', '🧾'),
   reportWorkbenchRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', 'packages', '📦'),
   reportWorkbenchRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', 'accounts-receivable', '💵'),

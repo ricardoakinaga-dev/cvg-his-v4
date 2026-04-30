@@ -7,13 +7,32 @@
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadReport">Atualizar</DsButton>
-        <DsButton variant="primary" tag="a" :to="spec.primaryPath">{{ spec.primaryAction }}</DsButton>
+        <DsButton v-if="spec.primaryDisabled" variant="primary" disabled>{{ spec.primaryAction }}</DsButton>
+        <DsButton v-else variant="primary" tag="a" :to="spec.primaryPath">{{ spec.primaryAction }}</DsButton>
       </template>
     </AppPageHeader>
 
     <section class="report-filters">
-      <DsInput v-model="filters.dateFrom" type="date" label="De" />
-      <DsInput v-model="filters.dateTo" type="date" label="Até" />
+      <DsInput v-model="filters.dateFrom" type="date" :label="isAuditAppointments ? 'Data início' : 'De'" />
+      <DsInput v-model="filters.dateTo" type="date" :label="isAuditAppointments ? 'Data fim' : 'Até'" />
+      <template v-if="isAuditAppointments">
+        <DsInput v-model="filters.client" label="Cliente" placeholder="Nome, animal ou id do agendamento" />
+        <DsInput v-model="filters.user" label="Usuário" placeholder="Usuário ou ator auditado" />
+        <label class="report-field">
+          <span>Ação</span>
+          <select v-model="filters.action">
+            <option value="">Selecione a ação</option>
+            <option v-for="action in auditActionOptions" :key="action" :value="action">{{ action }}</option>
+          </select>
+        </label>
+        <label class="report-field">
+          <span>Tipo</span>
+          <select v-model="filters.type">
+            <option value="">Selecione os tipos</option>
+            <option v-for="type in auditTypeOptions" :key="type" :value="type">{{ type }}</option>
+          </select>
+        </label>
+      </template>
       <div class="report-filters__actions">
         <DsButton variant="primary" :loading="loading" @click="loadReport">Aplicar</DsButton>
         <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
@@ -57,6 +76,9 @@
         <template #cell-createdAt="{ row }">
           {{ formatDate(stringValue(row, 'createdAt')) }}
         </template>
+        <template #cell-occurredAt="{ row }">
+          {{ formatDateTime(stringValue(row, 'occurredAt')) }}
+        </template>
       </DataTable>
     </DsCard>
   </div>
@@ -72,11 +94,13 @@ import {
   administrativeReportsService,
   type AdministrativeReportsResponse
 } from '@/services/administrativeReports';
+import { auditService } from '@/services/audit';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 
 type ReportKey =
   | 'audit-appointments'
@@ -106,6 +130,7 @@ interface ReportSpec {
   icon: string;
   primaryPath: string;
   primaryAction: string;
+  primaryDisabled?: boolean;
   tableTitle: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -128,7 +153,10 @@ const props = defineProps<{
 const loading = ref(false);
 const error = ref('');
 const report = ref<AdministrativeReportsResponse | null>(null);
-const filters = ref({ dateFrom: '', dateTo: '' });
+const auditEvents = ref<AuditEventSummary[]>([]);
+const filters = ref({ dateFrom: '', dateTo: '', client: '', user: '', action: '', type: '' });
+
+const APPOINTMENT_AUDIT_ENTITY_TYPES = ['appointment', 'appointment-recommendation', 'appointment-sync'];
 
 const money = (value: number | undefined | null) => formatCurrency(value ?? 0);
 const count = (value: number | undefined | null) => String(value ?? 0);
@@ -137,29 +165,25 @@ const specs: Record<ReportKey, ReportSpec> = {
   'audit-appointments': {
     title: 'Auditoria de Agendamentos',
     group: 'Relatórios de Auditorias',
-    subtitle: 'Conferência de alterações operacionais ligadas à agenda',
+    subtitle: 'Relatório Vetus-like de alterações, usuários e tipos ligados aos agendamentos',
     icon: '🧾',
     primaryPath: '/audit',
-    primaryAction: 'Abrir auditoria',
-    tableTitle: 'Eventos consolidados',
-    emptyTitle: 'Sem eventos auditáveis no período',
-    emptyDescription: 'Use a auditoria global para rastrear eventos detalhados de agenda.',
-    note: 'A trilha detalhada permanece no módulo de Auditoria. Esta visão mantém o acesso pelo menu Vetus sem criar dados duplicados.',
+    primaryAction: 'Solicitar Excel',
+    primaryDisabled: true,
+    tableTitle: 'Eventos de agenda auditados',
+    emptyTitle: 'Nenhum agendamento auditado encontrado',
+    emptyDescription: 'Ajuste Data início, Data fim, Cliente, Usuário, Ação ou Tipo para localizar eventos de agenda.',
+    note: 'A rota Vetus observada expõe filtros Data início, Data fim, Cliente, Usuário, Ação e Tipo, com ação Solicitar Excel. A exportação permanece bloqueada até existir contrato local auditável.',
     columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'value', label: 'Total' },
-      { key: 'scope', label: 'Origem' }
+      { key: 'occurredAt', label: 'Data' },
+      { key: 'actorId', label: 'Usuário' },
+      { key: 'action', label: 'Ação' },
+      { key: 'entityType', label: 'Tipo' },
+      { key: 'entityId', label: 'Agendamento' },
+      { key: 'payloadSummary', label: 'Resumo' }
     ],
-    cards: (current) => [
-      { label: 'Caixas recentes', value: count(current?.domains.cash.registerCount), icon: '🏦' },
-      { label: 'Orçamentos recentes', value: count(current?.domains.commercial.quotes.issuedCount), icon: '🧾' },
-      { label: 'PIX auditáveis', value: count(current?.domains.financial.pix.totalTransactions), icon: '💸' }
-    ],
-    rows: (current) => [
-      { id: 'quotes', label: 'Orçamentos inspecionados', value: count(current?.domains.commercial.quotes.issuedCount), scope: 'Comercial' },
-      { id: 'pix', label: 'Transações PIX no período', value: count(current?.domains.financial.pix.totalTransactions), scope: 'Financeiro' },
-      { id: 'cash', label: 'Caixas recentes', value: count(current?.domains.cash.registerCount), scope: 'Caixa' }
-    ]
+    cards: () => [],
+    rows: () => []
   },
   'cash-drawer': {
     title: 'Gaveta',
@@ -253,17 +277,40 @@ const specs: Record<ReportKey, ReportSpec> = {
 };
 
 const spec = computed(() => specs[props.reportKey]);
-const cards = computed(() => spec.value.cards(report.value));
-const rows = computed(() => spec.value.rows(report.value));
+const isAuditAppointments = computed(() => props.reportKey === 'audit-appointments');
+const filteredAuditEvents = computed(() => auditEvents.value.filter((event) => matchesAuditFilters(event)));
+const auditActionOptions = computed(() => uniqueSorted(auditEvents.value.map((event) => event.action)));
+const auditTypeOptions = computed(() => uniqueSorted(auditEvents.value.map((event) => event.entityType)));
+const cards = computed(() => (isAuditAppointments.value ? auditAppointmentCards.value : spec.value.cards(report.value)));
+const rows = computed(() => (isAuditAppointments.value ? auditAppointmentRows.value : spec.value.rows(report.value)));
+const auditAppointmentCards = computed<ReportCard[]>(() => [
+  { label: 'Eventos de agenda', value: count(filteredAuditEvents.value.length), icon: '📅' },
+  { label: 'Ações distintas', value: count(new Set(filteredAuditEvents.value.map((event) => event.action)).size), icon: '🧾' },
+  { label: 'Usuários envolvidos', value: count(new Set(filteredAuditEvents.value.map((event) => event.actorId)).size), icon: '👤' }
+]);
+const auditAppointmentRows = computed<DataTableRow[]>(() =>
+  filteredAuditEvents.value.map((event) => ({
+    ...event,
+    id: event.eventId
+  })) as unknown as DataTableRow[]
+);
 
 async function loadReport() {
   loading.value = true;
   error.value = '';
   try {
-    report.value = await administrativeReportsService.getHubs({
-      dateFrom: filters.value.dateFrom || undefined,
-      dateTo: filters.value.dateTo || undefined
-    });
+    if (isAuditAppointments.value) {
+      auditEvents.value = await auditService.listEvents({
+        entityTypes: APPOINTMENT_AUDIT_ENTITY_TYPES,
+        limit: 200
+      });
+      report.value = null;
+    } else {
+      report.value = await administrativeReportsService.getHubs({
+        dateFrom: filters.value.dateFrom || undefined,
+        dateTo: filters.value.dateTo || undefined
+      });
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar relatório';
   } finally {
@@ -272,8 +319,29 @@ async function loadReport() {
 }
 
 function resetFilters() {
-  filters.value = { dateFrom: '', dateTo: '' };
+  filters.value = { dateFrom: '', dateTo: '', client: '', user: '', action: '', type: '' };
   void loadReport();
+}
+
+function matchesAuditFilters(event: AuditEventSummary): boolean {
+  const clientNeedle = filters.value.client.trim().toLowerCase();
+  const userNeedle = filters.value.user.trim().toLowerCase();
+  const occurredAt = new Date(event.occurredAt);
+  const fromDate = filters.value.dateFrom ? new Date(`${filters.value.dateFrom}T00:00:00`) : null;
+  const toDate = filters.value.dateTo ? new Date(`${filters.value.dateTo}T23:59:59`) : null;
+  const matchesDateFrom = !fromDate || occurredAt >= fromDate;
+  const matchesDateTo = !toDate || occurredAt <= toDate;
+  const matchesClient =
+    !clientNeedle ||
+    [event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(clientNeedle));
+  const matchesUser = !userNeedle || event.actorId.toLowerCase().includes(userNeedle);
+  const matchesAction = !filters.value.action || event.action === filters.value.action;
+  const matchesType = !filters.value.type || event.entityType === filters.value.type;
+  return matchesDateFrom && matchesDateTo && matchesClient && matchesUser && matchesAction && matchesType;
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
 function receivableSpec(title: string, subtitle: string, mode: 'open' | 'received'): ReportSpec {
@@ -464,6 +532,13 @@ function formatDate(value: string | null): string {
   return new Intl.DateTimeFormat('pt-BR').format(parsed);
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(parsed);
+}
+
 onMounted(loadReport);
 </script>
 
@@ -484,6 +559,25 @@ onMounted(loadReport);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.report-field {
+  display: grid;
+  gap: 6px;
+}
+
+.report-field span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+}
+
+.report-field select {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
 }
 
 .report-kpis {

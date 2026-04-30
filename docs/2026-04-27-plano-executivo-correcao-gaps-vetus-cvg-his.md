@@ -443,8 +443,9 @@ Checkpoint em 2026-04-29:
 - `RH > Cadastros > Folgas` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia local de folga, POST/DELETE, migration ou nova API.
 - `RH > Cadastros > Profissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de profissao, abertura real, migration ou nova API.
 - O navbar `Relatorios` foi revalidado em 2026-04-30 por artefatos Vetus read-only, sem escrita, exportacao real ou geracao de relatorio no Vetus.
+- `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos` foi alinhado em 2026-04-30, validado em escopo seguro sem exportacao real, nova API, migration ou escrita adicional.
 
-Proxima acao recomendada: alinhar `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`.
+Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Gaveta`.
 
 Justificativa:
 
@@ -496,14 +497,15 @@ Justificativa:
 - a sequencia principal revalidada de `RH` ficou fechada ate `RH > Cadastros > Profissoes`;
 - o navbar `Relatorios` foi revalidado por evidencia read-only e a ordem confirmada comeca por `Relatorios de Auditorias > Auditoria de Agendamentos`, seguido por blocos financeiros, atendimentos, personalizados, cadastros e estoque;
 - a navegacao do `cvg-his-v2` ja acompanha a ordem principal de `Relatorios`, mantendo `Hubs CVG` apenas como extensao local no fim do grupo;
-- o primeiro GAP atual de `Relatorios` e `Auditoria de Agendamentos`, porque `/reports/audit/appointments` existe, mas ainda usa `ReportWorkbenchPage` com agregados genericos de caixa/orcamentos/PIX e deve ser realinhado contra a semantica Vetus da rota beta `relatorios/auditoria/agendamentos`.
+- `Auditoria de Agendamentos` ja foi realinhado contra a semantica Vetus da rota beta `relatorios/auditoria/agendamentos`, removendo agregados genericos de caixa/orcamentos/PIX e usando eventos reais de auditoria de agenda;
+- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Gaveta`, porque e o primeiro item do proximo grupo confirmado no navbar e precisa ser validado como relatorio financeiro legado, separado da superficie operacional de caixa ja existente em `Financeiro > Gaveta > Gaveta`.
 
-Escopo minimo de `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`:
+Escopo minimo de `Relatorios > Relatorios Financeiros > Gaveta`:
 
-1. Revalidar a rota beta `relatorios/auditoria/agendamentos`, a captura `08-navbar-Relatorios-expanded.png`, os relatorios consolidados e o HTML/JSON autenticado ja arquivado.
-2. Comparar `/reports/audit/appointments` com a semantica real de auditoria de agendamentos, removendo indicadores de caixa, PIX ou orcamentos se nao fizerem parte do relatorio Vetus.
-3. Alinhar titulo, breadcrumbs, filtros, listagem, totalizadores, estado vazio e acoes ao comportamento observado.
-4. Manter o fluxo somente leitura, sem geracao/exportacao real de relatorio no Vetus e sem escrita adicional.
+1. Revalidar a rota legacy `Sistema/Relatorio/GavetaRelatorio.htm`, a captura/HTML do navbar de relatorios e os artefatos financeiros consolidados.
+2. Comparar `/reports/cash-drawer` com o comportamento do relatorio Vetus de Gaveta, sem confundir com a tela operacional `/cash`.
+3. Alinhar titulo, breadcrumbs, filtros, KPIs, grade, estado vazio e acao de abertura/exportacao conforme o escopo observado.
+4. Manter o fluxo somente leitura, sem abertura/fechamento de caixa, baixa financeira, exportacao real no Vetus ou escrita adicional.
 5. Validar com testes focados de SPA/router e, se houver UI alterada, reproducao direta no fluxo local.
 
 Observacao de sequenciamento:
@@ -974,7 +976,7 @@ Comparacao com `cvg-his-v2`:
 - `apps/spa/src/navigation.ts` espelha a ordem principal do Vetus;
 - `Hubs CVG` permanece como extensao local no fim do grupo;
 - `apps/spa/src/router/routes.ts` ja possui rotas concretas para os itens principais de relatorios;
-- `/reports/audit/appointments` existe, mas ainda usa `ReportWorkbenchPage` com agregados genericos e precisa ser auditada contra a semantica Vetus de auditoria de agendamentos.
+- `/reports/audit/appointments` foi o primeiro GAP identificado na revalidacao porque usava `ReportWorkbenchPage` com agregados genericos; a implementacao seguinte corrigiu essa divergencia.
 
 Restricoes mantidas:
 
@@ -984,6 +986,41 @@ Restricoes mantidas:
 - sem alteracao de codigo nesta revalidacao.
 
 Proxima frente recomendada: `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`.
+
+### 2026-04-30 - Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos
+
+Status: implementado e validado.
+
+Evidencias Vetus usadas:
+
+- rota beta `relatorios/auditoria/agendamentos`;
+- captura `docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-relatorios-auditoria-agendamentos.png`;
+- `docs/vetus/guides/2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md`;
+- `docs/vetus/inspection/2026-04-23T22-00-01-706Z/artifacts.json`.
+
+Alteracoes no `cvg-his-v2`:
+
+- `/reports/audit/appointments` manteve o item do navbar `Relatorios > Relatorios de Auditorias`;
+- alias `/relatorios/auditoria/agendamentos` adicionado para a rota Vetus-like;
+- filtros alinhados para `Data inicio`, `Data fim`, `Cliente`, `Usuario`, `Acao` e `Tipo`;
+- acao `Solicitar Excel` mantida visivel e bloqueada ate existir contrato local auditavel de exportacao;
+- grade alinhada para eventos de agenda com `Data`, `Usuario`, `Acao`, `Tipo`, `Agendamento` e `Resumo`;
+- indicadores de caixa, orcamentos e PIX removidos dessa superficie;
+- dados passam a vir de `auditService.listEvents` com `entityTypes` `appointment`, `appointment-recommendation` e `appointment-sync`.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem exportacao real;
+- sem escrita no Vetus;
+- sem geracao real de relatorio.
+
+Verificacao:
+
+- `npm --prefix apps/spa run test -- ReportWorkbenchPage routes`.
+
+Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Gaveta`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

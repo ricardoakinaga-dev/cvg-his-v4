@@ -713,6 +713,7 @@ describe('router convergence', () => {
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');
+    expect(findChildRoute('reports/audit/appointments')?.alias).toEqual(['/relatorios/auditoria/agendamentos']);
     expect(findChildRoute('reports/registers/services')?.meta?.title).toBe('Serviços');
     expect(findChildRoute('reports/inventory-products')?.meta?.title).toBe('Relatório de Produtos');
     expect(findChildRoute('rh/professions')?.meta?.title).toBe('Profissões');

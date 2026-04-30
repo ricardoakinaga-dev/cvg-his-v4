@@ -2,12 +2,20 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ReportWorkbenchPage from '../ReportWorkbenchPage.vue';
+import { auditService } from '@/services/audit';
 import { administrativeReportsService } from '@/services/administrativeReports';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
+import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 
 vi.mock('@/services/administrativeReports', () => ({
   administrativeReportsService: {
     getHubs: vi.fn()
+  }
+}));
+
+vi.mock('@/services/audit', () => ({
+  auditService: {
+    listEvents: vi.fn()
   }
 }));
 
@@ -121,10 +129,40 @@ const report = {
   highlights: []
 } as unknown as AdministrativeReportsResponse;
 
+const auditEvents = [
+  {
+    eventId: 'evt-apt-1',
+    occurredAt: '2026-04-28T12:00:00.000Z',
+    actorId: 'user-agenda',
+    accountId: 'acc-1',
+    module: 'scheduling',
+    action: 'appointment.updated',
+    entityType: 'appointment',
+    entityId: 'apt-1',
+    correlationId: 'corr-apt-1',
+    payloadSummary: 'Cliente Maria teve horário do agendamento alterado',
+    riskLevel: 'medium'
+  },
+  {
+    eventId: 'evt-apt-2',
+    occurredAt: '2026-04-28T13:00:00.000Z',
+    actorId: 'user-sync',
+    accountId: 'acc-1',
+    module: 'google-calendar',
+    action: 'appointment.sync.failed',
+    entityType: 'appointment-sync',
+    entityId: 'apt-2',
+    correlationId: 'corr-apt-2',
+    payloadSummary: 'Sincronização do agendamento com calendário falhou',
+    riskLevel: 'low'
+  }
+] as unknown as AuditEventSummary[];
+
 describe('ReportWorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(administrativeReportsService.getHubs).mockResolvedValue(report);
+    vi.mocked(auditService.listEvents).mockResolvedValue(auditEvents);
   });
 
   it('renders receivables report with live administrative hub data', async () => {
@@ -148,5 +186,30 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Produtos/Serviços Produzidos');
     expect(wrapper.text()).toContain('Consulta Teste');
     expect(wrapper.text()).toContain('Produto Teste');
+  });
+
+  it('renders appointment audit report with Vetus filters and audit events only', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'audit-appointments' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Auditoria de Agendamentos');
+    expect(wrapper.text()).toContain('Data início');
+    expect(wrapper.text()).toContain('Data fim');
+    expect(wrapper.text()).toContain('Cliente');
+    expect(wrapper.text()).toContain('Usuário');
+    expect(wrapper.text()).toContain('Ação');
+    expect(wrapper.text()).toContain('Tipo');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Cliente Maria teve horário do agendamento alterado');
+    expect(wrapper.text()).toContain('appointment.updated');
+    expect(wrapper.text()).not.toContain('PIX auditáveis');
+    expect(wrapper.text()).not.toContain('Caixas recentes');
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(auditService.listEvents).toHaveBeenCalledWith({
+      entityTypes: ['appointment', 'appointment-recommendation', 'appointment-sync'],
+      limit: 200
+    });
   });
 });
