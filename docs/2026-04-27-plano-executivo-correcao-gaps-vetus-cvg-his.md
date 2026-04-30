@@ -439,8 +439,9 @@ Checkpoint em 2026-04-29:
 - `RH > Usuarios > Grupos de Acesso` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou mudanca automatica de permissao.
 - `RH > Comissoes > Calculo de Comissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem fechamento, pagamento, migration ou nova API.
 - `RH > Cadastros > Profissionais` foi alinhado em 2026-04-30, validado em escopo seguro sem nova API, migration ou escrita adicional alem dos fluxos existentes de staff.
+- `RH > Cadastros > Regras de Comissao` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de regra, percentual, migration ou nova API.
 
-Proxima acao recomendada: alinhar `RH > Cadastros > Regras de Comissao`.
+Proxima acao recomendada: alinhar `RH > Cadastros > Folgas`.
 
 Justificativa:
 
@@ -486,14 +487,15 @@ Justificativa:
 - `Usuarios > Grupos de Acesso` ja foi realinhado como superficie de politicas coletivas de autorizacao, separando grupo de acesso, usuario individual e matriz de permissoes efetivas;
 - `Comissoes > Calculo de Comissoes` ja foi realinhado como superficie de pesquisa e preparacao segura, preservando filtros por profissional/data, acao `Pesquisar`, acao `Incluir` bloqueada e grade de registros sem fechamento/pagamento persistente;
 - `Cadastros > Profissionais` ja foi realinhado como superficie beta Vetus-like, preservando busca por ID/nome, CTA de inclusao, cards com status/ID/contato e acao `Ver Detalhes`;
-- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Regras de Comissao`, porque o Vetus possui rota legada funcional `Comissoes/RegrasDeComissao.htm`, evidencia `rchk-Regras-Comissoes.png`/`rh-regras-comissao-01.png` e a superficie local `/commission-rules` precisa ser auditada contra filtros, listagem e manutencao segura.
+- `Cadastros > Regras de Comissao` ja foi realinhado como superficie legacy Vetus-like, preservando `Incluir` bloqueado, filtros `Id`/`Descricao`, `Pesquisar` e grade `Id`/`Descricao`/`Abrir`;
+- a proxima divergencia pela ordem Vetus esta em `RH > Cadastros > Folgas`, porque o Vetus possui rota legada `Agenda/Folgas.htm`, captura `rh-folgas-01.png` e a superficie local `/time-off` precisa ser auditada contra profissional, periodo, motivo/status e impacto em agenda.
 
-Escopo minimo de `RH > Cadastros > Regras de Comissao`:
+Escopo minimo de `RH > Cadastros > Folgas`:
 
-1. Revalidar os artefatos Vetus read-only especificos de `Comissoes/RegrasDeComissao.htm`, `rchk-Regras-Comissoes.png`, `rh-regras-comissao-01.png`, anexo de comissoes e relatorio RH antes de escrever codigo.
-2. Alinhar rota, titulo, breadcrumbs e controles principais: acao `Incluir`, filtros por `Id` e `Descricao`, acao `Pesquisar`, grade com `Id`, `Descricao` e `Abrir`.
-3. Manter manutencao de regra em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
-4. Evitar dados falsos; usar profissionais/departamentos reais ou estados vazios honestos.
+1. Revalidar os artefatos Vetus read-only especificos de `Agenda/Folgas.htm`, `rh-folgas-01.png`, relatorio RH e documentacao de API antes de escrever codigo.
+2. Alinhar rota, titulo, breadcrumbs e controles principais: profissional, periodo, motivo/status, acao de pesquisa e grade/listagem de cobertura.
+3. Manter cadastro/remoção de folga em modo seguro enquanto nao houver contrato auditavel ou preservar apenas contratos existentes com testes de autorizacao.
+4. Evitar dados falsos; usar profissionais reais ou estados vazios honestos.
 5. Validar com testes focados de SPA/API, typecheck/build e smoke publicado quando aplicavel.
 
 Observacao de sequenciamento:
@@ -838,6 +840,39 @@ Verificacao:
 - teste focado de `StaffListPage`.
 
 Proxima frente recomendada: `RH > Cadastros > Regras de Comissao`.
+
+### 2026-04-30 - RH > Cadastros > Regras de Comissao
+
+Status: implementado e validado em escopo seguro.
+
+Entrega:
+
+- `/commission-rules` mantido como rota concreta de `RH > Cadastros > Regras de Comissao`;
+- tela com breadcrumbs `RH / Cadastros / Regras de Comissao`;
+- titulo `Cadastro de Regras de Comissao`;
+- referencia explicita a rota legacy `Comissoes/RegrasDeComissao.htm`;
+- referencias `modulos/com-02-regras.png` e `rh-regras-comissao-01.png`;
+- acao `Incluir` bloqueada;
+- filtros `Id` e `Descricao`;
+- acao `Pesquisar`;
+- grade `Regras de comissao` com `Id`, `Descricao`, `Departamento`, `Profissionais ativos`, `Equipe vinculada` e `Abrir`;
+- acao `Abrir` bloqueada;
+- regras derivadas de agrupamentos reais de profissionais por cargo/departamento.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem inclusao, edicao ou exclusao de regra;
+- sem alteracao de percentual;
+- sem abertura real de registro;
+- sem escrita adicional.
+
+Verificacao:
+
+- teste focado de `RhOperationalPages`.
+
+Proxima frente recomendada: `RH > Cadastros > Folgas`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 

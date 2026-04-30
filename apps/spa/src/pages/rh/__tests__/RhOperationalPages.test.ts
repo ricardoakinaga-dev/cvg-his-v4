@@ -159,8 +159,42 @@ describe('RH operational pages', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Regras de Comissão');
+    expect(wrapper.text()).toContain('RH');
+    expect(wrapper.text()).toContain('Cadastros');
+    expect(wrapper.text()).toContain('Cadastro de Regras de Comissão');
+    expect(wrapper.text()).toContain('Comissoes/RegrasDeComissao.htm');
+    expect(wrapper.text()).toContain('rh-regras-comissao-01.png');
+    expect(wrapper.text()).toContain('modulos/com-02-regras.png');
+    expect(wrapper.text()).toContain('Incluir');
+    expect(wrapper.text()).toContain('Id');
+    expect(wrapper.text()).toContain('Descrição');
+    expect(wrapper.text()).toContain('Pesquisar');
+    expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('Clínica');
     expect(wrapper.text()).toContain('Médica Veterinária');
+  });
+
+  it('filters commission rules by Vetus id and description', async () => {
+    const wrapper = mount(CommissionRulesPage);
+    await flushPromises();
+
+    const idInput = wrapper.find('input#commission-rule-id');
+    expect(idInput.exists()).toBe(true);
+    await idInput.setValue('REG-002');
+
+    const descriptionInput = wrapper.find('input#commission-rule-description');
+    expect(descriptionInput.exists()).toBe(true);
+    await descriptionInput.setValue('Bioquímico');
+
+    const searchButton = wrapper.findAll('button').find((button) => button.text() === 'Pesquisar');
+    expect(searchButton).toBeTruthy();
+    await searchButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Pesquisa preparada para regras com Id REG-002 e descrição Bioquímico');
+    expect(wrapper.text()).toContain('REG-002');
+    expect(wrapper.text()).toContain('Bioquímico');
+    expect(wrapper.text()).not.toContain('REG-001');
   });
 
   it('renders commission calculation preview from administrative report data', async () => {
