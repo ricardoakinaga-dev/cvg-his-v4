@@ -300,14 +300,15 @@ const specs: Record<ReportKey, ReportSpec> = {
   packages: {
     title: 'Pacotes',
     group: 'Relatórios Financeiros',
-    subtitle: 'Entrada operacional para análise de pacotes e receita relacionada',
+    subtitle: 'Relatório financeiro legacy de pacotes, receita relacionada e uso comercial disponível',
     icon: '📦',
     primaryPath: '/packages',
-    primaryAction: 'Abrir pacotes',
-    tableTitle: 'Indicadores disponíveis',
+    primaryAction: 'Solicitar Excel',
+    primaryDisabled: true,
+    tableTitle: 'Indicadores de pacotes',
     emptyTitle: 'Sem pacote consolidado',
-    emptyDescription: 'Pacotes aparecem no módulo operacional quando houver uso no período.',
-    note: 'O hub financeiro ainda não expõe um endpoint exclusivo de pacotes; a rota mantém filtros e vínculo operacional sem simular números.',
+    emptyDescription: 'Indicadores relacionados a pacotes aparecem aqui conforme o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/PacoteRelatorio.htm. Esta visão é somente leitura, não cria pacotes, não baixa títulos e não exporta relatório real. O hub financeiro ainda não expõe fonte exclusiva de pacotes, então a tela mostra apenas indicadores comerciais relacionados sem simular registros.',
     columns: [
       { key: 'label', label: 'Indicador' },
       { key: 'value', label: 'Valor' },
@@ -320,7 +321,8 @@ const specs: Record<ReportKey, ReportSpec> = {
     ],
     rows: (current) => [
       { id: 'revenue', label: 'Receita comercial relacionada', value: money(current?.executive.commercialRevenue), scope: 'Comercial' },
-      { id: 'sales', label: 'Vendas fechadas', value: count(current?.domains.commercial.counterSales.closedCount), scope: 'Comandas/Vendas' }
+      { id: 'pipeline', label: 'Pipeline comercial relacionado', value: money(current?.executive.quotePipelineAmount), scope: 'Orçamentos' },
+      { id: 'sales', label: 'Vendas fechadas relacionadas', value: count(current?.domains.commercial.counterSales.closedCount), scope: 'Comandas/Vendas' }
     ]
   },
   'accounts-receivable': receivableSpec('Contas a Receber', 'Recebíveis em aberto por tutor e paciente', 'open'),

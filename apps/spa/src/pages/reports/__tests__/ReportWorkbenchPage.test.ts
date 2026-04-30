@@ -242,6 +242,24 @@ describe('ReportWorkbenchPage', () => {
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 
+  it('renders packages financial report as a read-only legacy report', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'packages' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Pacotes');
+    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/PacoteRelatorio.htm');
+    expect(wrapper.text()).toContain('Indicadores de pacotes');
+    expect(wrapper.text()).toContain('Receita comercial relacionada');
+    expect(wrapper.text()).toContain('Pipeline comercial relacionado');
+    expect(wrapper.text()).toContain('Vendas fechadas relacionadas');
+    expect(wrapper.text()).not.toContain('Abrir pacotes');
+    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
   it('renders appointment audit report with Vetus filters and audit events only', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'audit-appointments' }

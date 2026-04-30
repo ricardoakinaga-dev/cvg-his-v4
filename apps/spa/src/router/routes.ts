@@ -51,7 +51,7 @@ function reportWorkbenchRoute(
 const reportWorkbenchRoutes: RouteRecordRaw[] = [
   reportWorkbenchRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', 'audit-appointments', '🧾', ['/relatorios/auditoria/agendamentos']),
   reportWorkbenchRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', 'cash-drawer', '🧾', ['/relatorios/financeiros/gaveta']),
-  reportWorkbenchRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', 'packages', '📦'),
+  reportWorkbenchRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', 'packages', '📦', ['/relatorios/financeiros/pacotes']),
   reportWorkbenchRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', 'accounts-receivable', '💵'),
   reportWorkbenchRoute('reports/received-accounts', 'ReportsReceivedAccounts', 'Contas Recebidas', 'Relatórios Financeiros', 'received-accounts', '✅'),
   reportWorkbenchRoute('reports/accounts-payable', 'ReportsAccountsPayable', 'Contas a Pagar', 'Relatórios Financeiros', 'accounts-payable', '💸'),

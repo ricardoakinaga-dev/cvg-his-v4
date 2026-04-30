@@ -447,8 +447,9 @@ Checkpoint em 2026-04-29:
 - `Relatorios > Relatorios Financeiros > Gaveta` foi alinhado em 2026-04-30, validado em escopo seguro sem abertura/fechamento de caixa, exportacao real, nova API, migration ou escrita adicional.
 - `Relatorios > Relatorios Financeiros > Fluxo de Caixa` foi alinhado em 2026-04-30, validado em escopo seguro sem baixa, conciliacao, exportacao real, nova API, migration ou escrita adicional.
 - `Relatorios > Relatorios Financeiros > DRE - Demonstrativo de Resultados` foi alinhado em 2026-04-30, validado em escopo seguro sem fechamento contabil, baixa financeira, exportacao real, nova API, migration ou escrita adicional.
+- `Relatorios > Relatorios Financeiros > Pacotes` foi alinhado em 2026-04-30, validado em escopo seguro sem criacao de pacote, baixa financeira, exportacao real, nova API, migration ou escrita adicional.
 
-Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Pacotes`.
+Proxima acao recomendada: alinhar `Relatorios > Relatorios Financeiros > Contas a Receber`.
 
 Justificativa:
 
@@ -504,14 +505,15 @@ Justificativa:
 - `Relatorios Financeiros > Gaveta` ja foi realinhado como relatorio financeiro legacy somente leitura, separado da superficie operacional de caixa ja existente em `Financeiro > Gaveta > Gaveta`;
 - `Relatorios Financeiros > Fluxo de Caixa` ja foi realinhado como relatorio financeiro legacy somente leitura, separado da superficie operacional `/finance/cash-flow`;
 - `Relatorios Financeiros > DRE - Demonstrativo de Resultados` ja foi realinhado como relatorio financeiro legacy somente leitura, separado dos dashboards financeiros ja existentes;
-- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Pacotes`, porque e o item seguinte confirmado no grupo financeiro e precisa ser validado como relatorio legacy separado do modulo operacional de pacotes.
+- `Relatorios Financeiros > Pacotes` ja foi realinhado como relatorio financeiro legacy somente leitura, separado do modulo operacional `/packages`;
+- o proximo GAP atual de `Relatorios` passa a ser `Relatorios Financeiros > Contas a Receber`, porque e o item seguinte confirmado no grupo financeiro e precisa ser validado como relatorio legacy separado da superficie operacional de contas a receber.
 
-Escopo minimo de `Relatorios > Relatorios Financeiros > Pacotes`:
+Escopo minimo de `Relatorios > Relatorios Financeiros > Contas a Receber`:
 
-1. Revalidar a rota legacy `Sistema/Relatorio/PacoteRelatorio.htm`, as capturas de relatorios financeiros e os artefatos financeiros consolidados.
-2. Comparar `/reports/packages` com o comportamento do relatorio Vetus de pacotes, sem confundir com o modulo operacional `/packages`.
+1. Revalidar a rota legacy `Sistema/Relatorio/ContasAReceberRelatorio.htm`, as capturas de relatorios financeiros e os artefatos financeiros consolidados.
+2. Comparar `/reports/accounts-receivable` com o comportamento do relatorio Vetus de contas a receber, sem confundir com a superficie operacional `/billing`.
 3. Alinhar titulo, breadcrumbs, filtros, KPIs, grade, estado vazio e acao de exportacao conforme o escopo observado.
-4. Manter o fluxo somente leitura, sem criacao de pacote, baixa financeira, exportacao real no Vetus ou escrita adicional.
+4. Manter o fluxo somente leitura, sem baixa financeira, conciliacao, exportacao real no Vetus ou escrita adicional.
 5. Validar com testes focados de SPA/router e, se houver UI alterada, reproducao direta no fluxo local.
 
 Observacao de sequenciamento:
@@ -1139,6 +1141,43 @@ Verificacao:
 - `npm --prefix apps/spa run test -- ReportWorkbenchPage routes ReportsDomainPages`.
 
 Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Pacotes`.
+
+### 2026-04-30 - Relatorios > Relatorios Financeiros > Pacotes
+
+Status: implementado e validado.
+
+Evidencias Vetus usadas:
+
+- rota legacy `Sistema/Relatorio/PacoteRelatorio.htm`;
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-relatorios-financeiros.md`;
+- HTML autenticado em `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estoque-legacy-transferencia-estoques.html`.
+
+Alteracoes no `cvg-his-v2`:
+
+- `/reports/packages` passou a representar o item `Relatorios > Relatorios Financeiros > Pacotes`;
+- alias `/relatorios/financeiros/pacotes` adicionado para a rota de relatorio;
+- acao `Solicitar Excel` mantida visivel e bloqueada ate existir contrato local auditavel de exportacao;
+- nota da rota legacy `Sistema/Relatorio/PacoteRelatorio.htm` adicionada;
+- KPIs alinhados para receita comercial, pipeline comercial e vendas fechadas;
+- grade alinhada para `Indicador`, `Valor` e `Origem`;
+- a superficie ficou separada do modulo operacional `/packages` e deixa explicito que ainda nao ha fonte exclusiva de pacotes no hub atual.
+
+Restricoes mantidas:
+
+- sem nova API;
+- sem nova migration;
+- sem criacao de pacote;
+- sem baixa financeira;
+- sem exportacao real;
+- sem escrita no Vetus;
+- sem geracao real de relatorio.
+
+Verificacao:
+
+- `npm --prefix apps/spa run test -- ReportWorkbenchPage routes ReportsDomainPages`.
+
+Proxima frente recomendada: `Relatorios > Relatorios Financeiros > Contas a Receber`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
