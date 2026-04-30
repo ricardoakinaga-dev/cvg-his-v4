@@ -442,8 +442,9 @@ Checkpoint em 2026-04-29:
 - `RH > Cadastros > Regras de Comissao` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de regra, percentual, migration ou nova API.
 - `RH > Cadastros > Folgas` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia local de folga, POST/DELETE, migration ou nova API.
 - `RH > Cadastros > Profissoes` foi alinhado em 2026-04-30, validado em escopo seguro sem persistencia de profissao, abertura real, migration ou nova API.
+- O navbar `Relatorios` foi revalidado em 2026-04-30 por artefatos Vetus read-only, sem escrita, exportacao real ou geracao de relatorio no Vetus.
 
-Proxima acao recomendada: revalidar o navbar `Relatorios` no Vetus.
+Proxima acao recomendada: alinhar `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`.
 
 Justificativa:
 
@@ -493,15 +494,17 @@ Justificativa:
 - `Cadastros > Folgas` ja foi realinhado como superficie legacy Vetus-like, preservando rota `Agenda/Folgas.htm`, filtros `Profissional`, `Data inicial`, `Data final` e `Motivo/Status`, `Pesquisar`, `Incluir` bloqueado e grade de cobertura sem POST/DELETE;
 - `Cadastros > Profissoes` ja foi realinhado como superficie legacy Vetus-like, preservando rota `Cadastros/Profissoes.htm`, filtros `Descricao` e `Profissional vinculado`, `Pesquisar`, `Incluir` bloqueado e grade derivada de cargos reais dos profissionais;
 - a sequencia principal revalidada de `RH` ficou fechada ate `RH > Cadastros > Profissoes`;
-- a proxima frente macro pela ordem do navbar Vetus e revalidar `Relatorios`, porque esse bloco tem varios itens legados e beta ja materializados parcialmente no `cvg-his-v2`, mas precisa de confirmacao de ordem, rotas, lacunas e primeiro GAP atual.
+- o navbar `Relatorios` foi revalidado por evidencia read-only e a ordem confirmada comeca por `Relatorios de Auditorias > Auditoria de Agendamentos`, seguido por blocos financeiros, atendimentos, personalizados, cadastros e estoque;
+- a navegacao do `cvg-his-v2` ja acompanha a ordem principal de `Relatorios`, mantendo `Hubs CVG` apenas como extensao local no fim do grupo;
+- o primeiro GAP atual de `Relatorios` e `Auditoria de Agendamentos`, porque `/reports/audit/appointments` existe, mas ainda usa `ReportWorkbenchPage` com agregados genericos de caixa/orcamentos/PIX e deve ser realinhado contra a semantica Vetus da rota beta `relatorios/auditoria/agendamentos`.
 
-Escopo minimo da revalidacao de `Relatorios`:
+Escopo minimo de `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`:
 
-1. Revalidar artefatos Vetus read-only de `Relatorios`, incluindo mapa de navegacao, relatorios consolidados e capturas/JSON autenticados.
-2. Confirmar a ordem dos grupos e itens do navbar de relatorios.
-3. Comparar cada item com rotas locais ja materializadas e placeholders/remanescentes.
-4. Definir o primeiro GAP operacional de `Relatorios` sem executar escrita no Vetus.
-5. Atualizar os documentos de sequenciamento com a ordem confirmada e o proximo item logico.
+1. Revalidar a rota beta `relatorios/auditoria/agendamentos`, a captura `08-navbar-Relatorios-expanded.png`, os relatorios consolidados e o HTML/JSON autenticado ja arquivado.
+2. Comparar `/reports/audit/appointments` com a semantica real de auditoria de agendamentos, removendo indicadores de caixa, PIX ou orcamentos se nao fizerem parte do relatorio Vetus.
+3. Alinhar titulo, breadcrumbs, filtros, listagem, totalizadores, estado vazio e acoes ao comportamento observado.
+4. Manter o fluxo somente leitura, sem geracao/exportacao real de relatorio no Vetus e sem escrita adicional.
+5. Validar com testes focados de SPA/router e, se houver UI alterada, reproducao direta no fluxo local.
 
 Observacao de sequenciamento:
 
@@ -941,7 +944,46 @@ Verificacao:
 
 - teste focado de `RhOperationalPages`.
 
-Proxima frente recomendada: revalidar o navbar `Relatorios` no Vetus.
+Proxima frente recomendada: `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`.
+
+### 2026-04-30 - Revalidacao do navbar Relatorios
+
+Status: revalidado e documentado.
+
+Evidencias:
+
+- `docs/vetus/guides/03-shell-mapa-de-navegacao.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-modulo-relatorios-itens.md`;
+- `docs/vetus/guides/2026-04-24-relatorio-consolidado-modulo-relatorios.md`;
+- `docs/vetus/guides/02-ANALISE-SISTEMA-VETUS.md`;
+- captura `docs/vetus/screenshots/08-navbar-Relatorios-expanded.png`;
+- HTML autenticado em `docs/vetus/inspection/2026-04-23T23-41-46-292Z-estoque/estoque-legacy-transferencia-estoques.html`;
+- capturas/observacoes de relatorios em `docs/vetus/inspection/2026-04-24T02-20-00-000Z-relatorios-itens/`, `docs/vetus/inspection/2026-04-24T02-30-00-000Z-relatorios-grupos/`, `docs/vetus/inspection/2026-04-24T02-40-00-000Z-relatorios-financeiros/` e `docs/vetus/inspection/2026-04-24T02-50-00-000Z-relatorios-consolidado-final/`.
+
+Ordem confirmada:
+
+- `Relatorios de Auditorias > Auditoria de Agendamentos`;
+- `Relatorios Financeiros > Gaveta`, `Fluxo de Caixa`, `DRE - Demonstrativo de Resultados`, `Pacotes`, `Contas a Receber`, `Contas Recebidas`, `Contas a Pagar`, `Contas Pagas`, `Cheques`, `Pagamento Antecipado`;
+- `Relatorios de Atendimentos > Comandas/Vendas`, `Produtos/Servicos Produzidos`, `Producao`, `Agenda`, `Atendimento por Profissional`;
+- `Relatorios Personalizados > Relatorio de NF de Servicos Prestados`;
+- `Relatorios de Cadastros > Servicos`, `Clientes`, `Animais`, `Fornecedores`, `Exclusao de Vendas e Comandas`;
+- `Relatorios de Estoque > Estoque`, `Movimentacoes no Estoque`, `Entrada de NF`, `Relatorio de Produtos`.
+
+Comparacao com `cvg-his-v2`:
+
+- `apps/spa/src/navigation.ts` espelha a ordem principal do Vetus;
+- `Hubs CVG` permanece como extensao local no fim do grupo;
+- `apps/spa/src/router/routes.ts` ja possui rotas concretas para os itens principais de relatorios;
+- `/reports/audit/appointments` existe, mas ainda usa `ReportWorkbenchPage` com agregados genericos e precisa ser auditada contra a semantica Vetus de auditoria de agendamentos.
+
+Restricoes mantidas:
+
+- sem escrita no Vetus;
+- sem exportacao real;
+- sem geracao real de relatorio;
+- sem alteracao de codigo nesta revalidacao.
+
+Proxima frente recomendada: `Relatorios > Relatorios de Auditorias > Auditoria de Agendamentos`.
 
 ### 2026-04-29 - Revalidacao do navbar Marketing
 
