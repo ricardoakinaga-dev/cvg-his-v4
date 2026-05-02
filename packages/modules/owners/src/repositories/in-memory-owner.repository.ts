@@ -1,5 +1,30 @@
 import type { AccountId, OwnerId, OwnerSummary } from '@cvg-his-v2/shared-types';
 
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function matchesSearch(value: unknown, search: string): boolean {
+  if (typeof value === 'string') {
+    const normalizedSearch = search.toLowerCase();
+    const searchDigits = normalizeDigits(search);
+    return (
+      value.toLowerCase().includes(normalizedSearch) ||
+      (searchDigits.length > 0 && normalizeDigits(value).includes(searchDigits))
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => matchesSearch(item, search));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) => matchesSearch(item, search));
+  }
+
+  return false;
+}
+
 export interface OwnerRepository {
   create(owner: OwnerSummary): Promise<void>;
   update(owner: OwnerSummary): Promise<void>;
@@ -32,8 +57,13 @@ export class InMemoryOwnerRepository implements OwnerRepository {
       .filter(
         (o) =>
           !search ||
-          o.fullName.toLowerCase().includes(search.toLowerCase()) ||
-          o.documentId?.toLowerCase().includes(search.toLowerCase())
+          matchesSearch(o.id, search) ||
+          matchesSearch(o.fullName, search) ||
+          matchesSearch(o.documentId, search) ||
+          matchesSearch(o.contacts.map((contact) => contact.value), search) ||
+          matchesSearch(o.legacyVetusId, search) ||
+          matchesSearch(o.profile, search) ||
+          matchesSearch(o.address, search)
       );
   }
 

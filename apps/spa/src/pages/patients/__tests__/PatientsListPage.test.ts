@@ -195,7 +195,10 @@ describe('PatientsListPage', () => {
     expect(wrapper.text()).toContain('joao@email.com');
   });
 
-  it('filters animals by owner email locally', async () => {
+  it('sends broad reception search to the patients service', async () => {
+    mockListFn.mockImplementation((filters?: { search?: string }) =>
+      Promise.resolve(filters?.search === 'joao@email.com' ? [mockPatients[0]] : mockPatients)
+    );
     const PatientsListPage = (await import('../PatientsListPage.vue')).default;
     const wrapper = mount(PatientsListPage);
 
@@ -207,6 +210,8 @@ describe('PatientsListPage', () => {
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).not.toContain('Mimi');
     expect(mockListFn).toHaveBeenLastCalledWith({
+      search: 'joao@email.com',
+      ownerId: undefined,
       species: undefined,
       status: 'all'
     });
@@ -240,7 +245,7 @@ describe('PatientsListPage', () => {
     await flushPromises();
     const links = wrapper.findAll('a');
 
-    const detailLinks = links.filter((a) => a.text() === 'Detalhes');
+    const detailLinks = links.filter((a) => a.text() === 'Abrir cadastro');
     expect(detailLinks.length).toBeGreaterThanOrEqual(2);
     const detailHrefs = detailLinks.map((a) => a.attributes('href'));
     expect(detailHrefs).toContain('/patients/pat-1');
@@ -267,7 +272,7 @@ describe('PatientsListPage', () => {
     });
 
     await flushPromises();
-    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar Novo Animal'));
+    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar paciente'));
     expect(newLink).toBeTruthy();
     expect(newLink!.attributes('href')).toBe('/patients/new');
   });
@@ -280,7 +285,7 @@ describe('PatientsListPage', () => {
     const searchInput = wrapper.find('input[type="search"]');
     expect(searchInput.exists()).toBe(true);
     expect(searchInput.attributes('placeholder')).toBe(
-      'Buscar por nome, espécie, raça ou tutor...'
+      'Buscar paciente por nome, ID, tutor, CPF/CNPJ, RG, telefone, microchip ou raça'
     );
   });
 
@@ -298,11 +303,11 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Selecionar atendimento para cobrança');
+    expect(wrapper.text()).toContain('Criar agendamento');
     expect(wrapper.findAll('a').map((link) => link.attributes('href'))).toContain(
-      '/encounters?ownerId=owner-1&patientId=pat-1'
+      '/appointments/new?patientId=pat-1&ownerId=owner-1'
     );
+    expect(wrapper.text()).toContain('Ir para Esteira');
     expect(wrapper.text()).toContain('Abrir atendimento');
-    expect(wrapper.text()).toContain('Agendar');
   });
 });

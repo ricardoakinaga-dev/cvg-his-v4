@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Animais"
       :breadcrumbs="['Atendimento', 'Cadastros', 'Animais']"
-      subtitle="Cadastro clínico-operacional com busca por animal, cliente, raça e atalhos para comanda, agenda e atendimento."
+      subtitle="Recepção: localize o paciente, confirme o tutor e decida entre agenda, esteira ou atendimento."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
@@ -28,7 +28,7 @@
         <DsInput
           v-model="filters.search"
           type="search"
-          placeholder="Buscar por nome, espécie, raça ou tutor..."
+          placeholder="Buscar paciente por nome, ID, tutor, CPF/CNPJ, RG, telefone, microchip ou raça"
         />
         <DsButton type="submit" variant="secondary" :loading="loading">Buscar</DsButton>
         <DsButton type="button" variant="ghost" @click="showAdvanced = !showAdvanced">
@@ -71,11 +71,31 @@
       </div>
     </form>
 
+    <section class="reception-decision-strip" aria-label="Decisão inicial por paciente">
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">1. Paciente</span>
+        <strong>Confirmar cadastro</strong>
+        <p>Valide identificação, tutor e dados básicos antes de encaminhar.</p>
+      </article>
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">2. Agenda</span>
+        <strong>Programar atendimento</strong>
+        <p>Use agendamento quando o fluxo não for imediato.</p>
+      </article>
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">3. Esteira</span>
+        <strong>Acompanhar check-in</strong>
+        <p>Direcione para Queue quando a chegada precisar de ação operacional.</p>
+      </article>
+    </section>
+
     <section v-if="highlightedPatient" class="patients-list-page__featured">
       <DsCard title="Paciente em destaque" variant="elevated">
         <div class="featured-patient">
           <div class="featured-patient__identity">
-            <div class="featured-patient__avatar">🐾</div>
+            <div class="featured-patient__avatar">
+              {{ highlightedPatient.name.slice(0, 1).toUpperCase() }}
+            </div>
             <div>
               <div class="featured-patient__badges">
                 <StatusBadge
@@ -185,26 +205,31 @@
 
         <div class="patient-card__actions">
           <DsButton tag="a" :to="`/patients/${patient.id}`" variant="secondary" size="sm">
-            Detalhes
-          </DsButton>
-          <DsButton tag="a" :to="patientEncounterSelectionPath(patient)" variant="secondary" size="sm">
-            Selecionar atendimento para cobrança
-          </DsButton>
-          <DsButton
-            tag="a"
-            :to="`/encounters/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
-            variant="secondary"
-            size="sm"
-          >
-            Abrir atendimento
+            Abrir cadastro
           </DsButton>
           <DsButton
             tag="a"
             :to="`/appointments/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
+            variant="secondary"
+            size="sm"
+          >
+            Criar agendamento
+          </DsButton>
+          <DsButton
+            tag="a"
+            to="/queue"
+            variant="secondary"
+            size="sm"
+          >
+            Ir para Esteira
+          </DsButton>
+          <DsButton
+            tag="a"
+            :to="`/encounters/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
             variant="ghost"
             size="sm"
           >
-            Agendar
+            Abrir atendimento
           </DsButton>
           <DsButton tag="a" :to="`/patients/${patient.id}/edit`" variant="ghost" size="sm">
             Editar
@@ -214,13 +239,13 @@
     </section>
 
     <DsCard v-else class="empty-state" variant="elevated">
-      <div class="empty-state__icon">🐾</div>
+      <div class="empty-state__icon">PA</div>
       <h2 class="empty-state__title">Nenhum paciente encontrado</h2>
       <p class="empty-state__description">
         Cadastre o primeiro animal para abastecer agenda, atendimento, prontuário e internação.
       </p>
       <div class="empty-state__actions">
-        <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar Novo Animal</DsButton>
+        <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar paciente</DsButton>
         <DsButton tag="a" to="/owners" variant="secondary">Ver Clientes</DsButton>
       </div>
     </DsCard>
@@ -265,28 +290,9 @@ const ownerIdFilter = readOwnerIdFilter();
 
 const displayedPatients = computed(() => {
   let items = [...patients.value];
-  const search = filters.search.trim().toLowerCase();
 
   if (ownerIdFilter) {
     items = items.filter((patient) => patient.primaryOwnerId === ownerIdFilter);
-  }
-
-  if (search) {
-    items = items.filter((patient) => {
-      const owner = ownerMap.value.get(patient.primaryOwnerId);
-      const ownerContactMatch = owner?.contacts.some((contact) =>
-        contact.value.toLowerCase().includes(search)
-      );
-
-      return (
-        patient.name.toLowerCase().includes(search) ||
-        patient.species.toLowerCase().includes(search) ||
-        patient.breed?.toLowerCase().includes(search) ||
-        owner?.fullName.toLowerCase().includes(search) ||
-        owner?.documentId?.toLowerCase().includes(search) ||
-        ownerContactMatch
-      );
-    });
   }
 
   if (filters.sex !== 'all') {
@@ -323,10 +329,10 @@ const summaryCards = computed(() => {
   const withBreed = patients.value.filter((patient) => Boolean(patient.breed?.trim())).length;
 
   return [
-    { icon: '🐾', label: 'Pacientes cadastrados', value: String(total), hint: 'Base clínica longitudinal' },
-    { icon: '✅', label: 'Ativos', value: String(active), hint: 'Em operação clínica' },
-    { icon: '⚖️', label: 'Com peso', value: String(weighted), hint: 'Dados para acompanhamento' },
-    { icon: '🏷️', label: 'Com raça', value: String(withBreed), hint: 'Identificação enriquecida' }
+    { icon: 'TOT', label: 'Pacientes cadastrados', value: String(total), hint: 'Base clínica longitudinal' },
+    { icon: 'ATV', label: 'Ativos', value: String(active), hint: 'Em operação clínica' },
+    { icon: 'PES', label: 'Com peso', value: String(weighted), hint: 'Dados para acompanhamento' },
+    { icon: 'RAC', label: 'Com raça', value: String(withBreed), hint: 'Identificação enriquecida' }
   ];
 });
 
@@ -336,6 +342,18 @@ const headerSecondaryActions = computed(() => [
     label: 'Ver clientes',
     variant: 'secondary' as const,
     to: '/owners'
+  },
+  {
+    key: 'view-appointments',
+    label: 'Agenda',
+    variant: 'secondary' as const,
+    to: '/appointments'
+  },
+  {
+    key: 'view-queue',
+    label: 'Esteira',
+    variant: 'secondary' as const,
+    to: '/queue'
   },
   {
     key: 'refresh',
@@ -348,7 +366,7 @@ const headerSecondaryActions = computed(() => [
 
 const headerPrimaryAction = computed(() => ({
   key: 'new-patient',
-  label: '+ Cadastrar Novo Animal',
+  label: '+ Cadastrar paciente',
   variant: 'primary' as const,
   to: ownerIdFilter ? `/patients/new?ownerId=${encodeURIComponent(ownerIdFilter)}` : '/patients/new'
 }));
@@ -356,14 +374,6 @@ const headerPrimaryAction = computed(() => ({
 function readOwnerIdFilter(): string {
   if (typeof window === 'undefined') return '';
   return new URLSearchParams(window.location.search).get('ownerId')?.trim() || '';
-}
-
-function patientEncounterSelectionPath(patient: PatientSummary): string {
-  const params = new URLSearchParams({
-    ownerId: patient.primaryOwnerId,
-    patientId: patient.id
-  });
-  return `/encounters?${params.toString()}`;
 }
 
 function statusVariant(status: string) {
@@ -433,6 +443,8 @@ async function load() {
   try {
     const [patientItems, ownerItems] = await Promise.all([
       patientService.list({
+        search: filters.search || undefined,
+        ownerId: ownerIdFilter || undefined,
         species: filters.species || undefined,
         status: filters.status
       }),
@@ -478,7 +490,10 @@ onMounted(load);
   place-items: center;
   border-radius: 16px;
   background: rgba(14, 165, 233, 0.08);
-  font-size: 22px;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .summary-card__body {
@@ -532,6 +547,43 @@ onMounted(load);
   background: linear-gradient(180deg, #fff, #f8fafc);
 }
 
+.reception-decision-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reception-decision-card {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.reception-decision-card__eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.reception-decision-card strong {
+  display: block;
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+}
+
+.reception-decision-card p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .featured-patient {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
@@ -552,7 +604,9 @@ onMounted(load);
   place-items: center;
   border-radius: 18px;
   background: linear-gradient(135deg, #e0f2fe, #bfdbfe);
-  font-size: 28px;
+  color: #075985;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .featured-patient__badges,
@@ -680,7 +734,10 @@ onMounted(load);
 }
 
 .empty-state__icon {
-  font-size: 36px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #475569;
 }
 
 .empty-state__title {
@@ -695,6 +752,10 @@ onMounted(load);
 }
 
 @media (max-width: 960px) {
+  .reception-decision-strip {
+    grid-template-columns: 1fr;
+  }
+
   .featured-patient {
     grid-template-columns: 1fr;
   }

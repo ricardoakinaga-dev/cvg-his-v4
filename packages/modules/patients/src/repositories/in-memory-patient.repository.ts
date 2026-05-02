@@ -7,6 +7,23 @@ import type {
   OwnerPatientLinkSummary
 } from '@cvg-his-v2/shared-types';
 
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function matchesSearch(value: unknown, search: string): boolean {
+  if (typeof value === 'string') {
+    const normalizedSearch = search.toLowerCase();
+    const searchDigits = normalizeDigits(search);
+    return (
+      value.toLowerCase().includes(normalizedSearch) ||
+      (searchDigits.length > 0 && normalizeDigits(value).includes(searchDigits))
+    );
+  }
+
+  return false;
+}
+
 export interface PatientRepository {
   create(patient: PatientSummary): Promise<void>;
   update(patient: PatientSummary): Promise<void>;
@@ -53,9 +70,14 @@ export class InMemoryPatientRepository implements PatientRepository {
       .filter(
         (p) =>
           !search ||
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.species?.toLowerCase().includes(search.toLowerCase()) ||
-          p.breed?.toLowerCase().includes(search.toLowerCase())
+          matchesSearch(p.id, search) ||
+          matchesSearch(p.name, search) ||
+          matchesSearch(p.species, search) ||
+          matchesSearch(p.breed, search) ||
+          matchesSearch(p.microchip, search) ||
+          matchesSearch(p.legacyVetusId, search) ||
+          matchesSearch(p.color, search) ||
+          matchesSearch(p.pedigreeNumber, search)
       );
   }
 

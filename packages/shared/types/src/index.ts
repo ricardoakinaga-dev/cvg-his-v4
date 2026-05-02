@@ -29,6 +29,7 @@ export type SurgeryCaseId = Brand<string, 'SurgeryCaseId'>;
 export type DiagnosticOrderId = Brand<string, 'DiagnosticOrderId'>;
 export type BillingRecordId = Brand<string, 'BillingRecordId'>;
 export type BillingItemId = Brand<string, 'BillingItemId'>;
+export type ClinicalHandoffId = Brand<string, 'ClinicalHandoffId'>;
 export type InventoryItemId = Brand<string, 'InventoryItemId'>;
 export type InventoryConsumptionId = Brand<string, 'InventoryConsumptionId'>;
 export type InventoryLotId = Brand<string, 'InventoryLotId'>;
@@ -468,10 +469,47 @@ export interface EncounterTimelineEventSummary {
     | 'queue_checked_in'
     | 'queue_called'
     | 'triage_recorded'
+    | 'handoff_sent_to_reception'
+    | 'handoff_acknowledged'
     | 'encounter_closed';
   readonly summary: string;
   readonly actorUserId: UserId;
   readonly occurredAt: string;
+}
+
+export type ClinicalHandoffStatus =
+  | 'ready_to_send'
+  | 'sent_to_reception'
+  | 'acknowledged_by_reception';
+
+export type ClinicalHandoffPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ClinicalHandoffSummary {
+  readonly id: ClinicalHandoffId;
+  readonly accountId: AccountId;
+  readonly encounterId: EncounterId;
+  readonly queueEntryId?: QueueEntryId;
+  readonly appointmentId?: AppointmentId;
+  readonly ownerId: OwnerId;
+  readonly patientId: PatientId;
+  readonly originChannel: 'reception' | 'schedule' | 'return';
+  readonly fromSector: 'clinic';
+  readonly toSector: 'reception';
+  readonly fromResponsibleId: UserId;
+  readonly toResponsibleType: 'sector' | 'person' | 'team';
+  readonly toResponsibleId?: string;
+  readonly clinicalSummary: string;
+  readonly receptionInstructions: string;
+  readonly priority: ClinicalHandoffPriority;
+  readonly handoffStatus: ClinicalHandoffStatus;
+  readonly createdBy: UserId;
+  readonly sentBy: UserId;
+  readonly sentAt: string;
+  readonly acknowledgedBy?: UserId;
+  readonly acknowledgedAt?: string;
+  readonly acknowledgeNote?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface MedicalRecordSummary {

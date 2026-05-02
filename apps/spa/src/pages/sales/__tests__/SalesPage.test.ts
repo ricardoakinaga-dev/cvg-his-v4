@@ -77,7 +77,10 @@ describe('SalesPage', () => {
     const wrapper = mount(SalesPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Venda de Produtos');
+    expect(wrapper.text()).toContain('Vendas');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Vendas');
+    expect(wrapper.text()).not.toContain('Índice beta');
+    expect(wrapper.text()).not.toContain('Beta');
     expect(wrapper.text()).toContain('Vendas abertas');
     expect(wrapper.text()).toContain('Nova Venda');
     expect(wrapper.text()).toContain('Busque por ID, ID no PDV, Nome ou CPF do Cliente');
@@ -99,6 +102,7 @@ describe('SalesPage', () => {
     expect(wrapper.text()).toContain('End: Salvar/Fechar Venda');
     expect(wrapper.text()).toContain('Esc: Fechar Inclusão Itens');
     expect(wrapper.text()).toContain('Antipulgas 10kg');
+    expect(wrapper.find('a[href="/counter-sales?ownerId=owner-1"]').exists()).toBe(true);
     expect(mockCounterSalesList).toHaveBeenCalledWith({ status: 'all' });
     expect(mockCounterSalesGetById).toHaveBeenCalledWith('cs-1');
   });

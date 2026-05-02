@@ -47,6 +47,7 @@ describe('navigation groups', () => {
       'Fluxo Assistencial CVG'
     ]);
     expect(findSectionItemLabels('atendimento', 'Atendimentos')).toEqual([
+      'Recepção',
       'Agenda',
       'Comandas',
       'Vendas',
@@ -108,6 +109,7 @@ describe('navigation groups', () => {
   it('finds direct nav items with the new labels exposed in the frontend', () => {
     expect(findMatchingNavItem('/patients')?.label).toBe('Animais');
     expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
+    expect(findMatchingNavItem('/reception')?.label).toBe('Recepção');
     expect(findMatchingNavItem('/queue')?.label).toBe('Esteira');
     expect(findMatchingNavItem('/notifications')?.label).toBe('Campanhas de SMS Marketing');
     expect(findMatchingNavItem('/access-control')?.label).toBe('Grupos de Acesso');
@@ -132,6 +134,7 @@ describe('navigation groups', () => {
     expect(findGroupPaths('atendimento')).toEqual(
       expect.arrayContaining([
         '/appointments',
+        '/reception',
         '/counter-sales',
         '/sales',
         '/packages',

@@ -4,7 +4,7 @@
       <AppPageHeader
         title="Início"
         :breadcrumbs="['Início']"
-        :subtitle="`Olá. ${companyName} está ativo para a operação de hoje.`"
+        :subtitle="`Olá. ${companyName} está ativo para a operação de hoje: agenda, comandas, aniversariantes e pendências do plantão.`"
         :secondary-actions="headerSecondaryActions"
         :primary-action="headerPrimaryAction"
       />
@@ -35,6 +35,31 @@
       description="Os atalhos do Início dependem das permissões da sessão atual."
       size="sm"
     />
+
+    <section
+      v-if="homeMetrics.length > 0"
+      class="home-operational-summary"
+      aria-label="Indicadores do início"
+    >
+      <DsCard class="panel-card home-metrics-card">
+        <div class="panel-card__head">
+          <h2 class="panel-card__title">Indicadores do plantão</h2>
+          <p class="panel-card__subtitle">Atendimento e financeiro</p>
+        </div>
+        <div class="home-metrics">
+          <router-link
+            v-for="metric in homeMetrics"
+            :key="metric.key"
+            :to="metric.to"
+            class="home-metric"
+          >
+            <span class="home-metric__label">{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+            <small>{{ metric.hint }}</small>
+          </router-link>
+        </div>
+      </DsCard>
+    </section>
 
     <section class="home-panels">
       <DsCard class="panel-card panel-card--wide">
@@ -81,15 +106,30 @@
 
       <DsCard class="panel-card">
         <div class="panel-card__head">
-          <h2 class="panel-card__title">Lembretes</h2>
-          <p class="panel-card__subtitle">{{ todayLabel }}</p>
+          <h2 class="panel-card__title">Agenda e lembretes</h2>
+          <p class="panel-card__subtitle">Pendências do início · {{ todayLabel }}</p>
         </div>
         <EmptyState
+          v-if="operationalReminders.length === 0"
           icon="🗓️"
-          title="Nenhum lembrete para hoje"
-          description="Lembretes estruturados serão exibidos aqui quando o módulo correspondente estiver ativo."
+          title="Nenhuma pendência para hoje"
+          description="Agenda, comandas abertas e aniversariantes aparecem aqui quando exigem acompanhamento."
           size="sm"
         />
+        <div v-else class="reminder-list">
+          <router-link
+            v-for="reminder in operationalReminders"
+            :key="reminder.key"
+            :to="reminder.to"
+            class="reminder-item"
+          >
+            <span class="reminder-item__tone" :class="`reminder-item__tone--${reminder.tone}`" />
+            <span class="reminder-item__copy">
+              <strong>{{ reminder.label }}</strong>
+              <small>{{ reminder.detail }}</small>
+            </span>
+          </router-link>
+        </div>
       </DsCard>
 
       <DsCard class="panel-card">
@@ -218,8 +258,10 @@ interface ListResponse<T> {
   total?: number;
 }
 
+type HomeTileKey = 'counter-sales' | 'owners' | 'patients' | 'appointments' | 'products' | 'sales';
+
 interface HomeTile {
-  key: string;
+  key: HomeTileKey;
   label: string;
   hint: string;
   icon: string;
@@ -261,12 +303,37 @@ interface BirthdayEntry {
   to: string;
 }
 
+interface HomeMetric {
+  key: string;
+  label: string;
+  value: string;
+  hint: string;
+  to: string;
+  permissionCodes: string[];
+}
+
+interface OperationalReminder {
+  key: string;
+  label: string;
+  detail: string;
+  tone: 'info' | 'warning' | 'success';
+  to: string;
+}
+
 const appStore = useAppStore();
 const widgetStore = useWidgetStore();
 
 const companyName = 'Centro Veterinário Guarapiranga';
 const permissionCodes = ref<string[] | null>(null);
 const birthdays = ref<BirthdayEntry[]>([]);
+const homeSummary = reactive<Record<HomeTileKey, number>>({
+  'counter-sales': 0,
+  owners: 0,
+  patients: 0,
+  appointments: 0,
+  products: 0,
+  sales: 0
+});
 
 const openCounterSales = reactive<{
   loading: boolean;
@@ -423,6 +490,92 @@ const todayLabel = computed(() => formatDate(today.value.toISOString()));
 const birthdayDateLabel = computed(() =>
   today.value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 );
+const openCounterSalesBalance = computed(() =>
+  openCounterSales.items.reduce((total, sale) => total + sale.balanceDue, 0)
+);
+
+const homeMetrics = computed<HomeMetric[]>(() =>
+  [
+    {
+      key: 'appointments',
+      label: 'Agenda',
+      value: formatNumber(homeSummary.appointments),
+      hint: 'registros para acompanhar',
+      to: '/appointments',
+      permissionCodes: ['scheduling.read']
+    },
+    {
+      key: 'counter-sales',
+      label: 'Comandas abertas',
+      value: formatNumber(homeSummary['counter-sales']),
+      hint: 'pendentes de fechamento',
+      to: '/counter-sales',
+      permissionCodes: ['counter_sale.read']
+    },
+    {
+      key: 'receivable',
+      label: 'A receber',
+      value: formatCurrency(openCounterSalesBalance.value),
+      hint: 'saldo das comandas recentes',
+      to: '/counter-sales',
+      permissionCodes: ['counter_sale.read']
+    },
+    {
+      key: 'birthdays',
+      label: 'Aniversariantes',
+      value: formatNumber(birthdays.value.length),
+      hint: 'clientes e animais hoje',
+      to: '/owners',
+      permissionCodes: ['owners.read', 'patients.read']
+    },
+    {
+      key: 'sales',
+      label: 'Vendas fechadas',
+      value: formatNumber(homeSummary.sales),
+      hint: 'base comercial carregada',
+      to: '/sales',
+      permissionCodes: ['counter_sale.read']
+    }
+  ].filter((metric) => hasAnyPermission(metric.permissionCodes))
+);
+
+const operationalReminders = computed<OperationalReminder[]>(() => {
+  const reminders: OperationalReminder[] = [];
+
+  if (hasPermission('scheduling.read') && homeSummary.appointments > 0) {
+    reminders.push({
+      key: 'appointments',
+      label: 'Agenda com registros para revisar',
+      detail: `${formatNumber(homeSummary.appointments)} registros no painel de agenda`,
+      tone: 'info',
+      to: '/appointments'
+    });
+  }
+
+  if (hasPermission('counter_sale.read') && openCounterSales.items.length > 0) {
+    reminders.push({
+      key: 'counter-sales',
+      label: 'Comandas abertas aguardando cobrança',
+      detail: `${formatNumber(openCounterSales.items.length)} comandas recentes somam ${formatCurrency(
+        openCounterSalesBalance.value
+      )}`,
+      tone: 'warning',
+      to: '/counter-sales'
+    });
+  }
+
+  if (hasAnyPermission(['owners.read', 'patients.read']) && birthdays.value.length > 0) {
+    reminders.push({
+      key: 'birthdays',
+      label: 'Aniversariantes do dia',
+      detail: `${formatNumber(birthdays.value.length)} contatos para relacionamento`,
+      tone: 'success',
+      to: '/owners'
+    });
+  }
+
+  return reminders;
+});
 
 const visibleDomainShortcuts = computed(() => {
   if (permissionCodes.value === null) {
@@ -453,6 +606,7 @@ async function loadDashboard() {
 async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
   const tiles = visibleHomeTiles.value;
   const responses = new Map<string, ListResponse<unknown>>();
+  resetHomeSummary();
 
   for (const tile of tiles) {
     tile.loading = true;
@@ -470,10 +624,13 @@ async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
     if (result.status === 'rejected') {
       tile.value = '—';
       tile.error = true;
+      homeSummary[tile.key] = 0;
       return;
     }
 
-    tile.value = countFromListResponse(result.value).toLocaleString('pt-BR');
+    const count = countFromListResponse(result.value);
+    tile.value = formatNumber(count);
+    homeSummary[tile.key] = count;
     responses.set(tile.endpoint, result.value);
   });
 
@@ -565,6 +722,23 @@ function countFromListResponse(response: ListResponse<unknown>): number {
   return response.total ?? response.items?.length ?? 0;
 }
 
+function resetHomeSummary() {
+  for (const key of Object.keys(homeSummary) as HomeTileKey[]) {
+    homeSummary[key] = 0;
+  }
+}
+
+function hasPermission(permissionCode: string): boolean {
+  return permissionCodes.value === null || permissionCodes.value.includes(permissionCode);
+}
+
+function hasAnyPermission(requiredPermissions: string[]): boolean {
+  return (
+    permissionCodes.value === null ||
+    requiredPermissions.some((permissionCode) => permissionCodes.value?.includes(permissionCode))
+  );
+}
+
 function lastThirtyDaysDate(): string {
   const date = new Date();
   date.setDate(date.getDate() - 30);
@@ -586,6 +760,10 @@ function formatDate(date: string): string {
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatNumber(value: number): string {
+  return value.toLocaleString('pt-BR');
 }
 
 function isOwnerSummary(value: OwnerSummary | PatientSummary): value is OwnerSummary {
@@ -676,6 +854,44 @@ onMounted(() => {
   gap: 16px;
 }
 
+.home-operational-summary {
+  display: grid;
+}
+
+.home-metrics-card {
+  min-height: auto;
+}
+
+.home-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-metric {
+  display: grid;
+  gap: 5px;
+  min-height: 96px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(248, 250, 252, 0.9);
+  color: var(--color-text, #0f172a);
+  text-decoration: none;
+}
+
+.home-metric__label,
+.home-metric small {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.home-metric strong {
+  align-self: end;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
 .dashboard-panels {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -726,13 +942,15 @@ onMounted(() => {
 }
 
 .counter-sale-list,
-.birthday-list {
+.birthday-list,
+.reminder-list {
   display: grid;
   gap: 8px;
 }
 
 .counter-sale-item,
-.birthday-item {
+.birthday-item,
+.reminder-item {
   display: grid;
   gap: 3px;
   padding: 10px 12px;
@@ -743,9 +961,36 @@ onMounted(() => {
   text-decoration: none;
 }
 
+.reminder-item {
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+}
+
+.reminder-item__tone {
+  width: 8px;
+  height: 38px;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+
+.reminder-item__tone--warning {
+  background: #f59e0b;
+}
+
+.reminder-item__tone--success {
+  background: #16a34a;
+}
+
+.reminder-item__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
 .counter-sale-item__date,
 .counter-sale-item span,
-.birthday-item span {
+.birthday-item span,
+.reminder-item small {
   font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
@@ -795,6 +1040,10 @@ onMounted(() => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .home-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .home-panels {
     grid-template-columns: 1fr;
   }
@@ -808,7 +1057,8 @@ onMounted(() => {
 
 @media (max-width: 720px) {
   .home-shortcuts,
-  .domain-shortcuts {
+  .domain-shortcuts,
+  .home-metrics {
     grid-template-columns: 1fr 1fr;
   }
 

@@ -28,6 +28,7 @@ vi.mock('@/services/prescription-executions', () => ({
 describe('PrescriptionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/prescriptions');
     mockEncounterList.mockResolvedValue([
       {
         id: 'enc-1',
@@ -59,6 +60,52 @@ describe('PrescriptionsPage', () => {
       createdAt: '2026-04-10T00:00:00Z',
       updatedAt: '2026-04-10T00:00:00Z'
     });
+  });
+
+  it('uses encounter query context without creating a prescription automatically', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/prescriptions?encounterId=enc-2&patientId=pat-2&ownerId=own-2'
+    );
+    mockEncounterList.mockResolvedValue([
+      {
+        id: 'enc-1',
+        accountId: 'acc-1',
+        patientId: 'pat-1',
+        ownerId: 'own-1',
+        visitType: 'scheduled',
+        status: 'in_care',
+        origin: 'schedule',
+        reason: 'Retorno clínico',
+        openedAt: '2026-04-10T00:00:00Z',
+        createdByUserId: 'user-1',
+        updatedAt: '2026-04-10T00:00:00Z'
+      },
+      {
+        id: 'enc-2',
+        accountId: 'acc-1',
+        patientId: 'pat-2',
+        ownerId: 'own-2',
+        visitType: 'walk_in',
+        status: 'in_care',
+        origin: 'reception',
+        reason: 'Prescrição pós-consulta',
+        openedAt: '2026-04-10T01:00:00Z',
+        createdByUserId: 'user-1',
+        updatedAt: '2026-04-10T01:00:00Z'
+      }
+    ]);
+
+    const PrescriptionsPage = (await import('../PrescriptionsPage.vue')).default;
+    const wrapper = mount(PrescriptionsPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Contexto do atendimento clínico');
+    expect(wrapper.text()).toContain('enc-2');
+    expect(wrapper.text()).toContain('Prescrição pós-consulta');
+    expect(mockPrescriptionList).toHaveBeenCalledWith('enc-2');
+    expect(mockPrescriptionCreate).not.toHaveBeenCalled();
   });
 
   it('creates a prescription entry on the selected encounter', async () => {

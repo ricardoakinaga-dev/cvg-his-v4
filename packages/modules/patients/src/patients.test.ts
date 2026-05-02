@@ -103,6 +103,31 @@ describe('PatientsService', () => {
       expect(results.length).toBe(2);
     });
 
+    it('filters patients by owner document, RG, phone and patient id', () => {
+      const owner = owners.create(ACCOUNT_ID, {
+        fullName: 'Tutor Busca Ampla',
+        documentId: '123.456.789-00',
+        contacts: [
+          { label: 'Celular', value: '+55 (11) 98888-4444', type: 'whatsapp', primary: true }
+        ],
+        profile: {
+          rg: '22.333.444-5'
+        },
+        financialResponsible: true
+      });
+      const patient = service.create(ACCOUNT_ID, {
+        name: 'Nina',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+
+      expect(service.list('12345678900').map((item) => item.id)).toContain(patient.id);
+      expect(service.list('11988884444').map((item) => item.id)).toContain(patient.id);
+      expect(service.list('223334445').map((item) => item.id)).toContain(patient.id);
+      expect(service.list(patient.id).map((item) => item.id)).toContain(patient.id);
+    });
+
     it('filters patients by Vetus-like identifiers', () => {
       const owner = createOwner(owners);
       service.create(ACCOUNT_ID, {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { BillingService, type BillingRepository } from './index.js';
 
@@ -25,8 +25,8 @@ function createRepository(overrides?: Partial<BillingRepository>): BillingReposi
     async findRecordById() {
       return null;
     },
-    async findRecordsByEncounter() {
-      return [];
+    async findRecordByEncounter() {
+      return null;
     },
     async findRecordsByAccountId() {
       return [];
@@ -50,6 +50,66 @@ test('BillingService createEstimate moves billing record to estimated', async ()
   assert.equal(record.status, 'estimated');
   assert.equal(record.encounterId, 'encounter_1');
   assert.equal(record.administrativeNotes, 'Estimativa inicial');
+});
+
+test('BillingService read methods do not create billing records', async () => {
+  let created = 0;
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository: createRepository({
+        async createRecord() {
+          created += 1;
+        }
+      })
+    }
+  );
+
+  assert.equal(await service.findByEncounter('encounter_1' as never), null);
+  assert.deepEqual(await service.listItems('encounter_1' as never), []);
+  assert.equal(created, 0);
+});
+
+test('BillingService createEstimate explicitly creates repository record', async () => {
+  let created = 0;
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository: createRepository({
+        async createRecord(record) {
+          created += 1;
+          assert.equal(record.accountId, 'acc_test');
+          assert.equal(record.encounterId, 'encounter_1');
+        }
+      })
+    }
+  );
+
+  const record = await service.createEstimate({
+    encounterId: 'encounter_1',
+    administrativeNotes: 'Estimativa explicita'
+  });
+
+  assert.equal(created, 1);
+  assert.equal(record.status, 'estimated');
 });
 
 test('BillingService addItem recalculates subtotal', async () => {
@@ -80,6 +140,81 @@ test('BillingService addItem recalculates subtotal', async () => {
   assert.equal(itemB.totalAmount, 70);
   assert.equal(record.subtotalAmount, 190);
   assert.equal((await service.listItems('encounter_1' as never)).length, 2);
+});
+
+test('BillingService addItem explicitly creates record when missing and persists subtotal in memory', async () => {
+  const createdRecords: string[] = [];
+  const createdItems: string[] = [];
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository: createRepository({
+        async createRecord(record) {
+          createdRecords.push(record.id);
+        },
+        async createItem(item) {
+          createdItems.push(item.id);
+          assert.equal(item.accountId, 'acc_test');
+          assert.equal(item.billingRecordId, createdRecords[0]);
+        }
+      })
+    }
+  );
+
+  await service.addItem('finance_1' as never, {
+    encounterId: 'encounter_1',
+    itemType: 'service',
+    description: 'Consulta',
+    quantity: 2,
+    unitPriceAmount: 100
+  });
+
+  const record = await service.getByEncounterOrThrow('encounter_1' as never);
+  assert.equal(createdRecords.length, 1);
+  assert.equal(createdItems.length, 1);
+  assert.equal(record.subtotalAmount, 200);
+});
+
+test('BillingService updateStatus does not create a missing persistent record', async () => {
+  let created = 0;
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository: createRepository({
+        async createRecord() {
+          created += 1;
+        }
+      })
+    }
+  );
+
+  await assert.rejects(
+    async () =>
+      service.updateStatus('encounter_missing' as never, {
+        status: 'open',
+        administrativeNotes: 'Tentativa sem estimativa'
+      }),
+    NotFoundError
+  );
+  assert.equal(created, 0);
 });
 
 test('BillingService settleByRecordId moves record to settled', async () => {
@@ -186,7 +321,8 @@ test('BillingService hydrates records and items from repository', async () => {
         }
       ];
     },
-    async findItemsByRecord(recordId) {
+    async findItemsByRecord(accountId, recordId) {
+      assert.equal(accountId, 'acc_test');
       assert.equal(recordId, 'bill_repo_1');
       return [
         {
@@ -220,7 +356,7 @@ test('BillingService hydrates records and items from repository', async () => {
     { repository }
   );
 
-  await service.hydrateFromDatabase();
+  await service.hydrateFromDatabase('acc_test' as never);
 
   assert.equal(service.list().length, 1);
   assert.equal(service.getOrThrow('bill_repo_1' as never).status, 'open');
@@ -231,22 +367,21 @@ test('BillingService reuses repository record and triggers callbacks only on rea
   const created: string[] = [];
   const changes: string[] = [];
   const repository = createRepository({
-    async findRecordsByEncounter(encounterId) {
+    async findRecordByEncounter(accountId, encounterId) {
+      assert.equal(accountId, 'acc_test');
       assert.equal(encounterId, 'encounter_repo');
-      return [
-        {
-          id: 'bill_repo_2' as never,
-          accountId: 'acc_test' as never,
-          encounterId: 'encounter_repo' as never,
-          patientId: 'patient_1' as never,
-          ownerId: 'owner_1' as never,
-          status: 'draft',
-          subtotalAmount: 0,
-          currency: 'BRL',
-          createdAt: '2026-04-13T00:00:00.000Z',
-          updatedAt: '2026-04-13T00:00:00.000Z'
-        }
-      ];
+      return {
+        id: 'bill_repo_2' as never,
+        accountId: 'acc_test' as never,
+        encounterId: 'encounter_repo' as never,
+        patientId: 'patient_1' as never,
+        ownerId: 'owner_1' as never,
+        status: 'draft',
+        subtotalAmount: 0,
+        currency: 'BRL',
+        createdAt: '2026-04-13T00:00:00.000Z',
+        updatedAt: '2026-04-13T00:00:00.000Z'
+      };
     },
     async findItemsByRecord() {
       return [];

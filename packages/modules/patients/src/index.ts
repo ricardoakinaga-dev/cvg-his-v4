@@ -46,6 +46,63 @@ export interface OwnerPatientLinkRepository {
   delete(id: OwnerPatientLinkId): Promise<void>;
 }
 
+interface SearchQuery {
+  readonly text: string;
+  readonly digits: string;
+}
+
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function normalizeSearchQuery(search?: string): SearchQuery | undefined {
+  const text = search?.trim().toLowerCase();
+  if (!text) {
+    return undefined;
+  }
+
+  return {
+    text,
+    digits: normalizeDigits(text)
+  };
+}
+
+function matchesSearchValue(value: unknown, query: SearchQuery): boolean {
+  if (typeof value === 'string') {
+    return (
+      value.toLowerCase().includes(query.text) ||
+      (query.digits.length > 0 && normalizeDigits(value).includes(query.digits))
+    );
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return matchesSearchValue(String(value), query);
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => matchesSearchValue(item, query));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) => matchesSearchValue(item, query));
+  }
+
+  return false;
+}
+
+function matchesOwnerSearch(owner: OwnerSummary, query: SearchQuery): boolean {
+  return (
+    matchesSearchValue(owner.id, query) ||
+    matchesSearchValue(owner.fullName, query) ||
+    matchesSearchValue(owner.documentId, query) ||
+    matchesSearchValue(owner.legacyVetusId, query) ||
+    matchesSearchValue(owner.originalCreatedAt, query) ||
+    owner.contacts.some((contact) => matchesSearchValue(contact.value, query)) ||
+    matchesSearchValue(owner.profile, query) ||
+    matchesSearchValue(owner.address, query)
+  );
+}
+
 function createSeedPatients(): PatientSummary[] {
   const createdAt = '2026-03-25T00:00:00.000Z';
 
@@ -202,7 +259,7 @@ export class PatientsService {
   }
 
   public list(search?: string): readonly PatientSummary[] {
-    const query = search?.trim().toLowerCase();
+    const query = normalizeSearchQuery(search);
     const patients = Array.from(this.#patients.values());
 
     if (!query) {
@@ -212,14 +269,15 @@ export class PatientsService {
     return patients.filter((patient) => {
       const owner = this.#owners.getOrThrow(patient.primaryOwnerId);
       return (
-        patient.name.toLowerCase().includes(query) ||
-        patient.species.toLowerCase().includes(query) ||
-        patient.breed?.toLowerCase().includes(query) ||
-        patient.microchip?.toLowerCase().includes(query) ||
-        patient.legacyVetusId?.toLowerCase().includes(query) ||
-        patient.color?.toLowerCase().includes(query) ||
-        patient.pedigreeNumber?.toLowerCase().includes(query) ||
-        owner.fullName.toLowerCase().includes(query)
+        matchesSearchValue(patient.id, query) ||
+        matchesSearchValue(patient.name, query) ||
+        matchesSearchValue(patient.species, query) ||
+        matchesSearchValue(patient.breed, query) ||
+        matchesSearchValue(patient.microchip, query) ||
+        matchesSearchValue(patient.legacyVetusId, query) ||
+        matchesSearchValue(patient.color, query) ||
+        matchesSearchValue(patient.pedigreeNumber, query) ||
+        matchesOwnerSearch(owner, query)
       );
     });
   }

@@ -9,10 +9,16 @@ import type {
 } from '@/types/appointment';
 
 export const appointmentService = {
-  async list(filters?: { patientId?: string }): Promise<AppointmentSummary[]> {
+  async list(filters?: { patientId?: string; startAt?: string; endAt?: string }): Promise<AppointmentSummary[]> {
     const search = new URLSearchParams();
     if (filters?.patientId) {
       search.set('patientId', filters.patientId);
+    }
+    if (filters?.startAt) {
+      search.set('startAt', filters.startAt);
+    }
+    if (filters?.endAt) {
+      search.set('endAt', filters.endAt);
     }
     const query = search.toString();
     const response = await apiRequest<AppointmentsListResponse>(

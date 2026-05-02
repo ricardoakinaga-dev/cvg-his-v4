@@ -154,6 +154,7 @@ vi.mock('@/composables/useEntityCache', () => ({
 describe('QueuePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/queue');
     mockListQueueFn.mockResolvedValue(mockQueueEntries);
     mockCallQueueEntryFn.mockResolvedValue({
       ...mockQueueEntries[0],
@@ -205,6 +206,7 @@ describe('QueuePage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Esteira de Atendimento');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Esteira');
   });
 
   it('shows loading state initially', async () => {
@@ -314,15 +316,21 @@ describe('QueuePage', () => {
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('ID Animal');
     expect(wrapper.text()).toContain('Todas');
+    expect(wrapper.text()).toContain('Situação operacional');
     expect(wrapper.text()).toContain('Recebido em');
-    expect(wrapper.text()).toContain('Enviado por');
-    expect(wrapper.text()).toContain('Em atendimento com');
-    expect(wrapper.text()).toContain('Atendimento');
-    expect(wrapper.text()).toContain('Urgência');
+    expect(wrapper.text()).toContain('Origem');
+    expect(wrapper.text()).toContain('Responsável atual');
+    expect(wrapper.text()).toContain('Próximo passo');
+    expect(wrapper.text()).toContain('Prioridade');
     expect(wrapper.text()).toContain('Comanda');
     expect(wrapper.text()).toContain('Prontuário');
+    const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'));
+    expect(hrefs).toContain('/counter-sales?patientId=pat-1&ownerId=owner-1');
+    expect(hrefs).toContain('/counter-sales?encounterId=enc-1&patientId=pat-3&ownerId=owner-1');
     expect(wrapper.text()).toContain('Maria Silva');
     expect(wrapper.text()).toContain('RECEPÇÃO');
+    expect(wrapper.text()).toContain('Destino provável');
+    expect(wrapper.text()).toContain('Deve chamar ou priorizar');
   });
 
   it('renders queue entries with status badges for all lifecycle states', async () => {
@@ -924,6 +932,54 @@ describe('QueuePage', () => {
       })
     );
     expect(wrapper.text()).toContain('Check-in realizado com sucesso!');
+  });
+
+  it('prepares reception check-in from query without submitting automatically', async () => {
+    window.history.pushState({}, '', '/queue?patientId=pat-1&ownerId=owner-1&reason=Recepcao');
+
+    const QueuePage = (await import('../QueuePage.vue')).default;
+    const wrapper = mount(QueuePage, {
+      global: {
+        stubs: {
+          DsButton: { template: '<button class="ds-btn-stub" @click="$emit(\'click\', $event)"><slot /></button>' },
+          DsBadge: { template: '<span><slot /></span>' },
+          DsAlert: { template: '<div class="ds-alert-stub"><slot /></div>' },
+          DsSpinner: { template: '<div class="ds-spinner-stub" />' },
+          DsModal: {
+            template: '<div class="ds-modal-stub"><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          },
+          EmptyState: { template: '<div class="empty-state-stub" />' },
+          SearchSelect: {
+            template: '<div class="search-select-stub">{{ modelValue }}</div>',
+            props: ['modelValue', 'options', 'placeholder']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Check-in preparado pela recepção');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Maria Silva');
+    expect(mockCheckInQueueFn).not.toHaveBeenCalled();
+
+    const startButton = wrapper
+      .findAll('.ds-btn-stub')
+      .find((button) => button.text().includes('Iniciar check-in'));
+    expect(startButton).toBeTruthy();
+
+    if (startButton) {
+      await startButton.trigger('click');
+      await wrapper.vm.$nextTick();
+    }
+
+    const vm = wrapper.vm as any;
+    expect(vm.showCheckInModal).toBe(true);
+    expect(vm.checkinForm.patientId).toBe('pat-1');
+    expect(vm.checkinForm.reason).toBe('Recepcao');
+    expect(mockCheckInQueueFn).not.toHaveBeenCalled();
   });
 
   it('shows error when checkInQueue fails', async () => {

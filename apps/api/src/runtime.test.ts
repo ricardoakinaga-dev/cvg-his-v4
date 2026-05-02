@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { bootstrapServices } from './bootstrap.js';
@@ -20,6 +21,15 @@ function createTestRuntime(
     repositories,
     notificationsWhatsappRemindersEnabled: options?.notificationsWhatsappRemindersEnabled
   });
+}
+
+const REAL_ACCOUNT_ID = '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never;
+const REAL_OWNER_ID = '713309e5-10dc-43c3-9bee-fd0c0dedb7c7' as never;
+const REAL_PATIENT_ID = '0cb71acc-dfc2-47b9-a82b-4a46beae728b' as never;
+const REAL_ENCOUNTER_ID = 'b9544c63-a1b2-40e7-96f9-71e02c75ccbb' as never;
+
+function assertTenantAccount(accountId: string): void {
+  assert.equal(getTenantContext()?.accountId, accountId);
 }
 
 async function waitForAuditAction(
@@ -73,6 +83,149 @@ test('login, session refresh and audit trail work end-to-end', async () => {
     runtime.audit.list().some((event) => event.action === 'refresh'),
     true
   );
+});
+
+test('runtime initializes tenant-scoped repositories with the authenticated account context', async () => {
+  const repositories: RuntimeRepositories = {
+    users: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByEmail() {
+        return null;
+      },
+      async findAll() {
+        return [
+          {
+            id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
+            accountId: REAL_ACCOUNT_ID,
+            email: 'admin@centroveterinarioguarapiranga.com',
+            passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+            fullName: 'Admin CVG',
+            isActive: true,
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z'
+          }
+        ];
+      },
+      async findRoleCodesByUserId() {
+        return ['admin'];
+      },
+      async findByAccountId() {
+        return [];
+      }
+    },
+    owner: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByAccountId(accountId) {
+        assertTenantAccount(accountId);
+        return [
+          {
+            id: REAL_OWNER_ID,
+            accountId: REAL_ACCOUNT_ID,
+            fullName: 'JESSICA DAIANE MORAIS SILVA',
+            contacts: [{ label: 'Telefone', value: '11999999999', type: 'phone', primary: true }],
+            financialResponsible: true,
+            status: 'active',
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z'
+          }
+        ];
+      },
+      async delete() {}
+    },
+    patient: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByAccountId(accountId) {
+        assertTenantAccount(accountId);
+        return [
+          {
+            id: REAL_PATIENT_ID,
+            accountId: REAL_ACCOUNT_ID,
+            name: 'PRINCESA',
+            species: 'canine',
+            breed: 'SRD',
+            sex: 'female',
+            primaryOwnerId: REAL_OWNER_ID,
+            status: 'active',
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z'
+          }
+        ];
+      },
+      async delete() {}
+    },
+    encounter: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findActiveByPatientId() {
+        return null;
+      },
+      async findAll(accountId) {
+        assertTenantAccount(accountId);
+        return [
+          {
+            id: REAL_ENCOUNTER_ID,
+            accountId: REAL_ACCOUNT_ID,
+            patientId: REAL_PATIENT_ID,
+            ownerId: REAL_OWNER_ID,
+            visitType: 'walk_in',
+            origin: 'reception',
+            reason: 'Validacao de bootstrap tenant-aware',
+            status: 'reception',
+            openedAt: '2026-04-01T00:00:00.000Z',
+            createdByUserId: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
+            updatedAt: '2026-04-01T00:00:00.000Z'
+          }
+        ];
+      },
+      async findActive(accountId) {
+        assertTenantAccount(accountId);
+        return [];
+      },
+      async delete() {}
+    },
+    billing: {
+      async createRecord() {},
+      async updateRecord() {},
+      async findRecordById() {
+        return null;
+      },
+      async findRecordByEncounter() {
+        return null;
+      },
+      async findRecordsByAccountId(accountId) {
+        assertTenantAccount(accountId);
+        return [];
+      },
+      async createItem() {},
+      async findItemsByRecord() {
+        return [];
+      }
+    }
+  };
+
+  const runtime = createTestRuntime(repositories);
+  await runtime.initialize();
+
+  const patient = runtime.patients.getOrThrow(REAL_PATIENT_ID);
+  const encounter = runtime.encounters.getOrThrow(REAL_ENCOUNTER_ID);
+
+  assert.equal(patient.accountId, REAL_ACCOUNT_ID);
+  assert.equal(encounter.accountId, REAL_ACCOUNT_ID);
 });
 
 test('runtime exposes API keys and event bus persistence for integrations', async () => {

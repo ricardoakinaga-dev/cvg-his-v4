@@ -375,7 +375,7 @@ export function normalizeRoute(pathname: string): string {
     [/^\/admin\/commercial-dashboard$/, '/admin/commercial-dashboard'],
     // Generic resource patterns: /resource/:id, /resource/:id/sub-resource
     [
-      /^\/(owners|patients|encounters|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|laboratory|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,
+      /^\/(owners|patients|encounters|clinical-handoffs|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|laboratory|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,
       '/{resource}/:id'
     ]
   ];

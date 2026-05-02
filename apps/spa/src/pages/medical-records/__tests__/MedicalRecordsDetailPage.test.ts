@@ -353,7 +353,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Prontu');
+    expect(wrapper.text()).toContain('Prontuário clínico');
     expect(wrapper.text()).toContain('Rex');
   });
 
@@ -376,6 +376,64 @@ describe('MedicalRecordsDetailPage', () => {
     expect(wrapper.text()).toContain('Blocos operacionais e contexto complementar');
     expect(wrapper.text()).toContain('Entradas clínicas brutas e auditoria');
     expect(wrapper.text()).toContain('Timeline técnica e IDs');
+  });
+
+  it('links clinical support actions with the current encounter context', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const diagnosticsLinks = wrapper
+      .findAll('a')
+      .filter((link) => link.attributes('href')?.startsWith('/diagnostics?'));
+    expect(diagnosticsLinks.length).toBeGreaterThan(0);
+    expect(
+      diagnosticsLinks.every(
+        (link) =>
+          link.attributes('href') ===
+          '/diagnostics?encounterId=enc-1&patientId=pat-1&ownerId=owner-1'
+      )
+    ).toBe(true);
+  });
+
+  it('links the medical record to the counter-sale handoff with the current encounter context', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const counterSaleLinks = wrapper
+      .findAll('a')
+      .filter((link) => link.attributes('href')?.startsWith('/counter-sales?'));
+
+    expect(counterSaleLinks.length).toBeGreaterThan(0);
+    expect(
+      counterSaleLinks.every(
+        (link) =>
+          link.attributes('href') ===
+          '/counter-sales?encounterId=enc-1&patientId=pat-1&ownerId=owner-1'
+      )
+    ).toBe(true);
+    expect(wrapper.text()).toContain('Comanda');
   });
 
   it('saves a structured clinical sheet as separate clinical entries', async () => {
@@ -480,7 +538,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Registrar evolução'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
@@ -511,7 +569,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Registrar evolução'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
@@ -536,7 +594,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Registrar evolução'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 
@@ -658,7 +716,7 @@ describe('MedicalRecordsDetailPage', () => {
     const wrapper = mount(MedicalRecordsDetailPage);
 
     await flushPromises();
-    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Salvar entrada clínica'));
+    const newBtn = wrapper.findAll('button').find((b) => b.text().includes('Registrar evolução'));
     await newBtn!.trigger('click');
     await wrapper.vm.$nextTick();
 

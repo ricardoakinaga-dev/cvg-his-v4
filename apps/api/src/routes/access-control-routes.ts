@@ -22,6 +22,61 @@ export interface AccessControlRoutesHandlers {
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
 
+function getUserForCurrentAccount(
+  users: UsersService,
+  userId: string,
+  principal: AuthenticatedPrincipal
+) {
+  const targetUser = users.getOrThrow(userId as never);
+  if (targetUser.accountId !== principal.user.accountId) {
+    throw new AuthenticationError('User not found for current account');
+  }
+  return targetUser;
+}
+
+function assertTeamForCurrentAccount(
+  accessControl: AccessControlService,
+  teamId: string,
+  principal: AuthenticatedPrincipal
+) {
+  if (!accessControl.listTeams(principal.user.accountId).some((team) => team.id === teamId)) {
+    throw new AuthenticationError('Access team not found for current account');
+  }
+}
+
+function assertSectorForCurrentAccount(
+  accessControl: AccessControlService,
+  sectorId: string,
+  principal: AuthenticatedPrincipal
+) {
+  if (!accessControl.listSectors(principal.user.accountId).some((sector) => sector.id === sectorId)) {
+    throw new AuthenticationError('Access sector not found for current account');
+  }
+}
+
+function assertPermissionExists(accessControl: AccessControlService, permissionCode: string) {
+  if (!accessControl.listPermissions().some((permission) => permission.code === permissionCode)) {
+    throw new AuthenticationError('Permission not found for current account');
+  }
+}
+
+function assertGrantSubjectForCurrentAccount(
+  accessControl: AccessControlService,
+  users: UsersService,
+  input: { subjectType: 'user' | 'team' | 'sector'; subjectId: string },
+  principal: AuthenticatedPrincipal
+) {
+  if (input.subjectType === 'user') {
+    getUserForCurrentAccount(users, input.subjectId, principal);
+    return;
+  }
+  if (input.subjectType === 'team') {
+    assertTeamForCurrentAccount(accessControl, input.subjectId, principal);
+    return;
+  }
+  assertSectorForCurrentAccount(accessControl, input.subjectId, principal);
+}
+
 export async function handleAccessControlRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -73,7 +128,17 @@ export async function handleAccessControlRoutes(
               }))
             )
         },
-        assignments: accessControl.listAssignments(),
+        assignments: {
+          userPermissions: accessControl
+            .listAssignments()
+            .userPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+          teamPermissions: accessControl
+            .listAssignments()
+            .teamPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+          sectorPermissions: accessControl
+            .listAssignments()
+            .sectorPermissions.filter((assignment) => assignment.accountId === principal.user.accountId)
+        },
         legacyRoles: users
           .list()
           .filter((user) => user.accountId === principal.user.accountId)
@@ -114,6 +179,7 @@ export async function handleAccessControlRoutes(
   if (pathname.startsWith('/access-control/teams/') && request.method === 'PATCH') {
     const principal = rp(request, 'users.manage');
     const teamId = requireNonEmptyString(pathname.split('/')[3], 'teamId');
+    assertTeamForCurrentAccount(accessControl, teamId, principal);
     const payload = (await readJsonBody(request)) as {
       code?: string;
       name?: string;
@@ -154,6 +220,7 @@ export async function handleAccessControlRoutes(
   if (pathname.startsWith('/access-control/org-sectors/') && request.method === 'PATCH') {
     const principal = rp(request, 'users.manage');
     const sectorId = requireNonEmptyString(pathname.split('/')[3], 'sectorId');
+    assertSectorForCurrentAccount(accessControl, sectorId, principal);
     const payload = (await readJsonBody(request)) as {
       code?: string;
       name?: string;
@@ -174,7 +241,11 @@ export async function handleAccessControlRoutes(
   ) {
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
+    getUserForCurrentAccount(users, userId, principal);
     const payload = (await readJsonBody(request)) as { teamIds?: readonly string[] };
+    for (const teamId of payload.teamIds ?? []) {
+      assertTeamForCurrentAccount(accessControl, teamId, principal);
+    }
     await accessControl.replaceUserTeams(userId as never, (payload.teamIds ?? []) as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
@@ -189,7 +260,11 @@ export async function handleAccessControlRoutes(
   ) {
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
+    getUserForCurrentAccount(users, userId, principal);
     const payload = (await readJsonBody(request)) as { sectorIds?: readonly string[] };
+    for (const sectorId of payload.sectorIds ?? []) {
+      assertSectorForCurrentAccount(accessControl, sectorId, principal);
+    }
     await accessControl.replaceUserSectors(userId as never, (payload.sectorIds ?? []) as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
@@ -204,6 +279,7 @@ export async function handleAccessControlRoutes(
   ) {
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
+    getUserForCurrentAccount(users, userId, principal);
     const payload = (await readJsonBody(request)) as { roleCodes?: readonly string[] };
     await accessControl.replaceLegacyRoles(userId as never, payload.roleCodes ?? []);
     response.statusCode = 200;
@@ -219,10 +295,7 @@ export async function handleAccessControlRoutes(
   ) {
     const principal = rp(request, 'access.read');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
-    const targetUser = users.getOrThrow(userId as never);
-    if (targetUser.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('User not found for current account');
-    }
+    const targetUser = getUserForCurrentAccount(users, userId, principal);
     response.statusCode = 200;
     response.end(
       JSON.stringify({
@@ -247,6 +320,8 @@ export async function handleAccessControlRoutes(
       permissionCode: string;
       effect?: 'allow' | 'deny' | 'inherit';
     };
+    assertPermissionExists(accessControl, payload.permissionCode);
+    assertGrantSubjectForCurrentAccount(accessControl, users, payload, principal);
     await accessControl.setPermissionAssignment({
       accountId: principal.user.accountId,
       subjectType: payload.subjectType,

@@ -1,17 +1,14 @@
 <template>
   <div class="appointments-cockpit">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Agenda']">
-      <template #title>Agenda</template>
-      <template #subtitle>
-        Atendimento &gt; Atendimentos &gt; Agenda. Controle operacional por data, profissional,
-        serviço, cliente, status e marcador, com grade operacional no padrão Vetus.
-      </template>
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="loadOverview">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" href="/queue">Esteira</DsButton>
-        <DsButton variant="secondary" tag="a" href="/encounters">Selecionar atendimento para cobrança</DsButton>
-      </template>
-    </AppPageHeader>
+    <AppPageHeader
+      title="Agenda"
+      subtitle="Atendimento > Atendimentos > Agenda. Coluna temporal por data, profissional e status."
+      :breadcrumb-items="headerBreadcrumbItems"
+      :context-items="headerContextItems"
+      :next-steps="headerNextSteps"
+      :primary-action="headerPrimaryAction"
+      :secondary-actions="headerSecondaryActions"
+    />
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -257,6 +254,18 @@
                 <strong>{{ filteredItems.length }}</strong>
               </div>
               <div>
+                <span>Pendentes</span>
+                <strong>{{ pendingAgendaCount }}</strong>
+              </div>
+              <div>
+                <span>Sem profissional</span>
+                <strong>{{ unassignedCount }}</strong>
+              </div>
+              <div>
+                <span>Alertas</span>
+                <strong>{{ agendaAttentionCount }}</strong>
+              </div>
+              <div>
                 <span>Horários disponíveis</span>
                 <strong>{{ totalAvailableSlots }}</strong>
               </div>
@@ -303,8 +312,9 @@
                     >
                       <span>{{ timeLabel(item.scheduledAt) }}</span>
                       <strong>{{ patientName(item.patientId) }}</strong>
-                      <small>{{ item.practitionerName || 'Sem profissional' }}</small>
-                      <small>{{ operationalLabel(item) }}</small>
+                      <small>{{ ownerName(item.ownerId) }} · {{ appointmentTypeLabel(item) }}</small>
+                      <small>{{ appointmentResponsibleLabel(item) }}</small>
+                      <small class="month-item__next">{{ nextStepForAppointment(item) }}</small>
                     </button>
                     <button
                       v-if="canManageScheduling"
@@ -396,6 +406,11 @@
                         <strong>{{ patientName(item.patientId) }}</strong>
                         <span v-if="!isDenseWeekSlot(day.date, hour)">{{ ownerName(item.ownerId) }}</span>
                         <small v-if="!isDenseWeekSlot(day.date, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
+                        <div v-if="!isDenseWeekSlot(day.date, hour)" class="timeline-item__ops">
+                          <span>{{ appointmentResponsibleLabel(item) }}</span>
+                          <span>{{ queueBridgeLabel(item) }}</span>
+                          <strong>{{ nextStepForAppointment(item) }}</strong>
+                        </div>
                       </button>
                       <span
                         v-if="hiddenWeekSlotCount(day.date, hour) > 0"
@@ -524,8 +539,13 @@
                         <span v-if="!isDenseSlot(day.date, column.id, hour)">{{ ownerName(item.ownerId) }}</span>
                         <small v-if="!isDenseSlot(day.date, column.id, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
                         <small v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__meta">
-                          Agenda: {{ statusLabel(item.status) }} · {{ item.practitionerName || 'Sem profissional' }}
+                          {{ appointmentTypeLabel(item) }} · {{ appointmentSectorLabel(item) }}
                         </small>
+                        <div v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__ops">
+                          <span>{{ appointmentResponsibleLabel(item) }}</span>
+                          <span>{{ queueBridgeLabel(item) }}</span>
+                          <strong>{{ nextStepForAppointment(item) }}</strong>
+                        </div>
 
                         <div v-if="!isDenseSlot(day.date, column.id, hour) && item.conflicts.length" class="timeline-item__conflicts">
                           <span
@@ -674,7 +694,12 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 import AppointmentClientSelectorModal from '@/components/appointments/AppointmentClientSelectorModal.vue';
 import AppointmentDetailsDrawer from '@/components/appointments/AppointmentDetailsDrawer.vue';
 import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
@@ -786,6 +811,7 @@ const vetusLegendItems = [
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const timelineHours = Array.from({ length: 23 }, (_, index) => index);
 const maxVisibleAppointmentsPerSlot = 2;
+const activeQueueStages = ['checked_in', 'called', 'in_triage', 'in_care', 'observation'] as const;
 
 const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
 const canManageScheduling = computed(() => permissionCodes.value?.includes('scheduling.manage') ?? false);
@@ -818,6 +844,22 @@ const filteredItems = computed(() => {
     return true;
   });
 });
+const checkedInCount = computed(
+  () => filteredItems.value.filter((item) => item.operational.stage === 'checked_in').length
+);
+const activeQueueCount = computed(
+  () =>
+    filteredItems.value.filter((item) => isActiveQueueStage(item.operational.stage)).length
+);
+const unassignedCount = computed(
+  () => filteredItems.value.filter((item) => !item.practitionerStaffId).length
+);
+const pendingAgendaCount = computed(
+  () => filteredItems.value.filter((item) => item.operational.stage === 'scheduled').length
+);
+const agendaAttentionCount = computed(
+  () => filteredItems.value.filter((item) => appointmentNeedsAttention(item)).length
+);
 const normalizedReferenceDate = computed(() =>
   viewMode.value === 'month' ? startOfMonth(referenceDate.value) : referenceDate.value
 );
@@ -856,6 +898,102 @@ const markerOptions = computed(() =>
 );
 
 const legendItems = computed(() => vetusLegendItems);
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento' },
+  { key: 'appointments', label: 'Agenda', current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => [
+  {
+    key: 'period',
+    label: 'Período',
+    value: periodLabel.value
+  },
+  {
+    key: 'scheduled',
+    label: 'Agendados',
+    value: String(filteredItems.value.length),
+    tone: filteredItems.value.length > 0 ? 'info' : 'neutral'
+  },
+  {
+    key: 'queue',
+    label: 'Na esteira',
+    value: String(activeQueueCount.value),
+    tone: activeQueueCount.value > 0 ? 'success' : 'neutral'
+  },
+  {
+    key: 'unassigned',
+    label: 'Sem profissional',
+    value: String(unassignedCount.value),
+    tone: unassignedCount.value > 0 ? 'warning' : 'neutral'
+  },
+  {
+    key: 'available',
+    label: 'Disponíveis',
+    value: String(totalAvailableSlots.value)
+  }
+]);
+
+const headerNextSteps = computed<PageNextStep[]>(() => {
+  if (!canReadScheduling.value) {
+    return [
+      {
+        key: 'access',
+        label: 'Validar acesso',
+        description: 'Agenda depende de permissão de leitura'
+      }
+    ];
+  }
+
+  if (checkedInCount.value > 0) {
+    return [
+      {
+        key: 'queue',
+        label: 'Acompanhar check-ins',
+        description: `${checkedInCount.value} item(ns) devem seguir pela Esteira`,
+        to: '/queue'
+      }
+    ];
+  }
+
+  return [
+    {
+      key: 'schedule',
+      label: canManageScheduling.value ? 'Criar próximo agendamento' : 'Acompanhar grade',
+      description: canManageScheduling.value
+        ? 'Agenda organiza a chegada antes da Esteira'
+        : 'Confira horários, profissional e status',
+      to: canManageScheduling.value ? undefined : '/queue'
+    }
+  ];
+});
+
+const headerPrimaryAction = computed<PageAction | null>(() => {
+  if (!canManageScheduling.value) return null;
+  return {
+    key: 'create',
+    label: 'Criar agendamento',
+    onClick: openCreateFlow
+  };
+});
+
+const headerSecondaryActions = computed<PageAction[]>(() => [
+  {
+    key: 'refresh',
+    label: 'Atualizar',
+    variant: 'secondary',
+    loading: loading.value,
+    onClick: () => loadOverview()
+  },
+  {
+    key: 'queue',
+    label: 'Esteira',
+    variant: 'secondary',
+    to: '/queue'
+  }
+]);
 
 function startOfMonth(dateString: string) {
   const date = new Date(`${dateString}T00:00:00`);
@@ -949,6 +1087,88 @@ function statusLabel(status: AppointmentStatus) {
 
 function operationalLabel(item: SchedulingCockpitAppointmentSummary) {
   return item.operational.label;
+}
+
+function appointmentTypeLabel(item: SchedulingCockpitAppointmentSummary) {
+  if (item.serviceName) return item.serviceName;
+  if (item.specialty) return item.specialty;
+  if (item.resourceLabel) return item.resourceLabel;
+  if (item.visitType === 'return') return 'Retorno';
+  if (item.visitType === 'walk_in') return 'Encaixe';
+  return item.reason || 'Consulta';
+}
+
+function appointmentSectorLabel(item: SchedulingCockpitAppointmentSummary) {
+  return item.unit || item.specialty || item.resourceLabel || 'Recepção';
+}
+
+function appointmentResponsibleLabel(item: SchedulingCockpitAppointmentSummary) {
+  if (item.practitionerName) return item.practitionerName;
+  if (item.unit) return `Setor ${item.unit}`;
+  if (item.specialty) return `Especialidade ${item.specialty}`;
+  return 'Sem profissional definido';
+}
+
+function isQueueLinked(item: SchedulingCockpitAppointmentSummary) {
+  return item.operational.source === 'queue' || Boolean(item.operational.queueEntryId);
+}
+
+function isActiveQueueStage(stage: SchedulingCockpitAppointmentSummary['operational']['stage']) {
+  return activeQueueStages.includes(stage as (typeof activeQueueStages)[number]);
+}
+
+function queueBridgeLabel(item: SchedulingCockpitAppointmentSummary) {
+  if (item.status === 'cancelled' || item.operational.stage === 'cancelled') return 'Fora da Esteira';
+  if (isQueueLinked(item)) return 'Na Esteira';
+  if (!item.practitionerStaffId) return 'Pendência antes do check-in';
+  if (isPastScheduled(item)) return 'Chegada pendente';
+  if (item.status === 'scheduled') return 'Aguardando check-in';
+  return 'Sem vínculo com Esteira';
+}
+
+function isPastScheduled(item: SchedulingCockpitAppointmentSummary) {
+  return (
+    item.operational.stage === 'scheduled' &&
+    item.status === 'scheduled' &&
+    new Date(item.scheduledAt).getTime() < Date.now()
+  );
+}
+
+function appointmentNeedsAttention(item: SchedulingCockpitAppointmentSummary) {
+  if (item.status === 'cancelled' || item.operational.stage === 'completed') return false;
+  return item.conflicts.length > 0 || !item.practitionerStaffId || isPastScheduled(item);
+}
+
+function nextStepForAppointment(item: SchedulingCockpitAppointmentSummary) {
+  if (item.status === 'cancelled' || item.operational.stage === 'cancelled') {
+    return 'Validar reagendamento';
+  }
+
+  if (item.operational.stage === 'completed') {
+    return 'Conferir fechamento';
+  }
+
+  if (item.operational.encounterId) {
+    return 'Acompanhar atendimento';
+  }
+
+  if (isQueueLinked(item)) {
+    return 'Acompanhar na Esteira';
+  }
+
+  if (!item.practitionerStaffId) {
+    return 'Definir profissional/setor';
+  }
+
+  if (isPastScheduled(item)) {
+    return 'Confirmar chegada ou no-show';
+  }
+
+  if (item.status === 'scheduled') {
+    return 'Realizar check-in no horário';
+  }
+
+  return 'Manter acompanhamento';
 }
 
 function appointmentsByDay(date: string) {
@@ -1255,7 +1475,7 @@ function openAppointmentDetails(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function canCheckIn(item: SchedulingCockpitAppointmentSummary) {
-  return item.operational.stage === 'scheduled' && canManageScheduling.value;
+  return item.operational.stage === 'scheduled' && item.status === 'scheduled' && canManageScheduling.value;
 }
 
 function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
@@ -1263,11 +1483,11 @@ function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function canMarkNoShow(item: SchedulingCockpitAppointmentSummary) {
-  return item.operational.stage === 'scheduled' && canManageScheduling.value;
+  return item.operational.stage === 'scheduled' && item.status === 'scheduled' && canManageScheduling.value;
 }
 
 function shouldShowQueueAction(item: SchedulingCockpitAppointmentSummary) {
-  return ['checked_in', 'called'].includes(item.operational.stage);
+  return isQueueLinked(item) || isActiveQueueStage(item.operational.stage);
 }
 
 function shouldShowEncounterAction(item: SchedulingCockpitAppointmentSummary) {
@@ -1677,7 +1897,7 @@ onMounted(async () => {
 
 .agenda-grid-summary {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(120px, 0.6fr));
+  grid-template-columns: minmax(180px, 1.35fr) repeat(5, minmax(104px, 0.7fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -1855,6 +2075,11 @@ onMounted(async () => {
 .month-item__more {
   color: var(--color-text-muted, #64748b);
   font-size: 12px;
+}
+
+.month-item__next {
+  color: var(--color-text, #0f172a);
+  font-weight: 700;
 }
 
 .month-create-slot,
@@ -2126,6 +2351,32 @@ onMounted(async () => {
 
 .timeline-item__meta {
   color: var(--color-text-muted, #64748b);
+}
+
+.timeline-item__ops {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.timeline-item__ops span,
+.timeline-item__ops strong {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.timeline-item__ops span {
+  color: var(--color-text-secondary, #475569);
+}
+
+.timeline-item__ops strong {
+  color: var(--color-text, #0f172a);
 }
 
 .timeline-item__conflicts {

@@ -49,6 +49,8 @@ export type EncounterTimelineEventType =
   | 'queue_checked_in'
   | 'queue_called'
   | 'triage_recorded'
+  | 'handoff_sent_to_reception'
+  | 'handoff_acknowledged'
   | 'encounter_closed';
 
 export interface EncounterTimelineEventSummary {

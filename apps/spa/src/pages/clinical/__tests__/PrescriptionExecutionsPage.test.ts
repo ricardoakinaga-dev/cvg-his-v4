@@ -38,6 +38,7 @@ vi.mock('@/services/prescription-executions', () => ({
 describe('PrescriptionExecutionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/prescription-executions');
     mockEncounterList.mockResolvedValue([
       {
         id: 'enc-1',
@@ -176,6 +177,53 @@ describe('PrescriptionExecutionsPage', () => {
       occurredAt: '2026-04-10T00:00:00Z',
       createdAt: '2026-04-10T00:00:00Z'
     });
+  });
+
+  it('uses encounter query context without creating an execution automatically', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/prescription-executions?encounterId=enc-2&patientId=pat-2&ownerId=own-2'
+    );
+    mockEncounterList.mockResolvedValue([
+      {
+        id: 'enc-1',
+        accountId: 'acc-1',
+        patientId: 'pat-1',
+        ownerId: 'own-1',
+        visitType: 'scheduled',
+        status: 'in_care',
+        origin: 'schedule',
+        reason: 'Retorno clínico',
+        openedAt: '2026-04-10T00:00:00Z',
+        createdByUserId: 'user-1',
+        updatedAt: '2026-04-10T00:00:00Z'
+      },
+      {
+        id: 'enc-2',
+        accountId: 'acc-1',
+        patientId: 'pat-2',
+        ownerId: 'own-2',
+        visitType: 'walk_in',
+        status: 'in_care',
+        origin: 'reception',
+        reason: 'Aplicação supervisionada',
+        openedAt: '2026-04-10T01:00:00Z',
+        createdByUserId: 'user-1',
+        updatedAt: '2026-04-10T01:00:00Z'
+      }
+    ]);
+
+    const PrescriptionExecutionsPage = (await import('../PrescriptionExecutionsPage.vue')).default;
+    const wrapper = mount(PrescriptionExecutionsPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Contexto do atendimento clínico');
+    expect(wrapper.text()).toContain('enc-2');
+    expect(wrapper.text()).toContain('Aplicação supervisionada');
+    expect(mockPrescriptionList).toHaveBeenCalledWith('enc-2');
+    expect(mockExecutionList).toHaveBeenCalledWith({ encounterId: 'enc-2' });
+    expect(mockExecutionCreate).not.toHaveBeenCalled();
   });
 
   it('creates a prescription execution from a selected prescription', async () => {

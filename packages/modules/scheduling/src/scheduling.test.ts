@@ -417,6 +417,23 @@ describe('SchedulingService', () => {
     expect(completed.status).toBe('completed');
   });
 
+  it('allows idempotent encounter sync after attach moves queue to triage', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const queued = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Sincronizar triagem'
+    });
+
+    await service.callQueueEntry(queued.id);
+    const attached = await service.attachEncounter(queued.id, 'enc_sync' as EncounterId);
+    expect(attached.status).toBe('in_triage');
+
+    const synced = await service.transitionQueueForEncounter(queued.id, 'in_triage');
+    expect(synced.status).toBe('in_triage');
+    expect(synced.encounterId).toBe('enc_sync');
+  });
+
   it('allows waiting -> cancelled transition', async () => {
     const accountId = 'acc_cvg_demo' as AccountId;
     const queued = await service.checkIn(accountId, {
@@ -849,7 +866,9 @@ describe('SchedulingService', () => {
 
     expect(availability.available).toBe(false);
     expect(availability.conflicts.some((conflict) => conflict.type === 'staff_overlap')).toBe(true);
-    expect(availability.conflicts.some((conflict) => conflict.type === 'patient_overlap')).toBe(true);
+    expect(availability.conflicts.some((conflict) => conflict.type === 'patient_overlap')).toBe(
+      true
+    );
   });
 
   it('returns operational blocks in overview for scheduling professionals', async () => {
@@ -871,7 +890,9 @@ describe('SchedulingService', () => {
       referenceDate: '2026-04-15T00:00:00.000Z'
     });
 
-    expect(overview.professionals.some((professional) => professional.id === 'staff_vet')).toBe(true);
+    expect(overview.professionals.some((professional) => professional.id === 'staff_vet')).toBe(
+      true
+    );
     expect(overview.items.some((item) => item.id === appointment.id)).toBe(true);
     expect(overview.blocks.some((block) => block.practitionerStaffId === 'staff_vet')).toBe(true);
   });
@@ -980,8 +1001,6 @@ describe('SchedulingService', () => {
     expect(availability.conflicts.some((conflict) => conflict.type === 'resource_overlap')).toBe(
       true
     );
-    expect(availability.conflicts.some((conflict) => conflict.type === 'staff_overlap')).toBe(
-      true
-    );
+    expect(availability.conflicts.some((conflict) => conflict.type === 'staff_overlap')).toBe(true);
   });
 });

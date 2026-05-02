@@ -189,7 +189,7 @@ describe('OwnersListPage', () => {
     await flushPromises();
     const links = wrapper.findAll('a');
 
-    const detailLinks = links.filter((a) => a.text() === 'Detalhes');
+    const detailLinks = links.filter((a) => a.text() === 'Abrir cadastro');
     expect(detailLinks.length).toBeGreaterThanOrEqual(2);
     const detailHrefs = detailLinks.map((a) => a.attributes('href'));
     expect(detailHrefs).toContain('/owners/owner-1');
@@ -216,7 +216,7 @@ describe('OwnersListPage', () => {
     });
 
     await flushPromises();
-    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar Novo Cliente'));
+    const newLink = wrapper.findAll('a').find((a) => a.text().includes('Cadastrar tutor'));
     expect(newLink).toBeTruthy();
     expect(newLink!.attributes('href')).toBe('/owners/new');
   });
@@ -228,7 +228,9 @@ describe('OwnersListPage', () => {
     await flushPromises();
     const searchInput = wrapper.find('input[type="search"]');
     expect(searchInput.exists()).toBe(true);
-    expect(searchInput.attributes('placeholder')).toBe('Buscar por Nome, CPF, E-mail ou ID');
+    expect(searchInput.attributes('placeholder')).toBe(
+      'Buscar tutor por nome, ID, CPF/CNPJ, RG, telefone ou e-mail'
+    );
   });
 
   it('has a Filtrar button', async () => {
@@ -240,14 +242,31 @@ describe('OwnersListPage', () => {
     expect(searchBtn).toBeTruthy();
   });
 
+  it('sends reception search to the owners service as broad query', async () => {
+    const OwnersListPage = (await import('../OwnersListPage.vue')).default;
+    const wrapper = mount(OwnersListPage);
+
+    await flushPromises();
+    await wrapper.find('input[type="search"]').setValue('11999991111');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(mockListFn).toHaveBeenLastCalledWith({
+      search: '11999991111',
+      status: 'all',
+      financialResponsible: undefined
+    });
+  });
+
   it('shows patient pills and operational actions', async () => {
     const OwnersListPage = (await import('../OwnersListPage.vue')).default;
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
     expect(wrapper.text()).toContain('Rex');
-    expect(wrapper.text()).toContain('Cadastrar Novo Animal');
-    expect(wrapper.text()).toContain('Agendar');
+    expect(wrapper.text()).toContain('Ver animais');
+    expect(wrapper.text()).toContain('Cadastrar paciente');
+    expect(wrapper.text()).toContain('Criar agendamento');
   });
 
   it('shows Vetus-like disclosure sections for contact and linked animals', async () => {
@@ -258,7 +277,7 @@ describe('OwnersListPage', () => {
 
     expect(wrapper.text()).toContain('Informações de Contato');
     expect(wrapper.text()).toContain('Animais do Cliente');
-    expect(wrapper.text()).toContain('Ver Detalhes');
-    expect(wrapper.text()).toContain('Selecionar atendimento para cobrança');
+    expect(wrapper.text()).toContain('Abrir cadastro');
+    expect(wrapper.text()).toContain('Criar agendamento');
   });
 });

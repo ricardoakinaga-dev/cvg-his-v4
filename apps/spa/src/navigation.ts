@@ -51,6 +51,7 @@ export const navGroups: AppNavGroup[] = [
         id: 'atendimento-rotinas',
         label: 'Atendimentos',
         items: [
+          { label: 'Recepção', path: '/reception', icon: 'RC', keywords: ['recepcao', 'recepção', 'entrada', 'gateway'] },
           { label: 'Agenda', path: '/appointments', icon: '📅', keywords: ['agenda', 'agendamentos'] },
           { label: 'Comandas', path: '/counter-sales', icon: '🧾', keywords: ['comandas', 'pdv', 'balcao'] },
           { label: 'Vendas', path: '/sales', icon: '💸', keywords: ['vendas', 'comercial'] },

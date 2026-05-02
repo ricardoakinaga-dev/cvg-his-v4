@@ -2,8 +2,8 @@
   <div class="packages-page">
     <AppPageHeader
       title="Pacotes"
-      :breadcrumbs="['Início', 'Pacotes']"
-      subtitle="Início > Pacotes. Contrato de consumo futuro com cliente, animal, serviços, validade e pagamento."
+      :breadcrumbs="['Início', 'Atendimento', 'Atendimentos', 'Pacotes']"
+      subtitle="Atendimento > Atendimentos > Pacotes. Contrato de consumo futuro com cliente, animal, serviços, validade e pagamento."
     >
       <template #actions>
         <DsButton tag="a" to="/quotes" variant="primary">+ Incluir Novo Pacote</DsButton>
@@ -109,6 +109,7 @@
 
               <div class="package-actions">
                 <DsButton size="sm" tag="a" to="/billing" variant="secondary">Pagar pacote</DsButton>
+                <DsButton size="sm" tag="a" :to="packageCounterSalePath(pkg)" variant="secondary">Abrir comanda</DsButton>
                 <DsButton size="sm" variant="primary" @click="selectPackage(pkg.id)">Ver detalhes</DsButton>
               </div>
             </article>
@@ -177,6 +178,7 @@
               <div class="package-actions package-actions--wide">
                 <DsButton variant="danger">Excluir</DsButton>
                 <DsButton tag="a" to="/quotes" variant="secondary">Imprimir</DsButton>
+                <DsButton tag="a" :to="packageCounterSalePath(selectedPackage)" variant="secondary">Abrir Comanda</DsButton>
                 <DsButton tag="a" to="/billing" variant="primary">Pagar Pacote</DsButton>
                 <DsButton variant="secondary">Cancelar</DsButton>
                 <DsButton variant="primary">Salvar</DsButton>
@@ -220,6 +222,7 @@ interface PackageService {
 
 interface CustomerPackage {
   id: string;
+  ownerId: string | null;
   number: string;
   customer: string;
   animal: string;
@@ -354,6 +357,7 @@ async function loadPackages() {
 function toCustomerPackage(quote: QuoteDetailResponse): CustomerPackage {
   return {
     id: quote.id,
+    ownerId: quote.ownerId,
     number: quote.number,
     customer: quote.ownerId ? `Cliente ${quote.ownerId}` : 'Cliente não vinculado',
     animal: 'Contrato sem animal vinculado',
@@ -377,6 +381,11 @@ function packageStatusFromQuote(quote: QuoteSummary): PackageStatus {
 
 function packageTotal(pkg: CustomerPackage): number {
   return pkg.services.reduce((sum, service) => sum + service.price, 0);
+}
+
+function packageCounterSalePath(pkg: CustomerPackage): string {
+  if (!pkg.ownerId) return '/counter-sales';
+  return `/counter-sales?ownerId=${encodeURIComponent(pkg.ownerId)}`;
 }
 
 function statusLabel(status: PackageStatus): string {

@@ -49,6 +49,7 @@ const orders = [
 describe('ExamOrdersApiPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, '', '/exam-orders');
     vi.mocked(examApiService.listOrders).mockResolvedValue(orders);
   });
 
@@ -58,6 +59,7 @@ describe('ExamOrdersApiPage', () => {
 
     expect(examApiService.listOrders).toHaveBeenCalledWith(undefined);
     expect(wrapper.text()).toContain('Esteira de Exames');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Esteira de Exames');
     expect(wrapper.text()).toContain('solicitação, coleta, análise, laudo e entrega');
     expect(wrapper.text()).toContain('Filtrar por...');
     expect(wrapper.text()).toContain('Solicitado');
@@ -68,6 +70,17 @@ describe('ExamOrdersApiPage', () => {
     expect(wrapper.text()).toContain('Hemograma completo');
     expect(wrapper.text()).toContain('Registrar coleta');
     expect(wrapper.text()).toContain('Registrar resultado');
+  });
+
+  it('preserves encounter, patient and owner context when opening a new diagnostic order', async () => {
+    window.history.replaceState({}, '', '/exam-orders?encounterId=enc_ctx&patientId=pat_ctx&ownerId=owner_ctx');
+
+    const wrapper = mount(ExamOrdersApiPage);
+    await flushPromises();
+
+    expect(examApiService.listOrders).toHaveBeenCalledWith('enc_ctx');
+    const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'));
+    expect(hrefs).toContain('/diagnostics?encounterId=enc_ctx&patientId=pat_ctx&ownerId=owner_ctx');
   });
 
   it('keeps the page usable when the exam order API returns an error', async () => {

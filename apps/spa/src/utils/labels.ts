@@ -84,6 +84,8 @@ export const encounterEventTypeMap: Record<string, string> = {
   queue_checked_in: '📋 Check-in',
   queue_called: '📢 Chamado',
   triage_recorded: '🏷️ Triagem',
+  handoff_sent_to_reception: '📨 Handoff enviado',
+  handoff_acknowledged: '✅ Handoff recebido',
   encounter_closed: '✅ Fechado'
 };
 

@@ -1,22 +1,14 @@
 <template>
   <div class="queue-page">
-    <AppPageHeader title="Esteira de Atendimento">
-      <template #subtitle>
-        <span class="muted">
-          Atendimento &gt; Esteira. Controle por setor, responsável, paciente, urgência, atendimento e comanda.
-        </span>
-        <span v-if="lastRefresh" class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
-        <DsSpinner v-if="isRefreshing" size="sm" inline label="Atualizando..." />
-      </template>
-      <template #actions>
-        <DsButton variant="secondary" @click="manualRefresh" :loading="isRefreshing">
-          🔄 Atualizar
-        </DsButton>
-        <DsButton variant="secondary" tag="a" href="/appointments">📅 Ver Agenda</DsButton>
-        <DsButton variant="secondary" tag="a" href="/triage">🧭 Triagem</DsButton>
-        <DsButton variant="success" @click="openCheckInModal">Check-in Rápido</DsButton>
-      </template>
-    </AppPageHeader>
+    <AppPageHeader
+      title="Esteira de Atendimento"
+      subtitle="Atendimento > Atendimentos > Esteira. Fila viva por setor, responsável, paciente, urgência e comanda."
+      :breadcrumb-items="headerBreadcrumbItems"
+      :context-items="headerContextItems"
+      :next-steps="headerNextSteps"
+      :primary-action="headerPrimaryAction"
+      :secondary-actions="headerSecondaryActions"
+    />
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -25,6 +17,26 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+
+    <section
+      v-if="showReceptionCheckInContext"
+      class="prepared-checkin"
+      aria-label="Contexto de check-in preparado pela recepcao"
+    >
+      <div class="prepared-checkin__body">
+        <span class="prepared-checkin__eyebrow">Recepção</span>
+        <h2>Check-in preparado pela recepção</h2>
+        <p v-if="preparedPatient">
+          {{ preparedPatient.name }} · Tutor {{ preparedOwnerLabel }}
+        </p>
+        <p v-else>
+          Paciente informado pela recepção não foi localizado na lista carregada. Faça o check-in manual.
+        </p>
+      </div>
+      <DsButton variant="primary" @click="startPreparedReceptionCheckIn">
+        Iniciar check-in
+      </DsButton>
+    </section>
 
     <div v-if="loading" class="page-loading">
       <DsSpinner size="md" />
@@ -90,29 +102,46 @@
         </caption>
         <thead>
           <tr>
-            <th>Setor Atual</th>
+            <th>Situação operacional</th>
             <th>Recebido em</th>
-            <th>Enviado por</th>
+            <th>Origem</th>
             <th>Cliente</th>
             <th>Animal</th>
-            <th>Em atendimento com</th>
-            <th>Atendimento</th>
-            <th>Urgência</th>
+            <th>Responsável atual</th>
+            <th>Próximo passo</th>
+            <th>Prioridade</th>
             <th>Cobrança</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in filteredRows" :key="row.entry.id">
+          <tr
+            v-for="row in filteredRows"
+            :key="row.entry.id"
+            class="queue-row"
+            :class="`queue-row--${row.tone}`"
+          >
             <td>
-              <div class="queue-sector">
+              <div class="queue-operation">
+                <div class="queue-operation__badges">
+                  <DsBadge :variant="queueStatusVariant(row.entry.status)" size="sm">
+                    {{ queueStatusLabel(row.entry.status) }}
+                  </DsBadge>
+                  <DsBadge v-if="row.intent !== 'Padrão'" variant="info" size="sm">
+                    {{ row.intent }}
+                  </DsBadge>
+                </div>
                 <strong>{{ row.sector }}</strong>
-                <span>{{ queueStatusLabel(row.entry.status) }}</span>
+                <span>Destino provável: {{ row.nextSector }}</span>
               </div>
             </td>
             <td>
-              <span>{{ formatTime(row.entry.checkedInAt) }}</span>
-              <small>{{ waitTime(row.entry.checkedInAt) }}</small>
+              <div class="queue-time">
+                <span>{{ formatTime(row.entry.checkedInAt) }}</span>
+                <small :class="`queue-time__wait queue-time__wait--${row.waitTone}`">
+                  {{ row.waitLabel }}
+                </small>
+              </div>
             </td>
             <td>{{ row.sentBy }}</td>
             <td>
@@ -128,16 +157,24 @@
                 <span>{{ row.entry.patientId }}</span>
               </div>
             </td>
-            <td>{{ row.responsible }}</td>
             <td>
-              <a
-                v-if="row.entry.encounterId"
-                class="queue-link"
-                :href="`/encounters/${row.entry.encounterId}`"
-              >
-                Abrir
-              </a>
-              <span v-else>—</span>
+              <div class="queue-responsible">
+                <strong>{{ row.responsible }}</strong>
+                <span>{{ row.responsibilityHint }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="queue-next-step">
+                <strong>{{ row.nextStep }}</strong>
+                <a
+                  v-if="row.entry.encounterId"
+                  class="queue-link"
+                  :href="`/encounters/${row.entry.encounterId}`"
+                >
+                  Abrir atendimento
+                </a>
+                <span v-else>{{ row.nextStepHint }}</span>
+              </div>
             </td>
             <td>
               <DsBadge :variant="priorityVariant(row.entry.priority)" size="sm">
@@ -152,7 +189,7 @@
               >
                 Cobrança
               </a>
-              <a v-else class="queue-link" href="/counter-sales">Comandas</a>
+              <a class="queue-link" :href="queueCounterSalePath(row.entry)">Comanda</a>
             </td>
             <td class="table__actions-col">
               <div class="actions-group">
@@ -300,7 +337,12 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SearchSelect from '@/components/SearchSelect.vue';
 import type { SearchSelectOption } from '@/components/SearchSelect.vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 
 const router = useRouter();
 const entries = ref<QueueEntrySummary[]>([]);
@@ -324,6 +366,12 @@ const pollTimer = ref<ReturnType<typeof setInterval> | null>(null);
 const patientNameCache = ref<Record<string, string>>({});
 const ownerNameCache = ref<Record<string, string>>({});
 
+interface ReceptionCheckInContext {
+  patientId: string;
+  ownerId: string;
+  reason: string;
+}
+
 interface QueueFilters {
   sector: string;
   responsible: string;
@@ -337,6 +385,14 @@ interface EsteiraRow {
   sector: string;
   sentBy: string;
   responsible: string;
+  responsibilityHint: string;
+  nextSector: string;
+  nextStep: string;
+  nextStepHint: string;
+  waitLabel: string;
+  waitTone: 'normal' | 'warning' | 'danger';
+  tone: 'normal' | 'waiting' | 'active' | 'danger' | 'terminal';
+  intent: string;
 }
 
 const VETUS_SECTORS = [
@@ -365,6 +421,8 @@ const emptyFilters = (): QueueFilters => ({
 
 const draftFilters = ref<QueueFilters>(emptyFilters());
 const appliedFilters = ref<QueueFilters>(emptyFilters());
+const receptionCheckInContext = ref<ReceptionCheckInContext | null>(readReceptionCheckInQuery());
+const receptionCheckInConsumed = ref(false);
 
 const PRIORITY_ORDER: Record<QueuePriority, number> = {
   critical: 0,
@@ -386,7 +444,15 @@ const esteiraRows = computed<EsteiraRow[]>(() =>
     entry,
     sector: sectorForEntry(entry),
     sentBy: sentByForEntry(entry),
-    responsible: responsibleForEntry(entry)
+    responsible: responsibleForEntry(entry),
+    responsibilityHint: responsibilityHintForEntry(entry),
+    nextSector: nextSectorForEntry(entry),
+    nextStep: nextStepForEntry(entry),
+    nextStepHint: nextStepHintForEntry(entry),
+    waitLabel: waitTime(entry.checkedInAt),
+    waitTone: waitToneForEntry(entry),
+    tone: rowToneForEntry(entry),
+    intent: intentForEntry(entry)
   }))
 );
 
@@ -429,12 +495,166 @@ const filteredRows = computed(() => {
   });
 });
 
+const activeEntries = computed(() =>
+  entries.value.filter((entry) => !['completed', 'cancelled'].includes(entry.status))
+);
+
+const criticalActiveCount = computed(
+  () => activeEntries.value.filter((entry) => entry.priority === 'critical').length
+);
+
+const waitingCount = computed(
+  () => activeEntries.value.filter((entry) => entry.status === 'waiting').length
+);
+
+const inCareCount = computed(
+  () => activeEntries.value.filter((entry) => ['in_triage', 'in_care'].includes(entry.status)).length
+);
+
+const nextActionableEntry = computed(
+  () => sortedEntries.value.find((entry) => canHandleEncounter(entry) || entry.status === 'waiting') ?? null
+);
+
+const preparedPatient = computed(() => {
+  const context = receptionCheckInContext.value;
+  if (!context) return null;
+  return patients.value.find((patient) => patient.id === context.patientId) ?? null;
+});
+
+const preparedOwnerLabel = computed(() => {
+  const context = receptionCheckInContext.value;
+  const ownerId = preparedPatient.value?.primaryOwnerId || context?.ownerId;
+  if (!ownerId) return 'não informado';
+  return ownerNameCache.value[ownerId] || `ID ${ownerId}`;
+});
+
+const showReceptionCheckInContext = computed(
+  () => Boolean(receptionCheckInContext.value) && !receptionCheckInConsumed.value
+);
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento' },
+  { key: 'attendances', label: 'Atendimentos' },
+  { key: 'queue', label: 'Esteira', current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => [
+  {
+    key: 'active',
+    label: 'Ativos',
+    value: String(activeEntries.value.length),
+    tone: activeEntries.value.length > 0 ? 'info' : 'neutral'
+  },
+  {
+    key: 'waiting',
+    label: 'Aguardando',
+    value: String(waitingCount.value),
+    tone: waitingCount.value > 0 ? 'warning' : 'neutral'
+  },
+  {
+    key: 'critical',
+    label: 'Críticos',
+    value: String(criticalActiveCount.value),
+    tone: criticalActiveCount.value > 0 ? 'danger' : 'neutral'
+  },
+  {
+    key: 'care',
+    label: 'Clínica',
+    value: String(inCareCount.value),
+    tone: inCareCount.value > 0 ? 'success' : 'neutral'
+  },
+  {
+    key: 'refresh',
+    label: 'Atualizado',
+    value: lastRefresh.value ? formatTime(lastRefresh.value.toISOString()) : 'Aguardando'
+  }
+]);
+
+const headerNextSteps = computed<PageNextStep[]>(() => {
+  const entry = nextActionableEntry.value;
+  if (!entry) {
+    return [
+      {
+        key: 'triage',
+        label: 'Aguardar nova entrada',
+        description: 'Use o check-in quando o tutor chegar',
+        to: '/appointments'
+      }
+    ];
+  }
+
+  if (entry.status === 'waiting') {
+    return [
+      {
+        key: 'call-next',
+        label: 'Chamar próximo paciente',
+        description: patientNameCache.value[entry.patientId] ?? queueStatusLabel(entry.status),
+        to: '/queue'
+      }
+    ];
+  }
+
+  return [
+    {
+      key: 'continue-care',
+      label: encounterActionLabel(entry),
+      description: patientNameCache.value[entry.patientId] ?? queueStatusLabel(entry.status),
+      to: entry.encounterId ? `/encounters/${entry.encounterId}` : '/queue'
+    }
+  ];
+});
+
+const headerPrimaryAction = computed<PageAction>(() => ({
+  key: 'quick-checkin',
+  label: 'Check-in Rápido',
+  onClick: openCheckInModal
+}));
+
+const headerSecondaryActions = computed<PageAction[]>(() => [
+  {
+    key: 'refresh',
+    label: 'Atualizar',
+    variant: 'secondary',
+    loading: isRefreshing.value,
+    onClick: () => manualRefresh()
+  },
+  {
+    key: 'agenda',
+    label: 'Ver Agenda',
+    variant: 'secondary',
+    to: '/appointments'
+  }
+]);
+
 function normalizeSearch(value: string): string {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+function readReceptionCheckInQuery(): ReceptionCheckInContext | null {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const patientId = params.get('patientId')?.trim();
+  if (!patientId) return null;
+
+  return {
+    patientId,
+    ownerId: params.get('ownerId')?.trim() || '',
+    reason: params.get('reason')?.trim() || 'Recepcao'
+  };
+}
+
+function queueCounterSalePath(entry: QueueEntrySummary): string {
+  const params = new URLSearchParams();
+  if (entry.encounterId) params.set('encounterId', entry.encounterId);
+  params.set('patientId', entry.patientId);
+  params.set('ownerId', entry.ownerId);
+  return `/counter-sales?${params.toString()}`;
 }
 
 function applyFilters() {
@@ -469,15 +689,92 @@ function sentByForEntry(entry: QueueEntrySummary): string {
 
 function responsibleForEntry(entry: QueueEntrySummary): string {
   const map: Record<QueueStatus, string> = {
-    waiting: '—',
+    waiting: 'Recepção',
     called: 'Equipe de triagem',
     in_triage: 'Equipe de triagem',
     in_care: 'Equipe clínica',
     observation: 'Equipe de internação',
-    completed: '—',
-    cancelled: '—'
+    completed: 'Recepção / financeiro',
+    cancelled: 'Recepção'
   };
   return map[entry.status] ?? '—';
+}
+
+function responsibilityHintForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: 'Deve chamar ou priorizar',
+    called: 'Paciente chamado; abrir triagem',
+    in_triage: 'Triagem assumida',
+    in_care: 'Atendimento em curso',
+    observation: 'Acompanhar observação',
+    completed: 'Validar fechamento',
+    cancelled: 'Sem ação clínica ativa'
+  };
+  return map[entry.status] ?? 'Responsável derivado do status';
+}
+
+function nextSectorForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: 'Triagem',
+    called: 'Triagem',
+    in_triage: 'Clínica',
+    in_care: 'Recepção / financeiro',
+    observation: 'Internação ou recepção',
+    completed: 'Fechamento',
+    cancelled: 'Arquivo operacional'
+  };
+  return map[entry.status] ?? 'A definir';
+}
+
+function nextStepForEntry(entry: QueueEntrySummary): string {
+  const map: Record<QueueStatus, string> = {
+    waiting: entry.priority === 'critical' ? 'Chamar imediatamente' : 'Chamar paciente',
+    called: 'Abrir triagem',
+    in_triage: 'Entrar em atendimento',
+    in_care: 'Continuar atendimento',
+    observation: 'Reavaliar ou encaminhar',
+    completed: 'Conferir cobrança',
+    cancelled: 'Revisar cancelamento'
+  };
+  return map[entry.status] ?? 'Definir próximo passo';
+}
+
+function nextStepHintForEntry(entry: QueueEntrySummary): string {
+  if (entry.encounterId) return 'Atendimento vinculado';
+  if (entry.status === 'waiting') return 'Ainda sem atendimento ativo';
+  if (entry.status === 'called') return 'Encounter será criado ao abrir triagem';
+  if (entry.status === 'cancelled') return 'Fluxo encerrado';
+  return 'Sem Encounter vinculado';
+}
+
+function waitToneForEntry(entry: QueueEntrySummary): 'normal' | 'warning' | 'danger' {
+  if (entry.status === 'completed' || entry.status === 'cancelled') return 'normal';
+  if (entry.priority === 'critical') return 'danger';
+
+  const minutes = waitMinutes(entry.checkedInAt);
+  if (minutes >= 90) return 'danger';
+  if (minutes >= 30) return 'warning';
+  return 'normal';
+}
+
+function rowToneForEntry(entry: QueueEntrySummary): EsteiraRow['tone'] {
+  if (entry.status === 'completed' || entry.status === 'cancelled') return 'terminal';
+  if (entry.priority === 'critical') return 'danger';
+  if (entry.status === 'waiting' || entry.status === 'called') return 'waiting';
+  if (entry.status === 'in_triage' || entry.status === 'in_care' || entry.status === 'observation') {
+    return 'active';
+  }
+  return 'normal';
+}
+
+function intentForEntry(entry: QueueEntrySummary): string {
+  const reason = normalizeSearch(entry.reason);
+  if (entry.status === 'completed') return 'Finalização';
+  if (entry.status === 'cancelled') return 'Cancelado';
+  if (entry.priority === 'critical') return 'Crítico';
+  if (reason.includes('retorno')) return 'Retorno';
+  if (entry.appointmentId) return 'Agendado';
+  return 'Padrão';
 }
 
 function queueStatusLabel(status: QueueStatus): string {
@@ -514,12 +811,16 @@ function priorityVariant(priority: QueuePriority): 'danger' | 'warning' | 'info'
 }
 
 function waitTime(checkedInAt: string): string {
-  const diff = Date.now() - new Date(checkedInAt).getTime();
-  const minutes = Math.floor(diff / 60000);
+  const minutes = waitMinutes(checkedInAt);
   if (minutes < 60) return `${minutes}min`;
   const hours = Math.floor(minutes / 60);
   const remaining = minutes % 60;
   return `${hours}h${remaining}min`;
+}
+
+function waitMinutes(checkedInAt: string): number {
+  const diff = Date.now() - new Date(checkedInAt).getTime();
+  return Math.max(0, Math.floor(diff / 60000));
 }
 
 function formatTime(d: string): string {
@@ -716,6 +1017,22 @@ function openCheckInModal() {
   showCheckInModal.value = true;
 }
 
+function startPreparedReceptionCheckIn() {
+  const context = receptionCheckInContext.value;
+  if (!context) {
+    openCheckInModal();
+    return;
+  }
+
+  checkinForm.value = {
+    patientId: preparedPatient.value ? context.patientId : '',
+    priority: 'medium',
+    reason: context.reason || 'Recepcao'
+  };
+  receptionCheckInConsumed.value = true;
+  showCheckInModal.value = true;
+}
+
 function closeCheckInModal() {
   showCheckInModal.value = false;
   checkinForm.value = { patientId: '', priority: 'medium', reason: '' };
@@ -860,6 +1177,45 @@ defineExpose({
   background: var(--color-surface, #ffffff);
 }
 
+.prepared-checkin {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #99f6e4;
+  border-left: 4px solid #0f766e;
+  border-radius: 8px;
+  background: #f0fdfa;
+}
+
+.prepared-checkin__body {
+  min-width: 0;
+}
+
+.prepared-checkin__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prepared-checkin h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.prepared-checkin p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13px;
+}
+
 .queue-filters__field {
   display: flex;
   flex-direction: column;
@@ -894,6 +1250,30 @@ defineExpose({
   overflow-x: auto;
 }
 
+.queue-row {
+  border-left: 3px solid transparent;
+}
+
+.queue-row--waiting {
+  border-left-color: var(--color-warning, #f59e0b);
+}
+
+.queue-row--active {
+  border-left-color: var(--color-success, #16a34a);
+}
+
+.queue-row--danger {
+  border-left-color: var(--color-danger, #dc2626);
+}
+
+.queue-row--terminal {
+  opacity: 0.72;
+}
+
+.queue-operation,
+.queue-time,
+.queue-responsible,
+.queue-next-step,
 .queue-sector,
 .queue-patient {
   display: flex;
@@ -902,17 +1282,60 @@ defineExpose({
   min-width: 128px;
 }
 
+.queue-operation {
+  min-width: 180px;
+}
+
+.queue-operation__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.queue-responsible {
+  min-width: 152px;
+}
+
+.queue-next-step {
+  min-width: 168px;
+}
+
 .queue-sector strong,
-.queue-patient strong {
+.queue-patient strong,
+.queue-operation strong,
+.queue-responsible strong,
+.queue-next-step strong {
   font-size: 13px;
   color: var(--color-text, #0f172a);
 }
 
 .queue-sector span,
 .queue-patient span,
+.queue-operation span,
+.queue-responsible span,
+.queue-next-step span,
 td small {
   font-size: 12px;
   color: var(--color-text-secondary, #64748b);
+}
+
+.queue-time__wait {
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-surface-muted, #f8fafc);
+  font-weight: 700;
+}
+
+.queue-time__wait--warning {
+  color: var(--color-warning-text, #92400e);
+  background: var(--color-warning-bg, #fffbeb);
+}
+
+.queue-time__wait--danger {
+  color: var(--color-danger-text, #991b1b);
+  background: var(--color-danger-bg, #fef2f2);
 }
 
 .queue-link {
@@ -967,6 +1390,11 @@ td small {
 @media (max-width: 640px) {
   .queue-filters {
     grid-template-columns: 1fr;
+  }
+
+  .prepared-checkin {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

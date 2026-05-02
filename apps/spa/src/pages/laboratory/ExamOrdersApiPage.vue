@@ -1,8 +1,10 @@
 <template>
   <div class="exam-queue-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Esteira de Exames']">
+    <AppPageHeader :breadcrumb-items="headerBreadcrumbItems">
       <template #title>Esteira de Exames</template>
-      <template #subtitle>Fluxo Vetus: solicitação, coleta, análise, laudo e entrega</template>
+      <template #subtitle>
+        Atendimento > Atendimentos > Esteira de Exames. Fluxo Vetus: solicitação, coleta, análise, laudo e entrega
+      </template>
       <template #actions>
         <DsButton tag="a" :to="newDiagnosticPath" variant="primary" icon="+">Novo Pedido</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="loadOrders">
@@ -183,6 +185,12 @@ const filters = ref({
   exam: ''
 });
 const workflowContext = readWorkflowContext();
+const headerBreadcrumbItems = [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento' },
+  { key: 'attendances', label: 'Atendimentos' },
+  { key: 'exam-queue', label: 'Esteira de Exames', current: true }
+];
 
 const filteredItems = computed(() => {
   return items.value.filter((item) => {

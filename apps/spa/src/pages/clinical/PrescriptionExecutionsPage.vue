@@ -1,14 +1,14 @@
 <template>
   <div class="clinical-page">
     <AppPageHeader
-      :breadcrumbs="['Atendimento', 'Atendimentos', 'Execuções de Prescrição']"
       title="Execuções de Prescrição"
-      subtitle="Operação real das administrações ligadas às prescrições"
-    >
-      <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
-      </template>
-    </AppPageHeader>
+      subtitle="Satélite clínico para administração vinculada ao atendimento"
+      :breadcrumb-items="headerBreadcrumbItems"
+      :context-items="headerContextItems"
+      :next-steps="headerNextSteps"
+      :secondary-actions="headerSecondaryActions"
+      :primary-action="headerPrimaryAction"
+    />
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -16,6 +16,22 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+
+    <section v-if="hasWorkflowContext" class="clinical-context-strip" aria-label="Contexto do atendimento clínico">
+      <div>
+        <span>Contexto do atendimento clínico</span>
+        <strong>{{ selectedEncounterContextLabel }}</strong>
+        <small>Paciente {{ shortId(selectedEncounter?.patientId || workflowContext.patientId) }} · Tutor {{ shortId(selectedEncounter?.ownerId || workflowContext.ownerId) }}</small>
+      </div>
+      <div class="clinical-context-strip__actions">
+        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/encounters/${selectedEncounterContextId}`">
+          Voltar ao atendimento
+        </DsButton>
+        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/medical-records/${selectedEncounterContextId}`">
+          Abrir prontuário
+        </DsButton>
+      </div>
+    </section>
 
     <div class="clinical-grid clinical-grid--two">
       <DsCard title="Atendimento selecionado">
@@ -143,7 +159,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -199,6 +220,81 @@ const eventColumns: DataTableColumn[] = [
 
 const selectedEncounter = computed(() =>
   encounters.value.find((encounter) => encounter.id === selectedEncounterId.value)
+);
+
+const hasWorkflowContext = computed(() =>
+  Boolean(workflowContext.encounterId || workflowContext.patientId || workflowContext.ownerId)
+);
+
+const selectedEncounterContextId = computed(() => selectedEncounter.value?.id || workflowContext.encounterId);
+
+const selectedEncounterContextLabel = computed(() => {
+  const id = selectedEncounterContextId.value;
+  const reason = selectedEncounter.value?.reason;
+  return `${shortId(id)}${reason ? ` · ${reason}` : ''}`;
+});
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento', to: '/encounters' },
+  { key: 'executions', label: 'Execuções', current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => {
+  const items: PageContextItem[] = [
+    {
+      key: 'encounter',
+      label: 'Atendimento',
+      value: selectedEncounterContextId.value ? shortId(selectedEncounterContextId.value) : 'Não selecionado',
+      tone: selectedEncounterContextId.value ? 'info' : 'warning'
+    },
+    {
+      key: 'patient',
+      label: 'Paciente',
+      value: shortId(selectedEncounter.value?.patientId || workflowContext.patientId)
+    }
+  ];
+  if (selectedEncounter.value?.ownerId || workflowContext.ownerId) {
+    items.push({
+      key: 'owner',
+      label: 'Tutor',
+      value: shortId(selectedEncounter.value?.ownerId || workflowContext.ownerId)
+    });
+  }
+  return items;
+});
+
+const headerNextSteps = computed<PageNextStep[]>(() => [
+  {
+    key: 'execute',
+    label: 'Registrar execução quando houver prescrição',
+    description: selectedEncounter.value?.reason || 'Selecione o atendimento clínico'
+  }
+]);
+
+const headerSecondaryActions = computed<PageAction[]>(() => {
+  const actions: PageAction[] = [
+    { key: 'refresh', label: 'Atualizar', variant: 'secondary', loading: loading.value, onClick: () => void loadData() }
+  ];
+  if (selectedEncounterContextId.value) {
+    actions.unshift({
+      key: 'encounter',
+      label: 'Atendimento',
+      variant: 'secondary',
+      to: `/encounters/${selectedEncounterContextId.value}`
+    });
+  }
+  return actions;
+});
+
+const headerPrimaryAction = computed<PageAction | null>(() =>
+  selectedEncounterContextId.value
+    ? {
+        key: 'record',
+        label: 'Prontuário',
+        to: `/medical-records/${selectedEncounterContextId.value}`
+      }
+    : null
 );
 
 function resetForm() {
@@ -388,6 +484,10 @@ function readWorkflowContext() {
     ownerId: params.get('ownerId')?.trim() || ''
   };
 }
+
+function shortId(value?: string): string {
+  return value ? value.slice(0, 8) : 'Não informado';
+}
 </script>
 
 <style scoped>
@@ -413,6 +513,36 @@ function readWorkflowContext() {
   flex-wrap: wrap;
 }
 
+.clinical-context-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.clinical-context-strip span,
+.clinical-context-strip small {
+  display: block;
+  color: var(--color-text-muted, #64748b);
+}
+
+.clinical-context-strip strong {
+  display: block;
+  color: var(--color-text, #0f172a);
+}
+
+.clinical-context-strip__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .summary-list {
   display: grid;
   gap: 6px;
@@ -422,5 +552,16 @@ function readWorkflowContext() {
 
 .events-block {
   margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .clinical-context-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clinical-context-strip__actions {
+    justify-content: flex-start;
+  }
 }
 </style>

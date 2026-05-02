@@ -118,10 +118,33 @@ describe('EncounterDetailPage', () => {
     const wrapper = mount(EncounterDetailPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Atendimento');
+    expect(wrapper.text()).toContain('Atendimento clínico');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Joao Silva');
     expect(wrapper.text()).toContain('Animal com febre e letargia');
+  });
+
+  it('keeps the clinical record as the primary encounter action', async () => {
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const clinicalRecordLinks = wrapper
+      .findAll('a')
+      .filter((link) => link.text().includes('Continuar prontuário'));
+    expect(clinicalRecordLinks.length).toBeGreaterThan(0);
+    expect(clinicalRecordLinks.some((link) => link.attributes('href') === '/medical-records/enc-1')).toBe(true);
+    expect(wrapper.findAll('a').some((link) => link.text().includes('Cobrança'))).toBe(true);
   });
 
   it('shows status badge with correct label', async () => {
@@ -243,6 +266,35 @@ describe('EncounterDetailPage', () => {
 
     expect(wrapper.text()).toContain('Fechar Atendimento');
     expect(wrapper.find('#closeReason').exists()).toBe(true);
+  });
+
+  it('shows a reception pre-handoff review without automatic handoff', async () => {
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const closeTab = wrapper.findAll('.workflow-tab').find((button) => button.text().includes('Fechamento'));
+    await closeTab!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain('Pré-handoff para recepção');
+    expect(wrapper.text()).toContain('Este bloco orienta a conferência; não envia o caso automaticamente para a recepção.');
+    expect(wrapper.text()).toContain('Animal com febre e letargia');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Joao Silva');
+    expect(wrapper.findAll('a').some((link) => link.text().includes('Prontuário'))).toBe(true);
+    expect(wrapper.findAll('a').some((link) => link.text().includes('Prescrições'))).toBe(true);
+    expect(mockCloseFn).not.toHaveBeenCalled();
   });
 
   it('closes encounter with reason', async () => {

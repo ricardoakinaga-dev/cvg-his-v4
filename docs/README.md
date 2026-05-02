@@ -178,6 +178,20 @@ Complemento fora de `docs/`:
 - `601-score-pos-autonomia-operacional.md`
 - `602-veredito-pos-autonomia-operacional.md`
 
+### UX operacional e jornadas
+
+- `880-plano-executivo-ux-operacional.md`
+- `881-roadmap-ux-operacional.md`
+- `882-backlog-ux-operacional.md`
+- `883-auditoria-ui-atual-ux-operacional.md`
+- `884-brief-visual-operacional.md`
+- `885-spec-cabecalho-contextual.md`
+- `886-modelo-operacional-queue-encounter.md`
+- `887-prd-jornada-recepcao.md`
+- `888-prd-jornada-veterinario-clinico.md`
+- `889-roadmap-fluxos-especializados.md`
+- `890-plano-validacao-operacional.md`
+
 ### Ciclo de Autonomia Plena
 
 - `610-ciclo-autonomia-plena-validacao.md`

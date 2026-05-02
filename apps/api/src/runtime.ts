@@ -22,8 +22,9 @@ import {
   InMemoryLaboratoryCatalogRepository,
   LaboratoryService
 } from '@cvg-his-v2/module-diagnostics';
-import { EncountersService } from '@cvg-his-v2/module-encounters';
+import { ClinicalHandoffsService, EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
+  ClinicalHandoffRepository,
   EncounterRepository,
   EncounterTimelineRepository
 } from '@cvg-his-v2/module-encounters';
@@ -103,7 +104,7 @@ import {
 } from '@cvg-his-v2/module-notifications-whatsapp';
 import type { ApiKeyRepository } from '@cvg-his-v2/module-api-keys';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
-import { getTenantContext } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { trace as otelTrace } from '@opentelemetry/api';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
@@ -145,6 +146,7 @@ export interface RuntimeRepositories {
   readonly ownerPatientLink?: OwnerPatientLinkRepository;
   readonly encounter?: EncounterRepository;
   readonly encounterTimeline?: EncounterTimelineRepository;
+  readonly clinicalHandoff?: ClinicalHandoffRepository;
   readonly medicalRecord?: MedicalRecordRepository;
   readonly clinicalEntry?: ClinicalEntryRepository;
   readonly clinicalTimeline?: ClinicalTimelineRepository;
@@ -267,8 +269,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   ) {
     const tenantContext = getTenantContext();
     const correlationId =
-      (tenantContext?.correlationId as CorrelationId | undefined)
-      ?? (createCorrelationId('evt') as CorrelationId);
+      (tenantContext?.correlationId as CorrelationId | undefined) ??
+      (createCorrelationId('evt') as CorrelationId);
     const activeSpan = otelTrace.getActiveSpan();
     const activeSpanContext = activeSpan?.spanContext();
     const traceparent =
@@ -405,8 +407,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
               action,
               entityType: 'appointment',
               entityId: appointment.id,
-              payloadSummary:
-                `WhatsApp reminder ${outcome} for appointment ${appointment.id}; ${metadata}`,
+              payloadSummary: `WhatsApp reminder ${outcome} for appointment ${appointment.id}; ${metadata}`,
               riskLevel: result.sent ? 'low' : 'medium',
               correlationId: reminderScheduledAudit.correlationId
             });
@@ -419,8 +420,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
               action: 'whatsapp_reminder_failed',
               entityType: 'appointment',
               entityId: appointment.id,
-              payloadSummary:
-                `WhatsApp reminder failed for appointment ${appointment.id}; provider=unknown; messageId=; error=${sanitizeAuditValue(error instanceof Error ? error.message : 'unknown_error')}`,
+              payloadSummary: `WhatsApp reminder failed for appointment ${appointment.id}; provider=unknown; messageId=; error=${sanitizeAuditValue(error instanceof Error ? error.message : 'unknown_error')}`,
               riskLevel: 'medium',
               correlationId: reminderScheduledAudit.correlationId
             });
@@ -471,6 +471,33 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     }
   });
   const triage = new TriageService(encounters, { repository: repos.triage });
+  const clinicalHandoffs = new ClinicalHandoffsService(encounters, {
+    repository: repos.clinicalHandoff,
+    async onHandoffSent(handoff) {
+      await publishEvent('encounters' as ModuleName, 'clinical_handoff.sent_to_reception', {
+        id: handoff.id,
+        accountId: handoff.accountId,
+        encounterId: handoff.encounterId,
+        patientId: handoff.patientId,
+        ownerId: handoff.ownerId,
+        fromSector: handoff.fromSector,
+        toSector: handoff.toSector,
+        actorId: handoff.sentBy,
+        sentAt: handoff.sentAt
+      });
+    },
+    async onHandoffAcknowledged(handoff, previousStatus) {
+      await publishEvent('encounters' as ModuleName, 'clinical_handoff.acknowledged', {
+        id: handoff.id,
+        accountId: handoff.accountId,
+        encounterId: handoff.encounterId,
+        previousStatus,
+        newStatus: handoff.handoffStatus,
+        acknowledgedBy: handoff.acknowledgedBy,
+        acknowledgedAt: handoff.acknowledgedAt
+      });
+    }
+  });
   const medicalRecords = new MedicalRecordsService({
     encounters,
     patients,
@@ -527,8 +554,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     repository: repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository(),
     async onReceivablePaid(payment) {
       if (
-        payment.externalReferenceType !== 'pix_transaction'
-        && payment.externalReferenceType !== 'other'
+        payment.externalReferenceType !== 'pix_transaction' &&
+        payment.externalReferenceType !== 'other'
       ) {
         return;
       }
@@ -705,6 +732,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     owners,
     patients,
     encounters,
+    clinicalHandoffs,
     scheduling,
     triage,
     medicalRecords,
@@ -754,11 +782,23 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         patients.list()[0]?.accountId
       );
 
-      const scopedHydrations = bootstrapAccountId
-        ? [
+      if (!bootstrapAccountId) {
+        await billing.hydrateFromDatabase();
+        return;
+      }
+
+      await runWithTenantContext(
+        {
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          accountId: bootstrapAccountId,
+          correlationId: createCorrelationId('boot')
+        },
+        async () => {
+          await Promise.allSettled([
             owners.hydrateFromDatabase(bootstrapAccountId),
             patients.hydrateFromDatabase(bootstrapAccountId),
             encounters.hydrateFromDatabase(bootstrapAccountId),
+            clinicalHandoffs.hydrateFromDatabase(bootstrapAccountId),
             accessControl.hydrateFromDatabase(bootstrapAccountId),
             diagnostics.hydrateFromDatabase(bootstrapAccountId),
             laboratory.hydrateCatalog(bootstrapAccountId),
@@ -771,11 +811,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             counterSales.hydrateFromDatabase(bootstrapAccountId),
             quotes.hydrateFromDatabase(bootstrapAccountId),
             cash.hydrateFromDatabase(bootstrapAccountId),
-            prescriptions.hydrateFromDatabase(bootstrapAccountId)
-          ]
-        : [];
-
-      await Promise.allSettled([billing.hydrateFromDatabase(), ...scopedHydrations]);
+            prescriptions.hydrateFromDatabase(bootstrapAccountId),
+            billing.hydrateFromDatabase(bootstrapAccountId)
+          ]);
+        }
+      );
     }
   };
 }

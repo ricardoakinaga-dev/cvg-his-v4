@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { Writable } from 'node:stream';
+import type { IncomingMessage } from 'node:http';
+import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -76,6 +77,11 @@ function createMockBilling() {
       { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
     ],
     listItems: async (_encounterId: string) => [{ id: 'bi-1', description: 'item 1' }],
+    findByEncounter: async (_encounterId: string) => ({
+      id: 'br-1',
+      encounterId: _encounterId,
+      status: 'estimated'
+    }),
     getByEncounterOrThrow: async (_encounterId: string) => ({
       id: 'br-1',
       encounterId: _encounterId,
@@ -96,6 +102,13 @@ function createMockBilling() {
       status: 'confirmed'
     })
   };
+}
+
+function createJsonRequest(method: string, url: string, body: unknown): IncomingMessage {
+  const request = Readable.from([JSON.stringify(body)]) as IncomingMessage;
+  request.method = method;
+  request.url = url;
+  return request;
 }
 
 function createMockAudit() {
@@ -174,6 +187,7 @@ test('handleBillingRoutes GET /billing with encounterId filter', async () => {
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   assert.deepEqual(receivedFilters, {
+    accountId: 'acc-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
     ownerId: 'owner-1'
@@ -226,7 +240,182 @@ test('handleBillingRoutes GET /billing/:encounterId returns billing record', asy
   assert.equal(body.id, 'br-1');
 });
 
-// POST/PATCH tests omitted — they require a full mock request with stream body
-// (readJsonBody needs an actual readable stream). The GET tests above provide
-// sufficient coverage of the routing logic: path matching, method filtering,
-// principal enforcement, audit calls, and response formatting.
+test('handleBillingRoutes GET /billing/:encounterId does not create missing records', async () => {
+  const response = new MockResponse();
+  let created = false;
+  const mockBilling = {
+    ...createMockBilling(),
+    findByEncounter: async () => null,
+    createEstimate: async () => {
+      created = true;
+      return { id: 'br-created' };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-missing',
+    { method: 'GET' } as never,
+    response as never,
+    'corr-billing-5',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 404);
+  assert.equal(created, false);
+  const body = response.bodyJson<{ code: string }>();
+  assert.equal(body.code, 'BILLING_RECORD_NOT_FOUND');
+});
+
+test('handleBillingRoutes POST /billing/estimate creates estimate explicitly', async () => {
+  const response = new MockResponse();
+  let receivedPayload: unknown;
+  const mockBilling = {
+    ...createMockBilling(),
+    createEstimate: async (payload: never) => {
+      receivedPayload = payload;
+      return { id: 'br-est-1', encounterId: 'enc-1', status: 'estimated' };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/estimate',
+    createJsonRequest('POST', '/billing/estimate', {
+      encounterId: 'enc-1',
+      administrativeNotes: 'Estimativa'
+    }) as never,
+    response as never,
+    'corr-billing-6',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(receivedPayload, {
+    encounterId: 'enc-1',
+    administrativeNotes: 'Estimativa'
+  });
+});
+
+test('handleBillingRoutes POST /billing/items creates item explicitly', async () => {
+  const response = new MockResponse();
+  let receivedPayload: unknown;
+  const mockBilling = {
+    ...createMockBilling(),
+    addItem: async (userId: string, payload: never) => {
+      assert.equal(userId, 'user-1');
+      receivedPayload = payload;
+      return { id: 'bi-new-1', totalAmount: 120 };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/items',
+    createJsonRequest('POST', '/billing/items', {
+      encounterId: 'enc-1',
+      itemType: 'service',
+      description: 'Consulta',
+      quantity: 1,
+      unitPriceAmount: 120
+    }) as never,
+    response as never,
+    'corr-billing-7',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(receivedPayload, {
+    encounterId: 'enc-1',
+    itemType: 'service',
+    description: 'Consulta',
+    quantity: 1,
+    unitPriceAmount: 120
+  });
+});
+
+test('handleBillingRoutes PATCH /billing/:encounterId/status updates status explicitly', async () => {
+  const response = new MockResponse();
+  let receivedPayload: unknown;
+  const mockBilling = {
+    ...createMockBilling(),
+    updateStatus: async (encounterId: string, payload: never) => {
+      assert.equal(encounterId, 'enc-1');
+      receivedPayload = payload;
+      return { id: 'br-1', encounterId, status: 'open' };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-1/status',
+    createJsonRequest('PATCH', '/billing/enc-1/status', {
+      status: 'open',
+      administrativeNotes: 'Aberto para cobrança'
+    }) as never,
+    response as never,
+    'corr-billing-8',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(receivedPayload, {
+    status: 'open',
+    administrativeNotes: 'Aberto para cobrança'
+  });
+});
+
+test('handleBillingRoutes PATCH /billing/:encounterId/status does not create missing records', async () => {
+  const response = new MockResponse();
+  let updated = false;
+  const mockBilling = {
+    ...createMockBilling(),
+    findByEncounter: async () => null,
+    updateStatus: async () => {
+      updated = true;
+      return { id: 'br-created', status: 'open' };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-missing/status',
+    createJsonRequest('PATCH', '/billing/enc-missing/status', {
+      status: 'open',
+      administrativeNotes: 'Nao deve criar'
+    }) as never,
+    response as never,
+    'corr-billing-9',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 404);
+  assert.equal(updated, false);
+  const body = response.bodyJson<{ code: string }>();
+  assert.equal(body.code, 'BILLING_RECORD_NOT_FOUND');
+});

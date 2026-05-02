@@ -12,22 +12,15 @@
       {{ error }}
     </DsAlert>
     <template v-else-if="encounter">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Atendimento', patientName || 'Detalhes']">
-        <template #title>🩺 Atendimento</template>
-        <template #subtitle>
-          <StatusBadge
-            :label="encounterStatusLabel(encounter.status)"
-            :variant="encounterStatusVariant(encounter.status)"
-          />
-          <span class="muted">{{ patientName || 'Paciente em carregamento' }}</span>
-        </template>
-        <template #actions>
-          <DsButton variant="primary" tag="a" :to="`/billing/${encounter.id}`">
-            Cobrança
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/encounters">Voltar</DsButton>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader
+        title="Atendimento clínico"
+        :subtitle="encounterHeaderSubtitle"
+        :breadcrumb-items="headerBreadcrumbItems"
+        :context-items="headerContextItems"
+        :next-steps="headerNextSteps"
+        :primary-action="headerPrimaryAction"
+        :secondary-actions="headerSecondaryActions"
+      />
 
       <section class="encounter-cockpit" aria-label="Cockpit do atendimento">
         <aside class="patient-rail">
@@ -57,7 +50,7 @@
 
           <div class="patient-rail__actions">
             <DsButton variant="primary" tag="a" :to="`/medical-records/${encounter.id}`">
-              Prontuário
+              Continuar prontuário
             </DsButton>
             <DsButton variant="secondary" tag="a" :to="workflowLink('/prescriptions')">
               Receituário
@@ -97,7 +90,11 @@
                   <span class="workflow-panel__eyebrow">Resumo</span>
                   <h2>Queixa Principal</h2>
                 </div>
-                <DsButton variant="secondary" :loading="financialLoading" @click="refreshEnterpriseSummary">
+                <DsButton
+                  variant="secondary"
+                  :loading="financialLoading"
+                  @click="refreshEnterpriseSummary"
+                >
                   Atualizar resumo
                 </DsButton>
               </div>
@@ -166,7 +163,11 @@
                   <DsButton variant="primary" tag="a" :to="workflowLink('/prescriptions')">
                     Receituário
                   </DsButton>
-                  <DsButton variant="secondary" tag="a" :to="workflowLink('/prescription-executions')">
+                  <DsButton
+                    variant="secondary"
+                    tag="a"
+                    :to="workflowLink('/prescription-executions')"
+                  >
                     Aplicar medicação
                   </DsButton>
                 </div>
@@ -180,10 +181,10 @@
               <div class="workflow-panel__header">
                 <div>
                   <span class="workflow-panel__eyebrow">Serviços / Cobrança</span>
-                  <h2>Lançar serviços e fechar cobrança</h2>
+                  <h2>Acompanhar pendências financeiras</h2>
                 </div>
-                <DsButton variant="primary" tag="a" :to="`/billing/${encounter.id}`">
-                  Abrir cobrança
+                <DsButton variant="secondary" tag="a" :to="`/billing/${encounter.id}`">
+                  Ver cobrança
                 </DsButton>
               </div>
               <div class="detail-grid">
@@ -209,10 +210,18 @@
                   <h2>Concluir atendimento</h2>
                 </div>
                 <div class="workflow-panel__actions">
-                  <DsButton v-if="encounter.status !== 'closed'" variant="secondary" @click="showFinancialCloseModal = true">
+                  <DsButton
+                    v-if="encounter.status !== 'closed'"
+                    variant="secondary"
+                    @click="showFinancialCloseModal = true"
+                  >
                     Fechar Financeiro
                   </DsButton>
-                  <DsButton v-if="canTransition" variant="secondary" @click="showTransitionModal = true">
+                  <DsButton
+                    v-if="canTransition"
+                    variant="secondary"
+                    @click="showTransitionModal = true"
+                  >
                     Transicionar Status
                   </DsButton>
                   <DsButton v-if="canClose" variant="danger" @click="showCloseModal = true">
@@ -227,6 +236,146 @@
               <p v-else class="muted">
                 Revise cobrança, exames, receituário e prontuário antes de fechar o caso.
               </p>
+              <section class="pre-handoff" aria-labelledby="pre-handoff-title">
+                <div class="pre-handoff__header">
+                  <div>
+                    <span class="workflow-panel__eyebrow">Conferência operacional</span>
+                    <h3 id="pre-handoff-title">Pré-handoff para recepção</h3>
+                  </div>
+                  <span class="pre-handoff__status">{{
+                    encounterStatusLabel(encounter.status)
+                  }}</span>
+                </div>
+                <p class="pre-handoff__notice">
+                  Envie o pacote mínimo para a recepção assumir e confirmar recebimento.
+                </p>
+                <DsAlert
+                  v-if="clinicalHandoffError"
+                  variant="danger"
+                  dismissible
+                  @dismiss="clinicalHandoffError = ''"
+                >
+                  {{ clinicalHandoffError }}
+                </DsAlert>
+                <div class="detail-grid">
+                  <div class="detail-row">
+                    <span class="detail-row__label">Paciente</span>
+                    <span>{{ patientName || 'Paciente em carregamento' }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-row__label">Tutor</span>
+                    <span>{{ ownerName || 'Tutor em carregamento' }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-row__label">Motivo / queixa</span>
+                    <span>{{ encounter.reason }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-row__label">Saldo financeiro</span>
+                    <span>{{ formatMoney(financialSummary?.balanceDue ?? 0) }}</span>
+                  </div>
+                  <div v-if="encounter.closeReason" class="detail-row">
+                    <span class="detail-row__label">Motivo do fechamento</span>
+                    <span>{{ encounter.closeReason }}</span>
+                  </div>
+                </div>
+                <div v-if="clinicalHandoffLoading" class="muted">Carregando handoff...</div>
+                <div v-else-if="clinicalHandoff" class="handoff-status">
+                  <div>
+                    <span class="detail-row__label">Handoff</span>
+                    <strong>{{ clinicalHandoffStatusLabel(clinicalHandoff.handoffStatus) }}</strong>
+                    <p>{{ clinicalHandoff.receptionInstructions }}</p>
+                  </div>
+                  <div>
+                    <span class="detail-row__label">Prioridade</span>
+                    <strong>{{ clinicalHandoffPriorityLabel(clinicalHandoff.priority) }}</strong>
+                    <p v-if="clinicalHandoff.acknowledgedAt">
+                      Recebido em {{ formatDateTime(clinicalHandoff.acknowledgedAt) }}
+                    </p>
+                  </div>
+                </div>
+                <div v-else class="handoff-form">
+                  <div class="form-field">
+                    <label for="clinicalHandoffSummary" class="form-field__label"
+                      >Resumo clínico-operacional *</label
+                    >
+                    <DsInput
+                      id="clinicalHandoffSummary"
+                      v-model="clinicalHandoffForm.clinicalSummary"
+                      type="textarea"
+                      :rows="3"
+                      placeholder="Resumo curto para a recepção orientar o tutor"
+                    />
+                  </div>
+                  <div class="form-field">
+                    <label for="clinicalHandoffInstructions" class="form-field__label"
+                      >Instruções para recepção *</label
+                    >
+                    <DsInput
+                      id="clinicalHandoffInstructions"
+                      v-model="clinicalHandoffForm.receptionInstructions"
+                      type="textarea"
+                      :rows="3"
+                      placeholder="O que a recepção deve fazer agora"
+                    />
+                  </div>
+                  <div class="handoff-form__footer">
+                    <label class="form-field__label" for="clinicalHandoffPriority"
+                      >Prioridade</label
+                    >
+                    <select
+                      id="clinicalHandoffPriority"
+                      v-model="clinicalHandoffForm.priority"
+                      class="handoff-form__select"
+                    >
+                      <option value="low">Baixa</option>
+                      <option value="medium">Média</option>
+                      <option value="high">Alta</option>
+                      <option value="critical">Crítica</option>
+                    </select>
+                    <DsButton
+                      variant="primary"
+                      :loading="sendingClinicalHandoff"
+                      :disabled="encounter.status === 'closed'"
+                      @click="sendClinicalHandoff"
+                    >
+                      Enviar para recepção
+                    </DsButton>
+                  </div>
+                </div>
+                <div class="pre-handoff__links" aria-label="Atalhos de conferência para recepção">
+                  <DsButton
+                    size="sm"
+                    variant="secondary"
+                    tag="a"
+                    :to="`/medical-records/${encounter.id}`"
+                  >
+                    Prontuário
+                  </DsButton>
+                  <DsButton
+                    size="sm"
+                    variant="secondary"
+                    tag="a"
+                    :to="workflowLink('/prescriptions')"
+                  >
+                    Prescrições
+                  </DsButton>
+                  <DsButton
+                    size="sm"
+                    variant="secondary"
+                    tag="a"
+                    :to="workflowLink('/diagnostics')"
+                  >
+                    Exames/diagnóstico
+                  </DsButton>
+                  <DsButton size="sm" variant="secondary" tag="a" :to="workflowLink('/quotes')">
+                    Orçamento
+                  </DsButton>
+                  <DsButton size="sm" variant="secondary" tag="a" :to="`/billing/${encounter.id}`">
+                    Faturamento
+                  </DsButton>
+                </div>
+              </section>
             </template>
           </section>
         </div>
@@ -235,7 +384,9 @@
       <section class="support-grid" aria-label="Informações de apoio do atendimento">
         <DsCard title="Timeline">
           <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
-          <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado ainda neste atendimento.</div>
+          <div v-else-if="timeline.length === 0" class="muted">
+            Nenhum evento registrado ainda neste atendimento.
+          </div>
           <div v-else class="timeline-list">
             <div v-for="event in timeline" :key="event.id" class="timeline-event">
               <span class="timeline-event__type">{{
@@ -249,7 +400,9 @@
 
         <DsCard title="Anexos">
           <div v-if="attachmentsLoading" class="muted">Carregando anexos...</div>
-          <div v-else-if="attachments.length === 0" class="muted">Nenhum anexo registrado. Use este espaço para complementar o caso clínico.</div>
+          <div v-else-if="attachments.length === 0" class="muted">
+            Nenhum anexo registrado. Use este espaço para complementar o caso clínico.
+          </div>
           <div v-else class="attachments-list">
             <div v-for="att in attachments" :key="att.id" class="attachment-item">
               <span class="attachment-item__icon">📎</span>
@@ -261,7 +414,12 @@
             <DsInput v-model="newAttachment.fileName" label="" placeholder="Nome do arquivo" />
             <DsInput v-model="newAttachment.mimeType" label="" placeholder="MIME type" />
             <DsInput v-model="newAttachment.checksum" label="" placeholder="Checksum" />
-            <DsButton variant="secondary" size="sm" :loading="uploadingAttachment" @click="uploadAttachment">
+            <DsButton
+              variant="secondary"
+              size="sm"
+              :loading="uploadingAttachment"
+              @click="uploadAttachment"
+            >
               Anexar
             </DsButton>
           </div>
@@ -349,6 +507,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
+import { clinicalHandoffService } from '@/services/clinicalHandoff';
 import { attachmentService } from '@/services/attachments';
 import type {
   EncounterSummary,
@@ -356,6 +515,7 @@ import type {
   EncounterFinancialSummary,
   EncounterSummaryResponse
 } from '@/types/encounter';
+import type { ClinicalHandoffPriority, ClinicalHandoffSummary } from '@/types/clinicalHandoff';
 import {
   visitTypeLabel,
   encounterStatusLabel,
@@ -365,13 +525,18 @@ import {
   formatDateTime
 } from '@/utils/labels';
 import { useEntityCache } from '@/composables/useEntityCache';
-import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 
 const route = useRoute();
 const encounter = ref<EncounterSummary | null>(null);
@@ -380,6 +545,7 @@ const loading = ref(true);
 const timelineLoading = ref(false);
 const financialLoading = ref(false);
 const error = ref('');
+const clinicalHandoffError = ref('');
 const showTransitionModal = ref(false);
 const showFinancialCloseModal = ref(false);
 const showCloseModal = ref(false);
@@ -399,21 +565,165 @@ const ownerName = ref('');
 const financialSummary = ref<EncounterFinancialSummary | null>(null);
 const encounterSummary = ref<EncounterSummaryResponse | null>(null);
 const activeWorkflowStep = ref('summary');
+const clinicalHandoff = ref<ClinicalHandoffSummary | null>(null);
+const clinicalHandoffLoading = ref(false);
+const sendingClinicalHandoff = ref(false);
+const clinicalHandoffForm = ref<{
+  clinicalSummary: string;
+  receptionInstructions: string;
+  priority: ClinicalHandoffPriority;
+}>({
+  clinicalSummary: '',
+  receptionInstructions: '',
+  priority: 'medium'
+});
 
 const summaryCards = computed(() => [
   { icon: '🐾', label: 'Paciente', value: patientName.value || 'Carregando...' },
   { icon: '👤', label: 'Tutor', value: ownerName.value || 'Carregando...' },
-  { icon: '🧭', label: 'Tipo', value: encounter.value ? visitTypeLabel(encounter.value.visitType) : '—' },
-  { icon: '⚡', label: 'Status', value: encounter.value ? encounterStatusLabel(encounter.value.status) : '—' }
+  {
+    icon: '🧭',
+    label: 'Tipo',
+    value: encounter.value ? visitTypeLabel(encounter.value.visitType) : '—'
+  },
+  {
+    icon: '⚡',
+    label: 'Status',
+    value: encounter.value ? encounterStatusLabel(encounter.value.status) : '—'
+  }
 ]);
 
+const encounterHeaderSubtitle = computed(() => {
+  if (!encounter.value) return 'Caso clínico em carregamento.';
+  return `Hub clínico-operacional · ${encounterStatusLabel(encounter.value.status)} · ${encounter.value.reason}`;
+});
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento', to: '/encounters' },
+  { key: 'encounters', label: 'Atendimentos', to: '/encounters' },
+  { key: 'encounter', label: patientName.value || 'Atendimento', current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => {
+  if (!encounter.value) return [];
+  const balanceDue = financialSummary.value?.balanceDue ?? 0;
+  return [
+    {
+      key: 'patient',
+      label: 'Paciente',
+      value: patientName.value || 'Carregando'
+    },
+    {
+      key: 'owner',
+      label: 'Tutor',
+      value: ownerName.value || 'Carregando'
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      value: encounterStatusLabel(encounter.value.status),
+      tone: encounter.value.status === 'closed' ? 'success' : 'info'
+    },
+    {
+      key: 'type',
+      label: 'Tipo',
+      value: visitTypeLabel(encounter.value.visitType)
+    },
+    {
+      key: 'balance',
+      label: 'Saldo',
+      value: formatMoney(balanceDue),
+      tone: balanceDue > 0 ? 'warning' : 'neutral'
+    }
+  ];
+});
+
+const headerNextSteps = computed<PageNextStep[]>(() => {
+  if (!encounter.value) return [];
+  const steps: PageNextStep[] = [];
+  if (encounter.value.status === 'closed') {
+    steps.push({
+      key: 'closed-record',
+      label: 'Revisar prontuário',
+      description: 'Caso clínico finalizado',
+      to: `/medical-records/${encounter.value.id}`
+    });
+  } else {
+    steps.push({
+      key: 'clinical-record',
+      label: 'Continuar prontuário',
+      description: patientName.value || encounterStatusLabel(encounter.value.status),
+      to: `/medical-records/${encounter.value.id}`
+    });
+  }
+
+  if ((financialSummary.value?.balanceDue ?? 0) > 0) {
+    steps.push({
+      key: 'billing',
+      label: 'Pendência financeira',
+      description: formatMoney(financialSummary.value?.balanceDue ?? 0),
+      to: `/billing/${encounter.value.id}`
+    });
+  }
+  return steps;
+});
+
+const headerPrimaryAction = computed<PageAction | null>(() => {
+  if (!encounter.value) return null;
+  return {
+    key: 'medical-record',
+    label: encounter.value.status === 'closed' ? 'Abrir prontuário' : 'Continuar prontuário',
+    to: `/medical-records/${encounter.value.id}`
+  };
+});
+
+const headerSecondaryActions = computed<PageAction[]>(() => {
+  if (!encounter.value)
+    return [{ key: 'back', label: 'Voltar', variant: 'secondary', to: '/encounters' }];
+  return [
+    {
+      key: 'billing',
+      label: 'Cobrança',
+      variant: 'secondary',
+      to: `/billing/${encounter.value.id}`
+    },
+    {
+      key: 'back',
+      label: 'Voltar',
+      variant: 'secondary',
+      to: '/encounters'
+    }
+  ];
+});
+
 const workflowSteps = computed(() => [
-  { key: 'summary', index: '1', label: 'Resumo', hint: encounter.value ? encounterStatusLabel(encounter.value.status) : 'Contexto' },
+  {
+    key: 'summary',
+    index: '1',
+    label: 'Resumo',
+    hint: encounter.value ? encounterStatusLabel(encounter.value.status) : 'Contexto'
+  },
   { key: 'quote', index: '2', label: 'Orçamento', hint: 'Plano e autorização' },
-  { key: 'exams', index: '3', label: 'Exames', hint: `${encounterSummary.value?.diagnostics.pendingOrders ?? 0} pendente(s)` },
+  {
+    key: 'exams',
+    index: '3',
+    label: 'Exames',
+    hint: `${encounterSummary.value?.diagnostics.pendingOrders ?? 0} pendente(s)`
+  },
   { key: 'medications', index: '4', label: 'Medicações', hint: 'Receituário e aplicação' },
-  { key: 'billing', index: '5', label: 'Serviços / Cobrança', hint: formatMoney(financialSummary.value?.balanceDue ?? 0) },
-  { key: 'close', index: '6', label: 'Fechamento', hint: encounter.value?.status === 'closed' ? 'Finalizado' : 'Em aberto' }
+  {
+    key: 'billing',
+    index: '5',
+    label: 'Serviços / Cobrança',
+    hint: formatMoney(financialSummary.value?.balanceDue ?? 0)
+  },
+  {
+    key: 'close',
+    index: '6',
+    label: 'Fechamento',
+    hint: encounter.value?.status === 'closed' ? 'Finalizado' : 'Em aberto'
+  }
 ]);
 
 const workflowQuery = computed(() => {
@@ -431,17 +741,6 @@ function workflowLink(path: string): string {
   return query ? `${path}?${query}` : path;
 }
 
-function encounterStatusVariant(s: string) {
-  const map: Record<string, string> = {
-    reception: 'info',
-    in_triage: 'warning',
-    in_care: 'default',
-    observation: 'info',
-    closed: 'neutral'
-  };
-  return (map[s] || 'default') as any;
-}
-
 function formatMoney(value: number) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -452,6 +751,84 @@ function formatMoney(value: number) {
 async function loadEntityNames(enc: EncounterSummary) {
   patientName.value = await entityCache.getPatientName(enc.patientId);
   ownerName.value = await entityCache.getOwnerName(enc.ownerId);
+}
+
+function hydrateClinicalHandoffForm(enc: EncounterSummary) {
+  if (!clinicalHandoffForm.value.clinicalSummary.trim()) {
+    clinicalHandoffForm.value.clinicalSummary = enc.reason;
+  }
+
+  if (!clinicalHandoffForm.value.receptionInstructions.trim()) {
+    clinicalHandoffForm.value.receptionInstructions =
+      'Orientar tutor, conferir pendencias e confirmar proximos passos operacionais.';
+  }
+}
+
+async function loadClinicalHandoff() {
+  if (!encounter.value) return;
+  clinicalHandoffLoading.value = true;
+  clinicalHandoffError.value = '';
+
+  try {
+    const items = await clinicalHandoffService.list({ encounterId: encounter.value.id });
+    clinicalHandoff.value = items[0] ?? null;
+  } catch (err: unknown) {
+    clinicalHandoff.value = null;
+    clinicalHandoffError.value =
+      err instanceof Error ? err.message : 'Erro ao carregar handoff clinico';
+  } finally {
+    clinicalHandoffLoading.value = false;
+  }
+}
+
+async function sendClinicalHandoff() {
+  if (!encounter.value) return;
+
+  const clinicalSummary = clinicalHandoffForm.value.clinicalSummary.trim();
+  const receptionInstructions = clinicalHandoffForm.value.receptionInstructions.trim();
+  if (!clinicalSummary || !receptionInstructions) {
+    clinicalHandoffError.value = 'Informe resumo clinico e instrucoes para recepcao.';
+    return;
+  }
+
+  sendingClinicalHandoff.value = true;
+  clinicalHandoffError.value = '';
+
+  try {
+    clinicalHandoff.value = await clinicalHandoffService.sendToReception({
+      encounterId: encounter.value.id,
+      clinicalSummary,
+      receptionInstructions,
+      priority: clinicalHandoffForm.value.priority,
+      toResponsibleType: 'sector',
+      toResponsibleId: 'reception'
+    });
+    await loadTimeline();
+  } catch (err: unknown) {
+    clinicalHandoffError.value =
+      err instanceof Error ? err.message : 'Erro ao enviar handoff para recepcao';
+  } finally {
+    sendingClinicalHandoff.value = false;
+  }
+}
+
+function clinicalHandoffStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    ready_to_send: 'Pronto para envio',
+    sent_to_reception: 'Enviado para recepcao',
+    acknowledged_by_reception: 'Recebido pela recepcao'
+  };
+  return labels[status] ?? status;
+}
+
+function clinicalHandoffPriorityLabel(priority: string): string {
+  const labels: Record<string, string> = {
+    low: 'Baixa',
+    medium: 'Media',
+    high: 'Alta',
+    critical: 'Critica'
+  };
+  return labels[priority] ?? priority;
 }
 
 const canTransition = computed(() => {
@@ -558,7 +935,12 @@ async function loadAttachments() {
 }
 
 async function uploadAttachment() {
-  if (!encounter.value || !newAttachment.value.fileName.trim() || !newAttachment.value.checksum.trim()) return;
+  if (
+    !encounter.value ||
+    !newAttachment.value.fileName.trim() ||
+    !newAttachment.value.checksum.trim()
+  )
+    return;
   uploadingAttachment.value = true;
   try {
     await attachmentService.upload({
@@ -583,8 +965,14 @@ onMounted(async () => {
   try {
     const enc = await encounterService.getById(id);
     encounter.value = enc;
+    hydrateClinicalHandoffForm(enc);
     await loadEntityNames(enc);
-    await Promise.all([loadTimeline(), loadAttachments(), refreshEnterpriseSummary()]);
+    await Promise.all([
+      loadTimeline(),
+      loadAttachments(),
+      refreshEnterpriseSummary(),
+      loadClinicalHandoff()
+    ]);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimento';
   } finally {
@@ -755,6 +1143,7 @@ onMounted(async () => {
   gap: 14px;
   align-items: center;
   padding: 18px;
+  min-width: 0;
 }
 
 .summary-card__icon {
@@ -777,6 +1166,8 @@ onMounted(async () => {
   font-weight: 800;
   color: var(--color-text, #0f172a);
   line-height: 1.15;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .summary-card__label {
@@ -823,6 +1214,89 @@ onMounted(async () => {
 
 .close-reason-block p {
   margin: 6px 0 0;
+}
+
+.pre-handoff {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.pre-handoff__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pre-handoff__header h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.pre-handoff__status {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: var(--color-text, #0f172a);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pre-handoff__notice {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+}
+
+.pre-handoff__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.handoff-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.6fr);
+  gap: 12px;
+}
+
+.handoff-status > div {
+  padding: 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.handoff-status strong,
+.handoff-status p {
+  display: block;
+  margin: 4px 0 0;
+}
+
+.handoff-form {
+  display: grid;
+  gap: 12px;
+}
+
+.handoff-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+
+.handoff-form__select {
+  min-height: 38px;
+  min-width: 140px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border, #d7dde8);
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .timeline-list {
@@ -915,9 +1389,13 @@ onMounted(async () => {
 
 .attachment-upload {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 8px;
   align-items: end;
+}
+
+.attachment-upload > * {
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
@@ -938,7 +1416,22 @@ onMounted(async () => {
     flex-direction: column;
   }
 
+  .pre-handoff__header {
+    flex-direction: column;
+  }
+
+  .handoff-status {
+    grid-template-columns: 1fr;
+  }
+
   .attachment-upload {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .summary-grid,
+  .summary-grid--compact {
     grid-template-columns: 1fr;
   }
 }

@@ -5,6 +5,9 @@ import type {
   BedSummary,
   BillingItemSummary,
   BillingRecordSummary,
+  ClinicalHandoffPriority,
+  ClinicalHandoffStatus,
+  ClinicalHandoffSummary,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
   DiagnosticOrderSummary,
@@ -805,6 +808,31 @@ export interface CloseEncounterRequest {
 
 export interface EncounterListResponse {
   readonly items: readonly EncounterSummary[];
+}
+
+export interface SendClinicalHandoffRequest {
+  readonly encounterId: string;
+  readonly clinicalSummary: string;
+  readonly receptionInstructions: string;
+  readonly priority?: ClinicalHandoffPriority;
+  readonly toResponsibleType?: 'sector' | 'person' | 'team';
+  readonly toResponsibleId?: string;
+}
+
+export interface AcknowledgeClinicalHandoffRequest {
+  readonly note?: string;
+}
+
+export interface ClinicalHandoffListResponse {
+  readonly items: readonly ClinicalHandoffSummary[];
+}
+
+export interface ClinicalHandoffListFilters {
+  readonly handoffStatus?: ClinicalHandoffStatus;
+  readonly encounterId?: string;
+  readonly ownerId?: string;
+  readonly patientId?: string;
+  readonly priority?: ClinicalHandoffPriority;
 }
 
 export interface CreateTriageRequest {

@@ -3,9 +3,14 @@ import test from 'node:test';
 
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
-import { EncountersService, type EncounterRepository } from './index.js';
+import {
+  ClinicalHandoffsService,
+  EncountersService,
+  InMemoryClinicalHandoffRepository,
+  type EncounterRepository
+} from './index.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -13,6 +18,16 @@ function createEncountersService() {
   const owners = new OwnersService();
   const patients = new PatientsService({ owners });
   return new EncountersService({ owners, patients });
+}
+
+function openTestEncounter(encounters: EncountersService) {
+  return encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Handoff test'
+  });
 }
 
 test('EncountersService: openEncounter creates a new encounter', () => {
@@ -30,6 +45,133 @@ test('EncountersService: openEncounter creates a new encounter', () => {
   assert.match(encounter.id, UUID_PATTERN);
   assert.equal(encounter.status, 'reception');
   assert.equal(encounter.patientId, 'patient_luna');
+});
+
+test('ClinicalHandoffsService: sends minimal handoff to reception and records timeline', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+
+  const handoff = handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Paciente avaliado, medicado e liberado.',
+    receptionInstructions: 'Orientar tutor e conferir pendencias antes da saida.',
+    priority: 'high'
+  });
+
+  assert.equal(handoff.encounterId, encounter.id);
+  assert.equal(handoff.handoffStatus, 'sent_to_reception');
+  assert.equal(handoff.fromSector, 'clinic');
+  assert.equal(handoff.toSector, 'reception');
+  assert.equal(handoff.priority, 'high');
+  assert.equal(
+    handoffs.list(encounter.accountId, { handoffStatus: 'sent_to_reception' }).length,
+    1
+  );
+  assert.ok(
+    encounters
+      .listTimeline(encounter.id)
+      .some((event) => event.eventType === 'handoff_sent_to_reception')
+  );
+});
+
+test('ClinicalHandoffsService: acknowledges reception ownership once', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+  const handoff = handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Resumo clinico suficiente para recepcao.',
+    receptionInstructions: 'Entregar receita e orientar retorno.',
+    priority: 'medium'
+  });
+
+  const acknowledged = handoffs.acknowledge(
+    encounter.accountId,
+    'user_reception' as never,
+    handoff.id,
+    { note: 'Recebido pela recepcao.' }
+  );
+
+  assert.equal(acknowledged.handoffStatus, 'acknowledged_by_reception');
+  assert.equal(acknowledged.acknowledgedBy, 'user_reception');
+  assert.ok(acknowledged.acknowledgedAt);
+  assert.throws(
+    () => handoffs.acknowledge(encounter.accountId, 'user_reception' as never, handoff.id),
+    ConflictError
+  );
+  assert.ok(
+    encounters
+      .listTimeline(encounter.id)
+      .some((event) => event.eventType === 'handoff_acknowledged')
+  );
+});
+
+test('ClinicalHandoffsService: requires summary and instructions before sending', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+
+  assert.throws(
+    () =>
+      handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+        encounterId: encounter.id,
+        clinicalSummary: '',
+        receptionInstructions: 'Orientar tutor.'
+      }),
+    ValidationError
+  );
+
+  assert.throws(
+    () =>
+      handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+        encounterId: encounter.id,
+        clinicalSummary: 'Resumo clinico.',
+        receptionInstructions: ''
+      }),
+    ValidationError
+  );
+});
+
+test('ClinicalHandoffsService: blocks duplicate handoff for the same encounter', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+
+  handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Resumo clinico.',
+    receptionInstructions: 'Orientar tutor.'
+  });
+
+  assert.throws(
+    () =>
+      handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+        encounterId: encounter.id,
+        clinicalSummary: 'Novo resumo.',
+        receptionInstructions: 'Nova orientacao.'
+      }),
+    ConflictError
+  );
+});
+
+test('ClinicalHandoffsService: hydrates persisted handoffs from repository', async () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const repository = new InMemoryClinicalHandoffRepository();
+  const handoffsA = new ClinicalHandoffsService(encounters, { repository });
+
+  const handoff = handoffsA.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Resumo persistido.',
+    receptionInstructions: 'Recepcao deve confirmar recebimento.'
+  });
+  await handoffsA.waitForPersistence();
+
+  const handoffsB = new ClinicalHandoffsService(encounters, { repository });
+  await handoffsB.hydrateFromDatabase(encounter.accountId);
+
+  assert.equal(handoffsB.getOrThrow(handoff.id).clinicalSummary, 'Resumo persistido.');
 });
 
 test('EncountersService: getOrThrow throws for non-existent encounter', () => {
@@ -312,7 +454,10 @@ test('EncountersService: openEncounter rolls back memory when repository persist
 
   await assert.rejects(() => encounters.waitForPersistence(), /database unavailable/);
   assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
-  assert.equal(encounters.listActive().some((item) => item.id === encounter.id), false);
+  assert.equal(
+    encounters.listActive().some((item) => item.id === encounter.id),
+    false
+  );
 });
 
 test('EncountersService: openEncounter rejects legacy ids before database persistence', async () => {

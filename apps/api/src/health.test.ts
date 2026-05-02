@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { resolveProductionReadiness } from './bootstrap.js';
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
+import type { RuntimeRepositories } from './runtime.js';
 
 function createDeps(overrides: Partial<Parameters<typeof createHealthResponse>[4]> = {}) {
   return {
@@ -17,6 +19,28 @@ function createDeps(overrides: Partial<Parameters<typeof createHealthResponse>[4
     initialized: true,
     mlReady: true,
     mlDetail: 'SmartSchedulingService, ModelRegistryService, FeatureStoreService wired',
+    ...overrides
+  };
+}
+
+function createRuntimeRepositories(
+  overrides: Partial<RuntimeRepositories> = {}
+): RuntimeRepositories {
+  const repository = {} as never;
+
+  return {
+    session: repository,
+    audit: repository,
+    owner: repository,
+    patient: repository,
+    encounter: repository,
+    encounterTimeline: repository,
+    medicalRecord: repository,
+    clinicalEntry: repository,
+    clinicalTimeline: repository,
+    entryRevision: repository,
+    attachment: repository,
+    notification: repository,
     ...overrides
   };
 }
@@ -172,6 +196,49 @@ test('createReadinessResponse returns  not ready when worker dependency is degra
 
   assert.equal(response.readiness.ready, false);
   assert.equal(response.dependencies.worker.state, 'degraded');
+});
+
+test('resolveProductionReadiness accepts derived owner-patient link fallback with twelve repositories', () => {
+  const readiness = resolveProductionReadiness({
+    persistenceMode: 'database',
+    workerReady: true,
+    repositories: createRuntimeRepositories()
+  });
+
+  assert.equal(readiness.productionReady, true);
+  assert.equal(readiness.criticalRepositoriesReady, true);
+  assert.equal(readiness.ownerPatientLinkPersistence, 'derived-from-patient');
+  assert.deepEqual(readiness.missingCriticalRepositories, []);
+});
+
+test('resolveProductionReadiness returns not ready when a critical repository is absent', () => {
+  const readiness = resolveProductionReadiness({
+    persistenceMode: 'database',
+    workerReady: true,
+    repositories: createRuntimeRepositories({
+      medicalRecord: undefined
+    })
+  });
+
+  assert.equal(readiness.productionReady, false);
+  assert.equal(readiness.criticalRepositoriesReady, false);
+  assert.equal(readiness.ownerPatientLinkPersistence, 'derived-from-patient');
+  assert.deepEqual(readiness.missingCriticalRepositories, ['medicalRecord']);
+});
+
+test('resolveProductionReadiness accepts database owner-patient link repository', () => {
+  const readiness = resolveProductionReadiness({
+    persistenceMode: 'database',
+    workerReady: true,
+    repositories: createRuntimeRepositories({
+      ownerPatientLink: {} as never
+    })
+  });
+
+  assert.equal(readiness.productionReady, true);
+  assert.equal(readiness.criticalRepositoriesReady, true);
+  assert.equal(readiness.ownerPatientLinkPersistence, 'database');
+  assert.deepEqual(readiness.missingCriticalRepositories, []);
 });
 
 test('createLivenessResponse returns live even before full initialization', () => {

@@ -173,6 +173,26 @@ describe('OwnersService', () => {
       expect(service.list('555.555')).toHaveLength(1);
     });
 
+    it('filters owners by unmasked document, phone, RG and internal id', () => {
+      const owner = service.create(ACCOUNT_ID, {
+        ...makeOwner({
+          fullName: 'Wide Search Owner',
+          documentId: '123.456.789-00'
+        }),
+        contacts: [
+          { label: 'Celular', value: '+55 (11) 97777-3333', type: 'whatsapp', primary: true }
+        ],
+        profile: {
+          rg: '11.222.333-4'
+        }
+      });
+
+      expect(service.list('12345678900').map((item) => item.id)).toContain(owner.id);
+      expect(service.list('11977773333').map((item) => item.id)).toContain(owner.id);
+      expect(service.list('112223334').map((item) => item.id)).toContain(owner.id);
+      expect(service.list(owner.id).map((item) => item.id)).toContain(owner.id);
+    });
+
     it('filters owners by contact value', () => {
       service.create(ACCOUNT_ID, makeOwner({ fullName: 'Contact Owner' }));
       expect(service.list('99999')).toHaveLength(1);

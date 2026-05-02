@@ -1,0 +1,62 @@
+[
+  {
+    "name": "desktop",
+    "viewport": {
+      "width": 1366,
+      "height": 900
+    },
+    "initial": {
+      "path": "/reception",
+      "bodyWidth": 1366,
+      "viewportWidth": 1366,
+      "headerHeight": 160,
+      "title": "Recepção"
+    },
+    "noResultsHasEmptyState": true,
+    "final": {
+      "bodyWidth": 1366,
+      "viewportWidth": 1366,
+      "hasHorizontalOverflow": false,
+      "ownerCardText": "TutorJoao Silva123.456.789-00 · (11) 99999-1111 Abrir cadastro  Cadastrar paciente  Criar agendamento",
+      "primaryActions": [
+        "Cadastrar tutor",
+        "Cadastrar paciente",
+        "Criar agendamento",
+        "Abrir Esteira"
+      ],
+      "cautious": [
+        "Abrir atendimento"
+      ]
+    }
+  },
+  {
+    "name": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "initial": {
+      "path": "/reception",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "headerHeight": 357,
+      "title": "Recepção"
+    },
+    "noResultsHasEmptyState": true,
+    "final": {
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "hasHorizontalOverflow": false,
+      "ownerCardText": "TutorJoao Silva123.456.789-00 · (11) 99999-1111 Abrir cadastro  Cadastrar paciente  Criar agendamento",
+      "primaryActions": [
+        "Cadastrar tutor",
+        "Cadastrar paciente",
+        "Criar agendamento",
+        "Abrir Esteira"
+      ],
+      "cautious": [
+        "Abrir atendimento"
+      ]
+    }
+  }
+]

@@ -148,8 +148,10 @@ const saleDetail = {
 
 describe('CounterSalesPage', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/counter-sales');
     vi.spyOn(window, 'open').mockImplementation(
       () =>
         ({
@@ -385,6 +387,7 @@ describe('CounterSalesPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Comandas');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Comandas');
     expect(wrapper.text()).toContain('Maria Costa');
     expect(wrapper.text()).toContain('Thor');
     expect(wrapper.text()).toContain('Consulta clínica');
@@ -587,5 +590,57 @@ describe('CounterSalesPage', () => {
         status: 'active'
       })
     );
+  });
+
+  it('mostra contexto da recepção por ownerId sem abrir comanda automaticamente', async () => {
+    window.history.pushState({}, '', '/counter-sales?ownerId=owner-1');
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Comanda preparada pela recepção');
+    expect(wrapper.text()).toContain('Tutor Maria Costa');
+    expect(mockCounterSalesCreate).not.toHaveBeenCalled();
+
+    const openModalButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Abrir Nova Comanda'));
+    expect(openModalButton).toBeTruthy();
+    await openModalButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockOwnerListPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        search: 'owner-1',
+        status: 'active'
+      })
+    );
+    expect(mockCounterSalesCreate).not.toHaveBeenCalled();
+  });
+
+  it('mostra handoff assistencial completo quando recebe atendimento, paciente e tutor', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/counter-sales?encounterId=enc-1&patientId=pat-1&ownerId=owner-1'
+    );
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+
+    await flushPromises();
+
+    const context = wrapper.find('.counter-sales-context');
+    expect(context.exists()).toBe(true);
+    expect(context.text()).toContain('Comanda preparada pela recepção');
+    expect(context.text()).toContain('Tutor Maria Costa');
+    expect(context.text()).toContain('Paciente Thor');
+    expect(context.text()).toContain('Atendimento enc-1');
+    expect(mockCounterSalesCreate).not.toHaveBeenCalled();
+
+    const hrefs = context.findAll('a').map((link) => link.attributes('href'));
+    expect(hrefs).toContain('/patients/pat-1');
+    expect(hrefs).toContain('/encounters/enc-1');
+    expect(hrefs).toContain('/medical-records/enc-1');
   });
 });

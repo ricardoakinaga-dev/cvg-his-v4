@@ -12,46 +12,46 @@
       <DsAlert variant="danger">{{ error }}</DsAlert>
     </div>
 
-    <template v-else-if="record">
-      <AppPageHeader :breadcrumbs="['Financeiro', 'Controles', 'Faturamento', `Atendimento ${encounterId.slice(0, 8)}...`]">
-        <template #title>
-          <span>💰 Faturamento</span>
-          <br />
-          <div style="margin-top: 8px">
-            <StatusBadge
-              :label="billingStatusLabel(record.status)"
-              :variant="billingStatusVariant(record.status)"
-            />
-            <span class="muted" style="margin-left: 8px; font-size: 0.8em; font-weight: 400">
-              Atendimento {{ encounterId.slice(0, 8) }}...
-            </span>
+    <template v-else-if="billingRecordMissing">
+      <AppPageHeader
+        title="Faturamento"
+        :subtitle="billingHeaderSubtitle"
+        :breadcrumb-items="headerBreadcrumbItems"
+        :context-items="headerContextItems"
+        :next-steps="headerNextSteps"
+        :primary-action="headerPrimaryAction"
+        :secondary-actions="headerSecondaryActions"
+      />
+
+      <DsCard title="Cobrança ainda não persistida">
+        <div class="billing-empty-state">
+          <p class="billing-empty-state__lead">
+            Ainda não há cobrança persistida para este atendimento.
+          </p>
+          <p class="billing-empty-state__text">
+            A leitura desta página não cria registro financeiro automaticamente. Gere uma
+            estimativa somente quando houver ação explícita da recepção ou do financeiro.
+          </p>
+          <div class="billing-empty-state__actions">
+            <DsButton variant="primary" :loading="creatingEstimate" @click="handleCreateEstimate">
+              {{ creatingEstimate ? 'Gerando...' : 'Gerar estimativa' }}
+            </DsButton>
+            <DsButton variant="secondary" tag="a" href="/billing">Voltar</DsButton>
           </div>
-        </template>
-        <template #actions>
-          <DsButton
-            v-if="record.status !== 'settled'"
-            variant="secondary"
-            @click="showAddItemModal = true"
-          >
-            + Adicionar Item
-          </DsButton>
-          <DsButton
-            v-if="record.status === 'draft'"
-            variant="primary"
-            @click="handleCreateEstimate"
-          >
-            Gerar Estimativa
-          </DsButton>
-          <DsButton
-            v-if="record.status === 'estimated' || record.status === 'open'"
-            variant="secondary"
-            @click="showStatusModal = true"
-          >
-            Atualizar Status
-          </DsButton>
-          <DsButton variant="secondary" tag="a" href="/billing">Voltar</DsButton>
-        </template>
-      </AppPageHeader>
+        </div>
+      </DsCard>
+    </template>
+
+    <template v-else-if="record">
+      <AppPageHeader
+        title="Faturamento"
+        :subtitle="billingHeaderSubtitle"
+        :breadcrumb-items="headerBreadcrumbItems"
+        :context-items="headerContextItems"
+        :next-steps="headerNextSteps"
+        :primary-action="headerPrimaryAction"
+        :secondary-actions="headerSecondaryActions"
+      />
 
       <DsCard title="Ficha resumida">
         <div class="summary-grid">
@@ -217,7 +217,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { billingService } from '@/services/billing';
+import { billingService, isBillingRecordNotFoundError } from '@/services/billing';
 import type {
   BillingRecordSummary,
   BillingItemSummary,
@@ -226,14 +226,18 @@ import type {
   CreateBillingItemRequest
 } from '@/types/billing';
 import { useEntityCache } from '@/composables/useEntityCache';
-import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 
 const route = useRoute();
@@ -243,6 +247,8 @@ const record = ref<BillingRecordSummary | null>(null);
 const items = ref<BillingItemSummary[]>([]);
 const loading = ref(true);
 const itemsLoading = ref(false);
+const billingRecordMissing = ref(false);
+const creatingEstimate = ref(false);
 const error = ref('');
 const entityCache = useEntityCache();
 
@@ -305,12 +311,170 @@ const summaryCards = computed(() => {
   ];
 });
 
+const billingHeaderSubtitle = computed(() => {
+  if (billingRecordMissing.value) {
+    return `Atendimento ${encounterId.slice(0, 8)} sem cobrança persistida.`;
+  }
+  if (!record.value) return `Atendimento ${encounterId.slice(0, 8)} em carregamento.`;
+  return `Atendimento ${encounterId.slice(0, 8)} · ${billingStatusLabel(record.value.status)} · ${items.value.length} item(ns)`;
+});
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'finance', label: 'Financeiro', to: '/billing' },
+  { key: 'billing', label: 'Faturamento', to: '/billing' },
+  { key: 'encounter-billing', label: `Atendimento ${encounterId.slice(0, 8)}`, current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => {
+  if (billingRecordMissing.value) {
+    return [
+      {
+        key: 'encounter',
+        label: 'Atendimento',
+        value: encounterId.slice(0, 8)
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        value: 'Sem cobrança persistida',
+        tone: 'neutral'
+      },
+      {
+        key: 'items',
+        label: 'Itens',
+        value: String(items.value.length)
+      }
+    ];
+  }
+  if (!record.value) return [];
+  return [
+    {
+      key: 'owner',
+      label: 'Tutor',
+      value: ownerName.value || 'Carregando'
+    },
+    {
+      key: 'patient',
+      label: 'Paciente',
+      value: patientName.value || 'Carregando'
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      value: billingStatusLabel(record.value.status),
+      tone: record.value.status === 'settled' ? 'success' : record.value.status === 'open' ? 'warning' : 'info'
+    },
+    {
+      key: 'subtotal',
+      label: 'Subtotal',
+      value: formatCurrency(record.value.subtotalAmount),
+      tone: record.value.subtotalAmount > 0 ? 'info' : 'neutral'
+    },
+    {
+      key: 'items',
+      label: 'Itens',
+      value: String(items.value.length)
+    }
+  ];
+});
+
+const headerNextSteps = computed<PageNextStep[]>(() => {
+  if (billingRecordMissing.value) {
+    return [
+      {
+        key: 'create-estimate',
+        label: 'Gerar estimativa',
+        description: 'Cria cobrança somente após clique'
+      }
+    ];
+  }
+  if (!record.value) return [];
+  if (record.value.status === 'draft') {
+    return [
+      {
+        key: 'estimate',
+        label: 'Gerar estimativa',
+        description: 'Conferir itens antes de cobrar'
+      }
+    ];
+  }
+  if (record.value.status === 'estimated' || record.value.status === 'open') {
+    return [
+      {
+        key: 'settle',
+        label: 'Fechar cobrança',
+        description: formatCurrency(record.value.subtotalAmount)
+      }
+    ];
+  }
+  return [
+    {
+      key: 'settled',
+      label: 'Cobrança quitada',
+      description: 'Revisar histórico ou voltar para lista',
+      to: '/billing'
+    }
+  ];
+});
+
+const headerPrimaryAction = computed<PageAction | null>(() => {
+  if (billingRecordMissing.value) {
+    return {
+      key: 'create-estimate',
+      label: creatingEstimate.value ? 'Gerando...' : 'Gerar estimativa',
+      loading: creatingEstimate.value,
+      disabled: creatingEstimate.value,
+      onClick: handleCreateEstimate
+    };
+  }
+  if (!record.value) return null;
+  if (record.value.status === 'draft') {
+    return {
+      key: 'estimate',
+      label: 'Gerar Estimativa',
+      onClick: handleCreateEstimate
+    };
+  }
+  if (record.value.status === 'estimated' || record.value.status === 'open') {
+    return {
+      key: 'status',
+      label: 'Atualizar Status',
+      onClick: () => {
+        showStatusModal.value = true;
+      }
+    };
+  }
+  return {
+    key: 'back-to-billing',
+    label: 'Ver faturamento',
+    to: '/billing'
+  };
+});
+
+const headerSecondaryActions = computed<PageAction[]>(() => {
+  const actions: PageAction[] = [];
+  if (record.value && record.value.status !== 'settled') {
+    actions.push({
+      key: 'add-item',
+      label: 'Adicionar Item',
+      variant: 'secondary',
+      onClick: () => {
+        showAddItemModal.value = true;
+      }
+    });
+  }
+  actions.push({
+    key: 'back',
+    label: 'Voltar',
+    variant: 'secondary',
+    href: '/billing'
+  });
+  return actions;
+});
+
 function billingStatusLabel(s: BillingStatus) {
   return statusLabelMap[s] || s;
-}
-
-function billingStatusVariant(s: BillingStatus) {
-  return (statusVariantMap[s] || 'default') as any;
 }
 
 function itemTypeLabel(t: BillingItemType) {
@@ -338,14 +502,21 @@ async function loadEntityNames(rec: BillingRecordSummary) {
 }
 
 async function handleCreateEstimate() {
-  if (!record.value) return;
+  if (creatingEstimate.value) return;
+  creatingEstimate.value = true;
   try {
     const updated = await billingService.createEstimate({
-      encounterId: record.value.encounterId
+      encounterId
     });
     record.value = updated;
+    billingRecordMissing.value = false;
+    error.value = '';
+    await loadEntityNames(updated);
+    await loadItems();
   } catch (err: unknown) {
     alert(err instanceof Error ? err.message : 'Erro ao gerar estimativa');
+  } finally {
+    creatingEstimate.value = false;
   }
 }
 
@@ -400,11 +571,19 @@ async function handleUpdateStatus() {
 }
 
 async function loadRecord() {
+  error.value = '';
+  billingRecordMissing.value = false;
   try {
     const rec = await billingService.getByEncounter(encounterId);
     record.value = rec;
     await loadEntityNames(rec);
   } catch (err: unknown) {
+    if (isBillingRecordNotFoundError(err)) {
+      record.value = null;
+      items.value = [];
+      billingRecordMissing.value = true;
+      return;
+    }
     error.value = err instanceof Error ? err.message : 'Erro ao carregar faturamento';
   }
 }
@@ -480,5 +659,31 @@ onMounted(async () => {
 
 .items-table-wrapper {
   overflow-x: auto;
+}
+
+.billing-empty-state {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.billing-empty-state__lead {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.billing-empty-state__text {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.billing-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
 }
 </style>

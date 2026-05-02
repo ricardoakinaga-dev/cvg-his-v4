@@ -1,9 +1,9 @@
 <template>
   <div class="sales-page">
     <AppPageHeader
-      title="Venda de Produtos"
-      :breadcrumbs="['Atendimentos', 'Atendimentos', 'Vendas']"
-      subtitle="Atendimentos > Vendas. Índice beta de vendas abertas com ficha operacional herdada do fluxo legado."
+      title="Vendas"
+      :breadcrumbs="['Início', 'Atendimento', 'Atendimentos', 'Vendas']"
+      subtitle="Atendimento > Atendimentos > Vendas. Índice operacional de vendas de produtos, ficha transacional e ponte com comandas."
     >
       <template #actions>
         <DsButton variant="secondary" tag="a" to="/counter-sales">Comandas</DsButton>
@@ -113,7 +113,7 @@
 
               <div class="sale-card__actions">
                 <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">Abrir venda</DsButton>
-                <DsButton size="sm" variant="secondary" tag="a" to="/counter-sales">Operar comanda</DsButton>
+                <DsButton size="sm" variant="secondary" tag="a" :to="counterSalePath(sale)">Operar comanda</DsButton>
               </div>
             </article>
           </div>
@@ -222,6 +222,7 @@
             </section>
 
             <div class="sale-actions">
+              <DsButton variant="secondary" tag="a" :to="counterSalePath(selectedSale)">Abrir comanda</DsButton>
               <DsButton variant="secondary">Salvar</DsButton>
               <DsButton variant="primary">Fechar</DsButton>
               <DsButton variant="secondary">Pesquisar</DsButton>
@@ -270,6 +271,7 @@ interface SalePayment {
 
 interface ProductSale {
   id: string;
+  ownerId: string | null;
   number: string;
   posId: string;
   issueDate: string;
@@ -334,14 +336,14 @@ const resultsSummary = computed(() => {
 
 const salesFlow = [
   {
-    eyebrow: 'Beta',
-    title: 'Índice de vendas abertas',
-    description: 'A superfície beta prioriza busca, status ABERTA, paginação e criação.'
+    eyebrow: 'Operação',
+    title: 'Índice de vendas',
+    description: 'A superfície prioriza busca, status, paginação e abertura manual a partir da comanda.'
   },
   {
-    eyebrow: 'Legacy',
+    eyebrow: 'Ficha',
     title: 'Ficha transacional completa',
-    description: 'O legado concentra produtos, observações, pagamentos, impressão e fechamento.'
+    description: 'A venda concentra produtos, observações, pagamentos, impressão e fechamento operacional.'
   },
   {
     eyebrow: 'Comercial',
@@ -399,6 +401,7 @@ async function loadSales() {
 function toProductSale(sale: CounterSaleDetail): ProductSale {
   return {
     id: sale.id,
+    ownerId: sale.ownerId,
     number: sale.number,
     posId: sale.id,
     issueDate: formatDate(sale.createdAt),
@@ -428,6 +431,11 @@ function toProductSale(sale: CounterSaleDetail): ProductSale {
 function paymentSummary(sale: ProductSale): string {
   if (sale.payments.length === 0) return 'Sem pagamento';
   return sale.payments.map((payment) => payment.method).join(', ');
+}
+
+function counterSalePath(sale: ProductSale): string {
+  if (!sale.ownerId) return '/counter-sales';
+  return `/counter-sales?ownerId=${encodeURIComponent(sale.ownerId)}`;
 }
 
 function statusLabel(status: SaleStatus): string {

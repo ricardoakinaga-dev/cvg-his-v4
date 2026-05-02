@@ -13,25 +13,15 @@
     </DsAlert>
 
     <template v-else-if="record">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Prontuário Clínico', displayPatientName]">
-        <template #title>{{ displayPatientName }}</template>
-        <template #subtitle>
-          <StatusBadge
-            :label="record.status === 'open' ? 'Atendimento aberto' : 'Atendimento concluído'"
-            :variant="record.status === 'open' ? 'warning' : 'success'"
-          />
-          <span class="muted">{{ patientClinicalSummary }}</span>
-          <span class="muted">Tutor: {{ ownerName || 'Não informado' }}</span>
-          <span class="muted">Contato: {{ ownerPrimaryContact }}</span>
-        </template>
-        <template #actions>
-          <DsButton variant="ghost" tag="a" to="/medical-records">Voltar</DsButton>
-          <DsButton variant="secondary" tag="a" :to="`/encounters/${record.encounterId}`">
-            Continuar atendimento
-          </DsButton>
-          <DsButton variant="primary" @click="showNewEntryModal = true">Salvar entrada clínica</DsButton>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader
+        title="Prontuário clínico"
+        :subtitle="medicalRecordHeaderSubtitle"
+        :breadcrumb-items="headerBreadcrumbItems"
+        :context-items="headerContextItems"
+        :next-steps="headerNextSteps"
+        :primary-action="headerPrimaryAction"
+        :secondary-actions="headerSecondaryActions"
+      />
 
       <DsAlert v-if="entryFormError" variant="danger" dismissible @dismiss="entryFormError = ''">
         {{ entryFormError }}
@@ -128,7 +118,7 @@
                 <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
                 <h2>Exames solicitados / recomendados</h2>
               </div>
-              <DsButton variant="secondary" size="sm" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
+              <DsButton variant="secondary" size="sm" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
                 Abrir exames
               </DsButton>
             </div>
@@ -401,7 +391,7 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Exames</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
+                <DsButton size="sm" variant="secondary" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
                   Ver mais Exames
                 </DsButton>
               </div>
@@ -484,7 +474,7 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Imagens</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="`/diagnostics?encounter=${record.encounterId}`">
+                <DsButton size="sm" variant="secondary" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
                   Incluir Imagem
                 </DsButton>
               </div>
@@ -503,9 +493,14 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Cobrança</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="`/billing/${record.encounterId}`">
-                  Abrir Cobrança
-                </DsButton>
+                <div class="vetus-card__actions">
+                  <DsButton size="sm" variant="secondary" tag="a" :to="`/billing/${record.encounterId}`">
+                    Abrir Cobrança
+                  </DsButton>
+                  <DsButton size="sm" variant="primary" tag="a" :to="clinicalWorkflowPath('/counter-sales')">
+                    Abrir Comanda
+                  </DsButton>
+                </div>
               </div>
               <dl class="detail-list">
                 <div>
@@ -769,9 +764,13 @@ import {
   encounterStatusLabel,
   formatDateTime as formatEncounterDateTime
 } from '@/utils/labels';
-import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
-import AppPageHeader from '@/components/AppPageHeader.vue';
+import AppPageHeader, {
+  type PageAction,
+  type PageBreadcrumb,
+  type PageContextItem,
+  type PageNextStep
+} from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -928,6 +927,135 @@ const hasClinicalSheetContent = computed(() =>
 );
 
 const displayPatientName = computed(() => patientName.value || patient.value?.name || 'Paciente não identificado');
+
+const medicalRecordHeaderSubtitle = computed(() => {
+  const status = record.value?.status === 'open' ? 'Atendimento aberto' : 'Atendimento concluído';
+  return `Cockpit clínico do atendimento · ${status} · ${displayPatientName.value}`;
+});
+
+const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
+  { key: 'home', label: 'Início', to: '/' },
+  { key: 'attendance', label: 'Atendimento', to: '/encounters' },
+  { key: 'medical-records', label: 'Prontuário', to: '/medical-records' },
+  { key: 'record', label: displayPatientName.value, current: true }
+]);
+
+const headerContextItems = computed<PageContextItem[]>(() => [
+  {
+    key: 'encounter',
+    label: 'Atendimento',
+    value: encounter.value ? encounterStatusLabel(encounter.value.status) : 'Carregando',
+    tone: encounter.value?.status === 'closed' ? 'success' : 'info'
+  },
+  {
+    key: 'patient',
+    label: 'Paciente',
+    value: displayPatientName.value
+  },
+  {
+    key: 'owner',
+    label: 'Tutor',
+    value: ownerName.value || 'Não informado'
+  },
+  {
+    key: 'species',
+    label: 'Espécie',
+    value: patient.value?.species || 'Não informada'
+  },
+  {
+    key: 'status',
+    label: 'Prontuário',
+    value: record.value?.status === 'open' ? 'Aberto' : 'Concluído',
+    tone: record.value?.status === 'open' ? 'warning' : 'success'
+  },
+  {
+    key: 'entries',
+    label: 'Entradas',
+    value: String(activeEntries.value.length)
+  }
+]);
+
+const headerNextSteps = computed<PageNextStep[]>(() => {
+  if (!record.value) return [];
+  if (!latestEntry('anamnesis')) {
+    return [
+      {
+        key: 'anamnesis',
+        label: 'Completar anamnese',
+        description: 'Relato do tutor pendente'
+      }
+    ];
+  }
+  if (!latestEntry('physical_exam')) {
+    return [
+      {
+        key: 'physical-exam',
+        label: 'Registrar exame físico',
+        description: 'Achados objetivos pendentes'
+      }
+    ];
+  }
+  return [
+    {
+      key: 'encounter-review',
+      label: 'Revisar atendimento',
+      description: ownerPrimaryContact.value,
+      to: `/encounters/${record.value.encounterId}`
+    }
+  ];
+});
+
+const headerPrimaryAction = computed<PageAction>(() => ({
+  key: 'new-clinical-entry',
+  label: 'Registrar evolução',
+  onClick: () => {
+    showNewEntryModal.value = true;
+  }
+}));
+
+const headerSecondaryActions = computed<PageAction[]>(() => {
+  const actions: PageAction[] = [
+    {
+      key: 'back',
+      label: 'Voltar',
+      variant: 'secondary',
+      to: '/medical-records'
+    }
+  ];
+  if (record.value) {
+    actions.unshift({
+      key: 'encounter',
+      label: 'Voltar ao atendimento',
+      variant: 'secondary',
+      to: `/encounters/${record.value.encounterId}`
+    });
+    actions.unshift({
+      key: 'counter-sale',
+      label: 'Comanda',
+      variant: 'primary',
+      to: clinicalWorkflowPath('/counter-sales')
+    });
+  }
+  return actions;
+});
+
+const clinicalWorkflowQuery = computed(() => {
+  if (!record.value) return '';
+  const params = new URLSearchParams({
+    encounterId: record.value.encounterId,
+    patientId: record.value.patientId
+  });
+  const ownerId = owner.value?.id || encounter.value?.ownerId || patient.value?.primaryOwnerId;
+  if (ownerId) {
+    params.set('ownerId', ownerId);
+  }
+  return params.toString();
+});
+
+function clinicalWorkflowPath(path: string): string {
+  const query = clinicalWorkflowQuery.value;
+  return query ? `${path}?${query}` : path;
+}
 
 const patientClinicalSummary = computed(() => {
   if (!patient.value) return 'Espécie, raça, sexo, idade e peso não carregados';
@@ -1787,6 +1915,7 @@ onMounted(async () => {
 }
 
 .section-heading__actions,
+.vetus-card__actions,
 .entry-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -2043,6 +2172,7 @@ onMounted(async () => {
   }
 
   .section-heading__actions,
+  .vetus-card__actions,
   .entry-card__actions {
     justify-content: flex-start;
   }

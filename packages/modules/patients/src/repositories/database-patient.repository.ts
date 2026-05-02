@@ -61,6 +61,10 @@ function readBoolean(record: Record<string, unknown>, key: string): boolean | un
   return typeof record[key] === 'boolean' ? record[key] : undefined;
 }
 
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
 function serializePatientMetadata(patient: PatientSummary): StoredPatientMetadata {
   return {
     version: 2,
@@ -170,6 +174,8 @@ export class DatabasePatientRepository implements PatientRepository {
     let result;
     if (search) {
       const searchTerm = `%${search}%`;
+      const digitSearch = normalizeDigits(search);
+      const digitSearchTerm = `%${digitSearch}%`;
       result = await this.#db
         .select()
         .from(patients)
@@ -177,11 +183,41 @@ export class DatabasePatientRepository implements PatientRepository {
           and(
             eq(patients.accountId, accountId),
             or(
+              sql`${patients.id}::text ILIKE ${searchTerm}`,
               ilike(patients.name, searchTerm),
               ilike(patients.species, searchTerm),
               ilike(patients.breed, searchTerm),
               ilike(patients.microchip, searchTerm),
-              sql`${patients.alertsJson}::text ILIKE ${searchTerm}`
+              sql`${patients.alertsJson}::text ILIKE ${searchTerm}`,
+              sql`EXISTS (
+                SELECT 1 FROM owners owner_search
+                WHERE owner_search.id = ${patients.ownerId}
+                  AND owner_search.account_id = ${accountId}
+                  AND (
+                    owner_search.id::text ILIKE ${searchTerm}
+                    OR owner_search.full_name ILIKE ${searchTerm}
+                    OR owner_search.document ILIKE ${searchTerm}
+                    OR owner_search.email ILIKE ${searchTerm}
+                    OR owner_search.phone_main ILIKE ${searchTerm}
+                    OR owner_search.phone_alt ILIKE ${searchTerm}
+                    OR owner_search.address_json::text ILIKE ${searchTerm}
+                    ${
+                      digitSearch
+                        ? sql`OR regexp_replace(coalesce(owner_search.document, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}
+                            OR regexp_replace(coalesce(owner_search.phone_main, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}
+                            OR regexp_replace(coalesce(owner_search.phone_alt, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}
+                            OR regexp_replace(coalesce(owner_search.address_json::text, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`
+                        : sql``
+                    }
+                  )
+              )`,
+              ...(digitSearch
+                ? [
+                    sql`regexp_replace(${patients.id}::text, '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`,
+                    sql`regexp_replace(coalesce(${patients.microchip}, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`,
+                    sql`regexp_replace(coalesce(${patients.alertsJson}::text, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`
+                  ]
+                : [])
             )
           )
         );

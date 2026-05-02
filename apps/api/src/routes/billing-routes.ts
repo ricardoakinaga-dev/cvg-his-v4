@@ -47,6 +47,7 @@ export async function handleBillingRoutes(
     const principal = requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const filters = {
+      accountId: principal.user.accountId,
       encounterId: url.searchParams.get('encounterId') || undefined,
       patientId: url.searchParams.get('patientId') || undefined,
       ownerId: url.searchParams.get('ownerId') || undefined
@@ -104,7 +105,16 @@ export async function handleBillingRoutes(
   ) {
     const principal = requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
-    const record = await billing.getByEncounterOrThrow(encounterId as never);
+    const record = await billing.findByEncounter(encounterId as never);
+    if (!record) {
+      response.statusCode = 404;
+      response.end(JSON.stringify({
+        error: 'Billing record not found',
+        code: 'BILLING_RECORD_NOT_FOUND',
+        encounterId
+      }));
+      return true;
+    }
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -209,6 +219,16 @@ export async function handleBillingRoutes(
       },
       request
     );
+    const existingRecord = await billing.findByEncounter(encounterId as never);
+    if (!existingRecord) {
+      response.statusCode = 404;
+      response.end(JSON.stringify({
+        error: 'Billing record not found',
+        code: 'BILLING_RECORD_NOT_FOUND',
+        encounterId
+      }));
+      return true;
+    }
     const record = await billing.updateStatus(encounterId as never, payload);
     appendAudit(audit, {
       actorId: principal.user.id,

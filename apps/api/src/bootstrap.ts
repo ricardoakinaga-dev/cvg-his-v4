@@ -24,8 +24,10 @@ import {
 } from '@cvg-his-v2/module-patients';
 import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/module-patients';
 import {
+  DatabaseClinicalHandoffRepository,
   DatabaseEncounterRepository,
-  DatabaseEncounterTimelineRepository
+  DatabaseEncounterTimelineRepository,
+  InMemoryClinicalHandoffRepository
 } from '@cvg-his-v2/module-encounters';
 import type {
   EncounterRepository,
@@ -130,6 +132,7 @@ import type {
 } from '@cvg-his-v2/shared-types';
 
 import type { RuntimeRepositories } from './runtime.js';
+import type { PersistenceMode } from './app-state.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
 import { DatabasePrescriptionRepository } from './repositories/database-prescription.repository.js';
 
@@ -226,6 +229,53 @@ export async function validateDependencies(): Promise<readonly DependencyCheckRe
   }
 
   return results;
+}
+
+export type OwnerPatientLinkPersistence = 'database' | 'derived-from-patient';
+
+const criticalRepositoryKeys = [
+  'session',
+  'audit',
+  'owner',
+  'patient',
+  'encounter',
+  'encounterTimeline',
+  'medicalRecord',
+  'clinicalEntry',
+  'clinicalTimeline',
+  'entryRevision',
+  'attachment',
+  'notification'
+] as const satisfies readonly (keyof RuntimeRepositories)[];
+
+export interface ProductionReadinessStatus {
+  productionReady: boolean;
+  criticalRepositoriesReady: boolean;
+  missingCriticalRepositories: readonly string[];
+  ownerPatientLinkPersistence: OwnerPatientLinkPersistence;
+}
+
+export function resolveProductionReadiness(options: {
+  persistenceMode: PersistenceMode;
+  workerReady: boolean;
+  repositories: RuntimeRepositories;
+}): ProductionReadinessStatus {
+  const missingCriticalRepositories = criticalRepositoryKeys.filter(
+    (repositoryKey) => !options.repositories[repositoryKey]
+  );
+  const criticalRepositoriesReady = missingCriticalRepositories.length === 0;
+  const ownerPatientLinkPersistence: OwnerPatientLinkPersistence = options.repositories
+    .ownerPatientLink
+    ? 'database'
+    : 'derived-from-patient';
+
+  return {
+    productionReady:
+      options.persistenceMode === 'database' && options.workerReady && criticalRepositoriesReady,
+    criticalRepositoriesReady,
+    missingCriticalRepositories,
+    ownerPatientLinkPersistence
+  };
 }
 
 // InMemory Repository implementations
@@ -669,6 +719,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     ownerPatientLink: new InMemoryOwnerPatientLinkRepository(),
     encounter: new InMemoryEncounterRepository(),
     encounterTimeline: new InMemoryEncounterTimelineRepository(),
+    clinicalHandoff: new InMemoryClinicalHandoffRepository(),
     medicalRecord: new InMemoryMedicalRecordRepository(),
     clinicalEntry: new InMemoryClinicalEntryRepository(),
     clinicalTimeline: new InMemoryClinicalTimelineRepository(),
@@ -723,6 +774,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const billingTablesReady =
         (await databaseTableExists('billing_records')) &&
         (await databaseTableExists('billing_items'));
+      const clinicalHandoffsReady = await databaseTableExists('clinical_handoffs');
 
       results.repositories = {
         // Sessions remain in-memory in the runtime until the canonical
@@ -736,6 +788,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
           : undefined,
         encounter: new DatabaseEncounterRepository(db),
         encounterTimeline: new DatabaseEncounterTimelineRepository(db),
+        clinicalHandoff: clinicalHandoffsReady
+          ? new DatabaseClinicalHandoffRepository()
+          : new InMemoryClinicalHandoffRepository(),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
         clinicalEntry: new DatabaseClinicalEntryRepository(db),
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),

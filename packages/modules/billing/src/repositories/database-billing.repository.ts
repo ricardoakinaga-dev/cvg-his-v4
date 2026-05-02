@@ -15,11 +15,17 @@ import type {
 export interface BillingRepository {
   createRecord(record: BillingRecordSummary): Promise<void>;
   updateRecord(record: BillingRecordSummary): Promise<void>;
-  findRecordById(id: BillingRecordId): Promise<BillingRecordSummary | null>;
-  findRecordsByEncounter(encounterId: EncounterId): Promise<readonly BillingRecordSummary[]>;
+  findRecordById(accountId: AccountId, id: BillingRecordId): Promise<BillingRecordSummary | null>;
+  findRecordByEncounter(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary | null>;
   findRecordsByAccountId(accountId: AccountId): Promise<readonly BillingRecordSummary[]>;
   createItem(item: BillingItemSummary): Promise<void>;
-  findItemsByRecord(recordId: BillingRecordId): Promise<readonly BillingItemSummary[]>;
+  findItemsByRecord(
+    accountId: AccountId,
+    recordId: BillingRecordId
+  ): Promise<readonly BillingItemSummary[]>;
 }
 
 export class DatabaseBillingRepository implements BillingRepository {
@@ -38,24 +44,48 @@ export class DatabaseBillingRepository implements BillingRepository {
   async updateRecord(record: BillingRecordSummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `UPDATE billing_records SET status = $2, subtotal_amount = $3, administrative_notes = $4, updated_at = $5 WHERE id = $1`,
-        [record.id, record.status, record.subtotalAmount, record.administrativeNotes ?? null, new Date(record.updatedAt)]
+        `UPDATE billing_records
+         SET status = $3, subtotal_amount = $4, administrative_notes = $5, updated_at = $6
+         WHERE id = $1 AND account_id = $2`,
+        [
+          record.id,
+          record.accountId,
+          record.status,
+          record.subtotalAmount,
+          record.administrativeNotes ?? null,
+          new Date(record.updatedAt)
+        ]
       );
     });
   }
 
-  async findRecordById(id: BillingRecordId): Promise<BillingRecordSummary | null> {
+  async findRecordById(
+    accountId: AccountId,
+    id: BillingRecordId
+  ): Promise<BillingRecordSummary | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM billing_records WHERE id = $1', [id]);
+      const result = await client.query(
+        'SELECT * FROM billing_records WHERE account_id = $1 AND id = $2',
+        [accountId, id]
+      );
       if (result.rows.length === 0) return null;
       return this.mapRecord(result.rows[0]);
     });
   }
 
-  async findRecordsByEncounter(encounterId: EncounterId): Promise<readonly BillingRecordSummary[]> {
+  async findRecordByEncounter(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM billing_records WHERE encounter_id = $1', [encounterId]);
-      return result.rows.map((r: Record<string, unknown>) => this.mapRecord(r));
+      const result = await client.query(
+        `SELECT * FROM billing_records
+         WHERE account_id = $1 AND encounter_id = $2
+         LIMIT 1`,
+        [accountId, encounterId]
+      );
+      if (result.rows.length === 0) return null;
+      return this.mapRecord(result.rows[0]);
     });
   }
 
@@ -69,18 +99,54 @@ export class DatabaseBillingRepository implements BillingRepository {
   async createItem(item: BillingItemSummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `INSERT INTO billing_items (id, billing_record_id, encounter_id, item_type, description, quantity, unit_price_amount, total_amount, source_entity_type, source_entity_id, created_by_user_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [item.id, item.billingRecordId, item.encounterId, item.itemType, item.description,
-         item.quantity, item.unitPriceAmount, item.totalAmount, item.sourceEntityType ?? null,
-         item.sourceEntityId ?? null, item.createdByUserId, new Date(item.createdAt)]
+        `INSERT INTO billing_items (
+           id, account_id, billing_record_id, encounter_id, item_type, description,
+           quantity, unit_price_amount, total_amount, source_entity_type, source_entity_id,
+           created_by_user_id, created_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          item.id,
+          item.accountId,
+          item.billingRecordId,
+          item.encounterId,
+          item.itemType,
+          item.description,
+          item.quantity,
+          item.unitPriceAmount,
+          item.totalAmount,
+          item.sourceEntityType ?? null,
+          item.sourceEntityId ?? null,
+          item.createdByUserId,
+          new Date(item.createdAt)
+        ]
+      );
+
+      await client.query(
+        `UPDATE billing_records
+         SET subtotal_amount = (
+           SELECT COALESCE(SUM(total_amount), 0)
+           FROM billing_items
+           WHERE account_id = $1 AND billing_record_id = $2
+         ),
+         updated_at = $3
+         WHERE account_id = $1 AND id = $2`,
+        [item.accountId, item.billingRecordId, new Date(item.createdAt)]
       );
     });
   }
 
-  async findItemsByRecord(recordId: BillingRecordId): Promise<readonly BillingItemSummary[]> {
+  async findItemsByRecord(
+    accountId: AccountId,
+    recordId: BillingRecordId
+  ): Promise<readonly BillingItemSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM billing_items WHERE billing_record_id = $1 ORDER BY created_at', [recordId]);
+      const result = await client.query(
+        `SELECT * FROM billing_items
+         WHERE account_id = $1 AND billing_record_id = $2
+         ORDER BY created_at`,
+        [accountId, recordId]
+      );
       return result.rows.map((r: Record<string, unknown>) => this.mapItem(r));
     });
   }
@@ -105,7 +171,7 @@ export class DatabaseBillingRepository implements BillingRepository {
     return {
       id: row.id as BillingItemId,
       billingRecordId: row.billing_record_id as BillingRecordId,
-      accountId: row.encounter_id as AccountId,
+      accountId: row.account_id as AccountId,
       encounterId: row.encounter_id as EncounterId,
       itemType: row.item_type as BillingItemSummary['itemType'],
       description: row.description as string,

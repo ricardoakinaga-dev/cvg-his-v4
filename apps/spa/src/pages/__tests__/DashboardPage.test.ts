@@ -140,7 +140,15 @@ describe('DashboardPage', () => {
 
     expect(wrapper.text()).toContain('Início');
     expect(wrapper.text()).toContain('Ver fila');
+    expect(wrapper.text()).toContain('Indicadores do plantão');
+    expect(wrapper.text()).toContain('Atendimento e financeiro');
+    expect(wrapper.text()).toContain('Agenda e lembretes');
+    expect(wrapper.text()).toContain('Pendências do início');
+    expect(wrapper.text()).toContain('Agenda com registros para revisar');
+    expect(wrapper.text()).toContain('Comandas abertas aguardando cobrança');
+    expect(wrapper.text()).toContain('Aniversariantes do dia');
     expect(wrapper.text()).toContain('Comandas abertas');
+    expect(wrapper.text()).toContain('A receber');
     expect(wrapper.text()).toContain('Clientes');
     expect(wrapper.text()).toContain('Animais');
     expect(wrapper.text()).toContain('Produtos');

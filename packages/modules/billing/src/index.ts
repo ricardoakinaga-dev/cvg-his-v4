@@ -4,8 +4,9 @@ import type {
   CreateBillingItemRequest,
   UpdateBillingStatusRequest
 } from '@cvg-his-v2/shared-contracts';
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
+  AccountId,
   BillingItemId,
   BillingItemSummary,
   BillingRecordId,
@@ -31,6 +32,7 @@ export interface BillingServiceOptions {
 }
 
 export interface BillingRecordFilters {
+  readonly accountId?: string;
   readonly encounterId?: string;
   readonly patientId?: string;
   readonly ownerId?: string;
@@ -59,32 +61,46 @@ export class BillingService {
     return this.#repository ? 'database' : 'in-memory';
   }
 
-  public async hydrateFromDatabase(): Promise<void> {
+  public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
     if (!this.#repository) return;
-    const records = await this.#repository.findRecordsByAccountId('' as never);
+    if (!accountId) return;
+    const records = await this.#repository.findRecordsByAccountId(accountId);
     for (const record of records) {
       this.#records.set(record.id, record);
       this.#recordByEncounterId.set(record.encounterId, record.id);
-      const items = await this.#repository.findItemsByRecord(record.id);
+      const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
       this.#items.set(record.id, [...items]);
     }
   }
 
-  public async ensureRecord(encounterId: EncounterId): Promise<BillingRecordSummary> {
+  public async findByEncounter(
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary | null> {
     const existingId = this.#recordByEncounterId.get(encounterId);
     if (existingId) {
       return this.getOrThrow(existingId);
     }
 
+    const encounter = this.#encounters.getOrThrow(encounterId);
+
     if (this.#repository) {
-      const records = await this.#repository.findRecordsByEncounter(encounterId);
-      if (records.length > 0) {
-        const record = records[0];
+      const record = await this.#repository.findRecordByEncounter(encounter.accountId, encounterId);
+      if (record) {
         this.#records.set(record.id, record);
         this.#recordByEncounterId.set(encounterId, record.id);
-        this.#items.set(record.id, []);
+        const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
+        this.#items.set(record.id, [...items]);
         return record;
       }
+    }
+
+    return null;
+  }
+
+  public async ensureRecord(encounterId: EncounterId): Promise<BillingRecordSummary> {
+    const existing = await this.findByEncounter(encounterId);
+    if (existing) {
+      return existing;
     }
 
     const encounter = this.#encounters.getOrThrow(encounterId);
@@ -120,6 +136,9 @@ export class BillingService {
       typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
     return Array.from(this.#records.values())
       .filter((record) =>
+        normalized.accountId ? record.accountId === normalized.accountId : true
+      )
+      .filter((record) =>
         normalized.encounterId ? record.encounterId === normalized.encounterId : true
       )
       .filter((record) =>
@@ -131,7 +150,11 @@ export class BillingService {
   }
 
   public async getByEncounterOrThrow(encounterId: EncounterId): Promise<BillingRecordSummary> {
-    return this.ensureRecord(encounterId);
+    const record = await this.findByEncounter(encounterId);
+    if (!record) {
+      throw new NotFoundError('Billing record not found', { encounterId });
+    }
+    return record;
   }
 
   public getOrThrow(recordId: BillingRecordId): BillingRecordSummary {
@@ -191,27 +214,31 @@ export class BillingService {
     };
 
     const currentItems = this.#items.get(record.id) ?? [];
-    currentItems.unshift(item);
-    this.#items.set(record.id, currentItems);
-    this.#records.set(record.id, {
+    const nextItems = [item, ...currentItems];
+    const updatedRecord: BillingRecordSummary = {
       ...record,
-      subtotalAmount: sumItems(currentItems),
+      subtotalAmount: sumItems(nextItems),
       updatedAt: nowIso()
-    });
+    };
 
     if (this.#repository) {
       await this.#repository.createItem(item);
     }
 
+    this.#items.set(record.id, nextItems);
+    this.#records.set(record.id, updatedRecord);
+
     return item;
   }
 
   public async listItems(encounterId: EncounterId): Promise<readonly BillingItemSummary[]> {
-    const record = await this.ensureRecord(encounterId);
+    const record = await this.findByEncounter(encounterId);
+    if (!record) return [];
 
     if (this.#repository) {
-      const dbItems = await this.#repository.findItemsByRecord(record.id);
+      const dbItems = await this.#repository.findItemsByRecord(record.accountId, record.id);
       if (dbItems.length > 0) {
+        this.#items.set(record.id, [...dbItems]);
         return dbItems;
       }
     }
@@ -228,7 +255,10 @@ export class BillingService {
     encounterId: EncounterId,
     payload: UpdateBillingStatusRequest
   ): Promise<BillingRecordSummary> {
-    const record = await this.ensureRecord(encounterId);
+    const record = await this.findByEncounter(encounterId);
+    if (!record) {
+      throw new NotFoundError('Billing record not found', { encounterId });
+    }
     const previousStatus = record.status;
     const updated: BillingRecordSummary = {
       ...record,
@@ -237,11 +267,11 @@ export class BillingService {
       subtotalAmount: sumItems(this.#items.get(record.id) ?? []),
       updatedAt: nowIso()
     };
-    this.#records.set(record.id, updated);
-
     if (this.#repository) {
       await this.#repository.updateRecord(updated);
     }
+
+    this.#records.set(record.id, updated);
 
     if (payload.status !== previousStatus) {
       await this.#onStatusChanged?.(updated, previousStatus);

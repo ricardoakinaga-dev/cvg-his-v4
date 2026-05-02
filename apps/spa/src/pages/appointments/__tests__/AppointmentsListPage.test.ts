@@ -231,6 +231,10 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Veterinário Responsável');
     expect(wrapper.text()).toContain('Intervalo operacional');
     expect(wrapper.text()).toContain('Em triagem');
+    expect(wrapper.text()).toContain('Realizar check-in no horário');
+    expect(wrapper.text()).toContain('Acompanhar atendimento');
+    expect(wrapper.text()).toContain('Na Esteira');
+    expect(wrapper.text()).toContain('Ver fila');
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Filtrar por...');
     expect(wrapper.text()).toContain('Status:');

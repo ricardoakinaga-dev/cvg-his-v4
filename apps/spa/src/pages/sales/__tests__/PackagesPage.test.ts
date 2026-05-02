@@ -80,6 +80,7 @@ describe('PackagesPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Pacotes');
+    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Pacotes');
     expect(wrapper.text()).toContain('Contrato de consumo futuro');
     expect(wrapper.text()).toContain('Incluir Novo Pacote');
     expect(wrapper.text()).toContain('Filtrar');
@@ -99,6 +100,7 @@ describe('PackagesPage', () => {
     expect(wrapper.text()).toContain('Cancelar');
     expect(wrapper.text()).toContain('Salvar');
     expect(wrapper.text()).toContain('Cliente owner-1');
+    expect(wrapper.find('a[href="/counter-sales?ownerId=owner-1"]').exists()).toBe(true);
     expect(mockQuoteList).toHaveBeenCalledWith();
     expect(mockQuoteGet).toHaveBeenCalledWith('qt-1');
   });

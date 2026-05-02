@@ -61,6 +61,10 @@ function readBoolean(record: Record<string, unknown>, key: string): boolean | un
   return typeof value === 'boolean' ? value : undefined;
 }
 
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
 function parseOwnerContact(raw: unknown, index: number): OwnerContact | null {
   if (!isRecord(raw)) return null;
   const label = readString(raw, 'label');
@@ -230,6 +234,8 @@ export class DatabaseOwnerRepository implements OwnerRepository {
 
     if (search) {
       const searchTerm = `%${search}%`;
+      const digitSearch = normalizeDigits(search);
+      const digitSearchTerm = `%${digitSearch}%`;
       query = this.#db
         .select()
         .from(owners)
@@ -237,12 +243,21 @@ export class DatabaseOwnerRepository implements OwnerRepository {
           and(
             eq(owners.accountId, accountId),
             or(
+              sql`${owners.id}::text ILIKE ${searchTerm}`,
               ilike(owners.fullName, searchTerm),
               ilike(owners.document, searchTerm),
               ilike(owners.email, searchTerm),
               ilike(owners.phoneMain, searchTerm),
               ilike(owners.phoneAlt, searchTerm),
-              sql`${owners.addressJson}::text ILIKE ${searchTerm}`
+              sql`${owners.addressJson}::text ILIKE ${searchTerm}`,
+              ...(digitSearch
+                ? [
+                    sql`regexp_replace(coalesce(${owners.document}, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`,
+                    sql`regexp_replace(coalesce(${owners.phoneMain}, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`,
+                    sql`regexp_replace(coalesce(${owners.phoneAlt}, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`,
+                    sql`regexp_replace(coalesce(${owners.addressJson}::text, ''), '[^0-9]', '', 'g') LIKE ${digitSearchTerm}`
+                  ]
+                : [])
             )
           )
         );

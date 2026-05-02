@@ -64,6 +64,10 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+    <DsAlert v-if="workflowContext.ownerId" variant="info" size="sm">
+      <strong>Orçamento iniciado pela recepção.</strong>
+      Tutor {{ workflowContext.ownerId }} já está indicado no formulário. Nenhum orçamento foi criado automaticamente.
+    </DsAlert>
 
     <div class="workspace-layout">
       <DsCard title="Painel comercial">

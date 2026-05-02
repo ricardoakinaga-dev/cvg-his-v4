@@ -1,9 +1,9 @@
 <template>
   <div class="counter-sales-page">
     <AppPageHeader
-      title="🧾 Comandas"
-      :breadcrumbs="['Início', 'Comandas']"
-      subtitle="Início > Comandas. Cards operacionais para localizar, abrir, compor, encaminhar e finalizar a cobrança do atendimento."
+      title="Comandas"
+      :breadcrumbs="['Início', 'Atendimento', 'Atendimentos', 'Comandas']"
+      subtitle="Atendimento > Atendimentos > Comandas. Cards operacionais para localizar, abrir, compor, encaminhar e finalizar a cobrança do atendimento."
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loadingPage" @click="loadPage">Atualizar</DsButton>
@@ -195,6 +195,50 @@
       >
         <strong>{{ alert.title }}</strong> — {{ alert.message }}
       </DsAlert>
+    </section>
+
+    <section
+      v-if="workflowContext.ownerId"
+      class="counter-sales-context"
+      aria-label="Contexto da recepcao para comanda"
+    >
+      <div>
+        <span class="counter-sales-context__eyebrow">Recepção</span>
+        <h2>Comanda preparada pela recepção</h2>
+        <p>
+          Tutor {{ contextualOwnerLabel }} indicado para abertura manual.
+          <span v-if="workflowContext.patientId">Paciente {{ contextualPatientLabel }}.</span>
+          <span v-if="workflowContext.encounterId">Atendimento {{ workflowContext.encounterId }}.</span>
+          Nenhuma comanda foi criada automaticamente.
+        </p>
+      </div>
+      <div class="counter-sales-context__actions">
+        <DsButton
+          v-if="workflowContext.patientId"
+          variant="ghost"
+          tag="a"
+          :to="`/patients/${encode(workflowContext.patientId)}`"
+        >
+          Paciente
+        </DsButton>
+        <DsButton
+          v-if="workflowContext.encounterId"
+          variant="ghost"
+          tag="a"
+          :to="`/encounters/${encode(workflowContext.encounterId)}`"
+        >
+          Atendimento
+        </DsButton>
+        <DsButton
+          v-if="workflowContext.encounterId"
+          variant="ghost"
+          tag="a"
+          :to="`/medical-records/${encode(workflowContext.encounterId)}`"
+        >
+          Prontuário
+        </DsButton>
+        <DsButton variant="secondary" @click="openCreateModal">Abrir comanda manualmente</DsButton>
+      </div>
     </section>
 
     <section class="counter-sales-actions">
@@ -1274,6 +1318,15 @@ const selectedOwnerQuotes = computed(() => {
   if (!ownerId) return [];
   return quotes.value.filter((quote) => quote.ownerId === ownerId);
 });
+const contextualOwnerLabel = computed(() => {
+  if (!workflowContext.ownerId) return 'não informado';
+  return ownerMap.value[workflowContext.ownerId]?.fullName || workflowContext.ownerId;
+});
+const contextualPatientLabel = computed(() => {
+  if (!workflowContext.patientId) return 'não informado';
+  const patients = Object.values(patientMap.value).flat();
+  return patients.find((patient) => patient.id === workflowContext.patientId)?.name || workflowContext.patientId;
+});
 const selectedProductItems = computed(() =>
   selectedSale.value?.items.filter((item) => item.itemType === 'product') ?? []
 );
@@ -1755,6 +1808,10 @@ function patientMedicalRecordLink(context: SelectedPatientContext) {
 
 function patientMedicalRecordActionLabel(context: SelectedPatientContext) {
   return context.medicalRecord ? 'Prontuário' : 'Abrir prontuário';
+}
+
+function encode(value: string) {
+  return encodeURIComponent(value);
 }
 
 async function addCatalogOption(option: CatalogOption) {
@@ -2455,6 +2512,47 @@ function formatDateTime(value: string): string {
   align-items: end;
 }
 
+.counter-sales-context {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.counter-sales-context__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.counter-sales-context h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.counter-sales-context p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.counter-sales-context__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .quick-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3001,12 +3099,17 @@ function formatDateTime(value: string): string {
   }
 
   .service-patient-card,
+  .counter-sales-context,
   .command-bottom-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
   .service-patient-card__actions {
+    justify-content: flex-start;
+  }
+
+  .counter-sales-context__actions {
     justify-content: flex-start;
   }
 }

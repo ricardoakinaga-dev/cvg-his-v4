@@ -105,13 +105,37 @@ function normalizeFinancialProfile(
   return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
 }
 
-function matchesOptionalText(value: unknown, query: string): boolean {
+interface SearchQuery {
+  readonly text: string;
+  readonly digits: string;
+}
+
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function normalizeSearchQuery(search?: string): SearchQuery | undefined {
+  const text = search?.trim().toLowerCase();
+  if (!text) {
+    return undefined;
+  }
+
+  return {
+    text,
+    digits: normalizeDigits(text)
+  };
+}
+
+function matchesOptionalText(value: unknown, query: SearchQuery): boolean {
   if (typeof value === 'string') {
-    return value.toLowerCase().includes(query);
+    return (
+      value.toLowerCase().includes(query.text) ||
+      (query.digits.length > 0 && normalizeDigits(value).includes(query.digits))
+    );
   }
 
   if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value).toLowerCase().includes(query);
+    return matchesOptionalText(String(value), query);
   }
 
   if (Array.isArray(value)) {
@@ -250,7 +274,7 @@ export class OwnersService {
   }
 
   public list(search?: string): readonly OwnerSummary[] {
-    const query = search?.trim().toLowerCase();
+    const query = normalizeSearchQuery(search);
     const owners = Array.from(this.#owners.values());
 
     if (!query) {
@@ -258,13 +282,14 @@ export class OwnersService {
     }
 
     return owners.filter((owner) => {
-      const primaryContact = owner.contacts.map((contact) => contact.value.toLowerCase());
+      const contactValues = owner.contacts.map((contact) => contact.value);
       return (
-        owner.fullName.toLowerCase().includes(query) ||
-        owner.documentId?.toLowerCase().includes(query) ||
-        owner.legacyVetusId?.toLowerCase().includes(query) ||
-        owner.originalCreatedAt?.toLowerCase().includes(query) ||
-        primaryContact.some((value) => value.includes(query)) ||
+        matchesOptionalText(owner.id, query) ||
+        matchesOptionalText(owner.fullName, query) ||
+        matchesOptionalText(owner.documentId, query) ||
+        matchesOptionalText(owner.legacyVetusId, query) ||
+        matchesOptionalText(owner.originalCreatedAt, query) ||
+        contactValues.some((value) => matchesOptionalText(value, query)) ||
         matchesOptionalText(owner.address, query) ||
         matchesOptionalText(owner.profile, query) ||
         matchesOptionalText(owner.financialProfile, query)

@@ -3,13 +3,19 @@ import { randomUUID } from 'node:crypto';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
+  AcknowledgeClinicalHandoffRequest,
   CloseEncounterRequest,
   CreateEncounterRequest,
+  SendClinicalHandoffRequest,
   TransitionEncounterRequest
 } from '@cvg-his-v2/shared-contracts';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
+  ClinicalHandoffId,
+  ClinicalHandoffPriority,
+  ClinicalHandoffStatus,
+  ClinicalHandoffSummary,
   EncounterId,
   EncounterSummary,
   EncounterTimelineEventId,
@@ -34,6 +40,31 @@ export interface EncounterRepository {
 export interface EncounterTimelineRepository {
   create(event: EncounterTimelineEventSummary): Promise<void>;
   findByEncounterId(encounterId: EncounterId): Promise<readonly EncounterTimelineEventSummary[]>;
+}
+
+export interface ClinicalHandoffListFilters {
+  readonly handoffStatus?: ClinicalHandoffStatus;
+  readonly encounterId?: EncounterId;
+  readonly ownerId?: OwnerId;
+  readonly patientId?: PatientId;
+  readonly priority?: ClinicalHandoffPriority;
+}
+
+export interface ClinicalHandoffRepository {
+  create(handoff: ClinicalHandoffSummary): Promise<void>;
+  update(handoff: ClinicalHandoffSummary): Promise<void>;
+  findById(id: ClinicalHandoffId): Promise<ClinicalHandoffSummary | null>;
+  findByEncounterId(encounterId: EncounterId): Promise<readonly ClinicalHandoffSummary[]>;
+  findAll(accountId: AccountId): Promise<readonly ClinicalHandoffSummary[]>;
+}
+
+export interface ClinicalHandoffsServiceOptions {
+  readonly repository?: ClinicalHandoffRepository;
+  readonly onHandoffSent?: (handoff: ClinicalHandoffSummary) => Promise<void>;
+  readonly onHandoffAcknowledged?: (
+    handoff: ClinicalHandoffSummary,
+    previousStatus: ClinicalHandoffStatus
+  ) => Promise<void>;
 }
 
 const allowedTransitions: Record<
@@ -351,7 +382,8 @@ export class EncountersService {
       return [];
     }
 
-    const persistedTimeline = await this.#encounterTimelineRepository.findByEncounterId(encounterId);
+    const persistedTimeline =
+      await this.#encounterTimelineRepository.findByEncounterId(encounterId);
     this.#timeline.set(encounterId, [...persistedTimeline]);
     return [...persistedTimeline];
   }
@@ -388,7 +420,242 @@ export class EncountersService {
   }
 }
 
+export class ClinicalHandoffsService {
+  readonly #encounters: EncountersService;
+  readonly #repository?: ClinicalHandoffRepository;
+  readonly #handoffs = new Map<ClinicalHandoffId, ClinicalHandoffSummary>();
+  readonly #onHandoffSent?: (handoff: ClinicalHandoffSummary) => Promise<void>;
+  readonly #onHandoffAcknowledged?: (
+    handoff: ClinicalHandoffSummary,
+    previousStatus: ClinicalHandoffStatus
+  ) => Promise<void>;
+  #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
+
+  public constructor(encounters: EncountersService, options: ClinicalHandoffsServiceOptions = {}) {
+    this.#encounters = encounters;
+    this.#repository = options.repository;
+    this.#onHandoffSent = options.onHandoffSent;
+    this.#onHandoffAcknowledged = options.onHandoffAcknowledged;
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#repository) {
+      return;
+    }
+
+    const persisted = await this.#repository.findAll(accountId);
+    for (const handoff of persisted) {
+      this.#handoffs.set(handoff.id, handoff);
+    }
+  }
+
+  public list(accountId: AccountId, filters: ClinicalHandoffListFilters = {}) {
+    return Array.from(this.#handoffs.values())
+      .filter((handoff) => handoff.accountId === accountId)
+      .filter(
+        (handoff) => !filters.handoffStatus || handoff.handoffStatus === filters.handoffStatus
+      )
+      .filter((handoff) => !filters.encounterId || handoff.encounterId === filters.encounterId)
+      .filter((handoff) => !filters.ownerId || handoff.ownerId === filters.ownerId)
+      .filter((handoff) => !filters.patientId || handoff.patientId === filters.patientId)
+      .filter((handoff) => !filters.priority || handoff.priority === filters.priority)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  public getOrThrow(handoffId: ClinicalHandoffId): ClinicalHandoffSummary {
+    const handoff = this.#handoffs.get(handoffId);
+    if (!handoff) {
+      throw new NotFoundError('Clinical handoff not found', { handoffId });
+    }
+
+    return handoff;
+  }
+
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+  }
+
+  public sendToReception(
+    accountId: AccountId,
+    actorUserId: UserId,
+    payload: SendClinicalHandoffRequest
+  ): ClinicalHandoffSummary {
+    const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
+    const encounter = this.#encounters.getOrThrow(encounterId);
+
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+
+    if (encounter.status === 'closed') {
+      throw new ConflictError('Cannot send handoff for a closed encounter', { encounterId });
+    }
+
+    const existing = this.list(accountId, { encounterId });
+    if (existing.length > 0) {
+      throw new ConflictError('Encounter already has a clinical handoff', {
+        encounterId,
+        handoffId: existing[0].id
+      });
+    }
+
+    const clinicalSummary = requireNonEmptyString(payload.clinicalSummary, 'clinicalSummary');
+    const receptionInstructions = requireNonEmptyString(
+      payload.receptionInstructions,
+      'receptionInstructions'
+    );
+    const now = nowIso();
+    const handoff: ClinicalHandoffSummary = {
+      id: randomUUID() as ClinicalHandoffId,
+      accountId,
+      encounterId: encounter.id,
+      queueEntryId: encounter.queueEntryId,
+      appointmentId: encounter.appointmentId,
+      ownerId: encounter.ownerId,
+      patientId: encounter.patientId,
+      originChannel: encounter.origin,
+      fromSector: 'clinic',
+      toSector: 'reception',
+      fromResponsibleId: actorUserId,
+      toResponsibleType: payload.toResponsibleType ?? 'sector',
+      toResponsibleId: payload.toResponsibleId ?? 'reception',
+      clinicalSummary,
+      receptionInstructions,
+      priority: payload.priority ?? 'medium',
+      handoffStatus: 'sent_to_reception',
+      createdBy: actorUserId,
+      sentBy: actorUserId,
+      sentAt: now,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.#handoffs.set(handoff.id, handoff);
+    this.#encounters.appendTimeline(encounter.id, {
+      accountId,
+      eventType: 'handoff_sent_to_reception',
+      summary: 'Clinical handoff sent to reception',
+      actorUserId
+    });
+
+    if (this.#repository) {
+      this.#enqueuePersist(
+        () => this.#repository!.create(handoff),
+        () => {
+          if (this.#handoffs.get(handoff.id) === handoff) {
+            this.#handoffs.delete(handoff.id);
+          }
+        }
+      );
+    }
+
+    void this.#onHandoffSent?.(handoff);
+    return handoff;
+  }
+
+  public acknowledge(
+    accountId: AccountId,
+    actorUserId: UserId,
+    handoffId: ClinicalHandoffId,
+    payload: AcknowledgeClinicalHandoffRequest = {}
+  ): ClinicalHandoffSummary {
+    const current = this.getOrThrow(handoffId);
+
+    if (current.accountId !== accountId) {
+      throw new NotFoundError('Clinical handoff not found', { handoffId });
+    }
+
+    if (current.handoffStatus !== 'sent_to_reception') {
+      throw new ConflictError('Clinical handoff is not waiting for reception acknowledgement', {
+        handoffId,
+        status: current.handoffStatus
+      });
+    }
+
+    const now = nowIso();
+    const updated: ClinicalHandoffSummary = {
+      ...current,
+      handoffStatus: 'acknowledged_by_reception',
+      acknowledgedBy: actorUserId,
+      acknowledgedAt: now,
+      acknowledgeNote: payload.note?.trim() || undefined,
+      updatedAt: now
+    };
+
+    this.#handoffs.set(handoffId, updated);
+    this.#encounters.appendTimeline(updated.encounterId, {
+      accountId,
+      eventType: 'handoff_acknowledged',
+      summary: 'Reception acknowledged clinical handoff',
+      actorUserId
+    });
+
+    if (this.#repository) {
+      this.#enqueuePersist(
+        () => this.#repository!.update(updated),
+        () => {
+          this.#handoffs.set(handoffId, current);
+        }
+      );
+    }
+
+    void this.#onHandoffAcknowledged?.(updated, current.handoffStatus);
+    return updated;
+  }
+}
+
+export class InMemoryClinicalHandoffRepository implements ClinicalHandoffRepository {
+  readonly #handoffs = new Map<ClinicalHandoffId, ClinicalHandoffSummary>();
+
+  public async create(handoff: ClinicalHandoffSummary): Promise<void> {
+    this.#handoffs.set(handoff.id, handoff);
+  }
+
+  public async update(handoff: ClinicalHandoffSummary): Promise<void> {
+    if (!this.#handoffs.has(handoff.id)) {
+      throw new NotFoundError('Clinical handoff not found', { handoffId: handoff.id });
+    }
+    this.#handoffs.set(handoff.id, handoff);
+  }
+
+  public async findById(id: ClinicalHandoffId): Promise<ClinicalHandoffSummary | null> {
+    return this.#handoffs.get(id) ?? null;
+  }
+
+  public async findByEncounterId(
+    encounterId: EncounterId
+  ): Promise<readonly ClinicalHandoffSummary[]> {
+    return Array.from(this.#handoffs.values()).filter(
+      (handoff) => handoff.encounterId === encounterId
+    );
+  }
+
+  public async findAll(accountId: AccountId): Promise<readonly ClinicalHandoffSummary[]> {
+    return Array.from(this.#handoffs.values()).filter((handoff) => handoff.accountId === accountId);
+  }
+}
+
 export {
   DatabaseEncounterRepository,
   DatabaseEncounterTimelineRepository
 } from './repositories/database-encounter.repository.js';
+export { DatabaseClinicalHandoffRepository } from './repositories/database-clinical-handoff.repository.js';

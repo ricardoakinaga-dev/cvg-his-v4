@@ -169,6 +169,49 @@ test('handleOwnersRoutes GET /owners lists filtered owners', async () => {
   assert.equal(payload.items.some((item) => item.id === 'owner_maria_silva'), true);
 });
 
+test('handleOwnersRoutes GET /owners searches masked fields with unmasked query', async () => {
+  const documentResponse = new MockResponse();
+
+  const handled = await handleOwnersRoutes(
+    '/owners',
+    new MockRequest({
+      method: 'GET',
+      url: '/owners?q=11111111111'
+    }) as never,
+    documentResponse as never,
+    'corr-owners-search-1',
+    {
+      owners: new OwnersService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(documentResponse.statusCode, 200);
+  const documentPayload = documentResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(documentPayload.items.some((item) => item.id === 'owner_maria_silva'), true);
+
+  const phoneResponse = new MockResponse();
+  await handleOwnersRoutes(
+    '/owners',
+    new MockRequest({
+      method: 'GET',
+      url: '/owners?q=11999991111'
+    }) as never,
+    phoneResponse as never,
+    'corr-owners-search-2',
+    {
+      owners: new OwnersService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const phonePayload = phoneResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(phonePayload.items.some((item) => item.id === 'owner_maria_silva'), true);
+});
+
 test('handleOwnersRoutes POST /owners creates a new owner', async () => {
   const response = new MockResponse();
   const owners = new OwnersService();

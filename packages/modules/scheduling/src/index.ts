@@ -46,6 +46,12 @@ const QUEUE_TRANSITIONS: Record<
   cancelled: []
 };
 
+const ENCOUNTER_SYNC_QUEUE_STATUSES: readonly QueueEntrySummary['status'][] = [
+  'in_triage',
+  'in_care',
+  'observation'
+];
+
 const DEFAULT_APPOINTMENT_DURATION: Record<SchedulingAppointmentSummary['visitType'], number> = {
   scheduled: 30,
   return: 20,
@@ -179,7 +185,10 @@ function defaultDurationMinutes(
 
 function getAppointmentEnd(appointment: SchedulingAppointmentSummary): Date {
   const start = parseDate(appointment.scheduledAt, 'scheduledAt');
-  start.setUTCMinutes(start.getUTCMinutes() + defaultDurationMinutes(appointment.visitType, appointment.durationMinutes));
+  start.setUTCMinutes(
+    start.getUTCMinutes() +
+      defaultDurationMinutes(appointment.visitType, appointment.durationMinutes)
+  );
   return start;
 }
 
@@ -193,7 +202,10 @@ function uniqueStrings(values: readonly (string | undefined)[]): string[] {
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
-function serializeSlot(startsAt: Date, durationMinutes: number): { startsAt: string; endsAt: string } {
+function serializeSlot(
+  startsAt: Date,
+  durationMinutes: number
+): { startsAt: string; endsAt: string } {
   const endsAt = new Date(startsAt);
   endsAt.setUTCMinutes(endsAt.getUTCMinutes() + durationMinutes);
   return {
@@ -305,7 +317,9 @@ export class SchedulingService {
       .filter((appointment) =>
         filters?.statuses?.length ? filters.statuses.includes(appointment.status) : true
       )
-      .filter((appointment) => (filters?.patientId ? appointment.patientId === filters.patientId : true))
+      .filter((appointment) =>
+        filters?.patientId ? appointment.patientId === filters.patientId : true
+      )
       .filter((appointment) => {
         if (!filters?.practitionerStaffId) return true;
         if (filters.practitionerStaffId === 'unassigned') {
@@ -313,7 +327,9 @@ export class SchedulingService {
         }
         return appointment.practitionerStaffId === filters.practitionerStaffId;
       })
-      .filter((appointment) => (filters?.serviceId ? appointment.serviceId === filters.serviceId : true))
+      .filter((appointment) =>
+        filters?.serviceId ? appointment.serviceId === filters.serviceId : true
+      )
       .filter((appointment) =>
         filters?.specialty ? appointment.specialty === filters.specialty : true
       )
@@ -424,9 +440,14 @@ export class SchedulingService {
     filters: SchedulingOverviewFilters = {}
   ): SchedulingOverviewResponse {
     const viewMode = filters.viewMode ?? 'day';
-    const referenceDate = filters.referenceDate ? parseDate(filters.referenceDate, 'referenceDate') : new Date();
+    const referenceDate = filters.referenceDate
+      ? parseDate(filters.referenceDate, 'referenceDate')
+      : new Date();
     const windowStart = startOfUtcDay(referenceDate);
-    const windowEnd = addUtcDays(windowStart, viewMode === 'day' ? 1 : viewMode === 'week' ? 7 : 31);
+    const windowEnd = addUtcDays(
+      windowStart,
+      viewMode === 'day' ? 1 : viewMode === 'week' ? 7 : 31
+    );
     const professionals = this.getSchedulingProfessionals(accountId);
     const blocks = this.listOperationalBlocks(
       accountId,
@@ -439,7 +460,9 @@ export class SchedulingService {
       startAt: windowStart.toISOString(),
       endAt: windowEnd.toISOString()
     }).map((appointment) => {
-      const professional = professionals.find((candidate) => candidate.id === appointment.practitionerStaffId);
+      const professional = professionals.find(
+        (candidate) => candidate.id === appointment.practitionerStaffId
+      );
       const slot = serializeSlot(
         parseDate(appointment.scheduledAt, 'scheduledAt'),
         defaultDurationMinutes(appointment.visitType, appointment.durationMinutes)
@@ -516,8 +539,8 @@ export class SchedulingService {
     });
     const slot = serializeSlot(requestedAt, durationMinutes);
     const blockIds = new Set(conflicts.map((conflict) => conflict.blockId).filter(Boolean));
-    const blocks = this.listOperationalBlocks(accountId, slot.startsAt, slot.endsAt).filter((block) =>
-      blockIds.has(block.id)
+    const blocks = this.listOperationalBlocks(accountId, slot.startsAt, slot.endsAt).filter(
+      (block) => blockIds.has(block.id)
     );
 
     return {
@@ -769,6 +792,10 @@ export class SchedulingService {
     nextStatus: QueueEntrySummary['status']
   ): Promise<QueueEntrySummary> {
     const current = this.getQueueEntryOrThrow(queueEntryId);
+    if (current.status === nextStatus && ENCOUNTER_SYNC_QUEUE_STATUSES.includes(nextStatus)) {
+      return current;
+    }
+
     const allowedNext = QUEUE_TRANSITIONS[current.status];
     if (!allowedNext.includes(nextStatus)) {
       throw new ValidationError('Invalid queue entry status transition', {
@@ -1076,7 +1103,9 @@ export class SchedulingService {
         endsAt: slot.endsAt,
         available: conflicts.length === 0,
         reason:
-          conflicts.length === 0 ? 'Slot disponível' : conflicts[0]?.message ?? 'Slot indisponível'
+          conflicts.length === 0
+            ? 'Slot disponível'
+            : (conflicts[0]?.message ?? 'Slot indisponível')
       });
       cursor = new Date(cursor);
       cursor.setUTCMinutes(cursor.getUTCMinutes() + 30);

@@ -27,7 +27,9 @@ vi.mock('@/services/quotes', () => ({
 
 describe('QuotesPage', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/quotes');
     mockList.mockResolvedValue([
       {
         id: 'qt-1',
@@ -171,5 +173,17 @@ describe('QuotesPage', () => {
         notes: 'Item livre de orçamento'
       })
     );
+  });
+
+  it('usa ownerId da recepção como contexto sem criar orçamento automaticamente', async () => {
+    window.history.pushState({}, '', '/quotes?ownerId=owner-1');
+    const QuotesPage = (await import('../QuotesPage.vue')).default;
+    const wrapper = mount(QuotesPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Orçamento iniciado pela recepção');
+    expect((wrapper.find('#quote-owner').element as HTMLInputElement).value).toBe('owner-1');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

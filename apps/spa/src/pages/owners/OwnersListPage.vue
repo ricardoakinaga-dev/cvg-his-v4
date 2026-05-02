@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Clientes"
       :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes']"
-      subtitle="Cadastro central de relacionamento, contato, animais vinculados, comandas e financeiro."
+      subtitle="Recepção: identifique o tutor, confirme os animais vinculados e decida o próximo encaminhamento."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
@@ -17,7 +17,7 @@
         <DsInput
           v-model="filters.search"
           type="search"
-          placeholder="Buscar por Nome, CPF, E-mail ou ID"
+          placeholder="Buscar tutor por nome, ID, CPF/CNPJ, RG, telefone ou e-mail"
         />
         <DsButton type="submit" variant="secondary" :loading="loading">Filtrar</DsButton>
         <DsButton type="button" variant="ghost" @click="showAdvanced = !showAdvanced">
@@ -44,9 +44,27 @@
       </div>
     </form>
 
+    <section class="reception-decision-strip" aria-label="Decisão inicial da recepção">
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">1. Tutor</span>
+        <strong>Identificar ou cadastrar</strong>
+        <p>Confirme contato e documento antes de avançar.</p>
+      </article>
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">2. Paciente</span>
+        <strong>Validar animal vinculado</strong>
+        <p>Abra a lista de animais ou cadastre o paciente.</p>
+      </article>
+      <article class="reception-decision-card">
+        <span class="reception-decision-card__eyebrow">3. Fluxo</span>
+        <strong>Agendar ou acompanhar</strong>
+        <p>Use Agenda ou Esteira quando houver rota segura.</p>
+      </article>
+    </section>
+
     <section v-if="displayedOwners.length > 0" class="owners-list-page__recent">
       <div class="owners-list-page__section-head">
-        <h2>Clientes</h2>
+        <h2>Decisão por tutor</h2>
         <p>{{ resultSummary }}</p>
       </div>
 
@@ -125,10 +143,15 @@
                   </div>
                   <div class="owner-animal-row__actions">
                     <DsButton tag="a" :to="`/patients/${patient.id}`" variant="ghost" size="sm">
-                      Ver Detalhes
+                      Abrir cadastro
                     </DsButton>
-                    <DsButton tag="a" :to="encounterSelectionPath(owner.id, patient.id)" variant="secondary" size="sm">
-                      Selecionar atendimento para cobrança
+                    <DsButton
+                      tag="a"
+                      :to="`/appointments/new?patientId=${patient.id}&ownerId=${owner.id}`"
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Criar agendamento
                     </DsButton>
                   </div>
                 </div>
@@ -143,13 +166,13 @@
 
           <div class="owner-card__actions">
             <DsButton tag="a" :to="`/owners/${owner.id}`" variant="secondary" size="sm">
-              Detalhes
+              Abrir cadastro
             </DsButton>
-            <DsButton tag="a" :to="encounterSelectionPath(owner.id)" variant="secondary" size="sm">
-              Selecionar atendimento para cobrança
+            <DsButton tag="a" :to="`/patients?ownerId=${owner.id}`" variant="secondary" size="sm">
+              Ver animais
             </DsButton>
             <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
-              Cadastrar Novo Animal
+              Cadastrar paciente
             </DsButton>
             <DsButton
               tag="a"
@@ -157,7 +180,7 @@
               variant="ghost"
               size="sm"
             >
-              Agendar
+              Criar agendamento
             </DsButton>
             <DsButton tag="a" :to="`/owners/${owner.id}/edit`" variant="ghost" size="sm">
               Editar
@@ -168,14 +191,14 @@
     </section>
 
     <DsCard v-else class="empty-state" variant="elevated">
-      <div class="empty-state__icon">👥</div>
+      <div class="empty-state__icon">TU</div>
       <h2 class="empty-state__title">Nenhum cliente encontrado</h2>
       <p class="empty-state__description">
         Cadastre o primeiro cliente para vincular animais e sustentar agenda, atendimento e prontuário.
       </p>
       <div class="empty-state__actions">
-        <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar Novo Cliente</DsButton>
-        <DsButton tag="a" to="/patients/new" variant="secondary">+ Novo Animal</DsButton>
+        <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar tutor</DsButton>
+        <DsButton tag="a" to="/patients/new" variant="secondary">+ Cadastrar paciente</DsButton>
       </div>
     </DsCard>
   </div>
@@ -257,6 +280,18 @@ const headerSecondaryActions = computed(() => [
     to: '/patients'
   },
   {
+    key: 'view-appointments',
+    label: 'Agenda',
+    variant: 'secondary' as const,
+    to: '/appointments'
+  },
+  {
+    key: 'view-queue',
+    label: 'Esteira',
+    variant: 'secondary' as const,
+    to: '/queue'
+  },
+  {
     key: 'refresh',
     label: 'Atualizar',
     variant: 'ghost' as const,
@@ -267,21 +302,13 @@ const headerSecondaryActions = computed(() => [
 
 const headerPrimaryAction = computed(() => ({
   key: 'new-owner',
-  label: '+ Cadastrar Novo Cliente',
+  label: '+ Cadastrar tutor',
   variant: 'primary' as const,
   to: '/owners/new'
 }));
 
 function patientsByOwner(ownerId: string): PatientSummary[] {
   return ownerPatientMap.value.get(ownerId) ?? [];
-}
-
-function encounterSelectionPath(ownerId: string, patientId?: string): string {
-  const params = new URLSearchParams({ ownerId });
-  if (patientId) {
-    params.set('patientId', patientId);
-  }
-  return `/encounters?${params.toString()}`;
 }
 
 function primaryContact(owner: OwnerSummary): string {
@@ -358,6 +385,43 @@ onMounted(load);
   border-radius: 16px;
   border: 1px solid var(--color-border, #e2e8f0);
   background: linear-gradient(180deg, #fff, #f8fafc);
+}
+
+.reception-decision-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reception-decision-card {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.reception-decision-card__eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.reception-decision-card strong {
+  display: block;
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+}
+
+.reception-decision-card p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .owners-list-page__recent {
@@ -547,7 +611,10 @@ onMounted(load);
 }
 
 .empty-state__icon {
-  font-size: 36px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #475569;
 }
 
 .empty-state__title {
@@ -559,6 +626,20 @@ onMounted(load);
   margin: 0 auto 16px;
   max-width: 520px;
   color: var(--color-text-muted, #64748b);
+}
+
+@media (max-width: 860px) {
+  .reception-decision-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-animal-row {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-animal-row__actions {
+    justify-content: flex-start;
+  }
 }
 
 </style>

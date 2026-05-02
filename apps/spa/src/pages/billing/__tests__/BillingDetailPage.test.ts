@@ -50,6 +50,18 @@ const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetOwnerName = vi.fn().mockResolvedValue('Joao Silva');
 
 vi.mock('@/services/billing', () => ({
+  isBillingRecordNotFoundError: (error: unknown) => {
+    if (!error || typeof error !== 'object') return false;
+    const maybeError = error as { status?: number; body?: { code?: unknown; error?: unknown } };
+    const message =
+      typeof maybeError.body?.error === 'string' ? maybeError.body.error.toLowerCase() : '';
+    return (
+      maybeError.status === 404 &&
+      (maybeError.body?.code === 'BILLING_RECORD_NOT_FOUND' ||
+        message.includes('billing record not found') ||
+        !maybeError.body?.code)
+    );
+  },
   billingService: {
     get getByEncounter() {
       return mockGetByEncounterFn;
@@ -153,6 +165,51 @@ describe('BillingDetailPage', () => {
     expect(wrapper.text()).toContain('Faturamento');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Joao Silva');
+    expect(mockCreateEstimateFn).not.toHaveBeenCalled();
+  });
+
+  it('shows an operational empty state when billing record does not exist', async () => {
+    mockGetByEncounterFn.mockRejectedValue({
+      status: 404,
+      body: { code: 'BILLING_RECORD_NOT_FOUND' }
+    });
+    mockListItemsFn.mockResolvedValue([]);
+
+    const BillingDetailPage = (await import('../BillingDetailPage.vue')).default;
+    const wrapper = mount(BillingDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Ainda não há cobrança persistida');
+    expect(wrapper.text()).toContain('não cria registro financeiro automaticamente');
+    expect(wrapper.findAll('button').some((b) => b.text().includes('Gerar estimativa'))).toBe(true);
+    expect(mockCreateEstimateFn).not.toHaveBeenCalled();
+  });
+
+  it('creates an estimate from the empty state only after explicit click', async () => {
+    mockGetByEncounterFn.mockRejectedValue({
+      status: 404,
+      body: { code: 'BILLING_RECORD_NOT_FOUND' }
+    });
+    mockListItemsFn.mockResolvedValue([]);
+
+    const BillingDetailPage = (await import('../BillingDetailPage.vue')).default;
+    const wrapper = mount(BillingDetailPage);
+
+    await flushPromises();
+    expect(mockCreateEstimateFn).not.toHaveBeenCalled();
+
+    const estimateBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Gerar estimativa'));
+    await estimateBtn!.trigger('click');
+    await flushPromises();
+
+    expect(mockCreateEstimateFn).toHaveBeenCalledTimes(1);
+    expect(mockCreateEstimateFn).toHaveBeenCalledWith({ encounterId: 'enc-1' });
+    expect(mockListItemsFn).toHaveBeenCalledWith('enc-1');
+    expect(wrapper.text()).toContain('Estimado');
   });
 
   it('shows status badge with correct label', async () => {

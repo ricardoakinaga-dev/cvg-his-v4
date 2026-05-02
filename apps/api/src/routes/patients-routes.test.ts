@@ -133,6 +133,49 @@ test('handlePatientsRoutes GET /master-search returns cross-registry results', a
   assert.equal(payload.patients[0]?.id, 'patient_luna');
 });
 
+test('handlePatientsRoutes GET /patients searches by tutor document and phone', async () => {
+  const documentResponse = new MockResponse();
+
+  const handled = await handlePatientsRoutes(
+    '/patients',
+    new MockRequest({
+      method: 'GET',
+      url: '/patients?q=11111111111'
+    }) as never,
+    documentResponse as never,
+    'corr-patients-search-1',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(documentResponse.statusCode, 200);
+  const documentPayload = documentResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(documentPayload.items.some((item) => item.id === 'patient_luna'), true);
+
+  const phoneResponse = new MockResponse();
+  await handlePatientsRoutes(
+    '/patients',
+    new MockRequest({
+      method: 'GET',
+      url: '/patients?q=11999991111'
+    }) as never,
+    phoneResponse as never,
+    'corr-patients-search-2',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const phonePayload = phoneResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.equal(phonePayload.items.some((item) => item.id === 'patient_luna'), true);
+});
+
 test('handlePatientsRoutes GET /owner-patient-links filters links by owner', async () => {
   const response = new MockResponse();
 

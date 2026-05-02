@@ -2,7 +2,7 @@ import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createDatabaseClient, getDatabaseClient } from '@cvg-his-v2/shared-database';
 import { createFeatureFlagMetricsCollector } from './metrics.js';
 
-import { bootstrapServices } from './bootstrap.js';
+import { bootstrapServices, resolveProductionReadiness } from './bootstrap.js';
 import { createApiServer } from './server.js';
 import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
 import { setAppState, type PersistenceMode } from './app-state.js';
@@ -124,23 +124,31 @@ async function main() {
   }
 
   const workerReady = persistenceMode === 'database' && Boolean(repos.notification);
+  const readiness = resolveProductionReadiness({
+    persistenceMode,
+    workerReady,
+    repositories: repos
+  });
+  const repositoryReadinessDetail = readiness.criticalRepositoriesReady
+    ? 'criticalRepositories=ready'
+    : `missingCriticalRepositories=${readiness.missingCriticalRepositories.join(',')}`;
+  const ownerPatientLinkDetail = `ownerPatientLinkPersistence=${readiness.ownerPatientLinkPersistence}`;
   const workerDetail = workerReady
-    ? 'Worker can consume notification jobs via shared database repository'
+    ? `Worker can consume notification jobs via shared database repository; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
     : databaseConfigured && bootstrapResult.databaseHealthy && !bootstrapResult.repositoriesUseDatabase
       ? 'Database is healthy, but runtime repositories are intentionally kept in-memory until UUID/schema compatibility is completed'
       : databaseConfigured
-      ? 'Worker dependency degraded: notification repository not ready for shared DB processing'
+      ? `Worker dependency degraded: notification repository not ready for shared DB processing; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
       : 'Worker dependency not configured because DATABASE_URL is absent';
 
-  // Production ready only when using real database and full repository wiring is available.
-  const productionReady = persistenceMode === 'database' && repoCount >= 13 && workerReady;
+  const productionReady = readiness.productionReady;
 
   setAppState({
     persistenceMode,
     databaseConfigured,
     databaseHealthy: bootstrapResult.databaseHealthy,
     databaseDetail: bootstrapResult.databaseDetail,
-    repositoriesReady: repoCount > 0,
+    repositoriesReady: readiness.criticalRepositoriesReady,
     repositoryCount: repoCount,
     workerReady,
     workerDetail,
@@ -157,6 +165,9 @@ async function main() {
     databaseConfigured,
     databaseHealthy: bootstrapResult.databaseHealthy,
     repositoriesReady: repoCount,
+    criticalRepositoriesReady: readiness.criticalRepositoriesReady,
+    missingCriticalRepositories: readiness.missingCriticalRepositories,
+    ownerPatientLinkPersistence: readiness.ownerPatientLinkPersistence,
     workerReady,
     productionReady
   });
