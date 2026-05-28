@@ -14,6 +14,7 @@
         <option value="executive">Executiva</option>
         <option value="cash">Caixa</option>
         <option value="receivables">Recebíveis</option>
+        <option value="income">DRE</option>
       </DsInput>
       <div class="financial-dashboard-filters__actions">
         <DsButton type="submit" :loading="loading">Pesquisar</DsButton>
@@ -25,6 +26,7 @@
       <DsStatCard :label="formatCurrency(commercialRevenue)" value="Receita Comercial" />
       <DsStatCard :label="formatCurrency(outstandingReceivables)" value="Recebíveis" />
       <DsStatCard :label="cashBalanceLabel" value="Caixa Aberto" />
+      <DsStatCard :label="formatCurrency(realizedNetResult)" value="Resultado Realizado" />
       <DsStatCard
         :label="`${pixAttentionCount} pendência(s)`"
         value="PIX em Atenção"
@@ -100,12 +102,16 @@ import {
   administrativeReportsService,
   type AdministrativeReportsResponse
 } from '@/services/administrativeReports';
+import {
+  financialStatementsService,
+  type FinancialIncomeStatement
+} from '@/services/financialStatements';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
-type DashboardView = 'executive' | 'cash' | 'receivables';
+type DashboardView = 'executive' | 'cash' | 'receivables' | 'income';
 type FinancialStatus = 'Regular' | 'Atenção' | 'Sem movimento';
 type ValueKind = 'money' | 'count';
 
@@ -135,6 +141,7 @@ const filters = reactive({
   view: 'executive' as DashboardView
 });
 const report = ref<AdministrativeReportsResponse | null>(null);
+const incomeStatement = ref<FinancialIncomeStatement | null>(null);
 const loading = ref(false);
 const error = ref('');
 
@@ -143,6 +150,7 @@ const outstandingReceivables = computed(() => report.value?.executive.outstandin
 const pixAttentionCount = computed(() => report.value?.executive.pixAttentionCount ?? 0);
 const quotePipelineAmount = computed(() => report.value?.executive.quotePipelineAmount ?? 0);
 const cashBalance = computed(() => report.value?.executive.openCashBalance ?? 0);
+const realizedNetResult = computed(() => incomeStatement.value?.result.realizedNetResult ?? 0);
 const cashBalanceLabel = computed(() => {
   if (!report.value) return formatCurrency(0);
   return report.value.domains.cash.hasOpenRegister ? formatCurrency(cashBalance.value) : 'Sem caixa aberto';
@@ -154,7 +162,7 @@ const visibleHighlights = computed(() =>
 );
 const rows = computed(() => {
   if (!report.value) return [];
-  return buildRows(report.value).filter((row) => row.value > 0 || row.status === 'Atenção');
+  return buildRows(report.value, incomeStatement.value).filter((row) => row.value !== 0 || row.status === 'Atenção');
 });
 const visibleRows = computed(() => rows.value as unknown as DataTableRow[]);
 const headerSecondaryActions = computed(() => [
@@ -175,13 +183,20 @@ async function loadDashboard() {
   loading.value = true;
   error.value = '';
   try {
-    report.value = await administrativeReportsService.getHubs({
+    const period = {
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined
-    });
+    };
+    const [hubReport, statement] = await Promise.all([
+      administrativeReportsService.getHubs(period),
+      financialStatementsService.getIncomeStatement(period)
+    ]);
+    report.value = hubReport;
+    incomeStatement.value = statement;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Não foi possível carregar dashboard financeiro.';
     report.value = null;
+    incomeStatement.value = null;
   } finally {
     loading.value = false;
   }
@@ -195,12 +210,32 @@ function resetPeriod() {
   void loadDashboard();
 }
 
-function buildRows(source: AdministrativeReportsResponse): FinancialDashboardRow[] {
+function buildRows(source: AdministrativeReportsResponse, statement: FinancialIncomeStatement | null): FinancialDashboardRow[] {
   const financial = source.domains.financial;
   const commercial = source.domains.commercial;
   const cash = source.domains.cash;
 
   const baseRows: FinancialDashboardRow[] = [
+    {
+      id: 'income-realized',
+      indicator: 'DRE Realizado',
+      description: `${statement?.revenue.settledReceivableCount ?? 0} recebimento(s), ${statement?.expenses.payableCount ?? 0} obrigação(ões)`,
+      value: statement?.result.realizedNetResult ?? 0,
+      valueKind: 'money',
+      detail: `Receitas ${formatCurrency(statement?.revenue.realizedRevenue ?? 0)}, despesas pagas ${formatCurrency(statement?.expenses.paidExpenses ?? 0)}`,
+      status: (statement?.result.realizedNetResult ?? 0) < 0 ? 'Atenção' : resolveMovementStatus(statement?.result.realizedNetResult ?? 0),
+      openTo: '/finance/accounts-payable'
+    },
+    {
+      id: 'income-accrual',
+      indicator: 'DRE Competência',
+      description: `${statement?.revenue.receivableCount ?? 0} título(s), ${statement?.expenses.openPayableCount ?? 0} conta(s) aberta(s)`,
+      value: statement?.result.accrualNetResult ?? 0,
+      valueKind: 'money',
+      detail: `Margem ${formatPercent(statement?.result.grossMarginPercent ?? null)}, conversão ${formatPercent(statement?.result.cashConversionPercent ?? null)}`,
+      status: (statement?.result.accrualNetResult ?? 0) < 0 ? 'Atenção' : resolveMovementStatus(statement?.result.accrualNetResult ?? 0),
+      openTo: '/reports/engine'
+    },
     {
       id: 'billing',
       indicator: 'Faturamento',
@@ -265,6 +300,7 @@ function buildRows(source: AdministrativeReportsResponse): FinancialDashboardRow
 
   if (filters.view === 'cash') return baseRows.filter((row) => ['cash', 'pix', 'billing'].includes(row.id));
   if (filters.view === 'receivables') return baseRows.filter((row) => ['billing', 'receivables', 'pix'].includes(row.id));
+  if (filters.view === 'income') return baseRows.filter((row) => row.id.startsWith('income'));
   return baseRows;
 }
 
@@ -303,6 +339,11 @@ function formatCurrency(value: number): string {
     currency: 'BRL'
   }).format(value);
 }
+
+function formatPercent(value: number | null): string {
+  if (value === null) return 'n/a';
+  return `${value.toFixed(2).replace('.', ',')}%`;
+}
 </script>
 
 <style scoped>
@@ -328,7 +369,7 @@ function formatCurrency(value: number): string {
 .financial-dashboard-summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .financial-dashboard-highlights {

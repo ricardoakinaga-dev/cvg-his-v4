@@ -123,7 +123,8 @@ function createLaboratoryService(): LaboratoryService {
   });
   diagnostics.recordResult(requestedOrder.id, {
     status: 'resulted',
-    resultSummary: 'Hemograma dentro da normalidade'
+    resultSummary: 'Hemograma dentro da normalidade',
+    releasedByUserId: 'user-1'
   });
 
   diagnostics.createOrder({
@@ -289,6 +290,89 @@ test('handleLaboratoryRoutes lists resulted orders through the diagnostics bridg
   assert.equal(payload.items[0].examCatalogId, 'cat_001');
 });
 
+test('handleLaboratoryRoutes releases result with authenticated user and technical signature', async () => {
+  const laboratory = createLaboratoryService();
+  const openOrder = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(
+    (order) => order.status === 'requested'
+  );
+  assert.ok(openOrder);
+
+  const collectResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    `/laboratory/orders/${openOrder.id}/result`,
+    createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
+      status: 'collected',
+      collectedByUserId: 'lab-user'
+    }) as never,
+    collectResponse as never,
+    'corr-lab-release-1',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const releaseResponse = new MockResponse();
+  const handled = await handleLaboratoryRoutes(
+    `/laboratory/orders/${openOrder.id}/result`,
+    createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
+      status: 'resulted',
+      resultSummary: 'Bioquimico liberado',
+      signedByUserId: 'rt-laboratorio'
+    }) as never,
+    releaseResponse as never,
+    'corr-lab-release-2',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(releaseResponse.statusCode, 200);
+  const payload = releaseResponse.bodyJson<{
+    status: string;
+    resultedAt?: string;
+    releasedByUserId?: string;
+    signedByUserId?: string;
+    signatureHash?: string;
+  }>();
+  assert.equal(payload.status, 'resulted');
+  assert.equal(payload.releasedByUserId, 'user-1');
+  assert.equal(payload.signedByUserId, 'rt-laboratorio');
+  assert.ok(payload.resultedAt);
+  assert.ok(payload.signatureHash);
+});
+
+test('handleLaboratoryRoutes generates printable signed laboratory report html', async () => {
+  const laboratory = createLaboratoryService();
+  const order = (await laboratory.listResults('acc-1' as never, 'HEM'))[0];
+  assert.ok(order);
+
+  const response = new MockResponse();
+  const handled = await handleLaboratoryRoutes(
+    `/laboratory/reports/${order.id}/print`,
+    { method: 'GET', url: `/laboratory/reports/${order.id}/print` } as never,
+    response as never,
+    'corr-lab-print-1',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ html: string }>();
+  assert.match(payload.html, /Laudo Laboratorial/);
+  assert.match(payload.html, /Hemograma dentro da normalidade/);
+  assert.match(payload.html, /user-1/);
+  assert.match(payload.html, /Hash da assinatura/);
+});
+
 test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and filters', async () => {
   const laboratory = createLaboratoryService();
   const response = new MockResponse();
@@ -390,7 +474,8 @@ test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to U
   });
   laboratory.recordResult(urinalysisOrder.id, {
     status: 'resulted',
-    resultSummary: 'Densidade urinaria dentro da referencia'
+    resultSummary: 'Densidade urinaria dentro da referencia',
+    releasedByUserId: 'user-1'
   });
 
   const response = new MockResponse();
@@ -448,7 +533,8 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to
   });
   laboratory.recordResult(biochemistryOrder.id, {
     status: 'resulted',
-    resultSummary: 'ALT dentro da referencia'
+    resultSummary: 'ALT dentro da referencia',
+    releasedByUserId: 'user-1'
   });
 
   const response = new MockResponse();

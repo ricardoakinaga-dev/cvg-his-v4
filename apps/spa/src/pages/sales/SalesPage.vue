@@ -28,6 +28,13 @@
       </article>
     </section>
 
+    <DsAlert v-if="actionError" variant="danger" dismissible @dismiss="actionError = ''">
+      {{ actionError }}
+    </DsAlert>
+    <DsAlert v-if="actionMessage" variant="success" dismissible @dismiss="actionMessage = ''">
+      {{ actionMessage }}
+    </DsAlert>
+
     <div class="sales-layout">
       <section class="sales-list">
         <DsCard title="Vendas abertas">
@@ -219,15 +226,35 @@
                 <span>Valor Final</span>
                 <strong>{{ formatCurrency(selectedSale.finalValue) }}</strong>
               </div>
+              <div>
+                <span>Valor pago</span>
+                <strong>{{ formatCurrency(selectedSale.paidAmount) }}</strong>
+              </div>
+              <div>
+                <span>Saldo</span>
+                <strong>{{ formatCurrency(selectedSale.balanceDue) }}</strong>
+              </div>
             </section>
 
             <div class="sale-actions">
               <DsButton variant="secondary" tag="a" :to="counterSalePath(selectedSale)">Abrir comanda</DsButton>
               <DsButton variant="secondary">Salvar</DsButton>
-              <DsButton variant="primary">Fechar</DsButton>
+              <DsButton
+                variant="primary"
+                :disabled="selectedSale.status !== 'open' || Boolean(operatingAction)"
+                @click="closeSelectedSale"
+              >
+                {{ operatingAction === 'close' ? 'Fechando...' : 'Fechar' }}
+              </DsButton>
               <DsButton variant="secondary">Pesquisar</DsButton>
               <DsButton variant="secondary">Imprimir</DsButton>
-              <DsButton variant="danger">Excluir Venda</DsButton>
+              <DsButton
+                variant="danger"
+                :disabled="selectedSale.status === 'cancelled' || Boolean(operatingAction)"
+                @click="cancelSelectedSale"
+              >
+                {{ operatingAction === 'cancel' ? 'Cancelando...' : 'Excluir Venda' }}
+              </DsButton>
             </div>
 
             <div class="legacy-shortcuts" aria-label="Atalhos do legado">
@@ -248,6 +275,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { counterSalesService, type CounterSaleDetail, type CounterSalePaymentMethod } from '@/services/counterSales';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -285,11 +313,16 @@ interface ProductSale {
   discount: number;
   discountedValue: number;
   finalValue: number;
+  paidAmount: number;
+  balanceDue: number;
 }
 
 const sales = ref<ProductSale[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
+const actionError = ref('');
+const actionMessage = ref('');
+const operatingAction = ref<'close' | 'cancel' | ''>('');
 
 const filters = ref({
   search: '',
@@ -379,6 +412,50 @@ function selectSale(saleId: string) {
   selectedSaleId.value = saleId;
 }
 
+async function closeSelectedSale() {
+  if (!selectedSale.value || operatingAction.value) return;
+  await runSaleOperation('close', selectedSale.value.id, 'Venda fechada com sucesso.');
+}
+
+async function cancelSelectedSale() {
+  if (!selectedSale.value || operatingAction.value) return;
+  await runSaleOperation('cancel', selectedSale.value.id, 'Venda cancelada com sucesso.');
+}
+
+async function runSaleOperation(
+  operation: 'close' | 'cancel',
+  saleId: string,
+  successMessage: string
+) {
+  operatingAction.value = operation;
+  actionError.value = '';
+  actionMessage.value = '';
+
+  try {
+    if (operation === 'close') {
+      await counterSalesService.close(saleId);
+    } else {
+      await counterSalesService.cancel(saleId);
+    }
+
+    const detail = await counterSalesService.getById(saleId);
+    const productSale = toProductSale(detail);
+    sales.value = sales.value.map((sale) => (sale.id === saleId ? productSale : sale));
+    if (filters.value.status !== 'all' && filters.value.status !== productSale.status) {
+      filters.value.status = 'all';
+    }
+    selectedSaleId.value = saleId;
+    actionMessage.value = successMessage;
+  } catch (error) {
+    actionError.value =
+      error instanceof Error
+        ? `Não foi possível ${operation === 'close' ? 'fechar' : 'cancelar'} a venda: ${error.message}`
+        : `Não foi possível ${operation === 'close' ? 'fechar' : 'cancelar'} a venda.`;
+  } finally {
+    operatingAction.value = '';
+  }
+}
+
 async function loadSales() {
   loading.value = true;
   errorMessage.value = '';
@@ -424,7 +501,9 @@ function toProductSale(sale: CounterSaleDetail): ProductSale {
     saleValue: sale.subtotal,
     discount: sale.discountAmount,
     discountedValue: sale.discountAmount,
-    finalValue: sale.total
+    finalValue: sale.total,
+    paidAmount: sale.paidAmount,
+    balanceDue: sale.balanceDue
   };
 }
 

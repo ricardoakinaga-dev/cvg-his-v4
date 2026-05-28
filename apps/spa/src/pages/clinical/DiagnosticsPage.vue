@@ -570,7 +570,8 @@ async function submitAttachment() {
       await laboratoryService.recordResult(linkedOrder.id, {
         status: 'resulted',
         resultSummary: attachmentForm.value.resultSummary.trim() || attachment.fileName,
-        resultAttachmentId: attachment.id
+        resultAttachmentId: attachment.id,
+        signedByUserId: 'diagnostics-page'
       });
       successMessage.value = 'Resultado anexado ao prontuário e liberado no laboratório.';
     } else {

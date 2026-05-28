@@ -281,13 +281,9 @@ export async function handleLgpdRoutes(
       return true;
     }
 
-    response.statusCode = 400;
-    response.end(
-      JSON.stringify({
-        code: 'BAD_REQUEST',
-        message: 'Provide subjectId+subjectType or status query param'
-      })
-    );
+    const requests = await lgpdSvc.getDsrRequests(principal.user.accountId);
+    response.statusCode = 200;
+    response.end(JSON.stringify({ requests }));
     return true;
   }
 
@@ -307,10 +303,22 @@ export async function handleLgpdRoutes(
       resultJson?: Record<string, unknown>;
     };
     const dsrRequest = await lgpdSvc.completeDsrRequest(
+      principal.user.accountId,
       payload.requestId,
       principal.user.id,
       payload.resultJson
     );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'lgpd',
+      action: 'dsr_completed',
+      entityType: 'data_subject_request',
+      entityId: dsrRequest.id,
+      payloadSummary: `DSR completed: ${dsrRequest.requestType}`,
+      riskLevel: 'high',
+      correlationId
+    });
     response.statusCode = 200;
     response.end(JSON.stringify(dsrRequest));
     return true;
@@ -330,12 +338,25 @@ export async function handleLgpdRoutes(
     const payload = (await readJsonBody(request)) as {
       requestId: string;
       reason: string;
+      rejectionReason?: string;
     };
     const dsrRequest = await lgpdSvc.rejectDsrRequest(
+      principal.user.accountId,
       payload.requestId,
       principal.user.id,
-      payload.reason
+      payload.reason ?? payload.rejectionReason ?? 'Solicitacao rejeitada pelo operador'
     );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'lgpd',
+      action: 'dsr_rejected',
+      entityType: 'data_subject_request',
+      entityId: dsrRequest.id,
+      payloadSummary: `DSR rejected: ${dsrRequest.requestType}`,
+      riskLevel: 'high',
+      correlationId
+    });
     response.statusCode = 200;
     response.end(JSON.stringify(dsrRequest));
     return true;
@@ -361,9 +382,19 @@ export async function handleLgpdRoutes(
     const exportData = await lgpdSvc.buildPersonalDataExport(
       principal.user.accountId,
       payload.subjectId,
-      payload.subjectType,
-      (payload.dataProviders as never) ?? {}
+      payload.subjectType
     );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'lgpd',
+      action: 'personal_data_exported',
+      entityType: payload.subjectType,
+      entityId: payload.subjectId,
+      payloadSummary: `Personal data export generated for ${payload.subjectType}`,
+      riskLevel: 'high',
+      correlationId
+    });
 
     response.statusCode = 200;
     response.end(JSON.stringify(exportData));

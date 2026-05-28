@@ -2,6 +2,7 @@ import { apiRequest } from './api';
 import type {
   AppointmentSummary,
   CreateAppointmentRequest,
+  RescheduleAppointmentRequest,
   AppointmentsListResponse,
   SchedulingAvailabilityResponse,
   SmartSchedulingRecommendationRequest,
@@ -80,6 +81,16 @@ export const appointmentService = {
     return apiRequest<AppointmentSummary>(`/appointments/${id}/cancel`, {
       method: 'POST',
       body: JSON.stringify(reason ? { reason } : {})
+    });
+  },
+
+  async reschedule(
+    id: string,
+    payload: RescheduleAppointmentRequest
+  ): Promise<AppointmentSummary> {
+    return apiRequest<AppointmentSummary>(`/appointments/${id}/reschedule`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
     });
   },
 

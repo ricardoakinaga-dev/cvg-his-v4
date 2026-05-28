@@ -92,6 +92,117 @@
         </DsCard>
       </section>
 
+      <section class="owner-360-cockpit" aria-label="Cockpit 360 tutor e paciente">
+        <DsCard title="Cockpit 360 tutor/paciente">
+          <div class="owner-360-cockpit__summary">
+            <div>
+              <span>Jornada assistencial</span>
+              <strong>{{ owner360Summary.assistential }}</strong>
+            </div>
+            <div>
+              <span>Financeiro</span>
+              <strong>{{ owner360Summary.financial }}</strong>
+            </div>
+            <div>
+              <span>Próxima ação</span>
+              <strong>{{ owner360Summary.nextAction }}</strong>
+            </div>
+          </div>
+
+          <div v-if="patient360Rows.length" class="owner-360-list">
+            <article
+              v-for="row in patient360Rows"
+              :key="row.patient.id"
+              class="owner-360-card"
+            >
+              <div class="owner-360-card__head">
+                <div>
+                  <span>{{ speciesLabel(row.patient.species) }}</span>
+                  <strong>{{ row.patient.name }}</strong>
+                  <small>{{ row.patient.breed || 'Raça não informada' }}</small>
+                </div>
+                <StatusBadge
+                  :label="row.healthLabel"
+                  :variant="row.healthVariant"
+                  size="sm"
+                />
+              </div>
+
+              <div class="owner-360-card__grid">
+                <div>
+                  <span>Agenda</span>
+                  <strong>{{ row.appointmentLabel }}</strong>
+                </div>
+                <div>
+                  <span>Atendimento</span>
+                  <strong>{{ row.encounterLabel }}</strong>
+                </div>
+                <div>
+                  <span>Financeiro</span>
+                  <strong>{{ row.financialLabel }}</strong>
+                </div>
+                <div>
+                  <span>Alertas</span>
+                  <strong>{{ row.alertLabel }}</strong>
+                </div>
+                <div>
+                  <span>Prevenção</span>
+                  <strong>{{ row.preventiveLabel }}</strong>
+                </div>
+                <div>
+                  <span>Laboratório</span>
+                  <strong>{{ row.laboratoryLabel }}</strong>
+                </div>
+              </div>
+
+              <div class="owner-360-card__actions">
+                <DsButton tag="a" :to="`/patients/${row.patient.id}`" variant="primary" size="sm">
+                  Abrir cockpit do paciente
+                </DsButton>
+                <DsButton
+                  tag="a"
+                  :to="row.nextActionPath"
+                  variant="secondary"
+                  size="sm"
+                >
+                  {{ row.nextActionLabel }}
+                </DsButton>
+              </div>
+            </article>
+          </div>
+          <div v-else class="owner-360-empty">
+            <strong>Nenhum paciente vinculado ao tutor.</strong>
+            <p>Cadastre o primeiro animal para ativar a visão 360 assistencial, financeira e de relacionamento.</p>
+            <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="primary" size="sm">
+              Cadastrar paciente
+            </DsButton>
+          </div>
+        </DsCard>
+      </section>
+
+      <section class="owner-360-timeline" aria-label="Timeline 360 do tutor">
+        <DsCard title="Timeline 360 do tutor">
+          <div v-if="owner360Timeline.length" class="owner-360-timeline__list">
+            <div
+              v-for="item in owner360Timeline"
+              :key="item.id"
+              class="owner-360-timeline__item"
+            >
+              <div>
+                <strong>{{ item.source }} · {{ item.patientName }}</strong>
+                <p>{{ item.title }}</p>
+                <small>{{ item.description }}</small>
+              </div>
+              <div class="owner-360-timeline__meta">
+                <span>{{ formatDate(item.occurredAt) }}</span>
+                <RouterLink v-if="item.href" :to="item.href">Abrir</RouterLink>
+              </div>
+            </div>
+          </div>
+          <p v-else class="muted">Sem eventos consolidados para a timeline 360 do tutor.</p>
+        </DsCard>
+      </section>
+
       <section class="owner-summary-grid">
         <DsCard title="Ficha do cliente">
           <div class="detail-grid">
@@ -671,19 +782,26 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import { appointmentService } from '@/services/appointment';
 import { encounterService } from '@/services/encounter';
 import { billingService } from '@/services/billing';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
+import { laboratoryService } from '@/services/laboratory';
+import {
+  vaccinesDewormersService,
+  preventiveItemTypeLabel,
+  type PreventiveEventSummary
+} from '@/services/vaccinesDewormers';
 import type { OwnerSummary } from '@/types/owner';
 import type { OwnerSummaryResponse } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 import type { AppointmentSummary } from '@/types/appointment';
 import type { EncounterSummary } from '@/types/encounter';
 import type { BillingRecordSummary } from '@/types/billing';
+import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { formatDate, patientStatusLabel, speciesLabel } from '@/utils/labels';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
@@ -700,6 +818,8 @@ const appointments = ref<AppointmentSummary[]>([]);
 const encounters = ref<EncounterSummary[]>([]);
 const billingRecords = ref<BillingRecordSummary[]>([]);
 const quotes = ref<QuoteSummary[]>([]);
+const preventiveEvents = ref<PreventiveEventSummary[]>([]);
+const laboratoryOrders = ref<DiagnosticOrderSummary[]>([]);
 const ownerSummary = ref<OwnerSummaryResponse | null>(null);
 const relatedWarnings = ref<string[]>([]);
 const actionError = ref('');
@@ -932,6 +1052,127 @@ interface ContextualMessage {
   href: string | null;
 }
 
+interface Owner360TimelineItem {
+  id: string;
+  source: string;
+  patientName: string;
+  title: string;
+  description: string;
+  occurredAt: string;
+  href?: string;
+}
+
+interface Patient360Row {
+  patient: PatientSummary;
+  healthLabel: string;
+  healthVariant: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+  appointmentLabel: string;
+  encounterLabel: string;
+  financialLabel: string;
+  alertLabel: string;
+  preventiveLabel: string;
+  laboratoryLabel: string;
+  nextActionLabel: string;
+  nextActionPath: string;
+}
+
+const pendingPreventiveEvents = computed(() =>
+  preventiveEvents.value.filter((event) => event.status === 'scheduled')
+);
+
+const pendingLaboratoryOrders = computed(() =>
+  laboratoryOrders.value.filter((order) => order.status === 'requested' || order.status === 'collected')
+);
+
+const patient360Rows = computed<Patient360Row[]>(() =>
+  patients.value.map((patient) => {
+    const patientAppointments = appointments.value
+      .filter((appointment) => appointment.patientId === patient.id)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+    const nextPatientAppointment =
+      patientAppointments.find(
+        (appointment) => new Date(appointment.scheduledAt).getTime() >= Date.now()
+      ) ?? null;
+    const activeEncounter = activeEncounterForPatient(patient.id);
+    const patientBilling = ownerBillingRecords.value.filter(
+      (record) => record.patientId === patient.id
+    );
+    const patientOpenAmount = patientBilling
+      .filter((record) => record.status !== 'settled')
+      .reduce((sum, record) => sum + record.subtotalAmount, 0);
+    const alertCount = [patient.chronicDisease, patient.allergy, patient.temperament].filter(
+      Boolean
+    ).length;
+    const patientPreventiveEvents = pendingPreventiveEvents.value
+      .filter((event) => event.patientId === patient.id)
+      .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+    const nextPreventiveEvent = patientPreventiveEvents[0] ?? null;
+    const patientLaboratoryOrders = pendingLaboratoryOrders.value.filter(
+      (order) => order.patientId === patient.id
+    );
+    const hasCriticalAlert = Boolean(patient.chronicDisease || patient.allergy);
+    const nextAction = resolvePatient360NextAction(
+      patient,
+      nextPatientAppointment,
+      activeEncounter,
+      patientOpenAmount,
+      patientLaboratoryOrders.length
+    );
+
+    return {
+      patient,
+      healthLabel: hasCriticalAlert
+        ? 'Atenção clínica'
+        : patient.status === 'active'
+          ? 'Ativo'
+          : patientStatusLabel(patient.status),
+      healthVariant: hasCriticalAlert ? 'warning' : patient.status === 'active' ? 'success' : 'danger',
+      appointmentLabel: nextPatientAppointment
+        ? `${formatDate(nextPatientAppointment.scheduledAt)} · ${nextPatientAppointment.reason}`
+        : 'Sem agenda futura',
+      encounterLabel: activeEncounter
+        ? `${activeEncounter.reason} · ${activeEncounter.status}`
+        : 'Sem atendimento ativo',
+      financialLabel:
+        patientOpenAmount > 0 ? `${formatCurrency(patientOpenAmount)} em aberto` : 'Sem pendência',
+      alertLabel:
+        alertCount > 0 ? `${alertCount} alerta(s) no cadastro` : 'Sem alertas clínicos',
+      preventiveLabel: nextPreventiveEvent
+        ? `${preventiveItemTypeLabel(nextPreventiveEvent.itemType)} · ${nextPreventiveEvent.description}`
+        : 'Sem preventivo pendente',
+      laboratoryLabel:
+        patientLaboratoryOrders.length > 0
+          ? `${patientLaboratoryOrders.length} exame(s) pendente(s)`
+          : 'Sem exames pendentes',
+      nextActionLabel: nextAction.label,
+      nextActionPath: nextAction.path
+    };
+  })
+);
+
+const owner360Summary = computed(() => {
+  const patientsCount = patients.value.length;
+  const activeCount = activePatientsCount.value;
+  const openEncounters = activeEncounters.value.length;
+  const nextAction =
+    patient360Rows.value.find((row) => row.nextActionLabel !== 'Abrir cockpit do paciente')
+      ?.nextActionLabel ?? 'Acompanhar relacionamento';
+
+  return {
+    assistential: [
+      `${activeCount}/${patientsCount} paciente(s) ativo(s)`,
+      `${openEncounters} atendimento(s)`,
+      `${pendingPreventiveEvents.value.length} preventivo(s)`,
+      `${pendingLaboratoryOrders.value.length} exame(s)`
+    ].join(' · '),
+    financial:
+      openBillingAmount.value > 0
+        ? `${formatCurrency(openBillingAmount.value)} em aberto`
+        : 'Sem pendência financeira',
+    nextAction
+  };
+});
+
 const contextualMessages = computed<ContextualMessage[]>(() => {
   const contactBase = whatsappContact.value;
   const firstPatient = patients.value[0];
@@ -993,6 +1234,78 @@ const contextualMessages = computed<ContextualMessage[]>(() => {
   }
 
   return messages;
+});
+
+const owner360Timeline = computed<Owner360TimelineItem[]>(() => {
+  const appointmentItems = appointments.value.map((appointment) => ({
+    id: `appointment-${appointment.id}`,
+    source: 'Agenda',
+    patientName: patientName(appointment.patientId),
+    title: appointment.reason,
+    description: appointment.status,
+    occurredAt: appointment.scheduledAt,
+    href: `/appointments/${appointment.id}`
+  }));
+
+  const encounterItems = encounters.value.map((encounter) => ({
+    id: `encounter-${encounter.id}`,
+    source: 'Atendimento',
+    patientName: patientName(encounter.patientId),
+    title: encounter.reason,
+    description: encounter.status,
+    occurredAt: encounter.openedAt,
+    href: `/encounters/${encounter.id}`
+  }));
+
+  const billingItems = ownerBillingRecords.value.map((record) => ({
+    id: `billing-${record.id}`,
+    source: 'Financeiro',
+    patientName: patientName(record.patientId),
+    title: `${formatCurrency(record.subtotalAmount)} · ${record.status}`,
+    description: record.administrativeNotes || 'Comanda vinculada ao relacionamento',
+    occurredAt: record.updatedAt,
+    href: `/billing/${record.encounterId}`
+  }));
+
+  const laboratoryItems = laboratoryOrders.value.map((order) => ({
+    id: `laboratory-${order.id}`,
+    source: 'Laboratório',
+    patientName: patientName(order.patientId),
+    title: order.examType,
+    description: `${order.status} · ${order.resultSummary || order.reason}`,
+    occurredAt: order.updatedAt,
+    href: `/laboratory/orders`
+  }));
+
+  const preventiveItems = preventiveEvents.value.map((event) => ({
+    id: `preventive-${event.id}`,
+    source: 'Preventivo',
+    patientName: event.animalName || patientName(event.patientId ?? ''),
+    title: event.description,
+    description: `${preventiveItemTypeLabel(event.itemType)} · ${event.status}`,
+    occurredAt: event.executedAt ?? `${event.eventDate}T12:00:00Z`,
+    href: patientPreventivePath(event.patientId, event.ownerId)
+  }));
+
+  const messageItems = contextualMessages.value.map((message) => ({
+    id: `message-${message.id}`,
+    source: 'Mensagem',
+    patientName: firstTimelinePatientName(),
+    title: message.title,
+    description: message.preview,
+    occurredAt: owner.value?.updatedAt ?? new Date().toISOString()
+  }));
+
+  return [
+    ...appointmentItems,
+    ...encounterItems,
+    ...billingItems,
+    ...laboratoryItems,
+    ...preventiveItems,
+    ...messageItems
+  ]
+    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+    .slice(0, 10);
 });
 
 interface OwnerAlert {
@@ -1078,6 +1391,17 @@ function patientName(patientId: string): string {
   return patients.value.find((patient) => patient.id === patientId)?.name || 'Paciente';
 }
 
+function firstTimelinePatientName(): string {
+  return patients.value[0]?.name ?? 'Relacionamento';
+}
+
+function patientPreventivePath(patientId?: string | null, ownerId?: string | null): string {
+  const params = new URLSearchParams();
+  if (patientId) params.set('patientId', patientId);
+  if (ownerId ?? owner.value?.id) params.set('ownerId', ownerId ?? owner.value?.id ?? '');
+  return `/vaccines-dewormers${params.toString() ? `?${params.toString()}` : ''}`;
+}
+
 function buildWhatsAppLink(message: string): string | null {
   if (!whatsappContact.value) return null;
   return `${whatsappContact.value}?text=${encodeURIComponent(message)}`;
@@ -1104,6 +1428,35 @@ function patientFinancialPath(ownerId: string, patientId: string): string {
 
 function patientFinancialActionLabel(patientId: string): string {
   return activeEncounterForPatient(patientId) ? 'Abrir Cobrança' : 'Selecionar atendimento para cobrança';
+}
+
+function resolvePatient360NextAction(
+  patient: PatientSummary,
+  appointment: AppointmentSummary | null,
+  activeEncounter: EncounterSummary | null,
+  openAmount: number,
+  pendingLaboratoryCount: number
+): { label: string; path: string } {
+  if (pendingLaboratoryCount > 0) {
+    return { label: 'Acompanhar exames pendentes', path: '/laboratory/orders' };
+  }
+
+  if (openAmount > 0 && activeEncounter) {
+    return { label: 'Resolver cobrança', path: `/billing/${activeEncounter.id}` };
+  }
+
+  if (activeEncounter) {
+    return { label: 'Continuar atendimento', path: `/encounters/${activeEncounter.id}` };
+  }
+
+  if (appointment) {
+    return { label: 'Ver agenda', path: `/appointments/${appointment.id}` };
+  }
+
+  return {
+    label: 'Agendar próximo contato',
+    path: `/appointments/new?ownerId=${owner.value?.id ?? patient.primaryOwnerId}&patientId=${patient.id}`
+  };
 }
 
 function requestRelationshipQuoteConfirmation() {
@@ -1188,9 +1541,14 @@ async function loadOwnerHub(ownerId: string) {
     relatedWarnings.value.push('owner-summary');
   }
 
-  const [billingResult, quotesResult] = await Promise.allSettled([
+  const [billingResult, quotesResult, preventiveResult, laboratoryResult] = await Promise.allSettled([
     billingService.list(),
-    quoteService.list()
+    quoteService.list(),
+    vaccinesDewormersService.list({
+      ownerId,
+      includeExecuted: true
+    }),
+    laboratoryService.listOrders()
   ]);
 
   if (billingResult.status === 'fulfilled') {
@@ -1205,6 +1563,21 @@ async function loadOwnerHub(ownerId: string) {
   } else {
     quotes.value = [];
     relatedWarnings.value.push('orçamentos');
+  }
+
+  if (preventiveResult.status === 'fulfilled') {
+    preventiveEvents.value = preventiveResult.value.filter((event) => event.ownerId === ownerId);
+  } else {
+    preventiveEvents.value = [];
+    relatedWarnings.value.push('preventivo');
+  }
+
+  if (laboratoryResult.status === 'fulfilled') {
+    const patientIds = new Set(patients.value.map((patient) => patient.id));
+    laboratoryOrders.value = laboratoryResult.value.filter((order) => patientIds.has(order.patientId));
+  } else {
+    laboratoryOrders.value = [];
+    relatedWarnings.value.push('laboratório');
   }
 }
 
@@ -1255,6 +1628,140 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
+}
+
+.owner-360-cockpit {
+  display: grid;
+}
+
+.owner-360-cockpit__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.owner-360-cockpit__summary > div,
+.owner-360-card {
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.owner-360-cockpit__summary > div {
+  display: grid;
+  gap: 5px;
+  min-height: 84px;
+  padding: 12px;
+}
+
+.owner-360-cockpit__summary span,
+.owner-360-card span,
+.owner-360-card small {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.owner-360-list {
+  display: grid;
+  gap: 12px;
+}
+
+.owner-360-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.owner-360-card__head,
+.owner-360-card__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.owner-360-card__head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.owner-360-card__head strong {
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+}
+
+.owner-360-card__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.owner-360-card__grid > div {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.owner-360-card__grid strong {
+  overflow-wrap: anywhere;
+}
+
+.owner-360-empty {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.owner-360-timeline {
+  display: grid;
+}
+
+.owner-360-timeline__list {
+  display: grid;
+  gap: 10px;
+}
+
+.owner-360-timeline__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.owner-360-timeline__item > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.owner-360-timeline__item p,
+.owner-360-timeline__item small {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owner-360-timeline__item small,
+.owner-360-timeline__meta {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.owner-360-timeline__meta {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  white-space: nowrap;
 }
 
 .vetus-client-grid {
@@ -1417,6 +1924,11 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
+  .owner-360-cockpit__summary,
+  .owner-360-card__grid {
+    grid-template-columns: 1fr;
+  }
+
   .detail-grid {
     grid-template-columns: 1fr;
   }
@@ -1427,9 +1939,16 @@ onMounted(async () => {
   .message-list__item,
   .package-list__item,
   .vetus-client-card__header,
-  .vetus-client-card__row {
+  .vetus-client-card__row,
+  .owner-360-timeline__item,
+  .owner-360-card__head,
+  .owner-360-card__actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .owner-360-timeline__meta {
+    justify-items: start;
   }
 }
 </style>

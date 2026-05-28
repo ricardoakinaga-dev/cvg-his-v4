@@ -58,9 +58,30 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
         `UPDATE appointments
             SET status = $2,
                 reason = $3,
-                updated_at = $4
+                scheduled_at = $4,
+                duration = $5,
+                visit_type = $6,
+                practitioner_staff_id = $7,
+                service_id = $8,
+                unit = $9,
+                specialty = $10,
+                resource_label = $11,
+                updated_at = $12
           WHERE id = $1`,
-        [appointment.id, appointment.status, appointment.reason ?? null, new Date(appointment.updatedAt)]
+        [
+          appointment.id,
+          appointment.status,
+          appointment.reason ?? null,
+          new Date(appointment.scheduledAt),
+          appointment.durationMinutes ?? null,
+          appointment.visitType,
+          appointment.practitionerStaffId ?? null,
+          appointment.serviceId ?? null,
+          appointment.unit ?? null,
+          appointment.specialty ?? null,
+          appointment.resourceLabel ?? null,
+          new Date(appointment.updatedAt)
+        ]
       );
     });
   }

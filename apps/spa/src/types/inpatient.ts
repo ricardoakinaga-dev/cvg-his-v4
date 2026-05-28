@@ -35,6 +35,50 @@ export interface InpatientProgressSummary {
   createdAt: string;
 }
 
+export interface InpatientOccurrenceSummary {
+  id: string;
+  accountId: string;
+  stayId: string;
+  encounterId: string;
+  type: 'clinical' | 'nursing' | 'medication' | 'feeding' | 'behavior' | 'administrative';
+  severity: 'info' | 'attention' | 'critical';
+  title: string;
+  description: string;
+  authoredByUserId: string;
+  createdAt: string;
+}
+
+export interface InpatientDailyChargeSummary {
+  id: string;
+  accountId: string;
+  stayId: string;
+  encounterId: string;
+  patientId: string;
+  description: string;
+  chargeDate: string;
+  quantity: number;
+  unitAmount: number;
+  totalAmount: number;
+  status: 'pending' | 'billed' | 'cancelled';
+  billingRecordId?: string;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InpatientDailyChargeWorklistItem extends InpatientDailyChargeSummary {
+  unit: string;
+  ward: string;
+  bed: string;
+  stayStatus: InpatientStatus;
+}
+
+export interface InpatientDailyChargeWorklistResponse {
+  items: InpatientDailyChargeWorklistItem[];
+  totalPendingAmount: number;
+  totalBilledAmount: number;
+}
+
 export interface InpatientListResponse {
   items: InpatientStaySummary[];
 }

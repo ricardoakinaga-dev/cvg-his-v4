@@ -8,7 +8,10 @@ import type {
   BedSummary,
   BedMapResponse,
   InpatientStatus,
-  InpatientProgressSummary
+  InpatientProgressSummary,
+  InpatientOccurrenceSummary,
+  InpatientDailyChargeSummary,
+  InpatientDailyChargeWorklistResponse
 } from '@/types/inpatient';
 
 export const inpatientService = {
@@ -70,6 +73,79 @@ export const inpatientService = {
       method: 'POST',
       body: JSON.stringify({ note })
     });
+  },
+
+  async listOccurrences(stayId: string): Promise<InpatientOccurrenceSummary[]> {
+    const res = await apiRequest<{ items: InpatientOccurrenceSummary[] }>(
+      `/inpatient/${stayId}/occurrences`
+    );
+    return res.items;
+  },
+
+  async addOccurrence(
+    stayId: string,
+    payload: {
+      type: InpatientOccurrenceSummary['type'];
+      severity?: InpatientOccurrenceSummary['severity'];
+      title: string;
+      description: string;
+    }
+  ): Promise<InpatientOccurrenceSummary> {
+    return apiRequest<InpatientOccurrenceSummary>(`/inpatient/${stayId}/occurrences`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async listDailyCharges(stayId: string): Promise<InpatientDailyChargeSummary[]> {
+    const res = await apiRequest<{ items: InpatientDailyChargeSummary[] }>(
+      `/inpatient/${stayId}/daily-charges`
+    );
+    return res.items;
+  },
+
+  async listDailyChargeWorklist(filters?: {
+    status?: InpatientDailyChargeSummary['status'];
+    unit?: string;
+    ward?: string;
+  }): Promise<InpatientDailyChargeWorklistResponse> {
+    const query = new URLSearchParams();
+    if (filters?.status) query.set('status', filters.status);
+    if (filters?.unit) query.set('unit', filters.unit);
+    if (filters?.ward) query.set('ward', filters.ward);
+    const params = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest<InpatientDailyChargeWorklistResponse>(
+      `/inpatient/daily-charges/worklist${params}`
+    );
+  },
+
+  async createDailyCharge(
+    stayId: string,
+    payload: {
+      description: string;
+      chargeDate?: string;
+      quantity?: number;
+      unitAmount: number;
+    }
+  ): Promise<InpatientDailyChargeSummary> {
+    return apiRequest<InpatientDailyChargeSummary>(`/inpatient/${stayId}/daily-charges`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async markDailyChargeBilled(
+    stayId: string,
+    chargeId: string,
+    billingRecordId?: string
+  ): Promise<InpatientDailyChargeSummary> {
+    return apiRequest<InpatientDailyChargeSummary>(
+      `/inpatient/${stayId}/daily-charges/${chargeId}/bill`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ billingRecordId })
+      }
+    );
   },
 
   async listSectors(): Promise<SectorSummary[]> {

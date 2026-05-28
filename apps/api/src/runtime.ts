@@ -12,10 +12,18 @@ import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import { CommercialService } from '@cvg-his-v2/module-commercial';
 import type { CommercialRepository } from '@cvg-his-v2/module-commercial';
+import { CommissionsService } from '@cvg-his-v2/module-commissions';
+import type { CommissionRepository } from '@cvg-his-v2/module-commissions';
+import { PackagesService } from '@cvg-his-v2/module-packages';
+import type { PackageRepository } from '@cvg-his-v2/module-packages';
 import {
   EncounterFinancialService,
+  FinancialIncomeStatementService,
+  FinancialPayablesService,
   InMemoryEncounterFinancialRepository,
-  type EncounterFinancialRepository
+  InMemoryFinancialPayablesRepository,
+  type EncounterFinancialRepository,
+  type FinancialPayablesRepository
 } from '@cvg-his-v2/module-financial';
 import {
   DiagnosticsService,
@@ -35,7 +43,9 @@ import {
 } from '@cvg-his-v2/module-inpatient';
 import type {
   InpatientStayRepository,
-  InpatientProgressRepository
+  InpatientProgressRepository,
+  InpatientOccurrenceRepository,
+  InpatientDailyChargeRepository
 } from '@cvg-his-v2/module-inpatient';
 import { InventoryService, createSeedItems } from '@cvg-his-v2/module-inventory';
 import {
@@ -67,6 +77,7 @@ import type {
 import { DischargesService } from '@cvg-his-v2/module-discharges';
 import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import { QuotesService } from '@cvg-his-v2/module-quotes';
+import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService } from '@cvg-his-v2/module-cash';
 import type { AccountId } from '@cvg-his-v2/shared-types';
 import { ProductsService } from '@cvg-his-v2/module-products';
@@ -83,7 +94,13 @@ import type {
   AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
 import { MfaService, validateMasterKey, type MfaRepository } from '@cvg-his-v2/module-mfa';
-import { LgpdService, type ConsentRepository, type DsrRepository } from '@cvg-his-v2/module-lgpd';
+import {
+  LgpdService,
+  type ConsentRepository,
+  type DsrRepository,
+  type LgpdDataProvider
+} from '@cvg-his-v2/module-lgpd';
+import { MarketingService, type MarketingRepository } from '@cvg-his-v2/module-marketing';
 import { WebhooksService, type WebhookRepository } from '@cvg-his-v2/module-webhooks';
 import { EventBusService, type OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import { ConsumerRegistry } from './consumers/index.js';
@@ -155,6 +172,8 @@ export interface RuntimeRepositories {
   readonly notification?: NotificationRepository;
   readonly inpatientStay?: InpatientStayRepository;
   readonly inpatientProgress?: InpatientProgressRepository;
+  readonly inpatientOccurrence?: InpatientOccurrenceRepository;
+  readonly inpatientDailyCharge?: InpatientDailyChargeRepository;
   readonly surgeryCase?: SurgeryCaseRepository;
   readonly diagnosticOrder?: DiagnosticOrderRepository;
   readonly laboratoryCatalog?: LaboratoryCatalogRepository;
@@ -164,6 +183,9 @@ export interface RuntimeRepositories {
   readonly prescription?: PrescriptionRepository;
   readonly billing?: BillingRepository;
   readonly commercial?: CommercialRepository;
+  readonly commissions?: CommissionRepository;
+  readonly packages?: PackageRepository;
+  readonly reports?: ReportRepository;
   readonly inventory?: InventoryRepository;
   readonly scheduling?: SchedulingRepository;
   readonly triage?: TriageRepository;
@@ -178,12 +200,14 @@ export interface RuntimeRepositories {
   readonly mfa?: MfaRepository;
   readonly consent?: ConsentRepository;
   readonly dsr?: DsrRepository;
+  readonly marketing?: MarketingRepository;
   readonly webhook?: WebhookRepository;
   readonly apiKey?: ApiKeyRepository;
   readonly outbox?: OutboxRepository;
   readonly feature?: FeatureRepository;
   readonly model?: ModelRepository;
   readonly encounterFinancial?: EncounterFinancialRepository;
+  readonly financialPayables?: FinancialPayablesRepository;
   readonly pixTransaction?: PixTransactionRepository;
   readonly cardTransaction?: CardTransactionRepository;
 }
@@ -510,6 +534,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const inpatient = new InpatientService(encounters, {
     stayRepository: repos.inpatientStay,
     progressRepository: repos.inpatientProgress,
+    occurrenceRepository: repos.inpatientOccurrence,
+    dailyChargeRepository: repos.inpatientDailyCharge,
     sectorBedService
   });
   const surgery = new SurgeryService(encounters, {
@@ -550,8 +576,10 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   });
   const pixTransactions = repos.pixTransaction ?? new InMemoryPixTransactionRepository();
   const cardTransactions = repos.cardTransaction ?? new InMemoryCardTransactionRepository();
+  const cash = new CashService({ repository: repos.cash });
+  const encounterFinancialRepository = repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository();
   const encounterFinancial = new EncounterFinancialService(encounters, billing, patients, owners, {
-    repository: repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository(),
+    repository: encounterFinancialRepository,
     async onReceivablePaid(payment) {
       if (
         payment.externalReferenceType !== 'pix_transaction' &&
@@ -588,6 +616,31 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     }
   });
+  const financialPayablesRepository = repos.financialPayables ?? new InMemoryFinancialPayablesRepository();
+  const financialPayables = new FinancialPayablesService(financialPayablesRepository, {
+    async onPayablePaid(event) {
+      if (event.paymentMethod !== 'cash') return;
+      const openRegister = await cash.findOpenRegister(event.payable.accountId);
+      if (!openRegister) return;
+      await cash.recordMovement(
+        openRegister.id,
+        event.payable.accountId,
+        {
+          movementType: 'withdrawal',
+          amount: event.amountPaid,
+          reference: event.payable.id,
+          notes: event.paymentReference
+            ? `Pagamento de conta a pagar: ${event.payable.supplierName} (${event.paymentReference})`
+            : `Pagamento de conta a pagar: ${event.payable.supplierName}`
+        },
+        event.paidByUserId
+      );
+    }
+  });
+  const financialStatements = new FinancialIncomeStatementService({
+    receivables: encounterFinancialRepository,
+    payables: financialPayablesRepository
+  });
 
   // Register all domain event consumers via ConsumerRegistry
   // Order matters: payments must run before billing (payment settlement), then webhooks
@@ -608,6 +661,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     }
   );
   const commercial = new CommercialService({ repository: repos.commercial });
+  const commissions = new CommissionsService({ repository: repos.commissions });
+  const packages = new PackagesService({ repository: repos.packages });
   const notifications = new NotificationsService({
     encounters,
     patients,
@@ -642,7 +697,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     eventRepository: repos.administrationEvent
   });
   const products = new ProductsService({ repository: repos.products });
-  const cash = new CashService({ repository: repos.cash });
+  const reports = new ReportsService({ repository: repos.reports });
   const counterSales = new CounterSalesService({
     repository: repos.counterSales,
     inventoryService: {
@@ -709,8 +764,108 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
 
   const lgpd = new LgpdService({
     consentRepository: repos.consent,
-    dsrRepository: repos.dsr
+    dsrRepository: repos.dsr,
+    dataProviders: {
+      owners: (async (_subjectId, context) => {
+        const ownerRows =
+          context.subjectType === 'owner'
+            ? owners.list(context.subjectId)
+            : context.subjectType === 'patient'
+              ? owners.list().filter((owner) => {
+                  const patient = patients.getOrThrow(context.subjectId as never);
+                  return owner.id === patient.primaryOwnerId;
+                })
+              : [];
+
+        return {
+          source: 'OwnersService',
+          rows: ownerRows.filter((owner) => owner.accountId === context.accountId)
+        };
+      }) satisfies LgpdDataProvider,
+      patients: (async (_subjectId, context) => {
+        const patientRows =
+          context.subjectType === 'patient'
+            ? patients.list(context.subjectId)
+            : context.subjectType === 'owner'
+              ? patients.list().filter((patient) => patient.primaryOwnerId === context.subjectId)
+              : [];
+
+        return {
+          source: 'PatientsService',
+          rows: patientRows.filter((patient) => patient.accountId === context.accountId)
+        };
+      }) satisfies LgpdDataProvider,
+      encounters: (async (_subjectId, context) => {
+        const encounterRows = encounters.listAll().filter((encounter) => {
+          if (encounter.accountId !== context.accountId) return false;
+          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
+          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+          return false;
+        });
+        const timelines = await Promise.all(
+          encounterRows.map(async (encounter) => ({
+            encounterId: encounter.id,
+            events: await encounters.listTimelineAsync(encounter.id)
+          }))
+        );
+
+        return { source: 'EncountersService', rows: encounterRows, timelines };
+      }) satisfies LgpdDataProvider,
+      financial: (async (_subjectId, context) => ({
+        source: 'BillingService',
+        billingRecords: billing.list({
+          accountId: context.accountId,
+          patientId: context.subjectType === 'patient' ? context.subjectId : undefined,
+          ownerId: context.subjectType === 'owner' ? context.subjectId : undefined
+        })
+      })) satisfies LgpdDataProvider,
+      laboratory: (async (_subjectId, context) => {
+        const encounterIds = encounters
+          .listAll()
+          .filter((encounter) => {
+            if (encounter.accountId !== context.accountId) return false;
+            if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
+            if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+            return false;
+          })
+          .map((encounter) => encounter.id);
+        const orders = await laboratory.listOrders(context.accountId as AccountId);
+
+        return {
+          source: 'LaboratoryService',
+          rows: orders.filter((order) => encounterIds.includes(order.encounterId))
+        };
+      }) satisfies LgpdDataProvider,
+      attachments: (async (_subjectId, context) => {
+        const subjectEncounters = encounters.listAll().filter((encounter) => {
+          if (encounter.accountId !== context.accountId) return false;
+          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
+          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+          return false;
+        });
+        const clinicalRecords = await medicalRecords.listAll(context.accountId as AccountId);
+        const diagnosticOrders = diagnostics.listByAccount(context.accountId as AccountId);
+        const attachmentGroups = await Promise.all([
+          ...subjectEncounters.map((encounter) =>
+            attachments.listByLinkedEntity('encounter', encounter.id)
+          ),
+          ...clinicalRecords
+            .filter(({ record }) =>
+              subjectEncounters.some((encounter) => encounter.id === record.encounterId)
+            )
+            .map(({ record }) => attachments.listByLinkedEntity('medical_record', record.id)),
+          ...diagnosticOrders
+            .filter((order) =>
+              subjectEncounters.some((encounter) => encounter.id === order.encounterId)
+            )
+            .map((order) => attachments.listByLinkedEntity('diagnostic_order', order.id))
+        ]);
+
+        return { source: 'AttachmentsService', rows: attachmentGroups.flat() };
+      }) satisfies LgpdDataProvider
+    }
   });
+  const marketing = new MarketingService({ repository: repos.marketing });
 
   const auth = new AuthService({
     secret: options.authSecret,
@@ -744,7 +899,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     laboratory,
     billing,
     encounterFinancial,
+    financialPayables,
+    financialStatements,
     commercial,
+    commissions,
+    packages,
     inventory,
     notifications,
     audit,
@@ -752,12 +911,14 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     prescriptions,
     prescriptionExecutions,
     products,
+    reports,
     services,
     counterSales,
     quotes,
     cash,
     auth,
     lgpd,
+    marketing,
     webhooks,
     apiKeys,
     eventBus,
@@ -803,6 +964,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             diagnostics.hydrateFromDatabase(bootstrapAccountId),
             laboratory.hydrateCatalog(bootstrapAccountId),
             commercial.hydrateFromDatabase(bootstrapAccountId),
+            commissions.hydrateFromDatabase(bootstrapAccountId),
+            packages.hydrateFromDatabase(bootstrapAccountId),
             inventory.hydrateFromDatabase(bootstrapAccountId),
             scheduling.hydrateFromDatabase(bootstrapAccountId),
             triage.hydrateFromDatabase(bootstrapAccountId),
@@ -811,6 +974,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             counterSales.hydrateFromDatabase(bootstrapAccountId),
             quotes.hydrateFromDatabase(bootstrapAccountId),
             cash.hydrateFromDatabase(bootstrapAccountId),
+            reports.hydrateFromDatabase(bootstrapAccountId),
+            marketing.hydrateFromDatabase(bootstrapAccountId),
             prescriptions.hydrateFromDatabase(bootstrapAccountId),
             billing.hydrateFromDatabase(bootstrapAccountId)
           ]);

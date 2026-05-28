@@ -20,7 +20,14 @@
 
     <section class="receivable-actions" aria-label="Ações de contas a receber">
       <DsButton variant="primary" disabled>Gerar Conta Avulsa</DsButton>
-      <DsButton variant="secondary" :disabled="selectedIds.size === 0">Baixar contas em lote</DsButton>
+      <DsButton
+        variant="secondary"
+        :disabled="selectedOpenRows.length === 0"
+        :loading="settlingBatch"
+        @click="settleSelected"
+      >
+        Baixar contas em lote
+      </DsButton>
       <DsButton variant="secondary" tag="a" to="/cash">Gaveta</DsButton>
       <DsButton variant="ghost" :loading="loading" @click="loadReceivables">Atualizar</DsButton>
     </section>
@@ -99,7 +106,18 @@
         />
       </template>
       <template #cell-open="{ row }">
-        <RouterLink :to="`/billing/${receivableRow(row).encounterId}`" class="open-link">Abrir</RouterLink>
+        <div class="receivable-row-actions">
+          <DsButton
+            v-if="receivableRow(row).status === 'open'"
+            size="sm"
+            variant="secondary"
+            :loading="settlingId === receivableRow(row).id"
+            @click="settleReceivable(receivableRow(row))"
+          >
+            Baixar
+          </DsButton>
+          <RouterLink :to="`/billing/${receivableRow(row).encounterId}`" class="open-link">Abrir</RouterLink>
+        </div>
       </template>
     </DataTable>
   </div>
@@ -157,11 +175,16 @@ const filters = reactive({
 });
 const response = ref<FinancialReceivableListResponse>({ ...emptyResponse });
 const loading = ref(false);
+const settlingId = ref('');
+const settlingBatch = ref(false);
 const error = ref('');
 const selectedIds = ref(new Set<string>());
 
 const rows = computed(() => response.value.data as unknown as DataTableRow[]);
 const filteredRows = computed(() => rows.value.filter((row) => matchesDueFilters(receivableRow(row))));
+const selectedOpenRows = computed(() =>
+  response.value.data.filter((row) => selectedIds.value.has(row.id) && row.status === 'open' && row.amountOutstanding > 0)
+);
 const totalOriginal = computed(() =>
   filteredRows.value.reduce((sum, row) => sum + receivableRow(row).amountOriginal, 0)
 );
@@ -222,6 +245,48 @@ function toggleSelection(id: string) {
     next.add(id);
   }
   selectedIds.value = next;
+}
+
+async function settleReceivable(row: FinancialReceivableListItem) {
+  if (row.status !== 'open' || row.amountOutstanding <= 0) return;
+
+  settlingId.value = row.id;
+  error.value = '';
+  try {
+    await financialReceivablesService.settle(row.id, {
+      amountPaid: row.amountOutstanding,
+      notes: 'Baixa operacional em Contas a Receber'
+    });
+    selectedIds.value = new Set([...selectedIds.value].filter((id) => id !== row.id));
+    await loadReceivables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível baixar a conta a receber.';
+  } finally {
+    settlingId.value = '';
+  }
+}
+
+async function settleSelected() {
+  if (selectedOpenRows.value.length === 0) return;
+
+  settlingBatch.value = true;
+  error.value = '';
+  try {
+    await Promise.all(
+      selectedOpenRows.value.map((row) =>
+        financialReceivablesService.settle(row.id, {
+          amountPaid: row.amountOutstanding,
+          notes: 'Baixa em lote em Contas a Receber'
+        })
+      )
+    );
+    selectedIds.value = new Set();
+    await loadReceivables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível baixar as contas selecionadas.';
+  } finally {
+    settlingBatch.value = false;
+  }
 }
 
 function formatCurrency(value: number): string {
@@ -287,6 +352,12 @@ function receivableRow(row: unknown): FinancialReceivableListItem {
 .origin-cell,
 .open-link {
   font-weight: 700;
+}
+
+.receivable-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .origin-cell,

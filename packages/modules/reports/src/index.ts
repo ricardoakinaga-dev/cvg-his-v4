@@ -1,0 +1,860 @@
+import { getPool } from '@cvg-his-v2/shared-database';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
+import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+
+export type ReportFormat = 'json' | 'csv';
+export type ReportScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+export type ReportColumnType = 'string' | 'number' | 'currency' | 'date' | 'datetime' | 'status';
+export type ReportScheduleDeliveryStatus = 'sent' | 'failed';
+
+export interface ReportColumn {
+  readonly key: string;
+  readonly label: string;
+  readonly type: ReportColumnType;
+}
+
+export interface ReportDefinition {
+  readonly id: string;
+  readonly accountId: AccountId | null;
+  readonly title: string;
+  readonly description: string;
+  readonly category: 'executive' | 'financial' | 'commercial' | 'clinical' | 'inventory' | 'staff';
+  readonly requiredPermission: string;
+  readonly supportedFormats: readonly ReportFormat[];
+  readonly filterSchema: Record<string, 'string' | 'date' | 'boolean' | 'number'>;
+  readonly columns: readonly ReportColumn[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ReportExecutionSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly reportId: string;
+  readonly requestedByUserId: UserId;
+  readonly status: 'completed';
+  readonly filters: Record<string, unknown>;
+  readonly rowCount: number;
+  readonly generatedAt: string;
+  readonly expiresAt: string;
+}
+
+export interface ReportExecutionDetail extends ReportExecutionSummary {
+  readonly columns: readonly ReportColumn[];
+  readonly rows: readonly Record<string, unknown>[];
+}
+
+export interface ReportExportSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly executionId: string;
+  readonly format: ReportFormat;
+  readonly filename: string;
+  readonly contentType: string;
+  readonly content: string;
+  readonly exportedByUserId: UserId;
+  readonly exportedAt: string;
+}
+
+export interface ReportScheduleSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly reportId: string;
+  readonly name: string;
+  readonly frequency: ReportScheduleFrequency;
+  readonly format: ReportFormat;
+  readonly filters: Record<string, unknown>;
+  readonly recipients: readonly string[];
+  readonly isActive: boolean;
+  readonly nextRunAt: string;
+  readonly lastRunAt: string | null;
+  readonly lastExecutionId: string | null;
+  readonly lastError: string | null;
+  readonly createdByUserId: UserId;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ReportScheduleDeliverySummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly scheduleId: string;
+  readonly executionId: string | null;
+  readonly recipient: string;
+  readonly status: ReportScheduleDeliveryStatus;
+  readonly format: ReportFormat;
+  readonly deliveredAt: string;
+  readonly error: string | null;
+  readonly createdAt: string;
+}
+
+export interface ReportScheduleDeliveryAlertSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly scheduleId: string;
+  readonly reportId: string;
+  readonly recipient: string;
+  readonly failureCount: number;
+  readonly lastFailureAt: string;
+  readonly lastError: string;
+  readonly severity: 'medium' | 'high';
+}
+
+export interface ExecuteReportInput {
+  readonly reportId: string;
+  readonly filters?: Record<string, unknown>;
+  readonly rows: readonly Record<string, unknown>[];
+}
+
+export interface CreateReportScheduleInput {
+  readonly reportId: string;
+  readonly name: string;
+  readonly frequency: ReportScheduleFrequency;
+  readonly format?: ReportFormat;
+  readonly filters?: Record<string, unknown>;
+  readonly recipients?: readonly string[];
+  readonly isActive?: boolean;
+}
+
+export interface RecordReportScheduleExecutionInput {
+  readonly executionId?: string;
+  readonly ranAt?: string;
+  readonly error?: string | null;
+}
+
+export interface RecordReportScheduleDeliveriesInput {
+  readonly executionId?: string | null;
+  readonly recipients: readonly string[];
+  readonly status: ReportScheduleDeliveryStatus;
+  readonly format: ReportFormat;
+  readonly deliveredAt?: string;
+  readonly error?: string | null;
+}
+
+export interface ReportRepository {
+  saveExecution(execution: ReportExecutionDetail): Promise<void>;
+  saveExport(exported: ReportExportSummary): Promise<void>;
+  saveSchedule(schedule: ReportScheduleSummary): Promise<void>;
+  saveDelivery(delivery: ReportScheduleDeliverySummary): Promise<void>;
+  findExecutions(accountId: AccountId): Promise<readonly ReportExecutionDetail[]>;
+  findSchedules(accountId: AccountId): Promise<readonly ReportScheduleSummary[]>;
+  findDeliveries(accountId: AccountId): Promise<readonly ReportScheduleDeliverySummary[]>;
+}
+
+export interface ReportsServiceOptions {
+  readonly repository?: ReportRepository;
+}
+
+const createdAt = '2026-05-28T00:00:00.000Z';
+
+function seedDefinitions(): readonly ReportDefinition[] {
+  return [
+    {
+      id: 'administrative-executive',
+      accountId: null,
+      title: 'Hub Executivo Administrativo',
+      description: 'Indicadores executivos de financeiro, comercial, caixa e fiscal.',
+      category: 'executive',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv'],
+      filterSchema: { dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'domain', label: 'Domínio', type: 'string' },
+        { key: 'metric', label: 'Indicador', type: 'string' },
+        { key: 'value', label: 'Valor', type: 'currency' },
+        { key: 'status', label: 'Status', type: 'status' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'commission-calculations',
+      accountId: null,
+      title: 'Fechamentos de Comissão',
+      description: 'Fechamentos de comissão por período, status, base e valor calculado.',
+      category: 'staff',
+      requiredPermission: 'staff.read',
+      supportedFormats: ['json', 'csv'],
+      filterSchema: { status: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'number', label: 'Número', type: 'string' },
+        { key: 'period', label: 'Período', type: 'string' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'totalBaseAmount', label: 'Base', type: 'currency' },
+        { key: 'totalCommissionAmount', label: 'Comissão', type: 'currency' },
+        { key: 'lineCount', label: 'Linhas', type: 'number' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    }
+  ];
+}
+
+function isReportDefinitionList(value: ReportsServiceOptions | readonly ReportDefinition[] | undefined): value is readonly ReportDefinition[] {
+  return Array.isArray(value);
+}
+
+export class ReportsService {
+  readonly #repository?: ReportRepository;
+  readonly #definitions = new Map<string, ReportDefinition>();
+  readonly #executions = new Map<string, ReportExecutionDetail>();
+  readonly #exports = new Map<string, ReportExportSummary>();
+  readonly #schedules = new Map<string, ReportScheduleSummary>();
+  readonly #deliveries = new Map<string, ReportScheduleDeliverySummary>();
+
+  public constructor(options?: ReportsServiceOptions | readonly ReportDefinition[]) {
+    if (isReportDefinitionList(options)) {
+      for (const definition of options) {
+        this.#definitions.set(definition.id, definition);
+      }
+      return;
+    }
+
+    this.#repository = options?.repository;
+    const definitions = seedDefinitions();
+    for (const definition of definitions) {
+      this.#definitions.set(definition.id, definition);
+    }
+  }
+
+  public get persistenceMode(): 'database' | 'in-memory' {
+    return this.#repository ? 'database' : 'in-memory';
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#repository) return;
+    const [executions, schedules, deliveries] = await Promise.all([
+      this.#repository.findExecutions(accountId),
+      this.#repository.findSchedules(accountId),
+      this.#repository.findDeliveries(accountId)
+    ]);
+    for (const execution of executions) this.#executions.set(execution.id, execution);
+    for (const schedule of schedules) this.#schedules.set(schedule.id, schedule);
+    for (const delivery of deliveries) this.#deliveries.set(delivery.id, delivery);
+  }
+
+  public listDefinitions(accountId: AccountId): readonly ReportDefinition[] {
+    return [...this.#definitions.values()]
+      .filter((definition) => definition.accountId === null || definition.accountId === accountId)
+      .sort((left, right) => left.category.localeCompare(right.category) || left.title.localeCompare(right.title));
+  }
+
+  public getDefinition(accountId: AccountId, reportId: string): ReportDefinition {
+    const definition = this.#definitions.get(reportId);
+    if (!definition || (definition.accountId !== null && definition.accountId !== accountId)) {
+      throw new NotFoundError('Report definition not found', { reportId });
+    }
+    return definition;
+  }
+
+  public async execute(accountId: AccountId, requestedByUserId: UserId, input: ExecuteReportInput): Promise<ReportExecutionDetail> {
+    const definition = this.getDefinition(accountId, input.reportId);
+    const filters = normalizeFilters(input.filters ?? {});
+    const rows = input.rows.map((row) => normalizeRow(definition, row));
+    const generatedAt = nowIso();
+    const execution: ReportExecutionDetail = {
+      id: createCorrelationId('rep_exec'),
+      accountId,
+      reportId: definition.id,
+      requestedByUserId,
+      status: 'completed',
+      filters,
+      rowCount: rows.length,
+      generatedAt,
+      expiresAt: addDaysIso(generatedAt, 7),
+      columns: definition.columns,
+      rows
+    };
+    this.#executions.set(execution.id, execution);
+    await this.#repository?.saveExecution(execution);
+    return execution;
+  }
+
+  public listExecutions(accountId: AccountId): readonly ReportExecutionSummary[] {
+    return [...this.#executions.values()]
+      .filter((execution) => execution.accountId === accountId)
+      .sort((left, right) => right.generatedAt.localeCompare(left.generatedAt))
+      .map(({ columns: _columns, rows: _rows, ...summary }) => summary);
+  }
+
+  public getExecution(accountId: AccountId, executionId: string): ReportExecutionDetail {
+    const execution = this.#executions.get(executionId);
+    if (!execution || execution.accountId !== accountId) {
+      throw new NotFoundError('Report execution not found', { executionId });
+    }
+    return execution;
+  }
+
+  public async exportExecution(
+    accountId: AccountId,
+    exportedByUserId: UserId,
+    executionId: string,
+    format: ReportFormat
+  ): Promise<ReportExportSummary> {
+    const execution = this.getExecution(accountId, executionId);
+    const definition = this.getDefinition(accountId, execution.reportId);
+    if (!definition.supportedFormats.includes(format)) {
+      throw new ValidationError('Report format is not supported', { reportId: definition.id, format });
+    }
+    const exportedAt = nowIso();
+    const filename = `${definition.id}-${execution.id}.${format}`;
+    const content = format === 'csv' ? toCsv(execution.columns, execution.rows) : JSON.stringify(execution, null, 2);
+    const result: ReportExportSummary = {
+      id: createCorrelationId('rep_exp'),
+      accountId,
+      executionId,
+      format,
+      filename,
+      contentType: format === 'csv' ? 'text/csv' : 'application/json',
+      content,
+      exportedByUserId,
+      exportedAt
+    };
+    this.#exports.set(result.id, result);
+    await this.#repository?.saveExport(result);
+    return result;
+  }
+
+  public async createSchedule(
+    accountId: AccountId,
+    createdByUserId: UserId,
+    input: CreateReportScheduleInput
+  ): Promise<ReportScheduleSummary> {
+    const definition = this.getDefinition(accountId, input.reportId);
+    const frequency = normalizeFrequency(input.frequency);
+    const format = input.format ?? 'csv';
+    if (!definition.supportedFormats.includes(format)) {
+      throw new ValidationError('Report format is not supported', { reportId: definition.id, format });
+    }
+    const now = nowIso();
+    const schedule: ReportScheduleSummary = {
+      id: createCorrelationId('rep_sched'),
+      accountId,
+      reportId: definition.id,
+      name: requireTrimmed(input.name, 'name'),
+      frequency,
+      format,
+      filters: normalizeFilters(input.filters ?? {}),
+      recipients: normalizeRecipients(input.recipients ?? []),
+      isActive: input.isActive ?? true,
+      nextRunAt: nextRunAt(now, frequency),
+      lastRunAt: null,
+      lastExecutionId: null,
+      lastError: null,
+      createdByUserId,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.#schedules.set(schedule.id, schedule);
+    await this.#repository?.saveSchedule(schedule);
+    return schedule;
+  }
+
+  public listSchedules(accountId: AccountId): readonly ReportScheduleSummary[] {
+    return [...this.#schedules.values()]
+      .filter((schedule) => schedule.accountId === accountId)
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  public listDueSchedules(accountId: AccountId, asOf = nowIso()): readonly ReportScheduleSummary[] {
+    const asOfTime = new Date(asOf).getTime();
+    if (Number.isNaN(asOfTime)) {
+      throw new ValidationError('asOf must be a valid ISO date', { asOf });
+    }
+
+    return this.listSchedules(accountId)
+      .filter((schedule) => schedule.isActive && new Date(schedule.nextRunAt).getTime() <= asOfTime)
+      .sort((left, right) => left.nextRunAt.localeCompare(right.nextRunAt));
+  }
+
+  public async recordScheduleExecution(
+    accountId: AccountId,
+    scheduleId: string,
+    input: RecordReportScheduleExecutionInput
+  ): Promise<ReportScheduleSummary> {
+    const schedule = this.#schedules.get(scheduleId);
+    if (!schedule || schedule.accountId !== accountId) {
+      throw new NotFoundError('Report schedule not found', { scheduleId });
+    }
+
+    const ranAt = input.ranAt ?? nowIso();
+    const updated: ReportScheduleSummary = {
+      ...schedule,
+      nextRunAt: nextRunAt(schedule.nextRunAt, schedule.frequency),
+      lastRunAt: ranAt,
+      lastExecutionId: input.executionId ?? schedule.lastExecutionId,
+      lastError: input.error ?? null,
+      updatedAt: ranAt
+    };
+    this.#schedules.set(updated.id, updated);
+    await this.#repository?.saveSchedule(updated);
+    return updated;
+  }
+
+  public async recordScheduleDeliveries(
+    accountId: AccountId,
+    scheduleId: string,
+    input: RecordReportScheduleDeliveriesInput
+  ): Promise<readonly ReportScheduleDeliverySummary[]> {
+    const schedule = this.#schedules.get(scheduleId);
+    if (!schedule || schedule.accountId !== accountId) {
+      throw new NotFoundError('Report schedule not found', { scheduleId });
+    }
+
+    const deliveredAt = input.deliveredAt ?? nowIso();
+    const recipients = normalizeRecipients(input.recipients);
+    const deliveries = recipients.map((recipient) => ({
+      id: createCorrelationId('rep_deliv'),
+      accountId,
+      scheduleId: schedule.id,
+      executionId: input.executionId ?? null,
+      recipient,
+      status: normalizeDeliveryStatus(input.status),
+      format: parseFormat(input.format),
+      deliveredAt,
+      error: input.error ?? null,
+      createdAt: deliveredAt
+    }));
+
+    for (const delivery of deliveries) {
+      this.#deliveries.set(delivery.id, delivery);
+      await this.#repository?.saveDelivery(delivery);
+    }
+
+    return deliveries;
+  }
+
+  public listScheduleDeliveries(accountId: AccountId, scheduleId?: string): readonly ReportScheduleDeliverySummary[] {
+    return [...this.#deliveries.values()]
+      .filter((delivery) => delivery.accountId === accountId && (!scheduleId || delivery.scheduleId === scheduleId))
+      .sort((left, right) => right.deliveredAt.localeCompare(left.deliveredAt));
+  }
+
+  public listScheduleDeliveryAlerts(
+    accountId: AccountId,
+    scheduleId?: string,
+    minimumFailures = 2
+  ): readonly ReportScheduleDeliveryAlertSummary[] {
+    const threshold = Math.max(2, Math.floor(minimumFailures));
+    const byRecipient = new Map<string, {
+      accountId: AccountId;
+      scheduleId: string;
+      reportId: string;
+      recipient: string;
+      failureCount: number;
+      lastFailureAt: string;
+      lastError: string;
+    }>();
+
+    for (const delivery of this.listScheduleDeliveries(accountId, scheduleId)) {
+      if (delivery.status !== 'failed') continue;
+      const schedule = this.#schedules.get(delivery.scheduleId);
+      if (!schedule || schedule.accountId !== accountId) continue;
+
+      const key = `${delivery.scheduleId}:${delivery.recipient}`;
+      const current = byRecipient.get(key);
+      if (!current) {
+        byRecipient.set(key, {
+          accountId,
+          scheduleId: delivery.scheduleId,
+          reportId: schedule.reportId,
+          recipient: delivery.recipient,
+          failureCount: 1,
+          lastFailureAt: delivery.deliveredAt,
+          lastError: delivery.error ?? 'Sem erro registrado'
+        });
+        continue;
+      }
+
+      const isMoreRecent = delivery.deliveredAt > current.lastFailureAt;
+      byRecipient.set(key, {
+        ...current,
+        failureCount: current.failureCount + 1,
+        lastFailureAt: isMoreRecent ? delivery.deliveredAt : current.lastFailureAt,
+        lastError: isMoreRecent ? delivery.error ?? 'Sem erro registrado' : current.lastError
+      });
+    }
+
+    return [...byRecipient.values()]
+      .filter((alert) => alert.failureCount >= threshold)
+      .map((alert) => ({
+        id: `${alert.scheduleId}:${alert.recipient}`,
+        accountId: alert.accountId,
+        scheduleId: alert.scheduleId,
+        reportId: alert.reportId,
+        recipient: alert.recipient,
+        failureCount: alert.failureCount,
+        lastFailureAt: alert.lastFailureAt,
+        lastError: alert.lastError,
+        severity: (alert.failureCount >= 2 ? 'high' : 'medium') as ReportScheduleDeliveryAlertSummary['severity']
+      }))
+      .sort((left, right) =>
+        right.failureCount - left.failureCount ||
+        right.lastFailureAt.localeCompare(left.lastFailureAt) ||
+        left.recipient.localeCompare(right.recipient)
+      );
+  }
+
+  public async retryScheduleDelivery(
+    accountId: AccountId,
+    retriedByUserId: UserId,
+    scheduleId: string,
+    deliveryId: string
+  ): Promise<ReportScheduleDeliverySummary> {
+    const schedule = this.#schedules.get(scheduleId);
+    if (!schedule || schedule.accountId !== accountId) {
+      throw new NotFoundError('Report schedule not found', { scheduleId });
+    }
+
+    const delivery = this.#deliveries.get(deliveryId);
+    if (!delivery || delivery.accountId !== accountId || delivery.scheduleId !== scheduleId) {
+      throw new NotFoundError('Report schedule delivery not found', { deliveryId });
+    }
+    if (delivery.status !== 'failed') {
+      throw new ValidationError('Only failed report deliveries can be retried', { deliveryId, status: delivery.status });
+    }
+    if (!delivery.executionId) {
+      throw new ValidationError('Report delivery retry requires an execution id', { deliveryId });
+    }
+
+    await this.exportExecution(accountId, retriedByUserId, delivery.executionId, delivery.format);
+    const [retried] = await this.recordScheduleDeliveries(accountId, scheduleId, {
+      executionId: delivery.executionId,
+      recipients: [delivery.recipient],
+      status: 'sent',
+      format: delivery.format
+    });
+    if (!retried) {
+      throw new ValidationError('Report delivery retry did not create a delivery record', { deliveryId });
+    }
+    return retried;
+  }
+
+  public async setScheduleActive(
+    accountId: AccountId,
+    scheduleId: string,
+    isActive: boolean
+  ): Promise<ReportScheduleSummary> {
+    const schedule = this.#schedules.get(scheduleId);
+    if (!schedule || schedule.accountId !== accountId) {
+      throw new NotFoundError('Report schedule not found', { scheduleId });
+    }
+
+    const updated: ReportScheduleSummary = {
+      ...schedule,
+      isActive,
+      updatedAt: nowIso()
+    };
+    this.#schedules.set(updated.id, updated);
+    await this.#repository?.saveSchedule(updated);
+    return updated;
+  }
+}
+
+/* v8 ignore start -- SQL repository adapter covered by integration tests. */
+export class DatabaseReportRepository implements ReportRepository {
+  async saveExecution(execution: ReportExecutionDetail): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO report_executions (
+          id, account_id, report_id, requested_by_user_id, status, filters, row_count,
+          generated_at, expires_at, columns, rows
+        ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11::jsonb)`,
+        executionParams(execution)
+      );
+    });
+  }
+
+  async saveExport(exported: ReportExportSummary): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO report_exports (
+          id, account_id, execution_id, format, filename, content_type, content,
+          exported_by_user_id, exported_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        exportParams(exported)
+      );
+    });
+  }
+
+  async saveSchedule(schedule: ReportScheduleSummary): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO report_schedules (
+          id, account_id, report_id, name, frequency, format, filters, recipients,
+          is_active, next_run_at, last_run_at, last_execution_id, last_error,
+          created_by_user_id, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11, $12, $13, $14, $15, $16)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          frequency = EXCLUDED.frequency,
+          format = EXCLUDED.format,
+          filters = EXCLUDED.filters,
+          recipients = EXCLUDED.recipients,
+          is_active = EXCLUDED.is_active,
+          next_run_at = EXCLUDED.next_run_at,
+          last_run_at = EXCLUDED.last_run_at,
+          last_execution_id = EXCLUDED.last_execution_id,
+          last_error = EXCLUDED.last_error,
+          updated_at = EXCLUDED.updated_at`,
+        scheduleParams(schedule)
+      );
+    });
+  }
+
+  async saveDelivery(delivery: ReportScheduleDeliverySummary): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO report_schedule_deliveries (
+          id, account_id, schedule_id, execution_id, recipient, status, format,
+          delivered_at, error, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        deliveryParams(delivery)
+      );
+    });
+  }
+
+  async findExecutions(accountId: AccountId): Promise<readonly ReportExecutionDetail[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM report_executions WHERE account_id = $1 ORDER BY generated_at DESC',
+        [accountId]
+      );
+      return result.rows.map(mapExecution);
+    });
+  }
+
+  async findSchedules(accountId: AccountId): Promise<readonly ReportScheduleSummary[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM report_schedules WHERE account_id = $1 ORDER BY name ASC',
+        [accountId]
+      );
+      return result.rows.map(mapSchedule);
+    });
+  }
+
+  async findDeliveries(accountId: AccountId): Promise<readonly ReportScheduleDeliverySummary[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM report_schedule_deliveries WHERE account_id = $1 ORDER BY delivered_at DESC',
+        [accountId]
+      );
+      return result.rows.map(mapDelivery);
+    });
+  }
+}
+
+function normalizeRow(definition: ReportDefinition, row: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const column of definition.columns) {
+    normalized[column.key] = row[column.key] ?? null;
+  }
+  return normalized;
+}
+
+function normalizeFilters(filters: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+}
+
+function normalizeFrequency(value: ReportScheduleFrequency): ReportScheduleFrequency {
+  if (value === 'daily' || value === 'weekly' || value === 'monthly') return value;
+  throw new ValidationError('frequency must be daily, weekly or monthly', { value });
+}
+
+function normalizeDeliveryStatus(value: ReportScheduleDeliveryStatus): ReportScheduleDeliveryStatus {
+  if (value === 'sent' || value === 'failed') return value;
+  throw new ValidationError('delivery status must be sent or failed', { value });
+}
+
+function parseFormat(value: ReportFormat): ReportFormat {
+  if (value === 'json' || value === 'csv') return value;
+  throw new ValidationError('format must be json or csv', { value });
+}
+
+function normalizeRecipients(recipients: readonly string[]): readonly string[] {
+  return recipients.map((recipient) => recipient.trim()).filter(Boolean);
+}
+
+function requireTrimmed(value: string | null | undefined, field: string): string {
+  const normalized = value?.trim();
+  if (!normalized) throw new ValidationError(`${field} is required`, { field });
+  return normalized;
+}
+
+function addDaysIso(value: string, days: number): string {
+  const date = new Date(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString();
+}
+
+function nextRunAt(value: string, frequency: ReportScheduleFrequency): string {
+  const date = new Date(value);
+  if (frequency === 'daily') date.setUTCDate(date.getUTCDate() + 1);
+  if (frequency === 'weekly') date.setUTCDate(date.getUTCDate() + 7);
+  if (frequency === 'monthly') date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString();
+}
+
+function dateIso(value: unknown): string {
+  return new Date(value as string).toISOString();
+}
+
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function jsonRecordArray(value: unknown): readonly Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item)) : [];
+}
+
+function jsonColumnArray(value: unknown): readonly ReportColumn[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item))
+    .map((item) => ({
+      key: String(item.key ?? ''),
+      label: String(item.label ?? ''),
+      type: item.type as ReportColumnType
+    }))
+    .filter((column) => column.key && column.label);
+}
+
+function jsonStringArray(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+function executionParams(execution: ReportExecutionDetail): unknown[] {
+  return [
+    execution.id,
+    execution.accountId,
+    execution.reportId,
+    execution.requestedByUserId,
+    execution.status,
+    JSON.stringify(execution.filters),
+    execution.rowCount,
+    new Date(execution.generatedAt),
+    new Date(execution.expiresAt),
+    JSON.stringify(execution.columns),
+    JSON.stringify(execution.rows)
+  ];
+}
+
+function exportParams(exported: ReportExportSummary): unknown[] {
+  return [
+    exported.id,
+    exported.accountId,
+    exported.executionId,
+    exported.format,
+    exported.filename,
+    exported.contentType,
+    exported.content,
+    exported.exportedByUserId,
+    new Date(exported.exportedAt)
+  ];
+}
+
+function scheduleParams(schedule: ReportScheduleSummary): unknown[] {
+  return [
+    schedule.id,
+    schedule.accountId,
+    schedule.reportId,
+    schedule.name,
+    schedule.frequency,
+    schedule.format,
+    JSON.stringify(schedule.filters),
+    JSON.stringify(schedule.recipients),
+    schedule.isActive,
+    new Date(schedule.nextRunAt),
+    schedule.lastRunAt ? new Date(schedule.lastRunAt) : null,
+    schedule.lastExecutionId,
+    schedule.lastError,
+    schedule.createdByUserId,
+    new Date(schedule.createdAt),
+    new Date(schedule.updatedAt)
+  ];
+}
+
+function deliveryParams(delivery: ReportScheduleDeliverySummary): unknown[] {
+  return [
+    delivery.id,
+    delivery.accountId,
+    delivery.scheduleId,
+    delivery.executionId,
+    delivery.recipient,
+    delivery.status,
+    delivery.format,
+    new Date(delivery.deliveredAt),
+    delivery.error,
+    new Date(delivery.createdAt)
+  ];
+}
+
+function mapExecution(row: Record<string, unknown>): ReportExecutionDetail {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as AccountId,
+    reportId: row.report_id as string,
+    requestedByUserId: row.requested_by_user_id as UserId,
+    status: row.status as 'completed',
+    filters: jsonRecord(row.filters),
+    rowCount: Number(row.row_count),
+    generatedAt: dateIso(row.generated_at),
+    expiresAt: dateIso(row.expires_at),
+    columns: jsonColumnArray(row.columns),
+    rows: jsonRecordArray(row.rows)
+  };
+}
+
+function mapDelivery(row: Record<string, unknown>): ReportScheduleDeliverySummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as AccountId,
+    scheduleId: row.schedule_id as string,
+    executionId: typeof row.execution_id === 'string' ? row.execution_id : null,
+    recipient: row.recipient as string,
+    status: row.status as ReportScheduleDeliveryStatus,
+    format: row.format as ReportFormat,
+    deliveredAt: dateIso(row.delivered_at),
+    error: typeof row.error === 'string' ? row.error : null,
+    createdAt: dateIso(row.created_at)
+  };
+}
+
+function mapSchedule(row: Record<string, unknown>): ReportScheduleSummary {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as AccountId,
+    reportId: row.report_id as string,
+    name: row.name as string,
+    frequency: row.frequency as ReportScheduleFrequency,
+    format: row.format as ReportFormat,
+    filters: jsonRecord(row.filters),
+    recipients: jsonStringArray(row.recipients),
+    isActive: Boolean(row.is_active),
+    nextRunAt: row.next_run_at ? dateIso(row.next_run_at) : nextRunAt(dateIso(row.created_at), row.frequency as ReportScheduleFrequency),
+    lastRunAt: row.last_run_at ? dateIso(row.last_run_at) : null,
+    lastExecutionId: typeof row.last_execution_id === 'string' ? row.last_execution_id : null,
+    lastError: typeof row.last_error === 'string' ? row.last_error : null,
+    createdByUserId: row.created_by_user_id as UserId,
+    createdAt: dateIso(row.created_at),
+    updatedAt: dateIso(row.updated_at)
+  };
+}
+/* v8 ignore stop */
+
+function toCsv(columns: readonly ReportColumn[], rows: readonly Record<string, unknown>[]): string {
+  const header = columns.map((column) => csvCell(column.label)).join(',');
+  const body = rows.map((row) => columns.map((column) => csvCell(row[column.key])).join(','));
+  return [header, ...body].join('\n');
+}
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}

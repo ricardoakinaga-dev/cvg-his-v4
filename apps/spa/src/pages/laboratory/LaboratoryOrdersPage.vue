@@ -14,6 +14,9 @@
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
+    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
+      {{ successMessage }}
+    </DsAlert>
 
     <section class="summary-grid" aria-label="Resumo dos exames">
       <DsStatCard :label="`${orders.length} exame(s)`" value="" icon="🧪" />
@@ -60,17 +63,97 @@
       <template #cell-createdAt="{ row }">
         {{ formatDate((row as LaboratoryOrderRow).createdAt) }}
       </template>
+      <template #cell-status="{ row }">
+        <span :class="`exam-status exam-status--${(row as LaboratoryOrderRow).status}`">
+          {{ statusLabel((row as LaboratoryOrderRow).status) }}
+        </span>
+      </template>
+      <template #cell-stage="{ row }">
+        <div class="exam-stage">
+          <strong>{{ stageLabel(row as LaboratoryOrderRow) }}</strong>
+          <span>{{ stageHint(row as LaboratoryOrderRow) }}</span>
+        </div>
+      </template>
+      <template #cell-patientLink="{ row }">
+        <div class="exam-links">
+          <a :href="`/patients/${(row as LaboratoryOrderRow).patientId}`">Paciente</a>
+          <a :href="`/medical-records/${(row as LaboratoryOrderRow).encounterId}`">Prontuário</a>
+        </div>
+      </template>
       <template #cell-actions="{ row }">
-        <DsButton
-          tag="a"
-          :to="`/diagnostics?order=${(row as LaboratoryOrderRow).id}`"
-          size="sm"
-          variant="secondary"
-        >
-          Abrir
-        </DsButton>
+        <div class="exam-actions">
+          <DsButton
+            v-if="(row as LaboratoryOrderRow).status === 'requested'"
+            size="sm"
+            variant="primary"
+            :loading="collectingId === (row as LaboratoryOrderRow).id"
+            :disabled="collectingId === (row as LaboratoryOrderRow).id"
+            @click="collectOrder(row as LaboratoryOrderRow)"
+          >
+            {{ collectingId === (row as LaboratoryOrderRow).id ? 'Coletando...' : 'Coletar' }}
+          </DsButton>
+          <DsButton
+            v-if="(row as LaboratoryOrderRow).status === 'collected'"
+            size="sm"
+            variant="primary"
+            @click="openResultModal(row as LaboratoryOrderRow)"
+          >
+            Liberar resultado
+          </DsButton>
+          <DsButton
+            tag="a"
+            :to="`/diagnostics?order=${(row as LaboratoryOrderRow).id}`"
+            size="sm"
+            variant="secondary"
+          >
+            Abrir
+          </DsButton>
+        </div>
       </template>
     </DataTable>
+
+    <DsModal
+      :open="Boolean(resultOrder)"
+      title="Liberar resultado"
+      size="sm"
+      @close="closeResultModal"
+    >
+      <div class="result-form">
+        <p v-if="resultOrder">
+          {{ resultOrder.examType }} · {{ resultOrder.animalName }} · {{ resultOrder.clientName }}
+        </p>
+        <label class="filter-field" for="result-summary">
+          <span>Resumo do resultado *</span>
+          <textarea
+            id="result-summary"
+            v-model="resultSummary"
+            rows="5"
+            placeholder="Informe achados, interpretação ou referência do laudo liberado"
+          />
+        </label>
+        <label class="filter-field" for="result-signer">
+          <span>Responsável técnico *</span>
+          <input
+            id="result-signer"
+            v-model="resultSignerId"
+            type="text"
+            autocomplete="off"
+            placeholder="Usuário ou conselho do assinante"
+          />
+        </label>
+      </div>
+      <template #footer>
+        <DsButton variant="ghost" @click="closeResultModal">Cancelar</DsButton>
+        <DsButton
+          variant="primary"
+          :loading="resultSubmitting"
+          :disabled="!resultSummary.trim() || !resultSignerId.trim() || resultSubmitting"
+          @click="submitResult"
+        >
+          {{ resultSubmitting ? 'Liberando...' : 'Liberar resultado' }}
+        </DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -81,6 +164,7 @@ import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { laboratoryService } from '@/services/laboratory';
@@ -99,6 +183,12 @@ const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
+const successMessage = ref('');
+const collectingId = ref<string | null>(null);
+const resultOrder = ref<LaboratoryOrderRow | null>(null);
+const resultSummary = ref('');
+const resultSignerId = ref('lab-ui');
+const resultSubmitting = ref(false);
 const draftFilters = reactive({
   client: '',
   animal: '',
@@ -111,11 +201,14 @@ const appliedFilters = reactive({
 });
 
 const columns: DataTableColumn[] = [
-  { key: 'id', label: 'Id', width: '18%' },
+  { key: 'id', label: 'Id', width: '12%' },
   { key: 'clientName', label: 'Cliente' },
   { key: 'animalName', label: 'Animal' },
-  { key: 'createdAt', label: 'Data', width: '18%' },
-  { key: 'actions', label: 'Abrir', class: 'table__actions-col', width: '120px' }
+  { key: 'createdAt', label: 'Data', width: '12%' },
+  { key: 'status', label: 'Status', width: '14%' },
+  { key: 'stage', label: 'Esteira', width: '20%' },
+  { key: 'patientLink', label: 'Vínculo', width: '12%' },
+  { key: 'actions', label: 'Ações', class: 'table__actions-col', width: '220px' }
 ];
 
 const ownerById = computed(() => new Map(owners.value.map((owner) => [owner.id, owner])));
@@ -172,6 +265,97 @@ function applyFilters() {
   appliedFilters.client = draftFilters.client;
   appliedFilters.animal = draftFilters.animal;
   appliedFilters.date = draftFilters.date;
+}
+
+function statusLabel(status: DiagnosticOrderSummary['status']): string {
+  return {
+    requested: 'Aguardando coleta',
+    collected: 'Coletado',
+    resulted: 'Resultado liberado',
+    cancelled: 'Cancelado'
+  }[status];
+}
+
+function stageLabel(order: LaboratoryOrderRow): string {
+  return {
+    requested: '1. Pedido recebido',
+    collected: '2. Aguardando resultado',
+    resulted: '3. Liberado ao prontuário',
+    cancelled: 'Cancelado'
+  }[order.status];
+}
+
+function stageHint(order: LaboratoryOrderRow): string {
+  if (order.status === 'requested') return 'Coleta pendente';
+  if (order.status === 'collected') return order.collectedAt ? `Coletado em ${formatDate(order.collectedAt)}` : 'Material coletado';
+  if (order.status === 'resulted') {
+    const releaseActor = order.signedByUserId ?? order.releasedByUserId;
+    const releaseDate = order.resultedAt ?? order.updatedAt;
+    return releaseActor
+      ? `Liberado por ${releaseActor} em ${formatDate(releaseDate)}`
+      : order.resultSummary ?? 'Resultado registrado';
+  }
+  return 'Fluxo encerrado';
+}
+
+function replaceOrder(updated: DiagnosticOrderSummary) {
+  orders.value = orders.value.map((order) => (order.id === updated.id ? updated : order));
+}
+
+async function collectOrder(order: LaboratoryOrderRow) {
+  collectingId.value = order.id;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const updated = await laboratoryService.recordResult(order.id, {
+      status: 'collected',
+      collectedByUserId: 'lab-ui'
+    });
+    replaceOrder(updated);
+    successMessage.value = 'Coleta registrada com sucesso.';
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao registrar coleta';
+  } finally {
+    collectingId.value = null;
+  }
+}
+
+function openResultModal(order: LaboratoryOrderRow) {
+  resultOrder.value = order;
+  resultSummary.value = order.resultSummary ?? '';
+  resultSignerId.value = order.signedByUserId ?? 'lab-ui';
+  error.value = '';
+  successMessage.value = '';
+}
+
+function closeResultModal() {
+  resultOrder.value = null;
+  resultSummary.value = '';
+  resultSignerId.value = 'lab-ui';
+}
+
+async function submitResult() {
+  if (!resultOrder.value || !resultSummary.value.trim() || !resultSignerId.value.trim()) return;
+
+  resultSubmitting.value = true;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const updated = await laboratoryService.recordResult(resultOrder.value.id, {
+      status: 'resulted',
+      resultSummary: resultSummary.value.trim(),
+      signedByUserId: resultSignerId.value.trim()
+    });
+    replaceOrder(updated);
+    successMessage.value = 'Resultado liberado com sucesso.';
+    closeResultModal();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao liberar resultado';
+  } finally {
+    resultSubmitting.value = false;
+  }
 }
 
 async function load() {
@@ -252,6 +436,75 @@ onMounted(load);
 .order-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
+}
+
+.exam-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exam-status--requested {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.exam-status--collected {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.exam-status--resulted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.exam-status--cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.exam-stage,
+.exam-links,
+.exam-actions,
+.result-form {
+  display: grid;
+  gap: 6px;
+}
+
+.exam-stage span,
+.result-form p {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.exam-links a {
+  color: var(--color-primary-700, #1d4ed8);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.exam-actions {
+  grid-template-columns: repeat(auto-fit, minmax(92px, max-content));
+  align-items: center;
+}
+
+.filter-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #d7dde8);
+  border-radius: 6px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+  font: inherit;
+  resize: vertical;
 }
 
 @media (max-width: 780px) {

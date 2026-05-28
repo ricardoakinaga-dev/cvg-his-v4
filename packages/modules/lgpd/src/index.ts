@@ -1,4 +1,13 @@
-export { LgpdService, type LgpdServiceOptions, type PersonalDataExport } from './service.js';
+export {
+  LgpdService,
+  getLgpdRetentionEvidence,
+  type LgpdDataProvider,
+  type LgpdDataProviderContext,
+  type LgpdProviderEvidence,
+  type LgpdRetentionEvidence,
+  type LgpdServiceOptions,
+  type PersonalDataExport
+} from './service.js';
 
 export { DatabaseConsentRepository } from './repositories/database-consent.repository.js';
 export { DatabaseDsrRepository } from './repositories/database-dsr.repository.js';

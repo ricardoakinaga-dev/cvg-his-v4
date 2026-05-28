@@ -28,6 +28,13 @@ Worker assíncrono do CVG-HIS V2.
 - Clinical entries pending queue
 - Reconciliacao de estado entre modulos
 
+### Relatorios Enterprise Agendados
+
+- Execucao de agendamentos vencidos do motor enterprise de relatorios
+- Exportacao no formato configurado quando houver destinatarios
+- Avanco de `nextRunAt` apos execucao
+- Registro de `lastRunAt`, `lastExecutionId` e `lastError` para suporte operacional
+
 ## Execucao
 
 ```bash
@@ -53,6 +60,7 @@ NODE_ENV=production node apps/worker/dist/index.js
 - `@cvg-his-v2/shared-logging` — logging estruturado
 - `@cvg-his-v2/shared-utils` — utilitarios (sleep, correlationId)
 - `@cvg-his-v2/module-notifications` — processamento de notificacoes
+- `@cvg-his-v2/module-reports` — execucao de relatorios enterprise agendados
 
 ## Comportamento
 

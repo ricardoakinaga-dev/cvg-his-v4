@@ -10,6 +10,30 @@ export interface AuditEventsFilters {
   limit?: number;
 }
 
+export interface OperationalAuditCoverageItem {
+  id: string;
+  module: string;
+  action: string;
+  entityType?: string;
+  minimumRiskLevel: 'low' | 'medium' | 'high';
+  description: string;
+  covered: boolean;
+  evidenceEventId?: string;
+  evidenceOccurredAt?: string;
+}
+
+export interface OperationalAuditCoverageReport {
+  generatedAt: string;
+  accountId?: string;
+  totalEvents: number;
+  eventsByModule: Record<string, number>;
+  eventsByRiskLevel: Record<'low' | 'medium' | 'high', number>;
+  requirements: OperationalAuditCoverageItem[];
+  coveredRequirements: number;
+  missingRequirements: number;
+  coveragePercent: number;
+}
+
 function buildAuditEventsQuery(filters: AuditEventsFilters = {}): string {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
@@ -28,5 +52,9 @@ export const auditService = {
   async listEvents(filters: AuditEventsFilters = {}): Promise<AuditEventSummary[]> {
     const response = await apiRequest<{ items: AuditEventSummary[] }>(buildAuditEventsQuery(filters));
     return response.items ?? [];
+  },
+
+  async getOperationalCoverage(): Promise<OperationalAuditCoverageReport> {
+    return apiRequest<OperationalAuditCoverageReport>('/audit/operational-coverage');
   }
 };

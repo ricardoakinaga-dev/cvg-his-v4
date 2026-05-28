@@ -12,10 +12,10 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "cd ../../.. && vitest run packages/modules/soc2/src/*.test.ts"
   },
   "dependencies": {
     "@cvg-his-v2/shared-types": "workspace:*",

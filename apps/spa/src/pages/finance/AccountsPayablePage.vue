@@ -19,11 +19,32 @@
     </section>
 
     <section class="payable-actions" aria-label="Ações de contas a pagar">
-      <DsButton variant="primary" disabled>Gerar Conta Avulsa</DsButton>
-      <DsButton variant="secondary" :disabled="selectedIds.size === 0">Baixar Contas Em Lote</DsButton>
+      <DsButton variant="primary" :loading="creating" :disabled="!canCreatePayable" @click="createPayable">
+        Gerar Conta Avulsa
+      </DsButton>
+      <DsButton
+        variant="secondary"
+        :disabled="selectedOpenRows.length === 0"
+        :loading="settlingBatch"
+        @click="paySelected"
+      >
+        Baixar Contas Em Lote
+      </DsButton>
       <DsButton variant="secondary" tag="a" to="/expenses">Custos e Despesas</DsButton>
       <DsButton variant="ghost" :loading="loading" @click="loadPayables">Atualizar</DsButton>
     </section>
+
+    <form class="payable-settlement" aria-label="Configuração de baixa de contas a pagar" @submit.prevent>
+      <DsInput id="payable-payment-method" v-model="settlement.paymentMethod" label="Método de Baixa" type="select">
+        <option value="cash">Dinheiro/Gaveta</option>
+        <option value="bank_transfer">Transferência Bancária</option>
+        <option value="pix">PIX</option>
+        <option value="card">Cartão</option>
+        <option value="cheque">Cheque</option>
+        <option value="other">Outro</option>
+      </DsInput>
+      <DsInput id="payable-payment-reference" v-model="settlement.paymentReference" label="Referência" />
+    </form>
 
     <form class="payable-filters" aria-label="Filtros de contas a pagar" @submit.prevent="loadPayables">
       <DsInput
@@ -38,6 +59,7 @@
       <DsInput id="payable-status" v-model="filters.status" label="Status" type="select">
         <option value="">Todos</option>
         <option value="open">A Pagar</option>
+        <option value="partial">Parcial</option>
         <option value="cancelled">Cancelada</option>
         <option value="paid">Paga</option>
       </DsInput>
@@ -45,6 +67,16 @@
         <DsButton type="submit" :loading="loading">Pesquisar</DsButton>
         <DsButton type="button" variant="ghost" @click="clearFilters">Limpar</DsButton>
       </div>
+    </form>
+
+    <form class="payable-create" aria-label="Gerar conta a pagar avulsa" @submit.prevent="createPayable">
+      <DsInput id="payable-new-supplier" v-model="newPayable.supplierName" label="Fornecedor" />
+      <DsInput id="payable-new-description" v-model="newPayable.description" label="Descrição" />
+      <DsInput id="payable-new-category" v-model="newPayable.category" label="Categoria" />
+      <DsInput id="payable-new-cost-center" v-model="newPayable.costCenterCode" label="Centro de Custo" />
+      <DsInput id="payable-new-due" v-model="newPayable.dueAt" label="Vencimento" type="date" />
+      <DsInput id="payable-new-total" v-model="newPayable.totalAmount" label="Valor" type="number" />
+      <DsInput id="payable-new-notes" v-model="newPayable.notes" label="Observação" />
     </form>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -64,13 +96,13 @@
       <template #cell-select="{ row }">
         <input
           type="checkbox"
-          :aria-label="`Selecionar ${payableRow(row).supplier}`"
+          :aria-label="`Selecionar ${payableRow(row).supplierName}`"
           :checked="selectedIds.has(payableRow(row).id)"
           @change="toggleSelection(payableRow(row).id)"
         />
       </template>
       <template #cell-supplier="{ row }">
-        <strong>{{ payableRow(row).supplier }}</strong>
+        <strong>{{ payableRow(row).supplierName }}</strong>
         <small>{{ payableRow(row).description }}</small>
       </template>
       <template #cell-issuedAt="{ row }">
@@ -80,17 +112,17 @@
         {{ formatDate(payableRow(row).dueAt) }}
       </template>
       <template #cell-total="{ row }">
-        {{ formatCurrency(payableRow(row).total) }}
+        {{ formatCurrency(payableRow(row).totalAmount) }}
       </template>
       <template #cell-paid="{ row }">
-        {{ formatCurrency(payableRow(row).paid) }}
+        {{ formatCurrency(payableRow(row).paidAmount) }}
       </template>
       <template #cell-outstanding="{ row }">
-        <strong>{{ formatCurrency(payableRow(row).outstanding) }}</strong>
+        <strong>{{ formatCurrency(payableRow(row).outstandingAmount) }}</strong>
       </template>
       <template #cell-origin="{ row }">
-        <span class="origin-cell">{{ payableRow(row).origin }}</span>
-        <small>{{ payableRow(row).costCenter }}</small>
+        <span class="origin-cell">{{ payableRow(row).category }}</span>
+        <small>{{ payableRow(row).costCenterName }}</small>
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
@@ -99,9 +131,29 @@
         />
       </template>
       <template #cell-open="{ row }">
-        <RouterLink :to="`/expenses?search=${encodeURIComponent(payableRow(row).supplier)}`" class="open-link">
-          Abrir
-        </RouterLink>
+        <div class="payable-row-actions">
+          <DsButton
+            v-if="payableRow(row).status === 'open' || payableRow(row).status === 'partial'"
+            size="sm"
+            variant="secondary"
+            :loading="settlingId === payableRow(row).id"
+            @click="payPayable(payableRow(row))"
+          >
+            Baixar
+          </DsButton>
+          <DsButton
+            v-if="canReconcilePayable(payableRow(row))"
+            size="sm"
+            variant="secondary"
+            :loading="reconcilingId === payableRow(row).id"
+            @click="reconcilePayable(payableRow(row))"
+          >
+            Conciliar
+          </DsButton>
+          <RouterLink :to="`/expenses?search=${encodeURIComponent(payableRow(row).supplierName)}`" class="open-link">
+            Abrir
+          </RouterLink>
+        </div>
       </template>
     </DataTable>
   </div>
@@ -114,28 +166,20 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
-import { expensesCatalogService, type ExpenseCatalogItem } from '@/services/expensesCatalog';
+import {
+  financialPayablesService,
+  type FinancialPayablePaymentMethod,
+  type FinancialPayableListResponse,
+  type FinancialPayableRecord,
+  type FinancialPayableStatus
+} from '@/services/financialPayables';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
-type PayableStatus = 'open' | 'cancelled' | 'paid';
+type PayableStatus = FinancialPayableStatus;
 type FilterStatus = '' | PayableStatus;
-
-interface AccountsPayableRow {
-  id: string;
-  supplier: string;
-  issuedAt: string | null;
-  dueAt: string | null;
-  total: number;
-  paid: number;
-  outstanding: number;
-  origin: string;
-  costCenter: string;
-  status: PayableStatus;
-  description: string;
-}
 
 const columns: DataTableColumn[] = [
   { key: 'select', label: '', width: '48px' },
@@ -149,6 +193,18 @@ const columns: DataTableColumn[] = [
   { key: 'status', label: 'Status' },
   { key: 'open', label: 'Abrir', class: 'table__actions-col' }
 ];
+const emptyResponse: FinancialPayableListResponse = {
+  data: [],
+  page: 1,
+  pageSize: 50,
+  total: 0,
+  openCount: 0,
+  paidCount: 0,
+  cancelledCount: 0,
+  totalAmount: 0,
+  totalPaid: 0,
+  totalOutstanding: 0
+};
 
 const filters = reactive({
   search: '',
@@ -156,12 +212,30 @@ const filters = reactive({
   dueTo: '',
   status: '' as FilterStatus
 });
-const expenses = ref<ExpenseCatalogItem[]>([]);
+const newPayable = reactive({
+  supplierName: '',
+  description: '',
+  category: '',
+  costCenterCode: '',
+  costCenterName: '',
+  dueAt: '',
+  totalAmount: '',
+  notes: ''
+});
+const settlement = reactive({
+  paymentMethod: 'cash' as FinancialPayablePaymentMethod,
+  paymentReference: 'gaveta-principal'
+});
+const response = ref<FinancialPayableListResponse>({ ...emptyResponse });
 const loading = ref(false);
+const creating = ref(false);
+const settlingId = ref('');
+const reconcilingId = ref('');
+const settlingBatch = ref(false);
 const error = ref('');
 const selectedIds = ref(new Set<string>());
 
-const rows = computed(() => expenses.value.map(toPayableRow) as unknown as DataTableRow[]);
+const rows = computed(() => response.value.data as unknown as DataTableRow[]);
 const filteredRows = computed(() =>
   rows.value.filter((row) => {
     const payable = payableRow(row);
@@ -169,10 +243,21 @@ const filteredRows = computed(() =>
     return matchesDueFilters(payable);
   })
 );
-const totalAmount = computed(() => filteredRows.value.reduce((sum, row) => sum + payableRow(row).total, 0));
-const totalPaid = computed(() => filteredRows.value.reduce((sum, row) => sum + payableRow(row).paid, 0));
+const selectedOpenRows = computed(() =>
+  response.value.data.filter((row) => selectedIds.value.has(row.id) && isPayableOpen(row))
+);
+const canCreatePayable = computed(() => Boolean(
+  newPayable.supplierName.trim()
+  && newPayable.description.trim()
+  && newPayable.category.trim()
+  && newPayable.costCenterCode.trim()
+  && newPayable.dueAt
+  && Number(newPayable.totalAmount) > 0
+));
+const totalAmount = computed(() => filteredRows.value.reduce((sum, row) => sum + payableRow(row).totalAmount, 0));
+const totalPaid = computed(() => filteredRows.value.reduce((sum, row) => sum + payableRow(row).paidAmount, 0));
 const totalOutstanding = computed(() =>
-  filteredRows.value.reduce((sum, row) => sum + payableRow(row).outstanding, 0)
+  filteredRows.value.reduce((sum, row) => sum + payableRow(row).outstandingAmount, 0)
 );
 const headerSecondaryActions = computed(() => [
   {
@@ -192,18 +277,16 @@ async function loadPayables() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await expensesCatalogService.list({
+    response.value = await financialPayablesService.list({
       search: filters.search.trim(),
+      status: filters.status,
       page: 1,
-      pageSize: 50,
-      sort: 'name',
-      order: 'asc'
+      pageSize: 50
     });
-    expenses.value = response.items ?? [];
-    selectedIds.value = new Set([...selectedIds.value].filter((id) => expenses.value.some((expense) => expense.id === id)));
+    selectedIds.value = new Set([...selectedIds.value].filter((id) => response.value.data.some((payable) => payable.id === id)));
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Não foi possível carregar contas a pagar.';
-    expenses.value = [];
+    response.value = { ...emptyResponse };
   } finally {
     loading.value = false;
   }
@@ -217,7 +300,7 @@ function clearFilters() {
   void loadPayables();
 }
 
-function matchesDueFilters(row: AccountsPayableRow): boolean {
+function matchesDueFilters(row: FinancialPayableRecord): boolean {
   if (!row.dueAt) return !filters.dueFrom && !filters.dueTo;
   const due = row.dueAt.slice(0, 10);
   if (filters.dueFrom && due < filters.dueFrom) return false;
@@ -235,20 +318,111 @@ function toggleSelection(id: string) {
   selectedIds.value = next;
 }
 
-function toPayableRow(expense: ExpenseCatalogItem): AccountsPayableRow {
-  return {
-    id: expense.id,
-    supplier: expense.name,
-    issuedAt: null,
-    dueAt: null,
-    total: 0,
-    paid: 0,
-    outstanding: 0,
-    origin: expense.category,
-    costCenter: expense.costCenterName,
-    status: 'open',
-    description: expense.description || expense.kind
-  };
+async function createPayable() {
+  if (!canCreatePayable.value) return;
+
+  creating.value = true;
+  error.value = '';
+  try {
+    await financialPayablesService.create({
+      supplierName: newPayable.supplierName.trim(),
+      description: newPayable.description.trim(),
+      category: newPayable.category.trim(),
+      costCenterCode: newPayable.costCenterCode.trim(),
+      costCenterName: newPayable.costCenterName.trim() || newPayable.costCenterCode.trim(),
+      dueAt: newPayable.dueAt,
+      totalAmount: Number(newPayable.totalAmount),
+      notes: newPayable.notes.trim() || null
+    });
+    newPayable.supplierName = '';
+    newPayable.description = '';
+    newPayable.category = '';
+    newPayable.costCenterCode = '';
+    newPayable.costCenterName = '';
+    newPayable.dueAt = '';
+    newPayable.totalAmount = '';
+    newPayable.notes = '';
+    await loadPayables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível gerar a conta a pagar.';
+  } finally {
+    creating.value = false;
+  }
+}
+
+async function payPayable(row: FinancialPayableRecord) {
+  if (!isPayableOpen(row)) return;
+
+  settlingId.value = row.id;
+  error.value = '';
+  try {
+    await financialPayablesService.pay(row.id, {
+      amountPaid: row.outstandingAmount,
+      paymentMethod: settlement.paymentMethod,
+      paymentReference: settlement.paymentReference.trim() || null,
+      notes: 'Baixa operacional em Contas a Pagar'
+    });
+    selectedIds.value = new Set([...selectedIds.value].filter((id) => id !== row.id));
+    await loadPayables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível baixar a conta a pagar.';
+  } finally {
+    settlingId.value = '';
+  }
+}
+
+async function reconcilePayable(row: FinancialPayableRecord) {
+  if (!canReconcilePayable(row)) return;
+
+  reconcilingId.value = row.id;
+  error.value = '';
+  try {
+    await financialPayablesService.reconcile(row.id, {
+      reconciliationReference: settlement.paymentReference.trim() || row.paymentReference,
+      notes: 'Conciliação operacional em Contas a Pagar'
+    });
+    await loadPayables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível conciliar a conta a pagar.';
+  } finally {
+    reconcilingId.value = '';
+  }
+}
+
+async function paySelected() {
+  if (selectedOpenRows.value.length === 0) return;
+
+  settlingBatch.value = true;
+  error.value = '';
+  try {
+    await Promise.all(
+      selectedOpenRows.value.map((row) =>
+        financialPayablesService.pay(row.id, {
+          amountPaid: row.outstandingAmount,
+          paymentMethod: settlement.paymentMethod,
+          paymentReference: settlement.paymentReference.trim() || null,
+          notes: 'Baixa em lote em Contas a Pagar'
+        })
+      )
+    );
+    selectedIds.value = new Set();
+    await loadPayables();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível baixar as contas selecionadas.';
+  } finally {
+    settlingBatch.value = false;
+  }
+}
+
+function isPayableOpen(row: FinancialPayableRecord): boolean {
+  return (row.status === 'open' || row.status === 'partial') && row.outstandingAmount > 0;
+}
+
+function canReconcilePayable(row: FinancialPayableRecord): boolean {
+  return row.status === 'paid'
+    && row.paymentMethod !== null
+    && row.paymentMethod !== 'cash'
+    && row.reconciliationStatus === 'pending';
 }
 
 function formatCurrency(value: number): string {
@@ -266,17 +440,19 @@ function formatDate(value: string | null): string {
 function payableStatusLabel(status: PayableStatus): string {
   if (status === 'paid') return 'Paga';
   if (status === 'cancelled') return 'Cancelada';
+  if (status === 'partial') return 'Parcial';
   return 'A Pagar';
 }
 
 function payableStatusVariant(status: PayableStatus) {
   if (status === 'paid') return 'success';
   if (status === 'cancelled') return 'danger';
+  if (status === 'partial') return 'info';
   return 'warning';
 }
 
-function payableRow(row: unknown): AccountsPayableRow {
-  return row as AccountsPayableRow;
+function payableRow(row: unknown): FinancialPayableRecord {
+  return row as FinancialPayableRecord;
 }
 </script>
 
@@ -294,7 +470,9 @@ function payableRow(row: unknown): AccountsPayableRow {
 }
 
 .payable-actions,
-.payable-filters {
+.payable-filters,
+.payable-settlement,
+.payable-create {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
@@ -310,6 +488,16 @@ function payableRow(row: unknown): AccountsPayableRow {
   grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr)) auto;
 }
 
+.payable-settlement {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.payable-create {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .payable-filters__actions {
   display: flex;
   gap: 8px;
@@ -318,6 +506,12 @@ function payableRow(row: unknown): AccountsPayableRow {
 .origin-cell,
 .open-link {
   font-weight: 700;
+}
+
+.payable-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .origin-cell,

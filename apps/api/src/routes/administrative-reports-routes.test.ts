@@ -89,7 +89,7 @@ test('handleAdministrativeReportsRoutes ignores unrelated routes', async () => {
 
 test('handleAdministrativeReportsRoutes returns aggregated administrative hubs', async () => {
   const response = new MockResponse();
-  const now = new Date().toISOString();
+  const now = '2026-04-15T12:00:00.000Z';
 
   const handled = await handleAdministrativeReportsRoutes(
     '/reports/administrative-hubs',

@@ -1,5 +1,5 @@
 import { SpanStatusCode, trace } from '@opentelemetry/api';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase, type NodePgClient } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
 import * as schema from './schemas/index.js';
 
@@ -156,5 +156,5 @@ export async function checkDatabaseHealth(): Promise<{ healthy: boolean; detail:
   }
 }
 
-export type DatabaseClient = ReturnType<typeof drizzle>;
+export type DatabaseClient = NodePgDatabase<Record<string, unknown>> & { $client: NodePgClient };
 export { schema };

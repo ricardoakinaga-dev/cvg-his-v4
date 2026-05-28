@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
@@ -58,11 +58,16 @@ test('DiagnosticsService recordResult updates status and summary', () => {
 
   const updated = service.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: 'Hemograma sem alteracoes'
+    resultSummary: 'Hemograma sem alteracoes',
+    releasedByUserId: 'vet_ana'
   });
 
   assert.equal(updated.status, 'resulted');
   assert.equal(updated.resultSummary, 'Hemograma sem alteracoes');
+  assert.equal(updated.releasedByUserId, 'vet_ana');
+  assert.equal(updated.signedByUserId, 'vet_ana');
+  assert.ok(updated.resultedAt);
+  assert.ok(updated.signatureHash);
 });
 
 test('DiagnosticsService getOrThrow rejects unknown order', () => {
@@ -104,10 +109,15 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
 
   const resulted = service.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: 'Valores dentro da normalidade'
+    resultSummary: 'Valores dentro da normalidade',
+    releasedByUserId: 'vet_ana',
+    signedByUserId: 'rt_laboratorio'
   });
   assert.equal(resulted.status, 'resulted');
   assert.equal(resulted.resultSummary, 'Valores dentro da normalidade');
+  assert.equal(resulted.releasedByUserId, 'vet_ana');
+  assert.equal(resulted.signedByUserId, 'rt_laboratorio');
+  assert.ok(resulted.signatureHash);
 });
 
 test('DiagnosticsService recordResult blocks invalid transitions', () => {
@@ -121,7 +131,11 @@ test('DiagnosticsService recordResult blocks invalid transitions', () => {
   });
 
   service.recordResult(order.id, { status: 'collected', collectedByUserId: 'enf_joao' });
-  service.recordResult(order.id, { status: 'resulted', resultSummary: 'Sem alteracoes' });
+  service.recordResult(order.id, {
+    status: 'resulted',
+    resultSummary: 'Sem alteracoes',
+    releasedByUserId: 'vet_ana'
+  });
 
   assert.throws(
     () => service.recordResult(order.id, { status: 'requested' } as never),
@@ -218,6 +232,15 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
   assert.throws(
     () => service.recordResult(order.id, { status: 'resulted' }),
     /resultSummary or resultAttachmentId/
+  );
+
+  assert.throws(
+    () =>
+      service.recordResult(order.id, {
+        status: 'resulted',
+        resultSummary: 'Sem alteracoes'
+      }),
+    /releasedByUserId/
   );
 });
 
@@ -387,7 +410,8 @@ test('LaboratoryService exposes resulted orders and order detail scoped by accou
   });
   diagnostics.recordResult(order.id, {
     status: 'resulted',
-    resultAttachmentId: 'att_1'
+    resultAttachmentId: 'att_1',
+    releasedByUserId: 'vet_ana'
   });
 
   const [results, detail, catalog] = await Promise.all([
@@ -500,7 +524,8 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
   });
   diagnostics.recordResult(releasedOrder.id, {
     status: 'resulted',
-    resultSummary: 'Tudo normal'
+    resultSummary: 'Tudo normal',
+    releasedByUserId: 'vet_ana'
   });
 
   const results = await laboratory.listResults('acc_test' as never);

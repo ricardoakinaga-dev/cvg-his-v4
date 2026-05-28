@@ -20,8 +20,8 @@ import {
 describe('labels', () => {
   describe('speciesLabel', () => {
     it('returns correct label for known species', () => {
-      expect(speciesLabel('canine')).toBe('🐕 Canino');
-      expect(speciesLabel('feline')).toBe('🐈 Felino');
+      expect(speciesLabel('canine')).toBe('🐕 Canina');
+      expect(speciesLabel('feline')).toBe('🐈 Felina');
     });
 
     it('returns fallback for unknown species', () => {

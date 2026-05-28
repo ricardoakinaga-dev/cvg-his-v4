@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { createRouter, createWebHistory } from 'vue-router';
-import { routes } from '@/router/routes';
+import { createRouter, createMemoryHistory } from 'vue-router';
 import WebhooksListPage from '@/pages/webhooks/WebhooksListPage.vue';
 import { webhookService } from '@/services/webhook';
 import type { WebhookSummary } from '@/types/webhook';
@@ -35,14 +34,20 @@ const mockWebhooks: WebhookSummary[] = [
 
 function createRouterInstance() {
   return createRouter({
-    history: createWebHistory(),
-    routes
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div />' } },
+      { path: '/webhooks', component: WebhooksListPage },
+      { path: '/webhooks/new', component: { template: '<div />' } },
+      { path: '/webhooks/:id', component: { template: '<div />' } }
+    ]
   });
 }
 
-function mountComponent() {
+async function mountComponent() {
   const router = createRouterInstance();
-  router.push('/');
+  await router.push('/');
+  await router.isReady();
   const wrapper = mount(WebhooksListPage, {
     global: {
       plugins: [router],
@@ -62,29 +67,29 @@ describe('WebhooksListPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the page title', () => {
+  it('renders the page title', async () => {
     vi.mocked(webhookService.list).mockResolvedValue([]);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     expect(wrapper.text()).toContain('Webhooks');
   });
 
   it('shows loading state', async () => {
     vi.mocked(webhookService.list).mockReturnValue(new Promise(() => {}));
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
     expect(wrapper.find('.data-table-loading').exists()).toBe(true);
   });
 
   it('shows empty state when no webhooks', async () => {
     vi.mocked(webhookService.list).mockResolvedValue([]);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
     expect(wrapper.text()).toContain('Nenhum registro encontrado');
   });
 
   it('renders webhook data', async () => {
     vi.mocked(webhookService.list).mockResolvedValue(mockWebhooks);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
     expect(wrapper.text()).toContain('https://api.example.com/webhook');
     expect(wrapper.text()).toContain('https://hooks.example.com/cvg');
@@ -92,21 +97,21 @@ describe('WebhooksListPage', () => {
 
   it('shows status badges', async () => {
     vi.mocked(webhookService.list).mockResolvedValue(mockWebhooks);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
     expect(wrapper.text()).toContain('Ativo');
     expect(wrapper.text()).toContain('Inativo');
   });
 
-  it('has Novo Webhook button', () => {
+  it('has Novo Webhook button', async () => {
     vi.mocked(webhookService.list).mockResolvedValue([]);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     expect(wrapper.text()).toContain('Incluir');
   });
 
   it('shows error when API fails', async () => {
     vi.mocked(webhookService.list).mockRejectedValue(new Error('Network error'));
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Network error');
@@ -114,7 +119,7 @@ describe('WebhooksListPage', () => {
 
   it('requests Vetus-like filters when searching', async () => {
     vi.mocked(webhookService.list).mockResolvedValue(mockWebhooks);
-    const { wrapper } = mountComponent();
+    const { wrapper } = await mountComponent();
     await flushPromises();
 
     await wrapper.find('input[placeholder="URL"]').setValue('hooks.example.com');

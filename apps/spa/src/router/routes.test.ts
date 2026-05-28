@@ -69,6 +69,13 @@ describe('router convergence', () => {
       '/financeiro/gaveta',
       '/finance/gaveta'
     ]);
+    expect(findChildRoute('finance/reconciliation')?.meta?.title).toBe('Conciliação Financeira');
+    expect(findChildRoute('finance/reconciliation')?.alias).toEqual([
+      '/financeiro/controles/conciliacao-financeira',
+      '/financeiro/controles/conciliação-financeira',
+      '/conciliacao-financeira',
+      '/conciliação-financeira'
+    ]);
     expect(findChildRoute('cards')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('pix')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('fiscal')?.meta?.breadcrumbParent).toBe('Configurações Fiscais');
@@ -707,6 +714,8 @@ describe('router convergence', () => {
 
   it('reuses existing report surfaces for the requested reporting and dashboard entries', () => {
     expect(findChildRoute('reports')?.meta?.breadcrumbParent).toBe('Relatórios');
+    expect(findChildRoute('reports/engine')?.meta?.title).toBe('Motor Enterprise de Relatórios');
+    expect(findChildRoute('reports/engine')?.meta?.breadcrumbParent).toBe('Relatórios');
     expect(findChildRoute('reports/dre')?.meta?.title).toBe('DRE - Demonstrativo de Resultados');
     expect(findChildRoute('reports/dre')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
     expect(findChildRoute('reports/dre')?.alias).toEqual(['/relatorios/financeiros/dre']);

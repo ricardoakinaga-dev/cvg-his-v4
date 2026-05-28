@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import { CommercialService } from '@cvg-his-v2/module-commercial';
+import { PackagesService } from '@cvg-his-v2/module-packages';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleCommercialRoutes } from './commercial-routes.js';
@@ -82,9 +83,10 @@ function request(method: string, body?: unknown, url?: string): never {
   } as never;
 }
 
-function handlers(commercial: CommercialService, audit = createAudit() as never) {
+function handlers(commercial: CommercialService, audit = createAudit() as never, packages = new PackagesService()) {
   return {
     commercial,
+    packages,
     audit,
     requirePrincipal: () => createPrincipal()
   };
@@ -130,6 +132,102 @@ test('handleCommercialRoutes exposes loyalty points balance and redemptions', as
   const summary = summaryResponse.bodyJson<{ availablePoints: number; redeemedPoints: number }>();
   assert.equal(summary.availablePoints, 80);
   assert.equal(summary.redeemedPoints, 40);
+});
+
+test('handleCommercialRoutes exposes package lifecycle, consumption and renewal', async () => {
+  const commercial = new CommercialService();
+  const packages = new PackagesService();
+  const events: Array<{ action: string; entityId: string; payloadSummary: string }> = [];
+  const routeHandlers = handlers(commercial, createAudit(events) as never, packages);
+
+  const createResponse = new MockResponse();
+  await handleCommercialRoutes(
+    '/packages',
+    request('POST', {
+      ownerId: 'owner-1',
+      patientId: 'patient-1',
+      startsAt: '2026-06-01',
+      expiresAt: '2026-07-31',
+      notes: 'Pacote preventivo'
+    }),
+    createResponse as never,
+    'corr-pkg-1',
+    routeHandlers
+  );
+  const pkg = createResponse.bodyJson<{ id: string; number: string; status: string }>();
+  assert.equal(createResponse.statusCode, 201);
+  assert.equal(pkg.number, 'PKG-000001');
+  assert.equal(pkg.status, 'draft');
+
+  const itemResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/packages/${pkg.id}/items`,
+    request('POST', {
+      itemKind: 'service',
+      catalogItemId: 'svc-1',
+      nameSnapshot: 'Vacina V10',
+      quantityPurchased: 2,
+      unitPrice: 90
+    }),
+    itemResponse as never,
+    'corr-pkg-2',
+    routeHandlers
+  );
+  const item = itemResponse.bodyJson<{ id: string; quantityPurchased: number }>();
+  assert.equal(itemResponse.statusCode, 201);
+  assert.equal(item.quantityPurchased, 2);
+
+  const activateResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/packages/${pkg.id}/activate`,
+    request('POST'),
+    activateResponse as never,
+    'corr-pkg-3',
+    routeHandlers
+  );
+  assert.equal(activateResponse.bodyJson<{ status: string }>().status, 'active');
+
+  const consumeResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/package-items/${item.id}/consume`,
+    request('POST', {
+      quantity: 1,
+      consumedAt: '2026-06-15',
+      sourceType: 'appointment',
+      sourceId: 'appt-1'
+    }),
+    consumeResponse as never,
+    'corr-pkg-4',
+    routeHandlers
+  );
+  const consumed = consumeResponse.bodyJson<{ balance: Array<{ quantityAvailable: number }>; consumptions: unknown[] }>();
+  assert.equal(consumed.balance[0]?.quantityAvailable, 1);
+  assert.equal(consumed.consumptions.length, 1);
+
+  const renewResponse = new MockResponse();
+  await handleCommercialRoutes(
+    `/packages/${pkg.id}/renew`,
+    request('POST', { startsAt: '2026-08-01', expiresAt: '2026-08-31' }),
+    renewResponse as never,
+    'corr-pkg-5',
+    routeHandlers
+  );
+  const renewed = renewResponse.bodyJson<{ status: string; renewedFromPackageId: string | null; balance: Array<{ quantityAvailable: number }> }>();
+  assert.equal(renewResponse.statusCode, 201);
+  assert.equal(renewed.status, 'active');
+  assert.equal(renewed.renewedFromPackageId, pkg.id);
+  assert.equal(renewed.balance[0]?.quantityAvailable, 2);
+
+  const listResponse = new MockResponse();
+  await handleCommercialRoutes('/pacotes', request('GET'), listResponse as never, 'corr-pkg-6', routeHandlers);
+  assert.equal(listResponse.bodyJson<{ items: Array<{ id: string }> }>().items.length, 2);
+  assert.deepEqual(events.map((event) => event.action), [
+    'create_package',
+    'add_package_item',
+    'activate_package',
+    'consume_package_item',
+    'renew_package'
+  ]);
 });
 
 test('handleCommercialRoutes creates, updates, archives price tables and items', async () => {

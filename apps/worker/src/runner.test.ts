@@ -9,8 +9,11 @@ import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import {
   createWorkerNotifications,
   createWorkerEventBus,
+  createWorkerReports,
   runWorkerTick,
   runEventBusTick,
+  runScheduledReportsTick,
+  resolveScheduledReportRows,
   type WorkerTickContext
 } from './runner.js';
 
@@ -78,6 +81,11 @@ test('createWorkerEventBus creates service with provided repository', () => {
   assert.ok(eventBus, 'Should create event bus service with repo');
 });
 
+test('createWorkerReports creates service with optional repository', () => {
+  const reports = createWorkerReports();
+  assert.ok(reports, 'Should create reports service');
+});
+
 test('runWorkerTick handles empty notification queue', async () => {
   let infoCalled = false;
   let infoData: Record<string, unknown> = {};
@@ -134,6 +142,274 @@ test('runEventBusTick handles empty event queue', async () => {
   assert.equal(infoData.correlationId, 'test-correlation-123');
   assert.equal(infoData.databaseHealthy, true);
   assert.deepEqual(infoData.processedCorrelationIds, []);
+});
+
+test('runScheduledReportsTick handles empty due report queue', async () => {
+  let infoData: Record<string, unknown> = {};
+
+  const logger: Logger = {
+    ...mockLogger,
+    info: (_msg, ctx) => {
+      infoData = ctx ?? {};
+    }
+  };
+
+  const reports = createWorkerReports();
+  await runScheduledReportsTick(logger, {
+    ...mockContext,
+    accountId: 'acc-worker-reports' as never,
+    runAsUserId: 'user-worker-reports' as never
+  }, reports);
+
+  assert.equal(infoData.service, 'test-worker');
+  assert.equal(infoData.dueSchedules, 0);
+  assert.equal(infoData.executedSchedules, 0);
+});
+
+test('resolveScheduledReportRows returns non-empty rows for known recurring reports', async () => {
+  const administrativeRows = await resolveScheduledReportRows({
+    id: 'schedule-admin',
+    accountId: 'acc-worker-reports' as never,
+    reportId: 'administrative-executive',
+    name: 'Diretoria diaria',
+    frequency: 'daily',
+    format: 'csv',
+    filters: { dateFrom: '2026-05-01', dateTo: '2026-05-28' },
+    recipients: ['diretoria@cvg.local', 'financeiro@cvg.local'],
+    isActive: true,
+    nextRunAt: '2026-05-29T10:00:00.000Z',
+    lastRunAt: null,
+    lastExecutionId: null,
+    lastError: null,
+    createdByUserId: 'user-worker-reports' as never,
+    createdAt: '2026-05-28T10:00:00.000Z',
+    updatedAt: '2026-05-28T10:00:00.000Z'
+  });
+
+  assert.ok(administrativeRows.length >= 3);
+  assert.deepEqual(administrativeRows[0], {
+    domain: 'reports',
+    metric: 'Destinatarios configurados',
+    value: 2,
+    status: 'tracked'
+  });
+
+  const commissionRows = await resolveScheduledReportRows({
+    id: 'schedule-commissions',
+    accountId: 'acc-worker-reports' as never,
+    reportId: 'commission-calculations',
+    name: 'Comissoes semanal',
+    frequency: 'weekly',
+    format: 'csv',
+    filters: { status: 'reviewed' },
+    recipients: ['rh@cvg.local'],
+    isActive: true,
+    nextRunAt: '2026-05-29T10:00:00.000Z',
+    lastRunAt: '2026-05-22T10:00:00.000Z',
+    lastExecutionId: 'rep-exec-last',
+    lastError: null,
+    createdByUserId: 'user-worker-reports' as never,
+    createdAt: '2026-05-01T10:00:00.000Z',
+    updatedAt: '2026-05-22T10:00:00.000Z'
+  });
+
+  assert.deepEqual(commissionRows[0], {
+    number: 'SCHEDULE-schedule-commissions',
+    period: '2026-05-22T10:00:00.000Z..2026-05-29T10:00:00.000Z',
+    status: 'reviewed',
+    totalBaseAmount: 0,
+    totalCommissionAmount: 0,
+    lineCount: 1
+  });
+});
+
+test('resolveScheduledReportRows enriches administrative executive report with operational sources', async () => {
+  const rows = await resolveScheduledReportRows({
+    id: 'schedule-admin-sources',
+    accountId: 'acc-worker-reports' as never,
+    reportId: 'administrative-executive',
+    name: 'Diretoria diaria com fontes',
+    frequency: 'daily',
+    format: 'csv',
+    filters: { dateFrom: '2026-05-01', dateTo: '2026-05-28' },
+    recipients: ['diretoria@cvg.local'],
+    isActive: true,
+    nextRunAt: '2026-05-29T10:00:00.000Z',
+    lastRunAt: null,
+    lastExecutionId: null,
+    lastError: null,
+    createdByUserId: 'user-worker-reports' as never,
+    createdAt: '2026-05-28T10:00:00.000Z',
+    updatedAt: '2026-05-28T10:00:00.000Z'
+  }, {
+    commercial: {
+      getCommercialDashboard: async (_accountId, dateFrom, dateTo) => ({
+        openSales: 3,
+        closedToday: 8,
+        grossRevenueToday: 1420.7,
+        netRevenueToday: 1280.45,
+        avgTicket: 160.05,
+        salesByPaymentMethod: [],
+        topProducts: [],
+        topServices: [],
+        quotesIssued: 2,
+        quotesConverted: 1,
+        lowStockAlerts: [],
+        dateFrom,
+        dateTo
+      })
+    },
+    financial: {
+      getIncomeStatement: async (_accountId, period) => ({
+        generatedAt: '2026-05-28T10:00:00.000Z',
+        period,
+        revenue: {
+          grossRevenue: 2000,
+          realizedRevenue: 1500,
+          outstandingReceivables: 500,
+          receivableCount: 10,
+          settledReceivableCount: 7,
+          openReceivableCount: 3
+        },
+        expenses: {
+          accruedExpenses: 700,
+          paidExpenses: 300,
+          outstandingPayables: 400,
+          payableCount: 4,
+          paidPayableCount: 2,
+          openPayableCount: 2,
+          byCategory: []
+        },
+        result: {
+          realizedNetResult: 1200,
+          accrualNetResult: 1300,
+          grossMarginPercent: 65,
+          cashConversionPercent: 75
+        }
+      })
+    },
+    cash: {
+      findOpenRegister: async () => ({
+        id: 'cash-register-1',
+        accountId: 'acc-worker-reports' as never,
+        openedByUserId: 'user-worker-reports' as never,
+        closedByUserId: null,
+        openingAmount: 100,
+        closingAmount: null,
+        expectedClosingAmount: null,
+        difference: null,
+        status: 'open',
+        openedAt: '2026-05-28T08:00:00.000Z',
+        closedAt: null,
+        notes: null,
+        createdAt: '2026-05-28T08:00:00.000Z',
+        updatedAt: '2026-05-28T08:00:00.000Z'
+      }),
+      getCurrentBalance: async () => 650.5
+    }
+  });
+
+  assert.ok(rows.some((row) => row.domain === 'commercial' && row.metric === 'Receita liquida comercial' && row.value === 1280.45));
+  assert.ok(rows.some((row) => row.domain === 'financial' && row.metric === 'Resultado liquido realizado' && row.value === 1200));
+  assert.ok(rows.some((row) => row.domain === 'cash' && row.metric === 'Saldo do caixa aberto' && row.value === 650.5));
+});
+
+test('resolveScheduledReportRows uses persisted commission calculations when source is available', async () => {
+  const rows = await resolveScheduledReportRows({
+    id: 'schedule-commissions-persisted',
+    accountId: 'acc-worker-reports' as never,
+    reportId: 'commission-calculations',
+    name: 'Comissoes persistidas',
+    frequency: 'weekly',
+    format: 'csv',
+    filters: { status: 'reviewed' },
+    recipients: ['rh@cvg.local'],
+    isActive: true,
+    nextRunAt: '2026-05-29T10:00:00.000Z',
+    lastRunAt: '2026-05-22T10:00:00.000Z',
+    lastExecutionId: 'rep-exec-last',
+    lastError: null,
+    createdByUserId: 'user-worker-reports' as never,
+    createdAt: '2026-05-01T10:00:00.000Z',
+    updatedAt: '2026-05-22T10:00:00.000Z'
+  }, {
+    commissions: {
+      listCalculations: () => [
+        {
+          id: 'calc-reviewed',
+          accountId: 'acc-worker-reports' as never,
+          number: 'COM-000042',
+          periodStart: '2026-05-01',
+          periodEnd: '2026-05-28',
+          status: 'reviewed',
+          totalBaseAmount: 3000,
+          totalCommissionAmount: 450,
+          createdByUserId: 'user-worker-reports' as never,
+          reviewedByUserId: 'reviewer-1' as never,
+          paidByUserId: null,
+          cancelledByUserId: null,
+          createdAt: '2026-05-28T09:00:00.000Z',
+          updatedAt: '2026-05-28T09:05:00.000Z',
+          reviewedAt: '2026-05-28T09:05:00.000Z',
+          paidAt: null,
+          cancelledAt: null,
+          notes: null,
+          lines: [
+            {
+              id: 'line-1',
+              accountId: 'acc-worker-reports' as never,
+              calculationId: 'calc-reviewed',
+              staffId: 'staff-1',
+              staffName: 'Dra. Ana',
+              department: 'Clinica',
+              jobTitle: 'Veterinaria',
+              itemKind: 'service',
+              sourceType: 'billing_item',
+              sourceId: 'bill-item-1',
+              sourceDescription: 'Consulta',
+              baseAmount: 3000,
+              occurredAt: '2026-05-20',
+              ruleId: 'rule-1',
+              percentage: 15,
+              commissionAmount: 450
+            }
+          ]
+        },
+        {
+          id: 'calc-paid',
+          accountId: 'acc-worker-reports' as never,
+          number: 'COM-000041',
+          periodStart: '2026-04-01',
+          periodEnd: '2026-04-30',
+          status: 'paid',
+          totalBaseAmount: 1000,
+          totalCommissionAmount: 100,
+          createdByUserId: 'user-worker-reports' as never,
+          reviewedByUserId: null,
+          paidByUserId: 'payer-1' as never,
+          cancelledByUserId: null,
+          createdAt: '2026-04-30T09:00:00.000Z',
+          updatedAt: '2026-04-30T09:05:00.000Z',
+          reviewedAt: null,
+          paidAt: '2026-04-30T09:05:00.000Z',
+          cancelledAt: null,
+          notes: null,
+          lines: []
+        }
+      ]
+    }
+  });
+
+  assert.deepEqual(rows, [
+    {
+      number: 'COM-000042',
+      period: '2026-05-01..2026-05-28',
+      status: 'reviewed',
+      totalBaseAmount: 3000,
+      totalCommissionAmount: 450,
+      lineCount: 1
+    }
+  ]);
 });
 
 test('runWorkerTick uses default notifications when none provided', async () => {

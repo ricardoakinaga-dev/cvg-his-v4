@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import {
   EncounterFinancialService,
+  FinancialIncomeStatementService,
+  FinancialPayablesService,
   InMemoryEncounterFinancialRepository,
+  InMemoryFinancialPayablesRepository,
   type EncounterFinancialAccountRecord,
   type EncounterReceivablePaymentRecord,
   type EncounterReceivableRecord
@@ -363,4 +366,266 @@ test('EncounterFinancialService records payment by billing record and settles re
   assert.equal(summary.balanceDue, 0);
   assert.equal(summary.receivables.every((item) => item.status === 'settled'), true);
   assert.equal(summary.payments.length, 2);
+});
+
+test('FinancialPayablesService creates, lists and pays supplier obligations', async () => {
+  const paidEvents: unknown[] = [];
+  const service = new FinancialPayablesService(new InMemoryFinancialPayablesRepository(), {
+    onPayablePaid: async (event) => {
+      paidEvents.push(event);
+    }
+  });
+
+  const payable = await service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+    supplierName: 'Fornecedor de medicamentos',
+    description: 'Compra de antibioticos',
+    category: 'Compras',
+    costCenterCode: 'EST',
+    costCenterName: 'Estoque',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-20',
+    totalAmount: 600,
+    sourceExpenseId: 'expense-1',
+    notes: 'NF 123'
+  });
+
+  assert.equal(payable.status, 'open');
+  assert.equal(payable.paidAmount, 0);
+  assert.equal(payable.outstandingAmount, 600);
+  assert.equal((await service.listPayables('acc_cvg_demo' as never, { search: 'medicamentos' })).data.length, 1);
+
+  const partial = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+    amountPaid: 250,
+    paymentMethod: 'cash',
+    paymentReference: 'gaveta-principal',
+    notes: 'Parcial'
+  });
+  assert.equal(partial.status, 'partial');
+  assert.equal(partial.paidAmount, 250);
+  assert.equal(partial.outstandingAmount, 350);
+  assert.equal(partial.paymentMethod, 'cash');
+  assert.equal(partial.paymentReference, 'gaveta-principal');
+
+  const paid = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+    amountPaid: 350,
+    paymentMethod: 'bank_transfer',
+    paymentReference: 'ted-123',
+    notes: 'Quitacao'
+  });
+  assert.equal(paid.status, 'paid');
+  assert.equal(paid.paidAmount, 600);
+  assert.equal(paid.outstandingAmount, 0);
+  assert.ok(paid.paidAt);
+  assert.equal(paid.paymentMethod, 'bank_transfer');
+  assert.equal(paid.paymentReference, 'ted-123');
+  assert.equal(paidEvents.length, 2);
+  assert.deepEqual(paidEvents.map((event) => (event as { amountPaid: number }).amountPaid), [250, 350]);
+  assert.deepEqual(paidEvents.map((event) => (event as { paymentMethod: string }).paymentMethod), ['cash', 'bank_transfer']);
+
+  const summary = await service.listPayables('acc_cvg_demo' as never);
+  assert.equal(summary.total, 1);
+  assert.equal(summary.paidCount, 1);
+  assert.equal(summary.totalPaid, 600);
+});
+
+test('FinancialPayablesService prevents invalid payment and cancellation flows', async () => {
+  const service = new FinancialPayablesService(new InMemoryFinancialPayablesRepository());
+  const payable = await service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+    supplierName: 'Laboratorio parceiro',
+    description: 'Exames terceirizados',
+    category: 'Servicos',
+    costCenterCode: 'LAB',
+    costCenterName: 'Laboratorio',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-15',
+    totalAmount: 100
+  });
+
+  await assert.rejects(
+    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, { amountPaid: 101 }),
+    /Payment exceeds outstanding payable balance/
+  );
+
+  const cancelled = await service.cancelPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, 'Duplicado');
+  assert.equal(cancelled.status, 'cancelled');
+  assert.equal(cancelled.cancelledByUserId, 'user_finance');
+  assert.equal(cancelled.notes, 'Duplicado');
+
+  await assert.rejects(
+    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, { amountPaid: 10 }),
+    /Only open or partial payables can be paid/
+  );
+});
+
+test('FinancialPayablesService reconciles non-cash payable payments', async () => {
+  const service = new FinancialPayablesService(new InMemoryFinancialPayablesRepository());
+  const payable = await service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+    supplierName: 'Banco fornecedor',
+    description: 'NF conciliacao',
+    category: 'Servicos',
+    costCenterCode: 'ADM',
+    costCenterName: 'Administrativo',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-12',
+    totalAmount: 300
+  });
+
+  const paid = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+    amountPaid: 300,
+    paymentMethod: 'bank_transfer',
+    paymentReference: 'extrato-123',
+    notes: 'TED fornecedor'
+  });
+  assert.equal(paid.reconciliationStatus, 'pending');
+
+  const pending = await service.listPayableReconciliation('acc_cvg_demo' as never, {
+    status: 'pending'
+  });
+  assert.equal(pending.total, 1);
+  assert.equal(pending.data[0]?.id, payable.id);
+
+  const reconciled = await service.reconcilePayablePayment(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    payable.id,
+    {
+      reconciliationReference: 'OFX-0001',
+      notes: 'Conferido no extrato'
+    }
+  );
+  assert.equal(reconciled.reconciliationStatus, 'reconciled');
+  assert.equal(reconciled.reconciliationReference, 'OFX-0001');
+  assert.equal(reconciled.reconciledByUserId, 'user_finance');
+  assert.ok(reconciled.reconciledAt);
+
+  const after = await service.listPayableReconciliation('acc_cvg_demo' as never, {
+    status: 'reconciled'
+  });
+  assert.equal(after.total, 1);
+});
+
+test('FinancialIncomeStatementService consolidates realized result from receivables and payables', async () => {
+  const receivables = new InMemoryEncounterFinancialRepository();
+  const payables = new InMemoryFinancialPayablesRepository();
+  const accountId = 'acc_cvg_demo' as never;
+  const statement = new FinancialIncomeStatementService({
+    receivables,
+    payables
+  });
+
+  await receivables.upsertFinancialAccount({
+    id: 'efa_statement_1',
+    accountId,
+    encounterId: 'enc_statement_1' as never,
+    financialStatus: 'paid',
+    subtotalSnapshot: 1000,
+    discountTotalSnapshot: 0,
+    totalSnapshot: 1000,
+    paidAmount: 1000,
+    balanceDue: 0,
+    closedByUserId: null,
+    closedAt: null,
+    notes: null,
+    snapshotJson: '{}',
+    createdAt: '2026-05-05T00:00:00.000Z',
+    updatedAt: '2026-05-05T00:00:00.000Z'
+  });
+  await receivables.replaceReceivables('efa_statement_1', [
+    {
+      id: 'er_statement_paid',
+      accountId,
+      encounterId: 'enc_statement_1' as never,
+      financialAccountId: 'efa_statement_1',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela 1/1',
+      dueAt: '2026-05-10',
+      status: 'settled',
+      amountOriginal: 1000,
+      amountPaid: 1000,
+      amountOutstanding: 0,
+      issuedAt: '2026-05-05',
+      settledAt: '2026-05-08T10:00:00.000Z',
+      notes: null,
+      createdAt: '2026-05-05T00:00:00.000Z',
+      updatedAt: '2026-05-08T10:00:00.000Z'
+    },
+    {
+      id: 'er_statement_open',
+      accountId,
+      encounterId: 'enc_statement_2' as never,
+      financialAccountId: 'efa_statement_1',
+      installmentNumber: 2,
+      installmentLabel: 'Parcela 2/2',
+      dueAt: '2026-05-20',
+      status: 'open',
+      amountOriginal: 400,
+      amountPaid: 100,
+      amountOutstanding: 300,
+      issuedAt: '2026-05-09',
+      settledAt: null,
+      notes: null,
+      createdAt: '2026-05-09T00:00:00.000Z',
+      updatedAt: '2026-05-09T00:00:00.000Z'
+    },
+    {
+      id: 'er_statement_other_account',
+      accountId: 'acc_other' as never,
+      encounterId: 'enc_other' as never,
+      financialAccountId: 'efa_other',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela',
+      dueAt: '2026-05-10',
+      status: 'settled',
+      amountOriginal: 999,
+      amountPaid: 999,
+      amountOutstanding: 0,
+      issuedAt: '2026-05-05',
+      settledAt: '2026-05-08T10:00:00.000Z',
+      notes: null,
+      createdAt: '2026-05-05T00:00:00.000Z',
+      updatedAt: '2026-05-08T10:00:00.000Z'
+    }
+  ]);
+
+  const inventory = await new FinancialPayablesService(payables).createPayable(accountId, 'user_finance' as never, {
+    supplierName: 'Fornecedor Estoque',
+    description: 'Compra mensal',
+    category: 'Estoque',
+    costCenterCode: 'EST',
+    costCenterName: 'Estoque',
+    issuedAt: '2026-05-02',
+    dueAt: '2026-05-15',
+    totalAmount: 500
+  });
+  await new FinancialPayablesService(payables).payPayable(accountId, 'user_finance' as never, inventory.id, {
+    amountPaid: 300
+  });
+  await new FinancialPayablesService(payables).createPayable(accountId, 'user_finance' as never, {
+    supplierName: 'Laboratorio',
+    description: 'Exames terceirizados',
+    category: 'Laboratorio',
+    costCenterCode: 'LAB',
+    costCenterName: 'Laboratorio',
+    issuedAt: '2026-05-03',
+    dueAt: '2026-05-18',
+    totalAmount: 200
+  });
+
+  const result = await statement.getIncomeStatement(accountId, {
+    dateFrom: '2026-05-01',
+    dateTo: '2026-05-31'
+  });
+
+  assert.equal(result.revenue.grossRevenue, 1400);
+  assert.equal(result.revenue.realizedRevenue, 1000);
+  assert.equal(result.revenue.outstandingReceivables, 300);
+  assert.equal(result.expenses.accruedExpenses, 700);
+  assert.equal(result.expenses.paidExpenses, 300);
+  assert.equal(result.expenses.outstandingPayables, 400);
+  assert.equal(result.result.realizedNetResult, 700);
+  assert.equal(result.result.accrualNetResult, 700);
+  assert.deepEqual(result.expenses.byCategory, [
+    { category: 'Estoque', accruedAmount: 500, paidAmount: 300, outstandingAmount: 200 },
+    { category: 'Laboratorio', accruedAmount: 200, paidAmount: 0, outstandingAmount: 200 }
+  ]);
 });

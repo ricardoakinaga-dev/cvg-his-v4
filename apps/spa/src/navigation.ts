@@ -68,7 +68,8 @@ export const navGroups: AppNavGroup[] = [
         id: 'atendimento-internacao',
         label: 'Internação',
         items: [
-          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] }
+          { label: 'Internação', path: '/inpatient', icon: '🛏️', keywords: ['internacao', 'hospitalizacao'] },
+          { label: 'Diárias de Internação', path: '/inpatient/daily-charges', icon: '💵', keywords: ['diarias internacao', 'faturamento internacao', 'hospitalizacao'] }
         ]
       },
       {
@@ -218,6 +219,7 @@ export const navGroups: AppNavGroup[] = [
         items: [
           { label: 'Contas a Receber', path: '/billing', icon: '💵', keywords: ['receber', 'recebiveis', 'billing', 'contas a receber'] },
           { label: 'Contas a Pagar', path: '/finance/accounts-payable', icon: '💸', keywords: ['pagar', 'fornecedores', 'contas a pagar'] },
+          { label: 'Conciliação Financeira', path: '/finance/reconciliation', icon: '🧾', keywords: ['conciliacao financeira', 'conciliação financeira', 'pix cartao pagaveis', 'banco'] },
           { label: 'Pagamento Antecipado', path: '/finance/advance-payments', icon: '⏩', keywords: ['pagamento antecipado', 'adiantamento', 'credito cliente'] },
           { label: 'Contas Adm. Cartão', path: '/finance/card-accounts', icon: '💳', keywords: ['contas cartao', 'contas adm cartao', 'administracao cartao', 'conciliacao cartao'] },
           { label: 'Cheques', path: '/finance/cheques', icon: '📄', keywords: ['cheques', 'cheque recebido', 'cheque emitido', 'baixa cheque'] },
@@ -318,7 +320,7 @@ export const navGroups: AppNavGroup[] = [
         label: 'Envios',
         items: [
           { label: 'Envio de SMS Simples', path: '/marketing/sms', icon: '📱', keywords: ['sms'] },
-          { label: 'Campanhas de SMS Marketing', path: '/notifications', icon: '🔔', keywords: ['campanhas', 'notificacoes', 'sms marketing'] }
+          { label: 'Campanhas de Marketing', path: '/marketing/campaigns', icon: '📣', keywords: ['campanhas', 'notificacoes', 'sms marketing', 'whatsapp marketing', 'email marketing'] }
         ]
       },
       {
@@ -444,6 +446,7 @@ export const navGroups: AppNavGroup[] = [
         label: 'Hubs CVG',
         items: [
           { label: 'Visão por Domínio', path: '/reports', icon: '📈', keywords: ['relatorios por dominio', 'hub'] },
+          { label: 'Motor Enterprise', path: '/reports/engine', icon: '📊', keywords: ['motor enterprise', 'relatorios premium', 'exportacao', 'agendamento'] },
           { label: 'Hubs Administrativos', path: '/administrative-reports', icon: '📊', keywords: ['administrative reports', 'commercial reports'] }
         ]
       }

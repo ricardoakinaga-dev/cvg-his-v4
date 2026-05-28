@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Cálculo de Comissões"
       :breadcrumbs="['RH', 'Comissões', 'Cálculo de Comissões']"
-      subtitle="Prévia operacional de produção e bases de repasse sem gerar fechamento automático"
+      subtitle="Fechamento auditável de produção, revisão e pagamento de comissões"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
@@ -12,13 +12,16 @@
     </AppPageHeader>
 
     <DsAlert variant="info">
-      Superfície Vetus-like para a rota legada Comissoes/CalculoDeComissoes.htm. Nenhum cálculo é fechado nesta
-      tela; a leitura consolida dados disponíveis do hub administrativo e da equipe para apoiar conferência antes de
-      um fechamento formal.
+      Superfície Vetus-like para a rota legada Comissoes/CalculoDeComissoes.htm. O cálculo agora usa o contrato real
+      de comissões, gera fechamento em rascunho e permite revisão, pagamento ou cancelamento com auditoria.
     </DsAlert>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
+    </DsAlert>
+
+    <DsAlert v-if="success" variant="success" dismissible @dismiss="success = ''">
+      {{ success }}
     </DsAlert>
 
     <DsCard title="Pesquisa de cálculo">
@@ -43,11 +46,11 @@
         />
       </div>
       <div class="rh-page__actions">
-        <DsButton variant="secondary" disabled>Incluir</DsButton>
+        <DsButton variant="secondary" :loading="saving" @click="createCalculation">Incluir</DsButton>
         <DsButton :loading="loading" @click="prepareSearch">Pesquisar</DsButton>
       </div>
       <p class="rh-page__hint">
-        Sem contrato auditável de fechamento, pagamento ou liquidação de comissão. A ação Incluir fica bloqueada.
+        A inclusão cria um fechamento em rascunho usando as regras ativas e as linhas produtivas carregadas no período.
       </p>
     </DsCard>
 
@@ -58,7 +61,7 @@
     <section class="rh-page__kpis">
       <DsStatCard label="Receita comercial" :value="formatCurrency(report?.executive.commercialRevenue ?? 0)" icon="📈" />
       <DsStatCard label="Ticket médio" :value="formatCurrency(report?.domains.commercial.counterSales.avgTicket ?? 0)" icon="🧾" />
-      <DsStatCard :label="`${activeStaffCount} profissional(is) ativo(s)`" value="" icon="👥" />
+      <DsStatCard label="Comissão calculada" :value="formatCurrency(totalCommissionAmount)" icon="💳" />
     </section>
 
     <DsCard title="Registros de cálculo">
@@ -67,12 +70,46 @@
         :rows="calculationRows"
         :loading="loading"
         empty-icon="🧮"
-        empty-title="Nenhuma pesquisa preparada"
-        empty-description="Use Profissional, Data do Cálculo e Pesquisar para montar a grade Vetus com Profissional, Data de Cálculo e Abrir."
+        empty-title="Nenhum fechamento encontrado"
+        empty-description="Use Profissional, Data do Cálculo e Incluir para gerar um fechamento em rascunho."
         variant="hoverable"
       >
-        <template #cell-open>
-          <DsButton size="sm" variant="secondary" disabled>Abrir</DsButton>
+        <template #cell-totalBaseAmount="{ row }">
+          {{ formatCurrency(calculationRow(row).totalBaseAmount) }}
+        </template>
+        <template #cell-totalCommissionAmount="{ row }">
+          {{ formatCurrency(calculationRow(row).totalCommissionAmount) }}
+        </template>
+        <template #cell-open="{ row }">
+          <div class="rh-page__row-actions">
+            <DsButton
+              v-if="calculationRow(row).status === 'draft'"
+              size="sm"
+              variant="secondary"
+              :loading="actionLoadingKey === `${calculationRow(row).id}:review`"
+              @click="reviewCalculation(calculationRow(row).id)"
+            >
+              Revisar
+            </DsButton>
+            <DsButton
+              v-if="calculationRow(row).status === 'reviewed'"
+              size="sm"
+              variant="secondary"
+              :loading="actionLoadingKey === `${calculationRow(row).id}:pay`"
+              @click="payCalculation(calculationRow(row).id)"
+            >
+              Pagar
+            </DsButton>
+            <DsButton
+              v-if="calculationRow(row).status !== 'paid' && calculationRow(row).status !== 'cancelled'"
+              size="sm"
+              variant="secondary"
+              :loading="actionLoadingKey === `${calculationRow(row).id}:cancel`"
+              @click="cancelCalculation(calculationRow(row).id)"
+            >
+              Cancelar
+            </DsButton>
+          </div>
         </template>
       </DataTable>
     </DsCard>
@@ -117,6 +154,12 @@ import {
   administrativeReportsService,
   type AdministrativeReportsResponse
 } from '@/services/administrativeReports';
+import {
+  commissionService,
+  type CommissionCalculationDetail,
+  type CommissionItemKind,
+  type CommissionSourceLinePayload
+} from '@/services/commissions';
 import { staffService } from '@/services/staff';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -135,27 +178,35 @@ interface ProductionRow {
 
 interface CommissionCalculationRow {
   id: string;
-  professional: string;
+  number: string;
   calculationDate: string;
-  base: string;
+  period: string;
   status: string;
+  totalBaseAmount: number;
+  totalCommissionAmount: number;
   open: string;
 }
 
 const loading = ref(false);
+const saving = ref(false);
+const actionLoadingKey = ref('');
 const error = ref('');
+const success = ref('');
 const report = ref<AdministrativeReportsResponse | null>(null);
 const staff = ref<StaffSummary[]>([]);
+const calculations = ref<CommissionCalculationDetail[]>([]);
 const selectedProfessionalId = ref('');
 const calculationDate = ref(toDateInputValue(new Date()));
 const searchSubmitted = ref(false);
 
 const calculationColumns: DataTableColumn[] = [
-  { key: 'professional', label: 'Profissional' },
+  { key: 'number', label: 'Número' },
   { key: 'calculationDate', label: 'Data de Cálculo' },
-  { key: 'base', label: 'Base' },
+  { key: 'period', label: 'Período' },
+  { key: 'totalBaseAmount', label: 'Base' },
+  { key: 'totalCommissionAmount', label: 'Comissão' },
   { key: 'status', label: 'Situação' },
-  { key: 'open', label: 'Abrir' }
+  { key: 'open', label: 'Ação' }
 ];
 const productionColumns: DataTableColumn[] = [
   { key: 'name', label: 'Item' },
@@ -171,7 +222,6 @@ const staffColumns: DataTableColumn[] = [
 ];
 
 const activeStaff = computed(() => staff.value.filter((member) => member.status === 'active'));
-const activeStaffCount = computed(() => activeStaff.value.length);
 const selectedStaff = computed(() =>
   selectedProfessionalId.value ? activeStaff.value.find((member) => member.id === selectedProfessionalId.value) : null
 );
@@ -198,39 +248,44 @@ const productionRows = computed(() => {
     ...dashboard.topProducts.map((item) => ({ ...item, id: `product-${item.name}`, kind: 'Produto' }))
   ] as DataTableRow[];
 });
-const calculationRows = computed(
-  () =>
-    searchedStaff.value.map((member) => ({
-      id: `commission-${member.id}`,
-      professional: member.fullName,
-      calculationDate: formatDate(calculationDate.value),
-      base: commissionBaseLabel.value,
-      status: 'Preparação segura',
-      open: 'Bloqueado'
+const calculationRows = computed(() =>
+  calculations.value
+    .filter((calculation) => !searchSubmitted.value || calculation.periodStart <= calculationDate.value)
+    .map((calculation) => ({
+      id: calculation.id,
+      number: calculation.number,
+      calculationDate: formatDate(calculation.createdAt.slice(0, 10)),
+      period: `${formatDate(calculation.periodStart)} a ${formatDate(calculation.periodEnd)}`,
+      status: statusLabel(calculation.status),
+      rawStatus: calculation.status,
+      totalBaseAmount: calculation.totalBaseAmount,
+      totalCommissionAmount: calculation.totalCommissionAmount,
+      open: 'Ações'
     })) as DataTableRow[]
 );
-const commissionBaseLabel = computed(() => {
-  if (productionRows.value.length === 0) return 'Sem produção consolidada';
-  return 'Base produtiva sem vínculo individualizado';
-});
+const totalCommissionAmount = computed(() =>
+  calculations.value.reduce((total, calculation) => total + calculation.totalCommissionAmount, 0)
+);
 const searchSummary = computed(() => {
   if (!searchSubmitted.value) return '';
   const scope = selectedStaff.value?.fullName ?? 'todos os profissionais ativos';
   return `Pesquisa preparada para ${scope} em ${formatDate(
     calculationDate.value
-  )}. Sem contrato auditável de fechamento.`;
+  )}. Use Incluir para gerar fechamento auditável.`;
 });
 
 async function loadData() {
   loading.value = true;
   error.value = '';
   try {
-    const [reportResponse, staffResponse] = await Promise.all([
+    const [reportResponse, staffResponse, calculationResponse] = await Promise.all([
       administrativeReportsService.getHubs(),
-      staffService.list()
+      staffService.list(),
+      commissionService.listCalculations()
     ]);
     report.value = reportResponse;
     staff.value = staffResponse;
+    calculations.value = calculationResponse;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar cálculo de comissões';
   } finally {
@@ -242,8 +297,105 @@ function prepareSearch() {
   searchSubmitted.value = true;
 }
 
+async function createCalculation() {
+  saving.value = true;
+  error.value = '';
+  success.value = '';
+  try {
+    const lines = buildCommissionLines();
+    const calculation = await commissionService.calculate({
+      periodStart: calculationDate.value,
+      periodEnd: calculationDate.value,
+      lines,
+      notes: `Fechamento gerado pela tela de comissões para ${selectedStaff.value?.fullName ?? 'todos os profissionais'}`
+    });
+    upsertCalculation(calculation);
+    searchSubmitted.value = true;
+    success.value = `Fechamento ${calculation.number} criado com comissão de ${formatCurrency(calculation.totalCommissionAmount)}.`;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao incluir cálculo de comissões';
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function reviewCalculation(calculationId: string) {
+  await runCalculationAction(calculationId, 'review', () => commissionService.review(calculationId), 'revisado');
+}
+
+async function payCalculation(calculationId: string) {
+  await runCalculationAction(calculationId, 'pay', () => commissionService.pay(calculationId), 'pago');
+}
+
+async function cancelCalculation(calculationId: string) {
+  await runCalculationAction(calculationId, 'cancel', () => commissionService.cancel(calculationId), 'cancelado');
+}
+
+async function runCalculationAction(
+  calculationId: string,
+  action: string,
+  callback: () => Promise<CommissionCalculationDetail>,
+  label: string
+) {
+  actionLoadingKey.value = `${calculationId}:${action}`;
+  error.value = '';
+  success.value = '';
+  try {
+    const updated = await callback();
+    upsertCalculation(updated);
+    success.value = `Fechamento ${updated.number} ${label}.`;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao atualizar cálculo de comissões';
+  } finally {
+    actionLoadingKey.value = '';
+  }
+}
+
+function buildCommissionLines(): CommissionSourceLinePayload[] {
+  const members = searchedStaff.value.length > 0 ? searchedStaff.value : activeStaff.value;
+  if (members.length === 0) return [];
+  const rows = productionRows.value.map(productionRow);
+  return members.flatMap((member) =>
+    rows.map((row) => ({
+      staffId: member.id,
+      staffName: member.fullName,
+      department: member.department,
+      jobTitle: member.jobTitle,
+      itemKind: productionKind(row.kind),
+      sourceType: 'manual',
+      sourceId: `${row.id}-${member.id}-${calculationDate.value}`,
+      sourceDescription: row.name,
+      baseAmount: roundMoney(row.revenue / members.length),
+      occurredAt: calculationDate.value
+    }))
+  );
+}
+
+function upsertCalculation(calculation: CommissionCalculationDetail) {
+  calculations.value = [
+    calculation,
+    ...calculations.value.filter((item) => item.id !== calculation.id)
+  ];
+}
+
 function productionRow(row: DataTableRow): ProductionRow {
   return row as unknown as ProductionRow;
+}
+
+function calculationRow(row: DataTableRow): CommissionCalculationRow & { status: CommissionCalculationDetail['status'] } {
+  const value = row as unknown as CommissionCalculationRow & { rawStatus?: CommissionCalculationDetail['status'] };
+  return {
+    ...value,
+    status: value.rawStatus ?? value.status as CommissionCalculationDetail['status']
+  };
+}
+
+function productionKind(kind: string): CommissionItemKind {
+  return kind === 'Produto' ? 'product' : 'service';
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function toDateInputValue(date: Date): string {
@@ -258,6 +410,15 @@ function formatDate(value: string): string {
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function statusLabel(status: CommissionCalculationDetail['status']): string {
+  return {
+    draft: 'Rascunho',
+    reviewed: 'Revisado',
+    paid: 'Pago',
+    cancelled: 'Cancelado'
+  }[status];
 }
 
 onMounted(loadData);
@@ -293,6 +454,12 @@ onMounted(loadData);
   margin: 12px 0 0;
   color: var(--color-text-secondary, #475569);
   font-size: 13px;
+}
+
+.rh-page__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 @media (max-width: 640px) {

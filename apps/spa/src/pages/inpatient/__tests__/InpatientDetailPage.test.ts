@@ -26,6 +26,47 @@ const mockProgressNotes = [
   }
 ];
 
+const mockOccurrences = [
+  {
+    id: 'occ-1',
+    accountId: 'acc-1',
+    stayId: 'stay-1',
+    encounterId: 'enc-1',
+    type: 'clinical' as const,
+    severity: 'attention' as const,
+    title: 'Hiporexia',
+    description: 'Paciente recusou dieta no plantão.',
+    authoredByUserId: 'user-1',
+    createdAt: '2024-01-15T15:00:00Z'
+  }
+];
+
+const mockDailyCharges = [
+  {
+    id: 'charge-1',
+    accountId: 'acc-1',
+    stayId: 'stay-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    description: 'Diária UTI',
+    chargeDate: '2024-01-15',
+    quantity: 1,
+    unitAmount: 180,
+    totalAmount: 180,
+    status: 'pending' as const,
+    createdByUserId: 'user-1',
+    createdAt: '2024-01-15T15:00:00Z',
+    updatedAt: '2024-01-15T15:00:00Z'
+  }
+];
+
+const mockBilledDailyCharge = {
+  ...mockDailyCharges[0],
+  id: 'charge-billed',
+  status: 'billed' as const,
+  billingRecordId: 'bill-1'
+};
+
 const mockListFn = vi.fn().mockResolvedValue([mockStay]);
 const mockProgressFn = vi.fn().mockResolvedValue(mockProgressNotes);
 const mockAddProgressFn = vi.fn().mockResolvedValue({
@@ -38,6 +79,25 @@ const mockAddProgressFn = vi.fn().mockResolvedValue({
   createdAt: '2024-01-15T16:00:00Z'
 });
 const mockUpdateStatusFn = vi.fn().mockResolvedValue({ ...mockStay, status: 'stable' });
+const mockListOccurrencesFn = vi.fn().mockResolvedValue(mockOccurrences);
+const mockAddOccurrenceFn = vi.fn().mockResolvedValue({
+  ...mockOccurrences[0],
+  id: 'occ-new',
+  title: 'Intercorrência respiratória',
+  description: 'Paciente apresentou tosse no plantão.'
+});
+const mockListDailyChargesFn = vi.fn().mockResolvedValue(mockDailyCharges);
+const mockCreateDailyChargeFn = vi.fn().mockResolvedValue({
+  ...mockDailyCharges[0],
+  id: 'charge-new',
+  totalAmount: 360,
+  quantity: 2
+});
+const mockMarkDailyChargeBilledFn = vi.fn().mockResolvedValue({
+  ...mockDailyCharges[0],
+  status: 'billed',
+  billingRecordId: 'bill-1'
+});
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetUserName = vi.fn().mockResolvedValue('Dr. Smith');
 
@@ -54,6 +114,21 @@ vi.mock('@/services/inpatient', () => ({
     },
     get updateStatus() {
       return mockUpdateStatusFn;
+    },
+    get listOccurrences() {
+      return mockListOccurrencesFn;
+    },
+    get addOccurrence() {
+      return mockAddOccurrenceFn;
+    },
+    get listDailyCharges() {
+      return mockListDailyChargesFn;
+    },
+    get createDailyCharge() {
+      return mockCreateDailyChargeFn;
+    },
+    get markDailyChargeBilled() {
+      return mockMarkDailyChargeBilledFn;
     }
   }
 }));
@@ -93,6 +168,8 @@ describe('InpatientDetailPage', () => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue([mockStay]);
     mockProgressFn.mockResolvedValue(mockProgressNotes);
+    mockListOccurrencesFn.mockResolvedValue(mockOccurrences);
+    mockListDailyChargesFn.mockResolvedValue(mockDailyCharges);
   });
 
   it('renders stay information', async () => {
@@ -170,6 +247,114 @@ describe('InpatientDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Paciente apresentou melhora significativa.');
+  });
+
+  it('shows inpatient occurrences and daily charges', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Ocorrências da Internação');
+    expect(wrapper.text()).toContain('Hiporexia');
+    expect(wrapper.text()).toContain('Diárias e Cobranças');
+    expect(wrapper.text()).toContain('Diária UTI');
+    expect(wrapper.text()).toContain('R$');
+  });
+
+  it('links billed inpatient daily charge to billing detail by encounter', async () => {
+    mockListDailyChargesFn.mockResolvedValueOnce([mockBilledDailyCharge]);
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Faturada');
+    expect(wrapper.text()).toContain('Cobrança bill-1');
+    expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
+  });
+
+  it('creates structured inpatient occurrence from detail page', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+    const newOccurrenceBtn = wrapper.findAll('button').find((b) => b.text().includes('Nova Ocorrência'));
+    await newOccurrenceBtn!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input#occurrenceTitle').setValue('Intercorrência respiratória');
+    await wrapper.find('textarea#occurrenceDescription').setValue('Paciente apresentou tosse no plantão.');
+    const saveBtn = wrapper.findAll('button').find((b) => b.text() === 'Salvar Ocorrência');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+
+    expect(mockAddOccurrenceFn).toHaveBeenCalledWith('stay-1', {
+      type: 'clinical',
+      severity: 'info',
+      title: 'Intercorrência respiratória',
+      description: 'Paciente apresentou tosse no plantão.'
+    });
+    expect(wrapper.text()).toContain('Ocorrência registrada com sucesso!');
+  });
+
+  it('creates and marks daily charge as billed from detail page', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+    const newChargeBtn = wrapper.findAll('button').find((b) => b.text().includes('Lançar Diária'));
+    await newChargeBtn!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input#dailyChargeDescription').setValue('Diária UTI');
+    await wrapper.find('input#dailyChargeQuantity').setValue(2);
+    await wrapper.find('input#dailyChargeUnitAmount').setValue(180);
+    const saveBtn = wrapper.findAll('button').find((b) => b.text() === 'Lançar Diária');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+
+    expect(mockCreateDailyChargeFn).toHaveBeenCalledWith('stay-1', {
+      description: 'Diária UTI',
+      chargeDate: expect.any(String),
+      quantity: 2,
+      unitAmount: 180
+    });
+    expect(wrapper.text()).toContain('Diária lançada com sucesso!');
+
+    const billBtn = wrapper.findAll('button').find((b) => b.text().includes('Marcar Faturada'));
+    await billBtn!.trigger('click');
+    await flushPromises();
+
+    expect(mockMarkDailyChargeBilledFn).toHaveBeenCalledWith('stay-1', 'charge-new');
+    expect(wrapper.text()).toContain('Diária marcada como faturada!');
   });
 
   it('resolves author name instead of showing UUID', async () => {

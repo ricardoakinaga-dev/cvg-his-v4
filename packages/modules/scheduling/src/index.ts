@@ -2,6 +2,7 @@ import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
   CreateAppointmentRequest,
+  RescheduleAppointmentRequest,
   SchedulingAvailabilityResponse,
   SchedulingCockpitAppointmentSummary,
   SchedulingOverviewResponse,
@@ -861,6 +862,100 @@ export class SchedulingService {
     void this.#onAppointmentStatusChanged?.(cancelledAppointment, current.status);
 
     return cancelledAppointment;
+  }
+
+  public async rescheduleAppointment(
+    accountId: AccountId,
+    appointmentId: AppointmentId,
+    payload: RescheduleAppointmentRequest
+  ): Promise<SchedulingAppointmentSummary> {
+    const current = this.getAppointmentOrThrow(appointmentId);
+
+    if (current.accountId !== accountId) {
+      throw new NotFoundError('Appointment not found', { appointmentId });
+    }
+
+    if (current.status !== 'scheduled') {
+      throw new ConflictError('Appointment cannot be rescheduled in its current state', {
+        appointmentId,
+        currentStatus: current.status,
+        allowedStatuses: ['scheduled']
+      });
+    }
+
+    const scheduledAt = parseDate(payload.scheduledAt, 'scheduledAt');
+    const visitType = payload.visitType ?? current.visitType;
+    const durationMinutes = defaultDurationMinutes(
+      visitType,
+      payload.durationMinutes ?? current.durationMinutes
+    );
+    const practitionerStaffId =
+      payload.practitionerStaffId !== undefined
+        ? (payload.practitionerStaffId.trim()
+            ? (payload.practitionerStaffId.trim() as StaffId)
+            : undefined)
+        : current.practitionerStaffId;
+    const serviceId =
+      payload.serviceId !== undefined
+        ? payload.serviceId.trim() || undefined
+        : current.serviceId;
+
+    if (practitionerStaffId && this.#staff) {
+      this.#staff.getOrThrow(practitionerStaffId, accountId);
+    }
+
+    if (serviceId && this.#services) {
+      this.#services.getOrThrow(serviceId);
+    }
+
+    const resourceLabel =
+      payload.resourceLabel !== undefined
+        ? payload.resourceLabel.trim() || undefined
+        : current.resourceLabel;
+
+    const conflicts = this.collectConflicts(accountId, scheduledAt, durationMinutes, {
+      patientId: current.patientId,
+      practitionerStaffId,
+      resourceLabel,
+      ignoreAppointmentId: appointmentId
+    });
+    if (conflicts.length > 0) {
+      if (conflicts.every((conflict) => conflict.type === 'patient_overlap')) {
+        throw new ConflictError('Patient already has an appointment within a 30-minute window', {
+          conflicts
+        });
+      }
+
+      throw new ConflictError('Appointment slot is unavailable for the requested schedule', {
+        conflicts
+      });
+    }
+
+    const updated: SchedulingAppointmentSummary = {
+      ...current,
+      scheduledAt: scheduledAt.toISOString(),
+      durationMinutes,
+      visitType,
+      reason:
+        payload.reason !== undefined
+          ? requireNonEmptyString(payload.reason, 'reason')
+          : current.reason,
+      practitionerStaffId,
+      serviceId,
+      unit: payload.unit !== undefined ? payload.unit.trim() || undefined : current.unit,
+      specialty:
+        payload.specialty !== undefined ? payload.specialty.trim() || undefined : current.specialty,
+      resourceLabel,
+      updatedAt: nowIso()
+    };
+
+    this.#appointments.set(appointmentId, updated);
+
+    if (this.#repository) {
+      await this.#repository.updateAppointment(updated);
+    }
+
+    return updated;
   }
 
   public async transitionQueueEntry(

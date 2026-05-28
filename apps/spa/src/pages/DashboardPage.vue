@@ -61,6 +61,125 @@
       </DsCard>
     </section>
 
+    <section class="enterprise-command-center" aria-label="Central executiva Premium">
+      <DsCard class="panel-card panel-card--wide">
+        <div class="panel-card__head panel-card__head--with-action">
+          <div>
+            <h2 class="panel-card__title">Central executiva Premium</h2>
+            <p class="panel-card__subtitle">SLO, auditoria operacional e próximos focos</p>
+          </div>
+          <router-link class="panel-card__action" to="/api-client">Operação</router-link>
+        </div>
+
+        <div v-if="enterpriseOverview.loading" class="panel-loading">
+          Carregando indicadores enterprise...
+        </div>
+        <EmptyState
+          v-else-if="enterpriseOverview.error"
+          icon="📡"
+          title="Central executiva indisponível"
+          :description="enterpriseOverview.error"
+          size="sm"
+        />
+        <div v-else class="enterprise-command-center__content">
+          <div class="enterprise-kpis">
+            <router-link to="/api-client" class="enterprise-kpi">
+              <span>Status SLO</span>
+              <strong>{{ enterpriseSloStatusLabel }}</strong>
+              <small>{{ enterpriseSloHint }}</small>
+            </router-link>
+            <router-link to="/audit" class="enterprise-kpi">
+              <span>Auditoria</span>
+              <strong>{{ enterpriseAuditCoverageLabel }}</strong>
+              <small>{{ enterpriseAuditHint }}</small>
+            </router-link>
+            <router-link to="/audit" class="enterprise-kpi">
+              <span>Eventos auditados</span>
+              <strong>{{ formatNumber(enterpriseOverview.audit?.totalEvents ?? 0) }}</strong>
+              <small>Base operacional rastreável</small>
+            </router-link>
+            <router-link to="/audit?entity=report-schedule-delivery" class="enterprise-kpi">
+              <span>Alertas resolvidos</span>
+              <strong>{{ formatNumber(resolvedReportDeliveryAlerts) }}</strong>
+              <small>Reprocessamentos auditados de entregas</small>
+            </router-link>
+          </div>
+
+          <div class="enterprise-focus-list">
+            <h3>Prioridades do gestor</h3>
+            <router-link
+              v-for="item in enterpriseFocusItems"
+              :key="item.key"
+              :to="item.to"
+              class="enterprise-focus-item"
+            >
+              <span :class="`enterprise-focus-item__tone enterprise-focus-item__tone--${item.tone}`" />
+              <span>
+                <strong>{{ item.label }}</strong>
+                <small>{{ item.detail }}</small>
+              </span>
+            </router-link>
+          </div>
+        </div>
+
+        <div class="premium-lenses">
+          <div class="premium-lenses__head">
+            <h3>Lentes executivas</h3>
+            <span>{{ premiumBusinessOverview.loading ? 'Atualizando...' : 'Clínica, financeiro, operação e estoque' }}</span>
+          </div>
+          <EmptyState
+            v-if="premiumBusinessOverview.error"
+            icon="📊"
+            title="Lentes executivas parciais"
+            :description="premiumBusinessOverview.error"
+            size="sm"
+          />
+          <div class="premium-lenses__grid">
+            <router-link
+              v-for="lens in premiumBusinessLenses"
+              :key="lens.key"
+              :to="lens.to"
+              class="premium-lens"
+            >
+              <span :class="`premium-lens__tone premium-lens__tone--${lens.tone}`" />
+              <span>
+                <small>{{ lens.label }}</small>
+                <strong>{{ lens.value }}</strong>
+                <em>{{ lens.hint }}</em>
+              </span>
+            </router-link>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="premium-operation-guide" aria-label="Roteiro operacional Premium">
+      <DsCard class="panel-card panel-card--wide">
+        <div class="panel-card__head panel-card__head--with-action">
+          <div>
+            <h2 class="panel-card__title">Roteiro operacional Premium</h2>
+            <p class="panel-card__subtitle">Demo, piloto e suporte com rotas reais</p>
+          </div>
+          <router-link class="panel-card__action" to="/master-search">Busca Mestre</router-link>
+        </div>
+
+        <div class="premium-operation-guide__grid">
+          <router-link
+            v-for="step in premiumOperationalGuide"
+            :key="step.key"
+            :to="step.to"
+            class="premium-operation-step"
+          >
+            <span class="premium-operation-step__order">{{ step.order }}</span>
+            <span class="premium-operation-step__copy">
+              <strong>{{ step.label }}</strong>
+              <small>{{ step.detail }}</small>
+            </span>
+          </router-link>
+        </div>
+      </DsCard>
+    </section>
+
     <section class="home-panels">
       <DsCard class="panel-card panel-card--wide">
         <div class="panel-card__head panel-card__head--with-action">
@@ -238,6 +357,15 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import { useAppStore } from '@/stores/app';
 import { useWidgetStore } from '@/stores/widgets';
 import { apiRequest } from '@/services/api';
+import { auditService, type OperationalAuditCoverageReport } from '@/services/audit';
+import { counterSalesService, type CounterSalesCommercialDashboard } from '@/services/counterSales';
+import { healthService, type SloReportResponse } from '@/services/health';
+import { inpatientService } from '@/services/inpatient';
+import { inventoryService } from '@/services/inventory';
+import { laboratoryService } from '@/services/laboratory';
+import type { InpatientDailyChargeWorklistResponse, InpatientStaySummary } from '@/types/inpatient';
+import type { InventoryItemSummary } from '@/types/inventory';
+import type { AuditEventSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 
 interface DomainShortcut {
   label: string;
@@ -320,6 +448,31 @@ interface OperationalReminder {
   to: string;
 }
 
+interface EnterpriseFocusItem {
+  key: string;
+  label: string;
+  detail: string;
+  tone: 'info' | 'warning' | 'success' | 'danger';
+  to: string;
+}
+
+interface PremiumBusinessLens {
+  key: string;
+  label: string;
+  value: string;
+  hint: string;
+  tone: 'info' | 'warning' | 'success' | 'danger';
+  to: string;
+}
+
+interface PremiumOperationalGuideStep {
+  key: string;
+  order: string;
+  label: string;
+  detail: string;
+  to: string;
+}
+
 const appStore = useAppStore();
 const widgetStore = useWidgetStore();
 
@@ -343,6 +496,38 @@ const openCounterSales = reactive<{
   loading: false,
   error: '',
   items: []
+});
+
+const enterpriseOverview = reactive<{
+  loading: boolean;
+  error: string;
+  slo: SloReportResponse | null;
+  audit: OperationalAuditCoverageReport | null;
+  reportDeliveryAuditEvents: AuditEventSummary[];
+}>({
+  loading: false,
+  error: '',
+  slo: null,
+  audit: null,
+  reportDeliveryAuditEvents: []
+});
+
+const premiumBusinessOverview = reactive<{
+  loading: boolean;
+  error: string;
+  commercial: CounterSalesCommercialDashboard | null;
+  inpatientStays: InpatientStaySummary[];
+  dailyCharges: InpatientDailyChargeWorklistResponse | null;
+  inventoryItems: InventoryItemSummary[];
+  laboratoryOrders: DiagnosticOrderSummary[];
+}>({
+  loading: false,
+  error: '',
+  commercial: null,
+  inpatientStays: [],
+  dailyCharges: null,
+  inventoryItems: [],
+  laboratoryOrders: []
 });
 
 const recentRoutes = computed(() => appStore.recentRoutes);
@@ -463,6 +648,44 @@ const domainShortcuts: DomainShortcut[] = [
   { label: 'Mapa de Leitos', to: '/inpatient/board', icon: '🗺️', permissionCode: 'inpatient.read' }
 ];
 
+const premiumOperationalGuide: PremiumOperationalGuideStep[] = [
+  {
+    key: 'reception',
+    order: '01',
+    label: 'Entrada pela recepção',
+    detail: 'Localize tutor/paciente e use ações rápidas contextuais.',
+    to: '/reception'
+  },
+  {
+    key: 'search',
+    order: '02',
+    label: 'Busca federada',
+    detail: 'Valide tutor, paciente, produto e comanda na Busca Mestre.',
+    to: '/master-search'
+  },
+  {
+    key: 'cockpit',
+    order: '03',
+    label: 'Cockpit 360',
+    detail: 'Abra o contexto do tutor e siga para a ficha do paciente.',
+    to: '/owners'
+  },
+  {
+    key: 'audit',
+    order: '04',
+    label: 'Auditoria e evidências',
+    detail: 'Confira eventos, cobertura operacional e riscos pendentes.',
+    to: '/audit'
+  },
+  {
+    key: 'operation',
+    order: '05',
+    label: 'SLO e suporte',
+    detail: 'Verifique health, SLO e sinais de falha parcial.',
+    to: '/api-client'
+  }
+];
+
 const headerSecondaryActions = computed(() => [
   {
     key: 'refresh-dashboard',
@@ -577,6 +800,162 @@ const operationalReminders = computed<OperationalReminder[]>(() => {
   return reminders;
 });
 
+const enterpriseSloStatusLabel = computed(() => {
+  const status = enterpriseOverview.slo?.report.overallStatus;
+  if (!status) return '—';
+  return formatSloStatus(status);
+});
+
+const enterpriseSloHint = computed(() => {
+  const snapshot = enterpriseOverview.slo?.snapshot;
+  if (!snapshot) return 'Sem leitura de SLO carregada';
+  return `${formatPercent(snapshot.availabilityPercent)} disponibilidade · P95 ${formatLatency(
+    snapshot.p95LatencyMs
+  )}`;
+});
+
+const enterpriseAuditCoverageLabel = computed(() => {
+  const coverage = enterpriseOverview.audit?.coveragePercent;
+  if (typeof coverage !== 'number') return '—';
+  return formatPercent(coverage);
+});
+
+const enterpriseAuditHint = computed(() => {
+  const audit = enterpriseOverview.audit;
+  if (!audit) return 'Sem cobertura operacional carregada';
+  return `${formatNumber(audit.coveredRequirements)} cobertos · ${formatNumber(
+    audit.missingRequirements
+  )} pendentes`;
+});
+
+const resolvedReportDeliveryAlerts = computed(
+  () =>
+    enterpriseOverview.reportDeliveryAuditEvents.filter(
+      (event) => event.action === 'retry_report_schedule_delivery'
+    ).length
+);
+
+const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
+  const items: EnterpriseFocusItem[] = [];
+  const slo = enterpriseOverview.slo;
+  const audit = enterpriseOverview.audit;
+
+  if (slo?.report.overallStatus === 'critical' || slo?.report.errorBudgetExhausted) {
+    items.push({
+      key: 'slo-critical',
+      label: 'SLO crítico precisa de ação',
+      detail: 'Verifique runbooks, métricas e orçamento de erro no console operacional.',
+      tone: 'danger',
+      to: '/api-client'
+    });
+  } else if (slo?.report.overallStatus === 'degraded') {
+    items.push({
+      key: 'slo-degraded',
+      label: 'SLO degradado em observação',
+      detail: 'Acompanhe latência, disponibilidade e taxa de erro antes do pico operacional.',
+      tone: 'warning',
+      to: '/api-client'
+    });
+  } else if (slo) {
+    items.push({
+      key: 'slo-healthy',
+      label: 'SLO operacional saudável',
+      detail: 'Disponibilidade e orçamento de erro dentro da leitura atual.',
+      tone: 'success',
+      to: '/api-client'
+    });
+  }
+
+  if (audit && audit.missingRequirements > 0) {
+    const missing = audit.requirements.find((requirement) => !requirement.covered);
+    items.push({
+      key: 'audit-missing',
+      label: 'Cobertura de auditoria pendente',
+      detail: missing
+        ? `${missing.module} · ${missing.action}`
+        : `${formatNumber(audit.missingRequirements)} requisito(s) sem evidência`,
+      tone: 'warning',
+      to: '/audit'
+    });
+  } else if (audit) {
+    items.push({
+      key: 'audit-covered',
+      label: 'Auditoria operacional coberta',
+      detail: 'Requisitos enterprise possuem evidência no log operacional.',
+      tone: 'success',
+      to: '/audit'
+    });
+  }
+
+  if (items.length === 0) {
+    items.push({
+      key: 'enterprise-loading',
+      label: 'Indicadores executivos em preparação',
+      detail: 'A central consolida SLO e auditoria quando os serviços respondem.',
+      tone: 'info',
+      to: '/api-client'
+    });
+  }
+
+  return items;
+});
+
+const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
+  const commercial = premiumBusinessOverview.commercial;
+  const pendingDailyAmount = premiumBusinessOverview.dailyCharges?.totalPendingAmount ?? 0;
+  const pendingLaboratoryOrders = premiumBusinessOverview.laboratoryOrders.filter((order) =>
+    order.status === 'requested' || order.status === 'collected'
+  ).length;
+  const lowStockItems = premiumBusinessOverview.inventoryItems.filter(
+    (item) => item.onHandQuantity <= item.reorderLevel
+  );
+  const criticalStockItems = lowStockItems.filter((item) => item.onHandQuantity <= 0);
+  const clinicalHints = [
+    pendingLaboratoryOrders > 0 ? `${formatNumber(pendingLaboratoryOrders)} exame(s) pendente(s)` : '',
+    pendingDailyAmount > 0 ? `${formatCurrency(pendingDailyAmount)} em diárias pendentes` : ''
+  ].filter(Boolean);
+
+  return [
+    {
+      key: 'clinical',
+      label: 'Gestão clínica',
+      value: formatNumber(premiumBusinessOverview.inpatientStays.length),
+      hint: clinicalHints.length > 0 ? clinicalHints.join(' · ') : 'Internações e exames sob acompanhamento',
+      tone: pendingLaboratoryOrders > 0 || pendingDailyAmount > 0
+        ? 'warning'
+        : premiumBusinessOverview.inpatientStays.length > 0 ? 'info' : 'success',
+      to: pendingLaboratoryOrders > 0 ? '/laboratory/orders' : '/inpatient'
+    },
+    {
+      key: 'financial',
+      label: 'Financeiro hoje',
+      value: formatCurrency(commercial?.netRevenueToday ?? 0),
+      hint: `${formatNumber(commercial?.closedToday ?? 0)} comandas fechadas`,
+      tone: (commercial?.netRevenueToday ?? 0) > 0 ? 'success' : 'info',
+      to: '/dashboards/financial'
+    },
+    {
+      key: 'operation',
+      label: 'Operação comercial',
+      value: formatNumber(commercial?.openSales ?? homeSummary['counter-sales']),
+      hint: `${formatCurrency(commercial?.avgTicket ?? 0)} ticket médio`,
+      tone: (commercial?.openSales ?? 0) > 0 ? 'warning' : 'success',
+      to: '/counter-sales'
+    },
+    {
+      key: 'inventory',
+      label: 'Estoque crítico',
+      value: formatNumber(lowStockItems.length),
+      hint:
+        criticalStockItems.length > 0
+          ? `${formatNumber(criticalStockItems.length)} SKU(s) zerados`
+          : 'Itens abaixo ou no ponto de reposição',
+      tone: criticalStockItems.length > 0 ? 'danger' : lowStockItems.length > 0 ? 'warning' : 'success',
+      to: '/inventory/movements'
+    }
+  ];
+});
+
 const visibleDomainShortcuts = computed(() => {
   if (permissionCodes.value === null) {
     return domainShortcuts;
@@ -600,7 +979,82 @@ async function loadDashboard() {
 
   permissionCodes.value = grantedPermissions;
   const tileData = await loadHomeTiles();
-  await Promise.all([loadOpenCounterSales(), loadBirthdays(tileData)]);
+  await Promise.all([
+    loadOpenCounterSales(),
+    loadBirthdays(tileData),
+    loadEnterpriseOverview(),
+    loadPremiumBusinessOverview()
+  ]);
+}
+
+async function loadEnterpriseOverview() {
+  enterpriseOverview.loading = true;
+  enterpriseOverview.error = '';
+
+  try {
+    const [slo, audit] = await Promise.all([
+      healthService.getSloReport(),
+      auditService.getOperationalCoverage()
+    ]);
+    enterpriseOverview.slo = slo;
+    enterpriseOverview.audit = audit;
+    enterpriseOverview.reportDeliveryAuditEvents = await auditService
+      .listEvents({
+        module: 'reports',
+        entityTypes: ['report-schedule-delivery'],
+        limit: 200
+      })
+      .catch(() => []);
+  } catch {
+    enterpriseOverview.slo = null;
+    enterpriseOverview.audit = null;
+    enterpriseOverview.reportDeliveryAuditEvents = [];
+    enterpriseOverview.error =
+      'Confira a disponibilidade de SLO e auditoria operacional para carregar o resumo executivo.';
+  } finally {
+    enterpriseOverview.loading = false;
+  }
+}
+
+async function loadPremiumBusinessOverview() {
+  premiumBusinessOverview.loading = true;
+  premiumBusinessOverview.error = '';
+
+  const [commercialResult, inpatientResult, dailyChargesResult, inventoryResult, laboratoryResult] =
+    await Promise.allSettled([
+      counterSalesService.getCommercialDashboard({ dateFrom: today.value.toISOString().slice(0, 10) }),
+      inpatientService.list({ includeDischarged: false }),
+      inpatientService.listDailyChargeWorklist({ status: 'pending' }),
+      inventoryService.list(),
+      laboratoryService.listOrders()
+    ]);
+
+  premiumBusinessOverview.commercial =
+    commercialResult.status === 'fulfilled' ? commercialResult.value : null;
+  premiumBusinessOverview.inpatientStays =
+    inpatientResult.status === 'fulfilled' ? inpatientResult.value : [];
+  premiumBusinessOverview.dailyCharges =
+    dailyChargesResult.status === 'fulfilled' ? dailyChargesResult.value : null;
+  premiumBusinessOverview.inventoryItems =
+    inventoryResult.status === 'fulfilled' ? inventoryResult.value : [];
+  premiumBusinessOverview.laboratoryOrders =
+    laboratoryResult.status === 'fulfilled' ? laboratoryResult.value : [];
+
+  const failedLoads = [
+    commercialResult,
+    inpatientResult,
+    dailyChargesResult,
+    inventoryResult,
+    laboratoryResult
+  ].filter((result) => result.status === 'rejected').length;
+
+  if (failedLoads > 0) {
+    premiumBusinessOverview.error = `${formatNumber(
+      failedLoads
+    )} lente(s) executiva(s) não carregaram; os demais indicadores continuam disponíveis.`;
+  }
+
+  premiumBusinessOverview.loading = false;
 }
 
 async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
@@ -766,6 +1220,26 @@ function formatNumber(value: number): string {
   return value.toLocaleString('pt-BR');
 }
 
+function formatPercent(value: number): string {
+  return `${value.toLocaleString('pt-BR', {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 1
+  })}%`;
+}
+
+function formatLatency(value: number): string {
+  return `${Math.round(value).toLocaleString('pt-BR')} ms`;
+}
+
+function formatSloStatus(status: SloReportResponse['report']['overallStatus']): string {
+  const labels: Record<SloReportResponse['report']['overallStatus'], string> = {
+    healthy: 'Saudável',
+    degraded: 'Degradado',
+    critical: 'Crítico'
+  };
+  return labels[status] ?? status;
+}
+
 function isOwnerSummary(value: OwnerSummary | PatientSummary): value is OwnerSummary {
   return 'fullName' in value;
 }
@@ -858,6 +1332,234 @@ onMounted(() => {
   display: grid;
 }
 
+.enterprise-command-center {
+  display: grid;
+}
+
+.premium-operation-guide {
+  display: grid;
+}
+
+.premium-operation-guide__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.premium-operation-step {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 112px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  background: rgba(240, 253, 244, 0.72);
+  color: var(--color-text, #0f172a);
+  text-decoration: none;
+}
+
+.premium-operation-step__order {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.premium-operation-step__copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.premium-operation-step__copy strong {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.premium-operation-step__copy small {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.enterprise-command-center__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 14px;
+}
+
+.enterprise-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.enterprise-kpi {
+  display: grid;
+  gap: 6px;
+  min-height: 118px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  background: rgba(240, 249, 255, 0.66);
+  color: var(--color-text, #0f172a);
+  text-decoration: none;
+}
+
+.enterprise-kpi span,
+.enterprise-kpi small {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.enterprise-kpi strong {
+  align-self: end;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.enterprise-focus-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.enterprise-focus-list h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--color-text, #0f172a);
+}
+
+.enterprise-focus-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-text, #0f172a);
+  text-decoration: none;
+}
+
+.enterprise-focus-item strong,
+.enterprise-focus-item small {
+  display: block;
+}
+
+.enterprise-focus-item small {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.enterprise-focus-item__tone {
+  width: 8px;
+  height: 38px;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+
+.enterprise-focus-item__tone--warning {
+  background: #f59e0b;
+}
+
+.enterprise-focus-item__tone--success {
+  background: #16a34a;
+}
+
+.enterprise-focus-item__tone--danger {
+  background: #dc2626;
+}
+
+.premium-lenses {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.premium-lenses__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.premium-lenses__head h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text, #0f172a);
+}
+
+.premium-lenses__head span {
+  font-size: 12px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.premium-lenses__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.premium-lens {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 104px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(248, 250, 252, 0.86);
+  color: var(--color-text, #0f172a);
+  text-decoration: none;
+}
+
+.premium-lens small,
+.premium-lens em {
+  display: block;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.premium-lens strong {
+  display: block;
+  margin: 7px 0 4px;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.premium-lens__tone {
+  width: 8px;
+  height: 100%;
+  min-height: 54px;
+  border-radius: 999px;
+  background: #0ea5e9;
+}
+
+.premium-lens__tone--warning {
+  background: #f59e0b;
+}
+
+.premium-lens__tone--success {
+  background: #16a34a;
+}
+
+.premium-lens__tone--danger {
+  background: #dc2626;
+}
+
 .home-metrics-card {
   min-height: auto;
 }
@@ -927,12 +1629,16 @@ onMounted(() => {
 }
 
 .panel-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(14, 165, 233, 0.3);
   border-radius: 10px;
   padding: 8px 12px;
   background: rgba(14, 165, 233, 0.08);
   color: #0369a1;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -1044,6 +1750,15 @@ onMounted(() => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .premium-lenses__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .premium-operation-guide__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .enterprise-command-center__content,
   .home-panels {
     grid-template-columns: 1fr;
   }
@@ -1058,6 +1773,7 @@ onMounted(() => {
 @media (max-width: 720px) {
   .home-shortcuts,
   .domain-shortcuts,
+  .enterprise-kpis,
   .home-metrics {
     grid-template-columns: 1fr 1fr;
   }
@@ -1068,6 +1784,18 @@ onMounted(() => {
 
   .link-list__path {
     display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .premium-lenses__grid,
+  .premium-operation-guide__grid,
+  .enterprise-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .premium-lenses__head {
+    display: grid;
   }
 }
 </style>

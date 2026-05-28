@@ -25,6 +25,7 @@ export interface SLOConfig {
 export interface SLOStatus {
   id: string;
   name: string;
+  category: SLOConfig['category'];
   currentValue: number;
   target: number;
   unit: string;
@@ -200,6 +201,7 @@ export function generateSLOReport(metrics: {
     {
       id: 'api-latency-p95',
       name: 'API P95 Latency',
+      category: 'performance',
       currentValue: metrics.p95LatencyMs,
       target: 200,
       unit: 'ms',
@@ -211,6 +213,7 @@ export function generateSLOReport(metrics: {
     {
       id: 'api-latency-p99',
       name: 'API P99 Latency',
+      category: 'performance',
       currentValue: metrics.p99LatencyMs,
       target: 500,
       unit: 'ms',
@@ -222,6 +225,7 @@ export function generateSLOReport(metrics: {
     {
       id: 'api-availability',
       name: 'API Availability',
+      category: 'availability',
       currentValue: metrics.availabilityPercent,
       target: 99.5,
       unit: 'percent',
@@ -233,6 +237,7 @@ export function generateSLOReport(metrics: {
     {
       id: 'api-error-rate',
       name: 'API Error Rate',
+      category: 'reliability',
       currentValue: metrics.errorRatePercent,
       target: 0.1,
       unit: 'percent',

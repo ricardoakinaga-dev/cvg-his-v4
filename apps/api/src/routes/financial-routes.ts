@@ -2,7 +2,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
-import type { EncounterFinancialService } from '@cvg-his-v2/module-financial';
+import type {
+  EncounterFinancialService,
+  FinancialIncomeStatementService,
+  FinancialPayablePaymentMethod,
+  FinancialPayableReconciliationStatus,
+  FinancialPayableStatus,
+  FinancialPayablesService
+} from '@cvg-his-v2/module-financial';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -19,6 +26,8 @@ import type {
 
 export interface FinancialRoutesHandlers {
   encounterFinancial: EncounterFinancialService;
+  financialPayables: FinancialPayablesService;
+  financialStatements: FinancialIncomeStatementService;
   billing: BillingService;
   audit: AuditService;
   pixTransactions: PixTransactionRepository;
@@ -36,6 +45,34 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
 function normalizePage(value: string | null, fallback: number): number {
   const parsed = Number(value ?? String(fallback));
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parsePayableStatus(value: string | null): FinancialPayableStatus | undefined {
+  if (value === 'open' || value === 'partial' || value === 'paid' || value === 'cancelled') {
+    return value;
+  }
+  return undefined;
+}
+
+function parsePayablePaymentMethod(value: unknown): FinancialPayablePaymentMethod | null {
+  if (
+    value === 'cash'
+    || value === 'bank_transfer'
+    || value === 'pix'
+    || value === 'card'
+    || value === 'cheque'
+    || value === 'other'
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parsePayableReconciliationStatus(value: string | null): FinancialPayableReconciliationStatus | undefined {
+  if (value === 'not_required' || value === 'pending' || value === 'reconciled') {
+    return value;
+  }
+  return undefined;
 }
 
 type AgingBucketId = 'current' | '1_30' | '31_60' | '61_90' | '91_plus';
@@ -508,17 +545,204 @@ export async function handleFinancialRoutes(
 ): Promise<boolean> {
   const isFinancialPath =
     pathname === '/financial/receivables'
+    || pathname === '/financial/payables'
+    || pathname === '/financial/income-statement'
     || pathname === '/financial/aging'
     || pathname === '/financial/reconciliation'
     || pathname === '/financial/reconciliation/cards'
+    || pathname === '/financial/reconciliation/payables'
     || pathname.startsWith('/encounters/')
+    || pathname.startsWith('/financial/payables/')
     || pathname.startsWith('/financial/receivables/');
   if (!isFinancialPath) {
     return false;
   }
 
-  const { encounterFinancial, audit, requirePrincipal } = handlers;
+  const { encounterFinancial, financialPayables, financialStatements, audit, requirePrincipal } = handlers;
   const url = new URL(request.url ?? pathname, 'http://localhost');
+
+  if (pathname === '/financial/payables' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const status = parsePayableStatus(url.searchParams.get('status'));
+    const result = await financialPayables.listPayables(principal.user.accountId as never, {
+      status,
+      search: url.searchParams.get('search') ?? undefined,
+      page: normalizePage(url.searchParams.get('page'), 1),
+      pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'list_payables',
+      entityType: 'financial-payable',
+      entityId: 'all',
+      payloadSummary: 'Financial payables listed',
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, result);
+  }
+
+  if (pathname === '/financial/income-statement' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const result = await financialStatements.getIncomeStatement(principal.user.accountId as never, {
+      dateFrom: url.searchParams.get('dateFrom'),
+      dateTo: url.searchParams.get('dateTo')
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'financial_income_statement',
+      entityType: 'financial-income-statement',
+      entityId: `${result.period.dateFrom}:${result.period.dateTo}`,
+      payloadSummary: 'Financial income statement generated',
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, result);
+  }
+
+  if (pathname === '/financial/reconciliation/payables' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const result = await financialPayables.listPayableReconciliation(principal.user.accountId as never, {
+      status: parsePayableReconciliationStatus(url.searchParams.get('status')),
+      search: url.searchParams.get('search') ?? undefined,
+      page: normalizePage(url.searchParams.get('page'), 1),
+      pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'list_payable_reconciliation',
+      entityType: 'financial-payable',
+      entityId: 'all',
+      payloadSummary: 'Financial payable reconciliation listed',
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, result);
+  }
+
+  if (pathname === '/financial/payables' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payable = await financialPayables.createPayable(principal.user.accountId as never, principal.user.id as never, {
+      supplierName: requireNonEmptyString(payload.supplierName, 'supplierName'),
+      description: requireNonEmptyString(payload.description, 'description'),
+      category: requireNonEmptyString(payload.category, 'category'),
+      costCenterCode: requireNonEmptyString(payload.costCenterCode, 'costCenterCode'),
+      costCenterName: requireNonEmptyString(payload.costCenterName, 'costCenterName'),
+      issuedAt: typeof payload.issuedAt === 'string' ? payload.issuedAt : undefined,
+      dueAt: requireNonEmptyString(payload.dueAt, 'dueAt'),
+      totalAmount: Number(payload.totalAmount),
+      sourceExpenseId: typeof payload.sourceExpenseId === 'string' ? payload.sourceExpenseId : null,
+      notes: typeof payload.notes === 'string' ? payload.notes : null
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'create_payable',
+      entityType: 'financial-payable',
+      entityId: payable.id,
+      payloadSummary: `Financial payable created for ${payable.supplierName}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 201, payable);
+  }
+
+  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/pay') && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
+    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payable = await financialPayables.payPayable(principal.user.accountId as never, principal.user.id as never, payableId, {
+      amountPaid: Number(payload.amountPaid),
+      paymentMethod: parsePayablePaymentMethod(payload.paymentMethod),
+      paymentReference: typeof payload.paymentReference === 'string' ? payload.paymentReference : null,
+      notes: typeof payload.notes === 'string' ? payload.notes : null
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'pay_payable',
+      entityType: 'financial-payable',
+      entityId: payable.id,
+      payloadSummary: `Financial payable ${payable.id} paid`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, payable);
+  }
+
+  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/cancel') && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
+    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payable = await financialPayables.cancelPayable(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      payableId,
+      typeof payload.notes === 'string' ? payload.notes : null
+    );
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'cancel_payable',
+      entityType: 'financial-payable',
+      entityId: payable.id,
+      payloadSummary: `Financial payable ${payable.id} cancelled`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, payable);
+  }
+
+  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/reconcile') && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'billing.manage');
+    const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
+    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payable = await financialPayables.reconcilePayablePayment(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      payableId,
+      {
+        reconciliationReference: typeof payload.reconciliationReference === 'string' ? payload.reconciliationReference : null,
+        notes: typeof payload.notes === 'string' ? payload.notes : null
+      }
+    );
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'reconcile_payable',
+      entityType: 'financial-payable',
+      entityId: payable.id,
+      payloadSummary: `Financial payable ${payable.id} reconciled`,
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, payable);
+  }
 
   if (
     pathname.startsWith('/encounters/')

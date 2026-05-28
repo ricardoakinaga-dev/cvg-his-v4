@@ -32,6 +32,62 @@
         </DsAlert>
       </section>
 
+      <section class="patient-360-cockpit" aria-label="Cockpit 360 do paciente">
+        <DsCard title="Cockpit 360 do paciente">
+          <div class="patient-360-grid">
+            <div>
+              <span>Jornada clínica</span>
+              <strong>{{ patient360Summary.clinical }}</strong>
+              <p>{{ currentCareSummary }}</p>
+            </div>
+            <div>
+              <span>Preventivo</span>
+              <strong>{{ patient360Summary.preventive }}</strong>
+              <p>{{ latestPreventiveSummary }}</p>
+            </div>
+            <div>
+              <span>Laboratório</span>
+              <strong>{{ patient360Summary.laboratory }}</strong>
+              <p>{{ latestExamSummary }}</p>
+            </div>
+            <div>
+              <span>Financeiro</span>
+              <strong>{{ patient360Summary.financial }}</strong>
+              <p>{{ focalBillingSummary }}</p>
+            </div>
+            <div>
+              <span>Próxima ação</span>
+              <strong>{{ patient360Summary.nextActionLabel }}</strong>
+              <DsButton tag="a" :to="patient360Summary.nextActionPath" variant="secondary" size="sm">
+                Abrir ação
+              </DsButton>
+            </div>
+          </div>
+        </DsCard>
+      </section>
+
+      <section class="patient-360-timeline" aria-label="Timeline 360 unificada do paciente">
+        <DsCard title="Timeline 360 unificada">
+          <div v-if="combinedTimeline.length" class="timeline-list timeline-list--360">
+            <div
+              v-for="item in combinedTimeline"
+              :key="item.id"
+              class="timeline-list__item"
+            >
+              <div>
+                <strong>{{ item.source }} · {{ item.title }}</strong>
+                <p>{{ item.description }}</p>
+              </div>
+              <div class="timeline-list__meta">
+                <span>{{ formatDateTime(item.occurredAt) }}</span>
+                <RouterLink v-if="item.href" :to="item.href">Abrir</RouterLink>
+              </div>
+            </div>
+          </div>
+          <p v-else class="muted">Sem eventos consolidados para a timeline 360.</p>
+        </DsCard>
+      </section>
+
       <section class="vetus-animal-layout">
         <article class="vetus-profile-card" aria-label="Ficha do animal">
           <div class="vetus-profile-card__identity">
@@ -1017,6 +1073,7 @@ interface TimelineFeedItem {
   description: string;
   occurredAt: string;
   source: string;
+  href?: string;
 }
 
 interface SuggestedPackage {
@@ -1378,12 +1435,18 @@ const imageAttachments = computed(() =>
 );
 
 const examItems = computed<ExamFeedItem[]>(() => {
-  const diagnosticOrderItems = patientDiagnosticOrders.value.map((order) => ({
+  const toDiagnosticOrderItem = (order: DiagnosticOrderSummary) => ({
     id: `diagnostic-${order.id}`,
     title: order.examType,
     description: order.resultSummary || order.reason,
     meta: `${diagnosticStatusLabel(order.status)} · ${formatDateTime(order.updatedAt)}`
-  }));
+  });
+  const completedDiagnosticOrderItems = patientDiagnosticOrders.value
+    .filter((order) => order.status !== 'requested' && order.status !== 'collected')
+    .map(toDiagnosticOrderItem);
+  const pendingDiagnosticOrderItems = patientDiagnosticOrders.value
+    .filter((order) => order.status === 'requested' || order.status === 'collected')
+    .map(toDiagnosticOrderItem);
 
   const entryItems = diagnosticEntries.value.map((entry) => ({
     id: `entry-${entry.id}`,
@@ -1399,7 +1462,12 @@ const examItems = computed<ExamFeedItem[]>(() => {
     meta: formatDateTime(attachment.createdAt)
   }));
 
-  return [...diagnosticOrderItems, ...entryItems, ...attachmentItems].slice(0, 6);
+  return [
+    ...completedDiagnosticOrderItems,
+    ...entryItems,
+    ...attachmentItems,
+    ...pendingDiagnosticOrderItems
+  ].slice(0, 6);
 });
 
 const sortedPreventiveEvents = computed(() =>
@@ -1423,6 +1491,10 @@ const historicalPreventiveEvents = computed(() =>
       const right = b.executedAt ?? `${b.eventDate}T12:00:00Z`;
       return new Date(right).getTime() - new Date(left).getTime();
     })
+);
+
+const pendingDiagnosticOrders = computed(() =>
+  patientDiagnosticOrders.value.filter((order) => order.status === 'requested' || order.status === 'collected')
 );
 
 const clinicalHistoryEntry = computed(() =>
@@ -1827,6 +1899,31 @@ const patientBillingRecords = computed(() =>
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 );
 
+const patientOpenBillingAmount = computed(() =>
+  patientBillingRecords.value
+    .filter((record) => record.status !== 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0)
+);
+
+const patient360Summary = computed(() => {
+  const nextAction = resolvePatient360NextAction();
+
+  return {
+    clinical: `${sortedEncounters.value.length} atendimento(s) · ${upcomingAppointments.value.length} agenda(s)`,
+    preventive: `${upcomingPreventiveEvents.value.length} próxima(s)`,
+    laboratory:
+      pendingDiagnosticOrders.value.length > 0
+        ? `${pendingDiagnosticOrders.value.length} exame(s) pendente(s)`
+        : 'Sem exames pendentes',
+    financial:
+      patientOpenBillingAmount.value > 0
+        ? `${formatCurrency(patientOpenBillingAmount.value, 'BRL')} em aberto`
+        : 'Sem pendência financeira',
+    nextActionLabel: nextAction.label,
+    nextActionPath: nextAction.path
+  };
+});
+
 const focalBillingSummary = computed(() => {
   if (!focalEncounter.value) {
     return 'Abra um atendimento para iniciar uma comanda.';
@@ -2108,7 +2205,8 @@ const combinedTimeline = computed<TimelineFeedItem[]>(() => {
     title: event.summary,
     description: 'Evento operacional do atendimento',
     occurredAt: event.occurredAt,
-    source: 'Atendimento'
+    source: 'Atendimento',
+    href: focalEncounter.value ? `/encounters/${focalEncounter.value.id}` : undefined
   }));
 
   const clinicalItems = focalClinicalTimeline.value.map((event) => ({
@@ -2116,12 +2214,65 @@ const combinedTimeline = computed<TimelineFeedItem[]>(() => {
     title: event.summary,
     description: clinicalEventLabel(event.eventType),
     occurredAt: event.occurredAt,
-    source: 'Prontuário'
+    source: 'Prontuário',
+    href: medicalRecordPath.value
   }));
 
-  return [...encounterItems, ...clinicalItems]
+  const appointmentItems = upcomingAppointments.value.slice(0, 2).map((appointment) => ({
+    id: `apt-${appointment.id}`,
+    title: appointment.reason,
+    description: appointmentStatusLabel(appointment.status),
+    occurredAt: appointment.scheduledAt,
+    source: 'Agenda',
+    href: appointmentDetailPath(appointment.id)
+  }));
+
+  const billingItems = patientBillingRecords.value.slice(0, 2).map((record) => ({
+    id: `billing-${record.id}`,
+    title: billingStatusLabel(record.status),
+    description: `${formatCurrency(record.subtotalAmount, record.currency)} · ${record.administrativeNotes || 'Sem observação financeira'}`,
+    occurredAt: record.updatedAt,
+    source: 'Financeiro',
+    href: `/billing/${record.encounterId}`
+  }));
+
+  const diagnosticItems = patientDiagnosticOrders.value.slice(0, 2).map((order) => ({
+    id: `diag-${order.id}`,
+    title: order.examType,
+    description: `${diagnosticStatusLabel(order.status)} · ${order.resultSummary || order.reason}`,
+    occurredAt: order.updatedAt,
+    source: 'Laboratório',
+    href: focalEncounter.value ? `/diagnostics?encounter=${focalEncounter.value.id}` : '/diagnostics'
+  }));
+
+  const preventiveItems = upcomingPreventiveEvents.value.slice(0, 2).map((event) => ({
+    id: `preventive-${event.id}`,
+    title: event.description,
+    description: preventiveEventMeta(event),
+    occurredAt: `${event.eventDate}T12:00:00Z`,
+    source: 'Preventivo',
+    href: patientPreventivePath.value
+  }));
+
+  const messageItems = contextualMessages.value.slice(0, 2).map((message) => ({
+    id: `message-${message.id}`,
+    title: message.title,
+    description: message.preview,
+    occurredAt: patient.value?.updatedAt ?? new Date().toISOString(),
+    source: 'Mensagem'
+  }));
+
+  return [
+    ...encounterItems,
+    ...clinicalItems,
+    ...appointmentItems,
+    ...billingItems,
+    ...diagnosticItems,
+    ...preventiveItems,
+    ...messageItems
+  ]
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-    .slice(0, 8);
+    .slice(0, 10);
 });
 
 function registerWarning(scope: string) {
@@ -2191,6 +2342,35 @@ function billingStatusLabel(status: BillingStatus): string {
     open: 'Aberto',
     settled: 'Liquidado'
   }[status];
+}
+
+function resolvePatient360NextAction(): { label: string; path: string } {
+  if (focalTriage.value?.priority === 'critical') {
+    return { label: 'Priorizar triagem crítica', path: triageActionLink.value };
+  }
+
+  if (pendingDiagnosticOrders.value.length > 0 && focalEncounter.value) {
+    return { label: 'Acompanhar exames pendentes', path: diagnosticsPrimaryPath.value };
+  }
+
+  if (patientOpenBillingAmount.value > 0 && focalEncounter.value) {
+    return { label: 'Resolver cobrança', path: patientBillingPath.value };
+  }
+
+  if (focalEncounter.value) {
+    return { label: 'Continuar atendimento', path: medicalRecordPath.value };
+  }
+
+  const nextAppointment = upcomingAppointments.value[0];
+  if (nextAppointment) {
+    return { label: 'Ver agenda', path: appointmentDetailPath(nextAppointment.id) };
+  }
+
+  if (upcomingPreventiveEvents.value[0]) {
+    return { label: 'Ver preventivo', path: patientPreventivePath.value };
+  }
+
+  return { label: 'Agendar próximo contato', path: appointmentCreatePath.value };
 }
 
 function billingItemTypeLabel(type: BillingItemType): string {
@@ -2665,6 +2845,44 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.patient-360-cockpit {
+  display: grid;
+}
+
+.patient-360-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.patient-360-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 118px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #dbe3ef);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.patient-360-grid span {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.patient-360-grid strong,
+.patient-360-grid p {
+  overflow-wrap: anywhere;
+}
+
+.patient-360-grid p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .vetus-empty-state {
@@ -3288,7 +3506,8 @@ watch(
 @media (max-width: 720px) {
   .vetus-animal-layout,
   .vetus-accordion-grid,
-  .relationship-grid {
+  .relationship-grid,
+  .patient-360-grid {
     grid-template-columns: 1fr;
   }
 

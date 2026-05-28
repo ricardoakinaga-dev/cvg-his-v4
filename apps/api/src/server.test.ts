@@ -5,6 +5,7 @@ import test from 'node:test';
 import { ChaosEngine } from '@cvg-his-v2/chaos';
 
 import { setAppState } from './app-state.js';
+import { recordRequestSloObservation, resetRequestSloObservations } from './metrics.js';
 import { createApiServer } from './server.js';
 
 class MockRequest extends Readable {
@@ -301,6 +302,80 @@ test('observability contract exposes request and trace correlation headers', asy
   assert.equal(response.getHeader('x-correlation-id'), 'corr-obs-123');
   assert.equal(response.getHeader('x-request-id'), 'corr-obs-123');
   assert.equal(response.getHeader('x-trace-id'), traceparent?.split('-')[1]);
+});
+
+test('SLO endpoint exposes compliance, error budget and Prometheus gauges', async () => {
+  resetRequestSloObservations();
+  const now = Date.now();
+  for (let index = 0; index < 20; index += 1) {
+    recordRequestSloObservation({
+      durationMs: index < 18 ? 120 : 640,
+      statusCode: index < 18 ? 200 : 500,
+      timestamp: now - index * 1_000
+    });
+  }
+
+  const server = createServerUnderTest();
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/slos',
+    headers: {
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    snapshot: {
+      requestCount5m: number;
+      requestCount1h: number;
+      p95LatencyMs: number;
+      errorRatePercent: number;
+    };
+    report: {
+      overallStatus: string;
+      errorBudgetExhausted: boolean;
+      slos: Array<{
+        id: string;
+        category: string;
+        status: string;
+        errorBudgetPercent: number;
+        burnRate: number;
+      }>;
+    };
+    runbook: { metrics: string; readiness: string; liveness: string };
+  }>();
+  assert.equal(payload.snapshot.requestCount5m, 20);
+  assert.equal(payload.snapshot.requestCount1h, 20);
+  assert.equal(payload.snapshot.p95LatencyMs, 640);
+  assert.equal(payload.snapshot.errorRatePercent, 10);
+  assert.equal(payload.report.overallStatus, 'critical');
+  assert.equal(payload.report.errorBudgetExhausted, true);
+  assert.equal(payload.runbook.metrics, '/metrics');
+  assert.equal(payload.report.slos.some((slo) => slo.id === 'api-error-rate' && slo.category === 'reliability'), true);
+
+  const aliasResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/health/slos',
+    headers: {
+      host: 'localhost'
+    }
+  });
+  assert.equal(aliasResponse.statusCode, 200);
+
+  const metricsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/metrics',
+    headers: {
+      host: 'localhost'
+    }
+  });
+  assert.equal(metricsResponse.statusCode, 200);
+  const metricsText = metricsResponse.bodyText();
+  assert.match(metricsText, /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m);
+  assert.match(metricsText, /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m);
+
+  resetRequestSloObservations();
 });
 
 test('chaos operations expose effective runtime state, runbooks and metrics', async () => {

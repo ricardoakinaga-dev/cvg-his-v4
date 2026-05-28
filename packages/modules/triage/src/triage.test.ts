@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 import type { TriageSummary } from '@cvg-his-v2/shared-types';

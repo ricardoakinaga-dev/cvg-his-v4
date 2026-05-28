@@ -152,6 +152,13 @@
             <template #cell-actions="{ row }">
               <div class="row-actions">
                 <DsButton
+                  size="sm"
+                  variant="ghost"
+                  @click="selectedDsr = row as DsrRecord"
+                >
+                  Detalhes
+                </DsButton>
+                <DsButton
                   v-if="(row as DsrRecord).status === 'pending' || (row as DsrRecord).status === 'in_progress'"
                   size="sm"
                   variant="primary"
@@ -172,6 +179,26 @@
               </div>
             </template>
           </DataTable>
+
+          <section v-if="selectedDsr" class="dsr-detail" aria-label="Detalhe da DSR">
+            <div class="dsr-detail__header">
+              <div>
+                <strong>{{ selectedDsr.id }}</strong>
+                <p class="muted">Titular {{ selectedDsr.subjectId }} · {{ dsrTypeLabel(selectedDsr.requestType) }}</p>
+              </div>
+              <StatusBadge
+                :label="dsrStatusLabel(selectedDsr.status)"
+                :variant="dsrStatusVariant(selectedDsr.status)"
+              />
+            </div>
+            <div class="retention-list">
+              <div v-for="item in selectedDsrRetentionEvidence" :key="item.dataType" class="retention-item">
+                <span>{{ retentionLabel(item.dataType) }}</span>
+                <strong>{{ item.retentionWindow }}</strong>
+                <small>{{ dispositionLabel(item.disposition) }}</small>
+              </div>
+            </div>
+          </section>
         </DsCard>
       </div>
     </div>
@@ -205,6 +232,7 @@ const dsrFilter = ref('');
 
 const consentStatus = ref<Record<string, boolean>>({});
 const dsrRequests = ref<DsrRecord[]>([]);
+const selectedDsr = ref<DsrRecord | null>(null);
 
 const purposes = [
   { key: 'clinical' as ConsentPurpose, label: 'Clínico', icon: '🩺', description: 'Tratamento de dados clínicos e de saúde' },
@@ -268,6 +296,19 @@ const filteredDsrRequests = computed(() => {
   return dsrRequests.value.filter((r) => r.status === dsrFilter.value);
 });
 
+const selectedDsrRetentionEvidence = computed(() => {
+  const result = selectedDsr.value?.resultJson;
+  if (!result || typeof result !== 'object') return [];
+  const evidence = (result as { retentionEvidence?: unknown }).retentionEvidence;
+  return Array.isArray(evidence) ? evidence as RetentionEvidenceItem[] : [];
+});
+
+interface RetentionEvidenceItem {
+  readonly dataType: string;
+  readonly retentionWindow: string;
+  readonly disposition: string;
+}
+
 const dsrStatusLabelMap: Record<DsrStatus, string> = {
   pending: 'Pendente',
   in_progress: 'Em andamento',
@@ -303,6 +344,27 @@ function dsrTypeLabel(t: string) {
   return dsrTypeLabelMap[t] || t;
 }
 
+function retentionLabel(dataType: string) {
+  const map: Record<string, string> = {
+    owner_profile: 'Tutor',
+    patient_profile: 'Paciente',
+    clinical_encounters: 'Atendimentos',
+    financial_records: 'Financeiro',
+    laboratory_results: 'Laboratório',
+    clinical_attachments: 'Anexos'
+  };
+  return map[dataType] || dataType;
+}
+
+function dispositionLabel(disposition: string) {
+  const map: Record<string, string> = {
+    retain: 'Retenção obrigatória',
+    anonymize_after_window: 'Anonimizar após janela legal',
+    purge_after_window: 'Expurgar após janela legal'
+  };
+  return map[disposition] || disposition;
+}
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return '—';
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(dateStr));
@@ -322,6 +384,9 @@ async function loadDsrRequests() {
   loadingDsr.value = true;
   try {
     dsrRequests.value = await lgpdService.listDsrRequests();
+    if (selectedDsr.value) {
+      selectedDsr.value = dsrRequests.value.find((request) => request.id === selectedDsr.value?.id) ?? null;
+    }
   } catch {
     dsrRequests.value = [];
   } finally {
@@ -363,6 +428,7 @@ async function submitDsr() {
       notes: dsrForm.value.notes.trim() || undefined
     });
     dsrForm.value = { subjectId: '', subjectType: 'owner', requestType: 'data_access', notes: '' };
+    selectedDsr.value = null;
     await loadDsrRequests();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao criar solicitação';
@@ -521,6 +587,47 @@ onMounted(() => {
 .row-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dsr-detail {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.dsr-detail__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.retention-list {
+  display: grid;
+  gap: 8px;
+}
+
+.retention-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 2fr) minmax(140px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.retention-item small {
+  color: var(--color-text-muted, #64748b);
+}
+
+@media (max-width: 720px) {
+  .retention-item {
+    grid-template-columns: 1fr;
+  }
 }
 
 .muted {

@@ -1,7 +1,7 @@
 <template>
   <div class="access-control-page">
     <AppPageHeader
-      :breadcrumbs="['RH', 'Usuários', 'Grupos de Acesso']"
+      :breadcrumbs="['Console Enterprise', 'Governança', 'Governança de Acesso']"
       title="Grupos de Acesso"
       subtitle="Políticas coletivas de autorização, rotinas e permissões efetivas"
     >
@@ -48,6 +48,10 @@
           <span class="overview-card__value">{{ assignmentCount }}</span>
           <span class="overview-card__label">Grants diretos</span>
         </div>
+        <div class="overview-card">
+          <span class="overview-card__value">{{ enterpriseMatrixCompleteCount }}/{{ enterpriseMatrixRows.length }}</span>
+          <span class="overview-card__label">Módulos RBAC completos</span>
+        </div>
       </div>
     </section>
 
@@ -86,6 +90,33 @@
           <article v-for="control in securityControls" :key="control.title" class="routine-card">
             <strong>{{ control.title }}</strong>
             <p>{{ control.description }}</p>
+          </article>
+        </div>
+      </DsCard>
+
+      <DsCard title="Matriz enterprise por módulo, perfil e unidade" class="panel">
+        <p class="section-hint">
+          Evidência F3-01: cobertura de ações por módulo, perfis que concedem acesso e overrides por equipe/setor/usuário.
+        </p>
+        <div class="module-grid">
+          <article v-for="entry in enterpriseMatrixRows" :key="entry.module" class="module-card">
+            <div class="module-card__header">
+              <div>
+                <strong>{{ entry.module.toUpperCase() }}</strong>
+                <p>{{ entry.permissionCodes.length }} permissões · {{ entry.rolesAllowed.length }} perfil(is)</p>
+              </div>
+              <DsBadge :variant="entry.coverageStatus === 'complete' ? 'success' : entry.coverageStatus === 'partial' ? 'warning' : 'info'" size="sm">
+                {{ coverageLabel(entry.coverageStatus) }}
+              </DsBadge>
+            </div>
+            <div class="action-chip-list">
+              <span v-for="action in enterpriseActions" :key="`${entry.module}:${action.key}`" :class="['action-chip', { 'action-chip--on': entry.actions[action.key] }]">
+                {{ action.label }}
+              </span>
+            </div>
+            <p class="muted">
+              Overrides: {{ entry.teamOverrideCount }} equipe(s), {{ entry.sectorOverrideCount }} setor(es), {{ entry.userOverrideCount }} usuário(s)
+            </p>
           </article>
         </div>
       </DsCard>
@@ -457,8 +488,16 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { accessControlService } from '@/services/accessControl';
-import type { AccessControlResponse } from '@/services/accessControl';
-import type { EffectivePermissionSummary, PermissionDefinition } from '@cvg-his-v2/shared-types';
+import type {
+  AccessControlResponse,
+  AccessModulePermissionMatrixResponse
+} from '@/services/accessControl';
+import type {
+  AccessModulePermissionMatrixEntry,
+  AccessRoutineAction,
+  EffectivePermissionSummary,
+  PermissionDefinition
+} from '@cvg-his-v2/shared-types';
 
 type TabKey = 'summary' | 'users' | 'teams' | 'sectors' | 'matrix';
 type MatrixSubjectType = 'user' | 'team' | 'sector';
@@ -477,6 +516,7 @@ const error = ref('');
 const successMessage = ref('');
 const activeTab = ref<TabKey>('summary');
 const catalog = ref<AccessControlResponse | null>(null);
+const modulePermissionMatrix = ref<AccessModulePermissionMatrixResponse | null>(null);
 const permissionQuery = ref('');
 const selectedUserId = ref('');
 const matrixSubjectType = ref<MatrixSubjectType>('team');
@@ -546,6 +586,15 @@ const routineActions: Array<{ key: RoutineActionKey; label: string }> = [
   { key: 'delete', label: 'Excluir' }
 ];
 
+const enterpriseActions: Array<{ key: AccessRoutineAction; label: string }> = [
+  { key: 'consult', label: 'Consultar' },
+  { key: 'insert', label: 'Inserir' },
+  { key: 'update', label: 'Alterar' },
+  { key: 'delete', label: 'Excluir' },
+  { key: 'execute', label: 'Executar' },
+  { key: 'admin', label: 'Admin' }
+];
+
 const filteredPermissions = computed(() => {
   const needle = permissionQuery.value.trim().toLowerCase();
   const items = catalog.value?.permissions ?? [];
@@ -600,6 +649,17 @@ const routineRows = computed(() => {
 
   return [...grouped.values()].sort((a, b) => a.module.localeCompare(b.module));
 });
+
+const enterpriseMatrixRows = computed<readonly AccessModulePermissionMatrixEntry[]>(() =>
+  [...(modulePermissionMatrix.value?.items ?? [])].sort((a, b) => {
+    const statusRank = { complete: 0, partial: 1, 'read-only': 2 } satisfies Record<string, number>;
+    return statusRank[a.coverageStatus] - statusRank[b.coverageStatus] || a.module.localeCompare(b.module);
+  })
+);
+
+const enterpriseMatrixCompleteCount = computed(
+  () => enterpriseMatrixRows.value.filter((entry) => entry.coverageStatus === 'complete').length
+);
 
 const selectedUser = computed(() =>
   (catalog.value?.users ?? []).find((user) => user.id === selectedUserId.value) ?? null
@@ -717,7 +777,12 @@ async function loadCatalog() {
   loading.value = true;
   error.value = '';
   try {
-    catalog.value = await accessControlService.getCatalog();
+    const [catalogPayload, matrixPayload] = await Promise.all([
+      accessControlService.getCatalog(),
+      accessControlService.getModulePermissionMatrix()
+    ]);
+    catalog.value = catalogPayload;
+    modulePermissionMatrix.value = matrixPayload;
     if (!selectedUserId.value) {
       selectedUserId.value = catalog.value.users[0]?.id ?? '';
     }
@@ -732,6 +797,12 @@ async function loadCatalog() {
   } finally {
     loading.value = false;
   }
+}
+
+function coverageLabel(status: AccessModulePermissionMatrixEntry['coverageStatus']) {
+  if (status === 'complete') return 'Completo';
+  if (status === 'partial') return 'Parcial';
+  return 'Somente leitura';
 }
 
 async function reload() {
@@ -1029,6 +1100,28 @@ onMounted(loadCatalog);
 
 .permission-sample code {
   font-size: 12px;
+}
+
+.action-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.action-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-chip--on {
+  border-color: var(--color-success-border, #86efac);
+  background: var(--color-success-surface, #dcfce7);
+  color: var(--color-success-text, #166534);
 }
 
 .role-card__description,

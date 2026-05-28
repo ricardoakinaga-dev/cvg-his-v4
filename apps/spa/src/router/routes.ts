@@ -1032,6 +1032,18 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'inpatient/daily-charges',
+        name: 'InpatientDailyCharges',
+        alias: ['/internacao/diarias', '/internação/diárias'],
+        component: () => import('@/pages/inpatient/InpatientDailyChargesPage.vue'),
+        meta: {
+          title: 'Diárias de Internação',
+          breadcrumb: 'Diárias',
+          breadcrumbParent: 'Internação',
+          icon: '💵'
+        }
+      },
+      {
         path: 'inpatient/:id',
         name: 'InpatientDetail',
         component: () => import('@/pages/inpatient/InpatientDetailPage.vue'),
@@ -1138,6 +1150,23 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Contas a Pagar',
           breadcrumbParent: 'Financeiro',
           icon: '💸'
+        }
+      },
+      {
+        path: 'finance/reconciliation',
+        name: 'FinancialReconciliation',
+        component: () => import('@/pages/finance/FinancialReconciliationPage.vue'),
+        alias: [
+          '/financeiro/controles/conciliacao-financeira',
+          '/financeiro/controles/conciliação-financeira',
+          '/conciliacao-financeira',
+          '/conciliação-financeira'
+        ],
+        meta: {
+          title: 'Conciliação Financeira',
+          breadcrumb: 'Conciliação Financeira',
+          breadcrumbParent: 'Financeiro',
+          icon: '🧾'
         }
       },
       {
@@ -1347,6 +1376,17 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'reports/engine',
+        name: 'ReportsEngine',
+        component: () => import('@/pages/reports/ReportsEnginePage.vue'),
+        meta: {
+          title: 'Motor Enterprise de Relatórios',
+          breadcrumb: 'Motor Enterprise',
+          breadcrumbParent: 'Relatórios',
+          icon: '📊'
+        }
+      },
+      {
         path: 'reports/financial',
         name: 'FinancialReports',
         alias: ['/relatorios/financeiros/fluxo-de-caixa'],
@@ -1488,6 +1528,18 @@ export const routes: RouteRecordRaw[] = [
           breadcrumb: 'Envio de SMS Simples',
           breadcrumbParent: 'Marketing',
           icon: '📱'
+        }
+      },
+      {
+        path: 'marketing/campaigns',
+        name: 'MarketingCampaigns',
+        alias: ['/marketing/campanhas', '/campanhas-de-marketing'],
+        component: () => import('@/pages/marketing/MarketingCampaignsPage.vue'),
+        meta: {
+          title: 'Campanhas de Marketing',
+          breadcrumb: 'Campanhas',
+          breadcrumbParent: 'Marketing',
+          icon: '📣'
         }
       },
       {

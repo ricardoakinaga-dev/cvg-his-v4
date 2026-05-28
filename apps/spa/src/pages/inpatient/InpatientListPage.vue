@@ -4,6 +4,7 @@
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="reload">🔄 Atualizar</DsButton>
         <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>
+        <DsButton tag="a" to="/inpatient/daily-charges" variant="secondary">💵 Diárias</DsButton>
         <DsButton tag="a" to="/sectors" variant="ghost">🏢 Setores</DsButton>
         <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>
         <DsButton tag="a" to="/encounters" variant="primary">+ Admitir Paciente</DsButton>

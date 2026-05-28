@@ -99,6 +99,27 @@ export const appRuntimeDistributedStateEnabled = new Gauge({
   registers: [registry]
 });
 
+export const appSloStatus = new Gauge({
+  name: 'app_slo_status',
+  help: 'Current SLO status (0 = healthy, 1 = alert/degraded, 2 = critical)',
+  labelNames: ['slo_id', 'category'] as const,
+  registers: [registry]
+});
+
+export const appSloErrorBudgetPercent = new Gauge({
+  name: 'app_slo_error_budget_percent',
+  help: 'Remaining error budget percentage for each SLO',
+  labelNames: ['slo_id', 'category'] as const,
+  registers: [registry]
+});
+
+export const appSloBurnRate = new Gauge({
+  name: 'app_slo_burn_rate',
+  help: 'Current SLO burn rate by SLO objective',
+  labelNames: ['slo_id', 'category'] as const,
+  registers: [registry]
+});
+
 export const smartSchedulingRecommendationsTotal = new Counter({
   name: 'smart_scheduling_recommendations_total',
   help: 'Total number of smart scheduling recommendations generated',
@@ -310,6 +331,28 @@ export function updateAppMetrics(options: {
   appRateLimiterMode.set({ mode: options.rateLimiterMode }, 1);
 }
 
+export function updateSloMetrics(
+  slos: readonly {
+    readonly id: string;
+    readonly category: string;
+    readonly status: 'healthy' | 'alert' | 'critical';
+    readonly errorBudgetPercent: number;
+    readonly burnRate: number;
+  }[]
+): void {
+  appSloStatus.reset();
+  appSloErrorBudgetPercent.reset();
+  appSloBurnRate.reset();
+
+  for (const slo of slos) {
+    const labels = { slo_id: slo.id, category: slo.category };
+    const statusValue = slo.status === 'critical' ? 2 : slo.status === 'alert' ? 1 : 0;
+    appSloStatus.set(labels, statusValue);
+    appSloErrorBudgetPercent.set(labels, slo.errorBudgetPercent);
+    appSloBurnRate.set(labels, slo.burnRate);
+  }
+}
+
 export function incrementActiveRequests(): void {
   appActiveRequests.inc();
 }
@@ -372,6 +415,7 @@ export function normalizeRoute(pathname: string): string {
     [/^\/ready(\/.*)?$/, '/ready'],
     [/^\/live(\/.*)?$/, '/live'],
     [/^\/metrics$/, '/metrics'],
+    [/^\/slos$/, '/slos'],
     [/^\/admin\/commercial-dashboard$/, '/admin/commercial-dashboard'],
     // Generic resource patterns: /resource/:id, /resource/:id/sub-resource
     [

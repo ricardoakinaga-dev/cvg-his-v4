@@ -59,7 +59,7 @@ describe('navigation groups', () => {
       'Resgate de Pontos',
       'Vendas (beta)'
     ]);
-    expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação']);
+    expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação', 'Diárias de Internação']);
     expect(findSectionItemLabels('atendimento', 'Cadastros')).toEqual([
       'Animais',
       'Clientes',
@@ -102,7 +102,7 @@ describe('navigation groups', () => {
     expect(findSectionLabels('marketing')).toEqual(['Envios', 'Configurações', 'Canais CVG']);
     expect(findSectionItemLabels('marketing', 'Envios')).toEqual([
       'Envio de SMS Simples',
-      'Campanhas de SMS Marketing'
+      'Campanhas de Marketing'
     ]);
   });
 
@@ -111,7 +111,7 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
     expect(findMatchingNavItem('/reception')?.label).toBe('Recepção');
     expect(findMatchingNavItem('/queue')?.label).toBe('Esteira');
-    expect(findMatchingNavItem('/notifications')?.label).toBe('Campanhas de SMS Marketing');
+    expect(findMatchingNavItem('/marketing/campaigns')?.label).toBe('Campanhas de Marketing');
     expect(findMatchingNavItem('/access-control')?.label).toBe('Grupos de Acesso');
     expect(findMatchingNavItem('/encounters')?.label).toBe('Atendimentos');
     expect(findMatchingNavItem('/triage')?.label).toBe('Triagem');
@@ -251,7 +251,7 @@ describe('navigation groups', () => {
     );
 
     expect(findGroupPaths('marketing')).toEqual(
-      expect.arrayContaining(['/marketing/sms', '/notifications', '/notifications/whatsapp', '/marketing/vaccine-email', '/marketing/sms-settings'])
+      expect.arrayContaining(['/marketing/sms', '/marketing/campaigns', '/notifications/whatsapp', '/marketing/vaccine-email', '/marketing/sms-settings'])
     );
 
     expect(findGroupPaths('rh')).toEqual(

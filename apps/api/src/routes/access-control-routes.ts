@@ -151,6 +151,32 @@ export async function handleAccessControlRoutes(
     return true;
   }
 
+  // GET /access-control/module-permission-matrix — RBAC/ABAC coverage by module, action and subject override
+  if (pathname === '/access-control/module-permission-matrix' && request.method === 'GET') {
+    const principal = rp(request, 'access.read');
+    const items = accessControl.getModulePermissionMatrix(principal.user.accountId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'access-control',
+      action: 'read_module_permission_matrix',
+      entityType: 'module-permission-matrix',
+      entityId: 'current',
+      payloadSummary: `RBAC/ABAC module matrix inspected for ${items.length} module(s)`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(
+      JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        accountId: principal.user.accountId,
+        items
+      })
+    );
+    return true;
+  }
+
   // GET /access-control/teams
   if (pathname === '/access-control/teams' && request.method === 'GET') {
     const principal = rp(request, 'access.read');
@@ -331,6 +357,26 @@ export async function handleAccessControlRoutes(
     });
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
+    return true;
+  }
+
+  // GET /audit/events
+  if (pathname === '/audit/operational-coverage' && request.method === 'GET') {
+    const principal = rp(request, 'audit.read');
+    const report = audit.getOperationalCoverageReport(principal.user.accountId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'audit',
+      action: 'operational_coverage_read',
+      entityType: 'audit-coverage',
+      entityId: 'current',
+      payloadSummary: `Operational audit coverage inspected coverage=${report.coveragePercent}% missing=${report.missingRequirements}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(report));
     return true;
   }
 

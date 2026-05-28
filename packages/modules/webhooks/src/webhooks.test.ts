@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { WebhooksService } from './index.js';
 import type { WebhookRepository } from './index.js';

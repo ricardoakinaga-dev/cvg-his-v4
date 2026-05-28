@@ -93,6 +93,10 @@ class InMemoryDsrRepository implements DsrRepository {
     return this.requests.filter((r) => r.accountId === accountId && r.status === status);
   }
 
+  async findByAccount(accountId: string): Promise<readonly DataSubjectRequest[]> {
+    return this.requests.filter((r) => r.accountId === accountId);
+  }
+
   async create(
     request: Omit<DataSubjectRequest, 'id' | 'requestedAt' | 'createdAt' | 'updatedAt'>
   ): Promise<DataSubjectRequest> {
@@ -109,6 +113,7 @@ class InMemoryDsrRepository implements DsrRepository {
   }
 
   async updateStatus(
+    accountId: string,
     id: string,
     status: string,
     options?: {
@@ -118,7 +123,7 @@ class InMemoryDsrRepository implements DsrRepository {
       resultJson?: Record<string, unknown>;
     }
   ): Promise<DataSubjectRequest> {
-    const request = this.requests.find((r) => r.id === id);
+    const request = this.requests.find((r) => r.accountId === accountId && r.id === id);
     if (!request) throw new Error(`DSR request not found: ${id}`);
     const updated: DataSubjectRequest = {
       ...request,
@@ -493,9 +498,14 @@ describe('LgpdService', () => {
         requestedBy: 'patient_luna'
       });
 
-      const completed = await service.completeDsrRequest(created.id, 'dr_silva', {
-        exported: true
-      });
+      const completed = await service.completeDsrRequest(
+        'acc_cvg_demo',
+        created.id,
+        'dr_silva',
+        {
+          exported: true
+        }
+      );
 
       expect(completed.status).toBe('completed');
       expect(completed.completedBy).toBe('dr_silva');
@@ -510,10 +520,65 @@ describe('LgpdService', () => {
         requestedBy: 'patient_luna'
       });
 
-      const rejected = await service.rejectDsrRequest(created.id, 'dr_silva', 'Not authorized');
+      const rejected = await service.rejectDsrRequest(
+        'acc_cvg_demo',
+        created.id,
+        'dr_silva',
+        'Not authorized'
+      );
 
       expect(rejected.status).toBe('rejected');
       expect(rejected.rejectionReason).toBe('Not authorized');
+    });
+
+    it('lists all DSR requests scoped by account', async () => {
+      await service.createDsrRequest({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        requestType: 'data_export',
+        requestedBy: 'patient_luna'
+      });
+      await service.createDsrRequest({
+        accountId: 'acc_other',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        requestType: 'data_export',
+        requestedBy: 'patient_luna'
+      });
+
+      const requests = await service.getDsrRequests('acc_cvg_demo');
+
+      expect(requests).toHaveLength(1);
+      expect(requests[0].accountId).toBe('acc_cvg_demo');
+    });
+
+    it('completes deletion requests with retention-aware elimination evidence', async () => {
+      const created = await service.createDsrRequest({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        requestType: 'data_deletion',
+        requestedBy: 'patient_luna'
+      });
+
+      const completed = await service.completeDsrRequest('acc_cvg_demo', created.id, 'dr_silva');
+
+      expect(completed.status).toBe('completed');
+      expect(completed.resultJson?.disposition).toBe('retention_window_enforced');
+      expect(completed.resultJson?.anonymizationRequired).toBe(true);
+      expect(completed.resultJson?.retentionEvidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            dataType: 'patient_profile',
+            disposition: 'anonymize_after_window'
+          }),
+          expect.objectContaining({
+            dataType: 'financial_records',
+            disposition: 'purge_after_window'
+          })
+        ])
+      );
     });
 
     it('throws when DSR repository is not configured', async () => {
@@ -547,6 +612,24 @@ describe('LgpdService', () => {
 
       expect(export_.subjectId).toBe('patient_luna');
       expect(export_.subjectType).toBe('patient');
+      expect(export_.accountId).toBe('acc_cvg_demo');
+      expect(export_.evidence.providerCount).toBe(2);
+      expect(export_.evidence.collectedProviderCount).toBe(2);
+      expect(export_.evidence.failedProviderCount).toBe(0);
+      expect(export_.providerEvidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ providerName: 'clinical', status: 'collected' }),
+          expect.objectContaining({ providerName: 'billing', status: 'collected' })
+        ])
+      );
+      expect(export_.retentionEvidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ dataType: 'owner_profile' }),
+          expect.objectContaining({ dataType: 'clinical_attachments' })
+        ])
+      );
+      expect(Array.isArray(export_.data.consents)).toBe(true);
+      expect(Array.isArray(export_.data.dataSubjectRequests)).toBe(true);
       expect((export_.data.clinical as Record<string, unknown>).appointments).toEqual([
         'appt_1',
         'appt_2'
@@ -571,6 +654,48 @@ describe('LgpdService', () => {
       expect((export_.data.clinical as Record<string, unknown>).error).toBe(
         'Failed to collect data from this source'
       );
+      expect(export_.evidence.failedProviderCount).toBe(1);
+      expect(export_.providerEvidence).toEqual([
+        expect.objectContaining({ providerName: 'clinical', status: 'failed' })
+      ]);
+    });
+
+    it('uses configured enterprise data providers when no per-call providers are passed', async () => {
+      const configured = new LgpdService({
+        consentRepository: consentRepo,
+        dsrRepository: dsrRepo,
+        dataProviders: {
+          owners: async (_subjectId, context) => ({
+            accountId: context.accountId,
+            ownerId: context.subjectId
+          }),
+          patients: async (_subjectId, context) => ({
+            subjectType: context.subjectType,
+            rows: []
+          }),
+          encounters: async () => ({ rows: [] }),
+          financial: async () => ({ rows: [] }),
+          laboratory: async () => ({ rows: [] }),
+          attachments: async () => ({ rows: [] })
+        }
+      });
+
+      const export_ = await configured.buildPersonalDataExport(
+        'acc_cvg_demo',
+        'patient_luna',
+        'patient'
+      );
+
+      expect(export_.evidence.providerCount).toBe(6);
+      expect(export_.evidence.collectedProviderCount).toBe(6);
+      expect(export_.providerEvidence.map((provider) => provider.providerName)).toEqual([
+        'owners',
+        'patients',
+        'encounters',
+        'financial',
+        'laboratory',
+        'attachments'
+      ]);
     });
   });
 });

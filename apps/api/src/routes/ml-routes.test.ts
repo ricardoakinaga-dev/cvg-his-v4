@@ -117,7 +117,8 @@ test('handleMlRoutes exposes OCR, demand forecasting and lab anomalies', async (
   });
   laboratory.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: 'Leucocitos: 30'
+    resultSummary: 'Leucocitos: 30',
+    releasedByUserId: 'lab_user'
   });
 
   const handlers = {
@@ -251,7 +252,8 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
   });
   laboratory.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: 'Leucocitos: 30'
+    resultSummary: 'Leucocitos: 30',
+    releasedByUserId: 'lab_user'
   });
 
   const telemetry = new MlTelemetryService();

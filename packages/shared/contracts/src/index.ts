@@ -15,11 +15,15 @@ import type {
   EncounterSummary,
   EncounterTimelineEventSummary,
   EntryRevisionSummary,
+  InpatientDailyChargeSummary,
+  InpatientDailyChargeWorklistItem,
+  InpatientOccurrenceSummary,
   InpatientProgressSummary,
   InpatientStaySummary,
   InventoryConsumptionSummary,
   InventoryItemSummary,
   InventoryLotSummary,
+  InventoryStockMovementSummary,
   LaboratoryEquipmentSummary,
   LaboratoryReferenceValueSummary,
   LaboratoryReportTypeSummary,
@@ -315,6 +319,18 @@ export interface CreateAppointmentRequest {
   readonly specialty?: string;
   readonly resourceLabel?: string;
   readonly smartSchedulingRecommendationId?: string;
+}
+
+export interface RescheduleAppointmentRequest {
+  readonly scheduledAt: string;
+  readonly durationMinutes?: number;
+  readonly visitType?: 'walk_in' | 'scheduled' | 'return';
+  readonly reason?: string;
+  readonly practitionerStaffId?: string;
+  readonly serviceId?: string;
+  readonly unit?: string;
+  readonly specialty?: string;
+  readonly resourceLabel?: string;
 }
 
 export interface AppointmentListResponse {
@@ -945,6 +961,40 @@ export interface InpatientProgressListResponse {
   readonly items: readonly InpatientProgressSummary[];
 }
 
+export interface AddInpatientOccurrenceRequest {
+  readonly stayId: string;
+  readonly type: 'clinical' | 'nursing' | 'medication' | 'feeding' | 'behavior' | 'administrative';
+  readonly severity?: 'info' | 'attention' | 'critical';
+  readonly title: string;
+  readonly description: string;
+}
+
+export interface InpatientOccurrenceListResponse {
+  readonly items: readonly InpatientOccurrenceSummary[];
+}
+
+export interface CreateInpatientDailyChargeRequest {
+  readonly stayId: string;
+  readonly description: string;
+  readonly chargeDate?: string;
+  readonly quantity?: number;
+  readonly unitAmount: number;
+}
+
+export interface MarkInpatientDailyChargeBilledRequest {
+  readonly billingRecordId?: string;
+}
+
+export interface InpatientDailyChargeListResponse {
+  readonly items: readonly InpatientDailyChargeSummary[];
+}
+
+export interface InpatientDailyChargeWorklistResponse {
+  readonly items: readonly InpatientDailyChargeWorklistItem[];
+  readonly totalPendingAmount: number;
+  readonly totalBilledAmount: number;
+}
+
 export interface InpatientHandoverPreviewItem {
   readonly stayId: string;
   readonly encounterId: string;
@@ -1059,6 +1109,9 @@ export interface RecordDiagnosticResultRequest {
   readonly resultSummary?: string;
   readonly resultAttachmentId?: string;
   readonly collectedByUserId?: string;
+  readonly releasedByUserId?: string;
+  readonly signedByUserId?: string;
+  readonly signatureHash?: string;
 }
 
 export interface CreateBillingEstimateRequest {
@@ -1077,6 +1130,7 @@ export interface CreateBillingItemRequest {
     | 'diagnostic_order'
     | 'surgery_case'
     | 'inpatient_stay'
+    | 'inpatient_daily_charge'
     | 'prescription';
   readonly sourceEntityId?: string;
 }
@@ -1211,6 +1265,17 @@ export interface InventoryConsumptionListResponse {
 
 export interface InventoryLotListResponse {
   readonly items: readonly InventoryLotSummary[];
+}
+
+export interface CreateInventoryStockAdjustmentRequest {
+  readonly inventoryItemId: string;
+  readonly quantityDelta: number;
+  readonly reason: string;
+  readonly reference?: string;
+}
+
+export interface InventoryStockMovementListResponse {
+  readonly items: readonly InventoryStockMovementSummary[];
 }
 
 export interface CreateNotificationRequest {

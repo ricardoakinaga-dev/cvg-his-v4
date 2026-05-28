@@ -1,5 +1,6 @@
 import { apiRequest } from './api';
 import type {
+  AccessModulePermissionMatrixEntry,
   AccessPermissionAssignmentSummary,
   AccessSectorSummary,
   AccessTeamSummary,
@@ -36,9 +37,19 @@ export interface AccessControlResponse {
   legacyRoles: readonly AccessControlUserRoleSummary[];
 }
 
+export interface AccessModulePermissionMatrixResponse {
+  generatedAt: string;
+  accountId: string;
+  items: readonly AccessModulePermissionMatrixEntry[];
+}
+
 export const accessControlService = {
   async getCatalog(): Promise<AccessControlResponse> {
     return apiRequest<AccessControlResponse>('/access-control');
+  },
+
+  async getModulePermissionMatrix(): Promise<AccessModulePermissionMatrixResponse> {
+    return apiRequest<AccessModulePermissionMatrixResponse>('/access-control/module-permission-matrix');
   },
 
   async listPermissions(): Promise<PermissionDefinition[]> {

@@ -18,7 +18,9 @@ import { DatabaseClinicalTimelineRepository } from '@cvg-his-v2/module-medical-r
 import { DatabaseNotificationRepository } from '@cvg-his-v2/module-notifications';
 import {
   DatabaseInpatientStayRepository,
-  DatabaseInpatientProgressRepository
+  DatabaseInpatientProgressRepository,
+  DatabaseInpatientOccurrenceRepository,
+  DatabaseInpatientDailyChargeRepository
 } from '@cvg-his-v2/module-inpatient';
 import { DatabaseSurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { DatabaseDiagnosticOrderRepository } from '@cvg-his-v2/module-diagnostics';
@@ -36,6 +38,8 @@ import type {
   NotificationJobSummary,
   InpatientStaySummary,
   InpatientProgressSummary,
+  InpatientOccurrenceSummary,
+  InpatientDailyChargeSummary,
   SurgeryCaseSummary,
   DiagnosticOrderSummary
 } from '@cvg-his-v2/shared-types';
@@ -101,6 +105,8 @@ describe('Database Persistence Integration Tests', () => {
   let notifRepo: DatabaseNotificationRepository;
   let inpatientStayRepo: DatabaseInpatientStayRepository;
   let inpatientProgressRepo: DatabaseInpatientProgressRepository;
+  let inpatientOccurrenceRepo: DatabaseInpatientOccurrenceRepository;
+  let inpatientDailyChargeRepo: DatabaseInpatientDailyChargeRepository;
   let surgeryCaseRepo: DatabaseSurgeryCaseRepository;
   let diagnosticOrderRepo: DatabaseDiagnosticOrderRepository;
 
@@ -113,6 +119,8 @@ describe('Database Persistence Integration Tests', () => {
     notifRepo = new DatabaseNotificationRepository(db);
     inpatientStayRepo = new DatabaseInpatientStayRepository(db);
     inpatientProgressRepo = new DatabaseInpatientProgressRepository(db);
+    inpatientOccurrenceRepo = new DatabaseInpatientOccurrenceRepository(db);
+    inpatientDailyChargeRepo = new DatabaseInpatientDailyChargeRepository(db);
     surgeryCaseRepo = new DatabaseSurgeryCaseRepository(db);
     diagnosticOrderRepo = new DatabaseDiagnosticOrderRepository(db);
   });
@@ -500,6 +508,23 @@ describe('Database Persistence Integration Tests', () => {
       stayId: stay.id,
       note: 'Paciente em observacao inicial'
     });
+    const occurrence = runtime.inpatient.addOccurrence('vet_user' as never, {
+      stayId: stay.id,
+      type: 'clinical',
+      severity: 'attention',
+      title: 'Hiporexia',
+      description: 'Paciente recusou dieta durante o plantao'
+    });
+    const dailyCharge = runtime.inpatient.createDailyCharge('vet_user' as never, {
+      stayId: stay.id,
+      description: 'Diaria internacao clinica',
+      chargeDate: '2026-05-28',
+      quantity: 2,
+      unitAmount: 150
+    });
+    const billedDailyCharge = runtime.inpatient.markDailyChargeBilled(stay.id, dailyCharge.id, {
+      billingRecordId: 'bill_inpatient_test'
+    });
 
     const transferred = runtime.inpatient.updateStatus(stay.id, {
       status: 'transferred',
@@ -523,6 +548,25 @@ describe('Database Persistence Integration Tests', () => {
     assert.ok(persistedProgress);
     assert.equal((persistedProgress as readonly InpatientProgressSummary[])[0].note, progress.note);
 
+    const persistedOccurrences = await waitFor(
+      () => inpatientOccurrenceRepo.findByStayId(stay.id),
+      (items) => Boolean(items && items.length > 0)
+    );
+    assert.equal(
+      (persistedOccurrences as readonly InpatientOccurrenceSummary[])[0]?.title,
+      occurrence.title
+    );
+
+    const persistedDailyCharges = await waitFor(
+      () => inpatientDailyChargeRepo.findByStayId(stay.id),
+      (items) => Boolean(items?.some((item) => item.status === 'billed'))
+    );
+    const persistedDailyCharge = (persistedDailyCharges as readonly InpatientDailyChargeSummary[])
+      .find((item) => item.id === billedDailyCharge.id);
+    assert.equal(persistedDailyCharge?.totalAmount, 300);
+    assert.equal(persistedDailyCharge?.status, 'billed');
+    assert.equal(persistedDailyCharge?.billingRecordId, 'bill_inpatient_test');
+
     const bootstrapAfterRestart = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
     const stayAfterRestart = await waitFor(
       async () => bootstrapAfterRestart.repositories.inpatientStay?.findById(stay.id),
@@ -531,6 +575,12 @@ describe('Database Persistence Integration Tests', () => {
     assert.ok(stayAfterRestart, 'New bootstrap should read persisted inpatient stay');
     assert.equal(stayAfterRestart?.status, transferred.status);
     assert.equal(stayAfterRestart?.transferToUnit, 'UTI');
+    const occurrencesAfterRestart =
+      await bootstrapAfterRestart.repositories.inpatientOccurrence?.findByStayId(stay.id);
+    const chargesAfterRestart =
+      await bootstrapAfterRestart.repositories.inpatientDailyCharge?.findByStayId(stay.id);
+    assert.equal(occurrencesAfterRestart?.[0]?.title, occurrence.title);
+    assert.equal(chargesAfterRestart?.find((item) => item.id === billedDailyCharge.id)?.status, 'billed');
   });
 
   it('should persist surgery lifecycle across runtime and repository reads', async () => {
@@ -645,7 +695,8 @@ describe('Database Persistence Integration Tests', () => {
     const resulted = runtime.diagnostics.recordResult(order.id, {
       status: 'resulted',
       resultSummary: 'Hemograma sem alteracoes relevantes',
-      resultAttachmentId: 'att_diag_test' as never
+      resultAttachmentId: 'att_diag_test' as never,
+      releasedByUserId: 'lab_user'
     });
 
     await sleep(50);

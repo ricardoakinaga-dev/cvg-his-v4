@@ -135,10 +135,9 @@ const columns: DataTableColumn[] = [
   { key: 'open', label: 'Abrir', class: 'table__actions-col' }
 ];
 
-const initialPeriod = currentMonthPeriod();
 const filters = reactive({
-  dateFrom: initialPeriod.from,
-  dateTo: initialPeriod.to,
+  dateFrom: '',
+  dateTo: '',
   groupBy: 'day' as GroupBy
 });
 const receivables = ref<FinancialReceivableListItem[]>([]);

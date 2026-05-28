@@ -5,13 +5,18 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { InpatientService } from '@cvg-his-v2/module-inpatient';
 import type { SectorBedService } from '@cvg-his-v2/module-inpatient';
 import type {
   CreateSectorRequest,
   CreateBedRequest,
   UpdateBedRequest,
-  InpatientHandoverPreviewResponse
+  InpatientDailyChargeWorklistResponse,
+  InpatientHandoverPreviewResponse,
+  AddInpatientOccurrenceRequest,
+  CreateInpatientDailyChargeRequest,
+  MarkInpatientDailyChargeBilledRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type {
@@ -40,6 +45,7 @@ function normalizeSearch(value: string | null | undefined): string {
 
 export interface InpatientRoutesHandlers {
   inpatient: InpatientService;
+  billing?: BillingService;
   sectorBedService: SectorBedService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
@@ -62,7 +68,7 @@ export async function handleInpatientRoutes(
   correlationId: string,
   handlers: InpatientRoutesHandlers
 ): Promise<boolean> {
-  const { inpatient, sectorBedService, audit, requirePrincipal: rp } = handlers;
+  const { inpatient, billing, sectorBedService, audit, requirePrincipal: rp } = handlers;
 
   // GET /sectors
   if (pathname === '/sectors' && request.method === 'GET') {
@@ -285,6 +291,41 @@ export async function handleInpatientRoutes(
     return true;
   }
 
+  // GET /inpatient/daily-charges/worklist
+  if (pathname === '/inpatient/daily-charges/worklist' && request.method === 'GET') {
+    const principal = rp(request, 'inpatient.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const status = url.searchParams.get('status') || undefined;
+    const items = inpatient.listDailyChargeWorklist({
+      status: status as never,
+      unit: url.searchParams.get('unit') || undefined,
+      ward: url.searchParams.get('ward') || undefined
+    });
+    const payload: InpatientDailyChargeWorklistResponse = {
+      items,
+      totalPendingAmount: items
+        .filter((item) => item.status === 'pending')
+        .reduce((sum, item) => sum + item.totalAmount, 0),
+      totalBilledAmount: items
+        .filter((item) => item.status === 'billed')
+        .reduce((sum, item) => sum + item.totalAmount, 0)
+    };
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'list_daily_charge_worklist',
+      entityType: 'inpatient-daily-charge',
+      entityId: status ?? 'all',
+      payloadSummary: `Inpatient daily charge worklist listed with ${payload.items.length} item(s)`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(payload));
+    return true;
+  }
+
   // POST /inpatient/:stayId/assign-bed
   if (
     pathname.startsWith('/inpatient/') &&
@@ -388,6 +429,169 @@ export async function handleInpatientRoutes(
     const progress = inpatient.listProgress(stayId as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ items: progress }));
+    return true;
+  }
+
+  // GET /inpatient/:stayId/occurrences
+  if (
+    pathname.startsWith('/inpatient/') &&
+    pathname.endsWith('/occurrences') &&
+    request.method === 'GET'
+  ) {
+    const principal = rp(request, 'inpatient.read');
+    const stayId = pathname.split('/')[2];
+    if (!stayId) { return false; }
+    const occurrences = inpatient.listOccurrences(stayId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'list_occurrences',
+      entityType: 'inpatient-stay',
+      entityId: stayId,
+      payloadSummary: `Inpatient occurrences listed`,
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items: occurrences }));
+    return true;
+  }
+
+  // POST /inpatient/:stayId/occurrences
+  if (
+    pathname.startsWith('/inpatient/') &&
+    pathname.endsWith('/occurrences') &&
+    request.method === 'POST'
+  ) {
+    const principal = rp(request, 'inpatient.manage');
+    const stayId = pathname.split('/')[2];
+    if (!stayId) { return false; }
+    const payload = (await readJsonBody(request)) as Omit<AddInpatientOccurrenceRequest, 'stayId'>;
+    const occurrence = inpatient.addOccurrence(principal.user.id as never, {
+      ...payload,
+      stayId
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'add_occurrence',
+      entityType: 'inpatient-stay',
+      entityId: stayId,
+      payloadSummary: `Inpatient occurrence added: ${occurrence.title}`,
+      riskLevel: occurrence.severity === 'critical' ? 'high' : 'medium',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(occurrence));
+    return true;
+  }
+
+  // GET /inpatient/:stayId/daily-charges
+  if (
+    pathname.startsWith('/inpatient/') &&
+    pathname.endsWith('/daily-charges') &&
+    request.method === 'GET'
+  ) {
+    const principal = rp(request, 'inpatient.read');
+    const stayId = pathname.split('/')[2];
+    if (!stayId) { return false; }
+    const charges = inpatient.listDailyCharges(stayId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'list_daily_charges',
+      entityType: 'inpatient-stay',
+      entityId: stayId,
+      payloadSummary: `Inpatient daily charges listed`,
+      riskLevel: 'low',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items: charges }));
+    return true;
+  }
+
+  // POST /inpatient/:stayId/daily-charges
+  if (
+    pathname.startsWith('/inpatient/') &&
+    pathname.endsWith('/daily-charges') &&
+    request.method === 'POST'
+  ) {
+    const principal = rp(request, 'inpatient.manage');
+    const stayId = pathname.split('/')[2];
+    if (!stayId) { return false; }
+    const payload = (await readJsonBody(request)) as Omit<CreateInpatientDailyChargeRequest, 'stayId'>;
+    const charge = inpatient.createDailyCharge(principal.user.id as never, {
+      ...payload,
+      stayId
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'create_daily_charge',
+      entityType: 'inpatient-stay',
+      entityId: stayId,
+      payloadSummary: `Inpatient daily charge created: ${charge.description}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(charge));
+    return true;
+  }
+
+  // POST /inpatient/:stayId/daily-charges/:chargeId/bill
+  if (
+    pathname.startsWith('/inpatient/') &&
+    pathname.includes('/daily-charges/') &&
+    pathname.endsWith('/bill') &&
+    request.method === 'POST'
+  ) {
+    const principal = rp(request, 'inpatient.manage');
+    const parts = pathname.split('/');
+    const stayId = parts[2];
+    const chargeId = parts[4];
+    if (!stayId || !chargeId) { return false; }
+    const payload = (await readJsonBody(request)) as MarkInpatientDailyChargeBilledRequest;
+    const pendingCharge = inpatient
+      .listDailyCharges(stayId as never)
+      .find((item) => item.id === chargeId);
+    let billingRecordId = payload.billingRecordId;
+
+    if (billing && pendingCharge && pendingCharge.status === 'pending') {
+      const billingItem = await billing.addItem(principal.user.id as never, {
+        encounterId: pendingCharge.encounterId,
+        itemType: 'daily_rate',
+        description: pendingCharge.description,
+        quantity: pendingCharge.quantity,
+        unitPriceAmount: pendingCharge.unitAmount,
+        sourceEntityType: 'inpatient_daily_charge',
+        sourceEntityId: pendingCharge.id
+      });
+      billingRecordId = billingItem.billingRecordId;
+    }
+
+    const charge = inpatient.markDailyChargeBilled(stayId as never, chargeId as never, {
+      ...payload,
+      billingRecordId
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'bill_daily_charge',
+      entityType: 'inpatient-daily-charge',
+      entityId: charge.id,
+      payloadSummary: `Inpatient daily charge billed`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(charge));
     return true;
   }
 

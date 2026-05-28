@@ -38,6 +38,10 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       collectedByUserId: order.collectedByUserId ?? null,
       resultSummary: order.resultSummary ?? null,
       resultAttachmentId: order.resultAttachmentId ?? null,
+      resultedAt: order.resultedAt ? new Date(order.resultedAt) : null,
+      releasedByUserId: order.releasedByUserId ?? null,
+      signedByUserId: order.signedByUserId ?? null,
+      signatureHash: order.signatureHash ?? null,
       createdAt: new Date(order.createdAt),
       updatedAt: new Date(order.updatedAt)
     });
@@ -52,6 +56,10 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
         collectedByUserId: order.collectedByUserId ?? null,
         resultSummary: order.resultSummary ?? null,
         resultAttachmentId: order.resultAttachmentId ?? null,
+        resultedAt: order.resultedAt ? new Date(order.resultedAt) : null,
+        releasedByUserId: order.releasedByUserId ?? null,
+        signedByUserId: order.signedByUserId ?? null,
+        signatureHash: order.signatureHash ?? null,
         updatedAt: new Date(order.updatedAt)
       })
       .where(eq(diagnosticOrders.id, order.id));
@@ -107,6 +115,10 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       collectedByUserId: row.collectedByUserId ?? undefined,
       resultSummary: row.resultSummary ?? undefined,
       resultAttachmentId: row.resultAttachmentId ?? undefined,
+      resultedAt: row.resultedAt?.toISOString(),
+      releasedByUserId: row.releasedByUserId ?? undefined,
+      signedByUserId: row.signedByUserId ?? undefined,
+      signatureHash: row.signatureHash ?? undefined,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     };

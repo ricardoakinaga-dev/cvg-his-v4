@@ -51,6 +51,7 @@ const baseDsrRequests = [
     completedBy: null,
     completedAt: null,
     rejectionReason: null,
+    resultJson: null,
     notes: 'Exportar histórico'
   },
   {
@@ -65,6 +66,20 @@ const baseDsrRequests = [
     completedBy: 'user-1',
     completedAt: '2026-04-21T12:00:00Z',
     rejectionReason: null,
+    resultJson: {
+      retentionEvidence: [
+        {
+          dataType: 'patient_profile',
+          retentionWindow: '20 anos para prontuario clinico veterinario',
+          disposition: 'anonymize_after_window'
+        },
+        {
+          dataType: 'financial_records',
+          retentionWindow: '5 anos fiscais/contabeis apos liquidacao',
+          disposition: 'purge_after_window'
+        }
+      ]
+    },
     notes: null
   }
 ];
@@ -200,5 +215,27 @@ describe('LgpdHubPage', () => {
     await rejectButton!.trigger('click');
     await flushPromises();
     expect(mockRejectDsrRequest).toHaveBeenCalledWith('dsr-1', 'Solicitação rejeitada pelo operador');
+  });
+
+  it('renders retention evidence in the DSR detail panel', async () => {
+    const LgpdHubPage = (await import('../LgpdHubPage.vue')).default;
+    const wrapper = mount(LgpdHubPage);
+
+    await flushPromises();
+    const newRequestButton = wrapper.findAll('button').find((button) => button.text().includes('Nova Solicitaçao'));
+    await newRequestButton!.trigger('click');
+    await flushPromises();
+
+    const selects = wrapper.findAll('select');
+    await selects[2].setValue('completed');
+    await flushPromises();
+
+    const detailsButton = wrapper.findAll('button').find((button) => button.text().includes('Detalhes'));
+    expect(detailsButton).toBeTruthy();
+    await detailsButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('20 anos para prontuario clinico veterinario');
+    expect(wrapper.text()).toContain('Anonimizar após janela legal');
   });
 });

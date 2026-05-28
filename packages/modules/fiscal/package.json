@@ -18,8 +18,8 @@
     "@cvg-his-v2/shared-types": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/fiscal.test.js"
+    "test": "cd ../../.. && vitest run packages/modules/fiscal/src/*.test.ts"
   }
 }

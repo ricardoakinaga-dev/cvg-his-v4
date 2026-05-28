@@ -42,6 +42,12 @@ const mockAppointments = [
 
 const mockListFn = vi.fn().mockResolvedValue(mockAppointments);
 const mockCancelFn = vi.fn().mockResolvedValue(mockAppointments[0]);
+const mockRescheduleFn = vi.fn().mockResolvedValue({
+  ...mockAppointments[0],
+  scheduledAt: '2026-04-20T13:30:00.000Z',
+  durationMinutes: 45,
+  reason: 'Consulta reagendada'
+});
 const mockGetPatientName = vi
   .fn()
   .mockImplementation((id: string) => Promise.resolve(id === 'pat-1' ? 'Rex' : 'Mimi'));
@@ -53,6 +59,9 @@ vi.mock('@/services/appointment', () => ({
     },
     get cancel() {
       return mockCancelFn;
+    },
+    get reschedule() {
+      return mockRescheduleFn;
     }
   }
 }));
@@ -72,6 +81,12 @@ describe('SchedulingListPage', () => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue(mockAppointments);
     mockCancelFn.mockResolvedValue(mockAppointments[0]);
+    mockRescheduleFn.mockResolvedValue({
+      ...mockAppointments[0],
+      scheduledAt: '2026-04-20T13:30:00.000Z',
+      durationMinutes: 45,
+      reason: 'Consulta reagendada'
+    });
   });
 
   it('renders the page title', async () => {
@@ -244,5 +259,49 @@ describe('SchedulingListPage', () => {
       await cancelButton.trigger('click');
       expect(mockCancelFn).toHaveBeenCalled();
     }
+  });
+
+  it('opens reschedule modal, submits payload and reloads appointments', async () => {
+    const SchedulingListPage = (await import('../SchedulingListPage.vue')).default;
+    const wrapper = mount(SchedulingListPage, {
+      global: {
+        stubs: {
+          DsButton: {
+            props: ['type'],
+            template: '<button class="ds-btn-stub" :type="type || \'button\'"><slot /></button>'
+          },
+          DsBadge: { template: '<span><slot /></span>' },
+          DsAlert: { template: '<div><slot /></div>' },
+          DsModal: {
+            props: ['open'],
+            template: '<div v-if="open" class="ds-modal-stub"><slot /></div>'
+          },
+          DsSpinner: { template: '<div class="ds-spinner-stub" role="status" />' },
+          EmptyState: { template: '<div class="empty-state-stub" />' }
+        }
+      }
+    });
+
+    await flushPromises();
+    const rescheduleButton = wrapper
+      .findAll('.ds-btn-stub')
+      .find((button) => button.text().includes('Reagendar'));
+    expect(rescheduleButton).toBeTruthy();
+
+    await rescheduleButton!.trigger('click');
+    await wrapper.find('#reschedule-scheduled-at').setValue('2026-04-20T13:30');
+    await wrapper.find('#reschedule-duration').setValue('45');
+    await wrapper.find('#reschedule-reason').setValue('Consulta reagendada');
+    await wrapper.find('form.reschedule-form').trigger('submit');
+    await flushPromises();
+
+    expect(mockRescheduleFn).toHaveBeenCalledWith(
+      'apt-1',
+      expect.objectContaining({
+        durationMinutes: 45,
+        reason: 'Consulta reagendada'
+      })
+    );
+    expect(mockListFn).toHaveBeenCalledTimes(2);
   });
 });

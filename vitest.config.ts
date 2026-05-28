@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 const root = resolve(__dirname);
 const productTestFiles = [
   'packages/db/src/**/*.test.ts',
+  'packages/modules/*/src/**/*.test.ts',
   'packages/tenant-context/src/**/*.test.ts',
   'tests/unit/**/*.test.ts'
 ];
@@ -125,6 +126,7 @@ export default defineConfig({
         'apps/api/src/bootstrap.ts',
         'apps/api/src/payment-gateway.ts',
         'apps/api/src/runtime-repositories.ts',
+        'apps/api/src/pix-transaction-repository.ts',
         'apps/api/src/consumers/**',
         'apps/api/src/helpers/auth-helpers.ts',
         'apps/api/src/helpers/common.ts',
@@ -142,6 +144,7 @@ export default defineConfig({
         'packages/shared/database/src/index.ts',
         // Repository adapters and transport-only packages are outside the current unit-coverage scope.
         'packages/**/src/repositories/**',
+        'packages/modules/fiscal/src/database-fiscal.repository.ts',
         'packages/shared/auth-sdk/src/index.ts',
         'packages/shared/config/src/index.ts',
         'packages/shared/contracts/src/index.ts',
@@ -177,18 +180,13 @@ export default defineConfig({
       ],
       reportOnFailure: true,
       tempDirectory: './coverage/.tmp',
-      // GAP-07: enforce minimum coverage thresholds as a CI gate
-      // Fails the build if any metric drops below the threshold.
-      // GAP-14 phased approach — current coverage ~11.5% lines:
-      // H1 (GAP-14 T1-T4): lines 10, functions 35, branches 40, statements 10
-      // H2 (GAP-14 T5-T7): lines 20, functions 40, branches 45, statements 20
-      // H3 (GAP-14 T8-T9): lines 40, functions 50, branches 50, statements 40 ← CURRENT (post GAP-204)
-      // H4 (GAP-14 T10): lines 60, functions 60, branches 60, statements 60
+      // Enterprise coverage gate: business modules and shared runtime code must stay
+      // above the 80% global target for statements, lines and functions.
       thresholds: {
-        lines: 40,
-        functions: 50,
-        branches: 50,
-        statements: 40
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80
       }
     }
   }

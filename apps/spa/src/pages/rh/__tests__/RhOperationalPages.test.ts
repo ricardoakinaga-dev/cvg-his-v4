@@ -6,8 +6,10 @@ import CommissionRulesPage from '../CommissionRulesPage.vue';
 import RhProfessionsPage from '../RhProfessionsPage.vue';
 import TimeOffPage from '../TimeOffPage.vue';
 import { administrativeReportsService } from '@/services/administrativeReports';
+import { commissionService } from '@/services/commissions';
 import { staffService } from '@/services/staff';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
+import type { CommissionCalculationDetail, CommissionRuleSummary } from '@/services/commissions';
 import type { StaffSummary } from '@cvg-his-v2/shared-types';
 
 vi.mock('@/services/staff', () => ({
@@ -19,6 +21,18 @@ vi.mock('@/services/staff', () => ({
 vi.mock('@/services/administrativeReports', () => ({
   administrativeReportsService: {
     getHubs: vi.fn()
+  }
+}));
+
+vi.mock('@/services/commissions', () => ({
+  commissionService: {
+    listRules: vi.fn(),
+    createRule: vi.fn(),
+    listCalculations: vi.fn(),
+    calculate: vi.fn(),
+    review: vi.fn(),
+    pay: vi.fn(),
+    cancel: vi.fn()
   }
 }));
 
@@ -137,11 +151,106 @@ const report = {
   highlights: []
 } as unknown as AdministrativeReportsResponse;
 
+const commissionRules: CommissionRuleSummary[] = [
+  {
+    id: 'REG-001',
+    accountId: 'acc-1',
+    description: 'Médica Veterinária',
+    scope: 'staff',
+    staffId: 'staff-1',
+    department: null,
+    jobTitle: null,
+    itemKind: 'service',
+    percentage: 12,
+    isActive: true,
+    createdByUserId: 'user-1',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z'
+  },
+  {
+    id: 'REG-002',
+    accountId: 'acc-1',
+    description: 'Bioquímico',
+    scope: 'staff',
+    staffId: 'staff-2',
+    department: null,
+    jobTitle: null,
+    itemKind: 'exam',
+    percentage: 8,
+    isActive: true,
+    createdByUserId: 'user-1',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z'
+  }
+];
+
+const commissionCalculations: CommissionCalculationDetail[] = [
+  {
+    id: 'calc-1',
+    accountId: 'acc-1',
+    number: 'COM-000001',
+    periodStart: '2026-04-30',
+    periodEnd: '2026-04-30',
+    status: 'draft',
+    totalBaseAmount: 1200,
+    totalCommissionAmount: 144,
+    createdByUserId: 'user-1',
+    reviewedByUserId: null,
+    paidByUserId: null,
+    cancelledByUserId: null,
+    createdAt: '2026-04-30T12:00:00.000Z',
+    updatedAt: '2026-04-30T12:00:00.000Z',
+    reviewedAt: null,
+    paidAt: null,
+    cancelledAt: null,
+    notes: null,
+    lines: []
+  }
+];
+
 describe('RH operational pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(staffService.list).mockResolvedValue(staff);
     vi.mocked(administrativeReportsService.getHubs).mockResolvedValue(report);
+    vi.mocked(commissionService.listRules).mockResolvedValue(commissionRules);
+    vi.mocked(commissionService.createRule).mockImplementation(async (payload) => ({
+      id: 'REG-003',
+      accountId: 'acc-1',
+      description: payload.description,
+      scope: payload.scope ?? 'global',
+      staffId: payload.staffId ?? null,
+      department: payload.department ?? null,
+      jobTitle: payload.jobTitle ?? null,
+      itemKind: payload.itemKind ?? 'any',
+      percentage: payload.percentage,
+      isActive: payload.isActive ?? true,
+      createdByUserId: 'user-1',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z'
+    }));
+    vi.mocked(commissionService.listCalculations).mockResolvedValue(commissionCalculations);
+    vi.mocked(commissionService.calculate).mockResolvedValue({
+      ...commissionCalculations[0],
+      id: 'calc-2',
+      number: 'COM-000002',
+      totalCommissionAmount: 96
+    });
+    vi.mocked(commissionService.review).mockResolvedValue({
+      ...commissionCalculations[0],
+      status: 'reviewed',
+      reviewedAt: '2026-04-30T13:00:00.000Z'
+    });
+    vi.mocked(commissionService.pay).mockResolvedValue({
+      ...commissionCalculations[0],
+      status: 'paid',
+      paidAt: '2026-04-30T14:00:00.000Z'
+    });
+    vi.mocked(commissionService.cancel).mockResolvedValue({
+      ...commissionCalculations[0],
+      status: 'cancelled',
+      cancelledAt: '2026-04-30T15:00:00.000Z'
+    });
   });
 
   it('renders professions from staff job titles', async () => {
@@ -202,9 +311,11 @@ describe('RH operational pages', () => {
     expect(wrapper.text()).toContain('Id');
     expect(wrapper.text()).toContain('Descrição');
     expect(wrapper.text()).toContain('Pesquisar');
-    expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.text()).toContain('Auditado');
     expect(wrapper.text()).toContain('Clínica');
     expect(wrapper.text()).toContain('Médica Veterinária');
+    expect(wrapper.text()).toContain('12.00%');
+    expect(commissionService.listRules).toHaveBeenCalled();
   });
 
   it('filters commission rules by Vetus id and description', async () => {
@@ -230,6 +341,33 @@ describe('RH operational pages', () => {
     expect(wrapper.text()).not.toContain('REG-001');
   });
 
+  it('creates a real commission rule from selected staff and percentage', async () => {
+    const wrapper = mount(CommissionRulesPage);
+    await flushPromises();
+
+    await wrapper.find('input#commission-rule-description').setValue('Plantão clínico');
+    await wrapper.find('select#commission-rule-staff').setValue('staff-1');
+    await wrapper.find('select#commission-rule-item-kind').setValue('service');
+    await wrapper.find('input#commission-rule-percentage').setValue('15');
+
+    const includeButton = wrapper.findAll('button').find((button) => button.text() === 'Incluir');
+    expect(includeButton).toBeTruthy();
+    await includeButton!.trigger('click');
+    await flushPromises();
+
+    expect(commissionService.createRule).toHaveBeenCalledWith({
+      description: 'Plantão clínico',
+      scope: 'staff',
+      staffId: 'staff-1',
+      department: null,
+      jobTitle: null,
+      itemKind: 'service',
+      percentage: 15,
+      isActive: true
+    });
+    expect(wrapper.text()).toContain('Regra Plantão clínico criada com 15.00%.');
+  });
+
   it('renders commission calculation preview from administrative report data', async () => {
     const wrapper = mount(CommissionCalculationsPage);
     await flushPromises();
@@ -242,11 +380,15 @@ describe('RH operational pages', () => {
     expect(wrapper.text()).toContain('Incluir');
     expect(wrapper.text()).toContain('Registros de cálculo');
     expect(wrapper.text()).toContain('Data de Cálculo');
-    expect(wrapper.text()).toContain('Abrir');
-    expect(wrapper.text()).toContain('Sem contrato auditável de fechamento');
+    expect(wrapper.text()).toContain('Revisar');
+    expect(wrapper.text()).toContain('Fechamento auditável');
+    expect(wrapper.text()).toContain('COM-000001');
+    expect(wrapper.text()).toContain('Rascunho');
+    expect(wrapper.text()).toContain('144,00');
     expect(wrapper.text()).toContain('Consulta');
     expect(wrapper.text()).toContain('Medicação');
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(commissionService.listCalculations).toHaveBeenCalled();
   });
 
   it('filters commission calculation search by professional before preparing rows', async () => {
@@ -266,8 +408,32 @@ describe('RH operational pages', () => {
     await searchButton!.trigger('click');
 
     expect(wrapper.text()).toContain('Pesquisa preparada para Rafael Lima em 30/04/2026');
-    expect(wrapper.text()).toContain('Rafael Lima');
-    expect(wrapper.text()).not.toContain('Ana Paula 30/04/2026');
+    expect(wrapper.text()).toContain('Use Incluir para gerar fechamento auditável');
+  });
+
+  it('creates and reviews a commission calculation through the real API service', async () => {
+    const wrapper = mount(CommissionCalculationsPage);
+    await flushPromises();
+
+    await wrapper.find('select#commission-professional').setValue('staff-2');
+    await wrapper.find('input#commission-calculation-date').setValue('2026-04-30');
+
+    const includeButton = wrapper.findAll('button').find((button) => button.text() === 'Incluir');
+    expect(includeButton).toBeTruthy();
+    await includeButton!.trigger('click');
+    await flushPromises();
+
+    expect(commissionService.calculate).toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Fechamento COM-000002 criado com comissão de R$');
+    expect(wrapper.text()).toContain('96,00.');
+
+    const reviewButton = wrapper.findAll('button').find((button) => button.text() === 'Revisar');
+    expect(reviewButton).toBeTruthy();
+    await reviewButton!.trigger('click');
+    await flushPromises();
+
+    expect(commissionService.review).toHaveBeenCalledWith('calc-2');
+    expect(wrapper.text()).toContain('Fechamento COM-000001 revisado.');
   });
 
   it('renders time off coverage from active staff without fake leave records', async () => {

@@ -78,6 +78,15 @@
                 Ver
               </DsButton>
               <DsButton
+                v-if="canReschedule(apt.status)"
+                variant="secondary"
+                size="sm"
+                :disabled="reschedulingId === apt.id"
+                @click="openRescheduleModal(apt)"
+              >
+                Reagendar
+              </DsButton>
+              <DsButton
                 v-if="canCancel(apt.status)"
                 variant="danger"
                 size="sm"
@@ -92,6 +101,51 @@
         </tbody>
       </table>
     </div>
+
+    <DsModal
+      :open="rescheduleModalOpen"
+      title="Reagendar atendimento"
+      size="sm"
+      @close="closeRescheduleModal"
+    >
+      <form class="reschedule-form" @submit.prevent="handleReschedule">
+        <label class="form-field" for="reschedule-scheduled-at">
+          <span>Nova data e hora</span>
+          <input
+            id="reschedule-scheduled-at"
+            v-model="rescheduleForm.scheduledAt"
+            type="datetime-local"
+            required
+          />
+        </label>
+        <label class="form-field" for="reschedule-duration">
+          <span>Duração</span>
+          <input
+            id="reschedule-duration"
+            v-model.number="rescheduleForm.durationMinutes"
+            type="number"
+            min="1"
+            max="480"
+          />
+        </label>
+        <label class="form-field" for="reschedule-reason">
+          <span>Motivo</span>
+          <input id="reschedule-reason" v-model="rescheduleForm.reason" type="text" />
+        </label>
+        <label class="form-field" for="reschedule-resource">
+          <span>Sala/recurso</span>
+          <input id="reschedule-resource" v-model="rescheduleForm.resourceLabel" type="text" />
+        </label>
+        <div class="modal-actions">
+          <DsButton type="button" variant="secondary" @click="closeRescheduleModal">
+            Cancelar
+          </DsButton>
+          <DsButton type="submit" variant="primary" :loading="Boolean(reschedulingId)">
+            Salvar reagendamento
+          </DsButton>
+        </div>
+      </form>
+    </DsModal>
   </div>
 </template>
 
@@ -104,6 +158,7 @@ import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
@@ -112,6 +167,15 @@ const appointments = ref<AppointmentSummary[]>([]);
 const loading = ref(true);
 const error = ref('');
 const cancellingId = ref<string | null>(null);
+const reschedulingId = ref<string | null>(null);
+const selectedAppointment = ref<AppointmentSummary | null>(null);
+const rescheduleModalOpen = ref(false);
+const rescheduleForm = ref({
+  scheduledAt: '',
+  durationMinutes: 30,
+  reason: '',
+  resourceLabel: ''
+});
 const entityCache = useEntityCache();
 const lastRefresh = ref<Date | null>(null);
 
@@ -177,11 +241,79 @@ function canCancel(status: AppointmentStatus): boolean {
   return status === 'scheduled' || status === 'checked_in';
 }
 
+function canReschedule(status: AppointmentStatus): boolean {
+  return status === 'scheduled';
+}
+
 function formatDateTime(d: string): string {
   try {
     return new Date(d).toLocaleString('pt-BR');
   } catch {
     return d;
+  }
+}
+
+function toDatetimeLocalValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function toIsoFromDatetimeLocal(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toISOString();
+}
+
+function openRescheduleModal(appointment: AppointmentSummary) {
+  selectedAppointment.value = appointment;
+  rescheduleForm.value = {
+    scheduledAt: toDatetimeLocalValue(appointment.scheduledAt),
+    durationMinutes: appointment.durationMinutes ?? 30,
+    reason: appointment.reason,
+    resourceLabel: appointment.resourceLabel ?? ''
+  };
+  rescheduleModalOpen.value = true;
+}
+
+function closeRescheduleModal() {
+  if (reschedulingId.value) {
+    return;
+  }
+
+  rescheduleModalOpen.value = false;
+  selectedAppointment.value = null;
+}
+
+async function handleReschedule() {
+  const appointment = selectedAppointment.value;
+  if (!appointment) {
+    return;
+  }
+
+  reschedulingId.value = appointment.id;
+  error.value = '';
+  try {
+    await appointmentService.reschedule(appointment.id, {
+      scheduledAt: toIsoFromDatetimeLocal(rescheduleForm.value.scheduledAt),
+      durationMinutes: rescheduleForm.value.durationMinutes,
+      reason: rescheduleForm.value.reason.trim() || undefined,
+      resourceLabel: rescheduleForm.value.resourceLabel.trim() || undefined
+    });
+    rescheduleModalOpen.value = false;
+    selectedAppointment.value = null;
+    await loadAppointments();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao reagendar atendimento';
+  } finally {
+    reschedulingId.value = null;
   }
 }
 
@@ -276,5 +408,35 @@ onMounted(loadAppointments);
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.reschedule-form {
+  display: grid;
+  gap: 14px;
+}
+
+.form-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.form-field input {
+  min-height: 40px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }
 </style>

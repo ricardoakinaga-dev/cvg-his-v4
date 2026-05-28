@@ -19,6 +19,10 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { apiRequest } from './api';
 
+interface PrintableLaboratoryReportResponse {
+  html: string;
+}
+
 function normalizeText(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
 }
@@ -160,6 +164,13 @@ export const laboratoryService = {
     return [...(response.items ?? [])].sort((left, right) =>
       right.updatedAt.localeCompare(left.updatedAt)
     );
+  },
+
+  async printReport(orderId: string): Promise<string> {
+    const response = await apiRequest<PrintableLaboratoryReportResponse>(
+      `/laboratory/reports/${encodeURIComponent(orderId)}/print`
+    );
+    return response.html;
   },
 
   async listHemograms(filters?: LaboratoryReportListFilters): Promise<DiagnosticOrderSummary[]> {

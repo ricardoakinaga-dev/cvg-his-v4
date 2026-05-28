@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
@@ -102,6 +102,112 @@ test('InpatientService addProgress records authored progress note', () => {
   assert.equal(progress.stayId, stay.id);
   assert.equal(service.listProgress(stay.id).length, 1);
   assert.equal(service.listProgress(stay.id)[0].authoredByUserId, 'doctor_1');
+});
+
+test('InpatientService records structured inpatient occurrence for operational handover', () => {
+  const { service, encounter } = createService();
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'Internacao',
+    ward: 'Ala B',
+    bed: 'B03'
+  });
+
+  const occurrence = service.addOccurrence('nurse_1' as never, {
+    stayId: stay.id,
+    type: 'clinical',
+    severity: 'attention',
+    title: 'Hiporexia no plantao',
+    description: 'Paciente recusou dieta umida e precisa de reavaliacao nutricional.'
+  });
+
+  assert.equal(occurrence.stayId, stay.id);
+  assert.equal(occurrence.type, 'clinical');
+  assert.equal(occurrence.severity, 'attention');
+  assert.equal(occurrence.authoredByUserId, 'nurse_1');
+  assert.equal(service.listOccurrences(stay.id)[0]?.title, 'Hiporexia no plantao');
+});
+
+test('InpatientService manages daily charge lifecycle for inpatient billing', () => {
+  const { service, encounter } = createService();
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  const charge = service.createDailyCharge('admin_1' as never, {
+    stayId: stay.id,
+    description: 'Diaria UTI',
+    chargeDate: '2026-05-28',
+    quantity: 2,
+    unitAmount: 180
+  });
+
+  assert.equal(charge.totalAmount, 360);
+  assert.equal(charge.status, 'pending');
+  assert.equal(service.listDailyCharges(stay.id).length, 1);
+
+  const billed = service.markDailyChargeBilled(stay.id, charge.id, {
+    billingRecordId: 'bill_1'
+  });
+
+  assert.equal(billed.status, 'billed');
+  assert.equal(billed.billingRecordId, 'bill_1');
+});
+
+test('InpatientService lists daily charge worklist filtered by status and ward', () => {
+  const encounters = {
+    getOrThrow(encounterId: string) {
+      return {
+        id: encounterId,
+        accountId: 'acc_test',
+        patientId: encounterId === 'encounter_2' ? 'patient_2' : 'patient_1'
+      };
+    }
+  };
+  const service = new InpatientService(encounters as never);
+  const firstStay = service.admit({
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+  const secondStay = service.admit({
+    encounterId: 'encounter_2',
+    patientId: 'patient_2',
+    unit: 'Internacao',
+    ward: 'Ala B',
+    bed: 'B03'
+  });
+  const billed = service.createDailyCharge('admin_1' as never, {
+    stayId: firstStay.id,
+    description: 'Diaria UTI',
+    chargeDate: '2026-05-27',
+    quantity: 1,
+    unitAmount: 180
+  });
+  service.markDailyChargeBilled(firstStay.id, billed.id, { billingRecordId: 'bill_1' });
+  service.createDailyCharge('admin_1' as never, {
+    stayId: secondStay.id,
+    description: 'Diaria internacao',
+    chargeDate: '2026-05-28',
+    quantity: 2,
+    unitAmount: 120
+  });
+
+  const pending = service.listDailyChargeWorklist({ status: 'pending' });
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0]?.ward, 'Ala B');
+  assert.equal(pending[0]?.totalAmount, 240);
+
+  const alaA = service.listDailyChargeWorklist({ ward: 'Ala A' });
+  assert.equal(alaA.length, 1);
+  assert.equal(alaA[0]?.status, 'billed');
 });
 
 test('InpatientService updateStatus persists latest status', () => {

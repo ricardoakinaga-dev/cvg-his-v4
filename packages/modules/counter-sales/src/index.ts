@@ -159,18 +159,37 @@ export class CounterSalesService {
     const payments = Array.from(this.#payments.values()).filter((p) => p.counterSaleId === saleId);
     const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
     const balanceDue = Math.round((total - paidAmount) * 100) / 100;
+    const roundedPaidAmount = Math.round(paidAmount * 100) / 100;
+
+    if (total < -0.01) {
+      throw new ConflictError('Counter sale total cannot be negative', { total });
+    }
+
+    if (roundedPaidAmount > total + 0.01) {
+      throw new ConflictError('Counter sale payments exceed recalculated total', {
+        total,
+        paidAmount: roundedPaidAmount
+      });
+    }
 
     const updated: CounterSaleSummary = {
       ...sale,
       subtotal: Math.round(subtotal * 100) / 100,
       discountAmount: Math.round(discountAmount * 100) / 100,
       total,
-      paidAmount: Math.round(paidAmount * 100) / 100,
+      paidAmount: roundedPaidAmount,
       balanceDue,
       updatedAt: nowIso()
     };
     this.#sales.set(saleId, updated);
     return updated;
+  }
+
+  async #persistSale(updatedSale: CounterSaleSummary): Promise<void> {
+    if (this.#repository) {
+      const record: CounterSaleRecord = updatedSale;
+      await this.#repository.update(record);
+    }
   }
 
   async open(
@@ -228,6 +247,20 @@ export class CounterSalesService {
 
     const quantity = input.quantity ?? 1;
     const discountAmount = input.discountAmount ?? 0;
+    if (quantity <= 0) {
+      throw new ConflictError('Counter sale item quantity must be greater than zero', { quantity });
+    }
+    if (input.unitPrice < 0) {
+      throw new ConflictError('Counter sale item unit price cannot be negative', {
+        unitPrice: input.unitPrice
+      });
+    }
+    if (discountAmount < 0) {
+      throw new ConflictError('Counter sale item discount cannot be negative', { discountAmount });
+    }
+    if (!input.nameSnapshot.trim()) {
+      throw new ConflictError('Counter sale item name is required');
+    }
     const lineTotal = Math.round((input.unitPrice * quantity - discountAmount) * 100) / 100;
     const now = nowIso();
 
@@ -249,13 +282,20 @@ export class CounterSalesService {
     };
 
     this.#items.set(item.id, item);
+    let updatedSale: CounterSaleSummary;
+    try {
+      updatedSale = this.#recalculate(saleId);
+    } catch (error) {
+      this.#items.delete(item.id);
+      throw error;
+    }
 
     if (this.#repository) {
       const record: CounterSaleItemRecord = item;
       await this.#repository.createItem(record);
+      await this.#persistSale(updatedSale);
     }
 
-    const updatedSale = this.#recalculate(saleId);
     return { sale: updatedSale, item };
   }
 
@@ -271,13 +311,22 @@ export class CounterSalesService {
     if (sale.status !== 'open')
       throw new ConflictError('Cannot update items in a non-open sale', { status: sale.status });
 
+    const quantity = input.quantity ?? item.quantity;
+    const discountAmount =
+      input.discountAmount !== undefined
+        ? Math.round(input.discountAmount * 100) / 100
+        : item.discountAmount;
+    if (quantity <= 0) {
+      throw new ConflictError('Counter sale item quantity must be greater than zero', { quantity });
+    }
+    if (discountAmount < 0) {
+      throw new ConflictError('Counter sale item discount cannot be negative', { discountAmount });
+    }
+
     const updated: CounterSaleItemSummary = {
       ...item,
-      quantity: input.quantity ?? item.quantity,
-      discountAmount:
-        input.discountAmount !== undefined
-          ? Math.round(input.discountAmount * 100) / 100
-          : item.discountAmount,
+      quantity,
+      discountAmount,
       notes: input.notes !== undefined ? (input.notes?.trim() ?? null) : item.notes,
       updatedAt: nowIso()
     };
@@ -286,13 +335,20 @@ export class CounterSalesService {
     const finalItem: CounterSaleItemSummary = { ...updated, lineTotal };
 
     this.#items.set(itemId, finalItem);
+    let updatedSale: CounterSaleSummary;
+    try {
+      updatedSale = this.#recalculate(item.counterSaleId);
+    } catch (error) {
+      this.#items.set(itemId, item);
+      throw error;
+    }
 
     if (this.#repository) {
       const record: CounterSaleItemRecord = finalItem;
       await this.#repository.updateItem(record);
+      await this.#persistSale(updatedSale);
     }
 
-    const updatedSale = this.#recalculate(item.counterSaleId);
     return { sale: updatedSale, item: finalItem };
   }
 
@@ -306,12 +362,20 @@ export class CounterSalesService {
       throw new ConflictError('Cannot remove items from a non-open sale', { status: sale.status });
 
     this.#items.delete(itemId);
+    let updatedSale: CounterSaleSummary;
+    try {
+      updatedSale = this.#recalculate(item.counterSaleId);
+    } catch (error) {
+      this.#items.set(itemId, item);
+      throw error;
+    }
 
     if (this.#repository) {
       await this.#repository.deleteItem(itemId);
+      await this.#persistSale(updatedSale);
     }
 
-    return this.#recalculate(item.counterSaleId);
+    return updatedSale;
   }
 
   async addPayment(
@@ -330,6 +394,14 @@ export class CounterSalesService {
       throw new ConflictError('Cannot add payments to a non-open sale', { status: sale.status });
 
     const remaining = sale.total - sale.paidAmount;
+    if (input.amount <= 0) {
+      throw new ConflictError('Payment amount must be greater than zero', { amount: input.amount });
+    }
+    if (input.installments !== undefined && input.installments < 1) {
+      throw new ConflictError('Payment installments must be greater than zero', {
+        installments: input.installments
+      });
+    }
     if (input.amount > remaining + 0.01) {
       throw new ConflictError('Payment amount exceeds balance due', {
         balanceDue: remaining,
@@ -358,6 +430,9 @@ export class CounterSalesService {
     }
 
     const updatedSale = this.#recalculate(saleId);
+    if (this.#repository) {
+      await this.#persistSale(updatedSale);
+    }
     return { sale: updatedSale, payment };
   }
 

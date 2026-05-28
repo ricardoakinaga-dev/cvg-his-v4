@@ -203,6 +203,185 @@ test('handleInpatientRoutes appends inpatient progress to clinical record timeli
   assert.equal(callbackPayload.principal.user.id, 'user-1');
 });
 
+test('handleInpatientRoutes creates and lists inpatient occurrences', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const createResponse = new MockResponse();
+
+  const created = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/occurrences`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/occurrences`,
+      body: {
+        type: 'clinical',
+        severity: 'attention',
+        title: 'Hiporexia',
+        description: 'Paciente recusou dieta no plantao.'
+      }
+    }) as never,
+    createResponse as never,
+    'corr-inpatient-occurrence',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(created, true);
+  assert.equal(createResponse.statusCode, 201);
+  assert.equal(createResponse.bodyJson<{ title: string }>().title, 'Hiporexia');
+
+  const listResponse = new MockResponse();
+  const listed = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/occurrences`,
+    new MockRequest({
+      method: 'GET',
+      url: `/inpatient/${stay.id}/occurrences`
+    }) as never,
+    listResponse as never,
+    'corr-inpatient-occurrences-list',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(listed, true);
+  assert.equal(listResponse.statusCode, 200);
+  assert.equal(listResponse.bodyJson<{ items: Array<{ title: string }> }>().items[0]?.title, 'Hiporexia');
+});
+
+test('handleInpatientRoutes creates and bills daily inpatient charges', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const addBillingItem = test.mock.fn(async () => ({
+    id: 'billitem_1',
+    billingRecordId: 'bill_inpatient_1',
+    accountId: 'acc_cvg_demo',
+    encounterId: stay.encounterId,
+    itemType: 'daily_rate',
+    description: 'Diaria UTI',
+    quantity: 2,
+    unitPriceAmount: 180,
+    totalAmount: 360,
+    sourceEntityType: 'inpatient_daily_charge',
+    sourceEntityId: 'charge_pending',
+    createdByUserId: 'user-1',
+    createdAt: new Date().toISOString()
+  }));
+  const createResponse = new MockResponse();
+
+  const created = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges`,
+      body: {
+        description: 'Diaria UTI',
+        chargeDate: '2026-05-28',
+        quantity: 2,
+        unitAmount: 180
+      }
+    }) as never,
+    createResponse as never,
+    'corr-inpatient-daily-charge',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(created, true);
+  assert.equal(createResponse.statusCode, 201);
+  const charge = createResponse.bodyJson<{ id: string; totalAmount: number; status: string }>();
+  assert.equal(charge.totalAmount, 360);
+  assert.equal(charge.status, 'pending');
+
+  const billResponse = new MockResponse();
+  const billed = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+      body: { billingRecordId: 'bill_1' }
+    }) as never,
+    billResponse as never,
+    'corr-inpatient-daily-charge-bill',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(billed, true);
+  assert.equal(billResponse.statusCode, 200);
+  assert.equal(addBillingItem.mock.callCount(), 1);
+  const addBillingItemPayload =
+    (addBillingItem.mock.calls[0]?.arguments as unknown[] | undefined)?.[1];
+  assert.deepEqual(addBillingItemPayload, {
+    encounterId: stay.encounterId,
+    itemType: 'daily_rate',
+    description: 'Diaria UTI',
+    quantity: 2,
+    unitPriceAmount: 180,
+    sourceEntityType: 'inpatient_daily_charge',
+    sourceEntityId: charge.id
+  });
+  assert.equal(billResponse.bodyJson<{ status: string; billingRecordId: string }>().status, 'billed');
+  assert.equal(billResponse.bodyJson<{ status: string; billingRecordId: string }>().billingRecordId, 'bill_inpatient_1');
+});
+
+test('handleInpatientRoutes lists inpatient daily charge worklist with totals', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  inpatient.createDailyCharge('user-1' as never, {
+    stayId: stay.id,
+    description: 'Diaria UTI',
+    chargeDate: '2026-05-28',
+    quantity: 2,
+    unitAmount: 180
+  });
+  const response = new MockResponse();
+
+  const handled = await handleInpatientRoutes(
+    '/inpatient/daily-charges/worklist',
+    new MockRequest({
+      method: 'GET',
+      url: '/inpatient/daily-charges/worklist?status=pending&ward=Ala%20A'
+    }) as never,
+    response as never,
+    'corr-inpatient-daily-charge-worklist',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    totalPendingAmount: number;
+    items: Array<{ ward: string; bed: string; status: string; totalAmount: number }>;
+  }>();
+  assert.equal(payload.totalPendingAmount, 360);
+  assert.equal(payload.items[0]?.ward, 'Ala A');
+  assert.equal(payload.items[0]?.bed, 'B12');
+  assert.equal(payload.items[0]?.status, 'pending');
+});
+
 test('handleInpatientRoutes appends inpatient discharge to clinical record timeline', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();

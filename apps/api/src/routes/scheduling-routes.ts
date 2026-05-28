@@ -10,6 +10,7 @@ import type {
   AppointmentListResponse,
   CheckInQueueRequest,
   CreateAppointmentRequest,
+  RescheduleAppointmentRequest,
   SmartSchedulingRecommendationRequest,
   SmartSchedulingRecommendationResponse,
   QueueListResponse,
@@ -234,6 +235,33 @@ export async function handleSchedulingRoutes(
 
   if (
     pathname.startsWith('/appointments/')
+    && pathname.endsWith('/reschedule')
+    && method === 'POST'
+  ) {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const payload = (await readJsonBody(request)) as RescheduleAppointmentRequest;
+    const rescheduled = await scheduling.rescheduleAppointment(
+      principal.user.accountId,
+      appointmentId as never,
+      payload
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'reschedule_appointment',
+      entityType: 'appointment',
+      entityId: rescheduled.id,
+      payloadSummary: `Appointment rescheduled for patient ${rescheduled.patientId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, rescheduled);
+  }
+
+  if (
+    pathname.startsWith('/appointments/')
     && pathname.endsWith('/start-encounter')
     && method === 'POST'
   ) {
@@ -415,6 +443,24 @@ export async function handleSchedulingRoutes(
       entityType: 'queue-entry',
       entityId: entry.id,
       payloadSummary: `Queue entry ${entry.id} transitioned to in_care`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, entry);
+  }
+
+  if (pathname.startsWith('/queue/') && pathname.endsWith('/complete') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const entry = await scheduling.completeQueueEntry(queueEntryId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'complete_queue_entry',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Queue entry ${entry.id} completed`,
       riskLevel: 'high',
       correlationId
     });

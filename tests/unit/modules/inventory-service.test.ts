@@ -163,6 +163,25 @@ describe('InventoryService coverage guard', () => {
                 createdAt: '2026-04-12T10:00:00.000Z'
               }
             ];
+          },
+          async createStockMovement() {},
+          async findStockMovements() {
+            return [
+              {
+                id: 'mov_repo_1' as never,
+                accountId: 'acc_repo' as never,
+                inventoryItemId: 'inv_repo_1' as never,
+                movementType: 'adjustment',
+                quantityDelta: 7,
+                balanceBefore: 0,
+                balanceAfter: 7,
+                unitCostAmount: 4.5,
+                reason: 'Carga inicial',
+                reference: 'INIT',
+                recordedByUserId: 'nurse_repo' as never,
+                createdAt: '2026-04-12T08:00:00.000Z'
+              }
+            ];
           }
         }
       }

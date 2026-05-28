@@ -24,6 +24,10 @@
         <span class="overview-card__value">{{ health.ok ? 'OK' : '—' }}</span>
         <span class="overview-card__label">Status da API</span>
       </div>
+      <div class="overview-card">
+        <span class="overview-card__value">{{ sloReport?.report.overallStatus ? formatSloStatus(sloReport.report.overallStatus) : '—' }}</span>
+        <span class="overview-card__label">SLO operacional</span>
+      </div>
     </section>
 
     <section class="api-client-actions">
@@ -86,6 +90,46 @@
         </div>
       </DsCard>
 
+      <DsCard title="SLO e orçamento de erro" class="panel">
+        <div v-if="sloReport" class="slo-panel">
+          <div class="slo-summary">
+            <div>
+              <strong>{{ formatSloStatus(sloReport.report.overallStatus) }}</strong>
+              <span>Status geral</span>
+            </div>
+            <div>
+              <strong>{{ formatPercent(sloReport.snapshot.availabilityPercent) }}</strong>
+              <span>Disponibilidade 1h</span>
+            </div>
+            <div>
+              <strong>{{ formatLatency(sloReport.snapshot.p95LatencyMs) }}</strong>
+              <span>P95 5min</span>
+            </div>
+            <div>
+              <strong>{{ formatPercent(sloReport.snapshot.errorRatePercent) }}</strong>
+              <span>Erro 5min</span>
+            </div>
+          </div>
+          <div class="slo-list">
+            <div v-for="slo in sloReport.report.slos" :key="slo.id" class="slo-item">
+              <div>
+                <strong>{{ slo.name }}</strong>
+                <span>{{ slo.category }} · alvo {{ formatSloTarget(slo) }}</span>
+              </div>
+              <DsBadge :variant="slo.status === 'critical' ? 'danger' : slo.status === 'alert' ? 'warning' : 'success'" size="sm">
+                {{ formatSloStatus(slo.status) }}
+              </DsBadge>
+              <div class="slo-item__budget">
+                <span>Budget {{ formatPercent(slo.errorBudgetPercent) }}</span>
+                <span>Burn {{ slo.burnRate.toFixed(2) }}x</span>
+              </div>
+            </div>
+          </div>
+          <div class="muted">Runbooks: {{ sloReport.runbook.metrics }}, {{ sloReport.runbook.readiness }}, {{ sloReport.runbook.liveness }}</div>
+        </div>
+        <div v-else class="muted">Relatório SLO será carregado junto com o health check.</div>
+      </DsCard>
+
       <DsCard title="Sessão e headers" class="panel">
         <div class="stack">
           <div><strong>Conta inferida</strong> {{ tokenAccountId || '—' }}</div>
@@ -130,7 +174,7 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
-import { apiRequest } from '@/services/api';
+import { healthService, type SloReportResponse, type SloStatus } from '@/services/health';
 import { spaRuntimeConfig } from '@/config/runtime';
 import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 
@@ -147,6 +191,7 @@ const loading = ref(true);
 const error = ref('');
 const successMessage = ref('');
 const health = ref<{ ok?: boolean; service?: string; version?: string; environment?: string; timestamp?: string; correlationId?: string }>({});
+const sloReport = ref<SloReportResponse | null>(null);
 const correlationId = ref(`spa-${Date.now()}`);
 const healthHistory = ref<HealthSnapshot[]>(loadHealthHistory());
 
@@ -184,6 +229,11 @@ const insightCards = computed(() => [
     label: 'Checks com sucesso',
     value: String(healthHistory.value.filter((item) => item.ok).length),
     hint: 'Health checks positivos nesta sessão'
+  },
+  {
+    label: 'SLO',
+    value: sloReport.value ? formatSloStatus(sloReport.value.report.overallStatus) : 'Não carregado',
+    hint: 'Leitura operacional de budget e burn rate'
   }
 ]);
 
@@ -202,7 +252,12 @@ async function reloadHealth() {
   loading.value = true;
   error.value = '';
   try {
-    health.value = await apiRequest('/health', { skipAuth: true });
+    const [healthPayload, sloPayload] = await Promise.all([
+      healthService.get(),
+      healthService.getSloReport()
+    ]);
+    health.value = healthPayload;
+    sloReport.value = sloPayload;
     registerHealthSnapshot();
     successMessage.value = 'Health check atualizado com sucesso';
   } catch (err: unknown) {
@@ -266,6 +321,28 @@ function formatDate(value: string): string {
     timeStyle: 'short'
   }).format(new Date(value));
 }
+
+function formatSloStatus(status: SloStatus['status'] | SloReportResponse['report']['overallStatus']): string {
+  const labels = {
+    healthy: 'Saudável',
+    alert: 'Alerta',
+    degraded: 'Degradado',
+    critical: 'Crítico'
+  } satisfies Record<string, string>;
+  return labels[status] ?? status;
+}
+
+function formatPercent(value: number): string {
+  return `${value.toFixed(value >= 10 ? 1 : 2)}%`;
+}
+
+function formatLatency(value: number): string {
+  return `${Math.round(value)} ms`;
+}
+
+function formatSloTarget(slo: SloStatus): string {
+  return slo.unit === 'percent' ? formatPercent(slo.target) : `${slo.target} ${slo.unit}`;
+}
 </script>
 
 <style scoped>
@@ -327,6 +404,65 @@ function formatDate(value: string): string {
   margin: 4px 0 0;
   color: var(--color-text-muted, #64748b);
   word-break: break-word;
+}
+
+.slo-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.slo-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.slo-summary > div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.slo-summary strong,
+.slo-summary span {
+  display: block;
+}
+
+.slo-summary span {
+  margin-top: 4px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.slo-list {
+  display: grid;
+  gap: 8px;
+}
+
+.slo-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.slo-item span {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+}
+
+.slo-item__budget {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .actions-row {

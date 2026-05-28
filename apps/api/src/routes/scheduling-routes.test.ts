@@ -265,6 +265,40 @@ test('handleSchedulingRoutes creates, lists, reads and cancels appointments', as
   assert.equal(detail.id, created.id);
   assert.equal(detail.resourceLabel, 'Consultorio 2');
 
+  const rescheduleResponse = new MockResponse();
+  const rescheduleHandled = await handleSchedulingRoutes(
+    `/appointments/${created.id}/reschedule`,
+    createJsonRequest('POST', `/appointments/${created.id}/reschedule`, {
+      scheduledAt: '2026-03-25T14:00:00.000Z',
+      durationMinutes: 45,
+      reason: 'Consulta enterprise reagendada',
+      resourceLabel: 'Consultorio 3'
+    }),
+    rescheduleResponse as never,
+    'corr-scheduling-reschedule',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(rescheduleHandled, true);
+  assert.equal(rescheduleResponse.statusCode, 200);
+  const rescheduled = rescheduleResponse.bodyJson<{
+    id: string;
+    scheduledAt: string;
+    durationMinutes: number;
+    reason: string;
+    resourceLabel?: string;
+  }>();
+  assert.equal(rescheduled.id, created.id);
+  assert.equal(rescheduled.scheduledAt, '2026-03-25T14:00:00.000Z');
+  assert.equal(rescheduled.durationMinutes, 45);
+  assert.equal(rescheduled.reason, 'Consulta enterprise reagendada');
+  assert.equal(rescheduled.resourceLabel, 'Consultorio 3');
+
   const cancelResponse = new MockResponse();
   const cancelHandled = await handleSchedulingRoutes(
     `/appointments/${created.id}/cancel`,
@@ -457,10 +491,51 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
   assert.equal(inCare.id, checkedIn.id);
   assert.equal(inCare.status, 'in_care');
 
+  const completeResponse = new MockResponse();
+  const completeHandled = await handleSchedulingRoutes(
+    `/queue/${checkedIn.id}/complete`,
+    createJsonRequest('POST', `/queue/${checkedIn.id}/complete`),
+    completeResponse as never,
+    'corr-scheduling-complete',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(completeHandled, true);
+  assert.equal(completeResponse.statusCode, 200);
+  const completedEntry = completeResponse.bodyJson<{ id: string; status: string }>();
+  assert.equal(completedEntry.id, checkedIn.id);
+  assert.equal(completedEntry.status, 'completed');
+  assert.equal(scheduling.getAppointmentOrThrow('appt_luna_checkup' as never).status, 'completed');
+
+  const noShowCheckInResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    '/queue/check-in',
+    createJsonRequest('POST', '/queue/check-in', {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Tutor nao compareceu',
+      priority: 'low'
+    }),
+    noShowCheckInResponse as never,
+    'corr-scheduling-check-in-noshow',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  const noShowEntry = noShowCheckInResponse.bodyJson<{ id: string; status: string }>();
+
   const noShowResponse = new MockResponse();
   const noShowHandled = await handleSchedulingRoutes(
-    `/queue/${checkedIn.id}/no-show`,
-    createJsonRequest('POST', `/queue/${checkedIn.id}/no-show`),
+    `/queue/${noShowEntry.id}/no-show`,
+    createJsonRequest('POST', `/queue/${noShowEntry.id}/no-show`),
     noShowResponse as never,
     'corr-scheduling-no-show',
     {
@@ -474,9 +549,8 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
   assert.equal(noShowHandled, true);
   assert.equal(noShowResponse.statusCode, 200);
   const cancelledEntry = noShowResponse.bodyJson<{ id: string; status: string }>();
-  assert.equal(cancelledEntry.id, checkedIn.id);
+  assert.equal(cancelledEntry.id, noShowEntry.id);
   assert.equal(cancelledEntry.status, 'cancelled');
-  assert.equal(scheduling.getAppointmentOrThrow('appt_luna_checkup' as never).status, 'cancelled');
 });
 
 test('handleSchedulingRoutes returns smart duration recommendation for appointment flow', async () => {

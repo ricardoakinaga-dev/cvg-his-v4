@@ -63,6 +63,21 @@ const executedEvent: PreventiveEventSummary = {
   executedAt: '2026-04-12T10:00:00Z'
 };
 
+const todayEvent: PreventiveEventSummary = {
+  ...scheduledEvent,
+  id: 'prev-today',
+  clientName: 'Hoje Cliente',
+  animalName: 'Hoje Pet',
+  description: 'Vacina vence hoje',
+  eventDate: new Date().toISOString().slice(0, 10)
+};
+
+function daysFromToday(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 describe('VaccinesDewormersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -101,10 +116,19 @@ describe('VaccinesDewormersPage', () => {
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Data');
     expect(wrapper.text()).toContain('Descrição');
+    expect(wrapper.text()).toContain('Agenda');
+    expect(wrapper.text()).toContain('Vínculo');
+    expect(wrapper.text()).toContain('Aviso');
     expect(wrapper.text()).toContain('Executar');
     expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('Email');
     expect(wrapper.text()).toContain('Vacina V10 - reforço anual');
+    expect(wrapper.text()).toContain('Vencido');
+    expect(wrapper.text()).toContain('Aviso pendente');
+    expect(wrapper.text()).toContain('Abrir paciente');
+    expect(wrapper.text()).toContain('Abrir tutor');
+    expect(wrapper.find('a[href="/patients/pat-1"]').exists()).toBe(true);
+    expect(wrapper.find('a[href="/owners/owner-1"]').exists()).toBe(true);
     expect(vaccinesDewormersService.list).toHaveBeenCalledWith({
       dateFrom: undefined,
       dateTo: undefined,
@@ -168,6 +192,68 @@ describe('VaccinesDewormersPage', () => {
     });
     expect(wrapper.text()).toContain('Antirrábica');
     expect(wrapper.text()).toContain('Executada');
+    expect(wrapper.text()).toContain('Executada em 12/04/2026');
+  });
+
+  it('filters the loaded preventive agenda with quick operational filters', async () => {
+    vi.mocked(vaccinesDewormersService.list).mockResolvedValueOnce([
+      scheduledEvent,
+      todayEvent,
+      {
+        ...scheduledEvent,
+        id: 'prev-next-week',
+        clientName: 'Semana Cliente',
+        animalName: 'Semana Pet',
+        description: 'Vermífugo em breve',
+        itemType: 'dewormer',
+        eventDate: daysFromToday(3),
+        reminderEmailPreparedAt: '2026-05-20T09:00:00Z'
+      },
+      executedEvent
+    ]);
+
+    const wrapper = mount(VaccinesDewormersPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Filtros rápidos');
+    expect(wrapper.text()).toContain('Vencidos');
+    expect(wrapper.text()).toContain('Vence hoje');
+    expect(wrapper.text()).toContain('Próximos 7 dias');
+    expect(wrapper.text()).toContain('Sem aviso');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Vence hoje')?.trigger('click');
+    expect(wrapper.text()).toContain('Vacina vence hoje');
+    expect(wrapper.text()).not.toContain('Vacina V10 - reforço anual');
+    expect(wrapper.text()).not.toContain('Vermífugo em breve');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Próximos 7 dias')?.trigger('click');
+    expect(wrapper.text()).toContain('Vacina vence hoje');
+    expect(wrapper.text()).toContain('Vermífugo em breve');
+    expect(wrapper.text()).not.toContain('Antirrábica');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Sem aviso')?.trigger('click');
+    expect(wrapper.text()).toContain('Vacina V10 - reforço anual');
+    expect(wrapper.text()).toContain('Vacina vence hoje');
+    expect(wrapper.text()).not.toContain('Vermífugo em breve');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Todos rápidos')?.trigger('click');
+    expect(wrapper.text()).toContain('Vacina V10 - reforço anual');
+    expect(wrapper.text()).toContain('Vacina vence hoje');
+    expect(wrapper.text()).toContain('Vermífugo em breve');
+  });
+
+  it('shows reminder preparation status when an email was prepared', async () => {
+    vi.mocked(vaccinesDewormersService.list).mockResolvedValueOnce([
+      {
+        ...scheduledEvent,
+        reminderEmailPreparedAt: '2026-04-20T09:00:00Z'
+      }
+    ]);
+
+    const wrapper = mount(VaccinesDewormersPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Aviso preparado em 20/04/2026');
   });
 
   it('uses patient and owner query filters for patient-context navigation', async () => {

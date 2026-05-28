@@ -74,7 +74,19 @@ describe('EncountersService coverage guard', () => {
       }
     ]);
 
+    const persistedPatientId = '11111111-1111-4111-8111-111111111111';
+    const persistedOwnerId = '22222222-2222-4222-8222-222222222222';
     const encounters = createService({
+      owners: {
+        getOrThrow(ownerId: string) {
+          return { id: ownerId, accountId: 'acc_cvg_demo' };
+        }
+      } as never,
+      patients: {
+        getOrThrow(patientId: string) {
+          return { id: patientId, accountId: 'acc_cvg_demo', primaryOwnerId: persistedOwnerId };
+        }
+      } as never,
       encounterRepository: {
         async create() {},
         async update() {},
@@ -150,8 +162,20 @@ describe('EncountersService coverage guard', () => {
     const persistedTimeline: unknown[] = [];
     const onCreated = vi.fn(async () => undefined);
     const onStatusChanged = vi.fn(async () => undefined);
+    const persistedPatientId = '11111111-1111-4111-8111-111111111111';
+    const persistedOwnerId = '22222222-2222-4222-8222-222222222222';
 
     const encounters = createService({
+      owners: {
+        getOrThrow(ownerId: string) {
+          return { id: ownerId, accountId: 'acc_cvg_demo' };
+        }
+      } as never,
+      patients: {
+        getOrThrow(patientId: string) {
+          return { id: patientId, accountId: 'acc_cvg_demo', primaryOwnerId: persistedOwnerId };
+        }
+      } as never,
       encounterRepository: {
         async create(encounter) {
           createdEncounters.push(encounter);
@@ -186,8 +210,8 @@ describe('EncountersService coverage guard', () => {
     });
 
     const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
-      patientId: 'patient_luna',
-      ownerId: 'owner_maria_silva',
+      patientId: persistedPatientId,
+      ownerId: persistedOwnerId,
       visitType: 'walk_in',
       origin: 'reception',
       reason: 'Fluxo com persistencia'
@@ -207,7 +231,7 @@ describe('EncountersService coverage guard', () => {
       closeReason: 'Encerrado'
     });
 
-    await Promise.resolve();
+    await encounters.waitForPersistence();
 
     expect(createdEncounters).toHaveLength(1);
     expect(updatedEncounters).toHaveLength(2);

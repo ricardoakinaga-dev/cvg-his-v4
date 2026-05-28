@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { BruteForceProtection } from './brute-force.js';
 
 test('BruteForceProtection: isPasswordLocked returns false for new identifier', () => {

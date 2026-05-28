@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import type {
+  CounterSaleDetail,
+  CounterSaleItemSummary,
+  CounterSalePaymentSummary,
+  CounterSaleSummary
+} from '@/services/counterSales';
 
 const mockCounterSalesList = vi.fn();
 const mockCounterSalesGetById = vi.fn();
@@ -92,7 +98,7 @@ vi.mock('@/services/medicalRecords', () => ({
   }
 }));
 
-const saleSummary = {
+const saleSummary: CounterSaleSummary = {
   id: 'cs-1',
   accountId: 'acc-1',
   number: 'CS-000001',
@@ -111,7 +117,7 @@ const saleSummary = {
   updatedAt: '2026-04-15T10:00:00Z'
 };
 
-const saleDetail = {
+const saleDetail: CounterSaleDetail = {
   ...saleSummary,
   items: [
     {
@@ -525,6 +531,149 @@ describe('CounterSalesPage', () => {
         notes: 'Lançado por código de barras'
       })
     );
+  });
+
+  it('executa fluxo completo da comanda e bloqueia edição visual após fechamento', async () => {
+    let currentDetail: CounterSaleDetail = {
+      ...saleDetail,
+      items: [...saleDetail.items],
+      payments: [...saleDetail.payments]
+    };
+
+    mockCounterSalesList.mockImplementation(async () => [
+      {
+        ...currentDetail,
+        items: undefined,
+        payments: undefined
+      }
+    ]);
+    mockCounterSalesGetById.mockImplementation(async () => currentDetail);
+    mockCounterSalesAddItem.mockImplementation(async () => {
+      const product: CounterSaleItemSummary = {
+        id: 'item-2',
+        counterSaleId: 'cs-1',
+        accountId: 'acc-1',
+        itemType: 'product',
+        catalogItemId: 'prod-1',
+        nameSnapshot: 'Antipulgas',
+        codeSnapshot: 'SKU-123',
+        unitPrice: 80,
+        quantity: 1,
+        discountAmount: 0,
+        lineTotal: 80,
+        notes: null,
+        createdAt: '2026-04-15T10:11:00Z',
+        updatedAt: '2026-04-15T10:11:00Z'
+      };
+      currentDetail = {
+        ...currentDetail,
+        subtotal: 230,
+        total: 230,
+        balanceDue: 180,
+        items: [...currentDetail.items, product]
+      };
+      return product;
+    });
+    mockCounterSalesAddPayment.mockImplementation(async () => {
+      const payment: CounterSalePaymentSummary = {
+        id: 'pay-2',
+        counterSaleId: 'cs-1',
+        accountId: 'acc-1',
+        method: 'cash',
+        amount: 180,
+        installments: 1,
+        reference: 'CX-1',
+        notes: null,
+        createdAt: '2026-04-15T10:12:00Z'
+      };
+      currentDetail = {
+        ...currentDetail,
+        paidAmount: 230,
+        balanceDue: 0,
+        payments: [...currentDetail.payments, payment]
+      };
+      return payment;
+    });
+    mockCounterSalesClose.mockImplementation(async () => {
+      currentDetail = {
+        ...currentDetail,
+        status: 'closed',
+        closedByUserId: 'user-1',
+        closedAt: '2026-04-15T10:15:00Z'
+      };
+      return currentDetail;
+    });
+
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+
+    await flushPromises();
+
+    const addItemButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Adicionar na comanda'));
+    expect(addItemButton).toBeTruthy();
+    await addItemButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesAddItem).toHaveBeenCalledWith(
+      'cs-1',
+      expect.objectContaining({
+        itemType: 'product',
+        nameSnapshot: 'Antipulgas'
+      })
+    );
+
+    const paymentButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Registrar pagamento'));
+    expect(paymentButton).toBeTruthy();
+    await paymentButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesAddPayment).toHaveBeenCalledWith(
+      'cs-1',
+      expect.objectContaining({
+        amount: 180
+      })
+    );
+
+    const closeButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Finalizar Comanda'));
+    expect(closeButton).toBeTruthy();
+    await closeButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesClose).toHaveBeenCalledWith('cs-1');
+    expect(wrapper.text()).toContain('Fechada');
+    expect(wrapper.text()).toContain('Comanda CS-000001 finalizada.');
+
+    const disabledAddButtons = wrapper
+      .findAll('button')
+      .filter((button) => button.text().includes('Adicionar na comanda'));
+    expect(disabledAddButtons.length).toBeGreaterThan(0);
+    expect(disabledAddButtons.every((button) => button.attributes('disabled') !== undefined)).toBe(
+      true
+    );
+    expect(
+      wrapper
+        .findAll('button')
+        .filter((button) => button.text().includes('Editar desconto'))
+        .every((button) => button.attributes('disabled') !== undefined)
+    ).toBe(true);
+    expect(
+      wrapper
+        .findAll('button')
+        .filter((button) => button.text().includes('Excluir'))
+        .every((button) => button.attributes('disabled') !== undefined)
+    ).toBe(true);
+    expect(
+      wrapper
+        .findAll('button')
+        .filter((button) => button.text().includes('Registrar pagamento'))
+        .every((button) => button.attributes('disabled') !== undefined)
+    ).toBe(true);
   });
 
   it('abre modal e cria nova comanda para cliente cadastrado', async () => {

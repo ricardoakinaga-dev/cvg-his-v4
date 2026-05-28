@@ -35,6 +35,18 @@ export interface CreateAppointmentRequest {
   smartSchedulingRecommendationId?: string;
 }
 
+export interface RescheduleAppointmentRequest {
+  scheduledAt: string;
+  durationMinutes?: number;
+  visitType?: AppointmentVisitType;
+  reason?: string;
+  practitionerStaffId?: string;
+  serviceId?: string;
+  unit?: string;
+  specialty?: string;
+  resourceLabel?: string;
+}
+
 export interface AppointmentsListResponse {
   items: AppointmentSummary[];
 }

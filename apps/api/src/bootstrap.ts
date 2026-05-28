@@ -57,8 +57,8 @@ import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import {
   DatabaseInpatientStayRepository,
   DatabaseInpatientProgressRepository,
-  type InpatientStayRepository,
-  type InpatientProgressRepository
+  DatabaseInpatientOccurrenceRepository,
+  DatabaseInpatientDailyChargeRepository
 } from '@cvg-his-v2/module-inpatient';
 import {
   DatabaseSurgeryCaseRepository,
@@ -81,7 +81,14 @@ import {
   type AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
 import { DatabaseBillingRepository } from '@cvg-his-v2/module-billing';
-import { DatabaseEncounterFinancialRepository } from '@cvg-his-v2/module-financial';
+import { DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
+import { DatabasePackageRepository } from '@cvg-his-v2/module-packages';
+import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
+import { DatabaseMarketingRepository } from '@cvg-his-v2/module-marketing';
+import {
+  DatabaseEncounterFinancialRepository,
+  DatabaseFinancialPayablesRepository
+} from '@cvg-his-v2/module-financial';
 import { DatabaseInventoryRepository } from '@cvg-his-v2/module-inventory';
 import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
 import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
@@ -774,6 +781,27 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const billingTablesReady =
         (await databaseTableExists('billing_records')) &&
         (await databaseTableExists('billing_items'));
+      const packagesTablesReady =
+        (await databaseTableExists('customer_packages')) &&
+        (await databaseTableExists('customer_package_items')) &&
+        (await databaseTableExists('customer_package_consumptions'));
+      const commissionsTablesReady =
+        (await databaseTableExists('commission_rules')) &&
+        (await databaseTableExists('commission_calculations')) &&
+        (await databaseTableExists('commission_lines'));
+      const reportsTablesReady =
+        (await databaseTableExists('report_executions')) &&
+        (await databaseTableExists('report_exports')) &&
+        (await databaseTableExists('report_schedules'));
+      const marketingTablesReady =
+        (await databaseTableExists('marketing_segments')) &&
+        (await databaseTableExists('marketing_templates')) &&
+        (await databaseTableExists('marketing_campaigns')) &&
+        (await databaseTableExists('marketing_campaign_deliveries'));
+      const financialPayablesReady = await databaseTableExists('financial_payables');
+      const inpatientOccurrenceReady = await databaseTableExists('inpatient_occurrences');
+      const inpatientDailyChargesReady = await databaseTableExists('inpatient_daily_charges');
+      const inventoryStockMovementsReady = await databaseTableExists('inventory_stock_movements');
       const clinicalHandoffsReady = await databaseTableExists('clinical_handoffs');
 
       results.repositories = {
@@ -799,6 +827,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         notification: new DatabaseNotificationRepository(db) as NotificationRepository,
         inpatientStay: new DatabaseInpatientStayRepository(db),
         inpatientProgress: new DatabaseInpatientProgressRepository(db),
+        inpatientOccurrence: inpatientOccurrenceReady
+          ? new DatabaseInpatientOccurrenceRepository(db)
+          : undefined,
+        inpatientDailyCharge: inpatientDailyChargesReady
+          ? new DatabaseInpatientDailyChargeRepository(db)
+          : undefined,
         surgeryCase: new DatabaseSurgeryCaseRepository(db),
         diagnosticOrder: new DatabaseDiagnosticOrderRepository(db),
         laboratoryCatalog: new DatabaseLaboratoryCatalogRepository(db) as LaboratoryCatalogRepository,
@@ -807,8 +841,15 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         administrationEvent: new DatabaseAdministrationEventRepository(),
         prescription: clinicalEntriesReady ? new DatabasePrescriptionRepository(db) : undefined,
         billing: billingTablesReady ? new DatabaseBillingRepository() : undefined,
+        commissions: commissionsTablesReady ? new DatabaseCommissionRepository() : undefined,
+        packages: packagesTablesReady ? new DatabasePackageRepository() : undefined,
+        reports: reportsTablesReady ? new DatabaseReportRepository() : undefined,
+        marketing: marketingTablesReady ? new DatabaseMarketingRepository() : undefined,
         encounterFinancial: new DatabaseEncounterFinancialRepository(),
-        inventory: new DatabaseInventoryRepository(),
+        financialPayables: financialPayablesReady ? new DatabaseFinancialPayablesRepository() : undefined,
+        inventory: new DatabaseInventoryRepository({
+          stockMovementsEnabled: inventoryStockMovementsReady
+        }),
         scheduling: new DatabaseSchedulingRepository(),
         triage: new DatabaseTriageRepository(),
         users: new DatabaseUsersRepository(),
@@ -832,6 +873,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         ownerPatientLinkPersistence: ownerPatientLinksReady ? 'database' : 'derived-from-patient',
         prescriptionPersistence: clinicalEntriesReady ? 'database' : 'in-memory',
         billingPersistence: billingTablesReady ? 'database' : 'in-memory',
+        commissionsPersistence: commissionsTablesReady ? 'database' : 'in-memory',
+        packagesPersistence: packagesTablesReady ? 'database' : 'in-memory',
+        reportsPersistence: reportsTablesReady ? 'database' : 'in-memory',
+        marketingPersistence: marketingTablesReady ? 'database' : 'in-memory',
+        financialPayablesPersistence: financialPayablesReady ? 'database' : 'in-memory',
+        inventoryStockMovementsPersistence: inventoryStockMovementsReady ? 'database' : 'disabled',
         encounterTimelinePersistence: 'database'
       });
     } else {

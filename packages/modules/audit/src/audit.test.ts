@@ -124,6 +124,76 @@ describe('AuditService', () => {
     expect(events).toHaveLength(2);
     expect(events[0].payloadSummary).toBe('Database connected');
   });
+
+  it('builds an operational audit coverage report by account', () => {
+    service.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'lgpd',
+      action: 'personal_data_exported',
+      entityType: 'owner',
+      entityId: 'owner_1',
+      payloadSummary: 'Personal data export generated',
+      riskLevel: 'high'
+    });
+    service.write({
+      actorId: 'user_2',
+      accountId: 'acc_2' as AccountId,
+      module: 'lgpd',
+      action: 'personal_data_exported',
+      entityType: 'owner',
+      entityId: 'owner_2',
+      payloadSummary: 'Personal data export generated',
+      riskLevel: 'high'
+    });
+
+    const report = service.getOperationalCoverageReport('acc_1' as AccountId, [
+      {
+        id: 'lgpd-export',
+        module: 'lgpd',
+        action: 'personal_data_exported',
+        minimumRiskLevel: 'high',
+        description: 'Exportacao LGPD'
+      },
+      {
+        id: 'audit-read',
+        module: 'audit',
+        action: 'read',
+        entityType: 'audit-event',
+        minimumRiskLevel: 'high',
+        description: 'Leitura de auditoria'
+      }
+    ]);
+
+    expect(report.totalEvents).toBe(1);
+    expect(report.eventsByModule.lgpd).toBe(1);
+    expect(report.eventsByRiskLevel.high).toBe(1);
+    expect(report.coveredRequirements).toBe(1);
+    expect(report.missingRequirements).toBe(1);
+    expect(report.coveragePercent).toBe(50);
+    expect(report.requirements[0].covered).toBe(true);
+    expect(report.requirements[1].covered).toBe(false);
+  });
+
+  it('includes report delivery alerts in the default operational coverage requirements', () => {
+    service.write({
+      actorId: 'user_reports',
+      accountId: 'acc_1' as AccountId,
+      module: 'reports',
+      action: 'report_schedule_delivery_alerts_read',
+      entityType: 'report-schedule-delivery-alert',
+      entityId: 'schedule-1',
+      payloadSummary: 'Report schedule delivery alerts inspected',
+      riskLevel: 'high'
+    });
+
+    const report = service.getOperationalCoverageReport('acc_1' as AccountId);
+    const requirement = report.requirements.find((item) => item.id === 'reports-delivery-alerts-read');
+
+    expect(requirement).toBeDefined();
+    expect(requirement?.covered).toBe(true);
+    expect(requirement?.evidenceEventId).toBeDefined();
+  });
 });
 
 describe('AuditService with repository', () => {

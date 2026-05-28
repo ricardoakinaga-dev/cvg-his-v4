@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 

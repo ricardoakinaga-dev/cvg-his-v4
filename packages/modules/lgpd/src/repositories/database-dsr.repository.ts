@@ -81,6 +81,16 @@ export class DatabaseDsrRepository implements DsrRepository {
     return rows.map(rowToRecord);
   }
 
+  async findByAccount(accountId: string): Promise<readonly DataSubjectRequest[]> {
+    const rows = await this.#db
+      .select()
+      .from(dataSubjectRequests)
+      .where(eq(dataSubjectRequests.accountId, accountId as never))
+      .orderBy(dataSubjectRequests.requestedAt);
+
+    return rows.map(rowToRecord);
+  }
+
   async create(
     data: Omit<DataSubjectRequest, 'id' | 'requestedAt' | 'createdAt' | 'updatedAt'>
   ): Promise<DataSubjectRequest> {
@@ -112,6 +122,7 @@ export class DatabaseDsrRepository implements DsrRepository {
   }
 
   async updateStatus(
+    accountId: string,
     id: string,
     status: DsrStatus,
     options?: {
@@ -131,7 +142,12 @@ export class DatabaseDsrRepository implements DsrRepository {
         resultJson: options?.resultJson,
         updatedAt: new Date() as never
       })
-      .where(eq(dataSubjectRequests.id, id as never))
+      .where(
+        and(
+          eq(dataSubjectRequests.accountId, accountId as never),
+          eq(dataSubjectRequests.id, id as never)
+        )
+      )
       .returning();
 
     if (rows.length === 0) {

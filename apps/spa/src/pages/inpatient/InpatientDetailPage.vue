@@ -188,6 +188,149 @@
           </div>
         </div>
       </AppDetailSection>
+
+      <AppDetailSection title="Ocorrências da Internação">
+        <div v-if="stay.status !== 'discharged'" class="mb-4">
+          <DsButton variant="primary" size="sm" @click="showOccurrenceForm = true">
+            + Nova Ocorrência
+          </DsButton>
+        </div>
+
+        <div v-if="showOccurrenceForm" class="progress-form">
+          <div class="form-grid">
+            <label class="field-label">
+              Tipo
+              <select v-model="occurrenceForm.type" class="native-field">
+                <option value="clinical">Clínica</option>
+                <option value="nursing">Enfermagem</option>
+                <option value="medication">Medicação</option>
+                <option value="feeding">Alimentação</option>
+                <option value="behavior">Comportamento</option>
+                <option value="administrative">Administrativa</option>
+              </select>
+            </label>
+            <label class="field-label">
+              Severidade
+              <select v-model="occurrenceForm.severity" class="native-field">
+                <option value="info">Informativa</option>
+                <option value="attention">Atenção</option>
+                <option value="critical">Crítica</option>
+              </select>
+            </label>
+          </div>
+          <DsInput
+            id="occurrenceTitle"
+            v-model="occurrenceForm.title"
+            label="Título"
+            placeholder="Ex.: Hiporexia no plantão"
+          />
+          <DsInput
+            id="occurrenceDescription"
+            v-model="occurrenceForm.description"
+            type="textarea"
+            label="Descrição"
+            placeholder="Descreva a ocorrência operacional..."
+            :rows="3"
+          />
+          <DsAlert v-if="occurrenceError" variant="danger">{{ occurrenceError }}</DsAlert>
+          <div class="progress-form__actions">
+            <DsButton
+              variant="primary"
+              size="sm"
+              :loading="occurrenceSubmitting"
+              @click="submitOccurrence"
+            >
+              Salvar Ocorrência
+            </DsButton>
+            <DsButton variant="secondary" size="sm" @click="cancelOccurrence">Cancelar</DsButton>
+          </div>
+        </div>
+
+        <div v-if="occurrences.length === 0" class="progress-empty">
+          <p>Nenhuma ocorrência registrada para esta internação.</p>
+        </div>
+        <div v-else class="progress-list">
+          <div v-for="occurrence in occurrences" :key="occurrence.id" class="progress-note">
+            <div class="progress-note__header">
+              <StatusBadge
+                :label="occurrenceSeverityLabel(occurrence.severity)"
+                :variant="occurrenceSeverityVariant(occurrence.severity)"
+              />
+              <span class="progress-note__date">{{ formatDateTime(occurrence.createdAt) }}</span>
+            </div>
+            <strong>{{ occurrence.title }}</strong>
+            <div class="progress-note__content">{{ occurrence.description }}</div>
+          </div>
+        </div>
+      </AppDetailSection>
+
+      <AppDetailSection title="Diárias e Cobranças">
+        <div v-if="stay.status !== 'discharged'" class="mb-4">
+          <DsButton variant="primary" size="sm" @click="showDailyChargeForm = true">
+            + Lançar Diária
+          </DsButton>
+        </div>
+
+        <div v-if="showDailyChargeForm" class="progress-form">
+          <DsInput
+            id="dailyChargeDescription"
+            v-model="dailyChargeForm.description"
+            label="Descrição"
+            placeholder="Ex.: Diária UTI"
+          />
+          <div class="form-grid">
+            <DsInput id="dailyChargeDate" v-model="dailyChargeForm.chargeDate" type="date" label="Data" />
+            <DsInput id="dailyChargeQuantity" v-model="dailyChargeForm.quantity" type="number" label="Quantidade" />
+            <DsInput id="dailyChargeUnitAmount" v-model="dailyChargeForm.unitAmount" type="number" label="Valor unitário" />
+          </div>
+          <DsAlert v-if="dailyChargeError" variant="danger">{{ dailyChargeError }}</DsAlert>
+          <div class="progress-form__actions">
+            <DsButton
+              variant="primary"
+              size="sm"
+              :loading="dailyChargeSubmitting"
+              @click="submitDailyCharge"
+            >
+              Lançar Diária
+            </DsButton>
+            <DsButton variant="secondary" size="sm" @click="cancelDailyCharge">Cancelar</DsButton>
+          </div>
+        </div>
+
+        <div v-if="dailyCharges.length === 0" class="progress-empty">
+          <p>Nenhuma diária lançada para esta internação.</p>
+        </div>
+        <div v-else class="charges-list">
+          <div v-for="charge in dailyCharges" :key="charge.id" class="charge-row">
+            <div>
+              <strong>{{ charge.description }}</strong>
+              <span>{{ charge.chargeDate }} · {{ charge.quantity }} x {{ formatCurrency(charge.unitAmount) }}</span>
+            </div>
+            <div class="charge-row__aside">
+              <strong>{{ formatCurrency(charge.totalAmount) }}</strong>
+              <StatusBadge
+                :label="dailyChargeStatusLabel(charge.status)"
+                :variant="dailyChargeStatusVariant(charge.status)"
+              />
+              <RouterLink
+                v-if="charge.status === 'billed' && charge.billingRecordId"
+                :to="`/billing/${charge.encounterId}`"
+                class="charge-row__billing-link"
+              >
+                Cobrança {{ charge.billingRecordId }}
+              </RouterLink>
+              <DsButton
+                v-if="charge.status === 'pending'"
+                variant="secondary"
+                size="sm"
+                @click="markChargeBilled(charge.id)"
+              >
+                Marcar Faturada
+              </DsButton>
+            </div>
+          </div>
+        </div>
+      </AppDetailSection>
     </template>
   </div>
 </template>
@@ -196,7 +339,12 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { inpatientService } from '@/services/inpatient';
-import type { InpatientStaySummary, InpatientProgressSummary } from '@/types/inpatient';
+import type {
+  InpatientStaySummary,
+  InpatientProgressSummary,
+  InpatientOccurrenceSummary,
+  InpatientDailyChargeSummary
+} from '@/types/inpatient';
 import { useEntityCache } from '@/composables/useEntityCache';
 import { formatDateTime } from '@/utils/labels';
 import StatusBadge from '@/components/StatusBadge.vue';
@@ -233,6 +381,26 @@ const newProgressNote = ref('');
 const progressError = ref('');
 const progressSubmitting = ref(false);
 const authorNames = ref<Record<string, string>>({});
+const occurrences = ref<InpatientOccurrenceSummary[]>([]);
+const showOccurrenceForm = ref(false);
+const occurrenceSubmitting = ref(false);
+const occurrenceError = ref('');
+const occurrenceForm = ref({
+  type: 'clinical' as InpatientOccurrenceSummary['type'],
+  severity: 'info' as InpatientOccurrenceSummary['severity'],
+  title: '',
+  description: ''
+});
+const dailyCharges = ref<InpatientDailyChargeSummary[]>([]);
+const showDailyChargeForm = ref(false);
+const dailyChargeSubmitting = ref(false);
+const dailyChargeError = ref('');
+const dailyChargeForm = ref({
+  description: 'Diária de internação',
+  chargeDate: new Date().toISOString().slice(0, 10),
+  quantity: 1,
+  unitAmount: 0
+});
 
 const summaryCards = computed(() => {
   if (!stay.value) return [];
@@ -240,9 +408,16 @@ const summaryCards = computed(() => {
     { label: 'Paciente', value: patientNameCache.value || '—', hint: 'Animal internado' },
     { label: 'Status', value: statusLabel(stay.value.status), hint: 'Situação operacional' },
     { label: 'Leito', value: `${stay.value.unit} / ${stay.value.ward} / ${stay.value.bed}`, hint: 'Localização atual' },
-    { label: 'Evoluções', value: progressNotes.value.length.toString(), hint: 'Registros clínicos' }
+    { label: 'Evoluções', value: progressNotes.value.length.toString(), hint: 'Registros clínicos' },
+    { label: 'Diárias', value: formatCurrency(totalPendingDailyCharges.value), hint: 'Pendente faturamento' }
   ];
 });
+
+const totalPendingDailyCharges = computed(() =>
+  dailyCharges.value
+    .filter((charge) => charge.status === 'pending')
+    .reduce((sum, charge) => sum + charge.totalAmount, 0)
+);
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   admitted: ['stable', 'transferred', 'discharged'],
@@ -282,6 +457,26 @@ function patientName(id: string): string {
 
 function authorName(id: string): string {
   return authorNames.value[id] || `${id.slice(0, 8)}...`;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function occurrenceSeverityLabel(severity: InpatientOccurrenceSummary['severity']): string {
+  return { info: 'Informativa', attention: 'Atenção', critical: 'Crítica' }[severity] ?? severity;
+}
+
+function occurrenceSeverityVariant(severity: InpatientOccurrenceSummary['severity']) {
+  return ({ info: 'info', attention: 'warning', critical: 'danger' }[severity] ?? 'default') as any;
+}
+
+function dailyChargeStatusLabel(status: InpatientDailyChargeSummary['status']): string {
+  return { pending: 'Pendente', billed: 'Faturada', cancelled: 'Cancelada' }[status] ?? status;
+}
+
+function dailyChargeStatusVariant(status: InpatientDailyChargeSummary['status']) {
+  return ({ pending: 'warning', billed: 'success', cancelled: 'neutral' }[status] ?? 'default') as any;
 }
 
 async function updateStatus(newStatus: InpatientStaySummary['status']) {
@@ -343,6 +538,22 @@ async function loadProgress() {
   }
 }
 
+async function loadOccurrences() {
+  try {
+    occurrences.value = await inpatientService.listOccurrences(stayId);
+  } catch {
+    occurrences.value = [];
+  }
+}
+
+async function loadDailyCharges() {
+  try {
+    dailyCharges.value = await inpatientService.listDailyCharges(stayId);
+  } catch {
+    dailyCharges.value = [];
+  }
+}
+
 async function submitProgress() {
   if (!newProgressNote.value.trim()) {
     progressError.value = 'Nota é obrigatória';
@@ -374,6 +585,86 @@ function cancelProgress() {
   progressError.value = '';
 }
 
+async function submitOccurrence() {
+  if (!occurrenceForm.value.title.trim() || !occurrenceForm.value.description.trim()) {
+    occurrenceError.value = 'Título e descrição são obrigatórios';
+    return;
+  }
+  occurrenceSubmitting.value = true;
+  occurrenceError.value = '';
+  try {
+    const occurrence = await inpatientService.addOccurrence(stayId, {
+      type: occurrenceForm.value.type,
+      severity: occurrenceForm.value.severity,
+      title: occurrenceForm.value.title.trim(),
+      description: occurrenceForm.value.description.trim()
+    });
+    occurrences.value = [occurrence, ...occurrences.value];
+    cancelOccurrence();
+    successMessage.value = 'Ocorrência registrada com sucesso!';
+  } catch (err: unknown) {
+    occurrenceError.value = err instanceof Error ? err.message : 'Erro ao registrar ocorrência';
+  } finally {
+    occurrenceSubmitting.value = false;
+  }
+}
+
+function cancelOccurrence() {
+  showOccurrenceForm.value = false;
+  occurrenceError.value = '';
+  occurrenceForm.value = {
+    type: 'clinical',
+    severity: 'info',
+    title: '',
+    description: ''
+  };
+}
+
+async function submitDailyCharge() {
+  if (!dailyChargeForm.value.description.trim() || dailyChargeForm.value.unitAmount <= 0) {
+    dailyChargeError.value = 'Descrição e valor unitário são obrigatórios';
+    return;
+  }
+  dailyChargeSubmitting.value = true;
+  dailyChargeError.value = '';
+  try {
+    const charge = await inpatientService.createDailyCharge(stayId, {
+      description: dailyChargeForm.value.description.trim(),
+      chargeDate: dailyChargeForm.value.chargeDate,
+      quantity: Number(dailyChargeForm.value.quantity) || 1,
+      unitAmount: Number(dailyChargeForm.value.unitAmount)
+    });
+    dailyCharges.value = [charge, ...dailyCharges.value];
+    cancelDailyCharge();
+    successMessage.value = 'Diária lançada com sucesso!';
+  } catch (err: unknown) {
+    dailyChargeError.value = err instanceof Error ? err.message : 'Erro ao lançar diária';
+  } finally {
+    dailyChargeSubmitting.value = false;
+  }
+}
+
+function cancelDailyCharge() {
+  showDailyChargeForm.value = false;
+  dailyChargeError.value = '';
+  dailyChargeForm.value = {
+    description: 'Diária de internação',
+    chargeDate: new Date().toISOString().slice(0, 10),
+    quantity: 1,
+    unitAmount: 0
+  };
+}
+
+async function markChargeBilled(chargeId: string) {
+  try {
+    const charge = await inpatientService.markDailyChargeBilled(stayId, chargeId);
+    dailyCharges.value = dailyCharges.value.map((item) => (item.id === charge.id ? charge : item));
+    successMessage.value = 'Diária marcada como faturada!';
+  } catch (err: unknown) {
+    dailyChargeError.value = err instanceof Error ? err.message : 'Erro ao faturar diária';
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = '';
@@ -386,7 +677,7 @@ onMounted(async () => {
     }
     stay.value = found;
     patientNameCache.value = await entityCache.getPatientName(found.patientId);
-    await loadProgress();
+    await Promise.all([loadProgress(), loadOccurrences(), loadDailyCharges()]);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar internação';
   } finally {
@@ -478,6 +769,27 @@ onMounted(async () => {
   background: var(--color-bg-subtle, #f8fafc);
   border-radius: 8px;
 }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+.native-field {
+  min-height: 38px;
+  border: 1px solid var(--color-border, #d8dee9);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #0f172a);
+}
 .progress-form__actions {
   display: flex;
   gap: 8px;
@@ -524,6 +836,42 @@ onMounted(async () => {
   color: var(--color-text, #0f172a);
   line-height: 1.5;
   white-space: pre-wrap;
+}
+.charges-list {
+  display: grid;
+  gap: 10px;
+}
+.charge-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+.charge-row span {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+}
+.charge-row__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 180px;
+}
+.charge-row__billing-link {
+  color: var(--color-primary-600, #2563eb);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.charge-row__billing-link:hover {
+  text-decoration: underline;
 }
 .mb-4 {
   margin-bottom: 1rem;

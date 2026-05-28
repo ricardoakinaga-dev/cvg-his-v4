@@ -10,7 +10,7 @@ import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
 import { resolveOperationalRuntimeState } from '../chaos-operational-state.js';
 import { generateSLOReport, getSLOConfigs } from '../slos.js';
-import { getCurrentSloSnapshot } from '../metrics.js';
+import { getCurrentSloSnapshot, updateSloMetrics } from '../metrics.js';
 
 /**
  * Handle all /health, /ready, /live routes.
@@ -150,7 +150,7 @@ export function handleHealthRoutes(
   }
 
   // GET /slos — SLO compliance report
-  if (url === '/slos' && method === 'GET') {
+  if ((url === '/slos' || url === '/health/slos') && method === 'GET') {
     const snapshot = getCurrentSloSnapshot();
     const report = generateSLOReport({
       p95LatencyMs: snapshot.p95LatencyMs,
@@ -158,9 +158,26 @@ export function handleHealthRoutes(
       availabilityPercent: snapshot.availabilityPercent,
       errorRatePercent: snapshot.errorRatePercent
     });
+    updateSloMetrics(report.slos);
     response.setHeader('content-type', 'application/json');
     response.statusCode = 200;
-    response.end(JSON.stringify({ configs: getSLOConfigs(), snapshot, report }, null, 2));
+    response.end(
+      JSON.stringify(
+        {
+          generatedAt: snapshot.generatedAt,
+          configs: getSLOConfigs(),
+          snapshot,
+          report,
+          runbook: {
+            metrics: '/metrics',
+            readiness: '/ready',
+            liveness: '/live'
+          }
+        },
+        null,
+        2
+      )
+    );
     return true;
   }
 

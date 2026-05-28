@@ -247,7 +247,9 @@
                   }}</span>
                 </div>
                 <p class="pre-handoff__notice">
-                  Envie o pacote mínimo para a recepção assumir e confirmar recebimento.
+                  Este bloco orienta a conferência; não envia o caso automaticamente para a recepção.
+                  Use o envio manual quando o pacote mínimo estiver pronto para a recepção assumir e
+                  confirmar recebimento.
                 </p>
                 <DsAlert
                   v-if="clinicalHandoffError"

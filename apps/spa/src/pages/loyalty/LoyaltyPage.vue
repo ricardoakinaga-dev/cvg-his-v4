@@ -41,6 +41,8 @@
                 <th>Cliente</th>
                 <th>Data</th>
                 <th>Pontos</th>
+                <th>Benefício</th>
+                <th>Status</th>
                 <th>Abrir</th>
               </tr>
             </thead>
@@ -53,6 +55,12 @@
                 </td>
                 <td>{{ formatDate(redemption.redeemedAt) }}</td>
                 <td>{{ redemption.pointsUsed }}</td>
+                <td>{{ redemption.rewardDescription }}</td>
+                <td>
+                  <span class="status-pill" :class="`status-pill--${redemption.status}`">
+                    {{ statusLabel(redemption.status) }}
+                  </span>
+                </td>
                 <td>
                   <DsButton size="sm" variant="secondary" @click="selectedRedemptionId = redemption.id">
                     Abrir
@@ -89,6 +97,27 @@
             <strong>{{ selectedRedemption.serviceQuantity }}</strong>
             <p>Quantidade de benefício em serviço, alinhada ao campo legacy `quantidadeServico`.</p>
           </article>
+        </div>
+        <div class="audit-panel">
+          <span>Trilha de auditoria</span>
+          <dl>
+            <div>
+              <dt>ID</dt>
+              <dd>{{ selectedRedemption.id }}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{{ statusLabel(selectedRedemption.status) }}</dd>
+            </div>
+            <div>
+              <dt>Cliente</dt>
+              <dd>{{ selectedRedemption.ownerId }}</dd>
+            </div>
+            <div>
+              <dt>Resgatado em</dt>
+              <dd>{{ formatDate(selectedRedemption.redeemedAt) }}</dd>
+            </div>
+          </dl>
         </div>
       </DsCard>
     </section>
@@ -303,6 +332,11 @@ const metrics = computed(() => [
     label: 'Resgates',
     value: filteredRedemptions.value.length.toString(),
     hint: 'Histórico filtrado por cliente e data.'
+  },
+  {
+    label: 'Pontos resgatados',
+    value: `${balance.value.redeemedPoints} pts`,
+    hint: 'Total ja convertido em beneficios.'
   }
 ]);
 
@@ -422,6 +456,15 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR').format(date);
 }
 
+function statusLabel(status: LoyaltyRedemptionSummary['status']) {
+  const labels: Record<LoyaltyRedemptionSummary['status'], string> = {
+    pending: 'Pendente',
+    completed: 'Concluído',
+    cancelled: 'Cancelado'
+  };
+  return labels[status];
+}
+
 onMounted(() => {
   void loadLoyaltyData();
 });
@@ -458,7 +501,8 @@ onMounted(() => {
 .metric-card,
 .integration-card,
 .reward-card,
-.selected-card {
+.selected-card,
+.audit-panel {
   padding: 14px;
   border-radius: 8px;
   border: 1px solid var(--color-border, #e2e8f0);
@@ -468,7 +512,8 @@ onMounted(() => {
 .metric-card__label,
 .integration-card span,
 .reward-card span,
-.selected-card__eyebrow {
+.selected-card__eyebrow,
+.audit-panel > span {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
@@ -491,6 +536,34 @@ onMounted(() => {
   color: var(--color-text-muted, #64748b);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill--completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--cancelled {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .filters-grid {
@@ -541,6 +614,30 @@ onMounted(() => {
 .reward-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 12px;
+}
+
+.audit-panel {
+  margin-top: 12px;
+}
+
+.audit-panel dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.audit-panel dt {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.audit-panel dd {
+  margin: 2px 0 0;
+  color: var(--color-text, #0f172a);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .redemption-form {
@@ -598,6 +695,7 @@ onMounted(() => {
   .loyalty-page__content,
   .filters-grid,
   .reward-grid,
+  .audit-panel dl,
   .form-grid,
   .legacy-actions,
   .legacy-action {

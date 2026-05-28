@@ -573,7 +573,12 @@
                     label="Qtd código"
                     min="1"
                   />
-                  <DsButton variant="primary" :loading="savingItem" @click="addItemByBarcode">
+                  <DsButton
+                    variant="primary"
+                    :loading="savingItem"
+                    :disabled="!canEditSelectedSale"
+                    @click="addItemByBarcode"
+                  >
                     Adicionar Produtos
                   </DsButton>
                 </div>
@@ -618,6 +623,7 @@
                       size="sm"
                       variant="primary"
                       :loading="savingItem"
+                      :disabled="!canEditSelectedSale"
                       @click="addCatalogOption(option)"
                     >
                       Adicionar na comanda
@@ -671,7 +677,7 @@
                       <DsButton
                         size="sm"
                         variant="ghost"
-                        :disabled="savingItem || item.quantity <= 1"
+                        :disabled="!canEditSelectedSale || savingItem || item.quantity <= 1"
                         @click="changeItemQuantity(item, item.quantity - 1)"
                       >
                         -
@@ -680,7 +686,7 @@
                       <DsButton
                         size="sm"
                         variant="ghost"
-                        :disabled="savingItem"
+                        :disabled="!canEditSelectedSale || savingItem"
                         @click="changeItemQuantity(item, item.quantity + 1)"
                       >
                         +
@@ -688,7 +694,7 @@
                       <DsButton
                         size="sm"
                         variant="secondary"
-                        :disabled="savingItem"
+                        :disabled="!canEditSelectedSale || savingItem"
                         @click="applyDefaultDiscount(item)"
                       >
                         Editar desconto
@@ -696,7 +702,7 @@
                       <DsButton
                         size="sm"
                         variant="danger"
-                        :disabled="savingItem"
+                        :disabled="!canEditSelectedSale || savingItem"
                         @click="removeItem(item.id)"
                       >
                         Excluir
@@ -1305,6 +1311,7 @@ const newOwnerDraft = reactive({
 const selectedSale = computed(
   () => sales.value.find((sale) => sale.id === selectedSaleId.value) ?? null
 );
+const canEditSelectedSale = computed(() => selectedSale.value?.status === 'open');
 const selectedOwner = computed(() => {
   const ownerId = selectedSale.value?.ownerId;
   return ownerId ? ownerMap.value[ownerId] ?? null : null;
@@ -1816,6 +1823,10 @@ function encode(value: string) {
 
 async function addCatalogOption(option: CatalogOption) {
   if (!selectedSale.value) return;
+  if (!canEditSelectedSale.value) {
+    error.value = 'Comandas fechadas ou canceladas não aceitam novos itens.';
+    return;
+  }
 
   savingItem.value = true;
   error.value = '';
@@ -1851,6 +1862,10 @@ async function addItemByBarcode() {
     return;
   }
   if (!selectedSale.value) return;
+  if (!canEditSelectedSale.value) {
+    error.value = 'Comandas fechadas ou canceladas não aceitam novos itens.';
+    return;
+  }
 
   savingItem.value = true;
   error.value = '';
@@ -1879,6 +1894,10 @@ async function addItemByBarcode() {
 
 async function changeItemQuantity(item: CounterSaleItemSummary, quantity: number) {
   if (!selectedSale.value || quantity < 1) return;
+  if (!canEditSelectedSale.value) {
+    error.value = 'Comandas fechadas ou canceladas não aceitam edição de itens.';
+    return;
+  }
 
   savingItem.value = true;
   error.value = '';
@@ -1896,6 +1915,10 @@ async function changeItemQuantity(item: CounterSaleItemSummary, quantity: number
 
 async function applyDefaultDiscount(item: CounterSaleItemSummary) {
   if (!selectedSale.value) return;
+  if (!canEditSelectedSale.value) {
+    error.value = 'Comandas fechadas ou canceladas não aceitam desconto em itens.';
+    return;
+  }
 
   savingItem.value = true;
   error.value = '';
@@ -1940,6 +1963,10 @@ async function applySaleAdjustment(kind: 'expense' | 'discount') {
 
 async function removeItem(itemId: string) {
   if (!selectedSale.value) return;
+  if (!canEditSelectedSale.value) {
+    error.value = 'Comandas fechadas ou canceladas não aceitam remoção de itens.';
+    return;
+  }
 
   savingItem.value = true;
   error.value = '';

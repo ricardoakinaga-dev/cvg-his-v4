@@ -34,6 +34,7 @@ export interface DsrRecord {
   completedBy: string | null;
   completedAt: string | null;
   rejectionReason: string | null;
+  resultJson?: Record<string, unknown> | null;
   notes: string | null;
 }
 

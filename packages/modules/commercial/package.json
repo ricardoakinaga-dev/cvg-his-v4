@@ -19,9 +19,9 @@
     "@cvg-his-v2/tenant-context": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/commercial.test.js"
+    "test": "cd ../../.. && vitest run packages/modules/commercial/src/*.test.ts"
   }
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';

@@ -68,7 +68,9 @@ async function handleEquipmentImport(
   }
   const updated = laboratory.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: String(body.resultSummary)
+    resultSummary: String(body.resultSummary),
+    releasedByUserId: 'equipment_bridge',
+    signedByUserId: 'equipment_bridge'
   });
   const record = {
     externalResultId,

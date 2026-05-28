@@ -94,7 +94,9 @@ tags:
   - name: Inventory
     description: Inventory and stock management
   - name: Commercial
-    description: Loyalty, price table and point-of-sale synchronization operations
+    description: Packages, loyalty, price table and point-of-sale synchronization operations
+  - name: Counter Sales
+    description: Counter sale/comanda operations, payments and commercial dashboard
   - name: Notifications
     description: Notification management
   - name: Webhooks
@@ -113,6 +115,12 @@ tags:
     description: Audit trail and event logs
   - name: Staff
     description: Staff member management
+  - name: Commissions
+    description: Commission rules, calculations, review and payment lifecycle
+  - name: Reports
+    description: Enterprise report catalog, execution, export and scheduling
+  - name: Marketing
+    description: Campaigns, segments and communication templates
   - name: Products
     description: Product catalog
   - name: Quotes
@@ -235,6 +243,39 @@ paths:
                   # HELP http_requests_total Total HTTP requests
                   # TYPE http_requests_total counter
                   http_requests_total{method="GET",route="/health",status_code="200"} 42
+
+  /slos:
+    get:
+      operationId: getSloReport
+      summary: SLO compliance report
+      description: |
+        Returns the current API SLO snapshot, compliance report, error budget,
+        burn rate and runbook links. Use this endpoint for executive operation
+        dashboards and incident readiness reviews.
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Current SLO report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SloReportResponse'
+
+  /health/slos:
+    get:
+      operationId: getHealthSloReport
+      summary: Health SLO report alias
+      description: Alias for `/slos`.
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Current SLO report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SloReportResponse'
 
   /flags:
     get:
@@ -839,7 +880,8 @@ paths:
       summary: List DSR requests
       description: |
         Lists LGPD Data Subject Requests (DSR) for the current account.
-        Supports filtering by subject or status.
+        Supports filtering by subject or status. Without filters, returns all DSR requests
+        scoped to the authenticated account.
       tags: [LGPD]
       parameters:
         - name: subjectId
@@ -941,8 +983,8 @@ paths:
       operationId: lgpdExportData
       summary: Export personal data
       description: |
-        Builds a complete export of all personal data for a given subject.
-        Aggregates data from multiple domain services.
+        Builds an auditable personal data export for a given subject using server-side LGPD evidence.
+        Includes consent records, DSR history and export metadata for the authenticated account.
       tags: [LGPD]
       requestBody:
         required: true
@@ -958,13 +1000,13 @@ paths:
                 subjectType:
                   type: string
                   enum: [owner, patient, user]
-                dataProviders:
-                  type: object
-                  additionalProperties: {}
-                  description: Optional data providers to include
       responses:
         '200':
           description: Personal data export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalDataExport'
 
   /master-search:
     get:
@@ -1033,7 +1075,16 @@ paths:
           in: query
           schema:
             type: string
-          description: Search by name or document
+          description: Search by name, document, Vetus ID, address or contact digits.
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+        - name: financialResponsible
+          in: query
+          schema:
+            type: boolean
         - name: x-sector-code
           in: header
           schema:
@@ -1146,6 +1197,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/Owner'
 
+  /owners/{ownerId}/summary:
+    get:
+      operationId: getOwnerSummary
+      summary: Get owner operational summary
+      description: Returns the owner, linked patients and registry counters used by the owner cockpit.
+      tags: [Owners]
+      parameters:
+        - name: ownerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Owner operational summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerSummaryResponse'
+
   /owner-patient-links:
     get:
       operationId: listOwnerPatientLinks
@@ -1178,7 +1249,7 @@ paths:
                   items:
                     type: array
                     items:
-                      type: object
+                      $ref: '#/components/schemas/OwnerPatientLink'
 
     post:
       operationId: createOwnerPatientLink
@@ -1191,7 +1262,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ownerId, patientId]
+              required: [ownerId, patientId, relationshipType, financialResponsible]
               properties:
                 ownerId:
                   type: string
@@ -1199,13 +1270,18 @@ paths:
                 patientId:
                   type: string
                   format: uuid
+                relationshipType:
+                  type: string
+                  enum: [primary, secondary, emergency_contact, financial_responsible]
+                financialResponsible:
+                  type: boolean
       responses:
         '201':
           description: Link created
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/OwnerPatientLink'
 
   /patients:
     get:
@@ -1218,6 +1294,20 @@ paths:
           in: query
           schema:
             type: string
+          description: Search by animal, tutor, document, phone, microchip, Vetus ID or notes.
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+        - name: species
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, deceased]
         - name: page
           in: query
           schema:
@@ -1295,6 +1385,30 @@ paths:
       responses:
         '200':
           description: Patient updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+
+  /patients/{patientId}/summary:
+    get:
+      operationId: getPatientSummary
+      summary: Get patient operational summary
+      description: Returns patient, owner snapshot and recent encounter counters used by the patient cockpit.
+      tags: [Patients]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Patient operational summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientSummaryResponse'
 
   /encounters:
     get:
@@ -1628,6 +1742,32 @@ paths:
         '200':
           description: Appointment cancelled
 
+  /appointments/{appointmentId}/reschedule:
+    post:
+      operationId: rescheduleAppointment
+      summary: Reschedule appointment
+      tags: [Appointments]
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleAppointmentRequest'
+      responses:
+        '200':
+          description: Appointment rescheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+
   /queue:
     get:
       operationId: getQueue
@@ -1696,6 +1836,26 @@ paths:
       responses:
         '200':
           description: Care started
+
+  /queue/{queueEntryId}/complete:
+    post:
+      operationId: queueComplete
+      summary: Complete queue entry
+      description: Transitions an in-care or observation queue entry to completed status.
+      tags: [Queue]
+      parameters:
+        - name: queueEntryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entry completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
 
   /queue/{queueEntryId}/no-show:
     post:
@@ -2318,6 +2478,198 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinancialAgingReportResponse'
+
+  /financial/payables:
+    get:
+      operationId: listFinancialPayables
+      summary: List financial payables
+      description: Lists supplier obligations with status, due date, paid amount and outstanding balance.
+      tags: [Financial]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, partial, paid, cancelled]
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Match against supplier, description, category, cost center or notes
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Financial payables list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayableListResponse'
+    post:
+      operationId: createFinancialPayable
+      summary: Create financial payable
+      description: Creates a standalone supplier obligation in accounts payable.
+      tags: [Financial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFinancialPayableRequest'
+      responses:
+        '201':
+          description: Financial payable created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayable'
+
+  /financial/payables/{payableId}/pay:
+    post:
+      operationId: payFinancialPayable
+      summary: Pay financial payable
+      description: Applies a payment to an open or partial account payable.
+      tags: [Financial]
+      parameters:
+        - name: payableId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayFinancialPayableRequest'
+      responses:
+        '200':
+          description: Financial payable paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayable'
+
+  /financial/payables/{payableId}/cancel:
+    post:
+      operationId: cancelFinancialPayable
+      summary: Cancel financial payable
+      description: Cancels an open or partial account payable.
+      tags: [Financial]
+      parameters:
+        - name: payableId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelFinancialPayableRequest'
+      responses:
+        '200':
+          description: Financial payable cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayable'
+
+  /financial/payables/{payableId}/reconcile:
+    post:
+      operationId: reconcileFinancialPayable
+      summary: Reconcile financial payable payment
+      description: Marks a paid non-cash account payable as reconciled with bank or provider evidence.
+      tags: [Financial]
+      parameters:
+        - name: payableId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconcileFinancialPayableRequest'
+      responses:
+        '200':
+          description: Financial payable reconciled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayable'
+
+  /financial/reconciliation/payables:
+    get:
+      operationId: listFinancialPayableReconciliation
+      summary: List payable payment reconciliation
+      description: Lists paid non-cash accounts payable awaiting or already marked as reconciled.
+      tags: [Financial]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [not_required, pending, reconciled]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Payable reconciliation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialPayableReconciliationResponse'
+
+  /financial/income-statement:
+    get:
+      operationId: getFinancialIncomeStatement
+      summary: Get financial income statement
+      description: Consolidates realized revenue, accrued expenses, outstanding balances and net result for the selected period.
+      tags: [Financial]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Financial income statement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialIncomeStatement'
 
   /financial/reconciliation:
     get:
@@ -3174,6 +3526,614 @@ paths:
         '404':
           description: Item not found
 
+  /inventory/movements:
+    get:
+      operationId: listInventoryStockMovements
+      summary: List inventory stock movements
+      tags: [Inventory]
+      parameters:
+        - name: inventoryItemId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventory stock movements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryStockMovementListResponse'
+
+  /inventory/adjustments:
+    post:
+      operationId: createInventoryStockAdjustment
+      summary: Create audited inventory stock adjustment
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryStockAdjustmentRequest'
+      responses:
+        '201':
+          description: Inventory stock adjustment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryStockMovement'
+
+  /packages:
+    get:
+      operationId: listPackages
+      summary: List customer packages
+      tags: [Commercial]
+      responses:
+        '200':
+          description: Customer packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerPackageDetail'
+    post:
+      operationId: createPackage
+      summary: Create customer package
+      tags: [Commercial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePackageRequest'
+      responses:
+        '201':
+          description: Customer package created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackage'
+
+  /packages/{packageId}:
+    get:
+      operationId: getPackage
+      summary: Get package detail
+      tags: [Commercial]
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer package detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackageDetail'
+        '404':
+          description: Package not found
+
+  /packages/{packageId}/items:
+    post:
+      operationId: addPackageItem
+      summary: Add item to draft package
+      tags: [Commercial]
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPackageItemRequest'
+      responses:
+        '201':
+          description: Package item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageItem'
+
+  /packages/{packageId}/activate:
+    post:
+      operationId: activatePackage
+      summary: Activate package
+      tags: [Commercial]
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Package activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackageDetail'
+
+  /packages/{packageId}/renew:
+    post:
+      operationId: renewPackage
+      summary: Renew package preserving its composition
+      tags: [Commercial]
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenewPackageRequest'
+      responses:
+        '201':
+          description: Package renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackageDetail'
+
+  /packages/{packageId}/cancel:
+    post:
+      operationId: cancelPackage
+      summary: Cancel package
+      tags: [Commercial]
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Package cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackage'
+
+  /package-items/{packageItemId}/consume:
+    post:
+      operationId: consumePackageItem
+      summary: Consume package item balance
+      tags: [Commercial]
+      parameters:
+        - name: packageItemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumePackageItemRequest'
+      responses:
+        '200':
+          description: Package balance consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPackageDetail'
+
+  /commission-rules:
+    get:
+      operationId: listCommissionRules
+      summary: List commission rules
+      tags: [Commissions]
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Commission rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionRuleListResponse'
+    post:
+      operationId: createCommissionRule
+      summary: Create commission rule
+      tags: [Commissions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommissionRuleRequest'
+      responses:
+        '201':
+          description: Commission rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionRule'
+        '400':
+          description: Invalid commission rule
+
+  /commission-calculations:
+    get:
+      operationId: listCommissionCalculations
+      summary: List commission calculations
+      tags: [Commissions]
+      responses:
+        '200':
+          description: Commission calculations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationListResponse'
+    post:
+      operationId: calculateCommissions
+      summary: Create draft commission calculation
+      tags: [Commissions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateCommissionsRequest'
+      responses:
+        '201':
+          description: Commission calculation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationDetail'
+        '400':
+          description: Invalid calculation request
+
+  /commission-calculations/{calculationId}:
+    get:
+      operationId: getCommissionCalculation
+      summary: Get commission calculation detail
+      tags: [Commissions]
+      parameters:
+        - name: calculationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commission calculation detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationDetail'
+        '404':
+          description: Commission calculation not found
+
+  /commission-calculations/{calculationId}/review:
+    post:
+      operationId: reviewCommissionCalculation
+      summary: Review draft commission calculation
+      tags: [Commissions]
+      parameters:
+        - name: calculationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commission calculation reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationDetail'
+        '409':
+          description: Calculation is not in draft status
+
+  /commission-calculations/{calculationId}/pay:
+    post:
+      operationId: payCommissionCalculation
+      summary: Mark reviewed commission calculation as paid
+      tags: [Commissions]
+      parameters:
+        - name: calculationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commission calculation paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationDetail'
+        '409':
+          description: Calculation is not reviewed
+
+  /commission-calculations/{calculationId}/cancel:
+    post:
+      operationId: cancelCommissionCalculation
+      summary: Cancel unpaid commission calculation
+      tags: [Commissions]
+      parameters:
+        - name: calculationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commission calculation cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionCalculationDetail'
+        '409':
+          description: Paid calculations cannot be cancelled
+
+  /reports/catalog:
+    get:
+      operationId: listReportCatalog
+      summary: List enterprise report catalog
+      tags: [Reports]
+      responses:
+        '200':
+          description: Report definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDefinitionListResponse'
+
+  /reports/executions:
+    get:
+      operationId: listReportExecutions
+      summary: List report executions
+      tags: [Reports]
+      responses:
+        '200':
+          description: Report executions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExecutionListResponse'
+    post:
+      operationId: executeReport
+      summary: Execute an enterprise report
+      tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteReportRequest'
+      responses:
+        '201':
+          description: Report execution completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExecutionDetail'
+        '400':
+          description: Invalid report execution request
+        '404':
+          description: Report definition not found
+
+  /reports/executions/{executionId}:
+    get:
+      operationId: getReportExecution
+      summary: Get report execution detail
+      tags: [Reports]
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report execution detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExecutionDetail'
+        '404':
+          description: Report execution not found
+
+  /reports/executions/{executionId}/export:
+    post:
+      operationId: exportReportExecution
+      summary: Export report execution as JSON or CSV
+      tags: [Reports]
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportReportRequest'
+      responses:
+        '200':
+          description: Report export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExport'
+        '404':
+          description: Report execution not found
+
+  /reports/schedules:
+    get:
+      operationId: listReportSchedules
+      summary: List report schedules
+      tags: [Reports]
+      responses:
+        '200':
+          description: Report schedules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportScheduleListResponse'
+    post:
+      operationId: createReportSchedule
+      summary: Create report schedule
+      tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportScheduleRequest'
+      responses:
+        '201':
+          description: Report schedule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSchedule'
+        '400':
+          description: Invalid report schedule
+
+  /reports/schedules/due:
+    get:
+      operationId: listDueReportSchedules
+      summary: List active report schedules due for execution
+      tags: [Reports]
+      parameters:
+        - name: asOf
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Due report schedules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportScheduleListResponse'
+        '400':
+          description: Invalid asOf date
+
+  /reports/schedules/{scheduleId}:
+    patch:
+      operationId: updateReportSchedule
+      summary: Pause or reactivate report schedule
+      tags: [Reports]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReportScheduleRequest'
+      responses:
+        '200':
+          description: Report schedule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSchedule'
+        '400':
+          description: Invalid report schedule update
+        '404':
+          description: Report schedule not found
+
+  /reports/schedules/{scheduleId}/deliveries:
+    get:
+      operationId: listReportScheduleDeliveries
+      summary: List report schedule deliveries
+      tags: [Reports]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report schedule deliveries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportScheduleDeliveryListResponse'
+        '404':
+          description: Report schedule not found
+
+  /reports/schedules/{scheduleId}/delivery-alerts:
+    get:
+      operationId: listReportScheduleDeliveryAlerts
+      summary: List recurring delivery failure alerts for a report schedule
+      tags: [Reports]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report schedule delivery alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportScheduleDeliveryAlertListResponse'
+        '404':
+          description: Report schedule not found
+
+  /reports/schedules/{scheduleId}/deliveries/{deliveryId}/retry:
+    post:
+      operationId: retryReportScheduleDelivery
+      summary: Retry a failed report schedule delivery
+      tags: [Reports]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Report schedule delivery retried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportScheduleDelivery'
+        '400':
+          description: Delivery cannot be retried
+        '404':
+          description: Report schedule delivery not found
+
   /loyalty/summary:
     get:
       operationId: getLoyaltySummary
@@ -3514,6 +4474,169 @@ paths:
       responses:
         '200':
           description: POS synchronization job updated
+
+  /marketing/segments:
+    get:
+      operationId: listMarketingSegments
+      summary: List marketing segments
+      tags: [Marketing]
+      responses:
+        '200':
+          description: Marketing segments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingSegmentListResponse'
+    post:
+      operationId: createMarketingSegment
+      summary: Create marketing segment
+      tags: [Marketing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMarketingSegmentRequest'
+      responses:
+        '201':
+          description: Marketing segment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingSegment'
+
+  /marketing/templates:
+    get:
+      operationId: listMarketingTemplates
+      summary: List marketing templates
+      tags: [Marketing]
+      parameters:
+        - name: channel
+          in: query
+          schema:
+            $ref: '#/components/schemas/MarketingChannel'
+      responses:
+        '200':
+          description: Marketing templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingTemplateListResponse'
+    post:
+      operationId: createMarketingTemplate
+      summary: Create marketing template
+      tags: [Marketing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMarketingTemplateRequest'
+      responses:
+        '201':
+          description: Marketing template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingTemplate'
+
+  /marketing/campaigns:
+    get:
+      operationId: listMarketingCampaigns
+      summary: List marketing campaigns
+      tags: [Marketing]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/MarketingCampaignStatus'
+      responses:
+        '200':
+          description: Marketing campaigns
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaignListResponse'
+    post:
+      operationId: createMarketingCampaign
+      summary: Create marketing campaign
+      tags: [Marketing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMarketingCampaignRequest'
+      responses:
+        '201':
+          description: Marketing campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaign'
+
+  /marketing/campaigns/{campaignId}/schedule:
+    post:
+      operationId: scheduleMarketingCampaign
+      summary: Schedule marketing campaign
+      tags: [Marketing]
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Marketing campaign scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaign'
+
+  /marketing/campaigns/{campaignId}/dispatch:
+    post:
+      operationId: dispatchMarketingCampaign
+      summary: Dispatch scheduled marketing campaign
+      tags: [Marketing]
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchMarketingCampaignRequest'
+      responses:
+        '200':
+          description: Marketing campaign dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaignDispatchResult'
+
+  /marketing/campaigns/{campaignId}/deliveries:
+    get:
+      operationId: listMarketingCampaignDeliveries
+      summary: List marketing campaign deliveries
+      tags: [Marketing]
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Marketing campaign deliveries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaignDeliveryListResponse'
 
   /notifications:
     get:
@@ -4630,6 +5753,20 @@ paths:
         '200':
           description: Access control data
 
+  /access-control/module-permission-matrix:
+    get:
+      operationId: getAccessControlModulePermissionMatrix
+      summary: Get RBAC/ABAC module permission matrix
+      description: Returns auditable permission coverage by module, action, role profile and unit overrides.
+      tags: [Access Control]
+      responses:
+        '200':
+          description: Module permission matrix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessModulePermissionMatrixResponse'
+
   /access-control/teams:
     get:
       operationId: listTeams
@@ -4937,6 +6074,20 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AuditEvent'
+
+  /audit/operational-coverage:
+    get:
+      operationId: getOperationalAuditCoverage
+      summary: Operational audit coverage report
+      description: Returns coverage of required enterprise audit events by module, risk and account.
+      tags: [Audit]
+      responses:
+        '200':
+          description: Operational audit coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalAuditCoverageReport'
 
   /staff:
     get:
@@ -5457,6 +6608,268 @@ paths:
         '201':
           description: Counter sale created from quote
 
+  /admin/commercial-dashboard:
+    get:
+      operationId: getCommercialDashboard
+      summary: Get commercial dashboard
+      description: Returns executive counter-sales indicators, payment mix, leaders and low-stock alerts.
+      tags: [Counter Sales]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Commercial dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSalesCommercialDashboard'
+
+  /counter-sales:
+    get:
+      operationId: listCounterSales
+      summary: List counter sales
+      description: Lists counter sales/comandas for the authenticated account.
+      tags: [Counter Sales]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CounterSaleStatus'
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Counter sales list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSalesListResponse'
+    post:
+      operationId: openCounterSale
+      summary: Open counter sale
+      description: Opens a new counter sale/comanda for an optional owner.
+      tags: [Counter Sales]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCounterSaleRequest'
+      responses:
+        '201':
+          description: Counter sale opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSale'
+
+  /counter-sales/{counterSaleId}:
+    get:
+      operationId: getCounterSale
+      summary: Get counter sale detail
+      description: Returns a counter sale with its items and payments.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Counter sale detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSaleDetail'
+
+  /counter-sales/{counterSaleId}/items:
+    post:
+      operationId: addCounterSaleItem
+      summary: Add counter sale item
+      description: Adds a product or service line to an open counter sale.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCounterSaleItemRequest'
+      responses:
+        '201':
+          description: Counter sale item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSaleItem'
+
+  /counter-sales/{counterSaleId}/items/{itemId}:
+    patch:
+      operationId: updateCounterSaleItem
+      summary: Update counter sale item
+      description: Updates quantity, discount or notes for an open counter sale item.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCounterSaleItemRequest'
+      responses:
+        '200':
+          description: Counter sale item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSaleItem'
+    delete:
+      operationId: removeCounterSaleItem
+      summary: Remove counter sale item
+      description: Removes an item from an open counter sale.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Counter sale item removed
+
+  /counter-sales/{counterSaleId}/payments:
+    post:
+      operationId: addCounterSalePayment
+      summary: Add counter sale payment
+      description: Registers a payment against an open counter sale.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCounterSalePaymentRequest'
+      responses:
+        '201':
+          description: Counter sale payment added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSalePayment'
+
+  /counter-sales/{counterSaleId}/close:
+    post:
+      operationId: closeCounterSale
+      summary: Close counter sale
+      description: Closes a fully paid counter sale and triggers stock/cash integrations when configured.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Counter sale closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSale'
+
+  /counter-sales/{counterSaleId}/cancel:
+    post:
+      operationId: cancelCounterSale
+      summary: Cancel counter sale
+      description: Cancels an open counter sale.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Counter sale cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSale'
+
+  /counter-sales/{counterSaleId}/reopen:
+    post:
+      operationId: reopenCounterSale
+      summary: Reopen counter sale
+      description: Reopens a closed counter sale for operational correction.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Counter sale reopened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSale'
+
   /inpatient/{stayId}/progress:
     get:
       operationId: listInpatientProgress
@@ -5506,6 +6919,177 @@ paths:
       responses:
         '201':
           description: Progress note added
+
+  /inpatient/{stayId}/occurrences:
+    get:
+      operationId: listInpatientOccurrences
+      summary: List inpatient occurrences
+      tags: [Inpatient]
+      parameters:
+        - name: stayId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inpatient occurrences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientOccurrenceListResponse'
+    post:
+      operationId: addInpatientOccurrence
+      summary: Add inpatient occurrence
+      tags: [Inpatient]
+      parameters:
+        - name: stayId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, title, description]
+              properties:
+                type:
+                  type: string
+                  enum: [clinical, nursing, medication, feeding, behavior, administrative]
+                severity:
+                  type: string
+                  enum: [info, attention, critical]
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Inpatient occurrence added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientOccurrence'
+
+  /inpatient/{stayId}/daily-charges:
+    get:
+      operationId: listInpatientDailyCharges
+      summary: List inpatient daily charges
+      tags: [Inpatient]
+      parameters:
+        - name: stayId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inpatient daily charges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientDailyChargeListResponse'
+    post:
+      operationId: createInpatientDailyCharge
+      summary: Create inpatient daily charge
+      tags: [Inpatient]
+      parameters:
+        - name: stayId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description, unitAmount]
+              properties:
+                description:
+                  type: string
+                chargeDate:
+                  type: string
+                  format: date
+                quantity:
+                  type: number
+                  minimum: 0
+                unitAmount:
+                  type: number
+                  minimum: 0
+      responses:
+        '201':
+          description: Inpatient daily charge created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientDailyCharge'
+
+  /inpatient/{stayId}/daily-charges/{chargeId}/bill:
+    post:
+      operationId: billInpatientDailyCharge
+      summary: Mark inpatient daily charge as billed
+      tags: [Inpatient]
+      parameters:
+        - name: stayId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chargeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                billingRecordId:
+                  type: string
+      responses:
+        '200':
+          description: Inpatient daily charge billed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientDailyCharge'
+
+  /inpatient/daily-charges/worklist:
+    get:
+      operationId: listInpatientDailyChargeWorklist
+      summary: List inpatient daily charge worklist
+      tags: [Inpatient]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, billed, cancelled]
+        - name: unit
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: ward
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inpatient daily charge worklist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientDailyChargeWorklistResponse'
 
   /prescription-executions:
     get:
@@ -6198,6 +7782,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DiagnosticOrderListResponse'
+
+  /laboratory/reports/{orderId}/print:
+    get:
+      operationId: printLaboratoryReport
+      summary: Generate printable signed laboratory report HTML
+      description: Returns an HTML document for a released laboratory report, including technical signature metadata and signature hash.
+      tags: [Laboratory]
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Printable laboratory report HTML
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [html]
+                properties:
+                  html:
+                    type: string
 
   /laboratorio/atendimentos/laudos:
     get:
@@ -7507,6 +9115,163 @@ components:
         version:
           type: string
 
+    SloReportResponse:
+      type: object
+      required: [generatedAt, configs, snapshot, report, runbook]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        configs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SloConfig'
+        snapshot:
+          $ref: '#/components/schemas/SloSnapshot'
+        report:
+          $ref: '#/components/schemas/SloComplianceReport'
+        runbook:
+          type: object
+          required: [metrics, readiness, liveness]
+          properties:
+            metrics:
+              type: string
+              example: /metrics
+            readiness:
+              type: string
+              example: /ready
+            liveness:
+              type: string
+              example: /live
+
+    SloConfig:
+      type: object
+      required: [id, name, target, unit, window, alertThreshold, criticalThreshold, category]
+      properties:
+        id:
+          type: string
+          example: api-availability
+        name:
+          type: string
+          example: API Availability
+        target:
+          type: number
+          example: 99.5
+        unit:
+          type: string
+          example: percent
+        window:
+          type: string
+          example: 1h
+        alertThreshold:
+          type: number
+          example: 99
+        criticalThreshold:
+          type: number
+          example: 98
+        category:
+          type: string
+          enum: [performance, availability, reliability]
+
+    SloSnapshot:
+      type: object
+      required:
+        - generatedAt
+        - latencyWindowMinutes
+        - availabilityWindowMinutes
+        - requestCount5m
+        - requestCount1h
+        - p95LatencyMs
+        - p99LatencyMs
+        - availabilityPercent
+        - errorRatePercent
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        latencyWindowMinutes:
+          type: integer
+          example: 5
+        availabilityWindowMinutes:
+          type: integer
+          example: 60
+        requestCount5m:
+          type: integer
+          example: 120
+        requestCount1h:
+          type: integer
+          example: 1440
+        p95LatencyMs:
+          type: number
+          example: 128.4
+        p99LatencyMs:
+          type: number
+          example: 244.1
+        availabilityPercent:
+          type: number
+          example: 99.95
+        errorRatePercent:
+          type: number
+          example: 0.04
+
+    SloComplianceReport:
+      type: object
+      required: [generatedAt, window, slos, overallStatus, errorBudgetExhausted]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        window:
+          type: string
+          example: 30d
+        overallStatus:
+          type: string
+          enum: [healthy, degraded, critical]
+        errorBudgetExhausted:
+          type: boolean
+        slos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SloStatus'
+
+    SloStatus:
+      type: object
+      required:
+        - id
+        - name
+        - category
+        - currentValue
+        - target
+        - unit
+        - status
+        - errorBudgetPercent
+        - burnRate
+        - lastUpdated
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [performance, availability, reliability]
+        currentValue:
+          type: number
+        target:
+          type: number
+        unit:
+          type: string
+        status:
+          type: string
+          enum: [healthy, alert, critical]
+        errorBudgetPercent:
+          type: number
+        burnRate:
+          type: number
+        lastUpdated:
+          type: string
+          format: date-time
+
     CreateFeatureFlagRequest:
       type: object
       required: [key, owner, description, defaultValue]
@@ -7802,20 +9567,37 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         accountId:
           type: string
-          format: uuid
         fullName:
           type: string
-        document:
+        documentId:
           type: string
-        email:
+          nullable: true
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerContact'
+        address:
+          $ref: '#/components/schemas/OwnerAddress'
+        profile:
+          $ref: '#/components/schemas/OwnerProfile'
+        financialProfile:
+          $ref: '#/components/schemas/OwnerFinancialProfile'
+        financialResponsible:
+          type: boolean
+        administrativeNotes:
           type: string
-        phoneMain:
+          nullable: true
+        legacyVetusId:
           type: string
-        phoneAlt:
+          nullable: true
+        originalCreatedAt:
           type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
         createdAt:
           type: string
           format: date-time
@@ -7823,43 +9605,132 @@ components:
           type: string
           format: date-time
 
+    OwnerContact:
+      type: object
+      required: [label, value, type]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        type:
+          type: string
+          enum: [phone, email, whatsapp, other]
+        primary:
+          type: boolean
+
+    OwnerAddress:
+      type: object
+      nullable: true
+      properties:
+        zipCode:
+          type: string
+        street:
+          type: string
+        number:
+          type: string
+        complement:
+          type: string
+        state:
+          type: string
+        city:
+          type: string
+        district:
+          type: string
+        reference:
+          type: string
+        cityCode:
+          type: string
+
+    OwnerProfile:
+      type: object
+      nullable: true
+      properties:
+        birthDate:
+          type: string
+        sex:
+          type: string
+          enum: [male, female, other, unknown]
+        group:
+          type: string
+        receiveSms:
+          type: boolean
+        personType:
+          type: string
+          enum: [individual, company]
+        rg:
+          type: string
+
+    OwnerFinancialProfile:
+      type: object
+      nullable: true
+      properties:
+        allowedDebtLimit:
+          type: number
+        creditBalance:
+          type: number
+        availablePoints:
+          type: number
+        blockedPoints:
+          type: number
+
     CreateOwnerRequest:
       type: object
-      required: [fullName]
+      required: [fullName, contacts, financialResponsible]
       properties:
         fullName:
           type: string
           minLength: 2
           maxLength: 255
-        document:
+        documentId:
           type: string
-        email:
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerContact'
+        address:
+          $ref: '#/components/schemas/OwnerAddress'
+        profile:
+          $ref: '#/components/schemas/OwnerProfile'
+        financialProfile:
+          $ref: '#/components/schemas/OwnerFinancialProfile'
+        financialResponsible:
+          type: boolean
+        administrativeNotes:
           type: string
-          format: email
-        phoneMain:
+        legacyVetusId:
           type: string
-        phoneAlt:
+        originalCreatedAt:
           type: string
-        addressJson:
-          type: object
-          additionalProperties: true
 
     UpdateOwnerRequest:
       type: object
       properties:
         fullName:
           type: string
-        document:
+        documentId:
           type: string
-        email:
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerContact'
+        address:
+          $ref: '#/components/schemas/OwnerAddress'
+        profile:
+          $ref: '#/components/schemas/OwnerProfile'
+        financialProfile:
+          $ref: '#/components/schemas/OwnerFinancialProfile'
+        financialResponsible:
+          type: boolean
+        administrativeNotes:
           type: string
-        phoneMain:
+        legacyVetusId:
           type: string
-        phoneAlt:
+        originalCreatedAt:
           type: string
-        addressJson:
-          type: object
-          additionalProperties: true
+        status:
+          type: string
+          enum: [active, inactive]
 
     CreateVetusImportRequest:
       type: object
@@ -7962,7 +9833,8 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+        accountId:
+          type: string
         name:
           type: string
         species:
@@ -7975,15 +9847,51 @@ components:
           type: string
         baseWeightKg:
           type: number
+        primaryOwnerId:
+          type: string
+        isNeutered:
+          type: boolean
+          nullable: true
+        microchip:
+          type: string
+          nullable: true
+        pedigreeNumber:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        chronicDisease:
+          type: string
+          nullable: true
+        allergy:
+          type: string
+          nullable: true
+        temperament:
+          type: string
+          nullable: true
+        generalNotes:
+          type: string
+          nullable: true
+        legacyVetusId:
+          type: string
+          nullable: true
+        originalCreatedAt:
+          type: string
+          nullable: true
         status:
           type: string
+          enum: [active, inactive, deceased]
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
 
     CreatePatientRequest:
       type: object
-      required: [name]
+      required: [name, species, primaryOwnerId]
       properties:
         name:
           type: string
@@ -7999,7 +9907,29 @@ components:
           type: number
         primaryOwnerId:
           type: string
-          format: uuid
+        isNeutered:
+          type: boolean
+        microchip:
+          type: string
+        pedigreeNumber:
+          type: string
+        color:
+          type: string
+        chronicDisease:
+          type: string
+        allergy:
+          type: string
+        temperament:
+          type: string
+        generalNotes:
+          type: string
+        legacyVetusId:
+          type: string
+        originalCreatedAt:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, deceased]
 
     UpdatePatientRequest:
       type: object
@@ -8016,6 +9946,123 @@ components:
           type: string
         baseWeightKg:
           type: number
+        primaryOwnerId:
+          type: string
+        isNeutered:
+          type: boolean
+        microchip:
+          type: string
+        pedigreeNumber:
+          type: string
+        color:
+          type: string
+        chronicDisease:
+          type: string
+        allergy:
+          type: string
+        temperament:
+          type: string
+        generalNotes:
+          type: string
+        legacyVetusId:
+          type: string
+        originalCreatedAt:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, deceased]
+
+    OwnerPatientLink:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        ownerId:
+          type: string
+        patientId:
+          type: string
+        relationshipType:
+          type: string
+        financialResponsible:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    OwnerSummaryResponse:
+      type: object
+      required: [owner, patients, stats]
+      properties:
+        owner:
+          $ref: '#/components/schemas/Owner'
+        patients:
+          type: array
+          items:
+            type: object
+            required: [id, name, species]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              species:
+                type: string
+              breed:
+                type: string
+                nullable: true
+        stats:
+          type: object
+          required: [totalPatients, totalEncounters]
+          properties:
+            totalPatients:
+              type: integer
+            totalEncounters:
+              type: integer
+
+    PatientSummaryResponse:
+      type: object
+      required: [patient, owner, stats, recentEncounters]
+      properties:
+        patient:
+          $ref: '#/components/schemas/Patient'
+        owner:
+          type: object
+          required: [id, fullName]
+          properties:
+            id:
+              type: string
+            fullName:
+              type: string
+            phoneMain:
+              type: string
+              nullable: true
+            email:
+              type: string
+              nullable: true
+        stats:
+          type: object
+          required: [totalEncounters, openEncounters]
+          properties:
+            totalEncounters:
+              type: integer
+            openEncounters:
+              type: integer
+        recentEncounters:
+          type: array
+          items:
+            type: object
+            required: [id, openedAt, status]
+            properties:
+              id:
+                type: string
+              openedAt:
+                type: string
+                format: date-time
+              status:
+                type: string
+                enum: [open, closed]
 
     Encounter:
       type: object
@@ -8115,6 +10162,42 @@ components:
           type: string
           nullable: true
         smartSchedulingRecommendationId:
+          type: string
+          nullable: true
+
+    RescheduleAppointmentRequest:
+      type: object
+      required: [scheduledAt]
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: number
+          minimum: 1
+          maximum: 480
+          nullable: true
+        visitType:
+          type: string
+          enum: [walk_in, scheduled, return]
+        reason:
+          type: string
+          nullable: true
+        practitionerStaffId:
+          type: string
+          format: uuid
+          nullable: true
+        serviceId:
+          type: string
+          format: uuid
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        specialty:
+          type: string
+          nullable: true
+        resourceLabel:
           type: string
           nullable: true
 
@@ -8458,6 +10541,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        resultJson:
+          type: object
 
     DsrCreateRequest:
       type: object
@@ -8471,9 +10556,47 @@ components:
           enum: [owner, patient, user]
         requestType:
           type: string
-          enum: [access, deletion, portability, rectification]
+          enum:
+            [
+              data_export,
+              data_deletion,
+              data_anonymization,
+              data_rectification,
+              data_access,
+              data_portability,
+              consent_revocation
+            ]
         notes:
           type: string
+
+    PersonalDataExport:
+      type: object
+      required: [accountId, subjectId, subjectType, exportedAt, evidence, data]
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          format: uuid
+        subjectType:
+          type: string
+          enum: [owner, patient, user]
+        exportedAt:
+          type: string
+          format: date-time
+        evidence:
+          type: object
+          required: [consentCount, dsrCount, providerCount]
+          properties:
+            consentCount:
+              type: integer
+            dsrCount:
+              type: integer
+            providerCount:
+              type: integer
+        data:
+          type: object
 
     TriageRecord:
       type: object
@@ -8596,6 +10719,13 @@ components:
           type: string
           nullable: true
         notes:
+          type: string
+          nullable: true
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, pix, card, cheque, other]
+          nullable: true
+        paymentReference:
           type: string
           nullable: true
         createdByUserId:
@@ -8945,6 +11075,210 @@ components:
           type: number
         totalSettled:
           type: number
+
+    FinancialPayable:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        supplierName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        costCenterCode:
+          type: string
+        costCenterName:
+          type: string
+        issuedAt:
+          type: string
+          format: date
+        dueAt:
+          type: string
+          format: date
+        totalAmount:
+          type: number
+        paidAmount:
+          type: number
+        outstandingAmount:
+          type: number
+        status:
+          type: string
+          enum: [open, partial, paid, cancelled]
+        sourceExpenseId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, pix, card, cheque, other]
+          nullable: true
+        paymentReference:
+          type: string
+          nullable: true
+        reconciliationStatus:
+          type: string
+          enum: [not_required, pending, reconciled]
+        reconciliationReference:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+        paidByUserId:
+          type: string
+          nullable: true
+        cancelledByUserId:
+          type: string
+          nullable: true
+        reconciledByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        reconciledAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    FinancialPayableListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialPayable'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        openCount:
+          type: integer
+        paidCount:
+          type: integer
+        cancelledCount:
+          type: integer
+        totalAmount:
+          type: number
+        totalPaid:
+          type: number
+        totalOutstanding:
+          type: number
+
+    FinancialPayableReconciliationResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialPayable'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        pendingCount:
+          type: integer
+        reconciledCount:
+          type: integer
+        pendingAmount:
+          type: number
+        reconciledAmount:
+          type: number
+
+    FinancialIncomeStatementCategory:
+      type: object
+      properties:
+        category:
+          type: string
+        accruedAmount:
+          type: number
+        paidAmount:
+          type: number
+        outstandingAmount:
+          type: number
+
+    FinancialIncomeStatement:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        period:
+          type: object
+          properties:
+            dateFrom:
+              type: string
+              format: date
+            dateTo:
+              type: string
+              format: date
+        revenue:
+          type: object
+          properties:
+            grossRevenue:
+              type: number
+            realizedRevenue:
+              type: number
+            outstandingReceivables:
+              type: number
+            receivableCount:
+              type: integer
+            settledReceivableCount:
+              type: integer
+            openReceivableCount:
+              type: integer
+        expenses:
+          type: object
+          properties:
+            accruedExpenses:
+              type: number
+            paidExpenses:
+              type: number
+            outstandingPayables:
+              type: number
+            payableCount:
+              type: integer
+            paidPayableCount:
+              type: integer
+            openPayableCount:
+              type: integer
+            byCategory:
+              type: array
+              items:
+                $ref: '#/components/schemas/FinancialIncomeStatementCategory'
+        result:
+          type: object
+          properties:
+            realizedNetResult:
+              type: number
+            accrualNetResult:
+              type: number
+            grossMarginPercent:
+              type: number
+              nullable: true
+            cashConversionPercent:
+              type: number
+              nullable: true
 
     FinancialAgingBucket:
       type: object
@@ -9305,6 +11639,76 @@ components:
       properties:
         amountPaid:
           type: number
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, pix, card, cheque, other]
+          nullable: true
+        paymentReference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CreateFinancialPayableRequest:
+      type: object
+      required: [supplierName, description, category, costCenterCode, costCenterName, dueAt, totalAmount]
+      properties:
+        supplierName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        costCenterCode:
+          type: string
+        costCenterName:
+          type: string
+        issuedAt:
+          type: string
+          format: date
+        dueAt:
+          type: string
+          format: date
+        totalAmount:
+          type: number
+        sourceExpenseId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    PayFinancialPayableRequest:
+      type: object
+      required: [amountPaid]
+      properties:
+        amountPaid:
+          type: number
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, pix, card, cheque, other]
+          nullable: true
+        paymentReference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    ReconcileFinancialPayableRequest:
+      type: object
+      properties:
+        reconciliationReference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CancelFinancialPayableRequest:
+      type: object
+      properties:
         notes:
           type: string
           nullable: true
@@ -10076,6 +12480,58 @@ components:
         unitCostAmount:
           type: number
 
+    InventoryStockMovement:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        inventoryItemId:
+          type: string
+        movementType:
+          type: string
+          enum: [adjustment, inbound, outbound, transfer, consumption]
+        quantityDelta:
+          type: number
+        balanceBefore:
+          type: number
+        balanceAfter:
+          type: number
+        unitCostAmount:
+          type: number
+        reason:
+          type: string
+        reference:
+          type: string
+          nullable: true
+        recordedByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    InventoryStockMovementListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryStockMovement'
+
+    CreateInventoryStockAdjustmentRequest:
+      type: object
+      required: [inventoryItemId, quantityDelta, reason]
+      properties:
+        inventoryItemId:
+          type: string
+        quantityDelta:
+          type: number
+        reason:
+          type: string
+        reference:
+          type: string
+
     Notification:
       type: object
       properties:
@@ -10319,6 +12775,137 @@ components:
           type: string
           format: date-time
 
+    InpatientOccurrenceListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InpatientOccurrence'
+
+    InpatientOccurrence:
+      type: object
+      required:
+        [id, accountId, stayId, encounterId, type, severity, title, description, authoredByUserId, createdAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        stayId:
+          type: string
+        encounterId:
+          type: string
+        type:
+          type: string
+          enum: [clinical, nursing, medication, feeding, behavior, administrative]
+        severity:
+          type: string
+          enum: [info, attention, critical]
+        title:
+          type: string
+        description:
+          type: string
+        authoredByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    InpatientDailyChargeListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InpatientDailyCharge'
+
+    InpatientDailyChargeWorklistResponse:
+      type: object
+      required: [items, totalPendingAmount, totalBilledAmount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InpatientDailyChargeWorklistItem'
+        totalPendingAmount:
+          type: number
+        totalBilledAmount:
+          type: number
+
+    InpatientDailyCharge:
+      type: object
+      required:
+        [
+          id,
+          accountId,
+          stayId,
+          encounterId,
+          patientId,
+          description,
+          chargeDate,
+          quantity,
+          unitAmount,
+          totalAmount,
+          status,
+          createdByUserId,
+          createdAt,
+          updatedAt
+        ]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        stayId:
+          type: string
+        encounterId:
+          type: string
+        patientId:
+          type: string
+        description:
+          type: string
+        chargeDate:
+          type: string
+          format: date
+        quantity:
+          type: number
+        unitAmount:
+          type: number
+        totalAmount:
+          type: number
+        status:
+          type: string
+          enum: [pending, billed, cancelled]
+        billingRecordId:
+          type: string
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InpatientDailyChargeWorklistItem:
+      allOf:
+        - $ref: '#/components/schemas/InpatientDailyCharge'
+        - type: object
+          required: [unit, ward, bed, stayStatus]
+          properties:
+            unit:
+              type: string
+            ward:
+              type: string
+            bed:
+              type: string
+            stayStatus:
+              type: string
+              enum: [admitted, stable, transferred, discharged]
+
     InpatientHandoverPreviewResponse:
       type: object
       required: [generatedAt, totalActiveStays, items]
@@ -10410,6 +12997,74 @@ components:
         name:
           type: string
 
+    AccessModulePermissionMatrixResponse:
+      type: object
+      required: [generatedAt, accountId, items]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        accountId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessModulePermissionMatrixEntry'
+
+    AccessModulePermissionMatrixEntry:
+      type: object
+      required:
+        - module
+        - permissionCodes
+        - actions
+        - rolesAllowed
+        - teamOverrideCount
+        - sectorOverrideCount
+        - userOverrideCount
+        - coverageStatus
+      properties:
+        module:
+          type: string
+          example: billing
+        permissionCodes:
+          type: array
+          items:
+            type: string
+          example: [billing.read, billing.manage]
+        actions:
+          type: object
+          required: [consult, insert, update, delete, execute, admin]
+          properties:
+            consult:
+              type: boolean
+            insert:
+              type: boolean
+            update:
+              type: boolean
+            delete:
+              type: boolean
+            execute:
+              type: boolean
+            admin:
+              type: boolean
+        rolesAllowed:
+          type: array
+          items:
+            type: string
+          example: [admin, finance]
+        teamOverrideCount:
+          type: integer
+          minimum: 0
+        sectorOverrideCount:
+          type: integer
+          minimum: 0
+        userOverrideCount:
+          type: integer
+          minimum: 0
+        coverageStatus:
+          type: string
+          enum: [complete, partial, read-only]
+
     StaffMember:
       type: object
       properties:
@@ -10452,6 +13107,76 @@ components:
         correlationId:
           type: string
         createdAt:
+          type: string
+          format: date-time
+
+    OperationalAuditCoverageReport:
+      type: object
+      required:
+        [
+          generatedAt,
+          totalEvents,
+          eventsByModule,
+          eventsByRiskLevel,
+          requirements,
+          coveredRequirements,
+          missingRequirements,
+          coveragePercent
+        ]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        accountId:
+          type: string
+        totalEvents:
+          type: integer
+        eventsByModule:
+          type: object
+          additionalProperties:
+            type: integer
+        eventsByRiskLevel:
+          type: object
+          properties:
+            low:
+              type: integer
+            medium:
+              type: integer
+            high:
+              type: integer
+        requirements:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationalAuditCoverageItem'
+        coveredRequirements:
+          type: integer
+        missingRequirements:
+          type: integer
+        coveragePercent:
+          type: number
+
+    OperationalAuditCoverageItem:
+      type: object
+      required: [id, module, action, minimumRiskLevel, description, covered]
+      properties:
+        id:
+          type: string
+        module:
+          type: string
+        action:
+          type: string
+        entityType:
+          type: string
+        minimumRiskLevel:
+          type: string
+          enum: [low, medium, high]
+        description:
+          type: string
+        covered:
+          type: boolean
+        evidenceEventId:
+          type: string
+        evidenceOccurredAt:
           type: string
           format: date-time
 
@@ -10545,6 +13270,359 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    CounterSaleStatus:
+      type: string
+      enum: [open, closed, cancelled]
+
+    CounterSaleItemType:
+      type: string
+      enum: [product, service]
+
+    CounterSalePaymentMethod:
+      type: string
+      enum:
+        - cash
+        - credit_card
+        - debit_card
+        - pix
+        - bank_transfer
+        - check
+        - insurance
+        - other
+
+    CounterSale:
+      type: object
+      required:
+        - id
+        - accountId
+        - number
+        - ownerId
+        - status
+        - subtotal
+        - discountAmount
+        - total
+        - paidAmount
+        - balanceDue
+        - openedByUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        number:
+          type: string
+          example: CS-000001
+        ownerId:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/CounterSaleStatus'
+        subtotal:
+          type: number
+          format: double
+        discountAmount:
+          type: number
+          format: double
+        total:
+          type: number
+          format: double
+        paidAmount:
+          type: number
+          format: double
+        balanceDue:
+          type: number
+          format: double
+        notes:
+          type: string
+          nullable: true
+        openedByUserId:
+          type: string
+        closedByUserId:
+          type: string
+          nullable: true
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CounterSaleItem:
+      type: object
+      required:
+        - id
+        - counterSaleId
+        - accountId
+        - itemType
+        - nameSnapshot
+        - unitPrice
+        - quantity
+        - discountAmount
+        - lineTotal
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        counterSaleId:
+          type: string
+        accountId:
+          type: string
+        itemType:
+          $ref: '#/components/schemas/CounterSaleItemType'
+        catalogItemId:
+          type: string
+          nullable: true
+        nameSnapshot:
+          type: string
+        codeSnapshot:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+          format: double
+        quantity:
+          type: number
+          minimum: 1
+        discountAmount:
+          type: number
+          format: double
+          minimum: 0
+        lineTotal:
+          type: number
+          format: double
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CounterSalePayment:
+      type: object
+      required:
+        - id
+        - counterSaleId
+        - accountId
+        - method
+        - amount
+        - installments
+        - createdAt
+      properties:
+        id:
+          type: string
+        counterSaleId:
+          type: string
+        accountId:
+          type: string
+        method:
+          $ref: '#/components/schemas/CounterSalePaymentMethod'
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+        reference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CounterSaleDetail:
+      allOf:
+        - $ref: '#/components/schemas/CounterSale'
+        - type: object
+          required: [items, payments]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CounterSaleItem'
+            payments:
+              type: array
+              items:
+                $ref: '#/components/schemas/CounterSalePayment'
+
+    CounterSalesListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CounterSale'
+
+    OpenCounterSaleRequest:
+      type: object
+      properties:
+        ownerId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CreateCounterSaleItemRequest:
+      type: object
+      required: [itemType, nameSnapshot, unitPrice]
+      properties:
+        itemType:
+          $ref: '#/components/schemas/CounterSaleItemType'
+        catalogItemId:
+          type: string
+          nullable: true
+        nameSnapshot:
+          type: string
+          minLength: 1
+        codeSnapshot:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+          format: double
+          minimum: 0
+        quantity:
+          type: number
+          minimum: 1
+          default: 1
+        discountAmount:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+        notes:
+          type: string
+          nullable: true
+
+    UpdateCounterSaleItemRequest:
+      type: object
+      properties:
+        quantity:
+          type: number
+          minimum: 1
+        discountAmount:
+          type: number
+          format: double
+          minimum: 0
+        notes:
+          type: string
+          nullable: true
+
+    CreateCounterSalePaymentRequest:
+      type: object
+      required: [method, amount]
+      properties:
+        method:
+          $ref: '#/components/schemas/CounterSalePaymentMethod'
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        installments:
+          type: integer
+          minimum: 1
+          default: 1
+        reference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CounterSalesCommercialDashboard:
+      type: object
+      required:
+        - openSales
+        - closedToday
+        - grossRevenueToday
+        - netRevenueToday
+        - avgTicket
+        - salesByPaymentMethod
+        - topProducts
+        - topServices
+        - quotesIssued
+        - quotesConverted
+        - lowStockAlerts
+      properties:
+        openSales:
+          type: integer
+        closedToday:
+          type: integer
+        grossRevenueToday:
+          type: number
+          format: double
+        netRevenueToday:
+          type: number
+          format: double
+        avgTicket:
+          type: number
+          format: double
+        salesByPaymentMethod:
+          type: array
+          items:
+            type: object
+            required: [method, total]
+            properties:
+              method:
+                type: string
+              total:
+                type: number
+                format: double
+        topProducts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CounterSalesDashboardLeader'
+        topServices:
+          type: array
+          items:
+            $ref: '#/components/schemas/CounterSalesDashboardLeader'
+        quotesIssued:
+          type: integer
+        quotesConverted:
+          type: integer
+        lowStockAlerts:
+          type: array
+          items:
+            type: object
+            required: [name, code, onHand, reorderLevel]
+            properties:
+              name:
+                type: string
+              code:
+                type: string
+              onHand:
+                type: number
+              reorderLevel:
+                type: number
+
+    CounterSalesDashboardLeader:
+      type: object
+      required: [name, quantity, revenue]
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        revenue:
+          type: number
+          format: double
 
     PrescriptionExecution:
       type: object
@@ -10658,6 +13736,15 @@ components:
           type: string
         resultAttachmentId:
           type: string
+        resultedAt:
+          type: string
+          format: date-time
+        releasedByUserId:
+          type: string
+        signedByUserId:
+          type: string
+        signatureHash:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -10692,6 +13779,12 @@ components:
         resultAttachmentId:
           type: string
         collectedByUserId:
+          type: string
+        releasedByUserId:
+          type: string
+        signedByUserId:
+          type: string
+        signatureHash:
           type: string
 
     DiagnosticOrderListResponse:
@@ -10945,7 +14038,7 @@ components:
     PaginatedOwners:
       type: object
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/Owner'
@@ -10959,7 +14052,7 @@ components:
     PaginatedPatients:
       type: object
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/Patient'
@@ -11720,6 +14813,1110 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LaboratoryResultImportResponse'
+
+    CustomerPackage:
+      type: object
+      required:
+        - id
+        - accountId
+        - ownerId
+        - number
+        - status
+        - startsAt
+        - createdByUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        ownerId:
+          type: string
+        patientId:
+          type: string
+          nullable: true
+        number:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, expired, cancelled, completed]
+        startsAt:
+          type: string
+          format: date
+        expiresAt:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+        renewedFromPackageId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PackageItem:
+      type: object
+      required:
+        - id
+        - accountId
+        - packageId
+        - itemKind
+        - nameSnapshot
+        - quantityPurchased
+        - quantityConsumed
+        - unitPrice
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        packageId:
+          type: string
+        itemKind:
+          type: string
+          enum: [service, product]
+        catalogItemId:
+          type: string
+          nullable: true
+        nameSnapshot:
+          type: string
+        quantityPurchased:
+          type: integer
+        quantityConsumed:
+          type: integer
+        unitPrice:
+          type: number
+        validFrom:
+          type: string
+          format: date
+          nullable: true
+        validUntil:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PackageConsumption:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        packageId:
+          type: string
+        packageItemId:
+          type: string
+        quantity:
+          type: integer
+        consumedByUserId:
+          type: string
+        consumedAt:
+          type: string
+          format: date
+        sourceType:
+          type: string
+          enum: [appointment, encounter, counter_sale, manual]
+        sourceId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    PackageBalanceItem:
+      type: object
+      properties:
+        packageItemId:
+          type: string
+        itemKind:
+          type: string
+          enum: [service, product]
+        nameSnapshot:
+          type: string
+        quantityPurchased:
+          type: integer
+        quantityConsumed:
+          type: integer
+        quantityAvailable:
+          type: integer
+        validUntil:
+          type: string
+          format: date
+          nullable: true
+
+    CustomerPackageDetail:
+      allOf:
+        - $ref: '#/components/schemas/CustomerPackage'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PackageItem'
+            consumptions:
+              type: array
+              items:
+                $ref: '#/components/schemas/PackageConsumption'
+            balance:
+              type: array
+              items:
+                $ref: '#/components/schemas/PackageBalanceItem'
+
+    CreatePackageRequest:
+      type: object
+      required: [ownerId]
+      properties:
+        ownerId:
+          type: string
+        patientId:
+          type: string
+          nullable: true
+        startsAt:
+          type: string
+          format: date
+          nullable: true
+        expiresAt:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    AddPackageItemRequest:
+      type: object
+      required: [itemKind, nameSnapshot, quantityPurchased, unitPrice]
+      properties:
+        itemKind:
+          type: string
+          enum: [service, product]
+        catalogItemId:
+          type: string
+          nullable: true
+        nameSnapshot:
+          type: string
+        quantityPurchased:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          minimum: 0
+        validFrom:
+          type: string
+          format: date
+          nullable: true
+        validUntil:
+          type: string
+          format: date
+          nullable: true
+
+    ConsumePackageItemRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+        consumedAt:
+          type: string
+          format: date
+          nullable: true
+        sourceType:
+          type: string
+          enum: [appointment, encounter, counter_sale, manual]
+        sourceId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    RenewPackageRequest:
+      type: object
+      properties:
+        startsAt:
+          type: string
+          format: date
+          nullable: true
+        expiresAt:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CommissionRule:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        description:
+          type: string
+        scope:
+          type: string
+          enum: [global, department, job_title, staff]
+        staffId:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        jobTitle:
+          type: string
+          nullable: true
+        itemKind:
+          type: string
+          enum: [any, service, product, procedure, exam, other]
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+        isActive:
+          type: boolean
+        nextRunAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateCommissionRuleRequest:
+      type: object
+      required: [description, percentage]
+      properties:
+        description:
+          type: string
+        scope:
+          type: string
+          enum: [global, department, job_title, staff]
+        staffId:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        jobTitle:
+          type: string
+          nullable: true
+        itemKind:
+          type: string
+          enum: [any, service, product, procedure, exam, other]
+          default: any
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+        isActive:
+          type: boolean
+
+    CommissionRuleListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommissionRule'
+
+    CommissionSourceLine:
+      type: object
+      required: [staffId, staffName, itemKind, sourceType, sourceId, sourceDescription, baseAmount, occurredAt]
+      properties:
+        staffId:
+          type: string
+        staffName:
+          type: string
+        department:
+          type: string
+          nullable: true
+        jobTitle:
+          type: string
+          nullable: true
+        itemKind:
+          type: string
+          enum: [service, product, procedure, exam, other]
+        sourceType:
+          type: string
+          enum: [billing_item, counter_sale_item, package_consumption, manual]
+        sourceId:
+          type: string
+        sourceDescription:
+          type: string
+        baseAmount:
+          type: number
+          minimum: 0
+        occurredAt:
+          type: string
+          format: date
+
+    CommissionLine:
+      allOf:
+        - $ref: '#/components/schemas/CommissionSourceLine'
+        - type: object
+          properties:
+            id:
+              type: string
+            accountId:
+              type: string
+            calculationId:
+              type: string
+            ruleId:
+              type: string
+              nullable: true
+            percentage:
+              type: number
+              minimum: 0
+              maximum: 100
+            commissionAmount:
+              type: number
+              minimum: 0
+
+    CommissionCalculation:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        number:
+          type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, reviewed, paid, cancelled]
+        totalBaseAmount:
+          type: number
+          minimum: 0
+        totalCommissionAmount:
+          type: number
+          minimum: 0
+        createdByUserId:
+          type: string
+        reviewedByUserId:
+          type: string
+          nullable: true
+        paidByUserId:
+          type: string
+          nullable: true
+        cancelledByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CommissionCalculationDetail:
+      allOf:
+        - $ref: '#/components/schemas/CommissionCalculation'
+        - type: object
+          properties:
+            lines:
+              type: array
+              items:
+                $ref: '#/components/schemas/CommissionLine'
+
+    CommissionCalculationListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommissionCalculationDetail'
+
+    CalculateCommissionsRequest:
+      type: object
+      required: [periodStart, periodEnd, lines]
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommissionSourceLine'
+        notes:
+          type: string
+          nullable: true
+
+    ReportColumn:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [string, number, currency, date, datetime, status]
+
+    ReportDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [executive, financial, commercial, clinical, inventory, staff]
+        requiredPermission:
+          type: string
+        supportedFormats:
+          type: array
+          items:
+            type: string
+            enum: [json, csv]
+        filterSchema:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [string, date, boolean, number]
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportColumn'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReportDefinitionListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportDefinition'
+
+    ReportExecution:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        reportId:
+          type: string
+        requestedByUserId:
+          type: string
+        status:
+          type: string
+          enum: [completed]
+        filters:
+          type: object
+          additionalProperties: true
+        rowCount:
+          type: integer
+          minimum: 0
+        generatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    ReportExecutionDetail:
+      allOf:
+        - $ref: '#/components/schemas/ReportExecution'
+        - type: object
+          properties:
+            columns:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReportColumn'
+            rows:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+
+    ReportExecutionListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportExecution'
+
+    ExecuteReportRequest:
+      type: object
+      required: [reportId]
+      properties:
+        reportId:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+
+    ExportReportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [json, csv]
+          default: csv
+
+    ReportExport:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        executionId:
+          type: string
+        format:
+          type: string
+          enum: [json, csv]
+        filename:
+          type: string
+        contentType:
+          type: string
+        content:
+          type: string
+        exportedByUserId:
+          type: string
+        exportedAt:
+          type: string
+          format: date-time
+
+    ReportSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        reportId:
+          type: string
+        name:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        format:
+          type: string
+          enum: [json, csv]
+        filters:
+          type: object
+          additionalProperties: true
+        recipients:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        nextRunAt:
+          type: string
+          format: date-time
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastExecutionId:
+          type: string
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateReportScheduleRequest:
+      type: object
+      required: [reportId, name, frequency]
+      properties:
+        reportId:
+          type: string
+        name:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        format:
+          type: string
+          enum: [json, csv]
+          default: csv
+        filters:
+          type: object
+          additionalProperties: true
+        recipients:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    UpdateReportScheduleRequest:
+      type: object
+      required: [isActive]
+      properties:
+        isActive:
+          type: boolean
+
+    ReportScheduleListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSchedule'
+
+    ReportScheduleDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        scheduleId:
+          type: string
+        executionId:
+          type: string
+          nullable: true
+        recipient:
+          type: string
+        status:
+          type: string
+          enum: [sent, failed]
+        format:
+          type: string
+          enum: [json, csv]
+        deliveredAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    ReportScheduleDeliveryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportScheduleDelivery'
+
+    ReportScheduleDeliveryAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        scheduleId:
+          type: string
+        reportId:
+          type: string
+        recipient:
+          type: string
+        failureCount:
+          type: integer
+          minimum: 2
+        lastFailureAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+        severity:
+          type: string
+          enum: [medium, high]
+
+    ReportScheduleDeliveryAlertListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportScheduleDeliveryAlert'
+
+    MarketingChannel:
+      type: string
+      enum: [sms, whatsapp, email]
+
+    MarketingCampaignStatus:
+      type: string
+      enum: [draft, scheduled, running, sent, cancelled]
+
+    MarketingDeliveryStatus:
+      type: string
+      enum: [queued, sent, failed, skipped]
+
+    MarketingSegmentCriteria:
+      type: object
+      properties:
+        ownerGroups:
+          type: array
+          items:
+            type: string
+        patientSpecies:
+          type: array
+          items:
+            type: string
+        consentPurpose:
+          type: string
+          enum: [marketing, transactional, preventive]
+        tags:
+          type: array
+          items:
+            type: string
+
+    MarketingSegment:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        criteria:
+          $ref: '#/components/schemas/MarketingSegmentCriteria'
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MarketingTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        channel:
+          $ref: '#/components/schemas/MarketingChannel'
+        subject:
+          type: string
+          nullable: true
+        body:
+          type: string
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MarketingCampaign:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        channel:
+          $ref: '#/components/schemas/MarketingChannel'
+        status:
+          $ref: '#/components/schemas/MarketingCampaignStatus'
+        segmentId:
+          type: string
+        templateId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledByUserId:
+          type: string
+          nullable: true
+        estimatedAudience:
+          type: integer
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MarketingCampaignDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        campaignId:
+          type: string
+        ownerId:
+          type: string
+        patientId:
+          type: string
+          nullable: true
+        channel:
+          $ref: '#/components/schemas/MarketingChannel'
+        recipient:
+          type: string
+        subject:
+          type: string
+          nullable: true
+        body:
+          type: string
+        status:
+          $ref: '#/components/schemas/MarketingDeliveryStatus'
+        provider:
+          type: string
+          nullable: true
+        providerMessageId:
+          type: string
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        attemptCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MarketingSegmentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingSegment'
+
+    MarketingTemplateListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingTemplate'
+
+    MarketingCampaignListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingCampaign'
+
+    MarketingCampaignDeliveryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingCampaignDelivery'
+
+    CreateMarketingSegmentRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        criteria:
+          $ref: '#/components/schemas/MarketingSegmentCriteria'
+
+    CreateMarketingTemplateRequest:
+      type: object
+      required: [name, channel, body]
+      properties:
+        name:
+          type: string
+        channel:
+          $ref: '#/components/schemas/MarketingChannel'
+        subject:
+          type: string
+        body:
+          type: string
+
+    MarketingAudienceContact:
+      type: object
+      required: [type, value]
+      properties:
+        type:
+          $ref: '#/components/schemas/MarketingChannel'
+        value:
+          type: string
+
+    MarketingAudienceMember:
+      type: object
+      required: [ownerId, ownerName, contacts]
+      properties:
+        ownerId:
+          type: string
+        ownerName:
+          type: string
+        ownerGroup:
+          type: string
+        consentPurposes:
+          type: array
+          items:
+            type: string
+            enum: [marketing, transactional, preventive]
+        patientId:
+          type: string
+        patientName:
+          type: string
+        patientSpecies:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingAudienceContact'
+
+    CreateMarketingCampaignRequest:
+      type: object
+      required: [name, channel, segmentId, templateId]
+      properties:
+        name:
+          type: string
+        channel:
+          $ref: '#/components/schemas/MarketingChannel'
+        segmentId:
+          type: string
+        templateId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        audience:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingAudienceMember'
+
+    DispatchMarketingCampaignRequest:
+      type: object
+      required: [audience]
+      properties:
+        audience:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingAudienceMember'
+
+    MarketingCampaignDispatchResult:
+      type: object
+      properties:
+        campaign:
+          $ref: '#/components/schemas/MarketingCampaign'
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketingCampaignDelivery'
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            sent:
+              type: integer
+            failed:
+              type: integer
+            skipped:
+              type: integer
 
     PreventiveEvent:
       type: object

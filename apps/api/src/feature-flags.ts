@@ -199,19 +199,19 @@ export async function createApiFeatureFlags(params: {
     providerName: provider.name,
     enabledKeys,
     decisions,
-    authOidcEnabled: decisions['auth.oidc.enabled']?.enabled ?? false,
-    authWebauthnEnabled: decisions['auth.webauthn.enabled']?.enabled ?? false,
+    authOidcEnabled: decisions['auth.oidc.enabled'].enabled,
+    authWebauthnEnabled: decisions['auth.webauthn.enabled'].enabled,
     runtimeDistributedStateEnabled:
-      decisions['runtime.distributed_state.enabled']?.enabled ?? false,
-    fiscalBackofficeEnabled: decisions['fiscal.backoffice.enabled']?.enabled ?? false,
+      decisions['runtime.distributed_state.enabled'].enabled,
+    fiscalBackofficeEnabled: decisions['fiscal.backoffice.enabled'].enabled,
     notificationsWhatsappRemindersEnabled:
-      decisions['notifications.whatsapp.reminders.enabled']?.enabled ?? false,
+      decisions['notifications.whatsapp.reminders.enabled'].enabled,
     notificationsWhatsappInboundActionsEnabled:
-      decisions['notifications.whatsapp.inbound_actions.enabled']?.enabled ?? false,
-    mlSmartSchedulingEnabled: decisions['ml.smart_scheduling.enabled']?.enabled ?? true,
-    mlForecastingEnabled: decisions['ml.forecasting.enabled']?.enabled ?? true,
-    mlAnomalyDetectionEnabled: decisions['ml.anomaly_detection.enabled']?.enabled ?? true,
-    mlOcrFiscalEnabled: decisions['ml.ocr_fiscal.enabled']?.enabled ?? true,
+      decisions['notifications.whatsapp.inbound_actions.enabled'].enabled,
+    mlSmartSchedulingEnabled: decisions['ml.smart_scheduling.enabled'].enabled,
+    mlForecastingEnabled: decisions['ml.forecasting.enabled'].enabled,
+    mlAnomalyDetectionEnabled: decisions['ml.anomaly_detection.enabled'].enabled,
+    mlOcrFiscalEnabled: decisions['ml.ocr_fiscal.enabled'].enabled,
     provider
   };
 }

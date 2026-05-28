@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   CreateInventoryConsumptionRequest,
   CreateInventoryItemRequest,
+  CreateInventoryStockAdjustmentRequest,
   UpdateInventoryItemRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
@@ -13,6 +14,8 @@ import type {
   InventoryLotSummary,
   InventoryItemId,
   InventoryItemSummary,
+  InventoryStockMovementId,
+  InventoryStockMovementSummary,
   UserId
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -216,6 +219,7 @@ export class InventoryService {
   readonly #items = new Map<InventoryItemId, InventoryItemSummary>();
   readonly #consumptions: InventoryConsumptionSummary[] = [];
   readonly #lots = new Map<InventoryLotId, InventoryLotSummary>();
+  readonly #movements: InventoryStockMovementSummary[] = [];
 
   public constructor(
     encounters: EncountersService,
@@ -286,11 +290,13 @@ export class InventoryService {
     if (!this.#repository) return;
     const items = await this.#repository.findAllItems(accountId);
     const consumptions = await this.#repository.findConsumptions(accountId);
+    const movements = await this.#repository.findStockMovements(accountId);
     for (const item of items) {
       this.#items.set(item.id, item);
       this.replaceLotsForItem(item);
     }
     this.#consumptions.splice(0, this.#consumptions.length, ...consumptions);
+    this.#movements.splice(0, this.#movements.length, ...movements);
   }
 
   public listItems(
@@ -373,6 +379,18 @@ export class InventoryService {
     if (this.#repository) {
       await this.#repository.createConsumption(consumption);
     }
+    await this.recordStockMovement({
+      accountId: encounter.accountId,
+      inventoryItemId: item.id,
+      movementType: 'consumption',
+      quantityDelta: -quantity,
+      balanceBefore: item.onHandQuantity,
+      balanceAfter: updatedItem.onHandQuantity,
+      unitCostAmount: item.unitCostAmount,
+      reason: `Consumo assistencial ${consumption.sourceEntityType}`,
+      reference: consumption.sourceEntityId,
+      recordedByUserId: actorUserId
+    });
     return consumption;
   }
 
@@ -401,6 +419,66 @@ export class InventoryService {
         const rightExpiry = right.expiryDate ?? '9999-12-31T00:00:00.000Z';
         return leftExpiry.localeCompare(rightExpiry);
       });
+  }
+
+  public listStockMovements(
+    accountId: AccountId,
+    inventoryItemId?: string
+  ): readonly InventoryStockMovementSummary[] {
+    return this.#movements.filter(
+      (movement) =>
+        movement.accountId === accountId &&
+        (!inventoryItemId || movement.inventoryItemId === inventoryItemId)
+    );
+  }
+
+  public async createStockAdjustment(
+    accountId: AccountId,
+    recordedByUserId: UserId,
+    payload: CreateInventoryStockAdjustmentRequest
+  ): Promise<InventoryStockMovementSummary> {
+    const item = this.getItemOrThrow(payload.inventoryItemId as never);
+    if (item.accountId !== accountId) {
+      throw new NotFoundError('Inventory item not found', { inventoryItemId: item.id });
+    }
+    const quantityDelta = requireNonZeroNumber(payload.quantityDelta, 'quantityDelta');
+    const balanceBefore = item.onHandQuantity;
+    const balanceAfter = Number((balanceBefore + quantityDelta).toFixed(2));
+    if (balanceAfter < 0) {
+      throw new ConflictError('Inventory adjustment cannot produce negative stock', {
+        inventoryItemId: item.id,
+        balanceBefore,
+        quantityDelta
+      });
+    }
+
+    const updatedItem: InventoryItemSummary = {
+      ...item,
+      onHandQuantity: balanceAfter,
+      updatedAt: nowIso()
+    };
+    this.#items.set(item.id, updatedItem);
+    if (quantityDelta < 0) {
+      this.drainLots(item.id, Math.abs(quantityDelta));
+    } else {
+      this.replaceLotsForItem(updatedItem);
+    }
+    if (this.#repository) {
+      await this.#repository.updateItem(updatedItem);
+    }
+
+    return this.recordStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'adjustment',
+      quantityDelta,
+      balanceBefore,
+      balanceAfter,
+      unitCostAmount: item.unitCostAmount,
+      reason: payload.reason.trim(),
+      reference: payload.reference?.trim() || undefined,
+      recordedByUserId
+    });
   }
 
   public async consumeForSale(
@@ -448,6 +526,18 @@ export class InventoryService {
     if (this.#repository) {
       await this.#repository.createConsumption(consumption);
     }
+    await this.recordStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'consumption',
+      quantityDelta: -qty,
+      balanceBefore: item.onHandQuantity,
+      balanceAfter: updatedItem.onHandQuantity,
+      unitCostAmount: item.unitCostAmount,
+      reason: 'Venda comercial',
+      reference: consumption.id,
+      recordedByUserId: '' as never
+    });
     return consumption;
   }
 
@@ -521,6 +611,28 @@ export class InventoryService {
 
     return updatedItem;
   }
+
+  private async recordStockMovement(input: Omit<InventoryStockMovementSummary, 'id' | 'createdAt'>): Promise<InventoryStockMovementSummary> {
+    const movement: InventoryStockMovementSummary = {
+      id: createCorrelationId('stockmov') as InventoryStockMovementId,
+      ...input,
+      reason: input.reason.trim() || 'Movimentacao de estoque',
+      createdAt: nowIso()
+    };
+    this.#movements.unshift(movement);
+    if (this.#repository) {
+      await this.#repository.createStockMovement(movement);
+    }
+    return movement;
+  }
+}
+
+function requireNonZeroNumber(value: number, field: string): number {
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized) || normalized === 0) {
+    throw new ConflictError(`${field} must be a non-zero number`, { field });
+  }
+  return Number(normalized.toFixed(2));
 }
 
 export { createSeedItems };

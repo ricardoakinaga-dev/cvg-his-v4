@@ -22,6 +22,7 @@ const API_DOCS_RESPONSE = {
     health: { url: '/health', method: 'GET', description: 'Health check' },
     ready: { url: '/ready', method: 'GET', description: 'Readiness check' },
     metrics: { url: '/metrics', method: 'GET', description: 'Prometheus metrics' },
+    slos: { url: '/slos', method: 'GET', description: 'SLO compliance report' },
     openapi: {
       url: '/openapi.json',
       method: 'GET',

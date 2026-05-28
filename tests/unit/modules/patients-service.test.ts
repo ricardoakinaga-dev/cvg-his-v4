@@ -159,7 +159,7 @@ describe('PatientsService coverage guard', () => {
     ]);
   });
 
-  it('creates secondary links and enforces relationship consistency rules', () => {
+  it('creates secondary links and enforces relationship consistency rules', async () => {
     const primaryOwner = createOwner(owners, 'Tutor Primario');
     const spouseOwner = createOwner(owners, 'Tutor Secundario', '11999990002');
     const patient = service.create(ACCOUNT_ID, {
@@ -178,7 +178,21 @@ describe('PatientsService coverage guard', () => {
 
     expect(secondary.relationshipType).toBe('spouse');
     expect(service.listLinks({ ownerId: spouseOwner.id })).toHaveLength(1);
-    expect(linkRepository.getAll()).toHaveLength(1);
+    await service.waitForPersistence();
+    expect(linkRepository.getAll()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          patientId: patient.id,
+          ownerId: primaryOwner.id,
+          relationshipType: 'primary'
+        }),
+        expect.objectContaining({
+          patientId: patient.id,
+          ownerId: spouseOwner.id,
+          relationshipType: 'spouse'
+        })
+      ])
+    );
 
     expect(() =>
       service.createLink(ACCOUNT_ID, {

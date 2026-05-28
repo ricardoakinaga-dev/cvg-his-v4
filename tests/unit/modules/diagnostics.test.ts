@@ -59,7 +59,8 @@ describe('module-diagnostics / operational contract', () => {
     });
     diagnostics.recordResult(order.id, {
       status: 'resulted',
-      resultAttachmentId: 'att_1'
+      resultAttachmentId: 'att_1',
+      releasedByUserId: 'lab_1'
     });
 
     const [catalog, results, detail] = await Promise.all([
@@ -135,7 +136,8 @@ describe('module-diagnostics / operational contract', () => {
     });
     diagnostics.recordResult(released.id, {
       status: 'resulted',
-      resultSummary: 'Tudo normal'
+      resultSummary: 'Tudo normal',
+      releasedByUserId: 'lab_2'
     });
 
     const [equipment, reportTypes, referenceValues, results] = await Promise.all([
@@ -259,7 +261,8 @@ describe('module-diagnostics / operational contract', () => {
     });
     diagnostics.recordResult(secondOrder.id, {
       status: 'resulted',
-      resultSummary: 'Liberado'
+      resultSummary: 'Liberado',
+      releasedByUserId: 'lab_11'
     });
 
     const encounterOrders = await laboratory.listOrders('acc_test' as never, encounter.id);

@@ -25,6 +25,8 @@ export type ClinicalEntryId = Brand<string, 'ClinicalEntryId'>;
 export type AttachmentId = Brand<string, 'AttachmentId'>;
 export type InpatientStayId = Brand<string, 'InpatientStayId'>;
 export type InpatientProgressId = Brand<string, 'InpatientProgressId'>;
+export type InpatientOccurrenceId = Brand<string, 'InpatientOccurrenceId'>;
+export type InpatientDailyChargeId = Brand<string, 'InpatientDailyChargeId'>;
 export type SurgeryCaseId = Brand<string, 'SurgeryCaseId'>;
 export type DiagnosticOrderId = Brand<string, 'DiagnosticOrderId'>;
 export type BillingRecordId = Brand<string, 'BillingRecordId'>;
@@ -33,6 +35,7 @@ export type ClinicalHandoffId = Brand<string, 'ClinicalHandoffId'>;
 export type InventoryItemId = Brand<string, 'InventoryItemId'>;
 export type InventoryConsumptionId = Brand<string, 'InventoryConsumptionId'>;
 export type InventoryLotId = Brand<string, 'InventoryLotId'>;
+export type InventoryStockMovementId = Brand<string, 'InventoryStockMovementId'>;
 export type NotificationId = Brand<string, 'NotificationId'>;
 export type NotificationJobId = Brand<string, 'NotificationJobId'>;
 export type SectorId = Brand<string, 'SectorId'>;
@@ -191,6 +194,19 @@ export interface RoleDefinition {
   readonly name: string;
   readonly description: string;
   readonly permissionCodes: readonly string[];
+}
+
+export type AccessRoutineAction = 'consult' | 'insert' | 'update' | 'delete' | 'execute' | 'admin';
+
+export interface AccessModulePermissionMatrixEntry {
+  readonly module: string;
+  readonly permissionCodes: readonly string[];
+  readonly actions: Record<AccessRoutineAction, boolean>;
+  readonly rolesAllowed: readonly string[];
+  readonly teamOverrideCount: number;
+  readonly sectorOverrideCount: number;
+  readonly userOverrideCount: number;
+  readonly coverageStatus: 'complete' | 'partial' | 'read-only';
 }
 
 export interface AccessProfile {
@@ -636,6 +652,44 @@ export interface InpatientProgressSummary {
   readonly createdAt: string;
 }
 
+export interface InpatientOccurrenceSummary {
+  readonly id: InpatientOccurrenceId;
+  readonly accountId: AccountId;
+  readonly stayId: InpatientStayId;
+  readonly encounterId: EncounterId;
+  readonly type: 'clinical' | 'nursing' | 'medication' | 'feeding' | 'behavior' | 'administrative';
+  readonly severity: 'info' | 'attention' | 'critical';
+  readonly title: string;
+  readonly description: string;
+  readonly authoredByUserId: UserId;
+  readonly createdAt: string;
+}
+
+export interface InpatientDailyChargeSummary {
+  readonly id: InpatientDailyChargeId;
+  readonly accountId: AccountId;
+  readonly stayId: InpatientStayId;
+  readonly encounterId: EncounterId;
+  readonly patientId: PatientId;
+  readonly description: string;
+  readonly chargeDate: string;
+  readonly quantity: number;
+  readonly unitAmount: number;
+  readonly totalAmount: number;
+  readonly status: 'pending' | 'billed' | 'cancelled';
+  readonly billingRecordId?: BillingRecordId | string;
+  readonly createdByUserId: UserId;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface InpatientDailyChargeWorklistItem extends InpatientDailyChargeSummary {
+  readonly unit: string;
+  readonly ward: string;
+  readonly bed: string;
+  readonly stayStatus: InpatientStaySummary['status'];
+}
+
 export interface SurgeryCaseSummary {
   readonly id: SurgeryCaseId;
   readonly accountId: AccountId;
@@ -667,6 +721,10 @@ export interface DiagnosticOrderSummary {
   readonly collectedByUserId?: string;
   readonly resultSummary?: string;
   readonly resultAttachmentId?: string;
+  readonly resultedAt?: string;
+  readonly releasedByUserId?: string;
+  readonly signedByUserId?: string;
+  readonly signatureHash?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -745,6 +803,7 @@ export interface BillingItemSummary {
     | 'diagnostic_order'
     | 'surgery_case'
     | 'inpatient_stay'
+    | 'inpatient_daily_charge'
     | 'prescription';
   readonly sourceEntityId?: string;
   readonly createdByUserId: UserId;
@@ -801,6 +860,21 @@ export interface InventoryLotSummary {
   readonly status: 'active' | 'expiring' | 'expired' | 'depleted';
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface InventoryStockMovementSummary {
+  readonly id: InventoryStockMovementId;
+  readonly accountId: AccountId;
+  readonly inventoryItemId: InventoryItemId;
+  readonly movementType: 'adjustment' | 'inbound' | 'outbound' | 'transfer' | 'consumption';
+  readonly quantityDelta: number;
+  readonly balanceBefore: number;
+  readonly balanceAfter: number;
+  readonly unitCostAmount: number;
+  readonly reason: string;
+  readonly reference?: string;
+  readonly recordedByUserId: UserId;
+  readonly createdAt: string;
 }
 
 export interface NotificationSummary {

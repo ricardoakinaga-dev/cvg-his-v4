@@ -6,6 +6,7 @@
       subtitle="Entrada estruturada para os blocos analíticos de financeiro, agenda, atendimento, cadastros e estoque"
     >
       <template #actions>
+        <DsButton variant="primary" tag="a" to="/reports/engine">Motor Enterprise</DsButton>
         <DsButton variant="secondary" tag="a" to="/administrative-reports">Hub executivo</DsButton>
       </template>
     </AppPageHeader>
@@ -33,6 +34,11 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const domains = [
+  {
+    title: 'Motor Enterprise de Relatórios',
+    description: 'Catálogo real, execução sob demanda, exportação e recorrência auditável para entregas premium.',
+    to: '/reports/engine'
+  },
   {
     title: 'Relatórios Financeiros',
     description: 'Recebíveis, cobrança, caixa e leitura consolidada do backoffice financeiro.',

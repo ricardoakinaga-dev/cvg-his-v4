@@ -5,6 +5,7 @@ dist/
 **/*.tsbuildinfo
 **/package-lock.json
 coverage/
+artifacts/
 test-results/
 playwright-report/
 e2e/report/

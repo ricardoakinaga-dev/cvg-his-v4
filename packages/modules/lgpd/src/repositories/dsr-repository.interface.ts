@@ -49,11 +49,14 @@ export interface DsrRepository {
 
   findByStatus(accountId: string, status: DsrStatus): Promise<readonly DataSubjectRequest[]>;
 
+  findByAccount(accountId: string): Promise<readonly DataSubjectRequest[]>;
+
   create(
     request: Omit<DataSubjectRequest, 'id' | 'requestedAt' | 'createdAt' | 'updatedAt'>
   ): Promise<DataSubjectRequest>;
 
   updateStatus(
+    accountId: string,
     id: string,
     status: DsrStatus,
     options?: {

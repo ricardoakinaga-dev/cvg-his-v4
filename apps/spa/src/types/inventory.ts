@@ -61,3 +61,22 @@ export interface InventoryLotSummary {
 export interface InventoryLotsListResponse {
   items: InventoryLotSummary[];
 }
+
+export interface InventoryStockMovementSummary {
+  id: string;
+  accountId: string;
+  inventoryItemId: string;
+  movementType: 'adjustment' | 'inbound' | 'outbound' | 'transfer' | 'consumption';
+  quantityDelta: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  unitCostAmount: number;
+  reason: string;
+  reference?: string;
+  recordedByUserId: string;
+  createdAt: string;
+}
+
+export interface InventoryStockMovementListResponse {
+  items: InventoryStockMovementSummary[];
+}

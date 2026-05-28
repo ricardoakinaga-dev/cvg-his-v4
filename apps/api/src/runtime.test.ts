@@ -457,6 +457,46 @@ test('runtime reconciles card capture into administrative financial state', asyn
   assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
 });
 
+test('runtime records cash withdrawal when payable is paid with cash method', async () => {
+  const runtime = createTestRuntime();
+  const login = await runtime.auth.login(
+    {
+      username: 'admin',
+      password: 'seed_admin'
+    },
+    'corr_payable_cash_runtime'
+  ) as AuthSessionResponse;
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+
+  const register = await runtime.cash.openRegister(principal.user.accountId, principal.user.id, {
+    openingAmount: 1000,
+    notes: 'Gaveta principal'
+  });
+  const payable = await runtime.financialPayables.createPayable(principal.user.accountId, principal.user.id, {
+    supplierName: 'Fornecedor de medicamentos',
+    description: 'NF caixa 001',
+    category: 'Compras',
+    costCenterCode: 'EST',
+    costCenterName: 'Estoque',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-20',
+    totalAmount: 300
+  });
+
+  await runtime.financialPayables.payPayable(principal.user.accountId, principal.user.id, payable.id, {
+    amountPaid: 300,
+    paymentMethod: 'cash',
+    paymentReference: 'gaveta-principal',
+    notes: 'Pagamento em dinheiro'
+  });
+
+  const movements = await runtime.cash.getMovements(register.id);
+  const withdrawal = movements.find((movement) => movement.reference === payable.id);
+  assert.equal(withdrawal?.movementType, 'withdrawal');
+  assert.equal(withdrawal?.amount, 300);
+  assert.equal(await runtime.cash.getCurrentBalance(register.id), 700);
+});
+
 test('runtime does not preload demo seeds when repository-backed services are configured', () => {
   const runtime = createTestRuntime({
     owner: {} as never,
@@ -993,7 +1033,8 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
 
   const resultedOrder = runtime.diagnostics.recordResult(order.id, {
     status: 'resulted',
-    resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.'
+    resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.',
+    releasedByUserId: veterinarian.user.id
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
     encounter.id,

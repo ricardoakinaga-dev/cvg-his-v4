@@ -1,8 +1,11 @@
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   AddInpatientProgressRequest,
+  AddInpatientOccurrenceRequest,
+  CreateInpatientDailyChargeRequest,
   CreateInpatientAdmissionRequest,
   InpatientHandoverPreviewResponse,
+  MarkInpatientDailyChargeBilledRequest,
   UpdateInpatientStatusRequest,
   AssignBedRequest
 } from '@cvg-his-v2/shared-contracts';
@@ -10,6 +13,11 @@ import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientProgressId,
   InpatientProgressSummary,
+  InpatientOccurrenceId,
+  InpatientOccurrenceSummary,
+  InpatientDailyChargeId,
+  InpatientDailyChargeSummary,
+  InpatientDailyChargeWorklistItem,
   InpatientStayId,
   InpatientStaySummary,
   UserId,
@@ -20,17 +28,31 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import {
   DatabaseInpatientStayRepository,
-  DatabaseInpatientProgressRepository
+  DatabaseInpatientProgressRepository,
+  DatabaseInpatientOccurrenceRepository,
+  DatabaseInpatientDailyChargeRepository
 } from './repositories/database-inpatient.repository.js';
 import type {
   InpatientStayRepository,
-  InpatientProgressRepository
+  InpatientProgressRepository,
+  InpatientOccurrenceRepository,
+  InpatientDailyChargeRepository
 } from './repositories/database-inpatient.repository.js';
 import { SectorBedService } from './sector-bed.service.js';
 import type { SectorBedServiceOptions } from './sector-bed.service.js';
 
-export type { InpatientStayRepository, InpatientProgressRepository };
-export { DatabaseInpatientStayRepository, DatabaseInpatientProgressRepository };
+export type {
+  InpatientStayRepository,
+  InpatientProgressRepository,
+  InpatientOccurrenceRepository,
+  InpatientDailyChargeRepository
+};
+export {
+  DatabaseInpatientStayRepository,
+  DatabaseInpatientProgressRepository,
+  DatabaseInpatientOccurrenceRepository,
+  DatabaseInpatientDailyChargeRepository
+};
 export {
   SectorBedService,
   DatabaseSectorRepository,
@@ -50,6 +72,8 @@ const VALID_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
 export interface InpatientServiceOptions {
   readonly stayRepository?: InpatientStayRepository;
   readonly progressRepository?: InpatientProgressRepository;
+  readonly occurrenceRepository?: InpatientOccurrenceRepository;
+  readonly dailyChargeRepository?: InpatientDailyChargeRepository;
   readonly sectorBedService?: SectorBedService;
 }
 
@@ -59,12 +83,22 @@ export interface InpatientStayListFilters {
   readonly includeDischarged?: boolean;
 }
 
+export interface InpatientDailyChargeWorklistFilters {
+  readonly status?: InpatientDailyChargeSummary['status'];
+  readonly unit?: string;
+  readonly ward?: string;
+}
+
 export class InpatientService {
   readonly #encounters: EncountersService;
   readonly #stays = new Map<InpatientStayId, InpatientStaySummary>();
   readonly #progress = new Map<InpatientStayId, InpatientProgressSummary[]>();
+  readonly #occurrences = new Map<InpatientStayId, InpatientOccurrenceSummary[]>();
+  readonly #dailyCharges = new Map<InpatientStayId, InpatientDailyChargeSummary[]>();
   readonly #stayRepository?: InpatientStayRepository;
   readonly #progressRepository?: InpatientProgressRepository;
+  readonly #occurrenceRepository?: InpatientOccurrenceRepository;
+  readonly #dailyChargeRepository?: InpatientDailyChargeRepository;
   readonly #sectorBedService?: SectorBedService;
   #pendingPersist: Promise<void> = Promise.resolve();
 
@@ -72,6 +106,8 @@ export class InpatientService {
     this.#encounters = encounters;
     this.#stayRepository = options?.stayRepository;
     this.#progressRepository = options?.progressRepository;
+    this.#occurrenceRepository = options?.occurrenceRepository;
+    this.#dailyChargeRepository = options?.dailyChargeRepository;
     this.#sectorBedService = options?.sectorBedService;
   }
 
@@ -93,6 +129,24 @@ export class InpatientService {
   private async persistProgress(progress: InpatientProgressSummary): Promise<void> {
     if (this.#progressRepository) {
       await this.#progressRepository.create(progress);
+    }
+  }
+
+  private async persistOccurrence(occurrence: InpatientOccurrenceSummary): Promise<void> {
+    if (this.#occurrenceRepository) {
+      await this.#occurrenceRepository.create(occurrence);
+    }
+  }
+
+  private async persistDailyCharge(charge: InpatientDailyChargeSummary): Promise<void> {
+    if (this.#dailyChargeRepository) {
+      await this.#dailyChargeRepository.create(charge);
+    }
+  }
+
+  private async updateDailyCharge(charge: InpatientDailyChargeSummary): Promise<void> {
+    if (this.#dailyChargeRepository) {
+      await this.#dailyChargeRepository.update(charge);
     }
   }
 
@@ -121,6 +175,8 @@ export class InpatientService {
     };
     this.#stays.set(stay.id, stay);
     this.#progress.set(stay.id, []);
+    this.#occurrences.set(stay.id, []);
+    this.#dailyCharges.set(stay.id, []);
     this.#enqueuePersist(async () => {
       await this.persistStay(stay);
       if (this.#sectorBedService && stay.bedId) {
@@ -259,8 +315,7 @@ export class InpatientService {
       createdAt: nowIso()
     };
     const current = this.#progress.get(stay.id) ?? [];
-    current.unshift(progress);
-    this.#progress.set(stay.id, current);
+    this.#progress.set(stay.id, [progress, ...current]);
     this.#enqueuePersist(async () => {
       await this.persistProgress(progress);
     });
@@ -270,6 +325,147 @@ export class InpatientService {
   public listProgress(stayId: InpatientStayId): readonly InpatientProgressSummary[] {
     this.getOrThrow(stayId);
     return [...(this.#progress.get(stayId) ?? [])];
+  }
+
+  public addOccurrence(
+    actorUserId: UserId,
+    payload: AddInpatientOccurrenceRequest
+  ): InpatientOccurrenceSummary {
+    const stay = this.getOrThrow(payload.stayId as never);
+
+    if (stay.status === 'discharged') {
+      throw new ValidationError('Cannot add occurrence to discharged stay');
+    }
+
+    const occurrence: InpatientOccurrenceSummary = {
+      id: createCorrelationId('stayocc') as InpatientOccurrenceId,
+      accountId: stay.accountId,
+      stayId: stay.id,
+      encounterId: stay.encounterId,
+      type: payload.type,
+      severity: payload.severity ?? 'info',
+      title: requireNonEmptyString(payload.title, 'title'),
+      description: requireNonEmptyString(payload.description, 'description'),
+      authoredByUserId: actorUserId,
+      createdAt: nowIso()
+    };
+    const current = this.#occurrences.get(stay.id) ?? [];
+    this.#occurrences.set(stay.id, [occurrence, ...current]);
+    this.#enqueuePersist(async () => {
+      await this.persistOccurrence(occurrence);
+    });
+    return occurrence;
+  }
+
+  public listOccurrences(stayId: InpatientStayId): readonly InpatientOccurrenceSummary[] {
+    this.getOrThrow(stayId);
+    return [...(this.#occurrences.get(stayId) ?? [])];
+  }
+
+  public createDailyCharge(
+    actorUserId: UserId,
+    payload: CreateInpatientDailyChargeRequest
+  ): InpatientDailyChargeSummary {
+    const stay = this.getOrThrow(payload.stayId as never);
+
+    if (stay.status === 'discharged') {
+      throw new ValidationError('Cannot create daily charge for discharged stay');
+    }
+
+    const quantity = payload.quantity ?? 1;
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new ValidationError('quantity must be greater than zero');
+    }
+    if (!Number.isFinite(payload.unitAmount) || payload.unitAmount <= 0) {
+      throw new ValidationError('unitAmount must be greater than zero');
+    }
+
+    const now = nowIso();
+    const dailyCharge: InpatientDailyChargeSummary = {
+      id: createCorrelationId('stayday') as InpatientDailyChargeId,
+      accountId: stay.accountId,
+      stayId: stay.id,
+      encounterId: stay.encounterId,
+      patientId: stay.patientId,
+      description: requireNonEmptyString(payload.description, 'description'),
+      chargeDate: payload.chargeDate ?? now.slice(0, 10),
+      quantity,
+      unitAmount: payload.unitAmount,
+      totalAmount: Math.round(quantity * payload.unitAmount * 100) / 100,
+      status: 'pending',
+      createdByUserId: actorUserId,
+      createdAt: now,
+      updatedAt: now
+    };
+    const current = this.#dailyCharges.get(stay.id) ?? [];
+    this.#dailyCharges.set(stay.id, [dailyCharge, ...current]);
+    this.#enqueuePersist(async () => {
+      await this.persistDailyCharge(dailyCharge);
+    });
+    return dailyCharge;
+  }
+
+  public listDailyCharges(stayId: InpatientStayId): readonly InpatientDailyChargeSummary[] {
+    this.getOrThrow(stayId);
+    return [...(this.#dailyCharges.get(stayId) ?? [])];
+  }
+
+  public listDailyChargeWorklist(
+    filters?: InpatientDailyChargeWorklistFilters
+  ): readonly InpatientDailyChargeWorklistItem[] {
+    return Array.from(this.#dailyCharges.entries())
+      .flatMap(([stayId, charges]) => {
+        const stay = this.#stays.get(stayId);
+        if (!stay) return [];
+        return charges.map((charge) => ({
+          ...charge,
+          unit: stay.unit,
+          ward: stay.ward,
+          bed: stay.bed,
+          stayStatus: stay.status
+        }));
+      })
+      .filter((charge) => (filters?.status ? charge.status === filters.status : true))
+      .filter((charge) => (filters?.unit ? charge.unit === filters.unit : true))
+      .filter((charge) => (filters?.ward ? charge.ward === filters.ward : true))
+      .sort((left, right) => {
+        const statusOrder = left.status.localeCompare(right.status);
+        if (statusOrder !== 0) return statusOrder;
+        return left.chargeDate.localeCompare(right.chargeDate);
+      });
+  }
+
+  public markDailyChargeBilled(
+    stayId: InpatientStayId,
+    chargeId: InpatientDailyChargeId,
+    payload?: MarkInpatientDailyChargeBilledRequest
+  ): InpatientDailyChargeSummary {
+    this.getOrThrow(stayId);
+    const charges = this.#dailyCharges.get(stayId) ?? [];
+    const charge = charges.find((item) => item.id === chargeId);
+
+    if (!charge) {
+      throw new NotFoundError('Inpatient daily charge not found', { stayId, chargeId });
+    }
+    if (charge.status !== 'pending') {
+      throw new ValidationError('Only pending daily charges can be billed');
+    }
+
+    const updated: InpatientDailyChargeSummary = {
+      ...charge,
+      status: 'billed',
+      billingRecordId: payload?.billingRecordId,
+      updatedAt: nowIso()
+    };
+
+    this.#dailyCharges.set(
+      stayId,
+      charges.map((item) => (item.id === chargeId ? updated : item))
+    );
+    this.#enqueuePersist(async () => {
+      await this.updateDailyCharge(updated);
+    });
+    return updated;
   }
 
   public updateStatus(

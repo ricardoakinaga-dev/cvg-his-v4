@@ -6,8 +6,8 @@ import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import { startWorkerObservability, withWorkerSpan } from './observability.js';
-import { createWorkerNotifications, createWorkerEventBus } from './runner.js';
-import { runWorkerTick, runEventBusTick } from './runner.js';
+import { createWorkerNotifications, createWorkerEventBus, createWorkerReports } from './runner.js';
+import { runWorkerTick, runEventBusTick, runScheduledReportsTick } from './runner.js';
 import { createWorkerFeatureFlags } from './feature-flags.js';
 import { createWorkerFeatureFlagMetricsCollector, getWorkerMetricsText } from './worker-metrics.js';
 import {
@@ -99,6 +99,14 @@ async function main() {
   const eventBus = createWorkerEventBus({
     eventBusRepository: bootstrap.outboxRepository
   });
+
+  const reports = createWorkerReports({
+    reportRepository: bootstrap.reportRepository
+  });
+
+  if (workerAccountId) {
+    await reports.hydrateFromDatabase(workerAccountId as never);
+  }
 
   const healthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -248,6 +256,37 @@ async function main() {
           );
         }
       );
+
+      if (workerAccountId) {
+        await withWorkerSpan(
+          'worker.reports.scheduled.tick',
+          {
+            'worker.correlation_id': correlationId,
+            'worker.persistence_mode': workerState.persistenceMode,
+            'worker.database_healthy': workerState.databaseHealthy
+          },
+          async () => {
+            await runWithTenantContext(
+              {
+                tenantId: workerAccountId,
+                accountId: workerAccountId,
+                correlationId
+              },
+              () =>
+                runScheduledReportsTick(
+                  logger,
+                  {
+                    ...tickContext,
+                    accountId: workerAccountId as never,
+                    runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || workerAccountId) as never
+                  },
+                  reports,
+                  bootstrap.reportSources
+                )
+            );
+          }
+        );
+      }
 
       workerState.ticksCompleted++;
       workerState.lastTickAt = new Date().toISOString();

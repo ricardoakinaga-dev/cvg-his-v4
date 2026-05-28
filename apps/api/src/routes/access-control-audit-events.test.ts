@@ -233,6 +233,51 @@ test('access-control audit route filters audit events by finance domain query pa
   });
 });
 
+test('access-control audit route exposes operational coverage report and audits the read', async () => {
+  const response = new MockResponse();
+  const auditWrites: Array<{ action: string; entityType: string; entityId: string; riskLevel: string }> = [];
+
+  const handled = await handleAccessControlRoutes(
+    '/audit/operational-coverage',
+    {
+      method: 'GET',
+      url: '/audit/operational-coverage'
+    } as never,
+    response as never,
+    'corr-audit-coverage',
+    {
+      accessControl: {} as never,
+      users: {} as never,
+      audit: {
+        list: () => [],
+        getOperationalCoverageReport: () => ({
+          generatedAt: '2026-05-28T12:00:00.000Z',
+          accountId: 'acc-1',
+          totalEvents: 2,
+          eventsByModule: { lgpd: 1, audit: 1 },
+          eventsByRiskLevel: { low: 0, medium: 0, high: 2 },
+          requirements: [],
+          coveredRequirements: 1,
+          missingRequirements: 1,
+          coveragePercent: 50
+        }),
+        write: (event: { action: string; entityType: string; entityId: string; riskLevel: string }) => {
+          auditWrites.push(event);
+          return event;
+        }
+      } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyJson<{ coveragePercent: number }>().coveragePercent, 50);
+  assert.deepEqual(auditWrites.map((event) => event.action), ['operational_coverage_read']);
+  assert.equal(auditWrites[0].entityType, 'audit-coverage');
+  assert.equal(auditWrites[0].riskLevel, 'high');
+});
+
 test('RH-VAL-1 validates editable groups, memberships, grants and effective permission by routine', async () => {
   const accessControl = new AccessControlService();
   const handlers = createAccessHandlers(accessControl);
@@ -399,6 +444,70 @@ test('RH-VAL-1 validates editable groups, memberships, grants and effective perm
       }),
     ForbiddenError
   );
+});
+
+test('access-control exposes auditable RBAC module permission matrix by profile, unit and action', async () => {
+  const accessControl = new AccessControlService();
+  const handlers = createAccessHandlers(accessControl);
+  const team = await accessControl.createTeam('acc-1' as never, {
+    code: 'financeiro',
+    name: 'Financeiro'
+  });
+  const sector = await accessControl.createSector('acc-1' as never, {
+    code: 'recepcao',
+    name: 'Recepção'
+  });
+  await accessControl.setPermissionAssignment({
+    accountId: 'acc-1' as never,
+    subjectType: 'team',
+    subjectId: team.id,
+    permissionCode: 'billing.manage',
+    effect: 'allow'
+  });
+  await accessControl.setPermissionAssignment({
+    accountId: 'acc-1' as never,
+    subjectType: 'sector',
+    subjectId: sector.id,
+    permissionCode: 'billing.manage',
+    effect: 'deny'
+  });
+
+  const response = new MockResponse();
+  const handled = await handleAccessControlRoutes(
+    '/access-control/module-permission-matrix',
+    { method: 'GET', url: '/access-control/module-permission-matrix' } as never,
+    response as never,
+    'corr-rbac-matrix-1',
+    handlers
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    accountId: string;
+    items: Array<{
+      module: string;
+      permissionCodes: string[];
+      actions: Record<string, boolean>;
+      rolesAllowed: string[];
+      teamOverrideCount: number;
+      sectorOverrideCount: number;
+      coverageStatus: string;
+    }>;
+  }>();
+  const billing = payload.items.find((item) => item.module === 'billing');
+  assert.equal(payload.accountId, 'acc-1');
+  assert.ok(billing);
+  assert.equal(billing.permissionCodes.includes('billing.read'), true);
+  assert.equal(billing.permissionCodes.includes('billing.manage'), true);
+  assert.equal(billing.actions.consult, true);
+  assert.equal(billing.actions.insert, true);
+  assert.equal(billing.actions.update, true);
+  assert.equal(billing.actions.delete, true);
+  assert.equal(billing.rolesAllowed.includes('finance'), true);
+  assert.equal(billing.teamOverrideCount, 1);
+  assert.equal(billing.sectorOverrideCount, 1);
+  assert.equal(billing.coverageStatus, 'complete');
 });
 
 test('access-control routes reject cross-account subjects for RH governance writes', async () => {

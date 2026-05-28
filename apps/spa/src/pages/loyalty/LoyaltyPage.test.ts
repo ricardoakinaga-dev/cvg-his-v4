@@ -69,12 +69,20 @@ describe('LoyaltyPage', () => {
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Data');
     expect(wrapper.text()).toContain('Pontos');
+    expect(wrapper.text()).toContain('Benefício');
+    expect(wrapper.text()).toContain('Status');
     expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).not.toContain('BenefícioAbrir');
     expect(wrapper.text()).toContain('Produto');
     expect(wrapper.text()).toContain('Serviço');
     expect(wrapper.text()).toContain('Saldo disponível');
     expect(wrapper.text()).toContain('Saldo bloqueado');
+    expect(wrapper.text()).toContain('Pontos resgatados');
+    expect(wrapper.text()).toContain('Banho terapêutico bonificado');
+    expect(wrapper.text()).toContain('Concluído');
+    expect(wrapper.text()).toContain('Trilha de auditoria');
+    expect(wrapper.text()).toContain('red-101');
+    expect(wrapper.text()).toContain('17/04/2026');
   });
 
   it('filters redemption history by client and date', async () => {
@@ -96,6 +104,21 @@ describe('LoyaltyPage', () => {
     expect(wrapper.text()).toContain('Comandas');
     expect(wrapper.text()).toContain('Pacotes');
     expect(wrapper.text()).toContain('Clientes');
+  });
+
+  it('updates the selected redemption audit trail when opening another redemption', async () => {
+    const wrapper = mount(LoyaltyPage);
+    await flush();
+
+    const openButtons = wrapper.findAll('button').filter((button) => button.text() === 'Abrir');
+    expect(openButtons.length).toBeGreaterThanOrEqual(2);
+    await openButtons[1]!.trigger('click');
+    await nextTick();
+
+    expect(wrapper.text()).toContain('red-102');
+    expect(wrapper.text()).toContain('Carlos Mendes');
+    expect(wrapper.text()).toContain('Desconto em antipulgas');
+    expect(wrapper.text()).toContain('11/04/2026');
   });
 
   it('includes a redemption with product or service quantity', async () => {

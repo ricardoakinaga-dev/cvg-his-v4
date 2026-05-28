@@ -3,6 +3,7 @@ import type {
   CreateDiagnosticOrderRequest,
   RecordDiagnosticResultRequest
 } from '@cvg-his-v2/shared-contracts';
+import { createHash } from 'node:crypto';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
@@ -80,6 +81,24 @@ export class DiagnosticsService {
 
   private async updateOrder(order: DiagnosticOrderSummary): Promise<void> {
     await this.persistOrder(order);
+  }
+
+  private createResultSignatureHash(
+    order: DiagnosticOrderSummary,
+    payload: RecordDiagnosticResultRequest,
+    resultedAt: string
+  ): string {
+    return createHash('sha256')
+      .update([
+        order.id,
+        order.accountId,
+        payload.releasedByUserId,
+        payload.signedByUserId ?? payload.releasedByUserId,
+        payload.resultSummary ?? '',
+        payload.resultAttachmentId ?? '',
+        resultedAt
+      ].join('|'))
+      .digest('hex');
   }
 
   public listCatalog(): readonly ExamCatalogEntry[] {
@@ -171,6 +190,22 @@ export class DiagnosticsService {
     }
 
     const now = nowIso();
+    const releasedByUserId =
+      payload.status === 'resulted'
+        ? requireNonEmptyString(payload.releasedByUserId, 'releasedByUserId')
+        : undefined;
+    const signedByUserId =
+      payload.status === 'resulted'
+        ? requireNonEmptyString(payload.signedByUserId ?? releasedByUserId, 'signedByUserId')
+        : undefined;
+    const signatureHash =
+      payload.status === 'resulted'
+        ? payload.signatureHash ?? this.createResultSignatureHash(current, {
+          ...payload,
+          releasedByUserId,
+          signedByUserId
+        }, now)
+        : undefined;
     const updated: DiagnosticOrderSummary = {
       ...current,
       status: payload.status,
@@ -180,7 +215,11 @@ export class DiagnosticsService {
       }),
       ...(payload.status === 'resulted' && {
         resultSummary: payload.resultSummary,
-        resultAttachmentId: payload.resultAttachmentId
+        resultAttachmentId: payload.resultAttachmentId,
+        resultedAt: now,
+        releasedByUserId,
+        signedByUserId,
+        signatureHash
       }),
       updatedAt: now
     };

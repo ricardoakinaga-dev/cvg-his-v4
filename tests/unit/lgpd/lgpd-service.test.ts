@@ -148,6 +148,7 @@ class InMemoryDsrRepository implements DsrRepository {
   }
 
   async updateStatus(
+    accountId: string,
     id: string,
     status: DataSubjectRequest['status'],
     options?: {
@@ -157,7 +158,7 @@ class InMemoryDsrRepository implements DsrRepository {
       resultJson?: Record<string, unknown>;
     }
   ): Promise<DataSubjectRequest> {
-    const idx = this.#requests.findIndex((r) => r.id === id);
+    const idx = this.#requests.findIndex((r) => r.accountId === accountId && r.id === id);
     if (idx === -1) {
       throw new Error(`Data subject request not found: ${id}`);
     }
@@ -539,10 +540,15 @@ describe('LGPD-006 — Complete and Reject DSR Requests', () => {
       requestedBy: TEST_USER_ID
     });
 
-    const completed = await service.completeDsrRequest(created.id, TEST_USER_ID, {
-      recordCount: 42,
-      exportUrl: 'https://example.com/export/123'
-    });
+    const completed = await service.completeDsrRequest(
+      TEST_ACCOUNT_ID,
+      created.id,
+      TEST_USER_ID,
+      {
+        recordCount: 42,
+        exportUrl: 'https://example.com/export/123'
+      }
+    );
 
     expect(completed.status).toBe('completed');
     expect(completed.completedBy).toBe(TEST_USER_ID);
@@ -563,6 +569,7 @@ describe('LGPD-006 — Complete and Reject DSR Requests', () => {
     });
 
     const rejected = await service.rejectDsrRequest(
+      TEST_ACCOUNT_ID,
       created.id,
       TEST_USER_ID,
       'Legal hold prevents deletion'

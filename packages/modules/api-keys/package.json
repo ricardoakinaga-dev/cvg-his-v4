@@ -12,9 +12,9 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/*.test.js"
+    "test": "cd ../../.. && vitest run packages/modules/api-keys/src/*.test.ts"
   },
   "dependencies": {
     "@cvg-his-v2/shared-contracts": "workspace:*",

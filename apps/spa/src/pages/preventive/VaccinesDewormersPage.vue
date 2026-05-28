@@ -44,9 +44,23 @@
       </form>
     </DsCard>
 
+    <section class="quick-filters" aria-label="Filtros rápidos">
+      <span class="quick-filters__label">Filtros rápidos</span>
+      <DsButton
+        v-for="filter in quickFilters"
+        :key="filter.value"
+        size="sm"
+        :variant="activeQuickFilter === filter.value ? 'primary' : 'secondary'"
+        type="button"
+        @click="activeQuickFilter = filter.value"
+      >
+        {{ filter.label }}
+      </DsButton>
+    </section>
+
     <DataTable
       :columns="columns"
-      :rows="rows"
+      :rows="filteredRows"
       :loading="loading"
       empty-icon="💉"
       empty-title="Nenhuma vacina nem vermífugo encontrado."
@@ -68,6 +82,46 @@
           :variant="(row as PreventiveEventSummary).status === 'executed' ? 'success' : 'warning'"
           size="sm"
         />
+      </template>
+      <template #cell-scheduleStatus="{ row }">
+        <span
+          class="schedule-status"
+          :class="`schedule-status--${scheduleStatus(row as PreventiveEventSummary).tone}`"
+        >
+          {{ scheduleStatus(row as PreventiveEventSummary).label }}
+        </span>
+      </template>
+      <template #cell-links="{ row }">
+        <div class="record-links">
+          <a
+            v-if="(row as PreventiveEventSummary).patientId"
+            :href="`/patients/${(row as PreventiveEventSummary).patientId}`"
+            class="record-link"
+          >
+            Abrir paciente
+          </a>
+          <a
+            v-if="(row as PreventiveEventSummary).ownerId"
+            :href="`/owners/${(row as PreventiveEventSummary).ownerId}`"
+            class="record-link"
+          >
+            Abrir tutor
+          </a>
+          <span
+            v-if="!(row as PreventiveEventSummary).patientId && !(row as PreventiveEventSummary).ownerId"
+            class="record-links__empty"
+          >
+            Sem vínculo
+          </span>
+        </div>
+      </template>
+      <template #cell-reminder="{ row }">
+        <span
+          class="reminder-status"
+          :class="{ 'reminder-status--prepared': (row as PreventiveEventSummary).reminderEmailPreparedAt }"
+        >
+          {{ reminderLabel(row as PreventiveEventSummary) }}
+        </span>
       </template>
       <template #cell-execute="{ row }">
         <DsButton
@@ -175,6 +229,7 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 type PreventiveStatus = 'scheduled' | 'executed';
+type QuickFilter = 'all' | 'overdue' | 'today' | 'next7' | 'withoutReminder';
 
 interface PreventiveFilters {
   dateFrom: string;
@@ -201,6 +256,9 @@ const columns: DataTableColumn[] = [
   { key: 'itemType', label: 'Tipo' },
   { key: 'description', label: 'Descrição' },
   { key: 'status', label: 'Status' },
+  { key: 'scheduleStatus', label: 'Agenda' },
+  { key: 'links', label: 'Vínculo' },
+  { key: 'reminder', label: 'Aviso' },
   { key: 'execute', label: 'Executar', class: 'table__actions-col' },
   { key: 'open', label: 'Abrir', class: 'table__actions-col' },
   { key: 'email', label: 'Email', class: 'table__actions-col' }
@@ -218,6 +276,7 @@ const defaultFilters = (): PreventiveFilters => ({
 });
 
 const rows = ref<PreventiveEventSummary[]>([]);
+const activeQuickFilter = ref<QuickFilter>('all');
 const draftFilters = ref<PreventiveFilters>(defaultFilters());
 const appliedFilters = ref<PreventiveFilters>(defaultFilters());
 const loading = ref(false);
@@ -250,6 +309,18 @@ const canSaveSchedule = computed(() => {
   );
 });
 
+const quickFilters: readonly { value: QuickFilter; label: string }[] = [
+  { value: 'all', label: 'Todos rápidos' },
+  { value: 'overdue', label: 'Vencidos' },
+  { value: 'today', label: 'Vence hoje' },
+  { value: 'next7', label: 'Próximos 7 dias' },
+  { value: 'withoutReminder', label: 'Sem aviso' }
+];
+
+const filteredRows = computed(() =>
+  rows.value.filter((event) => matchesQuickFilter(event, activeQuickFilter.value))
+);
+
 async function loadData(filters: PreventiveFilters = appliedFilters.value) {
   loading.value = true;
   error.value = '';
@@ -264,12 +335,14 @@ async function loadData(filters: PreventiveFilters = appliedFilters.value) {
 
 async function applyFilters() {
   appliedFilters.value = { ...draftFilters.value };
+  activeQuickFilter.value = 'all';
   await loadData(appliedFilters.value);
 }
 
 async function clearFilters() {
   draftFilters.value = defaultFilters();
   appliedFilters.value = defaultFilters();
+  activeQuickFilter.value = 'all';
   await loadData(appliedFilters.value);
 }
 
@@ -432,6 +505,60 @@ function statusLabel(status: PreventiveStatus): string {
   return status === 'executed' ? 'Executada' : 'Agendada';
 }
 
+function scheduleStatus(event: PreventiveEventSummary): { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' } {
+  if (event.status === 'executed') {
+    return {
+      label: event.executedAt ? `Executada em ${formatDate(event.executedAt.slice(0, 10))}` : 'Executada',
+      tone: 'success'
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(`${event.eventDate}T12:00:00`);
+  eventDate.setHours(0, 0, 0, 0);
+  const daysUntilEvent = Math.round((eventDate.getTime() - today.getTime()) / 86_400_000);
+
+  if (daysUntilEvent < 0) {
+    return { label: `Vencido há ${Math.abs(daysUntilEvent)} dia(s)`, tone: 'danger' };
+  }
+  if (daysUntilEvent === 0) {
+    return { label: 'Vence hoje', tone: 'warning' };
+  }
+  if (daysUntilEvent <= 7) {
+    return { label: `Vence em ${daysUntilEvent} dia(s)`, tone: 'warning' };
+  }
+  return { label: 'Programado', tone: 'neutral' };
+}
+
+function matchesQuickFilter(event: PreventiveEventSummary, filter: QuickFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'withoutReminder') {
+    return event.status === 'scheduled' && !event.reminderEmailPreparedAt;
+  }
+
+  if (event.status === 'executed') return false;
+  const days = daysUntilEvent(event.eventDate);
+  if (filter === 'overdue') return days < 0;
+  if (filter === 'today') return days === 0;
+  return days >= 0 && days <= 7;
+}
+
+function daysUntilEvent(eventDateValue: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(`${eventDateValue}T12:00:00`);
+  eventDate.setHours(0, 0, 0, 0);
+  return Math.round((eventDate.getTime() - today.getTime()) / 86_400_000);
+}
+
+function reminderLabel(event: PreventiveEventSummary): string {
+  if (event.reminderEmailPreparedAt) {
+    return `Aviso preparado em ${formatDate(event.reminderEmailPreparedAt.slice(0, 10))}`;
+  }
+  return event.status === 'executed' ? 'Sem aviso pendente' : 'Aviso pendente';
+}
+
 function formatDate(value: string): string {
   return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 }
@@ -470,6 +597,19 @@ onMounted(() => {
   gap: 8px;
 }
 
+.quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-filters__label {
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(180px, 1fr));
@@ -478,6 +618,59 @@ onMounted(() => {
 
 .modal-grid__wide {
   grid-column: 1 / -1;
+}
+
+.schedule-status,
+.reminder-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.schedule-status--success,
+.reminder-status--prepared {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.schedule-status--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-status--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.record-links {
+  display: grid;
+  gap: 3px;
+}
+
+.record-link {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.record-link:hover {
+  text-decoration: underline;
+}
+
+.record-links__empty {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 @media (max-width: 960px) {

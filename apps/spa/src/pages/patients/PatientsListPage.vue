@@ -179,6 +179,18 @@
             <span class="fact-row__label">Peso</span>
             <span>{{ formatWeight(patient.baseWeightKg) }}</span>
           </div>
+          <div class="fact-row">
+            <span class="fact-row__label">Microchip</span>
+            <span>{{ patient.microchip || 'Não informado' }}</span>
+          </div>
+          <div class="fact-row">
+            <span class="fact-row__label">ID Vetus</span>
+            <span>{{ patient.legacyVetusId || 'Não informado' }}</span>
+          </div>
+          <div class="fact-row">
+            <span class="fact-row__label">Alerta clínico</span>
+            <span>{{ clinicalAlert(patient) }}</span>
+          </div>
         </div>
 
         <details class="patient-card__owner">
@@ -412,6 +424,13 @@ function ownerEmail(ownerId: string): string {
 
 function formatWeight(weight?: number): string {
   return typeof weight === 'number' ? `${weight.toFixed(1)} kg` : 'Não informado';
+}
+
+function clinicalAlert(patient: PatientSummary): string {
+  const alerts = [patient.allergy, patient.chronicDisease].filter(
+    (item): item is string => Boolean(item?.trim())
+  );
+  return alerts.length > 0 ? alerts.join(' / ') : 'Sem alerta';
 }
 
 function formatAge(birthDate?: string): string {

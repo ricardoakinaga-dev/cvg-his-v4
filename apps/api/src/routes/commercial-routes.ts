@@ -8,6 +8,11 @@ import type {
   PosSyncStatus,
   PriceTableItemKind
 } from '@cvg-his-v2/module-commercial';
+import type {
+  PackageConsumptionSummary,
+  PackageItemKind,
+  PackagesService
+} from '@cvg-his-v2/module-packages';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
@@ -17,6 +22,7 @@ import { readJsonBody } from '../helpers/common.js';
 
 export interface CommercialRoutesHandlers {
   commercial: CommercialService;
+  packages: PackagesService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -71,6 +77,17 @@ function parsePriceTableItemsId(pathname: string): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function parsePackageId(pathname: string, suffix = ''): string | null {
+  const escapedSuffix = suffix.replace(/\//g, '\\/');
+  const match = pathname.match(new RegExp(`^\\/(?:packages|pacotes)\\/([^/]+)${escapedSuffix}$`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+function parsePackageItemConsumptionId(pathname: string): string | null {
+  const match = pathname.match(/^\/(?:package-items|pacote-itens)\/([^/]+)\/consume$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export async function handleCommercialRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -87,13 +104,170 @@ export async function handleCommercialRoutes(
     !pathname.startsWith('/estoque/tabelas-de-preços') &&
     !pathname.startsWith('/estoque/cadastros/tabelas-de-preco') &&
     !pathname.startsWith('/estoque/cadastros/tabelas-de-preços') &&
+    !pathname.startsWith('/packages') &&
+    !pathname.startsWith('/pacotes') &&
+    !pathname.startsWith('/package-items') &&
+    !pathname.startsWith('/pacote-itens') &&
     !pathname.startsWith('/pos-sync')
   ) {
     return false;
   }
 
-  const { commercial, audit, requirePrincipal } = handlers;
+  const { commercial, packages, audit, requirePrincipal } = handlers;
   const method = request.method ?? 'GET';
+
+  if ((pathname === '/packages' || pathname === '/pacotes') && method === 'GET') {
+    const principal = requirePrincipal(request, 'counter_sale.read');
+    return json(response, 200, {
+      items: packages.list(principal.user.accountId)
+    });
+  }
+
+  if ((pathname === '/packages' || pathname === '/pacotes') && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const payload = await readJsonBody(request) as {
+      ownerId: string;
+      patientId?: string | null;
+      startsAt?: string | null;
+      expiresAt?: string | null;
+      notes?: string | null;
+    };
+    const pkg = await packages.create(principal.user.accountId, principal.user.id, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'create_package',
+      entityType: 'package',
+      entityId: pkg.id,
+      payloadSummary: `Package ${pkg.number} created for owner ${pkg.ownerId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, pkg);
+  }
+
+  const packageId = parsePackageId(pathname);
+  if (packageId && method === 'GET') {
+    const principal = requirePrincipal(request, 'counter_sale.read');
+    return json(response, 200, packages.detail(principal.user.accountId, packageId));
+  }
+
+  const packageItemsId = parsePackageId(pathname, '/items');
+  if (packageItemsId && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const payload = await readJsonBody(request) as {
+      itemKind: PackageItemKind;
+      catalogItemId?: string | null;
+      nameSnapshot: string;
+      quantityPurchased: number;
+      unitPrice: number;
+      validFrom?: string | null;
+      validUntil?: string | null;
+    };
+    const item = await packages.addItem(principal.user.accountId, packageItemsId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'add_package_item',
+      entityType: 'package-item',
+      entityId: item.id,
+      payloadSummary: `Package item ${item.nameSnapshot} added to package ${item.packageId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, item);
+  }
+
+  const packageActivateId = parsePackageId(pathname, '/activate');
+  if (packageActivateId && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const detail = await packages.activate(principal.user.accountId, packageActivateId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'activate_package',
+      entityType: 'package',
+      entityId: detail.id,
+      payloadSummary: `Package ${detail.number} activated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, detail);
+  }
+
+  const packageRenewId = parsePackageId(pathname, '/renew');
+  if (packageRenewId && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const payload = await readJsonBody(request) as {
+      startsAt?: string | null;
+      expiresAt?: string | null;
+      notes?: string | null;
+    };
+    const detail = await packages.renew(principal.user.accountId, packageRenewId, principal.user.id, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'renew_package',
+      entityType: 'package',
+      entityId: detail.id,
+      payloadSummary: `Package ${detail.number} renewed from ${detail.renewedFromPackageId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 201, detail);
+  }
+
+  const packageCancelId = parsePackageId(pathname, '/cancel');
+  if (packageCancelId && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const pkg = await packages.cancel(principal.user.accountId, packageCancelId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'cancel_package',
+      entityType: 'package',
+      entityId: pkg.id,
+      payloadSummary: `Package ${pkg.number} cancelled`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, pkg);
+  }
+
+  const packageItemConsumptionId = parsePackageItemConsumptionId(pathname);
+  if (packageItemConsumptionId && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const payload = await readJsonBody(request) as {
+      quantity: number;
+      consumedAt?: string | null;
+      sourceType?: PackageConsumptionSummary['sourceType'];
+      sourceId?: string | null;
+      notes?: string | null;
+    };
+    const detail = await packages.consumeItem(
+      principal.user.accountId,
+      packageItemConsumptionId,
+      principal.user.id,
+      payload
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'commercial',
+      action: 'consume_package_item',
+      entityType: 'package-item',
+      entityId: packageItemConsumptionId,
+      payloadSummary: `Consumed ${payload.quantity} package item(s) from package ${detail.number}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, detail);
+  }
 
   if (pathname === '/loyalty/programs' && method === 'GET') {
     const principal = requirePrincipal(request, 'counter_sale.read');

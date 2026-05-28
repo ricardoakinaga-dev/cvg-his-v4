@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
+import { ConflictError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleCounterSalesRoutes } from './counter-sales-routes.js';
@@ -235,34 +236,6 @@ test('handleCounterSalesRoutes returns detail with items and payments and allows
   assert.equal(itemHandled, true);
   assert.equal(itemResponse.statusCode, 201);
 
-  const paymentResponse = new MockResponse();
-  const paymentHandled = await handleCounterSalesRoutes(
-    `/counter-sales/${sale.id}/payments`,
-    {
-      method: 'POST',
-      [Symbol.asyncIterator]: async function* () {
-        yield Buffer.from(
-          JSON.stringify({
-            method: 'pix',
-            amount: 180,
-            installments: 1,
-            reference: 'PIX-001'
-          })
-        );
-      }
-    } as never,
-    paymentResponse as never,
-    'corr-cs-4',
-    {
-      counterSales,
-      audit: createAudit() as never,
-      requirePrincipal: () => createPrincipal()
-    }
-  );
-
-  assert.equal(paymentHandled, true);
-  assert.equal(paymentResponse.statusCode, 201);
-
   const detailResponse = new MockResponse();
   const detailHandled = await handleCounterSalesRoutes(
     `/counter-sales/${sale.id}`,
@@ -285,8 +258,7 @@ test('handleCounterSalesRoutes returns detail with items and payments and allows
   }>();
   assert.equal(detail.id, sale.id);
   assert.equal(detail.items.length, 2);
-  assert.equal(detail.payments.length, 1);
-  assert.equal(detail.payments[0]?.reference, 'PIX-001');
+  assert.equal(detail.payments.length, 0);
 
   const updateResponse = new MockResponse();
   const updated = await handleCounterSalesRoutes(
@@ -312,6 +284,34 @@ test('handleCounterSalesRoutes returns detail with items and payments and allows
   assert.equal(updatedItem.quantity, 1);
   assert.equal(updatedItem.discountAmount, 10);
 
+  const paymentResponse = new MockResponse();
+  const paymentHandled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/payments`,
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            method: 'pix',
+            amount: 170,
+            installments: 1,
+            reference: 'PIX-001'
+          })
+        );
+      }
+    } as never,
+    paymentResponse as never,
+    'corr-cs-4',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(paymentHandled, true);
+  assert.equal(paymentResponse.statusCode, 201);
+
   const closeResponse = new MockResponse();
   const closed = await handleCounterSalesRoutes(
     `/counter-sales/${sale.id}/close`,
@@ -329,4 +329,193 @@ test('handleCounterSalesRoutes returns detail with items and payments and allows
   assert.equal(closeResponse.statusCode, 200);
   const closedSale = closeResponse.bodyJson<{ status: string }>();
   assert.equal(closedSale.status, 'closed');
+});
+
+test('handleCounterSalesRoutes blocks invalid financial edits after payments and closure', async () => {
+  const counterSales = new CounterSalesService();
+  const sale = await counterSales.open('acc-1' as never, 'user-1' as never, {
+    ownerId: 'owner-1'
+  });
+  const serviceItem = await counterSales.addItem(sale.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta clínica',
+    unitPrice: 100,
+    quantity: 1
+  });
+
+  const productResponse = new MockResponse();
+  const productHandled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/items`,
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            itemType: 'product',
+            nameSnapshot: 'Antipulgas',
+            codeSnapshot: 'SKU-ANT',
+            unitPrice: 50,
+            quantity: 1
+          })
+        );
+      }
+    } as never,
+    productResponse as never,
+    'corr-cs-block-1',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(productHandled, true);
+  assert.equal(productResponse.statusCode, 201);
+
+  const partialPaymentResponse = new MockResponse();
+  const partialPaymentHandled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/payments`,
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            method: 'pix',
+            amount: 100,
+            installments: 1,
+            reference: 'PIX-PARCIAL'
+          })
+        );
+      }
+    } as never,
+    partialPaymentResponse as never,
+    'corr-cs-block-2',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(partialPaymentHandled, true);
+  assert.equal(partialPaymentResponse.statusCode, 201);
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${sale.id}/items/${serviceItem.item.id}`,
+        {
+          method: 'PATCH',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(JSON.stringify({ discountAmount: 100 }));
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-block-3',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    ConflictError
+  );
+
+  const detailAfterRejectedEdit = counterSales.getOrThrow(sale.id);
+  assert.equal(detailAfterRejectedEdit.total, 150);
+  assert.equal(detailAfterRejectedEdit.paidAmount, 100);
+  assert.equal(detailAfterRejectedEdit.balanceDue, 50);
+
+  const finalPaymentResponse = new MockResponse();
+  const finalPaymentHandled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/payments`,
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            method: 'cash',
+            amount: 50,
+            installments: 1,
+            reference: 'CX-FINAL'
+          })
+        );
+      }
+    } as never,
+    finalPaymentResponse as never,
+    'corr-cs-block-4',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(finalPaymentHandled, true);
+  assert.equal(finalPaymentResponse.statusCode, 201);
+
+  const closeResponse = new MockResponse();
+  const closeHandled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/close`,
+    { method: 'POST', url: `/counter-sales/${sale.id}/close` } as never,
+    closeResponse as never,
+    'corr-cs-block-5',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(closeHandled, true);
+  assert.equal(closeResponse.statusCode, 200);
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${sale.id}/items`,
+        {
+          method: 'POST',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(
+              JSON.stringify({
+                itemType: 'service',
+                nameSnapshot: 'Taxa pós-fechamento',
+                unitPrice: 10
+              })
+            );
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-block-6',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    ConflictError
+  );
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${sale.id}/payments`,
+        {
+          method: 'POST',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(
+              JSON.stringify({
+                method: 'pix',
+                amount: 1
+              })
+            );
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-block-7',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    ConflictError
+  );
 });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -107,6 +108,13 @@ function createPatientsService(): PatientsService {
   return new PatientsService({
     owners: new OwnersService()
   });
+}
+
+function createRegistryServices() {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const encounters = new EncountersService({ owners, patients });
+  return { owners, patients, encounters };
 }
 
 test('handlePatientsRoutes GET /master-search returns cross-registry results', async () => {
@@ -233,4 +241,57 @@ test('handlePatientsRoutes POST /owner-patient-links creates a new relationship'
   assert.equal(payload.ownerId, 'owner_joao_souza');
   assert.equal(payload.patientId, 'patient_luna');
   assert.equal(patients.listLinks({ patientId: 'patient_luna' as never }).length, 2);
+});
+
+test('handlePatientsRoutes GET /patients/:id/summary returns owner snapshot and recent encounters', async () => {
+  const response = new MockResponse();
+  const { owners, patients, encounters } = createRegistryServices();
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user-1' as never, {
+    ownerId: 'owner_maria_silva',
+    patientId: 'patient_luna',
+    visitType: 'scheduled',
+    origin: 'schedule',
+    reason: 'Consulta anual'
+  } as never);
+
+  const handled = await handlePatientsRoutes(
+    '/patients/patient_luna/summary',
+    new MockRequest({
+      method: 'GET',
+      url: '/patients/patient_luna/summary'
+    }) as never,
+    response as never,
+    'corr-patients-summary',
+    {
+      patients,
+      owners,
+      encounters,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    patient: { id: string; name: string };
+    owner: { id: string; fullName: string; phoneMain: string | null; email: string | null };
+    stats: { totalEncounters: number; openEncounters: number };
+    recentEncounters: Array<{ id: string; status: string; openedAt: string }>;
+  }>();
+  assert.equal(payload.patient.id, 'patient_luna');
+  assert.equal(payload.patient.name, 'Luna');
+  assert.equal(payload.owner.id, 'owner_maria_silva');
+  assert.equal(payload.owner.fullName, 'Maria Silva');
+  assert.equal(payload.owner.phoneMain, '+55 11 99999-1111');
+  assert.equal(payload.owner.email, 'maria.silva@example.com');
+  assert.equal(payload.stats.totalEncounters, 1);
+  assert.equal(payload.stats.openEncounters, 1);
+  assert.deepEqual(payload.recentEncounters, [
+    {
+      id: encounter.id,
+      openedAt: encounter.openedAt,
+      status: 'open'
+    }
+  ]);
 });

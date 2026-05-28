@@ -70,6 +70,10 @@ const mockCallQueueEntryFn = vi.fn().mockResolvedValue({
   status: 'called' as const,
   calledAt: '2026-04-05T10:00:00Z'
 });
+const mockCompleteQueueEntryFn = vi.fn().mockResolvedValue({
+  ...mockQueueEntries[2],
+  status: 'completed' as const
+});
 const mockEncounterCreateFn = vi.fn().mockResolvedValue({ id: 'enc-new' });
 const mockEncounterTransitionFn = vi.fn().mockResolvedValue({ id: 'enc-new', status: 'in_triage' });
 const mockRouterPush = vi.fn();
@@ -116,6 +120,7 @@ const mockPatientListFn = vi.fn().mockResolvedValue(mockPatients);
 vi.mock('@/services/scheduling', () => ({
   listQueue: () => mockListQueueFn(),
   callQueueEntry: (id: string) => mockCallQueueEntryFn(id),
+  completeQueueEntry: (id: string) => mockCompleteQueueEntryFn(id),
   noShowQueueEntry: (id: string) => mockNoShowQueueEntryFn(id),
   checkInQueue: (payload: unknown) => mockCheckInQueueFn(payload)
 }));
@@ -160,6 +165,10 @@ describe('QueuePage', () => {
       ...mockQueueEntries[0],
       status: 'called' as const,
       calledAt: '2026-04-05T10:00:00Z'
+    });
+    mockCompleteQueueEntryFn.mockResolvedValue({
+      ...mockQueueEntries[2],
+      status: 'completed' as const
     });
     mockEncounterCreateFn.mockResolvedValue({ id: 'enc-new' });
     mockEncounterTransitionFn.mockResolvedValue({ id: 'enc-new', status: 'in_triage' });
@@ -664,6 +673,69 @@ describe('QueuePage', () => {
       await flushPromises();
       expect(wrapper.text()).toContain('Erro ao abrir atendimento');
     }
+  });
+
+  it('completes an in-care queue entry from the operational table', async () => {
+    const QueuePage = (await import('../QueuePage.vue')).default;
+    const wrapper = mount(QueuePage, {
+      global: {
+        stubs: {
+          DsButton: { template: '<button class="ds-btn-stub"><slot /></button>' },
+          DsBadge: { template: '<span><slot /></span>' },
+          DsAlert: { template: '<div class="ds-alert-stub"><slot /></div>' },
+          DsSpinner: { template: '<div class="ds-spinner-stub" />' },
+          DsModal: {
+            template: '<div><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          },
+          EmptyState: { template: '<div class="empty-state-stub" />' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const completeButton = wrapper
+      .findAll('.ds-btn-stub')
+      .find((button) => button.text().includes('Concluir'));
+    expect(completeButton).toBeTruthy();
+
+    await completeButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCompleteQueueEntryFn).toHaveBeenCalledWith('q-3');
+    expect(wrapper.text()).toContain('Entrada da esteira concluída com sucesso.');
+  });
+
+  it('shows an error when completing a queue entry fails', async () => {
+    mockCompleteQueueEntryFn.mockRejectedValue(new Error('Transição inválida'));
+
+    const QueuePage = (await import('../QueuePage.vue')).default;
+    const wrapper = mount(QueuePage, {
+      global: {
+        stubs: {
+          DsButton: { template: '<button class="ds-btn-stub"><slot /></button>' },
+          DsBadge: { template: '<span><slot /></span>' },
+          DsAlert: { template: '<div class="ds-alert-stub"><slot /></div>' },
+          DsSpinner: { template: '<div class="ds-spinner-stub" />' },
+          DsModal: {
+            template: '<div><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          },
+          EmptyState: { template: '<div class="empty-state-stub" />' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const completeButton = wrapper
+      .findAll('.ds-btn-stub')
+      .find((button) => button.text().includes('Concluir'));
+    await completeButton!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Transição inválida');
   });
 
   // Sprint 3: No-show tests

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 
 import {
+  analyzeRlsMigrationCoverage,
   checkRlsEnabled,
   getRlsSummary,
   setSessionAccountId,
@@ -28,6 +29,56 @@ function createMockPool(client: PoolClient) {
 }
 
 describe('rls helpers', () => {
+  it('statically validates tenant tables created in migrations have RLS and current account policies', () => {
+    const report = analyzeRlsMigrationCoverage(
+      [
+        {
+          name: '001_create_billing.sql',
+          sql: `
+            CREATE TABLE billing_records (
+              id UUID PRIMARY KEY,
+              account_id UUID NOT NULL
+            );
+
+            ALTER TABLE billing_records ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY billing_records_tenant_isolation ON billing_records
+              USING (account_id = app.current_account_id())
+              WITH CHECK (account_id = app.current_account_id());
+          `
+        },
+        {
+          name: '002_create_finance.sql',
+          sql: `
+            CREATE TABLE financial_payables (
+              id UUID PRIMARY KEY,
+              account_id UUID NOT NULL
+            );
+          `
+        }
+      ],
+      { generatedAt: '2026-05-28T00:00:00.000Z' }
+    );
+
+    expect(report).toMatchObject({
+      generatedAt: '2026-05-28T00:00:00.000Z',
+      totalTenantTables: 2,
+      protectedTables: 1,
+      failingTables: 1
+    });
+    expect(report.tables.find((table) => table.tableName === 'billing_records')).toMatchObject({
+      status: 'protected',
+      missing: []
+    });
+    expect(report.tables.find((table) => table.tableName === 'financial_payables')).toMatchObject({
+      status: 'missing_rls',
+      missing: [
+        'ENABLE ROW LEVEL SECURITY',
+        'CREATE POLICY',
+        'app.current_account_id policy predicate'
+      ]
+    });
+  });
+
   it('sets the current account id in the postgres session', async () => {
     const client = createMockClient();
     client.query.mockResolvedValue({ rows: [] });

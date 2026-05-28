@@ -243,6 +243,91 @@ describe('SchedulingService', () => {
     expect(other.status).toBe('scheduled');
   });
 
+  it('reschedules an appointment with conflict validation and updated resource metadata', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original',
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Consultorio 1'
+    });
+
+    const rescheduled = await service.rescheduleAppointment(accountId, appointment.id, {
+      scheduledAt: '2026-04-01T14:00:00.000Z',
+      durationMinutes: 45,
+      reason: 'Consulta reagendada',
+      resourceLabel: 'Consultorio 2'
+    });
+
+    expect(rescheduled.id).toBe(appointment.id);
+    expect(rescheduled.status).toBe('scheduled');
+    expect(rescheduled.scheduledAt).toBe('2026-04-01T14:00:00.000Z');
+    expect(rescheduled.durationMinutes).toBe(45);
+    expect(rescheduled.reason).toBe('Consulta reagendada');
+    expect(rescheduled.resourceLabel).toBe('Consultorio 2');
+  });
+
+  it('rejects rescheduling when the new slot conflicts with the same patient', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const first = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original'
+    });
+
+    await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T14:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta conflitante'
+    });
+
+    await expect(
+      service.rescheduleAppointment(accountId, first.id, {
+        scheduledAt: '2026-04-01T14:00:00.000Z'
+      })
+    ).rejects.toThrow('Patient already has an appointment within a 30-minute window');
+  });
+
+  it('persists all rescheduled appointment fields when repository is injected', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], {
+      repository,
+      staff: staff as never
+    });
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await persistent.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta original',
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Consultorio 1'
+    });
+
+    await persistent.rescheduleAppointment(accountId, appointment.id, {
+      scheduledAt: '2026-04-01T15:00:00.000Z',
+      durationMinutes: 60,
+      reason: 'Reagendado com persistencia',
+      practitionerStaffId: 'staff_vet',
+      resourceLabel: 'Consultorio 3'
+    });
+
+    expect(repository.appointments.get(appointment.id)).toMatchObject({
+      scheduledAt: '2026-04-01T15:00:00.000Z',
+      durationMinutes: 60,
+      reason: 'Reagendado com persistencia',
+      resourceLabel: 'Consultorio 3'
+    });
+  });
+
   it('cancels a scheduled appointment successfully', async () => {
     const accountId = 'acc_cvg_demo' as AccountId;
     const appointment = await service.createAppointment(accountId, {

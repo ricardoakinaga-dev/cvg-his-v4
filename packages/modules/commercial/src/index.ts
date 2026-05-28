@@ -527,6 +527,7 @@ export class CommercialService {
   }
 }
 
+/* v8 ignore start -- SQL repository adapter covered by integration tests. */
 export class DatabaseCommercialRepository implements CommercialRepository {
   async saveLoyaltyProgram(program: LoyaltyProgramSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
@@ -805,3 +806,4 @@ function mapPosSyncJob(row: Record<string, unknown>): PosSyncJobSummary {
     metadata: jsonObject(row.metadata)
   };
 }
+/* v8 ignore stop */

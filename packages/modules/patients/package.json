@@ -23,9 +23,9 @@
     "drizzle-orm": "^0.36.4"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "cd ../../.. && vitest run packages/modules/patients/src/*.test.ts"
   }
 }

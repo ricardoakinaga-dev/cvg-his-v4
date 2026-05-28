@@ -25,6 +25,35 @@
       <DsButton v-if="hasQuery" type="button" variant="ghost" @click="clearSearch">Limpar</DsButton>
     </form>
 
+    <section
+      v-if="searched && contextualQuickActions.length > 0"
+      class="contextual-quick-actions"
+      aria-label="Acoes rapidas contextuais da recepcao"
+    >
+      <div class="contextual-quick-actions__head">
+        <div>
+          <span class="reception-funnel__eyebrow">Menos cliques</span>
+          <h2>Ações rápidas contextuais</h2>
+          <p>Atalhos derivados da busca atual para seguir sem redigitar tutor ou paciente.</p>
+        </div>
+        <RouterLink class="text-link" to="/master-search">Busca global</RouterLink>
+      </div>
+
+      <div class="contextual-quick-actions__grid">
+        <RouterLink
+          v-for="action in contextualQuickActions"
+          :key="action.key"
+          class="contextual-action"
+          :class="`contextual-action--${action.tone}`"
+          :to="action.to"
+        >
+          <span>{{ action.label }}</span>
+          <strong>{{ action.title }}</strong>
+          <small>{{ action.description }}</small>
+        </RouterLink>
+      </div>
+    </section>
+
     <section class="reception-workflow" aria-label="Proximos passos da recepcao">
       <div class="workflow-step">
         <span class="workflow-step__number">1</span>
@@ -433,12 +462,20 @@ import AppPageHeader, {
 import EmptyState from '@/components/EmptyState.vue';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
+import { billingService } from '@/services/billing';
 import { clinicalHandoffService } from '@/services/clinicalHandoff';
+import { laboratoryService } from '@/services/laboratory';
+import {
+  vaccinesDewormersService,
+  type PreventiveEventSummary
+} from '@/services/vaccinesDewormers';
 import { listQueue } from '@/services/scheduling';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
+import type { BillingRecordSummary } from '@/types/billing';
 import type { ClinicalHandoffSummary } from '@/types/clinicalHandoff';
 import type { QueueEntrySummary, QueuePriority, QueueStatus } from '@/types/scheduling';
+import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { formatDateTime } from '@/utils/labels';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -450,6 +487,9 @@ const error = ref('');
 const searched = ref(false);
 const owners = ref<OwnerSummary[]>([]);
 const patients = ref<PatientSummary[]>([]);
+const patientLaboratoryOrders = ref<DiagnosticOrderSummary[]>([]);
+const patientPreventiveEvents = ref<PreventiveEventSummary[]>([]);
+const patientBillingRecords = ref<BillingRecordSummary[]>([]);
 const queueEntries = ref<QueueEntrySummary[]>([]);
 const queueLoading = ref(false);
 const queueError = ref('');
@@ -461,12 +501,207 @@ const handoffInboxMode = ref<'pending' | 'acknowledged'>('pending');
 
 const hasQuery = computed(() => query.value.trim().length > 0);
 
+interface ContextualQuickAction {
+  key: string;
+  label: string;
+  title: string;
+  description: string;
+  to: string;
+  tone: 'primary' | 'secondary' | 'warning';
+}
+
+function patientPriority360Action(patient: PatientSummary): ContextualQuickAction | null {
+  const pendingLaboratoryCount = patientLaboratoryOrders.value.filter(
+    (order) =>
+      order.patientId === patient.id && (order.status === 'requested' || order.status === 'collected')
+  ).length;
+  const overduePreventiveCount = patientPreventiveEvents.value.filter(
+    (event) =>
+      (event.patientId === patient.id || event.animalName === patient.name) &&
+      event.status === 'scheduled' &&
+      isPastDate(event.eventDate)
+  ).length;
+  const openBillingAmount = patientBillingRecords.value
+    .filter((record) => record.patientId === patient.id && record.status !== 'settled')
+    .reduce((sum, record) => sum + record.subtotalAmount, 0);
+
+  if (
+    pendingLaboratoryCount === 0 &&
+    overduePreventiveCount === 0 &&
+    openBillingAmount === 0 &&
+    !patient.chronicDisease &&
+    !patient.allergy
+  ) {
+    return null;
+  }
+
+  if (pendingLaboratoryCount > 0) {
+    const preventiveSuffix =
+      overduePreventiveCount > 0 ? ` e ${overduePreventiveCount} preventivo(s) vencido(s)` : '';
+
+    return {
+      key: 'patient-priority-360',
+      label: 'Prioridade 360',
+      title: 'Exames pendentes',
+      description: `${pendingLaboratoryCount} exame(s) pendente(s)${preventiveSuffix}. Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
+      to: `/patients/${patient.id}`,
+      tone: 'warning'
+    };
+  }
+
+  if (overduePreventiveCount > 0) {
+    return {
+      key: 'patient-priority-360',
+      label: 'Prioridade 360',
+      title: 'Preventivo vencido',
+      description: `${overduePreventiveCount} preventivo(s) vencido(s). Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
+      to: `/patients/${patient.id}`,
+      tone: 'warning'
+    };
+  }
+
+  if (openBillingAmount > 0) {
+    return {
+      key: 'patient-priority-360',
+      label: 'Prioridade 360',
+      title: 'Pendência financeira',
+      description: `${formatCurrency(openBillingAmount, 'BRL')} em aberto. Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
+      to: `/patients/${patient.id}`,
+      tone: 'warning'
+    };
+  }
+
+  return {
+    key: 'patient-priority-360',
+    label: 'Prioridade 360',
+    title: 'Atenção clínica',
+    description: 'Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.',
+    to: `/patients/${patient.id}`,
+    tone: 'warning'
+  };
+}
+
+function formatCurrency(value: number, currency: string): string {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency });
+}
+
+function isPastDate(value: string): boolean {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return date.getTime() < today.getTime();
+}
+
 const ownersById = computed(() => {
   const map = new Map<string, OwnerSummary>();
   for (const owner of owners.value) {
     map.set(owner.id, owner);
   }
   return map;
+});
+
+const contextualQuickActions = computed<ContextualQuickAction[]>(() => {
+  const actions: ContextualQuickAction[] = [];
+  const firstOwner = owners.value[0] ?? null;
+  const firstPatient = patients.value[0] ?? null;
+  const ownerId = firstPatient?.primaryOwnerId ?? firstOwner?.id ?? '';
+  const patientId = firstPatient?.id ?? '';
+
+  if (firstPatient && ownerId) {
+    const priorityAction = patientPriority360Action(firstPatient);
+    if (priorityAction) {
+      actions.push(priorityAction);
+    }
+
+    actions.push({
+      key: 'patient-cockpit',
+      label: 'Cockpit',
+      title: `Abrir ${firstPatient.name}`,
+      description: 'Ficha 360 do paciente com agenda, comanda, exames e histórico.',
+      to: `/patients/${firstPatient.id}`,
+      tone: 'primary'
+    });
+    actions.push({
+      key: 'schedule-patient',
+      label: 'Agenda',
+      title: 'Agendar paciente',
+      description: 'Cria compromisso já com tutor e paciente preenchidos.',
+      to: appointmentPath(ownerId, patientId),
+      tone: 'secondary'
+    });
+    actions.push({
+      key: 'queue-patient',
+      label: 'Check-in',
+      title: 'Preparar esteira',
+      description: 'Abre fila com contexto de recepção e paciente selecionado.',
+      to: queueCheckInPath(ownerId, patientId),
+      tone: 'warning'
+    });
+    actions.push({
+      key: 'counter-sale-patient',
+      label: 'Comanda',
+      title: 'Abrir comanda',
+      description: 'Encaminha cobrança com tutor e paciente preservados.',
+      to: queueCounterSalePath({
+        id: `quick-${patientId}`,
+        accountId: firstPatient.accountId,
+        patientId,
+        ownerId,
+        appointmentId: null,
+        encounterId: null,
+        status: 'waiting',
+        priority: 'medium',
+        reason: 'Recepcao',
+        checkedInAt: '',
+        calledAt: null,
+        createdAt: '',
+        updatedAt: ''
+      }),
+      tone: 'secondary'
+    });
+    return actions;
+  }
+
+  if (firstOwner) {
+    actions.push({
+      key: 'owner-cockpit',
+      label: 'Tutor',
+      title: `Abrir ${firstOwner.fullName}`,
+      description: 'Cockpit 360 do relacionamento, animais, financeiro e próximas ações.',
+      to: `/owners/${firstOwner.id}`,
+      tone: 'primary'
+    });
+    actions.push({
+      key: 'new-patient',
+      label: 'Paciente',
+      title: 'Cadastrar animal',
+      description: 'Cria paciente já vinculado ao tutor localizado.',
+      to: `/patients/new?ownerId=${encode(firstOwner.id)}`,
+      tone: 'secondary'
+    });
+    actions.push({
+      key: 'schedule-owner',
+      label: 'Agenda',
+      title: 'Agendar tutor',
+      description: 'Prepara agendamento com tutor preenchido.',
+      to: appointmentPath(firstOwner.id),
+      tone: 'secondary'
+    });
+    actions.push({
+      key: 'counter-sale-owner',
+      label: 'Comanda',
+      title: 'Venda/comanda',
+      description: 'Abre fluxo comercial com tutor preservado.',
+      to: counterSalePath(firstOwner.id),
+      tone: 'warning'
+    });
+  }
+
+  return actions;
 });
 
 const headerBreadcrumbs: PageBreadcrumb[] = [
@@ -677,6 +912,9 @@ async function runSearch() {
   if (!search) {
     owners.value = [];
     patients.value = [];
+    patientLaboratoryOrders.value = [];
+    patientPreventiveEvents.value = [];
+    patientBillingRecords.value = [];
     return;
   }
 
@@ -688,13 +926,82 @@ async function runSearch() {
     ]);
     owners.value = ownerItems;
     patients.value = patientItems;
+    await loadPatientPriorityContext(patientItems);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao buscar tutor ou paciente';
     owners.value = [];
     patients.value = [];
+    patientLaboratoryOrders.value = [];
+    patientPreventiveEvents.value = [];
+    patientBillingRecords.value = [];
   } finally {
     loading.value = false;
   }
+}
+
+async function loadPatientPriorityContext(patientItems: PatientSummary[]) {
+  if (patientItems.length === 0) {
+    patientLaboratoryOrders.value = [];
+    patientPreventiveEvents.value = [];
+    patientBillingRecords.value = [];
+    return;
+  }
+
+  const contextResults = await Promise.allSettled(
+    patientItems.flatMap((patient) => [
+      laboratoryService.listOrders({ patientId: patient.id }),
+      vaccinesDewormersService.list({
+        patientId: patient.id,
+        ownerId: patient.primaryOwnerId,
+        includeExecuted: true
+      }),
+      billingService.list({ ownerId: patient.primaryOwnerId })
+    ])
+  );
+
+  patientLaboratoryOrders.value = contextResults
+    .filter(
+      (result): result is PromiseFulfilledResult<DiagnosticOrderSummary[]> =>
+        result.status === 'fulfilled' && isDiagnosticOrderList(result.value)
+    )
+    .flatMap((result) => result.value);
+
+  patientPreventiveEvents.value = contextResults
+    .filter(
+      (result): result is PromiseFulfilledResult<PreventiveEventSummary[]> =>
+        result.status === 'fulfilled' && isPreventiveEventList(result.value)
+    )
+    .flatMap((result) => result.value);
+
+  patientBillingRecords.value = contextResults
+    .filter(
+      (result): result is PromiseFulfilledResult<BillingRecordSummary[]> =>
+        result.status === 'fulfilled' && isBillingRecordList(result.value)
+    )
+    .flatMap((result) => result.value);
+}
+
+function isDiagnosticOrderList(value: unknown[]): value is DiagnosticOrderSummary[] {
+  return value.every(
+    (item) => typeof item === 'object' && item !== null && 'examType' in item && 'status' in item
+  );
+}
+
+function isPreventiveEventList(value: unknown[]): value is PreventiveEventSummary[] {
+  return value.every(
+    (item) => typeof item === 'object' && item !== null && 'itemType' in item && 'eventDate' in item
+  );
+}
+
+function isBillingRecordList(value: unknown[]): value is BillingRecordSummary[] {
+  return value.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'subtotalAmount' in item &&
+      'ownerId' in item &&
+      'patientId' in item
+  );
 }
 
 function clearSearch() {
@@ -703,6 +1010,9 @@ function clearSearch() {
   error.value = '';
   owners.value = [];
   patients.value = [];
+  patientLaboratoryOrders.value = [];
+  patientPreventiveEvents.value = [];
+  patientBillingRecords.value = [];
 }
 
 function encode(value: string): string {
@@ -829,6 +1139,8 @@ function handoffStatusLabel(status: string): string {
 
 .workflow-step,
 .operation-link,
+.contextual-quick-actions,
+.contextual-action,
 .result-row,
 .handoff-preview,
 .reception-funnel,
@@ -838,6 +1150,71 @@ function handoffStatusLabel(status: string): string {
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 8px;
   background: #ffffff;
+}
+
+.contextual-quick-actions {
+  padding: 16px;
+}
+
+.contextual-quick-actions__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.contextual-quick-actions__head h2 {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+}
+
+.contextual-quick-actions__head p,
+.contextual-action small {
+  margin: 4px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.contextual-quick-actions__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contextual-action {
+  display: grid;
+  gap: 5px;
+  min-height: 106px;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.contextual-action span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.contextual-action strong {
+  color: var(--color-text, #0f172a);
+}
+
+.contextual-action--primary {
+  border-left: 4px solid #0f766e;
+}
+
+.contextual-action--secondary {
+  background: #f8fafc;
+}
+
+.contextual-action--warning {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
 }
 
 .workflow-step {
@@ -1155,12 +1532,14 @@ function handoffStatusLabel(status: string): string {
   .reception-results,
   .funnel-metrics,
   .handoff-metrics,
+  .contextual-quick-actions__grid,
   .queue-preview-row,
   .result-row {
     grid-template-columns: 1fr;
   }
 
-  .reception-funnel__head {
+  .reception-funnel__head,
+  .contextual-quick-actions__head {
     flex-direction: column;
   }
 

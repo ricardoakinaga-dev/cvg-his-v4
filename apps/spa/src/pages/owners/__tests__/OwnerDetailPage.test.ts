@@ -52,6 +52,8 @@ const mockPatients = [
     size: 'large' as const,
     baseWeightKg: 30.5,
     birthDateApproximate: '2020-05-15',
+    chronicDisease: 'Doença renal crônica',
+    allergy: 'Dipirona',
     primaryOwnerId: 'owner-1',
     status: 'active' as const,
     createdAt: '2024-01-01T00:00:00Z',
@@ -121,6 +123,52 @@ const mockQuotes = [
     updatedAt: '2024-01-01T00:00:00Z'
   }
 ];
+const mockPreventiveEvents = [
+  {
+    id: 'prev-1',
+    accountId: 'acc-1',
+    patientId: 'pat-1',
+    ownerId: 'owner-1',
+    clientName: 'João Silva',
+    animalName: 'Rex',
+    eventDate: '2099-02-01',
+    itemType: 'vaccine' as const,
+    description: 'V10 anual',
+    status: 'scheduled' as const,
+    observation: null,
+    executedAt: null,
+    executedObservation: null,
+    rescheduledFromId: null,
+    reminderEmailPreparedAt: null,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
+const mockLaboratoryOrders = [
+  {
+    id: 'lab-1',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'HEM',
+    reason: 'Hemograma controle',
+    status: 'requested' as const,
+    createdAt: '2024-01-04T09:00:00Z',
+    updatedAt: '2024-01-04T09:00:00Z'
+  },
+  {
+    id: 'lab-2',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'BIO',
+    reason: 'Bioquímica anual',
+    status: 'resulted' as const,
+    resultSummary: 'Sem alterações',
+    createdAt: '2024-01-03T09:00:00Z',
+    updatedAt: '2024-01-03T09:00:00Z'
+  }
+];
 
 const mockGetOwnerById = vi.fn().mockResolvedValue(mockOwner);
 const mockPatientList = vi.fn().mockResolvedValue(mockPatients);
@@ -128,6 +176,8 @@ const mockAppointmentList = vi.fn().mockResolvedValue(mockAppointments);
 const mockEncounterList = vi.fn().mockResolvedValue(mockEncounters);
 const mockBillingList = vi.fn().mockResolvedValue(mockBillingRecords);
 const mockQuoteList = vi.fn().mockResolvedValue(mockQuotes);
+const mockPreventiveList = vi.fn().mockResolvedValue(mockPreventiveEvents);
+const mockLaboratoryListOrders = vi.fn().mockResolvedValue(mockLaboratoryOrders);
 const mockQuoteCreate = vi.fn().mockResolvedValue({
   ...mockQuotes[0],
   id: 'quote-2',
@@ -171,7 +221,25 @@ vi.mock('@/services/quotes', () => ({
   }
 }));
 
+vi.mock('@/services/vaccinesDewormers', () => ({
+  vaccinesDewormersService: {
+    list: (...args: unknown[]) => mockPreventiveList(...args)
+  },
+  preventiveItemTypeLabel: (itemType: string) =>
+    ({ vaccine: 'Vacina', dewormer: 'Vermífugo', other: 'Outro' })[itemType] ?? itemType
+}));
+
+vi.mock('@/services/laboratory', () => ({
+  laboratoryService: {
+    listOrders: (...args: unknown[]) => mockLaboratoryListOrders(...args)
+  }
+}));
+
 vi.mock('vue-router', () => ({
+  RouterLink: {
+    template: '<a :href="to"><slot /></a>',
+    props: ['to']
+  },
   useRoute: () => ({
     params: { id: 'owner-1' }
   })
@@ -186,6 +254,8 @@ describe('OwnerDetailPage', () => {
     mockEncounterList.mockResolvedValue(mockEncounters);
     mockBillingList.mockResolvedValue(mockBillingRecords);
     mockQuoteList.mockResolvedValue(mockQuotes);
+    mockPreventiveList.mockResolvedValue(mockPreventiveEvents);
+    mockLaboratoryListOrders.mockResolvedValue(mockLaboratoryOrders);
     mockQuoteCreate.mockResolvedValue({
       ...mockQuotes[0],
       id: 'quote-2',
@@ -208,6 +278,8 @@ describe('OwnerDetailPage', () => {
 
     await flushPromises();
 
+    const normalizedText = wrapper.text().replace(/\u00a0/g, ' ');
+
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Atendimento > Cadastros');
     expect(wrapper.text()).toContain('Cadastrar Novo Animal');
@@ -222,6 +294,44 @@ describe('OwnerDetailPage', () => {
     expect(wrapper.text()).toContain('120');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Agenda vinculada');
+    expect(wrapper.text()).toContain('Cockpit 360 tutor/paciente');
+    expect(wrapper.text()).toContain('Jornada assistencial');
+    expect(wrapper.text()).toContain('1/1 paciente(s) ativo(s) · 1 atendimento(s)');
+    expect(wrapper.text()).toContain('1 preventivo(s)');
+    expect(wrapper.text()).toContain('1 exame(s)');
+    expect(normalizedText).toContain('R$ 420,00 em aberto');
+    expect(wrapper.text()).toContain('Atenção clínica');
+    expect(wrapper.text()).toContain('Vacina');
+    expect(wrapper.text()).toContain('Retorno · in_care');
+    expect(wrapper.text()).toContain('2 alerta(s) no cadastro');
+    expect(wrapper.text()).toContain('Prevenção');
+    expect(wrapper.text()).toContain('V10 anual');
+    expect(wrapper.text()).toContain('Laboratório');
+    expect(wrapper.text()).toContain('1 exame(s) pendente(s)');
+    expect(wrapper.text()).toContain('Acompanhar exames pendentes');
+    expect(wrapper.text()).toContain('Timeline 360 do tutor');
+    expect(wrapper.text()).toContain('Agenda · Rex');
+    expect(wrapper.text()).toContain('Atendimento · Rex');
+    expect(wrapper.text()).toContain('Financeiro · Rex');
+    expect(wrapper.text()).toContain('Laboratório · Rex');
+    expect(wrapper.text()).toContain('Preventivo · Rex');
+    expect(wrapper.text()).toContain('Mensagem · Rex');
+    expect(wrapper.text()).toContain('Lembrete de agenda');
+    expect(mockPreventiveList).toHaveBeenCalledWith({
+      ownerId: 'owner-1',
+      includeExecuted: true
+    });
+    expect(mockLaboratoryListOrders).toHaveBeenCalled();
+    expect(
+      wrapper
+        .findAll('a')
+        .some((link) => link.attributes('href') === '/patients/pat-1' && link.text().includes('Abrir cockpit do paciente'))
+    ).toBe(true);
+    expect(
+      wrapper
+        .findAll('a')
+        .some((link) => link.attributes('href') === '/laboratory/orders' && link.text().includes('Acompanhar exames pendentes'))
+    ).toBe(true);
     expect(wrapper.text()).toContain('CRM financeiro');
     expect(wrapper.text()).toContain('Resgate de Pontos');
     expect(wrapper.text()).toContain('Live Animal e Live Lab');

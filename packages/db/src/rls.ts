@@ -1,5 +1,161 @@
 import type { Pool, PoolClient } from 'pg';
 
+export interface RlsMigrationFile {
+  readonly name: string;
+  readonly sql: string;
+}
+
+export interface RlsMigrationCoverageTable {
+  readonly tableName: string;
+  readonly sourceFiles: readonly string[];
+  readonly hasAccountId: boolean;
+  readonly rlsEnabled: boolean;
+  readonly hasTenantPolicy: boolean;
+  readonly policyUsesCurrentAccountId: boolean;
+  readonly status: 'protected' | 'missing_rls' | 'missing_policy' | 'documented_exception';
+  readonly missing: readonly string[];
+}
+
+export interface RlsMigrationCoverageReport {
+  readonly generatedAt: string;
+  readonly totalTenantTables: number;
+  readonly protectedTables: number;
+  readonly exceptionTables: number;
+  readonly failingTables: number;
+  readonly tables: readonly RlsMigrationCoverageTable[];
+}
+
+const DEFAULT_RLS_EXCEPTION_TABLES = new Set<string>([
+  'accounts',
+  'tenants',
+  'drizzle_migrations'
+]);
+
+function stripSqlComments(sql: string): string {
+  return sql
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--.*$/gm, ' ');
+}
+
+function normalizeIdentifier(identifier: string): string {
+  const cleaned = identifier
+    .trim()
+    .replace(/^ONLY\s+/i, '')
+    .replace(/^IF\s+EXISTS\s+/i, '')
+    .replace(/^public\./i, '')
+    .replace(/"/g, '');
+  const parts = cleaned.split('.');
+  return (parts[parts.length - 1] ?? cleaned).toLowerCase();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function collectTenantTables(files: readonly RlsMigrationFile[]): Map<string, Set<string>> {
+  const tables = new Map<string, Set<string>>();
+  const createTablePattern =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:"?public"?\.)?"?[a-zA-Z0-9_]+"?)\s*\(([\s\S]*?)\)\s*;/gi;
+
+  for (const file of files) {
+    const sql = stripSqlComments(file.sql);
+    for (const match of sql.matchAll(createTablePattern)) {
+      const tableName = normalizeIdentifier(match[1] ?? '');
+      const body = match[2] ?? '';
+      if (!tableName || !/"?account_id"?\s+(uuid|text|varchar|character varying|char|bigint|integer)/i.test(body)) {
+        continue;
+      }
+
+      const sourceFiles = tables.get(tableName) ?? new Set<string>();
+      sourceFiles.add(file.name);
+      tables.set(tableName, sourceFiles);
+    }
+  }
+
+  return tables;
+}
+
+function hasRlsEnabled(combinedSql: string, tableName: string): boolean {
+  const table = escapeRegExp(tableName);
+  return new RegExp(
+    `ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:(?:"?public"?)\\.)?"?${table}"?\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`,
+    'i'
+  ).test(combinedSql);
+}
+
+function hasTenantPolicy(combinedSql: string, tableName: string): boolean {
+  const table = escapeRegExp(tableName);
+  return new RegExp(
+    `CREATE\\s+POLICY\\s+[\\s\\S]*?\\s+ON\\s+(?:(?:"?public"?)\\.)?"?${table}"?[\\s\\S]*?(USING|WITH\\s+CHECK)`,
+    'i'
+  ).test(combinedSql);
+}
+
+function policyUsesCurrentAccountId(combinedSql: string, tableName: string): boolean {
+  const table = escapeRegExp(tableName);
+  const policyMatch = combinedSql.match(
+    new RegExp(
+      `CREATE\\s+POLICY\\s+[\\s\\S]*?\\s+ON\\s+(?:(?:"?public"?)\\.)?"?${table}"?[\\s\\S]*?(?=CREATE\\s+POLICY|ALTER\\s+TABLE|CREATE\\s+TABLE|$)`,
+      'i'
+    )
+  );
+  const policySql = policyMatch?.[0] ?? '';
+  return /app\.current_account_id\(\)|current_setting\('app\.current_account_id'/i.test(policySql);
+}
+
+export function analyzeRlsMigrationCoverage(
+  files: readonly RlsMigrationFile[],
+  options?: { readonly exceptionTables?: readonly string[]; readonly generatedAt?: string }
+): RlsMigrationCoverageReport {
+  const exceptionTables = new Set([
+    ...DEFAULT_RLS_EXCEPTION_TABLES,
+    ...(options?.exceptionTables ?? []).map((table) => table.toLowerCase())
+  ]);
+  const tenantTables = collectTenantTables(files);
+  const combinedSql = stripSqlComments(files.map((file) => file.sql).join('\n\n'));
+  const tables: RlsMigrationCoverageTable[] = [];
+
+  for (const [tableName, sourceFiles] of tenantTables.entries()) {
+    const rlsEnabled = hasRlsEnabled(combinedSql, tableName);
+    const tenantPolicy = hasTenantPolicy(combinedSql, tableName);
+    const usesCurrentAccount = policyUsesCurrentAccountId(combinedSql, tableName);
+    const missing = [
+      ...(rlsEnabled ? [] : ['ENABLE ROW LEVEL SECURITY']),
+      ...(tenantPolicy ? [] : ['CREATE POLICY']),
+      ...(usesCurrentAccount ? [] : ['app.current_account_id policy predicate'])
+    ];
+    const isException = exceptionTables.has(tableName);
+
+    tables.push({
+      tableName,
+      sourceFiles: [...sourceFiles].sort(),
+      hasAccountId: true,
+      rlsEnabled,
+      hasTenantPolicy: tenantPolicy,
+      policyUsesCurrentAccountId: usesCurrentAccount,
+      status:
+        missing.length === 0
+          ? 'protected'
+          : isException
+            ? 'documented_exception'
+            : rlsEnabled
+              ? 'missing_policy'
+              : 'missing_rls',
+      missing
+    });
+  }
+
+  const sortedTables = tables.sort((a, b) => a.tableName.localeCompare(b.tableName));
+  return {
+    generatedAt: options?.generatedAt ?? new Date().toISOString(),
+    totalTenantTables: sortedTables.length,
+    protectedTables: sortedTables.filter((table) => table.status === 'protected').length,
+    exceptionTables: sortedTables.filter((table) => table.status === 'documented_exception').length,
+    failingTables: sortedTables.filter((table) => table.status === 'missing_policy' || table.status === 'missing_rls').length,
+    tables: sortedTables
+  };
+}
+
 /**
  * Configura o contexto de tenant na sessao PostgreSQL atual.
  * Deve ser chamado no inicio de cada transacao antes de qualquer query.

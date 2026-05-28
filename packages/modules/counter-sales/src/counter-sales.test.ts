@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 import { CounterSalesService } from './index.js';
+import type {
+  CounterSaleRecord,
+  CounterSalesRepository
+} from './repositories/database-counter-sales.repository.js';
 
 function createService() {
   return new CounterSalesService();
@@ -60,6 +64,45 @@ test('CounterSalesService addItem adds service item', async () => {
   assert.equal(result.sale.total, 120);
 });
 
+test('CounterSalesService rejects invalid item financial inputs', async () => {
+  const service = createService();
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+
+  await assert.rejects(
+    () => service.addItem(sale.id, { itemType: 'product', nameSnapshot: '', unitPrice: 10 }),
+    ConflictError
+  );
+  await assert.rejects(
+    () =>
+      service.addItem(sale.id, {
+        itemType: 'product',
+        nameSnapshot: 'Item',
+        unitPrice: -1
+      }),
+    ConflictError
+  );
+  await assert.rejects(
+    () =>
+      service.addItem(sale.id, {
+        itemType: 'product',
+        nameSnapshot: 'Item',
+        unitPrice: 10,
+        quantity: 0
+      }),
+    ConflictError
+  );
+  await assert.rejects(
+    () =>
+      service.addItem(sale.id, {
+        itemType: 'product',
+        nameSnapshot: 'Item',
+        unitPrice: 10,
+        discountAmount: -1
+      }),
+    ConflictError
+  );
+});
+
 test('CounterSalesService updateItem updates quantity and discount', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
@@ -74,6 +117,20 @@ test('CounterSalesService updateItem updates quantity and discount', async () =>
   assert.equal(result.item.discountAmount, 5);
   assert.equal(result.item.lineTotal, 25);
   assert.equal(result.sale.total, 25);
+});
+
+test('CounterSalesService rejects invalid item updates', async () => {
+  const service = createService();
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  const { item } = await service.addItem(sale.id, {
+    itemType: 'product',
+    nameSnapshot: 'Item',
+    unitPrice: 10,
+    quantity: 1
+  });
+
+  await assert.rejects(() => service.updateItem(item.id, { quantity: 0 }), ConflictError);
+  await assert.rejects(() => service.updateItem(item.id, { discountAmount: -1 }), ConflictError);
 });
 
 test('CounterSalesService removeItem removes and recalculates', async () => {
@@ -101,12 +158,107 @@ test('CounterSalesService addPayment registers payment', async () => {
   assert.equal(result.sale.balanceDue, 0);
 });
 
+test('CounterSalesService persists recalculated totals after items and payments in database mode', async () => {
+  const updatedSales: CounterSaleRecord[] = [];
+  const repository: CounterSalesRepository = {
+    async create() {},
+    async update(sale) {
+      updatedSales.push(sale);
+    },
+    async findById() {
+      return null;
+    },
+    async findByAccountId() {
+      return [];
+    },
+    async createItem() {},
+    async updateItem() {},
+    async deleteItem() {},
+    async findItemsBySaleId() {
+      return [];
+    },
+    async createPayment() {},
+    async findPaymentsBySaleId() {
+      return [];
+    },
+    async getOpenSalesCount() {
+      return 0;
+    },
+    async getClosedTodayCount() {
+      return 0;
+    },
+    async getRevenueToday() {
+      return { gross: 0, net: 0 };
+    },
+    async getSalesByPaymentMethod() {
+      return [];
+    },
+    async getTopProducts() {
+      return [];
+    },
+    async getTopServices() {
+      return [];
+    },
+    async getLowStockAlerts() {
+      return [];
+    }
+  };
+
+  const service = new CounterSalesService({ repository });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  const added = await service.addItem(sale.id, {
+    itemType: 'product',
+    nameSnapshot: 'Antipulgas',
+    unitPrice: 80,
+    quantity: 2,
+    discountAmount: 10
+  });
+  await service.addPayment(sale.id, { method: 'pix', amount: 50 });
+  await service.updateItem(added.item.id, { quantity: 1, discountAmount: 5 });
+  await assert.rejects(() => service.removeItem(added.item.id), ConflictError);
+
+  assert.equal(updatedSales.length, 3);
+  assert.deepEqual(
+    updatedSales.map((updated) => ({
+      subtotal: updated.subtotal,
+      discountAmount: updated.discountAmount,
+      total: updated.total,
+      paidAmount: updated.paidAmount,
+      balanceDue: updated.balanceDue
+    })),
+    [
+      { subtotal: 160, discountAmount: 10, total: 150, paidAmount: 0, balanceDue: 150 },
+      { subtotal: 160, discountAmount: 10, total: 150, paidAmount: 50, balanceDue: 100 },
+      { subtotal: 80, discountAmount: 5, total: 75, paidAmount: 50, balanceDue: 25 }
+    ]
+  );
+});
+
 test('CounterSalesService addPayment rejects overpayment', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
   await service.addItem(sale.id, { itemType: 'product', nameSnapshot: 'Item', unitPrice: 50 });
   await assert.rejects(
     () => service.addPayment(sale.id, { method: 'cash', amount: 100 }),
+    ConflictError
+  );
+});
+
+test('CounterSalesService rejects invalid payment inputs', async () => {
+  const service = createService();
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'product', nameSnapshot: 'Item', unitPrice: 50 });
+
+  await assert.rejects(
+    () => service.addPayment(sale.id, { method: 'cash', amount: 0 }),
+    ConflictError
+  );
+  await assert.rejects(
+    () => service.addPayment(sale.id, { method: 'cash', amount: -10 }),
+    ConflictError
+  );
+  await assert.rejects(
+    () => service.addPayment(sale.id, { method: 'cash', amount: 10, installments: 0 }),
     ConflictError
   );
 });

@@ -203,7 +203,7 @@ const mockTriageRecords = [
     accountId: 'acc-1',
     encounterId: 'enc-1',
     patientId: 'pat-1',
-    priority: 'high' as const,
+    priority: 'critical' as const,
     chiefComplaint: 'Claudicação em membro anterior',
     initialNotes: 'Chegou mancando desde ontem',
     alerts: ['Alergia a dipirona'],
@@ -342,6 +342,17 @@ const mockDiagnosticOrders = [
     resultAttachmentId: 'att-3',
     createdAt: '2024-01-03T09:21:00Z',
     updatedAt: '2024-01-03T09:27:00Z'
+  },
+  {
+    id: 'diag-pending',
+    accountId: 'acc-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Hemograma',
+    reason: 'Controle renal',
+    status: 'requested' as const,
+    createdAt: '2024-01-03T09:18:00Z',
+    updatedAt: '2024-01-03T09:18:00Z'
   }
 ];
 
@@ -453,8 +464,14 @@ const mockDiagnosticAttachments = [
     createdAt: '2024-01-03T09:27:00Z'
   }
 ];
-const mockAttachmentList = vi.fn().mockImplementation((linkedEntityType: string) =>
-  Promise.resolve(linkedEntityType === 'diagnostic_order' ? mockDiagnosticAttachments : mockRecordAttachments)
+const mockAttachmentList = vi.fn().mockImplementation((linkedEntityType: string, linkedEntityId?: string) =>
+  Promise.resolve(
+    linkedEntityType === 'diagnostic_order'
+      ? linkedEntityId === 'diag-1'
+        ? mockDiagnosticAttachments
+        : []
+      : mockRecordAttachments
+  )
 );
 const mockGetOwnerName = vi.fn().mockResolvedValue('João Silva');
 
@@ -609,8 +626,14 @@ describe('PatientDetailPage', () => {
         frequency: '12/12h'
       }
     ]);
-    mockAttachmentList.mockImplementation((linkedEntityType: string) =>
-      Promise.resolve(linkedEntityType === 'diagnostic_order' ? mockDiagnosticAttachments : mockRecordAttachments)
+    mockAttachmentList.mockImplementation((linkedEntityType: string, linkedEntityId?: string) =>
+      Promise.resolve(
+        linkedEntityType === 'diagnostic_order'
+          ? linkedEntityId === 'diag-1'
+            ? mockDiagnosticAttachments
+            : []
+          : mockRecordAttachments
+      )
     );
     mockGetOwnerName.mockResolvedValue('João Silva');
   });
@@ -635,6 +658,30 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Abrir comanda do atendimento');
     expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Cockpit 360 do paciente');
+    expect(wrapper.text()).toContain('Jornada clínica');
+    expect(wrapper.text()).toContain('1 atendimento(s) · 1 agenda(s)');
+    expect(wrapper.text()).toContain('Preventivo');
+    expect(wrapper.text()).toContain('1 próxima(s)');
+    expect(wrapper.text()).toContain('Laboratório');
+    expect(wrapper.text()).toContain('1 exame(s) pendente(s)');
+    expect(wrapper.text()).toContain('Financeiro');
+    expect(wrapper.text().replace(/\u00a0/g, ' ')).toContain('R$ 240,50 em aberto');
+    expect(wrapper.text()).toContain('Próxima ação');
+    expect(wrapper.text()).toContain('Priorizar triagem crítica');
+    expect(
+      wrapper
+        .findAll('a')
+        .some((link) => link.attributes('href') === '/triage/tri-1' && link.text().includes('Abrir ação'))
+    ).toBe(true);
+    expect(wrapper.text()).toContain('Timeline 360 unificada');
+    expect(wrapper.text()).toContain('Atendimento · Paciente chamado para o consultório');
+    expect(wrapper.text()).toContain('Prontuário · Prescrição adicionada');
+    expect(wrapper.text()).toContain('Agenda · Vacina anual');
+    expect(wrapper.text()).toContain('Financeiro · Aberto');
+    expect(wrapper.text()).toContain('Laboratório · Radiografia');
+    expect(wrapper.text()).toContain('Preventivo · Vacina V10 - reforço anual');
+    expect(wrapper.text()).toContain('Mensagem · Lembrete de retorno');
     expect(wrapper.text()).toContain('Ver cadastro do cliente');
     expect(wrapper.text()).toContain('Editar Cadastro');
     expect(wrapper.text()).toContain('Doença Crônica');

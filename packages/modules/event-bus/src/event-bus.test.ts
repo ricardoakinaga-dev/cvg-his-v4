@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { DatabaseOutboxRepository, EventBusService } from './event-bus.service.js';
 

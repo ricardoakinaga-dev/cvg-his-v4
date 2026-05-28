@@ -12,6 +12,10 @@
       </template>
     </AppPageHeader>
 
+    <DsAlert v-if="actionMessage" :variant="actionMessage.variant" dismissible @dismiss="actionMessage = null">
+      {{ actionMessage.text }}
+    </DsAlert>
+
     <section class="package-kpis">
       <DsStatCard :value="packages.length.toString()" label="pacote(s) mapeado(s)" icon="📦" />
       <DsStatCard :value="availablePackages.length.toString()" label="disponível(is)" icon="✅" />
@@ -45,8 +49,10 @@
             />
             <DsInput v-model="filters.status" type="select" label="Status do pacote">
               <option value="all">Todos</option>
-              <option value="available">Disponível</option>
-              <option value="paid">Pago</option>
+              <option value="draft">Rascunho</option>
+              <option value="active">Ativo</option>
+              <option value="completed">Concluído</option>
+              <option value="cancelled">Cancelado</option>
               <option value="expired">Expirado</option>
             </DsInput>
             <DsInput v-model="filters.period" type="date" label="Emissão ou validade" />
@@ -84,7 +90,7 @@
                 </div>
                 <div>
                   <dt>Serviços</dt>
-                  <dd>{{ pkg.services.length }} sessão(ões)</dd>
+                  <dd>{{ packageAvailableSessions(pkg) }}/{{ packagePurchasedSessions(pkg) }} disponível(is)</dd>
                 </div>
                 <div>
                   <dt>Total</dt>
@@ -97,7 +103,10 @@
                 <ul>
                   <li v-for="service in pkg.services" :key="`${pkg.id}-${service.name}-${service.dueDate}`">
                     <strong>{{ service.name }}</strong>
-                    <span>{{ formatCurrency(service.price) }} · Validade: {{ service.dueDate }}</span>
+                    <span>
+                      {{ service.quantityAvailable }}/{{ service.quantityPurchased }} disponível(is) ·
+                      {{ formatCurrency(service.price) }} · Validade: {{ service.dueDate }}
+                    </span>
                   </li>
                 </ul>
               </details>
@@ -157,12 +166,25 @@
                 </div>
                 <div
                   v-for="(service, index) in selectedPackage.services"
-                  :key="`${service.name}-${service.dueDate}`"
+                  :key="service.id"
                   class="service-row"
                 >
                   <span>Serviço {{ index + 1 }}</span>
                   <strong>{{ service.name }}</strong>
-                  <small>{{ formatCurrency(service.price) }} · Validade: {{ service.dueDate }}</small>
+                  <small>
+                    Saldo: {{ service.quantityAvailable }}/{{ service.quantityPurchased }} ·
+                    Consumido: {{ service.quantityConsumed }} ·
+                    {{ formatCurrency(service.price) }} · Validade: {{ service.dueDate }}
+                  </small>
+                  <DsButton
+                    v-if="canConsumeService(selectedPackage, service)"
+                    size="sm"
+                    variant="success"
+                    :loading="actionLoadingKey === `consume:${service.id}`"
+                    @click="consumeService(selectedPackage, service)"
+                  >
+                    Consumir 1
+                  </DsButton>
                 </div>
                 <DsButton size="sm" variant="secondary">Adicionar outro serviço</DsButton>
               </section>
@@ -176,12 +198,33 @@
               </section>
 
               <div class="package-actions package-actions--wide">
-                <DsButton variant="danger">Excluir</DsButton>
+                <DsButton
+                  v-if="canCancelPackage(selectedPackage)"
+                  variant="danger"
+                  :loading="actionLoadingKey === `cancel:${selectedPackage.id}`"
+                  @click="cancelPackage(selectedPackage)"
+                >
+                  Cancelar pacote
+                </DsButton>
                 <DsButton tag="a" to="/quotes" variant="secondary">Imprimir</DsButton>
                 <DsButton tag="a" :to="packageCounterSalePath(selectedPackage)" variant="secondary">Abrir Comanda</DsButton>
                 <DsButton tag="a" to="/billing" variant="primary">Pagar Pacote</DsButton>
-                <DsButton variant="secondary">Cancelar</DsButton>
-                <DsButton variant="primary">Salvar</DsButton>
+                <DsButton
+                  v-if="selectedPackage.status === 'draft'"
+                  variant="primary"
+                  :loading="actionLoadingKey === `activate:${selectedPackage.id}`"
+                  @click="activatePackage(selectedPackage)"
+                >
+                  Ativar pacote
+                </DsButton>
+                <DsButton
+                  v-if="canRenewPackage(selectedPackage)"
+                  variant="secondary"
+                  :loading="actionLoadingKey === `renew:${selectedPackage.id}`"
+                  @click="renewPackage(selectedPackage)"
+                >
+                  Renovar pacote
+                </DsButton>
               </div>
             </div>
           </template>
@@ -206,29 +249,37 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
-import { quoteService, type QuoteDetailResponse, type QuoteSummary } from '@/services/quotes';
+import {
+  packagesService,
+  type CustomerPackageDetail,
+  type CustomerPackageStatus
+} from '@/services/packages';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
-type PackageStatus = 'available' | 'paid' | 'expired';
-
 interface PackageService {
+  id: string;
   name: string;
   price: number;
   dueDate: string;
+  quantityPurchased: number;
+  quantityConsumed: number;
+  quantityAvailable: number;
 }
 
 interface CustomerPackage {
   id: string;
-  ownerId: string | null;
+  ownerId: string;
+  patientId: string | null;
   number: string;
   customer: string;
   animal: string;
   issueDate: string;
   expirationDate: string;
-  status: PackageStatus;
+  status: CustomerPackageStatus;
   notes: string;
   services: PackageService[];
 }
@@ -236,6 +287,8 @@ interface CustomerPackage {
 const packages = ref<CustomerPackage[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
+const actionLoadingKey = ref('');
+const actionMessage = ref<{ variant: 'success' | 'danger'; text: string } | null>(null);
 
 const filters = ref({
   search: '',
@@ -244,9 +297,9 @@ const filters = ref({
 });
 const selectedPackageId = ref('');
 
-const availablePackages = computed(() => packages.value.filter((pkg) => pkg.status === 'available'));
+const availablePackages = computed(() => packages.value.filter((pkg) => pkg.status === 'active'));
 const totalSessions = computed(() =>
-  packages.value.reduce((sum, pkg) => sum + pkg.services.length, 0)
+  packages.value.reduce((sum, pkg) => sum + packagePurchasedSessions(pkg), 0)
 );
 const totalValueFormatted = computed(() =>
   formatCurrency(packages.value.reduce((sum, pkg) => sum + packageTotal(pkg), 0))
@@ -340,8 +393,7 @@ async function loadPackages() {
   errorMessage.value = '';
 
   try {
-    const summaries = await quoteService.list();
-    const details = await Promise.all(summaries.map((quote) => quoteService.get(quote.id)));
+    const details = await packagesService.list();
     packages.value = details.map(toCustomerPackage);
   } catch (error) {
     packages.value = [];
@@ -354,33 +406,43 @@ async function loadPackages() {
   }
 }
 
-function toCustomerPackage(quote: QuoteDetailResponse): CustomerPackage {
+function toCustomerPackage(pkg: CustomerPackageDetail): CustomerPackage {
   return {
-    id: quote.id,
-    ownerId: quote.ownerId,
-    number: quote.number,
-    customer: quote.ownerId ? `Cliente ${quote.ownerId}` : 'Cliente não vinculado',
-    animal: 'Contrato sem animal vinculado',
-    issueDate: formatDate(quote.createdAt),
-    expirationDate: quote.validUntil ? formatDate(quote.validUntil) : '',
-    status: packageStatusFromQuote(quote),
-    notes: quote.notes ?? 'Pacote originado de orçamento aprovado para consumo futuro.',
-    services: quote.items.map((item) => ({
-      name: item.nameSnapshot,
-      price: item.lineTotal,
-      dueDate: quote.validUntil ? formatDate(quote.validUntil) : 'Sem validade individual'
-    }))
+    id: pkg.id,
+    ownerId: pkg.ownerId,
+    patientId: pkg.patientId,
+    number: pkg.number,
+    customer: `Cliente ${pkg.ownerId}`,
+    animal: pkg.patientId ? `Paciente ${pkg.patientId}` : 'Contrato sem animal vinculado',
+    issueDate: formatDate(pkg.createdAt),
+    expirationDate: pkg.expiresAt ? formatDate(pkg.expiresAt) : '',
+    status: pkg.status,
+    notes: pkg.notes ?? 'Pacote originado do domínio real de pacotes para consumo futuro.',
+    services: pkg.items.map((item) => {
+      const balance = pkg.balance.find((balanceItem) => balanceItem.packageItemId === item.id);
+      return {
+        name: item.nameSnapshot,
+        id: item.id,
+        price: item.unitPrice * item.quantityPurchased,
+        dueDate: item.validUntil ? formatDate(item.validUntil) : 'Sem validade individual',
+        quantityPurchased: item.quantityPurchased,
+        quantityConsumed: balance?.quantityConsumed ?? item.quantityConsumed,
+        quantityAvailable: balance?.quantityAvailable ?? item.quantityPurchased - item.quantityConsumed
+      };
+    })
   };
-}
-
-function packageStatusFromQuote(quote: QuoteSummary): PackageStatus {
-  if (quote.convertedToSaleId) return 'paid';
-  if (quote.status === 'approved' || quote.status === 'draft') return 'available';
-  return 'expired';
 }
 
 function packageTotal(pkg: CustomerPackage): number {
   return pkg.services.reduce((sum, service) => sum + service.price, 0);
+}
+
+function packagePurchasedSessions(pkg: CustomerPackage): number {
+  return pkg.services.reduce((sum, service) => sum + service.quantityPurchased, 0);
+}
+
+function packageAvailableSessions(pkg: CustomerPackage): number {
+  return pkg.services.reduce((sum, service) => sum + service.quantityAvailable, 0);
 }
 
 function packageCounterSalePath(pkg: CustomerPackage): string {
@@ -388,17 +450,86 @@ function packageCounterSalePath(pkg: CustomerPackage): string {
   return `/counter-sales?ownerId=${encodeURIComponent(pkg.ownerId)}`;
 }
 
-function statusLabel(status: PackageStatus): string {
+function replacePackage(detail: CustomerPackageDetail) {
+  const mapped = toCustomerPackage(detail);
+  const existingIndex = packages.value.findIndex((pkg) => pkg.id === mapped.id);
+  if (existingIndex >= 0) {
+    packages.value = packages.value.map((pkg) => (pkg.id === mapped.id ? mapped : pkg));
+  } else {
+    packages.value = [mapped, ...packages.value];
+  }
+  selectedPackageId.value = mapped.id;
+}
+
+function canConsumeService(pkg: CustomerPackage, service: PackageService): boolean {
+  return pkg.status === 'active' && service.quantityAvailable > 0;
+}
+
+function canCancelPackage(pkg: CustomerPackage): boolean {
+  return pkg.status !== 'cancelled' && pkg.status !== 'completed';
+}
+
+function canRenewPackage(pkg: CustomerPackage): boolean {
+  return pkg.status === 'active' || pkg.status === 'expired' || pkg.status === 'completed';
+}
+
+async function activatePackage(pkg: CustomerPackage) {
+  await runPackageAction(`activate:${pkg.id}`, 'Pacote ativado.', async () => {
+    replacePackage(await packagesService.activate(pkg.id));
+  });
+}
+
+async function cancelPackage(pkg: CustomerPackage) {
+  await runPackageAction(`cancel:${pkg.id}`, 'Pacote cancelado.', async () => {
+    replacePackage(await packagesService.cancel(pkg.id));
+  });
+}
+
+async function renewPackage(pkg: CustomerPackage) {
+  await runPackageAction(`renew:${pkg.id}`, 'Pacote renovado.', async () => {
+    replacePackage(await packagesService.renew(pkg.id, {}));
+  });
+}
+
+async function consumeService(pkg: CustomerPackage, service: PackageService) {
+  await runPackageAction(`consume:${service.id}`, 'Sessão consumida.', async () => {
+    replacePackage(await packagesService.consumeItem(service.id, {
+      quantity: 1,
+      sourceType: 'manual'
+    }));
+  });
+}
+
+async function runPackageAction(key: string, successText: string, action: () => Promise<void>) {
+  actionLoadingKey.value = key;
+  actionMessage.value = null;
+  try {
+    await action();
+    actionMessage.value = { variant: 'success', text: successText };
+  } catch (error) {
+    actionMessage.value = {
+      variant: 'danger',
+      text: error instanceof Error ? error.message : 'Não foi possível atualizar o pacote.'
+    };
+  } finally {
+    actionLoadingKey.value = '';
+  }
+}
+
+function statusLabel(status: CustomerPackageStatus): string {
   return {
-    available: 'Disponível',
-    paid: 'Pago',
+    draft: 'Rascunho',
+    active: 'Ativo',
+    completed: 'Concluído',
+    cancelled: 'Cancelado',
     expired: 'Expirado'
   }[status];
 }
 
-function statusVariant(status: PackageStatus): 'success' | 'info' | 'warning' {
-  if (status === 'available') return 'success';
-  if (status === 'paid') return 'info';
+function statusVariant(status: CustomerPackageStatus): 'success' | 'info' | 'warning' | 'danger' {
+  if (status === 'active') return 'success';
+  if (status === 'completed') return 'info';
+  if (status === 'cancelled') return 'danger';
   return 'warning';
 }
 

@@ -225,6 +225,16 @@
                   Prontuário
                 </DsButton>
                 <DsButton
+                  v-if="canCompleteEntry(row.entry)"
+                  variant="primary"
+                  size="sm"
+                  :loading="completingId === row.entry.id"
+                  :disabled="completingId === row.entry.id"
+                  @click="handleComplete(row.entry.id)"
+                >
+                  {{ completingId === row.entry.id ? 'Concluindo...' : 'Concluir' }}
+                </DsButton>
+                <DsButton
                   v-if="canNoShow(row.entry.status)"
                   variant="danger"
                   size="sm"
@@ -314,6 +324,7 @@ import { useRouter } from 'vue-router';
 import {
   listQueue,
   callQueueEntry,
+  completeQueueEntry,
   noShowQueueEntry,
   checkInQueue
 } from '@/services/scheduling';
@@ -351,6 +362,7 @@ const error = ref('');
 const successMessage = ref('');
 const callingId = ref<string | null>(null);
 const startingCareId = ref<string | null>(null);
+const completingId = ref<string | null>(null);
 const noShowId = ref<string | null>(null);
 const entityCache = useEntityCache();
 
@@ -851,6 +863,10 @@ function canHandleEncounter(entry: QueueEntrySummary): boolean {
   return false;
 }
 
+function canCompleteEntry(entry: QueueEntrySummary): boolean {
+  return ['in_care', 'observation'].includes(entry.status);
+}
+
 function encounterActionLabel(entry: QueueEntrySummary): string {
   if (entry.status === 'called') {
     return 'Abrir triagem';
@@ -909,6 +925,22 @@ async function handleEncounterFlow(entry: QueueEntrySummary) {
     error.value = err instanceof Error ? err.message : 'Erro ao conduzir fluxo de atendimento';
   } finally {
     startingCareId.value = null;
+  }
+}
+
+async function handleComplete(queueEntryId: string) {
+  completingId.value = queueEntryId;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    await completeQueueEntry(queueEntryId);
+    successMessage.value = 'Entrada da esteira concluída com sucesso.';
+    await loadQueue();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao concluir entrada da esteira';
+  } finally {
+    completingId.value = null;
   }
 }
 

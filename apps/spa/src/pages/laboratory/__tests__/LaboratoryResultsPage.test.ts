@@ -13,7 +13,8 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/services/laboratory', () => ({
   laboratoryService: {
-    listResults: vi.fn()
+    listResults: vi.fn(),
+    printReport: vi.fn()
   }
 }));
 
@@ -49,6 +50,10 @@ describe('LaboratoryResultsPage', () => {
         reason: 'Check-up',
         status: 'resulted',
         resultSummary: 'Hemograma dentro da normalidade',
+        resultedAt: '2026-04-25T10:00:00.000Z',
+        releasedByUserId: 'user-1',
+        signedByUserId: 'rt-lab',
+        signatureHash: 'hash-assinado',
         createdAt: '2026-04-24T08:30:00.000Z',
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
@@ -84,6 +89,9 @@ describe('LaboratoryResultsPage', () => {
       flaggedOrders: 0,
       flags: []
     });
+    vi.mocked(laboratoryService.printReport).mockResolvedValue(
+      '<!doctype html><html><body><h1>Laudo Laboratorial</h1><p>hash-assinado</p></body></html>'
+    );
   });
 
   it('renders Vetus-like reports filters and table columns', async () => {
@@ -106,6 +114,31 @@ describe('LaboratoryResultsPage', () => {
     expect(wrapper.text()).toContain('25/04/2026');
     expect(wrapper.text()).toContain('24/04/2026');
     expect(wrapper.text()).toContain('R$ 0,00');
+    expect(wrapper.text()).toContain('Laudo');
+  });
+
+  it('loads printable signed report preview', async () => {
+    const wrapper = mount(LaboratoryResultsPage, {
+      global: {
+        stubs: {
+          DsModal: {
+            template: '<div v-if="open" class="modal-stub"><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          }
+        }
+      }
+    });
+    await flushPromises();
+
+    const printButton = wrapper.findAll('button').find((button) => button.text() === 'Laudo');
+    expect(printButton).toBeTruthy();
+    await printButton!.trigger('click');
+    await flushPromises();
+
+    expect(laboratoryService.printReport).toHaveBeenCalledWith('diag_laudo_1');
+    expect(wrapper.find('iframe[title="Pré-visualização do laudo"]').exists()).toBe(true);
+    expect(wrapper.find('iframe').attributes('srcdoc')).toContain('Laudo Laboratorial');
+    expect(wrapper.find('iframe').attributes('srcdoc')).toContain('hash-assinado');
   });
 
   it('sends report filters to the laboratory API when searching', async () => {

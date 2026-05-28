@@ -6,9 +6,20 @@ import {
 } from '@cvg-his-v2/shared-database';
 import { DatabaseNotificationRepository } from '@cvg-his-v2/module-notifications';
 import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
+import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
+import { CashService, DatabaseCashRepository } from '@cvg-his-v2/module-cash';
+import { CommissionsService, DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
+import { CounterSalesService, DatabaseCounterSalesRepository } from '@cvg-his-v2/module-counter-sales';
+import {
+  DatabaseEncounterFinancialRepository,
+  DatabaseFinancialPayablesRepository,
+  FinancialIncomeStatementService
+} from '@cvg-his-v2/module-financial';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
+import type { ReportRepository } from '@cvg-his-v2/module-reports';
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import type { AdministrativeExecutiveReportSources } from './runner.js';
 
 const logger = createLogger('worker-bootstrap');
 
@@ -21,6 +32,8 @@ export interface WorkerBootstrapResult {
   readonly databaseDetail: string;
   readonly notificationRepository?: NotificationRepository;
   readonly outboxRepository?: OutboxRepository;
+  readonly reportRepository?: ReportRepository;
+  readonly reportSources?: AdministrativeExecutiveReportSources;
 }
 
 export async function bootstrapWorkerServices(
@@ -53,7 +66,9 @@ export async function bootstrapWorkerServices(
       databaseHealthy: true,
       databaseDetail: health.detail,
       notificationRepository: new DatabaseNotificationRepository(db),
-      outboxRepository: new DatabaseOutboxRepository()
+      outboxRepository: new DatabaseOutboxRepository(),
+      reportRepository: new DatabaseReportRepository(),
+      reportSources: createDatabaseReportSources()
     };
   } catch (error) {
     return {
@@ -61,6 +76,24 @@ export async function bootstrapWorkerServices(
       databaseDetail: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+}
+
+function createDatabaseReportSources(): AdministrativeExecutiveReportSources {
+  return {
+    commercial: new CounterSalesService({
+      repository: new DatabaseCounterSalesRepository()
+    }),
+    financial: new FinancialIncomeStatementService({
+      receivables: new DatabaseEncounterFinancialRepository(),
+      payables: new DatabaseFinancialPayablesRepository()
+    }),
+    cash: new CashService({
+      repository: new DatabaseCashRepository()
+    }),
+    commissions: new CommissionsService({
+      repository: new DatabaseCommissionRepository()
+    })
+  };
 }
 
 export async function shutdownWorkerServices(): Promise<void> {

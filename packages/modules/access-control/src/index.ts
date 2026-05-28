@@ -2,6 +2,8 @@ import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   AccessAssignmentEffect,
   AccessMembershipSummary,
+  AccessModulePermissionMatrixEntry,
+  AccessRoutineAction,
   AccessPermissionAssignmentSummary,
   AccessProfile,
   AccessSectorId,
@@ -553,6 +555,91 @@ const roleCatalog: readonly RoleDefinition[] = [
 
 const roleMap = new Map(roleCatalog.map((role) => [role.code, role]));
 
+const routineActions: readonly AccessRoutineAction[] = [
+  'consult',
+  'insert',
+  'update',
+  'delete',
+  'execute',
+  'admin'
+];
+
+function resolveRoutineActions(permissionCode: string): readonly AccessRoutineAction[] {
+  const normalized = permissionCode.toLowerCase();
+  if (normalized.includes('.admin')) {
+    return ['consult', 'insert', 'update', 'delete', 'execute', 'admin'];
+  }
+  if (normalized.includes('.manage')) {
+    return ['consult', 'insert', 'update', 'delete', 'execute'];
+  }
+
+  const actions = new Set<AccessRoutineAction>();
+  if (
+    normalized.includes('.read') ||
+    normalized.includes('.view') ||
+    normalized.includes('.consult') ||
+    normalized.includes('.list')
+  ) {
+    actions.add('consult');
+  }
+  if (
+    normalized.includes('.write') ||
+    normalized.includes('.create') ||
+    normalized.includes('.insert')
+  ) {
+    actions.add('insert');
+    actions.add('update');
+  }
+  if (
+    normalized.includes('.update') ||
+    normalized.includes('.edit') ||
+    normalized.includes('.review')
+  ) {
+    actions.add('update');
+  }
+  if (
+    normalized.includes('.delete') ||
+    normalized.includes('.remove') ||
+    normalized.includes('.archive') ||
+    normalized.includes('.cancel')
+  ) {
+    actions.add('delete');
+  }
+  if (
+    normalized.includes('.execute') ||
+    normalized.includes('.run') ||
+    normalized.includes('.settle') ||
+    normalized.includes('.pay') ||
+    normalized.includes('.release')
+  ) {
+    actions.add('execute');
+  }
+  return actions.size > 0 ? [...actions] : ['consult'];
+}
+
+function createEmptyRoutineActionMap(): Record<AccessRoutineAction, boolean> {
+  return {
+    consult: false,
+    insert: false,
+    update: false,
+    delete: false,
+    execute: false,
+    admin: false
+  };
+}
+
+function determineCoverageStatus(
+  actions: Record<AccessRoutineAction, boolean>
+): AccessModulePermissionMatrixEntry['coverageStatus'] {
+  if (actions.consult && actions.insert && actions.update && (actions.delete || actions.execute || actions.admin)) {
+    return 'complete';
+  }
+  if (actions.consult && !actions.insert && !actions.update && !actions.delete && !actions.execute && !actions.admin) {
+    return 'read-only';
+  }
+  return 'partial';
+}
+
 export interface AccessContext {
   readonly roleCodes: readonly string[];
   readonly department?: string;
@@ -701,6 +788,82 @@ export class AccessControlService {
       teamPermissions: Array.from(this.#teamAssignments.values()).flat(),
       sectorPermissions: Array.from(this.#sectorAssignments.values()).flat()
     };
+  }
+
+  public getModulePermissionMatrix(accountId?: AccountId): readonly AccessModulePermissionMatrixEntry[] {
+    const assignments = this.listAssignments();
+    const grouped = new Map<
+      string,
+      {
+        module: string;
+        permissionCodes: Set<string>;
+        actions: Record<AccessRoutineAction, boolean>;
+        rolesAllowed: Set<string>;
+        teamOverrideCount: number;
+        sectorOverrideCount: number;
+        userOverrideCount: number;
+      }
+    >();
+
+    for (const permission of this.#permissions) {
+      const module = permission.module || permission.code.split('.')[0] || 'outros';
+      const current =
+        grouped.get(module) ??
+        {
+          module,
+          permissionCodes: new Set<string>(),
+          actions: createEmptyRoutineActionMap(),
+          rolesAllowed: new Set<string>(),
+          teamOverrideCount: 0,
+          sectorOverrideCount: 0,
+          userOverrideCount: 0
+        };
+
+      current.permissionCodes.add(permission.code);
+      for (const action of resolveRoutineActions(permission.code)) {
+        current.actions[action] = true;
+      }
+
+      for (const role of this.#roles) {
+        if (role.permissionCodes.includes(permission.code)) {
+          current.rolesAllowed.add(role.code);
+        }
+      }
+
+      current.userOverrideCount += assignments.userPermissions.filter(
+        (assignment) =>
+          assignment.permissionCode === permission.code &&
+          (!accountId || assignment.accountId === accountId)
+      ).length;
+      current.teamOverrideCount += assignments.teamPermissions.filter(
+        (assignment) =>
+          assignment.permissionCode === permission.code &&
+          (!accountId || assignment.accountId === accountId)
+      ).length;
+      current.sectorOverrideCount += assignments.sectorPermissions.filter(
+        (assignment) =>
+          assignment.permissionCode === permission.code &&
+          (!accountId || assignment.accountId === accountId)
+      ).length;
+
+      grouped.set(module, current);
+    }
+
+    return [...grouped.values()]
+      .map((entry) => ({
+        module: entry.module,
+        permissionCodes: [...entry.permissionCodes].sort(),
+        actions: routineActions.reduce<Record<AccessRoutineAction, boolean>>(
+          (acc, action) => ({ ...acc, [action]: entry.actions[action] }),
+          createEmptyRoutineActionMap()
+        ),
+        rolesAllowed: [...entry.rolesAllowed].sort(),
+        teamOverrideCount: entry.teamOverrideCount,
+        sectorOverrideCount: entry.sectorOverrideCount,
+        userOverrideCount: entry.userOverrideCount,
+        coverageStatus: determineCoverageStatus(entry.actions)
+      }))
+      .sort((a, b) => a.module.localeCompare(b.module));
   }
 
   public getLegacyRoleCodes(userId: UserId): readonly string[] {

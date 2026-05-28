@@ -9,6 +9,7 @@
  *   POST   /queue/check-in            → checkInQueue()
  *   POST   /queue/:id/call            → callQueueEntry()
  *   POST   /queue/:id/start-care      → startCareQueueEntry()  [Sprint 1 — backend fino]
+ *   POST   /queue/:id/complete        → completeQueueEntry()
  *   POST   /queue/:id/no-show         → noShowQueueEntry()     [Sprint 1 — backend fino]
  *
  * Nota: Operações de appointment já existem em @/services/appointment.ts.
@@ -103,6 +104,22 @@ export async function callQueueEntry(queueEntryId: string): Promise<QueueEntrySu
  */
 export async function startCareQueueEntry(queueEntryId: string): Promise<QueueEntrySummary> {
   return apiRequest<QueueEntrySummary>(`/queue/${queueEntryId}/start-care`, {
+    method: 'POST'
+  });
+}
+
+/**
+ * Conclui uma entrada da fila operacional.
+ *
+ * O backend valida:
+ * - existência da entry
+ * - status atual permitir transição para 'completed'
+ *   (válido a partir de: in_care, observation)
+ *
+ * @returns A queue entry atualizada com status 'completed'.
+ */
+export async function completeQueueEntry(queueEntryId: string): Promise<QueueEntrySummary> {
+  return apiRequest<QueueEntrySummary>(`/queue/${queueEntryId}/complete`, {
     method: 'POST'
   });
 }

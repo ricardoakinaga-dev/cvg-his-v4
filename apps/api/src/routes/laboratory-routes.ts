@@ -162,6 +162,82 @@ function dateMatches(value: string | undefined, dateFilter: string): boolean {
   return Boolean(value?.slice(0, 10) === dateFilter);
 }
 
+function escapeHtml(value: string | undefined): string {
+  return (value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatReportDate(value: string | undefined): string {
+  if (!value) return '-';
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC'
+  });
+}
+
+function buildPrintableLaboratoryReportHtml(order: ReturnType<LaboratoryService['getOrder']>): string {
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Laudo Laboratorial ${escapeHtml(order.id)}</title>
+  <style>
+    body { color: #0f172a; font-family: Arial, sans-serif; margin: 32px; }
+    header { border-bottom: 2px solid #0f766e; margin-bottom: 24px; padding-bottom: 16px; }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    h2 { font-size: 16px; margin: 24px 0 8px; }
+    dl { display: grid; grid-template-columns: 180px 1fr; gap: 8px 16px; }
+    dt { color: #475569; font-weight: 700; }
+    dd { margin: 0; }
+    .result { border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; white-space: pre-wrap; }
+    .signature { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 24px; padding: 16px; }
+    .hash { font-family: monospace; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Laudo Laboratorial</h1>
+    <div>CVG-HIS v4 Premium Enterprise</div>
+  </header>
+  <section>
+    <h2>Identificacao</h2>
+    <dl>
+      <dt>Codigo do laudo</dt><dd>${escapeHtml(order.id)}</dd>
+      <dt>Conta</dt><dd>${escapeHtml(order.accountId)}</dd>
+      <dt>Atendimento</dt><dd>${escapeHtml(order.encounterId)}</dd>
+      <dt>Paciente</dt><dd>${escapeHtml(order.patientId)}</dd>
+      <dt>Exame</dt><dd>${escapeHtml(order.examType)}</dd>
+      <dt>Catalogo</dt><dd>${escapeHtml(order.examCatalogId ?? '-')}</dd>
+      <dt>Solicitacao</dt><dd>${formatReportDate(order.createdAt)}</dd>
+      <dt>Coleta</dt><dd>${formatReportDate(order.collectedAt)}</dd>
+      <dt>Liberacao</dt><dd>${formatReportDate(order.resultedAt ?? order.updatedAt)}</dd>
+    </dl>
+  </section>
+  <section>
+    <h2>Resultado</h2>
+    <div class="result">${escapeHtml(order.resultSummary ?? 'Resultado disponível em anexo.')}</div>
+  </section>
+  <section class="signature">
+    <h2>Assinatura e auditoria</h2>
+    <dl>
+      <dt>Liberado por</dt><dd>${escapeHtml(order.releasedByUserId ?? '-')}</dd>
+      <dt>Responsavel tecnico</dt><dd>${escapeHtml(order.signedByUserId ?? '-')}</dd>
+      <dt>Anexo</dt><dd>${escapeHtml(order.resultAttachmentId ?? '-')}</dd>
+      <dt>Hash da assinatura</dt><dd class="hash">${escapeHtml(order.signatureHash ?? '-')}</dd>
+    </dl>
+  </section>
+</body>
+</html>`;
+}
+
 function normalizeEquipmentStatus(value: unknown): 'active' | 'maintenance' {
   return value === 'maintenance' ? 'maintenance' : 'active';
 }
@@ -639,13 +715,46 @@ export async function handleLaboratoryRoutes(
     });
   }
 
+  const printableReportMatch = pathname.match(
+    /^\/(?:laboratory\/reports|laboratorio\/atendimentos\/laudos|exam-results)\/([^/]+)\/print$/
+  );
+  if (printableReportMatch && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'diagnostics.read');
+    const orderId = requireNonEmptyString(printableReportMatch[1], 'diagnosticOrderId');
+    const order = laboratory.getOrder(principal.user.accountId as never, orderId as never);
+    if (order.status !== 'resulted') {
+      throw new Error('Only released laboratory reports can be printed');
+    }
+    const html = buildPrintableLaboratoryReportHtml(order);
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'report_print',
+      entityType: 'diagnostic-order',
+      entityId: order.id,
+      payloadSummary: `Laboratory report ${order.id} printable HTML generated`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, { html });
+  }
+
   const resultRouteMatch = pathname.match(
     /^\/(?:laboratory|diagnostics)\/orders\/([^/]+)\/result$/
   );
   if (resultRouteMatch && request.method === 'POST') {
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(resultRouteMatch[1], 'diagnosticOrderId');
-    const payload = (await readJsonBody(request)) as RecordDiagnosticResultRequest;
+    const incomingPayload = (await readJsonBody(request)) as RecordDiagnosticResultRequest;
+    const payload: RecordDiagnosticResultRequest = incomingPayload.status === 'resulted'
+      ? {
+        ...incomingPayload,
+        releasedByUserId: principal.user.id,
+        signedByUserId: incomingPayload.signedByUserId ?? principal.user.id
+      }
+      : incomingPayload;
     const order = laboratory.recordResult(orderId as never, payload);
     handlers.onOrderStatusChanged?.(order, payload, principal.user.id);
 
@@ -683,7 +792,14 @@ export async function handleLaboratoryRoutes(
             : undefined,
       resultAttachmentId:
         typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
-      collectedByUserId: principal.user.id
+      collectedByUserId: principal.user.id,
+      releasedByUserId: status === 'resulted' ? principal.user.id : undefined,
+      signedByUserId:
+        status === 'resulted'
+          ? typeof payload.signedByUserId === 'string'
+            ? payload.signedByUserId
+            : principal.user.id
+          : undefined
     });
     handlers.onOrderStatusChanged?.(
       order,
@@ -697,7 +813,14 @@ export async function handleLaboratoryRoutes(
               : undefined,
         resultAttachmentId:
           typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
-        collectedByUserId: principal.user.id
+        collectedByUserId: principal.user.id,
+        releasedByUserId: status === 'resulted' ? principal.user.id : undefined,
+        signedByUserId:
+          status === 'resulted'
+            ? typeof payload.signedByUserId === 'string'
+              ? payload.signedByUserId
+              : principal.user.id
+            : undefined
       },
       principal.user.id
     );

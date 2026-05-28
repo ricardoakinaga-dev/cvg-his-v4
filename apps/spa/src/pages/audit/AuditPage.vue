@@ -26,6 +26,10 @@
           <span class="overview-card__value">{{ actorCount }}</span>
           <span class="overview-card__label">Atores</span>
         </div>
+        <div class="overview-card">
+          <span class="overview-card__value">{{ coverageLabel }}</span>
+          <span class="overview-card__label">Cobertura operacional</span>
+        </div>
       </div>
     </section>
 
@@ -35,6 +39,7 @@
           <DsButton tag="a" to="/access-control" variant="primary">Governança de Acesso</DsButton>
           <DsButton tag="a" to="/lgpd" variant="secondary">LGPD</DsButton>
           <DsButton tag="a" to="/webhooks" variant="secondary">Webhooks</DsButton>
+          <DsButton variant="secondary" @click="filterReportDeliveryAlerts">Filtrar alertas</DsButton>
         </div>
       </DsCard>
     </section>
@@ -46,6 +51,50 @@
             <span class="insight-card__label">{{ card.label }}</span>
             <strong class="insight-card__value">{{ card.value }}</strong>
             <span class="insight-card__hint">{{ card.hint }}</span>
+          </div>
+        </div>
+      </DsCard>
+    </section>
+
+    <section class="audit-page__report-alerts">
+      <DsCard title="Alertas de relatórios" variant="compact">
+        <div class="report-alert-summary">
+          <div>
+            <strong>{{ reportDeliveryAlertEvents.length }}</strong>
+            <span>evento(s) high-risk de leitura de alertas recorrentes</span>
+          </div>
+          <DsBadge :variant="reportDeliveryAlertEvents.length > 0 ? 'danger' : 'success'" size="md">
+            {{ reportDeliveryAlertEvents.length > 0 ? 'Monitorar' : 'Sem alertas' }}
+          </DsBadge>
+        </div>
+        <p v-if="isReportAlertFilterActive" class="report-alert-summary__active-filter">
+          Filtro ativo: alertas de relatórios
+        </p>
+      </DsCard>
+    </section>
+
+    <section class="audit-page__coverage">
+      <DsCard title="Cobertura operacional Enterprise">
+        <div class="coverage-summary">
+          <div>
+            <strong>{{ coverageLabel }}</strong>
+            <span>{{ coverageSubtitle }}</span>
+          </div>
+          <DsBadge :variant="coverageVariant" size="md">{{ coverageStatusLabel }}</DsBadge>
+        </div>
+        <div class="coverage-grid">
+          <div
+            v-for="requirement in coverageRequirements"
+            :key="requirement.id"
+            :class="['coverage-item', requirement.covered ? 'coverage-item--covered' : 'coverage-item--missing']"
+          >
+            <div>
+              <strong>{{ requirement.module }} · {{ requirement.action }}</strong>
+              <span>{{ requirement.description }}</span>
+            </div>
+            <DsBadge :variant="requirement.covered ? 'success' : 'warning'" size="sm">
+              {{ requirement.covered ? 'Coberto' : 'Pendente' }}
+            </DsBadge>
           </div>
         </div>
       </DsCard>
@@ -92,6 +141,17 @@
         <template #cell-payloadSummary="{ row }">
           <span class="payload-summary">{{ auditRow(row).payloadSummary }}</span>
         </template>
+        <template #cell-actions="{ row }">
+          <DsButton
+            v-if="isReportDeliveryAlertEvent(auditRow(row))"
+            size="sm"
+            variant="secondary"
+            tag="a"
+            :to="reportScheduleHref(auditRow(row))"
+          >
+            Abrir agendamento
+          </DsButton>
+        </template>
       </DataTable>
     </DsCard>
   </div>
@@ -107,12 +167,13 @@ import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import { auditService } from '@/services/audit';
+import { auditService, type OperationalAuditCoverageReport } from '@/services/audit';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
 const route = useRoute();
 const events = ref<AuditEventSummary[]>([]);
+const coverage = ref<OperationalAuditCoverageReport | null>(null);
 const loading = ref(true);
 const error = ref('');
 const query = ref('');
@@ -127,7 +188,8 @@ const columns: DataTableColumn[] = [
   { key: 'entityType', label: 'Entidade' },
   { key: 'riskLevel', label: 'Risco' },
   { key: 'correlationId', label: 'Correlação' },
-  { key: 'payloadSummary', label: 'Resumo' }
+  { key: 'payloadSummary', label: 'Resumo' },
+  { key: 'actions', label: 'Ações' }
 ];
 
 const filteredEvents = computed(() => {
@@ -152,7 +214,31 @@ const eventRows = computed(() => filteredEvents.value as unknown as DataTableRow
 const highRiskCount = computed(() => events.value.filter((event) => event.riskLevel === 'high').length);
 const moduleCount = computed(() => new Set(events.value.map((event) => event.module)).size);
 const actorCount = computed(() => new Set(events.value.map((event) => event.actorId)).size);
+const coverageLabel = computed(() => (coverage.value ? `${coverage.value.coveragePercent}%` : '—'));
+const coverageSubtitle = computed(() => {
+  if (!coverage.value) return 'Relatório de cobertura ainda não carregado';
+  return `${coverage.value.coveredRequirements}/${coverageRequirements.value.length} requisito(s) críticos cobertos`;
+});
+const coverageRequirements = computed(() => coverage.value?.requirements ?? []);
+const coverageStatusLabel = computed(() => {
+  if (!coverage.value) return 'Carregando';
+  if (coverage.value.missingRequirements === 0) return 'Completa';
+  if (coverage.value.coveragePercent >= 75) return 'Atenção';
+  return 'Incompleta';
+});
+const coverageVariant = computed(() => {
+  if (!coverage.value) return 'info';
+  if (coverage.value.missingRequirements === 0) return 'success';
+  if (coverage.value.coveragePercent >= 75) return 'warning';
+  return 'danger';
+});
 const mediumRiskCount = computed(() => events.value.filter((event) => event.riskLevel === 'medium').length);
+const reportDeliveryAlertEvents = computed(() =>
+  events.value.filter((event) => event.entityType === 'report-schedule-delivery-alert' && event.riskLevel === 'high')
+);
+const isReportAlertFilterActive = computed(() =>
+  entityFilter.value === 'report-schedule-delivery-alert' && riskFilter.value === 'high'
+);
 const correlationReuseCount = computed(() => {
   const counts = new Map<string, number>();
   for (const event of events.value) {
@@ -212,6 +298,11 @@ const insightCards = computed(() => [
     hint: 'Trilhas com mais de um evento associado'
   },
   {
+    label: 'Cobertura operacional',
+    value: coverageLabel.value,
+    hint: coverageSubtitle.value
+  },
+  {
     label: 'Último evento',
     value: latestEventLabel.value,
     hint: 'Recência da telemetria disponível'
@@ -242,6 +333,7 @@ async function loadEvents() {
   error.value = '';
   try {
     events.value = await auditService.listEvents();
+    coverage.value = await auditService.getOperationalCoverage();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Falha ao carregar auditoria';
   } finally {
@@ -251,6 +343,26 @@ async function loadEvents() {
 
 function reload() {
   void loadEvents();
+}
+
+function filterReportDeliveryAlerts() {
+  query.value = '';
+  entityFilter.value = 'report-schedule-delivery-alert';
+  correlationFilter.value = '';
+  riskFilter.value = 'high';
+}
+
+function isReportDeliveryAlertEvent(event: AuditEventSummary): boolean {
+  return event.entityType === 'report-schedule-delivery-alert';
+}
+
+function reportScheduleHref(event: AuditEventSummary): string {
+  const params = new URLSearchParams({
+    scheduleId: event.entityId,
+    origin: '/audit?entity=report-schedule-delivery-alert',
+    originLabel: 'Voltar para Auditoria'
+  });
+  return `/reports/engine?${params.toString()}`;
 }
 
 function hydrateFiltersFromRoute() {
@@ -310,6 +422,65 @@ function auditRow(row: unknown): AuditEventSummary {
   margin-bottom: 4px;
 }
 
+.audit-page__report-alerts {
+  margin-bottom: 4px;
+}
+
+.audit-page__coverage {
+  margin-bottom: 4px;
+}
+
+.coverage-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.coverage-summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.coverage-summary strong {
+  font-size: 24px;
+}
+
+.coverage-summary span {
+  color: var(--color-text-muted, #64748b);
+}
+
+.coverage-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.coverage-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+}
+
+.coverage-item div {
+  display: grid;
+  gap: 4px;
+}
+
+.coverage-item span {
+  color: var(--color-text-muted, #64748b);
+}
+
+.coverage-item--missing {
+  border-color: var(--color-warning-300, #fcd34d);
+  background: var(--color-warning-50, #fffbeb);
+}
+
 .audit-toolbar {
   display: flex;
   gap: 12px;
@@ -345,6 +516,34 @@ function auditRow(row: unknown): AuditEventSummary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.report-alert-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.report-alert-summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.report-alert-summary strong {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.report-alert-summary span,
+.report-alert-summary__active-filter {
+  color: var(--color-text-muted, #64748b);
+}
+
+.report-alert-summary__active-filter {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .insights-grid {

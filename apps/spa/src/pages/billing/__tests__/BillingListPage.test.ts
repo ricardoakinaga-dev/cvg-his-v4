@@ -66,11 +66,15 @@ const mockReceivablesResponse = {
 };
 
 const mockListReceivables = vi.fn().mockResolvedValue(mockReceivablesResponse);
+const mockSettleReceivable = vi.fn().mockResolvedValue({});
 
 vi.mock('@/services/financialReceivables', () => ({
   financialReceivablesService: {
     get list() {
       return mockListReceivables;
+    },
+    get settle() {
+      return mockSettleReceivable;
     }
   }
 }));
@@ -79,6 +83,7 @@ describe('BillingListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListReceivables.mockResolvedValue(mockReceivablesResponse);
+    mockSettleReceivable.mockResolvedValue({});
   });
 
   it('renders a Vetus-like accounts receivable page', async () => {
@@ -100,6 +105,7 @@ describe('BillingListPage', () => {
     expect(wrapper.text()).toContain('Total');
     expect(wrapper.text()).toContain('Recebido');
     expect(wrapper.text()).toContain('A Receber');
+    expect(wrapper.text()).toContain('Baixar');
     expect(wrapper.text()).toContain('Abrir');
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Maria Santos');
@@ -146,5 +152,36 @@ describe('BillingListPage', () => {
     expect(openLinks).toHaveLength(2);
     expect(openLinks[0].attributes('href')).toBe('/billing/enc-1');
     expect(openLinks[1].attributes('href')).toBe('/billing/enc-2');
+  });
+
+  it('settles an open receivable and reloads the list', async () => {
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await flushPromises();
+    await wrapper.findAll('button').find((button) => button.text() === 'Baixar')?.trigger('click');
+    await flushPromises();
+
+    expect(mockSettleReceivable).toHaveBeenCalledWith('recv-1', {
+      amountPaid: 250,
+      notes: 'Baixa operacional em Contas a Receber'
+    });
+    expect(mockListReceivables).toHaveBeenCalledTimes(2);
+  });
+
+  it('settles selected open receivables in batch', async () => {
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await flushPromises();
+    await wrapper.find('input[type="checkbox"]').setValue(true);
+    await wrapper.findAll('button').find((button) => button.text() === 'Baixar contas em lote')?.trigger('click');
+    await flushPromises();
+
+    expect(mockSettleReceivable).toHaveBeenCalledWith('recv-1', {
+      amountPaid: 250,
+      notes: 'Baixa em lote em Contas a Receber'
+    });
+    expect(mockListReceivables).toHaveBeenCalledTimes(2);
   });
 });

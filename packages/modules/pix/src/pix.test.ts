@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { PixService } from './pix.service.js';
 import { MockPixAdapter } from './adapters/mock.adapter.js';
 import type { PixTransactionId } from './types.js';

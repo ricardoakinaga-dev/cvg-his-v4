@@ -20,6 +20,15 @@ function mockJsonFor(url: string) {
     return { items: [] };
   }
 
+  if (url.includes('/api/audit/operational-coverage')) {
+    return {
+      requirements: [],
+      coveredRequirements: 0,
+      missingRequirements: 0,
+      coveragePercent: 100
+    };
+  }
+
   if (url.includes('/api/lgpd/consent/status')) {
     return { active: {} };
   }
@@ -42,6 +51,39 @@ function mockJsonFor(url: string) {
 
   if (url.includes('/api/health')) {
     return { ok: true, service: 'api', environment: 'test', version: '0.0.0', timestamp: '2026-04-22T00:00:00.000Z' };
+  }
+
+  if (url.includes('/api/slos')) {
+    return {
+      generatedAt: '2026-04-22T00:00:00.000Z',
+      snapshot: {
+        requestCount5m: 10,
+        requestCount1h: 100,
+        p95LatencyMs: 120,
+        p99LatencyMs: 240,
+        availabilityPercent: 99.9,
+        errorRatePercent: 0.05
+      },
+      report: {
+        overallStatus: 'healthy',
+        errorBudgetExhausted: false,
+        slos: [
+          {
+            id: 'api-availability',
+            name: 'API Availability',
+            category: 'availability',
+            currentValue: 99.9,
+            target: 99.5,
+            unit: 'percent',
+            status: 'healthy',
+            errorBudgetPercent: 100,
+            burnRate: 0.2,
+            lastUpdated: '2026-04-22T00:00:00.000Z'
+          }
+        ]
+      },
+      runbook: { metrics: '/metrics', readiness: '/ready', liveness: '/live' }
+    };
   }
 
   return [];
@@ -92,7 +134,7 @@ const pages = [
     loader: () => import('../master-search/MasterSearchPage.vue'),
     title: 'Busca federada',
     breadcrumb: 'Console EnterpriseUtilidadesBusca Mestre',
-    evidence: 'Buscar por tutor, paciente, documento, espécie ou relação...'
+    evidence: 'Buscar por tutor, paciente, documento, produto, comanda ou relação...'
   }
 ];
 

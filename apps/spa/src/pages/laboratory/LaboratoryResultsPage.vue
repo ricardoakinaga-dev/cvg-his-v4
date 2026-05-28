@@ -80,16 +80,43 @@
         {{ (row as LaboratoryReportRow).value }}
       </template>
       <template #cell-actions="{ row }">
-        <DsButton
-          tag="a"
-          :to="`/diagnostics?encounter=${(row as LaboratoryReportRow).encounterId}`"
-          size="sm"
-          variant="secondary"
-        >
-          Abrir
-        </DsButton>
+        <div class="report-actions">
+          <DsButton
+            tag="a"
+            :to="`/diagnostics?encounter=${(row as LaboratoryReportRow).encounterId}`"
+            size="sm"
+            variant="secondary"
+          >
+            Abrir
+          </DsButton>
+          <DsButton
+            size="sm"
+            variant="primary"
+            :loading="printingId === (row as LaboratoryReportRow).id"
+            @click="openPrintableReport(row as LaboratoryReportRow)"
+          >
+            Laudo
+          </DsButton>
+        </div>
       </template>
     </DataTable>
+
+    <DsModal
+      :open="Boolean(printableReportHtml)"
+      title="Laudo imprimível"
+      size="lg"
+      @close="closePrintableReport"
+    >
+      <iframe
+        v-if="printableReportHtml"
+        class="print-preview"
+        title="Pré-visualização do laudo"
+        :srcdoc="printableReportHtml"
+      />
+      <template #footer>
+        <DsButton variant="ghost" @click="closePrintableReport">Fechar</DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -101,6 +128,7 @@ import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { laboratoryService } from '@/services/laboratory';
@@ -125,6 +153,8 @@ const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
 const anomalies = ref<LabAnomalyResponse | null>(null);
 const loading = ref(false);
+const printingId = ref<string | null>(null);
+const printableReportHtml = ref('');
 const error = ref('');
 const draftFilters = reactive({
   code: '',
@@ -216,6 +246,22 @@ function formatDate(value: string): string {
 function applyFilters() {
   Object.assign(appliedFilters, draftFilters);
   void load();
+}
+
+function closePrintableReport() {
+  printableReportHtml.value = '';
+}
+
+async function openPrintableReport(report: LaboratoryReportRow) {
+  printingId.value = report.id;
+  error.value = '';
+  try {
+    printableReportHtml.value = await laboratoryService.printReport(report.id);
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao gerar laudo imprimível';
+  } finally {
+    printingId.value = null;
+  }
 }
 
 async function load() {
@@ -330,6 +376,21 @@ onMounted(load);
 .report-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
+}
+
+.report-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, max-content));
+  align-items: center;
+  gap: 6px;
+}
+
+.print-preview {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  background: #ffffff;
 }
 
 @media (max-width: 980px) {

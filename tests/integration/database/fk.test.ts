@@ -154,9 +154,9 @@ describe('Foreign Keys — Enforcement', () => {
 
     try {
       await pool.query(
-        `INSERT INTO beds (id, account_id, ward_id, name)
-         VALUES (gen_random_uuid(), $1, $2, 'Test Bed')`,
-        [account.id, fakeUuid]
+        `INSERT INTO beds (id, account_id, ward_id, sector_id, code, name)
+         VALUES (gen_random_uuid(), $1, $2, $3, 'FK-INVALID', 'Test Bed')`,
+        [account.id, fakeUuid, fakeUuid]
       );
       expect.unreachable('Should have thrown FK violation');
     } catch (error) {

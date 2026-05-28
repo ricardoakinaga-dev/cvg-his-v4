@@ -12,6 +12,10 @@ const mockPatients = [
     size: 'large' as const,
     baseWeightKg: 30.5,
     birthDateApproximate: '2020-05-15',
+    microchip: '985141000000001',
+    allergy: 'Dipirona',
+    chronicDisease: 'Doença renal crônica',
+    legacyVetusId: '10115',
     primaryOwnerId: 'owner-1',
     status: 'active' as const,
     createdAt: '2024-01-01T00:00:00Z',
@@ -27,6 +31,10 @@ const mockPatients = [
     size: 'small' as const,
     baseWeightKg: 4.2,
     birthDateApproximate: '',
+    microchip: '',
+    allergy: '',
+    chronicDisease: '',
+    legacyVetusId: '10116',
     primaryOwnerId: 'owner-2',
     status: 'active' as const,
     createdAt: '2024-02-01T00:00:00Z',
@@ -309,5 +317,20 @@ describe('PatientsListPage', () => {
     );
     expect(wrapper.text()).toContain('Ir para Esteira');
     expect(wrapper.text()).toContain('Abrir atendimento');
+  });
+
+  it('shows Vetus identifiers, microchip and clinical alerts in patient cards', async () => {
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Microchip');
+    expect(wrapper.text()).toContain('985141000000001');
+    expect(wrapper.text()).toContain('ID Vetus');
+    expect(wrapper.text()).toContain('10115');
+    expect(wrapper.text()).toContain('Alerta clínico');
+    expect(wrapper.text()).toContain('Dipirona / Doença renal crônica');
+    expect(wrapper.text()).toContain('Sem alerta');
   });
 });

@@ -9,6 +9,7 @@ import type { InventoryService } from '@cvg-his-v2/module-inventory';
 import type {
   CreateInventoryConsumptionRequest,
   CreateInventoryItemRequest,
+  CreateInventoryStockAdjustmentRequest,
   UpdateInventoryItemRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -106,6 +107,63 @@ export async function handleInventoryRoutes(
     });
     response.statusCode = 200;
     response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // GET /inventory/movements
+  if (pathname === '/inventory/movements' && request.method === 'GET') {
+    const principal = rp(request, 'inventory.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const inventoryItemId = url.searchParams.get('inventoryItemId') ?? undefined;
+    const items = inventory.listStockMovements(principal.user.accountId as never, inventoryItemId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inventory',
+      action: 'list_stock_movements',
+      entityType: 'inventory-stock-movement',
+      entityId: inventoryItemId ?? 'all',
+      payloadSummary: 'Inventory stock movements listed',
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // POST /inventory/adjustments
+  if (pathname === '/inventory/adjustments' && request.method === 'POST') {
+    const principal = rp(request, 'inventory.manage');
+    const payload = (await readJsonBody(request)) as CreateInventoryStockAdjustmentRequest;
+    enforceAbac(
+      'inventory.manage',
+      principal,
+      {
+        resourceType: 'inventory_item',
+        resourceId: payload.inventoryItemId,
+        accountId: principal.user.accountId as never
+      },
+      request
+    );
+    const movement = await inventory.createStockAdjustment(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      payload
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inventory',
+      action: 'create_stock_adjustment',
+      entityType: 'inventory-stock-movement',
+      entityId: movement.id,
+      payloadSummary: `Inventory stock adjusted for item ${movement.inventoryItemId}: ${movement.quantityDelta}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(movement));
     return true;
   }
 

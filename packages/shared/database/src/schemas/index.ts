@@ -310,6 +310,37 @@ export const inpatientProgress = pgTable('inpatient_progress', {
   createdAt: timestamp('created_at').notNull()
 });
 
+export const inpatientOccurrences = pgTable('inpatient_occurrences', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  stayId: varchar('stay_id', { length: 255 }).notNull(),
+  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  severity: varchar('severity', { length: 50 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: varchar('description', { length: 5000 }).notNull(),
+  authoredByUserId: varchar('authored_by_user_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull()
+});
+
+export const inpatientDailyCharges = pgTable('inpatient_daily_charges', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  stayId: varchar('stay_id', { length: 255 }).notNull(),
+  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
+  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  description: varchar('description', { length: 255 }).notNull(),
+  chargeDate: varchar('charge_date', { length: 10 }).notNull(),
+  quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
+  unitAmount: numeric('unit_amount', { precision: 12, scale: 2 }).notNull(),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  billingRecordId: varchar('billing_record_id', { length: 255 }),
+  createdByUserId: varchar('created_by_user_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
 export const surgeryCases = pgTable('surgery_cases', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: varchar('account_id', { length: 255 }).notNull(),
@@ -341,6 +372,10 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
   resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
+  resultedAt: timestamp('resulted_at'),
+  releasedByUserId: varchar('released_by_user_id', { length: 255 }),
+  signedByUserId: varchar('signed_by_user_id', { length: 255 }),
+  signatureHash: varchar('signature_hash', { length: 128 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

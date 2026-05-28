@@ -1,12 +1,15 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
-import type { AccountId, EncounterId } from '@cvg-his-v2/shared-types';
+import type { AccountId, EncounterId, UserId } from '@cvg-his-v2/shared-types';
 import type {
   EncounterFinancialAccountRecord,
   EncounterFinancialRepository,
   EncounterReceivableListFilters,
   EncounterReceivablePaymentRecord,
-  EncounterReceivableRecord
+  EncounterReceivableRecord,
+  FinancialPayableListFilters,
+  FinancialPayableRecord,
+  FinancialPayablesRepository
 } from '../index.js';
 
 function mapFinancialAccount(row: Record<string, unknown>): EncounterFinancialAccountRecord {
@@ -65,6 +68,40 @@ function mapPayment(row: Record<string, unknown>): EncounterReceivablePaymentRec
     externalReferenceId: (row.external_reference_id as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
     createdAt: new Date(row.created_at as string).toISOString()
+  };
+}
+
+function mapPayable(row: Record<string, unknown>): FinancialPayableRecord {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as AccountId,
+    supplierName: row.supplier_name as string,
+    description: row.description as string,
+    category: row.category as string,
+    costCenterCode: row.cost_center_code as string,
+    costCenterName: row.cost_center_name as string,
+    issuedAt: new Date(row.issued_at as string).toISOString().slice(0, 10),
+    dueAt: new Date(row.due_at as string).toISOString().slice(0, 10),
+    totalAmount: Number(row.total_amount),
+    paidAmount: Number(row.paid_amount),
+    outstandingAmount: Number(row.outstanding_amount),
+    status: row.status as FinancialPayableRecord['status'],
+    sourceExpenseId: (row.source_expense_id as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+    paymentMethod: (row.payment_method as FinancialPayableRecord['paymentMethod']) ?? null,
+    paymentReference: (row.payment_reference as string | null) ?? null,
+    reconciliationStatus:
+      (row.reconciliation_status as FinancialPayableRecord['reconciliationStatus'] | null) ?? 'not_required',
+    reconciliationReference: (row.reconciliation_reference as string | null) ?? null,
+    createdByUserId: row.created_by_user_id as UserId,
+    paidByUserId: (row.paid_by_user_id as UserId | null) ?? null,
+    cancelledByUserId: (row.cancelled_by_user_id as UserId | null) ?? null,
+    reconciledByUserId: (row.reconciled_by_user_id as UserId | null) ?? null,
+    createdAt: new Date(row.created_at as string).toISOString(),
+    updatedAt: new Date(row.updated_at as string).toISOString(),
+    paidAt: row.paid_at ? new Date(row.paid_at as string).toISOString() : null,
+    cancelledAt: row.cancelled_at ? new Date(row.cancelled_at as string).toISOString() : null,
+    reconciledAt: row.reconciled_at ? new Date(row.reconciled_at as string).toISOString() : null
   };
 }
 
@@ -289,4 +326,126 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
       return result.rows.map((row: Record<string, unknown>) => mapReceivable(row));
     });
   }
+}
+
+export class DatabaseFinancialPayablesRepository implements FinancialPayablesRepository {
+  async savePayable(payable: FinancialPayableRecord): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO financial_payables (
+          id, account_id, supplier_name, description, category, cost_center_code,
+          cost_center_name, issued_at, due_at, total_amount, paid_amount,
+          outstanding_amount, status, source_expense_id, notes, created_by_user_id,
+          paid_by_user_id, cancelled_by_user_id, created_at, updated_at, paid_at, cancelled_at,
+          payment_method, payment_reference, reconciliation_status, reconciliation_reference,
+          reconciled_by_user_id, reconciled_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+          $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
+          $25, $26, $27, $28
+        )`,
+        payableParams(payable)
+      );
+    });
+  }
+
+  async updatePayable(payable: FinancialPayableRecord): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `UPDATE financial_payables
+         SET supplier_name = $3,
+             description = $4,
+             category = $5,
+             cost_center_code = $6,
+             cost_center_name = $7,
+             issued_at = $8,
+             due_at = $9,
+             total_amount = $10,
+             paid_amount = $11,
+             outstanding_amount = $12,
+             status = $13,
+             source_expense_id = $14,
+             notes = $15,
+             created_by_user_id = $16,
+             paid_by_user_id = $17,
+             cancelled_by_user_id = $18,
+             created_at = $19,
+             updated_at = $20,
+             paid_at = $21,
+             cancelled_at = $22,
+             payment_method = $23,
+             payment_reference = $24,
+             reconciliation_status = $25,
+             reconciliation_reference = $26,
+             reconciled_by_user_id = $27,
+             reconciled_at = $28
+         WHERE id = $1 AND account_id = $2`,
+        payableParams(payable)
+      );
+    });
+  }
+
+  async findPayableById(payableId: string): Promise<FinancialPayableRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM financial_payables WHERE id = $1 LIMIT 1',
+        [payableId]
+      );
+      return result.rows[0] ? mapPayable(result.rows[0] as Record<string, unknown>) : null;
+    });
+  }
+
+  async listPayables(filters?: FinancialPayableListFilters): Promise<readonly FinancialPayableRecord[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const clauses: string[] = [];
+      const params: unknown[] = [];
+      if (filters?.accountId) {
+        params.push(filters.accountId);
+        clauses.push(`account_id = $${params.length}`);
+      }
+      if (filters?.status) {
+        params.push(filters.status);
+        clauses.push(`status = $${params.length}`);
+      }
+      const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+      const result = await client.query(
+        `SELECT * FROM financial_payables ${whereClause} ORDER BY due_at ASC, supplier_name ASC`,
+        params
+      );
+      return result.rows.map((row: Record<string, unknown>) => mapPayable(row));
+    });
+  }
+}
+
+function payableParams(payable: FinancialPayableRecord): unknown[] {
+  return [
+    payable.id,
+    payable.accountId,
+    payable.supplierName,
+    payable.description,
+    payable.category,
+    payable.costCenterCode,
+    payable.costCenterName,
+    payable.issuedAt,
+    payable.dueAt,
+    payable.totalAmount,
+    payable.paidAmount,
+    payable.outstandingAmount,
+    payable.status,
+    payable.sourceExpenseId,
+    payable.notes,
+    payable.createdByUserId,
+    payable.paidByUserId,
+    payable.cancelledByUserId,
+    new Date(payable.createdAt),
+    new Date(payable.updatedAt),
+    payable.paidAt ? new Date(payable.paidAt) : null,
+    payable.cancelledAt ? new Date(payable.cancelledAt) : null,
+    payable.paymentMethod,
+    payable.paymentReference,
+    payable.reconciliationStatus,
+    payable.reconciliationReference,
+    payable.reconciledByUserId,
+    payable.reconciledAt ? new Date(payable.reconciledAt) : null
+  ];
 }

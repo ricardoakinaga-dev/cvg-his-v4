@@ -26,8 +26,8 @@
     "@cvg-his-v2/module-notifications": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/whatsapp.test.js"
+    "test": "cd ../../.. && vitest run packages/modules/notifications-whatsapp/src/*.test.ts"
   }
 }

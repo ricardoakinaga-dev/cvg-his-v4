@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 const mockGetCatalog = vi.fn();
+const mockGetModulePermissionMatrix = vi.fn();
 const mockGetEffectivePermissions = vi.fn();
 const mockSetGrant = vi.fn();
 const mockReplaceUserRoles = vi.fn();
@@ -13,6 +14,7 @@ const mockCreateSector = vi.fn();
 vi.mock('@/services/accessControl', () => ({
   accessControlService: {
     getCatalog: mockGetCatalog,
+    getModulePermissionMatrix: mockGetModulePermissionMatrix,
     getEffectivePermissions: mockGetEffectivePermissions,
     setGrant: mockSetGrant,
     replaceUserRoles: mockReplaceUserRoles,
@@ -91,6 +93,30 @@ const catalogResponse = {
   legacyRoles: [{ userId: 'user-1', roleCodes: ['admin'] }]
 };
 
+const modulePermissionMatrixResponse = {
+  generatedAt: '2026-05-28T00:00:00.000Z',
+  accountId: 'acc-1',
+  items: [
+    {
+      module: 'patients',
+      permissionCodes: ['patients.read', 'patients.write'],
+      actions: {
+        consult: true,
+        insert: true,
+        update: true,
+        delete: false,
+        execute: false,
+        admin: false
+      },
+      rolesAllowed: ['admin'],
+      teamOverrideCount: 1,
+      sectorOverrideCount: 0,
+      userOverrideCount: 0,
+      coverageStatus: 'partial'
+    }
+  ]
+};
+
 const effectivePermissionsResponse = {
   user: catalogResponse.users[0],
   memberships: { teams: [catalogResponse.teams[0]], sectors: [catalogResponse.sectors[0]] },
@@ -119,6 +145,7 @@ describe('AccessControlPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCatalog.mockResolvedValue(catalogResponse);
+    mockGetModulePermissionMatrix.mockResolvedValue(modulePermissionMatrixResponse);
     mockGetEffectivePermissions.mockResolvedValue(effectivePermissionsResponse);
     mockSetGrant.mockResolvedValue({ ok: true });
     mockReplaceUserRoles.mockResolvedValue({ ok: true });
@@ -173,6 +200,10 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('Sessão');
     expect(wrapper.text()).toContain('Auditoria');
     expect(wrapper.text()).toContain('Governança avançada');
+    expect(wrapper.text()).toContain('Matriz enterprise por módulo, perfil e unidade');
+    expect(wrapper.text()).toContain('Módulos RBAC completos');
+    expect(wrapper.text()).toContain('Overrides: 1 equipe(s), 0 setor(es), 0 usuário(s)');
+    expect(wrapper.text()).toContain('Executar');
     expect(wrapper.text()).toContain('PATIENTS');
     expect(wrapper.text()).toContain('patients.read');
     expect(wrapper.text()).toContain('Administrador');

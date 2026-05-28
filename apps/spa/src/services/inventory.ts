@@ -5,7 +5,9 @@ import type {
   InventoryItemSummary,
   InventoryItemsListResponse,
   InventoryLotSummary,
-  InventoryLotsListResponse
+  InventoryLotsListResponse,
+  InventoryStockMovementListResponse,
+  InventoryStockMovementSummary
 } from '@/types/inventory';
 
 export interface CreateInventoryItemPayload {
@@ -23,6 +25,13 @@ export interface UpdateInventoryItemPayload {
   onHandQuantity?: number;
   reorderLevel?: number;
   unitCostAmount?: number;
+}
+
+export interface CreateInventoryStockAdjustmentPayload {
+  inventoryItemId: string;
+  quantityDelta: number;
+  reason: string;
+  reference?: string;
 }
 
 export const inventoryService = {
@@ -49,6 +58,12 @@ export const inventoryService = {
     return response.items ?? [];
   },
 
+  async listStockMovements(inventoryItemId?: string): Promise<InventoryStockMovementSummary[]> {
+    const params = inventoryItemId ? `?inventoryItemId=${encodeURIComponent(inventoryItemId)}` : '';
+    const response = await apiRequest<InventoryStockMovementListResponse>(`/inventory/movements${params}`);
+    return response.items ?? [];
+  },
+
   async create(payload: CreateInventoryItemPayload): Promise<InventoryItemSummary> {
     return apiRequest<InventoryItemSummary>('/inventory', {
       method: 'POST',
@@ -59,6 +74,15 @@ export const inventoryService = {
   async update(id: string, payload: UpdateInventoryItemPayload): Promise<InventoryItemSummary> {
     return apiRequest<InventoryItemSummary>(`/inventory/${id}`, {
       method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async createStockAdjustment(
+    payload: CreateInventoryStockAdjustmentPayload
+  ): Promise<InventoryStockMovementSummary> {
+    return apiRequest<InventoryStockMovementSummary>('/inventory/adjustments', {
+      method: 'POST',
       body: JSON.stringify(payload)
     });
   }

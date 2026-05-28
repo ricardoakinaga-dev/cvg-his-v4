@@ -104,6 +104,9 @@ import { handleInventoryProductGroupsRoutes } from './routes/inventory-product-g
 import { handleCompanySectorsRoutes } from './routes/company-sectors-routes.js';
 import { handleMeasurementUnitsRoutes } from './routes/measurement-units-routes.js';
 import { handleCommercialRoutes } from './routes/commercial-routes.js';
+import { handleCommissionRoutes } from './routes/commission-routes.js';
+import { handleReportsRoutes } from './routes/reports-routes.js';
+import { handleMarketingRoutes } from './routes/marketing-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
 import { handleAccessControlRoutes } from './routes/access-control-routes.js';
@@ -3229,6 +3232,10 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
 }
 
 function createPreventiveEventStore(): PreventiveEventStore {
+  if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
+    return new InMemoryPreventiveEventStore();
+  }
+
   try {
     getPool();
     return new DatabasePreventiveEventStore();
@@ -3263,7 +3270,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     laboratory,
     billing,
     encounterFinancial,
+    financialPayables,
+    financialStatements,
     commercial,
+    commissions,
+    packages,
+    reports,
     inventory,
     notifications,
     audit,
@@ -3277,6 +3289,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     cash,
     auth,
     lgpd,
+    marketing,
     webhooks,
     apiKeys,
     eventBus,
@@ -4652,6 +4665,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleFinancialRoutes(pathname, request, response, correlationId, {
               encounterFinancial,
+              financialPayables,
+              financialStatements,
               billing,
               audit,
               pixTransactions,
@@ -4681,6 +4696,32 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               counterSales,
               cash,
               fiscal,
+              audit,
+              requirePrincipal
+            })
+          ) {
+            return;
+          }
+
+          if (
+            await handleReportsRoutes(pathname, request, response, correlationId, {
+              reports,
+              billing,
+              cash,
+              commissions,
+              counterSales,
+              quotes,
+              audit,
+              requirePrincipal
+            })
+          ) {
+            return;
+          }
+
+          if (
+            await handleMarketingRoutes(pathname, request, response, correlationId, {
+              marketing,
+              smsGateway,
               audit,
               requirePrincipal
             })
@@ -4905,6 +4946,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleCommercialRoutes(pathname, request, response, correlationId, {
               commercial,
+              packages,
+              audit,
+              requirePrincipal
+            })
+          ) {
+            return;
+          }
+
+          if (
+            await handleCommissionRoutes(pathname, request, response, correlationId, {
+              commissions,
               audit,
               requirePrincipal
             })
@@ -6041,6 +6093,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleInpatientRoutes(pathname, request, response, correlationId, {
               inpatient,
+              billing,
               sectorBedService,
               audit,
               requirePrincipal,
