@@ -40,6 +40,28 @@ export async function handlePrescriptionRoutes(
 
   const { prescriptions, audit, requirePrincipal } = handlers;
 
+  const documentMatch = pathname.match(/^\/prescriptions\/([^/]+)\/document$/);
+  if (documentMatch && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'prescriptions.read');
+    const prescriptionId = requireNonEmptyString(documentMatch[1], 'prescriptionId');
+    const payload = await readJsonBody(request);
+    const document = prescriptions.renderDocument(prescriptionId as never, payload as never);
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'prescriptions',
+      action: 'render_document',
+      entityType: 'prescription',
+      entityId: prescriptionId,
+      payloadSummary: 'Prescription document rendered',
+      riskLevel: 'medium',
+      correlationId
+    });
+
+    return json(response, 200, document);
+  }
+
   // GET /prescriptions
   if (pathname === '/prescriptions' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'prescriptions.read');

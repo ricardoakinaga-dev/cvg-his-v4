@@ -18,11 +18,14 @@ import type {
   PatientId,
   QueueEntryId,
   QueueEntrySummary,
+  QueueTransferId,
+  QueueTransferSummary,
   SchedulingAppointmentSummary,
   SchedulingAppointmentOperationalSummary,
   SchedulingConflictSummary,
   SchedulingOperationalBlockSummary,
-  StaffId
+  StaffId,
+  UserId
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -256,6 +259,7 @@ export class SchedulingService {
   readonly #services?: SchedulingServiceCatalog;
   readonly #appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
   readonly #queue = new Map<QueueEntryId, QueueEntrySummary>();
+  readonly #queueTransfers = new Map<QueueEntryId, QueueTransferSummary[]>();
   readonly #onAppointmentCreated?: (appointment: SchedulingAppointmentSummary) => Promise<void>;
   readonly #onAppointmentStatusChanged?: (
     appointment: SchedulingAppointmentSummary,
@@ -294,6 +298,10 @@ export class SchedulingService {
     const queueEntries = await this.#repository.findAllQueueEntries(accountId);
     for (const entry of queueEntries) {
       this.#queue.set(entry.id, entry);
+      const transfers = await this.#repository.findQueueTransfersByQueueEntry(entry.id);
+      if (transfers.length > 0) {
+        this.#queueTransfers.set(entry.id, [...transfers]);
+      }
     }
   }
 
@@ -657,6 +665,12 @@ export class SchedulingService {
     return entry;
   }
 
+  public listQueueTransfers(queueEntryId: QueueEntryId): readonly QueueTransferSummary[] {
+    return [...(this.#queueTransfers.get(queueEntryId) ?? [])].sort((a, b) =>
+      a.sentAt.localeCompare(b.sentAt)
+    );
+  }
+
   public async checkIn(
     accountId: AccountId,
     payload: {
@@ -665,6 +679,11 @@ export class SchedulingService {
       readonly appointmentId?: string;
       readonly reason: string;
       readonly priority?: QueueEntrySummary['priority'];
+      readonly entryType?: QueueEntrySummary['entryType'];
+      readonly currentSector?: string;
+      readonly currentResponsibleUserId?: string;
+      readonly currentResponsibleStaffId?: string;
+      readonly nextSector?: string;
     }
   ): Promise<QueueEntrySummary> {
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
@@ -708,10 +727,23 @@ export class SchedulingService {
       patientId,
       ownerId,
       appointmentId,
+      entryType: payload.entryType ?? 'standard',
       reason: requireNonEmptyString(payload.reason, 'reason'),
       priority: payload.priority ?? 'medium',
       status: 'waiting',
       checkedInAt: now,
+      currentSector: payload.currentSector?.trim() || 'Recepcao',
+      currentResponsibleUserId: payload.currentResponsibleUserId?.trim()
+        ? (payload.currentResponsibleUserId as UserId)
+        : undefined,
+      currentResponsibleStaffId: payload.currentResponsibleStaffId?.trim()
+        ? (payload.currentResponsibleStaffId as StaffId)
+        : undefined,
+      nextSector: payload.nextSector?.trim() || undefined,
+      operationalStatus: 'waiting',
+      clinicalStatus: 'not_started',
+      billingStatus: 'not_started',
+      handoffStatus: 'not_started',
       createdAt: now,
       updatedAt: now
     };
@@ -736,6 +768,82 @@ export class SchedulingService {
       await this.#repository.createQueueEntry(entry);
     }
     return entry;
+  }
+
+  public async transferQueueEntry(
+    queueEntryId: QueueEntryId,
+    payload: {
+      readonly toSector: string;
+      readonly sentByUserId: string;
+      readonly receivedByUserId?: string;
+      readonly responsibleUserId?: string;
+      readonly responsibleStaffId?: string;
+      readonly nextSector?: string;
+      readonly reason: string;
+      readonly urgency?: QueueTransferSummary['urgency'];
+      readonly billingRecordId?: string;
+      readonly counterSaleId?: string;
+    }
+  ): Promise<QueueEntrySummary> {
+    const current = this.getQueueEntryOrThrow(queueEntryId);
+    if (current.status === 'completed' || current.status === 'cancelled') {
+      throw new ValidationError('Queue entry cannot be transferred from terminal status', {
+        queueEntryId,
+        status: current.status
+      });
+    }
+
+    const now = nowIso();
+    const toSector = requireNonEmptyString(payload.toSector, 'toSector');
+    const sentByUserId = requireNonEmptyString(payload.sentByUserId, 'sentByUserId') as UserId;
+    const reason = requireNonEmptyString(payload.reason, 'reason');
+    const transfer: QueueTransferSummary = {
+      id: createCorrelationId('queue-transfer') as QueueTransferId,
+      accountId: current.accountId,
+      queueEntryId: current.id,
+      encounterId: current.encounterId,
+      fromSector: current.currentSector ?? 'Recepcao',
+      toSector,
+      sentByUserId,
+      sentAt: now,
+      receivedByUserId: payload.receivedByUserId?.trim()
+        ? (payload.receivedByUserId as UserId)
+        : undefined,
+      receivedAt: payload.receivedByUserId?.trim() ? now : undefined,
+      responsibleUserId: payload.responsibleUserId?.trim()
+        ? (payload.responsibleUserId as UserId)
+        : undefined,
+      responsibleStaffId: payload.responsibleStaffId?.trim()
+        ? (payload.responsibleStaffId as StaffId)
+        : undefined,
+      nextSector: payload.nextSector?.trim() || undefined,
+      reason,
+      urgency: payload.urgency ?? current.priority,
+      billingRecordId: payload.billingRecordId?.trim() || undefined,
+      counterSaleId: payload.counterSaleId?.trim() || undefined,
+      createdAt: now
+    };
+
+    const updated: QueueEntrySummary = {
+      ...current,
+      currentSector: transfer.toSector,
+      currentResponsibleUserId: transfer.responsibleUserId,
+      currentResponsibleStaffId: transfer.responsibleStaffId,
+      nextSector: transfer.nextSector,
+      lastTransferredAt: transfer.sentAt,
+      lastTransferredByUserId: transfer.sentByUserId,
+      updatedAt: now
+    };
+
+    this.#queue.set(queueEntryId, updated);
+    this.#queueTransfers.set(queueEntryId, [...this.listQueueTransfers(queueEntryId), transfer]);
+
+    if (this.#repository) {
+      await this.#repository.updateQueueEntry(updated);
+      await this.#repository.createQueueTransfer(transfer);
+    }
+
+    return updated;
   }
 
   public async callQueueEntry(queueEntryId: QueueEntryId): Promise<QueueEntrySummary> {

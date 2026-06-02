@@ -674,6 +674,10 @@ function applyFilters() {
 }
 
 function sectorForEntry(entry: QueueEntrySummary): string {
+  if (entry.currentSector?.trim()) {
+    return entry.currentSector;
+  }
+
   const map: Record<QueueStatus, string> = {
     waiting: 'RECEPÇÃO',
     called: 'RECEPÇÃO',
@@ -687,6 +691,10 @@ function sectorForEntry(entry: QueueEntrySummary): string {
 }
 
 function sentByForEntry(entry: QueueEntrySummary): string {
+  if (entry.lastTransferredByUserId?.trim()) {
+    return entry.lastTransferredByUserId;
+  }
+
   const map: Record<QueueStatus, string> = {
     waiting: 'Recepção',
     called: 'Recepção',
@@ -700,6 +708,14 @@ function sentByForEntry(entry: QueueEntrySummary): string {
 }
 
 function responsibleForEntry(entry: QueueEntrySummary): string {
+  if (entry.currentResponsibleStaffId?.trim()) {
+    return entry.currentResponsibleStaffId;
+  }
+
+  if (entry.currentResponsibleUserId?.trim()) {
+    return entry.currentResponsibleUserId;
+  }
+
   const map: Record<QueueStatus, string> = {
     waiting: 'Recepção',
     called: 'Equipe de triagem',
@@ -713,6 +729,10 @@ function responsibleForEntry(entry: QueueEntrySummary): string {
 }
 
 function responsibilityHintForEntry(entry: QueueEntrySummary): string {
+  if (entry.currentResponsibleStaffId?.trim() || entry.currentResponsibleUserId?.trim()) {
+    return 'Responsável persistido na esteira';
+  }
+
   const map: Record<QueueStatus, string> = {
     waiting: 'Deve chamar ou priorizar',
     called: 'Paciente chamado; abrir triagem',
@@ -726,6 +746,10 @@ function responsibilityHintForEntry(entry: QueueEntrySummary): string {
 }
 
 function nextSectorForEntry(entry: QueueEntrySummary): string {
+  if (entry.nextSector?.trim()) {
+    return entry.nextSector;
+  }
+
   const map: Record<QueueStatus, string> = {
     waiting: 'Triagem',
     called: 'Triagem',

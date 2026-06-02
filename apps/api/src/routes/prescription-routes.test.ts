@@ -216,7 +216,10 @@ test('handlePrescriptionRoutes updates a prescription', async () => {
 
   const handled = await handlePrescriptionRoutes(
     `/prescriptions/${created.id}`,
-    createMockRequest('PATCH', `/prescriptions/${created.id}`, { title: 'Amoxicilina 500mg' }) as never,
+    createMockRequest('PATCH', `/prescriptions/${created.id}`, {
+      title: 'Amoxicilina 500mg',
+      reason: 'Ajuste de apresentacao'
+    }) as never,
     response as never,
     'corr-rx-4',
     {
@@ -230,6 +233,43 @@ test('handlePrescriptionRoutes updates a prescription', async () => {
   assert.equal(response.statusCode, 200);
   const result = response.bodyJson<{ medicationName: string }>();
   assert.equal(result.medicationName, 'Amoxicilina 500mg');
+});
+
+test('handlePrescriptionRoutes renders a printable prescription document', async () => {
+  const service = createPrescriptionsService();
+  const created = service.create('acc-1' as never, 'user-1' as never, {
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    medicationName: 'Amoxicilina',
+    dosage: '500mg',
+    route: 'Oral',
+    frequency: '8/8h'
+  });
+  const response = new MockResponse();
+
+  const handled = await handlePrescriptionRoutes(
+    `/prescriptions/${created.id}/document`,
+    createMockRequest('POST', `/prescriptions/${created.id}/document`, {
+      clinic: { name: 'CVG Hospital Veterinario' },
+      owner: { name: 'Maria Silva' },
+      patient: { name: 'Luna', species: 'Canina' },
+      professional: { name: 'Dra. Ana Vet', license: 'CRMV-SP 12345' }
+    }) as never,
+    response as never,
+    'corr-rx-doc',
+    {
+      prescriptions: service,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const result = response.bodyJson<{ title: string; printText: string }>();
+  assert.equal(result.title, 'Receita Veterinaria');
+  assert.match(result.printText, /Amoxicilina/);
 });
 
 test('handlePrescriptionRoutes archives a prescription', async () => {

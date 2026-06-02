@@ -92,6 +92,7 @@
     "validate:rls": "tsx scripts/validate-rls-coverage.ts",
     "validate:helm": "node infra/scripts/validate-helm.mjs",
     "vetus:parity": "node scripts/check-vetus-parity.mjs",
+    "vetus:clinical-parity": "node scripts/check-vetus-clinical-parity.mjs",
     "rc:evidence": "node scripts/generate-enterprise-rc-evidence.mjs",
     "rc:evidence:strict": "node scripts/generate-enterprise-rc-evidence.mjs --strict"
   },

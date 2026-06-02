@@ -8,6 +8,7 @@
  *   GET    /queue                     → listQueue()
  *   POST   /queue/check-in            → checkInQueue()
  *   POST   /queue/:id/call            → callQueueEntry()
+ *   POST   /queue/:id/transfer        → transferQueueEntry()
  *   POST   /queue/:id/start-care      → startCareQueueEntry()  [Sprint 1 — backend fino]
  *   POST   /queue/:id/complete        → completeQueueEntry()
  *   POST   /queue/:id/no-show         → noShowQueueEntry()     [Sprint 1 — backend fino]
@@ -20,7 +21,12 @@ import { apiRequest } from './api';
 import type {
   SchedulingOverviewResponse
 } from '@/types/appointment';
-import type { QueueEntrySummary, QueueListResponse, CheckInQueueRequest } from '@/types/scheduling';
+import type {
+  QueueEntrySummary,
+  QueueListResponse,
+  CheckInQueueRequest,
+  TransferQueueEntryRequest
+} from '@/types/scheduling';
 
 export interface SchedulingOverviewParams {
   viewMode?: 'day' | 'week' | 'month';
@@ -89,6 +95,19 @@ export async function checkInQueue(payload: CheckInQueueRequest): Promise<QueueE
 export async function callQueueEntry(queueEntryId: string): Promise<QueueEntrySummary> {
   return apiRequest<QueueEntrySummary>(`/queue/${queueEntryId}/call`, {
     method: 'POST'
+  });
+}
+
+/**
+ * Encaminha uma entrada da esteira para outro setor/responsável com histórico auditável.
+ */
+export async function transferQueueEntry(
+  queueEntryId: string,
+  payload: TransferQueueEntryRequest
+): Promise<QueueEntrySummary> {
+  return apiRequest<QueueEntrySummary>(`/queue/${queueEntryId}/transfer`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 }
 

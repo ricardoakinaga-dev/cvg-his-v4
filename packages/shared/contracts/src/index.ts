@@ -431,6 +431,18 @@ export interface CheckInQueueRequest {
   readonly appointmentId?: string;
   readonly reason: string;
   readonly priority?: 'low' | 'medium' | 'high' | 'critical';
+  readonly entryType?:
+    | 'standard'
+    | 'emergency'
+    | 'return'
+    | 'quote'
+    | 'counter_sale'
+    | 'service_sale'
+    | 'exam';
+  readonly currentSector?: string;
+  readonly currentResponsibleUserId?: string;
+  readonly currentResponsibleStaffId?: string;
+  readonly nextSector?: string;
 }
 
 export interface QueueListResponse {
@@ -836,6 +848,28 @@ export interface SendClinicalHandoffRequest {
 }
 
 export interface AcknowledgeClinicalHandoffRequest {
+  readonly note?: string;
+}
+
+export interface MarkClinicalHandoffPendingRequest {
+  readonly type: string;
+  readonly severity?: ClinicalHandoffPriority;
+  readonly ownerType?: 'sector' | 'person' | 'team';
+  readonly ownerId: string;
+  readonly reason: string;
+  readonly blocksFinance?: boolean;
+}
+
+export interface ResolveClinicalHandoffPendingRequest {
+  readonly resolution: string;
+}
+
+export interface ReturnClinicalHandoffToClinicRequest {
+  readonly reason: string;
+  readonly toResponsibleId?: string;
+}
+
+export interface SendClinicalHandoffToFinanceRequest {
   readonly note?: string;
 }
 

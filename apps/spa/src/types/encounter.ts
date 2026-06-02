@@ -51,6 +51,10 @@ export type EncounterTimelineEventType =
   | 'triage_recorded'
   | 'handoff_sent_to_reception'
   | 'handoff_acknowledged'
+  | 'handoff_pending_marked'
+  | 'handoff_pending_resolved'
+  | 'handoff_returned_to_clinic'
+  | 'handoff_sent_to_finance'
   | 'encounter_closed';
 
 export interface EncounterTimelineEventSummary {

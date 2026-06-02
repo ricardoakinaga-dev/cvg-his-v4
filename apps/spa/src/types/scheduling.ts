@@ -41,6 +41,15 @@ export type QueueStatus =
  */
 export type QueuePriority = 'low' | 'medium' | 'high' | 'critical';
 
+export type QueueEntryType =
+  | 'standard'
+  | 'emergency'
+  | 'return'
+  | 'quote'
+  | 'counter_sale'
+  | 'service_sale'
+  | 'exam';
+
 /**
  * Representa uma entrada na fila operacional.
  * Espelha o contrato QueueEntrySummary do shared types.
@@ -52,11 +61,45 @@ export interface QueueEntrySummary {
   ownerId: string;
   appointmentId: string | null;
   encounterId: string | null;
+  entryType?: QueueEntryType;
   status: QueueStatus;
   priority: QueuePriority;
   reason: string;
   checkedInAt: string;
   calledAt: string | null;
+  currentSector?: string | null;
+  currentResponsibleUserId?: string | null;
+  currentResponsibleStaffId?: string | null;
+  nextSector?: string | null;
+  operationalStatus?:
+    | 'waiting'
+    | 'called'
+    | 'in_triage'
+    | 'in_care'
+    | 'observation'
+    | 'waiting_handoff'
+    | 'sent_to_finance'
+    | 'completed'
+    | 'cancelled'
+    | null;
+  clinicalStatus?: 'not_started' | 'in_progress' | 'pending' | 'completed' | null;
+  billingStatus?:
+    | 'not_started'
+    | 'pending_origin'
+    | 'ready_for_finance'
+    | 'in_billing'
+    | 'closed'
+    | null;
+  handoffStatus?:
+    | 'not_started'
+    | 'sent_to_reception'
+    | 'acknowledged_by_reception'
+    | 'waiting_pending_resolution'
+    | 'returned_to_clinic'
+    | 'sent_to_finance'
+    | null;
+  lastTransferredAt?: string | null;
+  lastTransferredByUserId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +117,24 @@ export interface CheckInQueueRequest {
   appointmentId?: string;
   reason: string;
   priority?: QueuePriority;
+  entryType?: QueueEntryType;
+  currentSector?: string;
+  currentResponsibleUserId?: string;
+  currentResponsibleStaffId?: string;
+  nextSector?: string;
+}
+
+export interface TransferQueueEntryRequest {
+  toSector: string;
+  sentByUserId?: string;
+  receivedByUserId?: string;
+  responsibleUserId?: string;
+  responsibleStaffId?: string;
+  nextSector?: string;
+  reason: string;
+  urgency?: QueuePriority;
+  billingRecordId?: string;
+  counterSaleId?: string;
 }
 
 /**

@@ -7,6 +7,8 @@ import type {
   AppointmentId,
   EncounterId,
   QueueEntryId,
+  QueueTransferId,
+  QueueTransferSummary,
   QueueEntrySummary,
   SchedulingAppointmentSummary
 } from '@cvg-his-v2/shared-types';
@@ -17,6 +19,7 @@ import type { SchedulingRepository } from './repositories/database-scheduling.re
 class InMemorySchedulingRepository implements SchedulingRepository {
   readonly appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
   readonly queueEntries = new Map<QueueEntryId, QueueEntrySummary>();
+  readonly queueTransfers = new Map<QueueTransferId, QueueTransferSummary>();
 
   constructor(
     seedAppointments: readonly SchedulingAppointmentSummary[] = [],
@@ -66,6 +69,18 @@ class InMemorySchedulingRepository implements SchedulingRepository {
   async findAllQueueEntries(accountId?: AccountId): Promise<readonly QueueEntrySummary[]> {
     return Array.from(this.queueEntries.values()).filter((item) =>
       accountId ? item.accountId === accountId : true
+    );
+  }
+
+  async createQueueTransfer(transfer: QueueTransferSummary): Promise<void> {
+    this.queueTransfers.set(transfer.id, transfer);
+  }
+
+  async findQueueTransfersByQueueEntry(
+    queueEntryId: QueueEntryId
+  ): Promise<readonly QueueTransferSummary[]> {
+    return Array.from(this.queueTransfers.values()).filter(
+      (item) => item.queueEntryId === queueEntryId
     );
   }
 }
@@ -787,6 +802,49 @@ describe('SchedulingService', () => {
     expect(queue[0]?.reason).toBe('Hydrated queue entry');
   });
 
+  it('hydrates queue transfer history when repository is injected', async () => {
+    const queueEntry: QueueEntrySummary = {
+      id: 'queue_repo_transfer_1' as QueueEntryId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      patientId: 'patient_luna' as never,
+      ownerId: 'owner_maria_silva' as never,
+      reason: 'Hydrated queue transfer',
+      priority: 'medium',
+      status: 'waiting',
+      checkedInAt: '2026-04-03T10:00:00.000Z',
+      createdAt: '2026-04-03T10:00:00.000Z',
+      updatedAt: '2026-04-03T10:00:00.000Z'
+    };
+    const repository = new InMemorySchedulingRepository([], [queueEntry]);
+    repository.queueTransfers.set('queue_transfer_repo_1' as QueueTransferId, {
+      id: 'queue_transfer_repo_1' as QueueTransferId,
+      accountId: queueEntry.accountId,
+      queueEntryId: queueEntry.id,
+      fromSector: 'Recepcao',
+      toSector: 'Clinica',
+      sentByUserId: 'user_reception' as never,
+      sentAt: '2026-04-03T10:05:00.000Z',
+      receivedByUserId: 'user_vet' as never,
+      responsibleStaffId: 'staff_vet' as never,
+      nextSector: 'Exames',
+      reason: 'Hydrated transfer',
+      urgency: 'medium',
+      createdAt: '2026-04-03T10:05:00.000Z'
+    });
+    const hydrated = new SchedulingService(owners, patients, [], { repository });
+
+    await hydrated.hydrateFromDatabase('acc_cvg_demo' as AccountId);
+
+    expect(hydrated.listQueueTransfers(queueEntry.id)).toEqual([
+      expect.objectContaining({
+        queueEntryId: queueEntry.id,
+        fromSector: 'Recepcao',
+        toSector: 'Clinica',
+        sentByUserId: 'user_reception'
+      })
+    ]);
+  });
+
   it('persists created appointments when repository is injected', async () => {
     const repository = new InMemorySchedulingRepository();
     const persistent = new SchedulingService(owners, patients, [], { repository });
@@ -837,6 +895,77 @@ describe('SchedulingService', () => {
 
     await persistent.completeQueueEntry(queueEntry.id);
     expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('completed');
+  });
+
+  it('stores explicit operational ownership when checking in a patient', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const queueEntry = await service.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Urgencia respiratoria',
+      priority: 'critical',
+      entryType: 'emergency',
+      currentSector: 'Recepcao',
+      currentResponsibleStaffId: 'staff_vet',
+      nextSector: 'Clinica'
+    });
+
+    expect(queueEntry.entryType).toBe('emergency');
+    expect(queueEntry.currentSector).toBe('Recepcao');
+    expect(queueEntry.currentResponsibleStaffId).toBe('staff_vet');
+    expect(queueEntry.nextSector).toBe('Clinica');
+    expect(queueEntry.operationalStatus).toBe('waiting');
+    expect(queueEntry.clinicalStatus).toBe('not_started');
+    expect(queueEntry.billingStatus).toBe('not_started');
+    expect(queueEntry.handoffStatus).toBe('not_started');
+  });
+
+  it('transfers queue entry between sectors and keeps auditable history', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const queueEntry = await persistent.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Encaminhar para clinica',
+      currentSector: 'Recepcao',
+      nextSector: 'Clinica'
+    });
+
+    const transferred = await persistent.transferQueueEntry(queueEntry.id, {
+      toSector: 'Clinica',
+      sentByUserId: 'user_reception',
+      receivedByUserId: 'user_vet',
+      responsibleStaffId: 'staff_vet',
+      nextSector: 'Exames',
+      reason: 'Veterinario assumiu atendimento',
+      urgency: 'high'
+    });
+
+    expect(transferred.currentSector).toBe('Clinica');
+    expect(transferred.currentResponsibleStaffId).toBe('staff_vet');
+    expect(transferred.nextSector).toBe('Exames');
+    expect(transferred.lastTransferredByUserId).toBe('user_reception');
+    expect(transferred.lastTransferredAt).toBeDefined();
+    expect(repository.queueEntries.get(queueEntry.id)?.currentSector).toBe('Clinica');
+
+    const history = persistent.listQueueTransfers(queueEntry.id);
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      accountId,
+      queueEntryId: queueEntry.id,
+      fromSector: 'Recepcao',
+      toSector: 'Clinica',
+      sentByUserId: 'user_reception',
+      receivedByUserId: 'user_vet',
+      responsibleStaffId: 'staff_vet',
+      nextSector: 'Exames',
+      reason: 'Veterinario assumiu atendimento',
+      urgency: 'high'
+    });
+    expect(repository.queueTransfers.size).toBe(1);
   });
 
   it('should invoke onAppointmentCreated callback when creating an appointment', async () => {

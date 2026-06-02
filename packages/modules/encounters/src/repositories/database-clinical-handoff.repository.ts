@@ -25,7 +25,10 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
            from_responsible_id, to_responsible_type, to_responsible_id,
            clinical_summary, reception_instructions, priority, handoff_status,
            created_by, sent_by, sent_at, acknowledged_by, acknowledged_at,
-           acknowledge_note, created_at, updated_at
+           acknowledge_note, pending_issues, returned_to_clinic_by,
+           returned_to_clinic_at, returned_to_clinic_reason,
+           returned_to_clinic_responsible_id, sent_to_finance_by,
+           sent_to_finance_at, finance_note, created_at, updated_at
          )
          VALUES (
            $1, $2, $3, $4, $5,
@@ -33,7 +36,8 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
            $11, $12, $13,
            $14, $15, $16, $17,
            $18, $19, $20, $21, $22,
-           $23, $24, $25
+           $23, $24, $25, $26, $27, $28,
+           $29, $30, $31, $32, $33
          )`,
         [
           handoff.id,
@@ -59,6 +63,14 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
           handoff.acknowledgedBy ?? null,
           handoff.acknowledgedAt ? new Date(handoff.acknowledgedAt) : null,
           handoff.acknowledgeNote ?? null,
+          JSON.stringify(handoff.pendingIssues),
+          handoff.returnedToClinicBy ?? null,
+          handoff.returnedToClinicAt ? new Date(handoff.returnedToClinicAt) : null,
+          handoff.returnedToClinicReason ?? null,
+          handoff.returnedToClinicResponsibleId ?? null,
+          handoff.sentToFinanceBy ?? null,
+          handoff.sentToFinanceAt ? new Date(handoff.sentToFinanceAt) : null,
+          handoff.financeNote ?? null,
           new Date(handoff.createdAt),
           new Date(handoff.updatedAt)
         ]
@@ -87,7 +99,15 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
              acknowledged_by = $17,
              acknowledged_at = $18,
              acknowledge_note = $19,
-             updated_at = $20
+             pending_issues = $20,
+             returned_to_clinic_by = $21,
+             returned_to_clinic_at = $22,
+             returned_to_clinic_reason = $23,
+             returned_to_clinic_responsible_id = $24,
+             sent_to_finance_by = $25,
+             sent_to_finance_at = $26,
+             finance_note = $27,
+             updated_at = $28
          WHERE id = $1 AND account_id = $2`,
         [
           handoff.id,
@@ -109,6 +129,14 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
           handoff.acknowledgedBy ?? null,
           handoff.acknowledgedAt ? new Date(handoff.acknowledgedAt) : null,
           handoff.acknowledgeNote ?? null,
+          JSON.stringify(handoff.pendingIssues),
+          handoff.returnedToClinicBy ?? null,
+          handoff.returnedToClinicAt ? new Date(handoff.returnedToClinicAt) : null,
+          handoff.returnedToClinicReason ?? null,
+          handoff.returnedToClinicResponsibleId ?? null,
+          handoff.sentToFinanceBy ?? null,
+          handoff.sentToFinanceAt ? new Date(handoff.sentToFinanceAt) : null,
+          handoff.financeNote ?? null,
           new Date(handoff.updatedAt)
         ]
       );
@@ -184,6 +212,21 @@ export class DatabaseClinicalHandoffRepository implements ClinicalHandoffReposit
         ? new Date(row.acknowledged_at as string).toISOString()
         : undefined,
       acknowledgeNote: (row.acknowledge_note as string | null) ?? undefined,
+      pendingIssues: Array.isArray(row.pending_issues)
+        ? (row.pending_issues as ClinicalHandoffSummary['pendingIssues'])
+        : [],
+      returnedToClinicBy: (row.returned_to_clinic_by as UserId | null) ?? undefined,
+      returnedToClinicAt: row.returned_to_clinic_at
+        ? new Date(row.returned_to_clinic_at as string).toISOString()
+        : undefined,
+      returnedToClinicReason: (row.returned_to_clinic_reason as string | null) ?? undefined,
+      returnedToClinicResponsibleId:
+        (row.returned_to_clinic_responsible_id as string | null) ?? undefined,
+      sentToFinanceBy: (row.sent_to_finance_by as UserId | null) ?? undefined,
+      sentToFinanceAt: row.sent_to_finance_at
+        ? new Date(row.sent_to_finance_at as string).toISOString()
+        : undefined,
+      financeNote: (row.finance_note as string | null) ?? undefined,
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };

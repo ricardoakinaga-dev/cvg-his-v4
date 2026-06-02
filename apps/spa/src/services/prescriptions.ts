@@ -10,10 +10,54 @@ interface PrescriptionSummary extends ClinicalEntrySummary {
   dosage?: string;
   route?: string;
   frequency?: string;
+  notes?: string;
+  lastRevisionReason?: string;
+  lastRevisionByUserId?: string;
 }
 
 interface PrescriptionListResponse {
   items?: PrescriptionSummary[];
+}
+
+interface PrescriptionDocumentContext {
+  clinic: {
+    name: string;
+    document?: string;
+    address?: string;
+    phone?: string;
+  };
+  owner: {
+    name: string;
+    document?: string;
+  };
+  patient: {
+    name: string;
+    species?: string;
+    breed?: string;
+    weightKg?: number;
+  };
+  professional: {
+    name: string;
+    license?: string;
+  };
+}
+
+interface PrescriptionDocument {
+  title: 'Receita Veterinaria';
+  prescriptionId: string;
+  issuedAt: string;
+  header: string;
+  owner: string;
+  patient: string;
+  medications: Array<{
+    medicationName: string;
+    dosage?: string;
+    route?: string;
+    frequency?: string;
+    notes?: string;
+  }>;
+  footer: string;
+  printText: string;
 }
 
 function parsePrescriptionContent(title: string, content: string) {
@@ -85,6 +129,40 @@ export const prescriptionsService = {
         frequency: parsed.frequency,
         notes: parsed.notes
       })
+    });
+  },
+
+  async getById(id: string): Promise<PrescriptionSummary> {
+    return apiRequest<PrescriptionSummary>(`/prescriptions/${encodeURIComponent(id)}`);
+  },
+
+  async renderDocument(
+    id: string,
+    context: PrescriptionDocumentContext
+  ): Promise<PrescriptionDocument> {
+    return apiRequest<PrescriptionDocument>(`/prescriptions/${encodeURIComponent(id)}/document`, {
+      method: 'POST',
+      body: JSON.stringify(context)
+    });
+  },
+
+  async update(
+    id: string,
+    payload: { title?: string; content?: string; reason: string; expectedVersion?: number }
+  ): Promise<PrescriptionSummary> {
+    return apiRequest<PrescriptionSummary>(`/prescriptions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async archive(
+    id: string,
+    payload: { reason: string; expectedVersion?: number }
+  ): Promise<PrescriptionSummary> {
+    return apiRequest<PrescriptionSummary>(`/prescriptions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: JSON.stringify(payload)
     });
   }
 };

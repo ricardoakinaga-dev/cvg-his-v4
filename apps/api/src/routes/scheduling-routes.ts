@@ -431,6 +431,47 @@ export async function handleSchedulingRoutes(
     return json(response, 200, entry);
   }
 
+  if (pathname.startsWith('/queue/') && pathname.endsWith('/transfer') && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const payload = (await readJsonBody(request)) as {
+      readonly toSector?: string;
+      readonly sentByUserId?: string;
+      readonly receivedByUserId?: string;
+      readonly responsibleUserId?: string;
+      readonly responsibleStaffId?: string;
+      readonly nextSector?: string;
+      readonly reason?: string;
+      readonly urgency?: 'low' | 'medium' | 'high' | 'critical';
+      readonly billingRecordId?: string;
+      readonly counterSaleId?: string;
+    };
+    const entry = await scheduling.transferQueueEntry(queueEntryId as never, {
+      toSector: requireNonEmptyString(payload.toSector, 'toSector'),
+      sentByUserId: payload.sentByUserId?.trim() || principal.user.id,
+      receivedByUserId: payload.receivedByUserId,
+      responsibleUserId: payload.responsibleUserId,
+      responsibleStaffId: payload.responsibleStaffId,
+      nextSector: payload.nextSector,
+      reason: requireNonEmptyString(payload.reason, 'reason'),
+      urgency: payload.urgency,
+      billingRecordId: payload.billingRecordId,
+      counterSaleId: payload.counterSaleId
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'transfer_queue_entry',
+      entityType: 'queue-entry',
+      entityId: entry.id,
+      payloadSummary: `Queue entry ${entry.id} transferred to ${entry.currentSector}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, entry);
+  }
+
   if (pathname.startsWith('/queue/') && pathname.endsWith('/start-care') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');

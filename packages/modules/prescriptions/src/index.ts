@@ -35,6 +35,8 @@ export interface PrescriptionSummary {
   readonly deletedAt?: string;
   readonly deletedByUserId?: UserId;
   readonly deleteReason?: string;
+  readonly lastRevisionReason?: string;
+  readonly lastRevisionByUserId?: UserId;
   readonly createdAt: string;
   readonly updatedAt: string;
   /** Medication name (same as title) */
@@ -45,6 +47,48 @@ export interface PrescriptionSummary {
   readonly route?: string;
   /** Parsed from content line "Frequência: X" */
   readonly frequency?: string;
+  readonly notes?: string;
+}
+
+export interface PrescriptionDocumentContext {
+  readonly clinic: {
+    readonly name: string;
+    readonly document?: string;
+    readonly address?: string;
+    readonly phone?: string;
+  };
+  readonly owner: {
+    readonly name: string;
+    readonly document?: string;
+  };
+  readonly patient: {
+    readonly name: string;
+    readonly species?: string;
+    readonly breed?: string;
+    readonly weightKg?: number;
+  };
+  readonly professional: {
+    readonly name: string;
+    readonly license?: string;
+  };
+}
+
+export interface PrescriptionDocument {
+  readonly title: 'Receita Veterinaria';
+  readonly prescriptionId: PrescriptionId;
+  readonly issuedAt: string;
+  readonly header: string;
+  readonly owner: string;
+  readonly patient: string;
+  readonly medications: ReadonlyArray<{
+    readonly medicationName: string;
+    readonly dosage?: string;
+    readonly route?: string;
+    readonly frequency?: string;
+    readonly notes?: string;
+  }>;
+  readonly footer: string;
+  readonly printText: string;
 }
 
 export interface CreatePrescriptionRequest {
@@ -81,12 +125,14 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
   let dosage: string | undefined;
   let route: string | undefined;
   let frequency: string | undefined;
+  let notes: string | undefined;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('Posologia:')) dosage = trimmed.slice('Posologia:'.length).trim();
     else if (trimmed.startsWith('Via:')) route = trimmed.slice('Via:'.length).trim();
     else if (trimmed.startsWith('Frequência:')) frequency = trimmed.slice('Frequência:'.length).trim();
+    else if (trimmed.startsWith('Observações:')) notes = trimmed.slice('Observações:'.length).trim();
   }
 
   return {
@@ -103,12 +149,15 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
     deletedAt: entry.deletedAt,
     deletedByUserId: entry.deletedByUserId,
     deleteReason: entry.deleteReason,
+    lastRevisionReason: (entry as { lastRevisionReason?: string }).lastRevisionReason,
+    lastRevisionByUserId: (entry as { lastRevisionByUserId?: UserId }).lastRevisionByUserId,
     createdAt: entry.createdAt,
     updatedAt: entry.updatedAt,
     medicationName: entry.title,
     dosage,
     route,
-    frequency
+    frequency,
+    notes
   };
 }
 
@@ -300,6 +349,76 @@ export class PrescriptionsService {
     return prescription;
   }
 
+  public renderDocument(
+    prescriptionId: PrescriptionId,
+    context: PrescriptionDocumentContext
+  ): PrescriptionDocument {
+    const prescription = this.getById(prescriptionId);
+    const header = [
+      context.clinic.name,
+      context.clinic.document ? `CNPJ/CPF: ${context.clinic.document}` : '',
+      context.clinic.address,
+      context.clinic.phone ? `Telefone: ${context.clinic.phone}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const owner = [
+      `Tutor: ${context.owner.name}`,
+      context.owner.document ? `Documento: ${context.owner.document}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const patient = [
+      `Animal: ${context.patient.name}`,
+      context.patient.species ? `Especie: ${context.patient.species}` : '',
+      context.patient.breed ? `Raca: ${context.patient.breed}` : '',
+      context.patient.weightKg !== undefined ? `Peso: ${context.patient.weightKg} kg` : ''
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const medication = {
+      medicationName: prescription.medicationName,
+      dosage: prescription.dosage,
+      route: prescription.route,
+      frequency: prescription.frequency,
+      notes: prescription.notes
+    };
+    const footer = [
+      `Profissional: ${context.professional.name}`,
+      context.professional.license ? `Registro: ${context.professional.license}` : '',
+      `Emitida em: ${prescription.createdAt}`,
+      `Identificador: ${prescription.id}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const printText = [
+      'Receita Veterinaria',
+      header,
+      owner,
+      patient,
+      `Medicamento: ${medication.medicationName}`,
+      medication.dosage ? `Posologia: ${medication.dosage}` : '',
+      medication.route ? `Via: ${medication.route}` : '',
+      medication.frequency ? `Frequencia: ${medication.frequency}` : '',
+      medication.notes ? `Orientacoes: ${medication.notes}` : '',
+      footer
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    return {
+      title: 'Receita Veterinaria',
+      prescriptionId,
+      issuedAt: prescription.createdAt,
+      header,
+      owner,
+      patient,
+      medications: [medication],
+      footer,
+      printText
+    };
+  }
+
   public listByEncounter(encounterId: EncounterId): readonly PrescriptionSummary[] {
     return Array.from(this.#prescriptions.values())
       .filter((e) => e.encounterId === encounterId && e.entryType === 'prescription')
@@ -324,6 +443,7 @@ export class PrescriptionsService {
   public update(prescriptionId: PrescriptionId, actorUserId: UserId, payload: UpdatePrescriptionRequest): PrescriptionSummary {
     const current = this.getById(prescriptionId);
     if (current.deletedAt) throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
+    requireNonEmptyString(payload.reason, 'reason');
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {
         prescriptionId, expectedVersion: payload.expectedVersion, currentVersion: current.version
@@ -336,8 +456,10 @@ export class PrescriptionsService {
       title: payload.title ?? current.title,
       content: payload.content ?? current.content,
       version: current.version + 1,
+      lastRevisionReason: payload.reason,
+      lastRevisionByUserId: actorUserId,
       updatedAt: now
-    };
+    } as ClinicalEntrySummary;
 
     this.#prescriptions.set(prescriptionId, updated);
     if (this.#prescriptionRepository) {

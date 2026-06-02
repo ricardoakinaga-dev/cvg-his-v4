@@ -16,6 +16,7 @@ export type PatientId = Brand<string, 'PatientId'>;
 export type OwnerPatientLinkId = Brand<string, 'OwnerPatientLinkId'>;
 export type AppointmentId = Brand<string, 'AppointmentId'>;
 export type QueueEntryId = Brand<string, 'QueueEntryId'>;
+export type QueueTransferId = Brand<string, 'QueueTransferId'>;
 export type EncounterId = Brand<string, 'EncounterId'>;
 export type TriageRecordId = Brand<string, 'TriageRecordId'>;
 export type TriageVersionId = Brand<string, 'TriageVersionId'>;
@@ -408,6 +409,14 @@ export interface QueueEntrySummary {
   readonly ownerId: OwnerId;
   readonly appointmentId?: AppointmentId;
   readonly encounterId?: EncounterId;
+  readonly entryType?:
+    | 'standard'
+    | 'emergency'
+    | 'return'
+    | 'quote'
+    | 'counter_sale'
+    | 'service_sale'
+    | 'exam';
   readonly reason: string;
   readonly priority: 'low' | 'medium' | 'high' | 'critical';
   readonly status:
@@ -420,8 +429,54 @@ export interface QueueEntrySummary {
     | 'cancelled';
   readonly checkedInAt: string;
   readonly calledAt?: string;
+  readonly currentSector?: string;
+  readonly currentResponsibleUserId?: UserId;
+  readonly currentResponsibleStaffId?: StaffId;
+  readonly nextSector?: string;
+  readonly operationalStatus?:
+    | 'waiting'
+    | 'called'
+    | 'in_triage'
+    | 'in_care'
+    | 'observation'
+    | 'waiting_handoff'
+    | 'sent_to_finance'
+    | 'completed'
+    | 'cancelled';
+  readonly clinicalStatus?: 'not_started' | 'in_progress' | 'pending' | 'completed';
+  readonly billingStatus?: 'not_started' | 'pending_origin' | 'ready_for_finance' | 'in_billing' | 'closed';
+  readonly handoffStatus?:
+    | 'not_started'
+    | 'sent_to_reception'
+    | 'acknowledged_by_reception'
+    | 'waiting_pending_resolution'
+    | 'returned_to_clinic'
+    | 'sent_to_finance';
+  readonly lastTransferredAt?: string;
+  readonly lastTransferredByUserId?: UserId;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface QueueTransferSummary {
+  readonly id: QueueTransferId;
+  readonly accountId: AccountId;
+  readonly queueEntryId: QueueEntryId;
+  readonly encounterId?: EncounterId;
+  readonly fromSector: string;
+  readonly toSector: string;
+  readonly sentByUserId: UserId;
+  readonly sentAt: string;
+  readonly receivedByUserId?: UserId;
+  readonly receivedAt?: string;
+  readonly responsibleUserId?: UserId;
+  readonly responsibleStaffId?: StaffId;
+  readonly nextSector?: string;
+  readonly reason: string;
+  readonly urgency: 'low' | 'medium' | 'high' | 'critical';
+  readonly billingRecordId?: string;
+  readonly counterSaleId?: string;
+  readonly createdAt: string;
 }
 
 export interface EncounterSummary {
@@ -487,6 +542,10 @@ export interface EncounterTimelineEventSummary {
     | 'triage_recorded'
     | 'handoff_sent_to_reception'
     | 'handoff_acknowledged'
+    | 'handoff_pending_marked'
+    | 'handoff_pending_resolved'
+    | 'handoff_returned_to_clinic'
+    | 'handoff_sent_to_finance'
     | 'encounter_closed';
   readonly summary: string;
   readonly actorUserId: UserId;
@@ -496,9 +555,30 @@ export interface EncounterTimelineEventSummary {
 export type ClinicalHandoffStatus =
   | 'ready_to_send'
   | 'sent_to_reception'
-  | 'acknowledged_by_reception';
+  | 'acknowledged_by_reception'
+  | 'waiting_pending_resolution'
+  | 'returned_to_clinic'
+  | 'sent_to_finance';
 
 export type ClinicalHandoffPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type ClinicalHandoffPendingIssueId = Brand<string, 'ClinicalHandoffPendingIssueId'>;
+
+export interface ClinicalHandoffPendingIssueSummary {
+  readonly id: ClinicalHandoffPendingIssueId;
+  readonly type: string;
+  readonly severity: ClinicalHandoffPriority;
+  readonly ownerType: 'sector' | 'person' | 'team';
+  readonly ownerId: string;
+  readonly reason: string;
+  readonly blocksFinance: boolean;
+  readonly status: 'open' | 'resolved';
+  readonly createdBy: UserId;
+  readonly createdAt: string;
+  readonly resolvedBy?: UserId;
+  readonly resolvedAt?: string;
+  readonly resolution?: string;
+}
 
 export interface ClinicalHandoffSummary {
   readonly id: ClinicalHandoffId;
@@ -524,6 +604,14 @@ export interface ClinicalHandoffSummary {
   readonly acknowledgedBy?: UserId;
   readonly acknowledgedAt?: string;
   readonly acknowledgeNote?: string;
+  readonly pendingIssues: readonly ClinicalHandoffPendingIssueSummary[];
+  readonly returnedToClinicBy?: UserId;
+  readonly returnedToClinicAt?: string;
+  readonly returnedToClinicReason?: string;
+  readonly returnedToClinicResponsibleId?: string;
+  readonly sentToFinanceBy?: UserId;
+  readonly sentToFinanceAt?: string;
+  readonly financeNote?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -469,6 +469,43 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
   assert.equal(called.id, checkedIn.id);
   assert.equal(called.status, 'called');
 
+  const transferResponse = new MockResponse();
+  const transferHandled = await handleSchedulingRoutes(
+    `/queue/${checkedIn.id}/transfer`,
+    createJsonRequest('POST', `/queue/${checkedIn.id}/transfer`, {
+      toSector: 'Clinica',
+      sentByUserId: 'user_reception',
+      receivedByUserId: 'user_vet',
+      responsibleStaffId: 'staff_vet',
+      nextSector: 'Exames',
+      reason: 'Veterinario assumiu o caso',
+      urgency: 'high'
+    }),
+    transferResponse as never,
+    'corr-scheduling-transfer',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(transferHandled, true);
+  assert.equal(transferResponse.statusCode, 200);
+  const transferred = transferResponse.bodyJson<{
+    id: string;
+    currentSector?: string;
+    currentResponsibleStaffId?: string;
+    nextSector?: string;
+    lastTransferredByUserId?: string;
+  }>();
+  assert.equal(transferred.id, checkedIn.id);
+  assert.equal(transferred.currentSector, 'Clinica');
+  assert.equal(transferred.currentResponsibleStaffId, 'staff_vet');
+  assert.equal(transferred.nextSector, 'Exames');
+  assert.equal(transferred.lastTransferredByUserId, 'user_reception');
+
   await scheduling.attachEncounter(checkedIn.id as never, 'encounter-1' as never);
 
   const startCareResponse = new MockResponse();

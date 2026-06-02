@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { encounters } from './encounters.js';
@@ -47,6 +47,14 @@ export const clinicalHandoffs = pgTable(
     acknowledgedBy: uuid('acknowledged_by').references(() => users.id),
     acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
     acknowledgeNote: text('acknowledge_note'),
+    pendingIssues: jsonb('pending_issues').notNull().default([]),
+    returnedToClinicBy: uuid('returned_to_clinic_by').references(() => users.id),
+    returnedToClinicAt: timestamp('returned_to_clinic_at', { withTimezone: true }),
+    returnedToClinicReason: text('returned_to_clinic_reason'),
+    returnedToClinicResponsibleId: text('returned_to_clinic_responsible_id'),
+    sentToFinanceBy: uuid('sent_to_finance_by').references(() => users.id),
+    sentToFinanceAt: timestamp('sent_to_finance_at', { withTimezone: true }),
+    financeNote: text('finance_note'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
@@ -77,7 +85,7 @@ export const clinicalHandoffs = pgTable(
     ),
     sectorChk: check(
       'clinical_handoffs_sector_chk',
-      sql`${table.fromSector} = 'clinic' and ${table.toSector} = 'reception'`
+      sql`${table.fromSector} = 'clinic' and ${table.toSector} in ('reception', 'finance')`
     ),
     responsibleTypeChk: check(
       'clinical_handoffs_responsible_type_chk',
@@ -89,7 +97,7 @@ export const clinicalHandoffs = pgTable(
     ),
     statusChk: check(
       'clinical_handoffs_status_chk',
-      sql`${table.handoffStatus} in ('ready_to_send', 'sent_to_reception', 'acknowledged_by_reception')`
+      sql`${table.handoffStatus} in ('ready_to_send', 'sent_to_reception', 'acknowledged_by_reception', 'waiting_pending_resolution', 'returned_to_clinic', 'sent_to_finance')`
     ),
     summaryNonEmptyChk: check(
       'clinical_handoffs_summary_non_empty_chk',

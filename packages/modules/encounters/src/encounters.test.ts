@@ -174,6 +174,84 @@ test('ClinicalHandoffsService: hydrates persisted handoffs from repository', asy
   assert.equal(handoffsB.getOrThrow(handoff.id).clinicalSummary, 'Resumo persistido.');
 });
 
+test('ClinicalHandoffsService: manages pending issues before sending to finance', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+  const handoff = handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Alta clinica com receita e retorno.',
+    receptionInstructions: 'Conferir receita, assinatura e pendencias.',
+    priority: 'critical'
+  });
+
+  const pending = handoffs.markPending(encounter.accountId, 'user_reception' as never, handoff.id, {
+    type: 'missing_prescription_signature',
+    severity: 'critical',
+    ownerType: 'person',
+    ownerId: 'user_vet',
+    reason: 'Receita precisa de assinatura antes do financeiro.',
+    blocksFinance: true
+  });
+
+  assert.equal(pending.handoffStatus, 'waiting_pending_resolution');
+  assert.equal(pending.pendingIssues.length, 1);
+  assert.equal(pending.pendingIssues[0].status, 'open');
+  assert.throws(
+    () =>
+      handoffs.sendToFinance(encounter.accountId, 'user_reception' as never, handoff.id, {
+        note: 'Tentativa sem resolver pendencia.'
+      }),
+    ConflictError
+  );
+
+  const resolved = handoffs.resolvePending(
+    encounter.accountId,
+    'user_vet' as never,
+    handoff.id,
+    pending.pendingIssues[0].id,
+    { resolution: 'Receita assinada e conferida.' }
+  );
+
+  assert.equal(resolved.pendingIssues[0].status, 'resolved');
+  assert.equal(resolved.handoffStatus, 'acknowledged_by_reception');
+
+  const finance = handoffs.sendToFinance(encounter.accountId, 'user_reception' as never, handoff.id, {
+    note: 'Liberado para financeiro com receita assinada.'
+  });
+
+  assert.equal(finance.handoffStatus, 'sent_to_finance');
+  assert.ok(finance.sentToFinanceAt);
+  assert.equal(finance.sentToFinanceBy, 'user_reception');
+  assert.ok(
+    encounters
+      .listTimeline(encounter.id)
+      .some((event) => event.eventType === 'handoff_sent_to_finance')
+  );
+});
+
+test('ClinicalHandoffsService: returns handoff to clinic with reason', () => {
+  const encounters = createEncountersService();
+  const encounter = openTestEncounter(encounters);
+  const handoffs = new ClinicalHandoffsService(encounters);
+  const handoff = handoffs.sendToReception(encounter.accountId, 'user_vet' as never, {
+    encounterId: encounter.id,
+    clinicalSummary: 'Resumo para recepcao.',
+    receptionInstructions: 'Validar orientacoes finais.'
+  });
+  handoffs.acknowledge(encounter.accountId, 'user_reception' as never, handoff.id);
+
+  const returned = handoffs.returnToClinic(encounter.accountId, 'user_reception' as never, handoff.id, {
+    reason: 'Tutor informou piora antes da saida.',
+    toResponsibleId: 'user_vet'
+  });
+
+  assert.equal(returned.handoffStatus, 'returned_to_clinic');
+  assert.equal(returned.returnedToClinicBy, 'user_reception');
+  assert.equal(returned.returnedToClinicReason, 'Tutor informou piora antes da saida.');
+  assert.ok(returned.returnedToClinicAt);
+});
+
 test('EncountersService: getOrThrow throws for non-existent encounter', () => {
   const encounters = createEncountersService();
 

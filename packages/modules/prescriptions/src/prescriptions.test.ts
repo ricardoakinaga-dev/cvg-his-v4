@@ -150,6 +150,48 @@ describe('PrescriptionsService', () => {
       expect(() => failingService.getById(rx.id)).toThrow(NotFoundError);
       expect(failingService.listByEncounter(ENCOUNTER_1)).toHaveLength(0);
     });
+
+    it('should render a complete printable prescription document', () => {
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+
+      const document = service.renderDocument(rx.id, {
+        clinic: {
+          name: 'CVG Hospital Veterinario',
+          document: '12.345.678/0001-90',
+          address: 'Rua Clinica, 100',
+          phone: '(11) 99999-0000'
+        },
+        owner: {
+          name: 'Maria Silva',
+          document: '123.456.789-00'
+        },
+        patient: {
+          name: 'Luna',
+          species: 'Canina',
+          breed: 'SRD',
+          weightKg: 12.4
+        },
+        professional: {
+          name: 'Dra. Ana Vet',
+          license: 'CRMV-SP 12345'
+        }
+      });
+
+      expect(document.title).toBe('Receita Veterinaria');
+      expect(document.prescriptionId).toBe(rx.id);
+      expect(document.header).toContain('CVG Hospital Veterinario');
+      expect(document.owner).toContain('Maria Silva');
+      expect(document.patient).toContain('Luna');
+      expect(document.medications[0]).toMatchObject({
+        medicationName: 'Amoxicilina',
+        dosage: '500mg',
+        route: 'Oral',
+        frequency: '8/8h'
+      });
+      expect(document.footer).toContain('Dra. Ana Vet');
+      expect(document.printText).toContain('Receita Veterinaria');
+      expect(document.printText).toContain('Amoxicilina');
+    });
   });
 
   describe('getById', () => {
@@ -225,7 +267,10 @@ describe('PrescriptionsService', () => {
     it('should update prescription title', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
-      const updated = service.update(created.id, ACTOR_ID, { title: 'Amoxicilina 875mg' });
+      const updated = service.update(created.id, ACTOR_ID, {
+        title: 'Amoxicilina 875mg',
+        reason: 'Ajuste de dose'
+      });
 
       expect(updated.title).toBe('Amoxicilina 875mg');
       expect(updated.version).toBe(2);
@@ -235,7 +280,8 @@ describe('PrescriptionsService', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
       const updated = service.update(created.id, ACTOR_ID, {
-        content: 'Posologia: 875mg\nVia: Oral\nFrequência: 12/12h'
+        content: 'Posologia: 875mg\nVia: Oral\nFrequência: 12/12h',
+        reason: 'Ajuste de posologia'
       });
 
       expect(updated.content).toContain('875mg');
@@ -247,7 +293,10 @@ describe('PrescriptionsService', () => {
       service.archive(created.id, ACTOR_ID, { reason: 'Duplicated' });
 
       expect(() =>
-        service.update(created.id, ACTOR_ID, { title: 'New name' })
+        service.update(created.id, ACTOR_ID, {
+          title: 'New name',
+          reason: 'Tentativa invalida'
+        })
       ).toThrow(ValidationError);
     });
 
@@ -257,9 +306,27 @@ describe('PrescriptionsService', () => {
       expect(() =>
         service.update(created.id, ACTOR_ID, {
           title: 'New name',
+          reason: 'Tentativa com versao antiga',
           expectedVersion: 99
         })
       ).toThrow(ValidationError);
+    });
+
+    it('should require a reason for versioned document updates', () => {
+      const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+
+      expect(() => service.update(created.id, ACTOR_ID, { title: 'Sem motivo' })).toThrow(
+        ValidationError
+      );
+
+      const updated = service.update(created.id, ACTOR_ID, {
+        title: 'Amoxicilina 875mg',
+        reason: 'Ajuste de dose apos reavaliacao.'
+      });
+
+      expect(updated.version).toBe(2);
+      expect(updated.lastRevisionReason).toBe('Ajuste de dose apos reavaliacao.');
+      expect(updated.lastRevisionByUserId).toBe(ACTOR_ID);
     });
   });
 
@@ -315,7 +382,10 @@ describe('PrescriptionsService', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
 
-      const updated = service.update(rx.id, ACTOR_ID, { title: 'Updated name' });
+      const updated = service.update(rx.id, ACTOR_ID, {
+        title: 'Updated name',
+        reason: 'Repository update'
+      });
       await service.waitForPersistence();
 
       const found = await repo.findById(updated.id);

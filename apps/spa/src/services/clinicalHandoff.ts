@@ -4,6 +4,10 @@ import type {
   ClinicalHandoffListFilters,
   ClinicalHandoffListResponse,
   ClinicalHandoffSummary,
+  MarkClinicalHandoffPendingRequest,
+  ResolveClinicalHandoffPendingRequest,
+  ReturnClinicalHandoffToClinicRequest,
+  SendClinicalHandoffToFinanceRequest,
   SendClinicalHandoffRequest
 } from '@/types/clinicalHandoff';
 
@@ -40,6 +44,50 @@ export const clinicalHandoffService = {
     payload: AcknowledgeClinicalHandoffRequest = {}
   ): Promise<ClinicalHandoffSummary> {
     return apiRequest<ClinicalHandoffSummary>(`/clinical-handoffs/${id}/acknowledge`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async markPending(
+    id: string,
+    payload: MarkClinicalHandoffPendingRequest
+  ): Promise<ClinicalHandoffSummary> {
+    return apiRequest<ClinicalHandoffSummary>(`/clinical-handoffs/${id}/pending`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async resolvePending(
+    id: string,
+    issueId: string,
+    payload: ResolveClinicalHandoffPendingRequest
+  ): Promise<ClinicalHandoffSummary> {
+    return apiRequest<ClinicalHandoffSummary>(
+      `/clinical-handoffs/${id}/pending/${issueId}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+  },
+
+  async returnToClinic(
+    id: string,
+    payload: ReturnClinicalHandoffToClinicRequest
+  ): Promise<ClinicalHandoffSummary> {
+    return apiRequest<ClinicalHandoffSummary>(`/clinical-handoffs/${id}/return-to-clinic`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async sendToFinance(
+    id: string,
+    payload: SendClinicalHandoffToFinanceRequest = {}
+  ): Promise<ClinicalHandoffSummary> {
+    return apiRequest<ClinicalHandoffSummary>(`/clinical-handoffs/${id}/send-to-finance`, {
       method: 'POST',
       body: JSON.stringify(payload)
     });

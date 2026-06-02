@@ -786,11 +786,29 @@
                   <p>{{ prescription.dosage || prescription.content }}</p>
                 </div>
                 <span>{{ formatDateTime(prescription.updatedAt) }}</span>
+                <div class="record-list__actions">
+                  <DsButton size="sm" variant="ghost" @click="viewPrescriptionDocument(prescription)">
+                    Ver Receita
+                  </DsButton>
+                  <DsButton size="sm" variant="ghost" @click="printPrescriptionDocument(prescription)">
+                    Imprimir
+                  </DsButton>
+                  <DsButton size="sm" variant="ghost" @click="editPrescriptionDocument(prescription)">
+                    Editar
+                  </DsButton>
+                  <DsButton size="sm" variant="ghost" @click="archivePrescriptionDocument(prescription)">
+                    Arquivar
+                  </DsButton>
+                </div>
               </div>
             </div>
             <div v-else class="vetus-empty-state">
               <strong>Nenhuma receita registrada para {{ patient.name }}.</strong>
               <p>{{ focalEncounter ? 'Inclua uma receita no atendimento atual para manter o tratamento rastreável.' : 'Abra um atendimento antes de emitir a primeira receita.' }}</p>
+            </div>
+
+            <div v-if="selectedPrescriptionDocumentText" class="prescription-document-preview">
+              <pre>{{ selectedPrescriptionDocumentText }}</pre>
             </div>
 
             <div class="quick-actions">
@@ -1102,7 +1120,11 @@ interface ExamFeedItem {
 type PatientPrescription = ClinicalEntrySummary & {
   medicationName?: string;
   dosage?: string;
+  route?: string;
   frequency?: string;
+  notes?: string;
+  lastRevisionReason?: string;
+  lastRevisionByUserId?: string;
 };
 
 const route = useRoute();
@@ -1135,6 +1157,7 @@ const focalBilling = ref<BillingRecordSummary | null>(null);
 const focalBillingItems = ref<BillingItemSummary[]>([]);
 const actionError = ref('');
 const actionMessage = ref('');
+const selectedPrescriptionDocumentText = ref('');
 const creatingPackageQuote = ref(false);
 const savingClinicalHistory = ref(false);
 const clinicalHistoryDraft = ref('');
@@ -2476,6 +2499,83 @@ function buildWhatsAppLink(message: string): string | null {
 
 function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
   return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
+function prescriptionDocumentContext() {
+  return {
+    clinic: {
+      name: 'CVG Hospital Veterinario'
+    },
+    owner: {
+      name: ownerSnapshot.value?.fullName ?? ownerName.value
+    },
+    patient: {
+      name: patient.value?.name ?? 'Paciente',
+      species: patient.value ? speciesLabel(patient.value.species) : undefined,
+      breed: patient.value?.breed ?? undefined,
+      weightKg: patient.value?.baseWeightKg ?? undefined
+    },
+    professional: {
+      name: 'Profissional responsavel'
+    }
+  };
+}
+
+async function viewPrescriptionDocument(prescription: PatientPrescription) {
+  actionError.value = '';
+  try {
+    const document = await prescriptionsService.renderDocument(
+      prescription.id,
+      prescriptionDocumentContext()
+    );
+    selectedPrescriptionDocumentText.value = document.printText;
+  } catch (caughtError) {
+    actionError.value =
+      caughtError instanceof Error ? caughtError.message : 'Erro ao abrir receita';
+  }
+}
+
+async function printPrescriptionDocument(prescription: PatientPrescription) {
+  await viewPrescriptionDocument(prescription);
+  window.print();
+}
+
+async function editPrescriptionDocument(prescription: PatientPrescription) {
+  const reason = window.prompt('Motivo da edicao da receita');
+  if (!reason?.trim()) return;
+  actionError.value = '';
+  try {
+    const updated = await prescriptionsService.update(prescription.id, {
+      title: prescription.medicationName || prescription.title,
+      content: prescription.content,
+      reason: reason.trim(),
+      expectedVersion: prescription.version
+    });
+    patientPrescriptions.value = uniqueById([updated, ...patientPrescriptions.value]);
+    actionMessage.value = 'Receita atualizada.';
+  } catch (caughtError) {
+    actionError.value =
+      caughtError instanceof Error ? caughtError.message : 'Erro ao editar receita';
+  }
+}
+
+async function archivePrescriptionDocument(prescription: PatientPrescription) {
+  const reason = window.prompt('Motivo do arquivamento da receita');
+  if (!reason?.trim()) return;
+  actionError.value = '';
+  try {
+    const archived = await prescriptionsService.archive(prescription.id, {
+      reason: reason.trim(),
+      expectedVersion: prescription.version
+    });
+    patientPrescriptions.value = patientPrescriptions.value.map((item) =>
+      item.id === archived.id ? archived : item
+    );
+    actionMessage.value = 'Receita arquivada.';
+  } catch (caughtError) {
+    actionError.value =
+      caughtError instanceof Error ? caughtError.message : 'Erro ao arquivar receita';
+  }
 }
 
 async function saveClinicalHistory() {

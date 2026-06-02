@@ -6,13 +6,18 @@ import type {
   AcknowledgeClinicalHandoffRequest,
   CloseEncounterRequest,
   CreateEncounterRequest,
+  MarkClinicalHandoffPendingRequest,
+  ResolveClinicalHandoffPendingRequest,
+  ReturnClinicalHandoffToClinicRequest,
   SendClinicalHandoffRequest,
+  SendClinicalHandoffToFinanceRequest,
   TransitionEncounterRequest
 } from '@cvg-his-v2/shared-contracts';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
   ClinicalHandoffId,
+  ClinicalHandoffPendingIssueId,
   ClinicalHandoffPriority,
   ClinicalHandoffStatus,
   ClinicalHandoffSummary,
@@ -545,6 +550,7 @@ export class ClinicalHandoffsService {
       createdBy: actorUserId,
       sentBy: actorUserId,
       sentAt: now,
+      pendingIssues: [],
       createdAt: now,
       updatedAt: now
     };
@@ -614,6 +620,170 @@ export class ClinicalHandoffsService {
         () => this.#repository!.update(updated),
         () => {
           this.#handoffs.set(handoffId, current);
+        }
+      );
+    }
+
+    void this.#onHandoffAcknowledged?.(updated, current.handoffStatus);
+    return updated;
+  }
+
+  public markPending(
+    accountId: AccountId,
+    actorUserId: UserId,
+    handoffId: ClinicalHandoffId,
+    payload: MarkClinicalHandoffPendingRequest
+  ): ClinicalHandoffSummary {
+    const current = this.getOrThrow(handoffId);
+    this.#assertMutableForReceptionAction(accountId, current);
+    const now = nowIso();
+    const issue = {
+      id: randomUUID() as ClinicalHandoffPendingIssueId,
+      type: requireNonEmptyString(payload.type, 'type'),
+      severity: payload.severity ?? 'medium',
+      ownerType: payload.ownerType ?? 'person',
+      ownerId: requireNonEmptyString(payload.ownerId, 'ownerId'),
+      reason: requireNonEmptyString(payload.reason, 'reason'),
+      blocksFinance: payload.blocksFinance ?? true,
+      status: 'open' as const,
+      createdBy: actorUserId,
+      createdAt: now
+    };
+    const updated: ClinicalHandoffSummary = {
+      ...current,
+      handoffStatus: 'waiting_pending_resolution',
+      pendingIssues: [...current.pendingIssues, issue],
+      updatedAt: now
+    };
+    return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_pending_marked');
+  }
+
+  public resolvePending(
+    accountId: AccountId,
+    actorUserId: UserId,
+    handoffId: ClinicalHandoffId,
+    issueId: ClinicalHandoffPendingIssueId,
+    payload: ResolveClinicalHandoffPendingRequest
+  ): ClinicalHandoffSummary {
+    const current = this.getOrThrow(handoffId);
+    if (current.accountId !== accountId) {
+      throw new NotFoundError('Clinical handoff not found', { handoffId });
+    }
+    const now = nowIso();
+    let found = false;
+    const pendingIssues = current.pendingIssues.map((issue) => {
+      if (issue.id !== issueId) return issue;
+      found = true;
+      if (issue.status === 'resolved') {
+        throw new ConflictError('Clinical handoff pending issue is already resolved', {
+          handoffId,
+          issueId
+        });
+      }
+      return {
+        ...issue,
+        status: 'resolved' as const,
+        resolvedBy: actorUserId,
+        resolvedAt: now,
+        resolution: requireNonEmptyString(payload.resolution, 'resolution')
+      };
+    });
+    if (!found) {
+      throw new NotFoundError('Clinical handoff pending issue not found', { handoffId, issueId });
+    }
+    const hasOpenIssues = pendingIssues.some((issue) => issue.status === 'open');
+    const updated: ClinicalHandoffSummary = {
+      ...current,
+      handoffStatus: hasOpenIssues ? 'waiting_pending_resolution' : 'acknowledged_by_reception',
+      pendingIssues,
+      updatedAt: now
+    };
+    return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_pending_resolved');
+  }
+
+  public returnToClinic(
+    accountId: AccountId,
+    actorUserId: UserId,
+    handoffId: ClinicalHandoffId,
+    payload: ReturnClinicalHandoffToClinicRequest
+  ): ClinicalHandoffSummary {
+    const current = this.getOrThrow(handoffId);
+    this.#assertMutableForReceptionAction(accountId, current);
+    const now = nowIso();
+    const updated: ClinicalHandoffSummary = {
+      ...current,
+      handoffStatus: 'returned_to_clinic',
+      returnedToClinicBy: actorUserId,
+      returnedToClinicAt: now,
+      returnedToClinicReason: requireNonEmptyString(payload.reason, 'reason'),
+      returnedToClinicResponsibleId: payload.toResponsibleId?.trim() || undefined,
+      updatedAt: now
+    };
+    return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_returned_to_clinic');
+  }
+
+  public sendToFinance(
+    accountId: AccountId,
+    actorUserId: UserId,
+    handoffId: ClinicalHandoffId,
+    payload: SendClinicalHandoffToFinanceRequest = {}
+  ): ClinicalHandoffSummary {
+    const current = this.getOrThrow(handoffId);
+    this.#assertMutableForReceptionAction(accountId, current);
+    const blockingIssues = current.pendingIssues.filter(
+      (issue) => issue.status === 'open' && issue.blocksFinance
+    );
+    if (blockingIssues.length > 0) {
+      throw new ConflictError('Clinical handoff has open blocking pending issues', {
+        handoffId,
+        issueIds: blockingIssues.map((issue) => issue.id)
+      });
+    }
+    const now = nowIso();
+    const updated: ClinicalHandoffSummary = {
+      ...current,
+      handoffStatus: 'sent_to_finance',
+      sentToFinanceBy: actorUserId,
+      sentToFinanceAt: now,
+      financeNote: payload.note?.trim() || undefined,
+      updatedAt: now
+    };
+    return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_sent_to_finance');
+  }
+
+  #assertMutableForReceptionAction(
+    accountId: AccountId,
+    handoff: ClinicalHandoffSummary
+  ): void {
+    if (handoff.accountId !== accountId) {
+      throw new NotFoundError('Clinical handoff not found', { handoffId: handoff.id });
+    }
+    if (handoff.handoffStatus === 'sent_to_finance') {
+      throw new ConflictError('Clinical handoff is already sent to finance', {
+        handoffId: handoff.id
+      });
+    }
+  }
+
+  #commitHandoffTransition(
+    current: ClinicalHandoffSummary,
+    updated: ClinicalHandoffSummary,
+    actorUserId: UserId,
+    eventType: EncounterTimelineEventSummary['eventType']
+  ): ClinicalHandoffSummary {
+    this.#handoffs.set(updated.id, updated);
+    this.#encounters.appendTimeline(updated.encounterId, {
+      accountId: updated.accountId,
+      eventType,
+      summary: eventType.replaceAll('_', ' '),
+      actorUserId
+    });
+
+    if (this.#repository) {
+      this.#enqueuePersist(
+        () => this.#repository!.update(updated),
+        () => {
+          this.#handoffs.set(current.id, current);
         }
       );
     }

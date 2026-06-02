@@ -17,6 +17,7 @@ import type {
   CreateClinicalEntryRequest,
   CreateDischargeRequest,
   CreateEncounterRequest,
+  MarkClinicalHandoffPendingRequest,
   CreateInpatientAdmissionRequest,
   CreateInventoryConsumptionRequest,
   CreateInventoryItemRequest,
@@ -32,7 +33,10 @@ import type {
   LogAdministrationEventRequest,
   ProcessNotificationsRequest,
   SuspendPrescriptionRequest,
+  ResolveClinicalHandoffPendingRequest,
+  ReturnClinicalHandoffToClinicRequest,
   SendClinicalHandoffRequest,
+  SendClinicalHandoffToFinanceRequest,
   TransitionEncounterRequest,
   UpdateBillingStatusRequest,
   UpdateClinicalEntryRequest,
@@ -4380,7 +4384,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const validStatuses = new Set<ClinicalHandoffStatus>([
               'ready_to_send',
               'sent_to_reception',
-              'acknowledged_by_reception'
+              'acknowledged_by_reception',
+              'waiting_pending_resolution',
+              'returned_to_clinic',
+              'sent_to_finance'
             ]);
             const validPriorities = new Set<ClinicalHandoffPriority>([
               'low',
@@ -4479,6 +4486,146 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               'clinical-handoff',
               handoff.id,
               `Clinical handoff acknowledged for encounter ${handoff.encounterId}`,
+              'high',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify(handoff));
+            return;
+          }
+
+          if (
+            pathname.startsWith('/clinical-handoffs/') &&
+            pathname.endsWith('/pending') &&
+            request.method === 'POST'
+          ) {
+            const principal = requirePrincipal(request, 'encounters.manage');
+            const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
+            const payload = (await readJsonBody(request)) as MarkClinicalHandoffPendingRequest;
+            const handoff = clinicalHandoffs.markPending(
+              principal.user.accountId,
+              principal.user.id,
+              handoffId as never,
+              payload
+            );
+            await Promise.all([
+              clinicalHandoffs.waitForPersistence(),
+              encounters.waitForPersistence()
+            ]);
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'clinical-handoffs',
+              'mark_pending',
+              'clinical-handoff',
+              handoff.id,
+              `Clinical handoff pending issue marked for encounter ${handoff.encounterId}`,
+              'high',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify(handoff));
+            return;
+          }
+
+          if (
+            pathname.startsWith('/clinical-handoffs/') &&
+            pathname.includes('/pending/') &&
+            pathname.endsWith('/resolve') &&
+            request.method === 'POST'
+          ) {
+            const principal = requirePrincipal(request, 'encounters.manage');
+            const [, , handoffId, , issueId] = pathname.split('/');
+            const payload = (await readJsonBody(request)) as ResolveClinicalHandoffPendingRequest;
+            const handoff = clinicalHandoffs.resolvePending(
+              principal.user.accountId,
+              principal.user.id,
+              requireNonEmptyString(handoffId, 'handoffId') as never,
+              requireNonEmptyString(issueId, 'issueId') as never,
+              payload
+            );
+            await Promise.all([
+              clinicalHandoffs.waitForPersistence(),
+              encounters.waitForPersistence()
+            ]);
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'clinical-handoffs',
+              'resolve_pending',
+              'clinical-handoff',
+              handoff.id,
+              `Clinical handoff pending issue resolved for encounter ${handoff.encounterId}`,
+              'high',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify(handoff));
+            return;
+          }
+
+          if (
+            pathname.startsWith('/clinical-handoffs/') &&
+            pathname.endsWith('/return-to-clinic') &&
+            request.method === 'POST'
+          ) {
+            const principal = requirePrincipal(request, 'encounters.manage');
+            const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
+            const payload = (await readJsonBody(request)) as ReturnClinicalHandoffToClinicRequest;
+            const handoff = clinicalHandoffs.returnToClinic(
+              principal.user.accountId,
+              principal.user.id,
+              handoffId as never,
+              payload
+            );
+            await Promise.all([
+              clinicalHandoffs.waitForPersistence(),
+              encounters.waitForPersistence()
+            ]);
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'clinical-handoffs',
+              'return_to_clinic',
+              'clinical-handoff',
+              handoff.id,
+              `Clinical handoff returned to clinic for encounter ${handoff.encounterId}`,
+              'high',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify(handoff));
+            return;
+          }
+
+          if (
+            pathname.startsWith('/clinical-handoffs/') &&
+            pathname.endsWith('/send-to-finance') &&
+            request.method === 'POST'
+          ) {
+            const principal = requirePrincipal(request, 'encounters.manage');
+            const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
+            const payload = (await readJsonBody(request).catch(
+              () => ({}) as SendClinicalHandoffToFinanceRequest
+            )) as SendClinicalHandoffToFinanceRequest;
+            const handoff = clinicalHandoffs.sendToFinance(
+              principal.user.accountId,
+              principal.user.id,
+              handoffId as never,
+              payload
+            );
+            await Promise.all([
+              clinicalHandoffs.waitForPersistence(),
+              encounters.waitForPersistence()
+            ]);
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'clinical-handoffs',
+              'send_to_finance',
+              'clinical-handoff',
+              handoff.id,
+              `Clinical handoff sent to finance for encounter ${handoff.encounterId}`,
               'high',
               correlationId
             );
