@@ -384,7 +384,7 @@ onMounted(load);
   padding: 16px;
   border-radius: 16px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .reception-decision-strip {
@@ -398,7 +398,7 @@ onMounted(load);
   padding: 14px 16px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .reception-decision-card__eyebrow {
@@ -407,7 +407,7 @@ onMounted(load);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #475569;
+  color: var(--color-text-secondary, #475569);
   text-transform: uppercase;
 }
 
@@ -448,8 +448,8 @@ onMounted(load);
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: #0f172a;
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: var(--color-primary-900, #1e3a8a);
+  background: var(--color-primary-200, #bfdbfe);
 }
 
 .owner-card__badges {
@@ -527,7 +527,7 @@ onMounted(load);
   overflow: hidden;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .owner-card__details summary {
@@ -535,7 +535,7 @@ onMounted(load);
   padding: 12px 14px;
   font-size: 13px;
   font-weight: 800;
-  color: #075985;
+  color: var(--brand-blue-ink, #1e40af);
 }
 
 .owner-card__detail-body {
@@ -550,7 +550,7 @@ onMounted(load);
   gap: 12px;
   align-items: center;
   padding: 10px 0;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid var(--color-border, #e2e8f0);
 }
 
 .owner-animal-row:first-child {
@@ -577,23 +577,23 @@ onMounted(load);
 .patient-pill {
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--color-bg-subtle, #f1f5f9);
+  color: var(--color-text-secondary, #334155);
   font-size: 12px;
   font-weight: 600;
 }
 
 .patient-pill--more {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-primary-subtle, #eaf3ff);
+  color: var(--color-primary-700, #1d4ed8);
 }
 
 .owner-card__notes {
   margin: 0;
   padding: 12px 14px;
   border-radius: 14px;
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--color-warning-50, #fffbeb);
+  color: var(--color-warning-800, #92400e);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -614,7 +614,7 @@ onMounted(load);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #475569;
+  color: var(--color-text-secondary, #475569);
 }
 
 .empty-state__title {

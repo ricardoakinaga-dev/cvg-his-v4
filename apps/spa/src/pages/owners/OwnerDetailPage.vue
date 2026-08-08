@@ -1645,7 +1645,7 @@ onMounted(async () => {
 .owner-360-card {
   border: 1px solid var(--color-border, #dbe3ef);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface, #ffffff);
 }
 
 .owner-360-cockpit__summary > div {
@@ -1704,7 +1704,7 @@ onMounted(async () => {
   min-height: 76px;
   padding: 10px;
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .owner-360-card__grid strong {
@@ -1716,7 +1716,7 @@ onMounted(async () => {
   gap: 8px;
   padding: 14px;
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .owner-360-timeline {
@@ -1736,7 +1736,7 @@ onMounted(async () => {
   padding: 12px;
   border: 1px solid var(--color-border, #dbe3ef);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .owner-360-timeline__item > div:first-child {
@@ -1833,7 +1833,7 @@ onMounted(async () => {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .detail-item__label {
@@ -1849,8 +1849,8 @@ onMounted(async () => {
   margin: 16px 0 0;
   padding: 14px;
   border-radius: 12px;
-  background: #fff7ed;
-  color: #9a3412;
+  background: var(--color-warning-50, #fffbeb);
+  color: var(--color-warning-800, #92400e);
 }
 
 .contacts-list,
@@ -1874,7 +1874,7 @@ onMounted(async () => {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: #fff;
+  background: var(--color-surface, #ffffff);
 }
 
 .contact-item p,
@@ -1894,8 +1894,8 @@ onMounted(async () => {
 }
 
 .note-box--info {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-primary-subtle, #eaf3ff);
+  color: var(--color-primary-700, #1d4ed8);
 }
 
 .quote-confirmation {
@@ -1905,7 +1905,7 @@ onMounted(async () => {
   padding: 12px;
   border: 1px solid var(--color-border, #dbe3ef);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .quote-confirmation p {
@@ -1919,7 +1919,7 @@ onMounted(async () => {
 }
 
 .quote-confirmation__error {
-  color: #b91c1c;
+  color: var(--color-danger-700, #b91c1c);
   font-weight: 700;
 }
 

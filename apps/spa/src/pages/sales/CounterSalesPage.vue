@@ -3141,3 +3141,104 @@ function formatDateTime(value: string): string {
   }
 }
 </style>
+
+<style>
+:root[data-theme='dark'] .counter-sales-page .counter-sales-report__summary,
+:root[data-theme='dark'] .counter-sales-page .report-panel,
+:root[data-theme='dark'] .counter-sales-page .counter-sale-card,
+:root[data-theme='dark'] .counter-sales-page .catalog-card,
+:root[data-theme='dark'] .counter-sales-page .line-item-card,
+:root[data-theme='dark'] .counter-sales-page .patient-context-card,
+:root[data-theme='dark'] .counter-sales-page .payment-card,
+:root[data-theme='dark'] .counter-sales-page .quote-card,
+:root[data-theme='dark'] .counter-sales-page .modal-owner-card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sales-report__summary:hover,
+:root[data-theme='dark'] .counter-sales-page .counter-sale-card:hover,
+:root[data-theme='dark'] .counter-sales-page .catalog-card:hover,
+:root[data-theme='dark'] .counter-sales-page .line-item-card:hover,
+:root[data-theme='dark'] .counter-sales-page .patient-context-card:hover,
+:root[data-theme='dark'] .counter-sales-page .payment-card:hover,
+:root[data-theme='dark'] .counter-sales-page .quote-card:hover,
+:root[data-theme='dark'] .counter-sales-page .modal-owner-card:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sales-report__summary,
+:root[data-theme='dark'] .counter-sales-page .counter-sales-context,
+:root[data-theme='dark'] .counter-sales-page .service-patient-card,
+:root[data-theme='dark'] .counter-sales-page .journey-pill,
+:root[data-theme='dark'] .counter-sales-page .detail-pill,
+:root[data-theme='dark'] .counter-sales-page .counter-sale-card__details,
+:root[data-theme='dark'] .counter-sales-page .sidebar-contact,
+:root[data-theme='dark'] .counter-sales-page .summary-card {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sales-context {
+  border-color: var(--color-primary-200);
+  border-left-color: var(--color-primary-500);
+  background: var(--color-primary-50);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sales-context__eyebrow {
+  color: var(--color-text-link);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sales-context h2,
+:root[data-theme='dark'] .counter-sales-page .counter-sales-context p,
+:root[data-theme='dark'] .counter-sales-page .counter-sale-card__field strong,
+:root[data-theme='dark'] .counter-sales-page .barcode-match,
+:root[data-theme='dark'] .counter-sales-page .timeline-card span {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .counter-sales-page .rank-list__item,
+:root[data-theme='dark'] .counter-sales-page .inline-alert {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .counter-sales-page .counter-sale-card--selected,
+:root[data-theme='dark'] .counter-sales-page .modal-owner-card--selected {
+  border-color: var(--color-warning-400);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-theme='dark'] .counter-sales-page .barcode-match {
+  border-color: var(--color-success-300);
+  background: var(--color-success-50);
+}
+
+:root[data-theme='dark'] .counter-sales-page .timeline-card {
+  border-left-color: var(--color-info-400);
+  background: var(--color-info-50);
+}
+
+:root[data-theme='dark'] .counter-sales-page .create-sale-modal__tabs {
+  background: var(--color-bg-subtle);
+}
+
+:root[data-theme='dark'] .counter-sales-page .create-sale-modal__tab {
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .counter-sales-page .create-sale-modal__tab--active {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .counter-sales-page .command-bottom-actions {
+  border-top-color: var(--color-border);
+}
+</style>

@@ -234,7 +234,7 @@ const editHref = computed(() => {
   position: absolute;
   inset: 0;
   border: none;
-  background: rgba(15, 23, 42, 0.28);
+  background: var(--color-bg-overlay, rgba(15, 23, 42, 0.48));
   pointer-events: auto;
 }
 
@@ -254,13 +254,9 @@ const editHref = computed(() => {
 }
 
 .appointment-details-card--from-agenda {
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  background:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.98) 18%),
-    #fff;
-  box-shadow:
-    0 18px 48px rgba(15, 23, 42, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--color-primary-200, #bfdbfe);
+  background: var(--color-surface, #ffffff);
+  box-shadow: var(--shadow-xl, 0 18px 48px rgba(15, 23, 42, 0.14));
 }
 
 .appointment-details-card__title,
@@ -308,7 +304,7 @@ const editHref = computed(() => {
   width: fit-content;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.12);
+  background: var(--color-primary-subtle, #eaf3ff);
   color: var(--color-primary-700, #1d4ed8);
   font-size: 12px;
   font-weight: 700;
@@ -331,7 +327,7 @@ const editHref = computed(() => {
   padding: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 14px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .summary-item strong,
@@ -367,8 +363,8 @@ const editHref = computed(() => {
 }
 
 .detail-note--warning {
-  border-color: rgba(245, 158, 11, 0.22);
-  background: rgba(245, 158, 11, 0.08);
+  border-color: var(--color-warning-300, #fcd34d);
+  background: var(--color-warning-50, #fffbeb);
 }
 
 .appointment-details-card__actions {

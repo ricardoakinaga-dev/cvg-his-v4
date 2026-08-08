@@ -37,7 +37,7 @@ function resetDocument() {
 
   const meta = document.createElement('meta');
   meta.setAttribute('name', 'theme-color');
-  meta.setAttribute('content', '#0ea5e9');
+  meta.setAttribute('content', '#2563eb');
   document.head.appendChild(meta);
 }
 
@@ -68,7 +68,7 @@ describe('theme store', () => {
     expect(document.documentElement.style.colorScheme).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(
-      '#0ea5e9'
+      '#2563eb'
     );
   });
 
@@ -81,13 +81,13 @@ describe('theme store', () => {
     expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(
-      '#0f172a'
+      '#0b1220'
     );
   });
 
   it('resolves the theme-color meta value for both modes', () => {
-    expect(getThemeMetaColor('light')).toBe('#0ea5e9');
-    expect(getThemeMetaColor('dark')).toBe('#0f172a');
+    expect(getThemeMetaColor('light')).toBe('#2563eb');
+    expect(getThemeMetaColor('dark')).toBe('#0b1220');
   });
 
   it('toggles between light and dark through the store', () => {

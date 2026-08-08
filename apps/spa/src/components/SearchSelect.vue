@@ -8,6 +8,9 @@
         :value="searchQuery"
         :placeholder="placeholder"
         :disabled="disabled"
+        :aria-expanded="isOpen"
+        aria-autocomplete="list"
+        role="combobox"
         @input="onSearchInput"
         @focus="onFocus"
         @blur="onBlur"
@@ -234,7 +237,8 @@ if (selectedOption.value) {
   box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.08));
   max-height: 240px;
   overflow-y: auto;
-  z-index: 100;
+  z-index: var(--z-dropdown, 100);
+  max-width: 100%;
 }
 
 .search-select__option {
@@ -264,7 +268,9 @@ if (selectedOption.value) {
   color: var(--color-text-muted, #94a3b8);
   background: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border, #e2e8f0);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.08));
   border-radius: 8px;
   text-align: center;
+  z-index: var(--z-dropdown, 100);
 }
 </style>

@@ -117,9 +117,9 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg-subtle, #f8fafc);
-  padding: 24px;
+  padding: clamp(16px, 4vw, 32px);
 }
 
 .login-card {
@@ -129,7 +129,7 @@ async function handleLogin() {
   border-radius: 20px;
   background: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border, #e2e8f0);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-lg, 0 12px 30px rgba(15, 23, 42, 0.08));
 }
 
 .login-card__header {
@@ -146,7 +146,7 @@ async function handleLogin() {
   min-height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  background: var(--color-primary-50, #eff6ff);
+  background: var(--color-primary-subtle, #eaf3ff);
   color: var(--color-primary-700, #1d4ed8);
   font-size: 11px;
   font-weight: 700;
@@ -156,7 +156,7 @@ async function handleLogin() {
 
 .login-card__title {
   margin: 0;
-  font-size: 28px;
+  font-size: clamp(1.5rem, 4vw, 1.75rem);
   line-height: 1.1;
   color: var(--color-text, #0f172a);
 }

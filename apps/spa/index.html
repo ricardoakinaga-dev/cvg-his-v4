@@ -2,10 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#1e40af" />
+    <meta name="theme-color" content="#2563eb" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="CVG HIS" />
@@ -35,7 +35,7 @@
 
           var themeColorMeta = document.querySelector('meta[name="theme-color"]');
           if (themeColorMeta) {
-            themeColorMeta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#1e40af');
+            themeColorMeta.setAttribute('content', theme === 'dark' ? '#0b1220' : '#2563eb');
           }
         } catch (error) {
           // Ignore theme bootstrap failures and let the app recover on mount.

@@ -30,4 +30,13 @@ describe('DsCard.vue', () => {
 
     expect(wrapper.emitted('click')).toHaveLength(1);
   });
+
+  it('renders the title slot as a card header', () => {
+    const wrapper = mount(DsCard, {
+      slots: { title: 'Custom title', default: 'Content' }
+    });
+
+    expect(wrapper.find('.ds-card__header').exists()).toBe(true);
+    expect(wrapper.find('.ds-card__header').text()).toBe('Custom title');
+  });
 });

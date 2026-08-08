@@ -6,6 +6,8 @@
     :type="resolvedTag === 'button' ? type : undefined"
     :href="resolvedTag === 'a' ? resolvedHref : undefined"
     :aria-label="ariaLabel"
+    :aria-disabled="resolvedTag === 'a' && isDisabled ? 'true' : undefined"
+    :tabindex="resolvedTag === 'a' && isDisabled ? -1 : undefined"
     :aria-busy="loading"
     @click="onClick"
   >
@@ -79,9 +81,11 @@ const classes = computed(() => [
 ]);
 
 function onClick(event: MouseEvent) {
-  if (!props.disabled && !props.loading) {
-    emit('click', event);
+  if (isDisabled.value) {
+    event.preventDefault();
+    return;
   }
+  emit('click', event);
 }
 </script>
 
@@ -203,6 +207,9 @@ function onClick(event: MouseEvent) {
 
 .ds-btn__label {
   display: inline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ds-btn__spinner {

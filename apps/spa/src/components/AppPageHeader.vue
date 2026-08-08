@@ -266,6 +266,7 @@ function emitAction(action: PageAction, event: MouseEvent) {
   align-items: flex-start;
   margin-bottom: 0;
   gap: 16px;
+  min-width: 0;
 }
 
 .app-page-header__content {
@@ -309,7 +310,7 @@ function emitAction(action: PageAction, event: MouseEvent) {
 }
 
 .app-page-header__title {
-  font-size: 24px;
+  font-size: clamp(1.25rem, 1.5vw + 0.75rem, 1.75rem);
   font-weight: 700;
   color: var(--color-text, #0f172a);
   margin: 0 0 8px 0;
@@ -431,6 +432,10 @@ function emitAction(action: PageAction, event: MouseEvent) {
   justify-content: flex-end;
 }
 
+.app-page-header__action-group > :deep(.ds-btn) {
+  min-width: 0;
+}
+
 .app-page-header__tabs {
   margin-top: 16px;
 }
@@ -465,17 +470,12 @@ function emitAction(action: PageAction, event: MouseEvent) {
 
   .app-page-header__action-group {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
     width: 100%;
   }
 
   .app-page-header__action-group > * {
     min-width: 0;
-  }
-
-  .app-page-header__action-group > :last-child {
-    grid-column: 1 / -1;
-    grid-row: 1;
   }
 
   .app-page-header__title {
@@ -489,16 +489,21 @@ function emitAction(action: PageAction, event: MouseEvent) {
   }
 
   .app-page-header__context {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 6px;
     margin-top: 8px;
-    overflow-x: auto;
+    overflow: visible;
     padding-bottom: 2px;
-    scrollbar-width: thin;
   }
 
   .app-page-header__context-item {
-    flex: 0 0 auto;
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+
+  .app-page-header__context-item dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 </style>

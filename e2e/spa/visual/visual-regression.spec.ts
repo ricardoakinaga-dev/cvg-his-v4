@@ -367,6 +367,337 @@ test.describe('Visual Regression — Detail Pages', () => {
   });
 });
 
+test.describe('Visual Regression — Theme and Responsive Shell', () => {
+  test.describe('dark desktop', () => {
+    test.use({ viewport: { width: 1280, height: 720 }, colorScheme: 'dark' });
+
+    test('owners list page', async ({ page }) => {
+      await captureOwnerListVisual(page, 'owners-list-page-dark.png', {
+        forceLightTheme: false
+      });
+    });
+
+    test('dashboard page', async ({ page }) => {
+      await captureDashboardVisual(page, 'dashboard-page-dark.png');
+    });
+
+    test('patient detail page', async ({ page }) => {
+      await capturePatientDetailVisual(page, 'patient-detail-page-dark.png');
+    });
+
+    test('encounter detail page', async ({ page }) => {
+      await captureEncounterDetailVisual(page, 'encounter-detail-page-dark.png');
+    });
+
+    test('medical record detail page', async ({ page }) => {
+      await captureMedicalRecordVisual(page, 'medical-record-detail-page-dark.png');
+    });
+
+    test('appointments kanban page', async ({ page }) => {
+      await captureAppointmentsVisual(page, 'appointments-kanban-page-dark.png');
+    });
+
+    test('counter sales page', async ({ page }) => {
+      await capturePageVisual(page, '/counter-sales', '.counter-sales-page', 'counter-sales-page-dark.png');
+    });
+
+    test('reception gateway page', async ({ page }) => {
+      await capturePageVisual(page, '/reception', '.reception-gateway-page', 'reception-gateway-page-dark.png');
+    });
+
+    test('queue page', async ({ page }) => {
+      await capturePageVisual(page, '/queue', '.queue-page', 'queue-page-dark.png');
+    });
+  });
+
+  test.describe('mobile light', () => {
+    test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
+
+    test('owners list page', async ({ page }) => {
+      await captureOwnerListVisual(page, 'owners-list-page-mobile.png', {
+        expandSidebar: false
+      });
+    });
+
+    test('appointments kanban page', async ({ page }) => {
+      await captureAppointmentsVisual(page, 'appointments-kanban-page-mobile.png', {
+        expandSidebar: false
+      });
+    });
+  });
+
+  test.describe('mobile dark', () => {
+    test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+
+    test('owners list page', async ({ page }) => {
+      await captureOwnerListVisual(page, 'owners-list-page-mobile-dark.png', {
+        forceLightTheme: false,
+        expandSidebar: false
+      });
+    });
+
+    test('appointments kanban page', async ({ page }) => {
+      await captureAppointmentsVisual(page, 'appointments-kanban-page-mobile-dark.png', {
+        forceLightTheme: false,
+        expandSidebar: false
+      });
+    });
+  });
+});
+
+async function captureOwnerListVisual(
+  page: Page,
+  screenshotName: string,
+  stabilization: Parameters<typeof stabilizeVisual>[1]
+): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const owner = await createVisualOwner(token);
+
+  try {
+    await navigateTo(page, '/owners');
+    await waitForPageSettled(page, {
+      contentSelector: HEADING_SELECTOR,
+      timeout: 15000
+    });
+    await keepCanonicalTableRows(page, [owner.id]);
+    await normalizeMetricValues(page, '.summary-card__value', ['00', '00', '00', '00']);
+    await normalizeOwnersTable(page);
+
+    if (stabilization.forceLightTheme === false) {
+      await page.evaluate(() => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.colorScheme = 'dark';
+      });
+    }
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.listPage,
+      ...stabilization
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 180,
+      fullPage: false
+    });
+  } finally {
+    await deleteVisualResource(token, `/owners/${owner.id}`);
+  }
+}
+
+async function capturePatientDetailVisual(page: Page, screenshotName: string): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const owner = await createVisualOwner(token);
+  const patient = await createVisualPatient(token, owner.id);
+
+  try {
+    await navigateTo(page, `/patients/${patient.id}`);
+    await waitForPageSettled(page, {
+      contentSelector: HEADING_SELECTOR,
+      timeout: 15000
+    });
+    await normalizeVisualText(page, {
+      [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+      [patient.name]: VISUAL_PATIENT_NAME,
+      ...(patient.legacyVetusId ? { [String(patient.legacyVetusId)]: '1' } : {})
+    });
+    await normalizeDateTimes(page);
+    await normalizePatientIdentifiers(page);
+    await page.evaluate(() => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.style.colorScheme = 'dark';
+    });
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.detailPage,
+      forceLightTheme: false
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 220,
+      fullPage: false
+    });
+  } finally {
+    await deleteVisualResource(token, `/patients/${patient.id}`);
+    await deleteVisualResource(token, `/owners/${owner.id}`);
+  }
+}
+
+async function captureEncounterDetailVisual(page: Page, screenshotName: string): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const owner = await createVisualOwner(token);
+  const patient = await createVisualPatient(token, owner.id);
+  const encounter = await createVisualEncounter(token, patient.id, owner.id);
+
+  try {
+    await navigateTo(page, `/encounters/${encounter.id}`);
+    await waitForPageSettled(page, {
+      contentSelector: HEADING_SELECTOR,
+      timeout: 15000
+    });
+    await normalizeVisualText(page, {
+      [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+      [patient.name]: VISUAL_PATIENT_NAME
+    });
+    await page.evaluate(() => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.style.colorScheme = 'dark';
+    });
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.detailPage,
+      forceLightTheme: false
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 220,
+      fullPage: false
+    });
+  } finally {
+    await deleteVisualResource(token, `/encounters/${encounter.id}`);
+    await deleteVisualResource(token, `/patients/${patient.id}`);
+    await deleteVisualResource(token, `/owners/${owner.id}`);
+  }
+}
+
+async function captureMedicalRecordVisual(page: Page, screenshotName: string): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const owner = await createVisualOwner(token);
+  const patient = await createVisualPatient(token, owner.id);
+  const encounter = await createVisualEncounter(token, patient.id, owner.id);
+
+  try {
+    await navigateTo(page, `/medical-records/${encounter.id}`);
+    await waitForPageSettled(page, {
+      contentSelector: '.medical-records-detail-page',
+      timeout: 15000
+    });
+    await normalizeVisualText(page, {
+      [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+      [patient.name]: VISUAL_PATIENT_NAME
+    });
+    await normalizeDateTimes(page);
+    await page.evaluate(() => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.style.colorScheme = 'dark';
+    });
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.detailPage,
+      forceLightTheme: false
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 260,
+      fullPage: false
+    });
+  } finally {
+    await deleteVisualResource(token, `/encounters/${encounter.id}`);
+    await deleteVisualResource(token, `/patients/${patient.id}`);
+    await deleteVisualResource(token, `/owners/${owner.id}`);
+  }
+}
+
+async function captureDashboardVisual(page: Page, screenshotName: string): Promise<void> {
+  await ensureAuthToken(page);
+  await navigateTo(page, '/');
+  await waitForPageSettled(page, {
+    contentSelector: '.dashboard-page',
+    timeout: 15000
+  });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.style.colorScheme = 'dark';
+  });
+
+  await stabilizeVisual(page, {
+    ...pageProfiles.detailPage,
+    forceLightTheme: false
+  });
+
+  await expect(page).toHaveScreenshot(screenshotName, {
+    maxDiffPixels: 500,
+    fullPage: false
+  });
+}
+
+async function capturePageVisual(
+  page: Page,
+  route: string,
+  contentSelector: string,
+  screenshotName: string
+): Promise<void> {
+  await ensureAuthToken(page);
+  await navigateTo(page, route);
+  await waitForPageSettled(page, {
+    contentSelector,
+    timeout: 15000
+  });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.style.colorScheme = 'dark';
+  });
+
+  await stabilizeVisual(page, {
+    ...pageProfiles.detailPage,
+    forceLightTheme: false
+  });
+
+  await expect(page).toHaveScreenshot(screenshotName, {
+    maxDiffPixels: 500,
+    fullPage: false
+  });
+}
+
+async function captureAppointmentsVisual(
+  page: Page,
+  screenshotName: string,
+  stabilization: Parameters<typeof stabilizeVisual>[1] = { forceLightTheme: false }
+): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const owner = await createVisualOwner(token);
+  const patient = await createVisualPatient(token, owner.id);
+  const appointment = await createVisualAppointment(token, patient.id, owner.id);
+
+  try {
+    await stubVisualSchedulingOverview(page, appointment.id);
+    await navigateTo(page, '/appointments');
+    await page
+      .getByRole('button', { name: `Selecionar ${appointment.referenceDate}`, exact: true })
+      .click();
+
+    const canonicalCard = page.locator('.timeline-item', { hasText: VISUAL_PATIENT_NAME }).first();
+    await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible({
+      timeout: 15000
+    });
+    await waitForPageSettled(page, {
+      contentSelector: '.appointments-cockpit__layout',
+      timeout: 15000
+    });
+    await keepCanonicalKanbanCards(page, 'Luna');
+    await normalizeVisualText(page, { [VISUAL_PATIENT_NAME]: 'Luna' });
+    if (stabilization.forceLightTheme === false) {
+      await page.evaluate(() => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.colorScheme = 'dark';
+      });
+    }
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.kanbanPage,
+      ...stabilization
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 240,
+      fullPage: false
+    });
+  } finally {
+    await deleteVisualResource(token, `/appointments/${appointment.id}`);
+    await deleteVisualResource(token, `/patients/${patient.id}`);
+    await deleteVisualResource(token, `/owners/${owner.id}`);
+  }
+}
+
 async function ensureAuthToken(page: Page): Promise<string> {
   await loginViaToken(page);
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });

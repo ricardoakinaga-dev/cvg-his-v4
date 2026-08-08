@@ -3637,4 +3637,304 @@ watch(
     min-width: auto;
   }
 }
+
+/* Legacy patient modules keep their compact Vetus-style layout, but their
+ * surfaces still need to consume the application dark theme. */
+/*
+:global(:root[data-theme='dark']) .patient-detail-page {
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .patient-360-grid > div,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-profile-card,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-accordion-card,
+:global(:root[data-theme='dark']) .patient-detail-page .entry-metric,
+:global(:root[data-theme='dark']) .patient-detail-page .weight-chart {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .patient-360-grid > div,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state,
+:global(:root[data-theme='dark']) .patient-detail-page .entry-metric,
+:global(:root[data-theme='dark']) .patient-detail-page .weight-chart {
+  background: var(--color-surface-subtle);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .patient-360-grid span,
+:global(:root[data-theme='dark']) .patient-detail-page .animal-kicker,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-critical-list span,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-info-grid span,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-owner-strip span,
+:global(:root[data-theme='dark']) .patient-detail-page .detail-item__label,
+:global(:root[data-theme='dark']) .patient-detail-page .entry-metric__label,
+:global(:root[data-theme='dark']) .patient-detail-page .empty-state,
+:global(:root[data-theme='dark']) .patient-detail-page .muted {
+  color: var(--color-text-muted);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .patient-360-grid p,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state p,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-accordion-card__summary p,
+:global(:root[data-theme='dark']) .patient-detail-page .timeline-list__item p,
+:global(:root[data-theme='dark']) .patient-detail-page .record-list__item p,
+:global(:root[data-theme='dark']) .patient-detail-page .clinical-history-preview {
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .animal-title,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state strong,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-owner-strip strong,
+:global(:root[data-theme='dark']) .patient-detail-page .entry-metric__value {
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .animal-summary-chips span,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-owner-strip,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-disabled-action,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-owner-name {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-profile-actions,
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-profile-footer-actions,
+:global(:root[data-theme='dark']) .patient-detail-page .timeline-list__item,
+:global(:root[data-theme='dark']) .patient-detail-page .record-list__item {
+  border-color: var(--color-border);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-critical-list {
+  border-color: var(--color-danger-400);
+  background: var(--color-danger-50);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-critical-list strong {
+  color: var(--color-danger-300);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-disclosure {
+  color: var(--color-primary-300);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-disclosure--soft,
+:global(:root[data-theme='dark']) .patient-detail-page .info-strip {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-300);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-accordion-card--open {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-md);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-accordion-card__header {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .vetus-module-icon {
+  color: var(--color-text-muted);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .workspace-highlight {
+  background: linear-gradient(135deg, var(--color-surface-subtle), var(--color-primary-subtle));
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .entry-metric__value {
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .tag {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .tag--neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-300);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .agenda-group h4 {
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .segmented-control {
+  border-color: var(--color-border);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .segmented-control button {
+  border-right-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .segmented-control button.active {
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .clinical-history-field {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .patient-detail-page .clinical-history-field:disabled {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+}
+
+:global(:root[data-theme='dark']) {
+  background: var(--color-bg);
+  border-color: initial;
+  color: var(--color-text);
+  box-shadow: none;
+}
+*/
+</style>
+<style>
+:root[data-theme='dark'] .patient-detail-page .patient-360-grid > div,
+:root[data-theme='dark'] .patient-detail-page .vetus-empty-state,
+:root[data-theme='dark'] .patient-detail-page .vetus-profile-card,
+:root[data-theme='dark'] .patient-detail-page .vetus-accordion-card,
+:root[data-theme='dark'] .patient-detail-page .entry-metric,
+:root[data-theme='dark'] .patient-detail-page .weight-chart {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .patient-detail-page .patient-360-grid > div,
+:root[data-theme='dark'] .patient-detail-page .vetus-empty-state,
+:root[data-theme='dark'] .patient-detail-page .entry-metric,
+:root[data-theme='dark'] .patient-detail-page .weight-chart {
+  background: var(--color-surface-subtle);
+}
+
+:root[data-theme='dark'] .patient-detail-page .patient-360-grid span,
+:root[data-theme='dark'] .patient-detail-page .animal-kicker,
+:root[data-theme='dark'] .patient-detail-page .vetus-critical-list span,
+:root[data-theme='dark'] .patient-detail-page .vetus-info-grid span,
+:root[data-theme='dark'] .patient-detail-page .vetus-owner-strip span,
+:root[data-theme='dark'] .patient-detail-page .detail-item__label,
+:root[data-theme='dark'] .patient-detail-page .entry-metric__label,
+:root[data-theme='dark'] .patient-detail-page .empty-state,
+:root[data-theme='dark'] .patient-detail-page .muted {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .patient-detail-page .patient-360-grid p,
+:root[data-theme='dark'] .patient-detail-page .vetus-empty-state p,
+:root[data-theme='dark'] .patient-detail-page .vetus-accordion-card__summary p,
+:root[data-theme='dark'] .patient-detail-page .timeline-list__item p,
+:root[data-theme='dark'] .patient-detail-page .record-list__item p,
+:root[data-theme='dark'] .patient-detail-page .clinical-history-preview {
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .patient-detail-page .animal-title,
+:root[data-theme='dark'] .patient-detail-page .vetus-empty-state strong,
+:root[data-theme='dark'] .patient-detail-page .vetus-owner-strip strong,
+:root[data-theme='dark'] .patient-detail-page .entry-metric__value {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .patient-detail-page .animal-summary-chips span,
+:root[data-theme='dark'] .patient-detail-page .vetus-owner-strip,
+:root[data-theme='dark'] .patient-detail-page .vetus-disabled-action,
+:root[data-theme='dark'] .patient-detail-page .vetus-owner-name {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-profile-actions,
+:root[data-theme='dark'] .patient-detail-page .vetus-profile-footer-actions,
+:root[data-theme='dark'] .patient-detail-page .timeline-list__item,
+:root[data-theme='dark'] .patient-detail-page .record-list__item {
+  border-color: var(--color-border);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-critical-list {
+  border-color: var(--color-danger-400);
+  background: var(--color-danger-50);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-critical-list strong {
+  color: var(--color-danger-300);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-disclosure {
+  color: var(--color-primary-300);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-disclosure--soft,
+:root[data-theme='dark'] .patient-detail-page .info-strip {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-300);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-accordion-card--open {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-accordion-card__header {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-module-icon {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .patient-detail-page .workspace-highlight {
+  background: linear-gradient(135deg, var(--color-surface-subtle), var(--color-primary-subtle));
+}
+
+:root[data-theme='dark'] .patient-detail-page .tag {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:root[data-theme='dark'] .patient-detail-page .tag--neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-300);
+}
+
+:root[data-theme='dark'] .patient-detail-page .agenda-group h4 {
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .patient-detail-page .segmented-control {
+  border-color: var(--color-border);
+}
+
+:root[data-theme='dark'] .patient-detail-page .segmented-control button {
+  border-right-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .patient-detail-page .segmented-control button.active {
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+:root[data-theme='dark'] .patient-detail-page .clinical-history-field {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .patient-detail-page .clinical-history-field:disabled {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+}
 </style>

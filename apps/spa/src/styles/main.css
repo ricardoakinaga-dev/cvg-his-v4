@@ -27,12 +27,17 @@ html[data-theme='dark'] {
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
   background: var(--color-bg);
   color: var(--color-text);
   transition:
     color 180ms ease,
     background-color 180ms ease;
+}
+
+#app {
+  min-height: 100dvh;
 }
 
 a {
@@ -47,6 +52,16 @@ a:hover {
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(37, 99, 235, 0.36));
+  outline-offset: 2px;
 }
 
 input,
@@ -336,12 +351,15 @@ code {
   display: flex;
   gap: 12px;
   margin-top: 24px;
+  flex-wrap: wrap;
 }
 
 /* ─── Tables ─── */
 
 .table-wrapper {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
   background: var(--color-surface, #ffffff);
@@ -349,6 +367,7 @@ code {
 
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -409,12 +428,15 @@ code {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-bg-overlay, rgba(15, 23, 42, 0.48));
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 400;
-  padding: 20px;
+  z-index: var(--z-modal, 400);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -422,7 +444,9 @@ code {
   border-radius: 12px;
   padding: 24px;
   max-width: 480px;
+  max-height: calc(100dvh - 32px);
   width: 100%;
+  overflow-y: auto;
 }
 
 .modal-content h3 {
@@ -434,4 +458,24 @@ code {
   display: flex;
   gap: 8px;
   margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .page-header,
+  .form-actions,
+  .modal-actions {
+    align-items: stretch;
+  }
+
+  .page-header__actions,
+  .form-actions > *,
+  .modal-actions > * {
+    min-width: 0;
+  }
+
+  .modal-content {
+    padding: 20px 16px;
+    border-radius: var(--radius-xl, 16px);
+  }
 }

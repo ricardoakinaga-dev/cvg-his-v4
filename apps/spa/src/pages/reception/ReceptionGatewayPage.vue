@@ -1549,3 +1549,91 @@ function handoffStatusLabel(status: string): string {
   }
 }
 </style>
+
+<style>
+:root[data-theme='dark'] .reception-gateway-page .reception-search,
+:root[data-theme='dark'] .reception-gateway-page .workflow-step,
+:root[data-theme='dark'] .reception-gateway-page .operation-link,
+:root[data-theme='dark'] .reception-gateway-page .contextual-quick-actions,
+:root[data-theme='dark'] .reception-gateway-page .contextual-action,
+:root[data-theme='dark'] .reception-gateway-page .result-row,
+:root[data-theme='dark'] .reception-gateway-page .handoff-preview,
+:root[data-theme='dark'] .reception-gateway-page .reception-funnel,
+:root[data-theme='dark'] .reception-gateway-page .queue-preview-row,
+:root[data-theme='dark'] .reception-gateway-page .results-section,
+:root[data-theme='dark'] .reception-gateway-page .secondary-shortcuts {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .contextual-action--secondary,
+:root[data-theme='dark'] .reception-gateway-page .operation-link--secondary,
+:root[data-theme='dark'] .reception-gateway-page .result-row,
+:root[data-theme='dark'] .reception-gateway-page .funnel-metric,
+:root[data-theme='dark'] .reception-gateway-page .handoff-metric,
+:root[data-theme='dark'] .reception-gateway-page .queue-preview--loading {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .contextual-action--warning {
+  border-left-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .contextual-action--primary,
+:root[data-theme='dark'] .reception-gateway-page .operation-link--primary {
+  border-left-color: var(--color-success-400);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .workflow-step__number {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .handoff-tab,
+:root[data-theme='dark'] .reception-gateway-page .button-link {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .handoff-tab--active {
+  border-color: var(--color-success-300);
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .button-link--primary {
+  border-color: var(--color-success-500);
+  background: var(--color-success-500);
+  color: var(--color-text-inverse);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .button-link--cautious {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .funnel-metric strong,
+:root[data-theme='dark'] .reception-gateway-page .handoff-metric strong,
+:root[data-theme='dark'] .reception-gateway-page .contextual-action strong,
+:root[data-theme='dark'] .reception-gateway-page .workflow-step strong,
+:root[data-theme='dark'] .reception-gateway-page .operation-link strong,
+:root[data-theme='dark'] .reception-gateway-page .queue-preview-row strong,
+:root[data-theme='dark'] .reception-gateway-page .result-row strong,
+:root[data-theme='dark'] .reception-gateway-page .secondary-shortcuts h2,
+:root[data-theme='dark'] .reception-gateway-page .results-section h2,
+:root[data-theme='dark'] .reception-gateway-page .handoff-preview h2,
+:root[data-theme='dark'] .reception-gateway-page .reception-funnel h2 {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .reception-gateway-page .contextual-action span,
+:root[data-theme='dark'] .reception-gateway-page .reception-funnel__eyebrow,
+:root[data-theme='dark'] .reception-gateway-page .queue-preview-row__eyebrow,
+:root[data-theme='dark'] .reception-gateway-page .result-row__eyebrow {
+  color: var(--color-text-secondary);
+}
+</style>

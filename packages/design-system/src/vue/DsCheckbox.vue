@@ -57,7 +57,8 @@ defineEmits<{
   focus: [];
 }>();
 
-const inputId = computed(() => props.id || `ds-checkbox-${Math.random().toString(36).slice(2, 8)}`);
+const generatedInputId = `ds-checkbox-${Math.random().toString(36).slice(2, 8)}`;
+const inputId = computed(() => props.id || generatedInputId);
 </script>
 
 <style scoped>

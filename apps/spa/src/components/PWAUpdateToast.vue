@@ -12,10 +12,10 @@
           <p class="toast-message">{{ message }}</p>
         </div>
         <div class="toast-actions">
-          <button v-if="action" class="toast-btn primary" @click="handleAction">
+          <button v-if="action" type="button" class="toast-btn primary" @click="handleAction">
             {{ action.text }}
           </button>
-          <button v-if="dismissible" class="toast-btn secondary" @click="handleDismiss">
+          <button v-if="dismissible" type="button" class="toast-btn secondary" @click="handleDismiss">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -105,19 +105,21 @@ onMounted(() => {
 <style scoped>
 .pwa-toast {
   position: fixed;
-  bottom: 20px;
+  bottom: max(16px, env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: #1f2937;
-  color: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  z-index: 9999;
-  max-width: calc(100vw - 40px);
+  background: var(--color-surface, #121c2d);
+  color: var(--color-text, #e7eef8);
+  border: 1px solid var(--color-border, #253650);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.3));
+  z-index: var(--z-toast, 500);
+  width: min(560px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
 }
 
 .toast-icon {
@@ -127,7 +129,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-primary-subtle, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
 }
 
@@ -149,8 +151,8 @@ onMounted(() => {
 
 .toast-message {
   font-size: 12px;
-  color: #9ca3af;
-  white-space: nowrap;
+  color: var(--color-text-secondary, #a6b6ca);
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -174,22 +176,22 @@ onMounted(() => {
 }
 
 .toast-btn.primary {
-  background: #3b82f6;
-  color: white;
+  background: var(--color-primary-600, #2563eb);
+  color: var(--color-text-inverse, #ffffff);
 }
 
 .toast-btn.primary:hover {
-  background: #2563eb;
+  background: var(--color-primary-700, #1d4ed8);
 }
 
 .toast-btn.secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text, #e7eef8);
   padding: 6px;
 }
 
 .toast-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-primary-subtle, rgba(255, 255, 255, 0.2));
 }
 
 .toast-btn.secondary svg {
@@ -208,11 +210,11 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #dc2626;
-  color: white;
+  background: var(--color-danger-600, #dc2626);
+  color: var(--color-text-inverse, #ffffff);
   font-size: 14px;
   font-weight: 500;
-  z-index: 9999;
+  z-index: var(--z-toast, 500);
 }
 
 .offline-banner svg {
@@ -242,5 +244,24 @@ onMounted(() => {
 .slide-down-leave-to {
   opacity: 0;
   transform: translateY(-100%);
+}
+
+@media (max-width: 560px) {
+  .pwa-toast {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    left: 16px;
+    transform: none;
+    width: calc(100vw - 32px);
+  }
+
+  .toast-content {
+    min-width: calc(100% - 48px);
+  }
+
+  .toast-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

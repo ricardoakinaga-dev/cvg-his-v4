@@ -163,7 +163,8 @@ const emit = defineEmits<{
   focus: [];
 }>();
 
-const pickerId = computed(() => props.id || `ds-date-picker-${Math.random().toString(36).slice(2, 8)}`);
+const generatedPickerId = `ds-date-picker-${Math.random().toString(36).slice(2, 8)}`;
+const pickerId = computed(() => props.id || generatedPickerId);
 const isOpen = ref(false);
 const calendarRef = ref<HTMLElement | null>(null);
 
@@ -448,10 +449,14 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   z-index: 9999;
   background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
   border-radius: var(--radius-lg, 12px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
   padding: 16px;
   min-width: 300px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
 }
 
 .ds-date-picker__calendar-header {

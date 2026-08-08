@@ -508,8 +508,8 @@ onMounted(load);
   display: grid;
   place-items: center;
   border-radius: 16px;
-  background: rgba(14, 165, 233, 0.08);
-  color: #0369a1;
+  background: var(--color-primary-subtle, #eaf3ff);
+  color: var(--color-primary-700, #1d4ed8);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -563,7 +563,7 @@ onMounted(load);
   padding: 16px;
   border-radius: 16px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .reception-decision-strip {
@@ -577,7 +577,7 @@ onMounted(load);
   padding: 14px 16px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .reception-decision-card__eyebrow {
@@ -586,7 +586,7 @@ onMounted(load);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #475569;
+  color: var(--color-text-secondary, #475569);
   text-transform: uppercase;
 }
 
@@ -622,8 +622,8 @@ onMounted(load);
   display: grid;
   place-items: center;
   border-radius: 18px;
-  background: linear-gradient(135deg, #e0f2fe, #bfdbfe);
-  color: #075985;
+  background: var(--color-primary-200, #bfdbfe);
+  color: var(--color-primary-900, #1e3a8a);
   font-size: 22px;
   font-weight: 800;
 }
@@ -656,19 +656,19 @@ onMounted(load);
 .metric-chip {
   padding: 14px;
   border-radius: 16px;
-  background: #ecfeff;
-  border: 1px solid #bae6fd;
+  background: var(--color-primary-subtle, #eaf3ff);
+  border: 1px solid var(--color-primary-200, #bfdbfe);
 }
 
 .metric-chip strong {
   display: block;
   font-size: 20px;
-  color: #0369a1;
+  color: var(--color-primary-700, #1d4ed8);
 }
 
 .metric-chip span {
   font-size: 12px;
-  color: #475569;
+  color: var(--color-text-secondary, #475569);
 }
 
 .patients-grid {
@@ -710,7 +710,7 @@ onMounted(load);
 .patient-card__owner {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle, #f8fafc);
   overflow: hidden;
 }
 
@@ -719,7 +719,7 @@ onMounted(load);
   padding: 12px 14px;
   font-size: 13px;
   font-weight: 800;
-  color: #075985;
+  color: var(--color-primary-800, #1e40af);
 }
 
 .owner-snapshot {
@@ -756,7 +756,7 @@ onMounted(load);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #475569;
+  color: var(--color-text-secondary, #475569);
 }
 
 .empty-state__title {

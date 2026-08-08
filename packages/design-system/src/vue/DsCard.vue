@@ -3,14 +3,17 @@
     :is="resolvedTag"
     :class="classes"
     :href="resolvedTag === 'a' ? href : undefined"
+    :type="resolvedTag === 'button' ? 'button' : undefined"
     :aria-label="ariaLabel"
     :tabindex="interactive ? 0 : undefined"
     @click="interactive ? $emit('click') : undefined"
     @keydown="handleKeydown"
   >
-    <div v-if="$slots.header || title" class="ds-card__header">
+    <div v-if="$slots.header || $slots.title || title" class="ds-card__header">
       <slot name="header">
-        <h3 v-if="title" class="ds-card__title">{{ title }}</h3>
+        <slot name="title">
+          <h3 v-if="title" class="ds-card__title">{{ title }}</h3>
+        </slot>
       </slot>
     </div>
     <div class="ds-card__body">

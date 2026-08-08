@@ -267,7 +267,7 @@
    DARK MODE — Explicit dark theme class (higher priority)
    ========================================================================== */
 
-[data-theme="dark"] {
+:root[data-theme="dark"] {
   --color-bg: #0f172a;
   --color-bg-elevated: #1e293b;
   --color-bg-subtle: #1e293b;
@@ -362,4 +362,147 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================================================
+   CVG THEME CONSOLIDATION
+
+   The application bootstraps data-theme before Vue mounts. These final
+   semantic overrides keep an explicit user choice ahead of the operating
+   system preference and provide one palette for the shell and primitives.
+   ========================================================================== */
+
+:root[data-theme="dark"] {
+  --color-primary-50: #102541;
+  --color-primary-100: #17365c;
+  --color-primary-200: #245180;
+  --color-primary-300: #3b6d9e;
+  --color-accent-50: #0d2a29;
+  --color-accent-100: #12433f;
+  --color-success-50: #0d2b22;
+  --color-success-100: #123d30;
+  --color-success-200: #1a5b45;
+  --color-warning-50: #2f2510;
+  --color-warning-100: #493712;
+  --color-warning-200: #6b5016;
+  --color-danger-50: #34151a;
+  --color-danger-100: #4a1d24;
+  --color-danger-200: #6e2a33;
+  --color-info-50: #102541;
+  --color-info-100: #17365c;
+  --color-info-200: #245180;
+  --color-neutral-50: #101a2b;
+  --color-neutral-100: #16243a;
+  --color-neutral-200: #253650;
+  --color-neutral-300: #344866;
+  --color-bg: #0b1220;
+  --color-bg-elevated: #121c2d;
+  --color-bg-subtle: #101a2b;
+  --color-bg-overlay: rgba(2, 6, 23, 0.72);
+  --color-surface: #121c2d;
+  --color-surface-glass: rgba(18, 28, 45, 0.86);
+  --color-surface-hover: #19263b;
+  --color-border: #253650;
+  --color-border-strong: #344866;
+  --color-text: #e7eef8;
+  --color-text-secondary: #a6b6ca;
+  --color-text-muted: #7f91aa;
+  --color-text-inverse: #0b1220;
+    --color-text-link: #7db7ff;
+    --color-primary-subtle: #122a4d;
+    --color-primary-surface: #142238;
+    --color-info-text: var(--color-info-300);
+    --color-info-bg: var(--color-info-50);
+    --color-success-text: var(--color-success-300);
+    --color-success-bg: var(--color-success-50);
+    --color-warning-text: var(--color-warning-300);
+    --color-warning-bg: var(--color-warning-50);
+    --color-danger-text: var(--color-danger-300);
+    --color-danger-bg: var(--color-danger-50);
+    --color-gray-100: var(--color-neutral-100);
+    --color-success: var(--color-success-500);
+    --color-success-surface: var(--color-success-50);
+    --color-warning: var(--color-warning-400);
+    --color-danger: var(--color-danger-400);
+  --color-focus-ring: rgba(125, 183, 255, 0.42);
+  --color-skeleton: linear-gradient(90deg, #1a2940 25%, #253650 50%, #1a2940 75%);
+  --color-skeleton-highlight: #253650;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.52);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.62);
+}
+
+[data-theme="light"] {
+  --color-bg: #f4f7fb;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-overlay: rgba(15, 23, 42, 0.48);
+  --color-surface: #ffffff;
+  --color-surface-glass: rgba(255, 255, 255, 0.86);
+  --color-surface-hover: #f1f5f9;
+  --color-border: #dbe4ee;
+  --color-border-strong: #c4d0de;
+  --color-text: #162235;
+  --color-text-secondary: #475569;
+  --color-text-muted: #718198;
+  --color-text-inverse: #ffffff;
+  --color-text-link: #1d4ed8;
+  --color-primary-subtle: #eaf3ff;
+  --color-primary-surface: #f7fbff;
+  --color-focus-ring: rgba(37, 99, 235, 0.36);
+  --color-skeleton: linear-gradient(90deg, #dbe4ee 25%, #eef3f8 50%, #dbe4ee 75%);
+  --color-skeleton-highlight: #eef3f8;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 16px 48px rgba(15, 23, 42, 0.14);
+}
+
+/* Compatibility aliases used by legacy page styles and Vue primitives. */
+:root {
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+  --color-primary: var(--color-primary-600);
+  --color-primary-hover: var(--color-primary-700);
+  --color-surface-muted: var(--color-bg-subtle);
+  --color-surface-subtle: var(--color-bg-subtle);
+  --color-surface-elevated: var(--color-bg-elevated);
+  --surface-default: var(--color-surface);
+  --surface-muted: var(--color-bg-subtle);
+  --surface-elevated: var(--color-bg-elevated);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --border-subtle: var(--color-border);
+  --color-border-subtle: var(--color-border);
+  --color-info-800: #1e40af;
+  --color-info-900: #1e3a8a;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+  --color-info-border: var(--color-info-200);
+  --color-success-border: var(--color-success-200);
+  --color-warning-border: var(--color-warning-200);
+  --color-danger-border: var(--color-danger-200);
+  --color-info-text: var(--color-info-800);
+  --color-info-bg: var(--color-info-50);
+  --color-success-text: var(--color-success-800);
+  --color-success-bg: var(--color-success-50);
+  --color-warning-text: var(--color-warning-800);
+  --color-warning-bg: var(--color-warning-50);
+  --color-danger-text: var(--color-danger-800);
+  --color-danger-bg: var(--color-danger-50);
+  --color-gray-100: var(--color-neutral-100);
+  --color-success: var(--color-success-600);
+  --color-success-surface: var(--color-success-50);
+  --color-warning: var(--color-warning-600);
+  --color-danger: var(--color-danger-600);
+  --app-sidebar-width: 248px;
+  --app-sidebar-collapsed-width: 64px;
+  --app-topbar-height: 72px;
 }

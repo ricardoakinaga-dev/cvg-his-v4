@@ -1144,13 +1144,16 @@ onMounted(async () => {
 }
 
 .summary-grid--compact {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   margin-bottom: 0;
 }
 
 .summary-card {
-  display: flex;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  row-gap: 3px;
   align-items: center;
   padding: 18px;
   min-width: 0;
@@ -1164,6 +1167,7 @@ onMounted(async () => {
   border-radius: 14px;
   background: rgba(37, 99, 235, 0.08);
   font-size: 22px;
+  grid-row: 1 / -1;
 }
 
 .summary-card__body {
@@ -1177,13 +1181,13 @@ onMounted(async () => {
   color: var(--color-text, #0f172a);
   line-height: 1.15;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .summary-card__label {
   font-size: 13px;
   color: var(--color-text-muted, #94a3b8);
-  margin-top: 4px;
+  min-width: 0;
 }
 
 .support-grid {
@@ -1444,5 +1448,61 @@ onMounted(async () => {
   .summary-grid--compact {
     grid-template-columns: 1fr;
   }
+}
+</style>
+
+<style>
+:root[data-theme='dark'] .encounter-detail-page .patient-rail__avatar {
+  background: var(--color-warning-50);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .workflow-tab {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .workflow-tab:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .workflow-tab--active {
+  border-color: var(--color-warning-400);
+  box-shadow: inset 0 3px 0 var(--color-warning-400);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .workflow-tab span {
+  background: var(--color-primary-subtle);
+  color: var(--color-text-link);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .summary-card__icon {
+  background: var(--color-primary-subtle);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .close-reason-block {
+  border-color: var(--color-success-200);
+  background: var(--color-success-50);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .pre-handoff {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .pre-handoff__status {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .handoff-status > div {
+  border-color: var(--color-primary-200);
+  background: var(--color-primary-50);
+}
+
+:root[data-theme='dark'] .encounter-detail-page .handoff-form__select {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 </style>

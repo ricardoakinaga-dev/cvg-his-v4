@@ -28,9 +28,10 @@ const emit = defineEmits<{
 
 const isDragging = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
-const dropzoneId = computed(() => `ds-file-upload-desc-${props.id || Math.random().toString(36).slice(2, 8)}`);
-const hintId = computed(() => `ds-file-upload-hint-${props.id || Math.random().toString(36).slice(2, 8)}`);
-const errorId = computed(() => `ds-file-upload-error-${props.id || Math.random().toString(36).slice(2, 8)}`);
+const generatedUploadId = props.id || Math.random().toString(36).slice(2, 8);
+const dropzoneId = computed(() => `ds-file-upload-desc-${generatedUploadId}`);
+const hintId = computed(() => `ds-file-upload-hint-${generatedUploadId}`);
+const errorId = computed(() => `ds-file-upload-error-${generatedUploadId}`);
 
 const hasError = computed(() => !!props.error);
 

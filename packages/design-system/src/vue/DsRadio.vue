@@ -56,7 +56,8 @@ defineEmits<{
   focus: [];
 }>();
 
-const inputId = computed(() => props.id || `ds-radio-${Math.random().toString(36).slice(2, 8)}`);
+const generatedInputId = `ds-radio-${Math.random().toString(36).slice(2, 8)}`;
+const inputId = computed(() => props.id || generatedInputId);
 
 const onChange = () => {
   modelValue.value = props.value;

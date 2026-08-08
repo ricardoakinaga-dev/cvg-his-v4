@@ -24,6 +24,8 @@ describe('DsModal.vue', () => {
     const dialog = wrapper.get('[role="dialog"]');
     expect(dialog.attributes('aria-modal')).toBe('true');
     expect(dialog.attributes('aria-labelledby')).toMatch(/^ds-modal-/);
+    expect(dialog.attributes('aria-describedby')).toMatch(/^ds-modal-/);
+    expect(wrapper.get('.ds-modal__close').attributes('type')).toBe('button');
 
     const firstAction = wrapper.get('#first-action');
     firstAction.element.focus();
@@ -38,6 +40,24 @@ describe('DsModal.vue', () => {
 
     wrapper.unmount();
     opener.remove();
+  });
+
+  it('locks body scrolling while open and restores the previous value', async () => {
+    document.body.style.overflow = 'auto';
+    const wrapper = mount(DsModal, {
+      props: { open: true, teleport: false },
+      attachTo: document.body,
+      slots: { default: '<p>Conteúdo</p>' }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await wrapper.setProps({ open: false });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.body.style.overflow).toBe('auto');
+
+    wrapper.unmount();
   });
 
   it('provides an accessible name when the visual title is omitted', () => {

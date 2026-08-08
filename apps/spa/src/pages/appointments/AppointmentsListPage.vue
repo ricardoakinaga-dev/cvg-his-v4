@@ -2525,6 +2525,10 @@ onMounted(async () => {
     gap: 10px;
   }
 
+  .agenda-create-button {
+    display: none;
+  }
+
   .board-toolbar {
     position: static;
   }
@@ -2565,5 +2569,395 @@ onMounted(async () => {
   .time-matrix__slot {
     min-height: 92px;
   }
+}
+
+/* Keep the operational board readable when the application switches to the
+ * dark surface system. The agenda has intentionally richer status colors than
+ * the generic cards, so its semantic accents are mapped explicitly here. */
+/*
+:global(:root[data-theme='dark']) .appointments-cockpit {
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .sidebar-card,
+:global(:root[data-theme='dark']) .appointments-cockpit .mini-calendar,
+:global(:root[data-theme='dark']) .appointments-cockpit .agenda-filter-block,
+:global(:root[data-theme='dark']) .appointments-cockpit .board-toolbar,
+:global(:root[data-theme='dark']) .appointments-cockpit .agenda-grid-summary > div,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .mini-calendar {
+  background: var(--color-surface-subtle);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .mini-calendar__day,
+:global(:root[data-theme='dark']) .appointments-cockpit .status-chip,
+:global(:root[data-theme='dark']) .appointments-cockpit .view-toggle {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .mini-calendar__day:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .status-chip:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .view-toggle__button:hover {
+  border-color: var(--color-primary-400);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .mini-calendar__day--selected,
+:global(:root[data-theme='dark']) .appointments-cockpit .view-toggle__button--active {
+  border-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-chip--active {
+  border-color: var(--color-info-400);
+  background: var(--color-info-50);
+  color: var(--color-info-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .agenda-filter-block__clear {
+  border-top-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .agenda-filter-block__clear:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot:focus-visible,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:focus-visible {
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .agenda-grid-summary > div,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-item,
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend {
+  border-color: var(--color-border);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell__availability {
+  border-color: var(--color-success-400);
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-slot-summary,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell__empty-surface,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button {
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell__empty-surface:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-cell__empty-surface:focus-visible {
+  border-color: var(--color-primary-400);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-item,
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item {
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-item:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item:hover {
+  border-color: var(--color-primary-400);
+  background: var(--color-surface-hover);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-item__next,
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__ops strong {
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot:focus-visible,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:hover,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:focus-visible {
+  border-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix {
+  background: var(--color-border-subtle);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__corner,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__column-title,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__hour,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__slot {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__slot:hover {
+  background: var(--color-surface-hover);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__hour--all-day,
+:global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__slot--all-day {
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-block {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__ops {
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__ops span {
+  color: var(--color-text-secondary);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__conflicts {
+  color: var(--color-danger-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--scheduled,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--scheduled {
+  background: var(--color-primary-50);
+  color: var(--color-primary-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--checked_in,
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--called,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--checked_in {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--in_triage {
+  background: var(--color-info-50);
+  color: var(--color-info-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--in_care,
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--observation,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--completed {
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .status-pill--cancelled,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--time_off {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--cancelled {
+  background: var(--color-danger-50);
+  border-color: var(--color-danger-400);
+  color: var(--color-danger-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--no_show,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--marker {
+  background: var(--color-warning-50);
+  border-color: var(--color-warning-400);
+  color: var(--color-warning-300);
+}
+
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--vaccine,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--deworming,
+:global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--return {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-300);
+}
+
+:global(:root[data-theme='dark']) {
+  background: var(--color-bg);
+  border-color: initial;
+  color: var(--color-text);
+  box-shadow: none;
+}
+*/
+</style>
+<style>
+:root[data-theme='dark'] .appointments-cockpit {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .sidebar-card,
+:root[data-theme='dark'] .appointments-cockpit .board-toolbar,
+:root[data-theme='dark'] .appointments-cockpit .agenda-grid-summary > div,
+:root[data-theme='dark'] .appointments-cockpit .month-cell,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .mini-calendar,
+:root[data-theme='dark'] .appointments-cockpit .agenda-filter-block,
+:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops {
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day,
+:root[data-theme='dark'] .appointments-cockpit .status-chip,
+:root[data-theme='dark'] .appointments-cockpit .view-toggle {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day:hover,
+:root[data-theme='dark'] .appointments-cockpit .status-chip:hover,
+:root[data-theme='dark'] .appointments-cockpit .view-toggle__button:hover,
+:root[data-theme='dark'] .appointments-cockpit .month-item:hover,
+:root[data-theme='dark'] .appointments-cockpit .timeline-item:hover {
+  border-color: var(--color-primary-400);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day--selected,
+:root[data-theme='dark'] .appointments-cockpit .view-toggle__button--active,
+:root[data-theme='dark'] .appointments-cockpit .month-create-slot:hover,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__empty-button:hover {
+  border-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-chip--active {
+  border-color: var(--color-info-400);
+  background: var(--color-info-50);
+  color: var(--color-info-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .month-cell__availability,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__hour--all-day,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__slot--all-day {
+  border-color: var(--color-success-400);
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .timeline-slot-summary,
+:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface,
+:root[data-theme='dark'] .appointments-cockpit .month-create-slot,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__empty-button {
+  border-color: var(--color-border);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface:hover,
+:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface:focus-visible {
+  border-color: var(--color-primary-400);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .month-item,
+:root[data-theme='dark'] .appointments-cockpit .timeline-item,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__corner,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__column-title,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__hour,
+:root[data-theme='dark'] .appointments-cockpit .time-matrix__slot {
+  border-color: var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .time-matrix {
+  background: var(--color-border-subtle);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .timeline-block {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops span,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__hint {
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops strong,
+:root[data-theme='dark'] .appointments-cockpit .month-item__next {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .timeline-item__conflicts {
+  color: var(--color-danger-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-pill--scheduled,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--scheduled {
+  background: var(--color-primary-50);
+  color: var(--color-primary-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-pill--checked_in,
+:root[data-theme='dark'] .appointments-cockpit .status-pill--called,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--checked_in {
+  background: var(--color-warning-50);
+  color: var(--color-warning-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-pill--in_triage {
+  background: var(--color-info-50);
+  color: var(--color-info-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-pill--in_care,
+:root[data-theme='dark'] .appointments-cockpit .status-pill--observation,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--completed {
+  background: var(--color-success-50);
+  color: var(--color-success-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .status-pill--cancelled,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--time_off {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--cancelled {
+  background: var(--color-danger-50);
+  border-color: var(--color-danger-400);
+  color: var(--color-danger-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--no_show,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--marker {
+  background: var(--color-warning-50);
+  border-color: var(--color-warning-400);
+  color: var(--color-warning-300);
+}
+
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--vaccine,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--deworming,
+:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--return {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-300);
 }
 </style>

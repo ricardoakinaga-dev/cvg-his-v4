@@ -34,7 +34,10 @@ export const useAppStore = defineStore('app', {
   state: () => ({
     sidebarCollapsed: (() => {
       try {
-        return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
+        const stored = localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED);
+        if (stored === 'true') return true;
+        if (stored === 'false') return false;
+        return window.matchMedia?.('(max-width: 860px)').matches ?? false;
       } catch {
         return false;
       }

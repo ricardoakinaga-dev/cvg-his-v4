@@ -1799,3 +1799,92 @@ onMounted(() => {
   }
 }
 </style>
+
+<style>
+:root[data-theme='dark'] .dashboard-page .dashboard-hero {
+  border-color: var(--color-border);
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg-subtle));
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .dashboard-page .home-shortcut,
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item,
+:root[data-theme='dark'] .dashboard-page .premium-lens,
+:root[data-theme='dark'] .dashboard-page .home-metric,
+:root[data-theme='dark'] .dashboard-page .counter-sale-item,
+:root[data-theme='dark'] .dashboard-page .birthday-item,
+:root[data-theme='dark'] .dashboard-page .reminder-item,
+:root[data-theme='dark'] .dashboard-page .link-list__item {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .dashboard-page .home-shortcut:hover,
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item:hover,
+:root[data-theme='dark'] .dashboard-page .premium-lens:hover,
+:root[data-theme='dark'] .dashboard-page .home-metric:hover,
+:root[data-theme='dark'] .dashboard-page .counter-sale-item:hover,
+:root[data-theme='dark'] .dashboard-page .birthday-item:hover,
+:root[data-theme='dark'] .dashboard-page .reminder-item:hover,
+:root[data-theme='dark'] .dashboard-page .link-list__item:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+:root[data-theme='dark'] .dashboard-page .home-shortcut__icon {
+  background: var(--color-primary-subtle);
+}
+
+:root[data-theme='dark'] .dashboard-page .premium-operation-step {
+  border-color: var(--color-success-200);
+  background: var(--color-success-50);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .dashboard-page .premium-operation-step__order {
+  background: var(--color-success-100);
+  color: var(--color-success-300);
+}
+
+:root[data-theme='dark'] .dashboard-page .enterprise-kpi {
+  border-color: var(--color-info-200);
+  background: var(--color-info-50);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .dashboard-page .premium-lenses {
+  border-top-color: var(--color-border);
+}
+
+:root[data-theme='dark'] .dashboard-page .panel-card__action {
+  border-color: var(--color-primary-200);
+  background: var(--color-primary-subtle);
+  color: var(--color-text-link);
+}
+
+:root[data-theme='dark'] .dashboard-page .panel-card__action:hover {
+  border-color: var(--color-primary-300);
+  background: var(--color-primary-100);
+}
+
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item__tone,
+:root[data-theme='dark'] .dashboard-page .reminder-item__tone {
+  background: var(--color-info-400);
+}
+
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item__tone--warning,
+:root[data-theme='dark'] .dashboard-page .reminder-item__tone--warning {
+  background: var(--color-warning-400);
+}
+
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item__tone--success,
+:root[data-theme='dark'] .dashboard-page .reminder-item__tone--success {
+  background: var(--color-success-400);
+}
+
+:root[data-theme='dark'] .dashboard-page .enterprise-focus-item__tone--danger {
+  background: var(--color-danger-400);
+}
+</style>

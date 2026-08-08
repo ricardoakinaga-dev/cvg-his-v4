@@ -1454,3 +1454,20 @@ td small {
   }
 }
 </style>
+
+<style>
+:root[data-theme='dark'] .queue-page .prepared-checkin {
+  border-color: var(--color-success-200);
+  border-left-color: var(--color-success-400);
+  background: var(--color-success-50);
+}
+
+:root[data-theme='dark'] .queue-page .prepared-checkin__eyebrow {
+  color: var(--color-success-300);
+}
+
+:root[data-theme='dark'] .queue-page .prepared-checkin h2,
+:root[data-theme='dark'] .queue-page .prepared-checkin p {
+  color: var(--color-text);
+}
+</style>
