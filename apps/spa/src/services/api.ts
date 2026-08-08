@@ -1,4 +1,3 @@
-import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import { useAuthStore } from '@/stores/auth';
 import { spaRuntimeConfig } from '@/config/runtime';
 
@@ -25,6 +24,46 @@ interface ApiErrorBodyShape {
 }
 
 const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Faça login novamente.';
+
+async function invalidateClientCaches(path: string): Promise<void> {
+  try {
+    if (typeof caches !== 'undefined') {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(async (cacheName) => {
+          const cache = await caches.open(cacheName);
+          const requests = await cache.keys();
+          await Promise.all(
+            requests
+              .filter((request) => new URL(request.url).pathname.startsWith('/api/'))
+              .map((request) => cache.delete(request))
+          );
+        })
+      );
+    }
+  } catch {
+    // Cache invalidation is best effort; the committed server response is authoritative.
+  }
+
+  try {
+    const keysToRemove = Object.keys(localStorage).filter((key) => key.startsWith('pwa-cache-'));
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Browser storage can be unavailable in private browsing contexts.
+  }
+
+  const entityMatch = path.match(/^\/(owners|patients|users)(?:\/([^/?#]+))?/);
+  if (entityMatch?.[1]) {
+    try {
+      const { invalidateEntityCache } = await import('@/composables/useEntityCache');
+      invalidateEntityCache(entityMatch[1] as 'owners' | 'patients' | 'users', entityMatch[2]);
+    } catch {
+      // The API client must not fail after a successful mutation because a UI cache is unavailable.
+    }
+  }
+}
 
 function generateCorrelationId(): string {
   return `spa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -65,11 +104,7 @@ function getAccountIdFromToken(token: string | null): string | null {
 }
 
 async function getAccessToken(): Promise<string | null> {
-  try {
-    return localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
-  } catch {
-    return null;
-  }
+  return useAuthStore().accessToken;
 }
 
 async function getCurrentRouteFullPath(): Promise<string> {
@@ -109,6 +144,7 @@ export async function apiRequest<T = unknown>(
   options: ApiRequestOptions = {}
 ): Promise<T> {
   const { skipAuth, headers: customHeaders, ...restOptions } = options;
+  const method = (restOptions.method ?? 'GET').toUpperCase();
 
   const url = path.startsWith('http') ? path : `${API_BASE}/api${path}`;
   const correlationId = generateCorrelationId();
@@ -132,7 +168,8 @@ export async function apiRequest<T = unknown>(
 
   const response = await fetch(url, {
     ...restOptions,
-    headers
+    headers,
+    credentials: 'include'
   });
 
   if (!response.ok) {
@@ -161,8 +198,17 @@ export async function apiRequest<T = unknown>(
   }
 
   if (response.status === 204) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      await invalidateClientCaches(path);
+    }
     return undefined as T;
+  }
+
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    await invalidateClientCaches(path);
   }
 
   return response.json() as Promise<T>;
 }
+
+export { invalidateClientCaches };

@@ -319,6 +319,8 @@ describe('PatientsService', () => {
         primaryOwnerId: owner.id
       });
 
+      await svc.waitForPersistence();
+
       expect(called).toBe(true);
       expect(capturedId).toBe(patient.id);
     });
@@ -614,6 +616,25 @@ describe('PatientsService', () => {
       ).toThrow(NotFoundError);
     });
 
+    it('rejects owners and patients from another account', () => {
+      const anotherAccountId = 'acc_other' as AccountId;
+      const foreignOwner = owners.create(anotherAccountId, {
+        fullName: 'Foreign owner',
+        contacts: [{ label: 'Phone', value: '11988887777', type: 'phone', primary: true }],
+        financialResponsible: false
+      });
+      const localPatient = createPatient(service, owners);
+
+      expect(() =>
+        service.createLink(ACCOUNT_ID, {
+          ownerId: foreignOwner.id,
+          patientId: localPatient.id,
+          relationshipType: 'secondary',
+          financialResponsible: false
+        })
+      ).toThrow(ValidationError);
+    });
+
     it('persists link to repository', async () => {
       const owner = createOwner(owners);
       const patient = createPatient(service, owners);
@@ -673,6 +694,67 @@ describe('PatientsService', () => {
       const result = service.searchMaster('  luna  ');
 
       expect(result.patients.length).toBe(1);
+    });
+  });
+
+  describe('relationship lifecycle and merge()', () => {
+    it('updates and deletes an authorized relationship while protecting primary', async () => {
+      const primaryOwner = createOwner(owners, 'Primary');
+      const authorizedOwner = createOwner(owners, 'Authorized');
+      const patient = service.create(ACCOUNT_ID, {
+        name: 'Luna',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: primaryOwner.id
+      });
+      const link = service.createLink(ACCOUNT_ID, {
+        ownerId: authorizedOwner.id,
+        patientId: patient.id,
+        relationshipType: 'secondary',
+        financialResponsible: false
+      });
+
+      const updated = service.updateLink(ACCOUNT_ID, link.id, { financialResponsible: true });
+      await service.waitForPersistence();
+      expect(updated.financialResponsible).toBe(true);
+      expect((await linkRepo.findById(link.id, ACCOUNT_ID))?.financialResponsible).toBe(true);
+
+      service.deleteLink(ACCOUNT_ID, link.id);
+      await service.waitForPersistence();
+      expect(await linkRepo.findById(link.id, ACCOUNT_ID)).toBeNull();
+      expect(() => service.deleteLink(ACCOUNT_ID, service.listLinks({ patientId: patient.id })[0].id))
+        .toThrow(ValidationError);
+    });
+
+    it('merges patients without deleting the source clinical identity', async () => {
+      const owner = createOwner(owners);
+      const source = service.create(ACCOUNT_ID, {
+        name: 'Duplicate Luna',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+      const target = service.create(ACCOUNT_ID, {
+        name: 'Canonical Luna',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+
+      const merged = service.merge(
+        ACCOUNT_ID,
+        source.id,
+        target.id,
+        'user_admin' as never,
+        'Duplicate registry entry'
+      );
+      await service.waitForPersistence();
+
+      expect(merged.status).toBe('inactive');
+      expect(merged.generalNotes).toContain(target.id);
+      expect(service.getOrThrow(source.id).status).toBe('inactive');
+      expect(service.getOrThrow(target.id).status).toBe('active');
+      expect((await patientRepo.findById(source.id))?.status).toBe('inactive');
     });
   });
 });

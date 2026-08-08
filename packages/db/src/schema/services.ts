@@ -23,6 +23,10 @@ export const services = pgTable(
     accountActiveIdx: index('idx_services_account_active').on(table.accountId, table.active),
     accountCodeUniqueIdx: uniqueIndex('uq_services_account_code')
       .on(table.accountId, table.code)
-      .where(sql`${table.code} is not null`)
+      .where(sql`${table.code} is not null`),
+    accountIdIdUnique: uniqueIndex('idx_services_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    )
   })
 );

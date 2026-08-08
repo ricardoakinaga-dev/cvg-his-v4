@@ -92,7 +92,6 @@ describe('auth-rate-limiter runtime coverage', () => {
       keyPrefix: 'rate-limit:auth'
     });
     expect(logger.info).toHaveBeenCalledWith('auth rate limiter using Redis backend', {
-      redisUrl: 'redis://cache:6379',
       runtimeDistributedStateEnabled: true
     });
   });

@@ -11,12 +11,12 @@ Escopo:
 
 Evidências principais:
 
-- [comandas-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-lista-expandida.png)
-- [comandas-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-detalhe-expandido.png)
-- [comandas-detalhe-expandido.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/comandas-detalhe-expandido.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/network.json)
-- [comandas-03-detalhe-comanda.png](/root/cvg-his-v2/docs/vetus/screenshots/comandas-03-detalhe-comanda.png)
-- [11-modulo-comandas.md](/root/cvg-his-v2/docs/vetus/guides/11-modulo-comandas.md)
+- [comandas-lista-expandida.png](../inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-lista-expandida.png)
+- [comandas-detalhe-expandido.png](../inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-detalhe-expandido.png)
+- [comandas-detalhe-expandido.json](../inspection/2026-04-23T22-58-13-495Z-comandas/comandas-detalhe-expandido.json)
+- [network.json](../inspection/2026-04-23T22-58-13-495Z-comandas/network.json)
+- [comandas-03-detalhe-comanda.png](../screenshots/comandas-03-detalhe-comanda.png)
+- [11-modulo-comandas.md](../guides/11-modulo-comandas.md)
 
 Nota de segurança:
 
@@ -113,7 +113,7 @@ Rota:
 
 Evidência principal:
 
-- [comandas-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-lista-expandida.png)
+- [comandas-lista-expandida.png](../inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-lista-expandida.png)
 
 ### 4.1 Componentes principais
 
@@ -160,7 +160,7 @@ Rota observada:
 
 Evidência principal:
 
-- [comandas-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-detalhe-expandido.png)
+- [comandas-detalhe-expandido.png](../inspection/2026-04-23T22-58-13-495Z-comandas/screenshots/comandas-detalhe-expandido.png)
 
 O detalhe usa um layout em duas grandes áreas:
 

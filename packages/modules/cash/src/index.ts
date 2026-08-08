@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -29,13 +30,27 @@ export interface CashMovementSummary {
   readonly id: string;
   readonly cashRegisterId: string;
   readonly accountId: AccountId;
-  readonly movementType: 'opening' | 'closing' | 'payment' | 'supply' | 'withdrawal' | 'adjustment';
+  readonly movementType: 'opening' | 'closing' | 'payment' | 'supply' | 'deposit' | 'withdrawal' | 'adjustment';
   readonly amount: number;
   readonly runningBalance: number;
   readonly reference: string | null;
   readonly notes: string | null;
   readonly createdByUserId: UserId | null;
   readonly createdAt: string;
+}
+
+export interface CashReconciliationSummary {
+  readonly registerId: string;
+  readonly accountId: AccountId;
+  readonly status: 'open' | 'closed';
+  readonly openingAmount: number;
+  readonly expectedAmount: number;
+  readonly declaredAmount: number | null;
+  readonly difference: number | null;
+  readonly totalIn: number;
+  readonly totalOut: number;
+  readonly movementCount: number;
+  readonly reconciledAt: string;
 }
 
 export interface CashServiceOptions {
@@ -53,7 +68,7 @@ export interface CashRegisterCloseInput {
 }
 
 export interface CashMovementInput {
-  readonly movementType: 'supply' | 'withdrawal' | 'adjustment';
+  readonly movementType: 'supply' | 'deposit' | 'withdrawal' | 'adjustment';
   readonly amount: number;
   readonly reference?: string | null;
   readonly notes?: string | null;
@@ -61,12 +76,18 @@ export interface CashMovementInput {
 
 export class CashService {
   readonly #repository?: CashRepository;
+  readonly #useUuidIdentifiers: boolean;
   readonly #registers = new Map<string, CashRegisterSummary>();
   readonly #movements = new Map<string, CashMovementSummary>();
   #movementOrder = 0;
 
   public constructor(options?: CashServiceOptions) {
     this.#repository = options?.repository;
+    this.#useUuidIdentifiers = Boolean(options?.repository);
+  }
+
+  #nextId(prefix: string): string {
+    return this.#useUuidIdentifiers ? randomUUID() : createCorrelationId(prefix);
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -100,7 +121,7 @@ export class CashService {
     const openingAmount = requirePositiveNumber(input.openingAmount, 'openingAmount');
     const now = nowIso();
     const register: CashRegisterSummary = {
-      id: createCorrelationId('cr'),
+      id: this.#nextId('cr'),
       accountId,
       openedByUserId,
       closedByUserId: null,
@@ -116,38 +137,30 @@ export class CashService {
       updatedAt: now
     };
 
-    this.#registers.set(register.id, register);
-
+    const openingMovement: CashMovementSummary = {
+      id: this.#nextId('cm'),
+      cashRegisterId: register.id,
+      accountId,
+      movementType: 'opening',
+      amount: openingAmount,
+      runningBalance: openingAmount,
+      reference: null,
+      notes: input.notes?.trim() ?? null,
+      createdByUserId: openedByUserId,
+      createdAt: now
+    };
     if (this.#repository) {
       const record: CashRegisterRecord = register;
-      await this.#repository.openRegister(record);
-      await this.#repository.createMovement({
-        id: createCorrelationId('cm'),
-        cashRegisterId: register.id,
-        accountId,
-        movementType: 'opening',
-        amount: openingAmount,
-        runningBalance: openingAmount,
-        reference: null,
-        notes: input.notes?.trim() ?? null,
-        createdByUserId: openedByUserId,
-        createdAt: now
-      });
-    } else {
-      const openingMovement: CashMovementSummary = {
-        id: createCorrelationId('cm'),
-        cashRegisterId: register.id,
-        accountId,
-        movementType: 'opening',
-        amount: openingAmount,
-        runningBalance: openingAmount,
-        reference: null,
-        notes: input.notes?.trim() ?? null,
-        createdByUserId: openedByUserId,
-        createdAt: now
-      };
-      this.#movements.set(openingMovement.id, openingMovement);
+      if (this.#repository.openRegisterWithMovement) {
+        await this.#repository.openRegisterWithMovement(record, openingMovement);
+      } else {
+        await this.#repository.openRegister(record);
+        await this.#repository.createMovement(openingMovement);
+      }
     }
+
+    this.#registers.set(register.id, register);
+    this.#movements.set(openingMovement.id, openingMovement);
 
     return register;
   }
@@ -176,31 +189,47 @@ export class CashService {
       closedAt: now,
       updatedAt: now
     };
-    this.#registers.set(registerId, updated);
-
+    const closingMovement: CashMovementSummary = {
+      id: this.#nextId('cm'),
+      cashRegisterId: registerId,
+      accountId: register.accountId,
+      movementType: 'closing',
+      amount: closingAmount,
+      runningBalance: currentBalance,
+      reference: null,
+      notes: input.notes?.trim() ?? null,
+      createdByUserId: closedByUserId,
+      createdAt: now
+    };
     if (this.#repository) {
-      await this.#repository.closeRegister(
-        registerId,
-        closingAmount,
-        currentBalance,
-        difference,
-        closedByUserId,
-        now,
-        now
-      );
-      await this.#repository.createMovement({
-        id: createCorrelationId('cm'),
-        cashRegisterId: registerId,
-        accountId: register.accountId,
-        movementType: 'closing',
-        amount: closingAmount,
-        runningBalance: currentBalance,
-        reference: null,
-        notes: input.notes?.trim() ?? null,
-        createdByUserId: closedByUserId,
-        createdAt: now
-      });
+      if (this.#repository.closeRegisterWithMovement) {
+        await this.#repository.closeRegisterWithMovement(
+          register.accountId,
+          registerId,
+          closingAmount,
+          currentBalance,
+          difference,
+          closedByUserId,
+          now,
+          now,
+          closingMovement
+        );
+      } else {
+        await this.#repository.closeRegister(
+          registerId,
+          closingAmount,
+          currentBalance,
+          difference,
+          closedByUserId,
+          now,
+          now
+        );
+        await this.#repository.createMovement(closingMovement);
+      }
     }
+
+    this.#registers.set(registerId, updated);
+    this.#movements.set(closingMovement.id, closingMovement);
 
     return { register: updated, difference };
   }
@@ -219,7 +248,9 @@ export class CashService {
     const amount = requirePositiveNumber(input.amount, 'amount');
     const currentBalance = await this.getCurrentBalance(registerId);
     const newBalance =
-      input.movementType === 'withdrawal' ? currentBalance - amount : currentBalance + amount;
+      input.movementType === 'withdrawal' || input.movementType === 'deposit'
+        ? currentBalance - amount
+        : currentBalance + amount;
 
     if (newBalance < 0) {
       throw new ConflictError('Insufficient balance for withdrawal', {
@@ -230,7 +261,7 @@ export class CashService {
 
     const now = nowIso();
     const movement: CashMovementSummary = {
-      id: createCorrelationId('cm'),
+      id: this.#nextId('cm'),
       cashRegisterId: registerId,
       accountId,
       movementType: input.movementType,
@@ -242,12 +273,20 @@ export class CashService {
       createdAt: now
     };
 
-    this.#movements.set(movement.id, movement);
-
     if (this.#repository) {
       const record: CashMovementRecord = movement;
-      await this.#repository.createMovement(record);
+      const persisted = this.#repository.recordMovementAtomically
+        ? await this.#repository.recordMovementAtomically(accountId, registerId, record)
+        : await (async () => {
+            await this.#repository!.createMovement(record);
+            return record;
+          })();
+      const summary = persisted as CashMovementSummary;
+      this.#movements.set(summary.id, summary);
+      return summary;
     }
+
+    this.#movements.set(movement.id, movement);
 
     return movement;
   }
@@ -265,16 +304,17 @@ export class CashService {
     if (register.status === 'closed')
       throw new ConflictError('Cannot record payment on closed register');
 
+    const normalizedAmount = requirePositiveNumber(amount, 'amount');
     const currentBalance = await this.getCurrentBalance(registerId);
-    const newBalance = currentBalance + amount;
+    const newBalance = currentBalance + normalizedAmount;
     const now = nowIso();
 
     const movement: CashMovementSummary = {
-      id: createCorrelationId('cm'),
+      id: this.#nextId('cm'),
       cashRegisterId: registerId,
       accountId,
       movementType: 'payment',
-      amount: Math.round(amount * 100) / 100,
+      amount: Math.round(normalizedAmount * 100) / 100,
       runningBalance: Math.round(newBalance * 100) / 100,
       reference: reference ?? null,
       notes: notes ?? null,
@@ -282,12 +322,20 @@ export class CashService {
       createdAt: now
     };
 
-    this.#movements.set(movement.id, movement);
-
     if (this.#repository) {
       const record: CashMovementRecord = movement;
-      await this.#repository.createMovement(record);
+      const persisted = this.#repository.recordMovementAtomically
+        ? await this.#repository.recordMovementAtomically(accountId, registerId, record)
+        : await (async () => {
+            await this.#repository!.createMovement(record);
+            return record;
+          })();
+      const summary = persisted as CashMovementSummary;
+      this.#movements.set(summary.id, summary);
+      return summary;
     }
+
+    this.#movements.set(movement.id, movement);
 
     return movement;
   }
@@ -329,6 +377,42 @@ export class CashService {
     return Array.from(this.#movements.values())
       .filter((m) => m.cashRegisterId === registerId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async getReconciliation(
+    registerId: string,
+    accountId: AccountId
+  ): Promise<CashReconciliationSummary> {
+    const register = this.#registers.get(registerId) ?? (await this.#repository?.findById(registerId));
+    if (!register || register.accountId !== accountId) {
+      throw new NotFoundError('Cash register not found', { registerId });
+    }
+    if (this.#repository && !this.#registers.has(registerId)) {
+      this.#registers.set(registerId, register);
+    }
+    const movements = await this.getMovements(registerId);
+    const totalIn = movements
+      .filter((movement) => !['withdrawal', 'deposit'].includes(movement.movementType))
+      .reduce((sum, movement) => sum + movement.amount, 0);
+    const totalOut = movements
+      .filter((movement) => movement.movementType === 'withdrawal' || movement.movementType === 'deposit')
+      .reduce((sum, movement) => sum + movement.amount, 0);
+    const expectedAmount = register.status === 'closed'
+      ? register.expectedClosingAmount ?? 0
+      : await this.getCurrentBalance(registerId);
+    return {
+      registerId,
+      accountId,
+      status: register.status,
+      openingAmount: register.openingAmount,
+      expectedAmount: Math.round(expectedAmount * 100) / 100,
+      declaredAmount: register.closingAmount,
+      difference: register.difference,
+      totalIn: Math.round(totalIn * 100) / 100,
+      totalOut: Math.round(totalOut * 100) / 100,
+      movementCount: movements.length,
+      reconciledAt: nowIso()
+    };
   }
 
   listRegisters(accountId: AccountId, limit = 30): CashRegisterSummary[] {

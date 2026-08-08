@@ -55,7 +55,7 @@ No planejamento do produto, `Tabelas de Preço` aparece em `Cadastros Auxiliares
 
 - `Múltiplas tabelas`
 
-Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:531).
+Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md).
 
 ## 4. Estrutura visual da tela
 
@@ -155,7 +155,7 @@ O planejamento já diz explicitamente que `Produtos` possuem:
 
 - `Tabelas de preço`
 
-Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:438).
+Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md).
 
 ### 7.1 Interpretação
 
@@ -188,7 +188,7 @@ Com campos:
 - `Valor`
 - ação `Salvar`
 
-Isso aparece em [2026-04-23-relatorio-entidade-servico.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-servico.md:152).
+Isso aparece em [2026-04-23-relatorio-entidade-servico.md](../guides/2026-04-23-relatorio-entidade-servico.md).
 
 ### 8.1 Leitura estrutural
 

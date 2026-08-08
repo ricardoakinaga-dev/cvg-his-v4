@@ -7,6 +7,8 @@ import {
   EncounterFinancialService,
   FinancialIncomeStatementService,
   FinancialPayablesService,
+  FinancialLedgerService,
+  InMemoryFinancialLedgerRepository,
   InMemoryEncounterFinancialRepository,
   InMemoryFinancialPayablesRepository
 } from '@cvg-his-v2/module-financial';
@@ -84,11 +86,13 @@ function handlers() {
   const billing = {} as never;
   const receivables = new InMemoryEncounterFinancialRepository();
   const payables = new InMemoryFinancialPayablesRepository();
+  const ledger = new FinancialLedgerService(new InMemoryFinancialLedgerRepository());
   return {
     encounterFinancial: new EncounterFinancialService({ getOrThrow() { throw new Error('unused'); } } as never, billing, {} as never, {} as never, {
       repository: receivables
     }),
     financialPayables: new FinancialPayablesService(payables),
+    ledger,
     financialStatements: new FinancialIncomeStatementService({ receivables, payables }),
     billing,
     audit: { write() {} } as never,
@@ -97,6 +101,59 @@ function handlers() {
     requirePrincipal: () => principal()
   };
 }
+
+test('handleFinancialRoutes exposes the canonical ledger and reconciliation result', async () => {
+  const routeHandlers = handlers();
+  await routeHandlers.ledger!.postEntry({
+    accountId: 'acc-finance-1' as never,
+    sourceType: 'test',
+    sourceId: 'ledger-1',
+    description: 'Teste de reconciliacao',
+    occurredAt: '2026-05-01T10:00:00.000Z',
+    lines: [
+      { accountCode: '1.1.01-caixa', debit: 100, credit: 0 },
+      { accountCode: '3.1.01-receita', debit: 0, credit: 100 }
+    ]
+  });
+
+  const listResponse = new MockResponse();
+  await handleFinancialRoutes(
+    '/financial/ledger',
+    request('GET', '/financial/ledger?dateFrom=2026-05-01T00:00:00.000Z'),
+    listResponse as never,
+    'corr-ledger-1',
+    routeHandlers
+  );
+  const listed = listResponse.bodyJson<{ items: Array<{ sourceId: string }> }>();
+  assert.equal(listed.items.length, 1);
+  assert.equal(listed.items[0]?.sourceId, 'ledger-1');
+
+  const reconciliationResponse = new MockResponse();
+  await handleFinancialRoutes(
+    '/financial/ledger/reconciliation',
+    request('GET', '/financial/ledger/reconciliation'),
+    reconciliationResponse as never,
+    'corr-ledger-2',
+    routeHandlers
+  );
+  const reconciliation = reconciliationResponse.bodyJson<{
+    balanced: boolean;
+    totalDebit: number;
+    totalCredit: number;
+    entryCount: number;
+  }>();
+  assert.deepEqual(reconciliation, {
+    balanced: true,
+    totalDebit: 100,
+    totalCredit: 100,
+    entryCount: 1,
+    lineCount: 2,
+    accountId: 'acc-finance-1',
+    dateFrom: null,
+    dateTo: null,
+    unbalancedEntryIds: []
+  });
+});
 
 test('handleFinancialRoutes creates, lists and pays accounts payable records', async () => {
   const routeHandlers = handlers();

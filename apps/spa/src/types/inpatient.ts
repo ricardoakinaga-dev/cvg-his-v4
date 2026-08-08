@@ -5,6 +5,8 @@ export interface InpatientStaySummary {
   accountId: string;
   encounterId: string;
   patientId: string;
+  ownerId: string;
+  admittedByUserId: string;
   unit: string;
   ward: string;
   bed: string;

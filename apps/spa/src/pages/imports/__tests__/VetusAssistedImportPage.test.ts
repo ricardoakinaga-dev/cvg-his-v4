@@ -7,7 +7,9 @@ import { vetusImportService } from '@/services/vetusImport';
 vi.mock('@/services/vetusImport', () => ({
   vetusImportService: {
     list: vi.fn(),
-    create: vi.fn()
+    create: vi.fn(),
+    createBatch: vi.fn(),
+    rollbackBatch: vi.fn()
   }
 }));
 
@@ -31,20 +33,39 @@ describe('VetusAssistedImportPage', () => {
         summary: 'Cliente criado; animal criado'
       }
     ]);
-    vi.mocked(vetusImportService.create).mockResolvedValue({
-      id: 'vetusimport-2',
-      accountId: 'acc-1',
-      sourceSystem: 'Vetus',
-      sourceReference: 'planilha-animais-abril',
-      status: 'imported',
-      ownerId: 'owner-1',
-      ownerName: 'Maria Silva',
-      patientId: 'patient-1',
-      patientName: 'Luna',
-      importedByUserId: 'user-1',
-      reviewedBy: 'Maria Recepcao',
-      importedAt: '2026-04-28T10:05:00Z',
-      summary: 'Cliente criado; animal criado'
+    vi.mocked(vetusImportService.createBatch).mockResolvedValue({
+      batch: {
+        id: 'vetusbatch-1',
+        accountId: 'acc-1',
+        sourceSystem: 'Vetus',
+        sourceReference: null,
+        status: 'completed',
+        totalCount: 1,
+        importedCount: 1,
+        linkedCount: 0,
+        rejectedCount: 0,
+        rolledBackCount: 0,
+        createdByUserId: 'user-1',
+        createdAt: '2026-04-28T10:05:00Z',
+        updatedAt: '2026-04-28T10:05:00Z'
+      },
+      items: [{
+        id: 'vetusbatchitem-1',
+        accountId: 'acc-1',
+        batchId: 'vetusbatch-1',
+        rowNumber: 1,
+        sourceReference: 'planilha-animais-abril',
+        status: 'imported',
+        importLogId: 'vetusimport-2',
+        ownerId: 'owner-1',
+        patientId: 'patient-1',
+        ownerCreated: true,
+        patientCreated: true,
+        reason: null,
+        payload: {},
+        createdAt: '2026-04-28T10:05:00Z',
+        updatedAt: '2026-04-28T10:05:00Z'
+      }]
     });
   });
 
@@ -94,33 +115,36 @@ describe('VetusAssistedImportPage', () => {
     await wrapper.findAll('button').find((button) => button.text() === 'Importar')!.trigger('click');
     await flushPromises();
 
-    expect(vetusImportService.create).toHaveBeenCalledWith({
+    expect(vetusImportService.createBatch).toHaveBeenCalledWith({
       sourceSystem: 'Vetus',
-      sourceReference: 'planilha-animais-abril',
-      reviewedBy: 'Maria Recepcao',
-      owner: {
-        legacyVetusId: '3835',
-        fullName: 'Maria Silva',
-        phone: '(11) 99999-1111',
-        email: 'maria@example.com'
-      },
-      patient: {
-        legacyVetusId: '10115',
-        name: 'Luna',
-        species: 'Canina',
-        breed: 'SRD',
-        sex: 'female',
-        baseWeightKg: 12.4,
-        generalNotes: 'Historico Vetus'
-      }
+      items: [{
+        sourceSystem: 'Vetus',
+        sourceReference: 'planilha-animais-abril',
+        reviewedBy: 'Maria Recepcao',
+        owner: {
+          legacyVetusId: '3835',
+          fullName: 'Maria Silva',
+          phone: '(11) 99999-1111',
+          email: 'maria@example.com'
+        },
+        patient: {
+          legacyVetusId: '10115',
+          name: 'Luna',
+          species: 'Canina',
+          breed: 'SRD',
+          sex: 'female',
+          baseWeightKg: 12.4,
+          generalNotes: 'Historico Vetus'
+        }
+      }]
     });
-    expect(wrapper.text()).toContain('1 registro(s) importado(s).');
+    expect(wrapper.text()).toContain('1 registro(s) processado(s).');
     expect(wrapper.text()).toContain('Importado');
     expect(vetusImportService.list).toHaveBeenCalledTimes(2);
   });
 
   it('does not show success when every Vetus row import fails', async () => {
-    vi.mocked(vetusImportService.create).mockRejectedValueOnce(new Error('Importação recusada'));
+    vi.mocked(vetusImportService.createBatch).mockRejectedValueOnce(new Error('Importação recusada'));
     const wrapper = mount(VetusAssistedImportPage);
     await flushPromises();
 
@@ -133,7 +157,7 @@ describe('VetusAssistedImportPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).not.toContain('0 registro(s) importado(s).');
-    expect(wrapper.text()).toContain('1 registro(s) não foram importados.');
+    expect(wrapper.text()).toContain('Importação recusada');
     expect(wrapper.text()).toContain('Importação recusada');
   });
 });

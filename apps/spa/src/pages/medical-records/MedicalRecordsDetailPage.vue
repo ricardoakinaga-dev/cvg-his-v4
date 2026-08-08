@@ -46,6 +46,20 @@
 
       <section class="clinical-record-layout" aria-label="Prontuário clínico estruturado">
         <main class="clinical-record-main">
+          <nav class="clinical-step-tabs" aria-label="Etapas do prontuário">
+            <button
+              v-for="step in clinicalSteps"
+              :key="step.key"
+              type="button"
+              :class="{ 'clinical-step-tab--active': activeClinicalStep === step.key }"
+              :data-testid="`clinical-step-${step.key}`"
+              @click="activeClinicalStep = step.key"
+            >
+              <span>{{ step.number }}</span>
+              {{ step.label }}
+            </button>
+          </nav>
+
           <section class="clinical-section clinical-section--chief">
             <div class="section-heading">
               <div>
@@ -60,7 +74,11 @@
             <p v-else class="empty-clinical-state">Nenhuma queixa principal registrada.</p>
           </section>
 
-          <section class="clinical-section">
+          <section
+            v-if="activeClinicalStep === 'anamnesis'"
+            class="clinical-section"
+            data-clinical-panel="anamnesis"
+          >
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">2. Relato do tutor</span>
@@ -76,7 +94,11 @@
             <p v-else class="empty-clinical-state">Nenhuma anamnese registrada neste atendimento.</p>
           </section>
 
-          <section class="clinical-section">
+          <section
+            v-if="activeClinicalStep === 'exam'"
+            class="clinical-section"
+            data-clinical-panel="exam"
+          >
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">3. Achados objetivos</span>
@@ -92,7 +114,7 @@
             <p v-else class="empty-clinical-state">Nenhum exame físico registrado neste atendimento.</p>
           </section>
 
-          <section class="clinical-section">
+          <section v-if="activeClinicalStep === 'exam'" class="clinical-section">
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">4. Sinais vitais</span>
@@ -112,7 +134,7 @@
             </p>
           </section>
 
-          <section class="clinical-section">
+          <section v-if="activeClinicalStep === 'assessment'" class="clinical-section">
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
@@ -132,7 +154,11 @@
             <p v-else class="empty-clinical-state">Nenhum exame solicitado ou recomendado neste atendimento.</p>
           </section>
 
-          <section class="clinical-section">
+          <section
+            v-if="activeClinicalStep === 'assessment'"
+            class="clinical-section"
+            data-clinical-panel="assessment"
+          >
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
@@ -148,7 +174,11 @@
             <p v-else class="empty-clinical-state">Nenhuma suspeita diagnóstica ou avaliação registrada.</p>
           </section>
 
-          <section class="clinical-section">
+          <section
+            v-if="activeClinicalStep === 'plan'"
+            class="clinical-section"
+            data-clinical-panel="plan"
+          >
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">7. Tratamento</span>
@@ -164,7 +194,7 @@
             <p v-else class="empty-clinical-state">Nenhuma terapêutica ou plano de tratamento registrado.</p>
           </section>
 
-          <section class="clinical-section">
+          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">8. Medicações</span>
@@ -182,7 +212,7 @@
             <p v-else class="empty-clinical-state">Nenhuma prescrição registrada para este atendimento.</p>
           </section>
 
-          <section class="clinical-section">
+          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
@@ -200,7 +230,7 @@
             </p>
           </section>
 
-          <section class="clinical-section">
+          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
             <div class="section-heading">
               <div>
                 <span class="section-heading__eyebrow">10. Complementos</span>
@@ -238,7 +268,7 @@
             </div>
 
             <div class="clinical-form-grid">
-              <label v-for="section in clinicalSheetSections" :key="section.key" class="clinical-field">
+              <label v-for="section in visibleClinicalSheetSections" :key="section.key" class="clinical-field">
                 <span>{{ section.label }}</span>
                 <small>{{ section.hint }}</small>
                 <textarea
@@ -835,6 +865,15 @@ const entryForm = ref({
   content: ''
 });
 
+type ClinicalStepKey = 'anamnesis' | 'exam' | 'assessment' | 'plan';
+const activeClinicalStep = ref<ClinicalStepKey>('anamnesis');
+const clinicalSteps: ReadonlyArray<{ key: ClinicalStepKey; number: number; label: string }> = [
+  { key: 'anamnesis', number: 1, label: 'Anamnese' },
+  { key: 'exam', number: 2, label: 'Exame' },
+  { key: 'assessment', number: 3, label: 'Avaliação' },
+  { key: 'plan', number: 4, label: 'Plano' }
+];
+
 const clinicalSheet = reactive<Record<ClinicalSheetKey, string>>({
   anamnesis: '',
   physicalExam: '',
@@ -894,6 +933,17 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     placeholder: 'Ex.: orientações ao tutor, sinais de alerta, retorno recomendado, pendências e acompanhamento.'
   }
 ];
+
+const visibleClinicalSheetSections = computed(() => {
+  const keysByStep: Record<ClinicalStepKey, readonly ClinicalSheetKey[]> = {
+    anamnesis: ['anamnesis'],
+    exam: ['physicalExam'],
+    assessment: ['assessment'],
+    plan: ['plan', 'prescription', 'conduct']
+  };
+  const visibleKeys = keysByStep[activeClinicalStep.value];
+  return clinicalSheetSections.filter((section) => visibleKeys.includes(section.key));
+});
 
 const activeEntries = computed(() => entries.value.filter((entry) => !entry.deletedAt));
 const anamnesisEntries = computed(() => activeEntries.value.filter((entry) => entry.entryType === 'anamnesis'));
@@ -1562,6 +1612,44 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.clinical-step-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-surface, #ffffff);
+}
+
+.clinical-step-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-right: 1px solid var(--color-border, #cbd5e1);
+  background: transparent;
+  color: var(--color-text-secondary, #475569);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clinical-step-tabs button:last-child {
+  border-right: 0;
+}
+
+.clinical-step-tabs button span {
+  margin-right: 6px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.clinical-step-tabs .clinical-step-tab--active {
+  background: #196647;
+  color: #ffffff;
+}
+
+.clinical-step-tabs .clinical-step-tab--active span {
+  color: #ffffff;
+}
+
 .clinical-record-aside {
   display: grid;
   gap: 14px;
@@ -2143,6 +2231,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 820px) {
+  .clinical-step-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .anamnesis-command,
   .section-heading {
     align-items: stretch;

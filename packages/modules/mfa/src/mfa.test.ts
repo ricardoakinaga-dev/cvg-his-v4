@@ -9,23 +9,25 @@ import {
 } from './totp.js';
 import { encrypt, decrypt, validateMasterKey } from './crypto.js';
 
+const ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
+
 class InMemoryMfaRepository implements MfaRepository {
   readonly records = new Map<string, MfaRecord>();
 
-  async findByUserId(userId: string): Promise<MfaRecord | undefined> {
-    return this.records.get(userId);
+  async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
+    return this.records.get(`${accountId}:${userId}`);
   }
 
   async create(record: MfaRecord): Promise<void> {
-    this.records.set(record.userId, record);
+    this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
   async update(record: MfaRecord): Promise<void> {
-    this.records.set(record.userId, record);
+    this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
-  async delete(userId: string): Promise<void> {
-    this.records.delete(userId);
+  async delete(accountId: string, userId: string): Promise<void> {
+    this.records.delete(`${accountId}:${userId}`);
   }
 }
 
@@ -68,7 +70,7 @@ describe('MfaService', () => {
 
   describe('initiateSetup', () => {
     it('returns secret, provisioning URI, and recovery codes', async () => {
-      const result = await service.initiateSetup('user_123', 'user@example.com');
+      const result = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
 
       expect(result.secret).toBeDefined();
       expect(result.secret.length).toBeGreaterThan(0);
@@ -78,15 +80,20 @@ describe('MfaService', () => {
     });
 
     it('stores pending setup in memory', async () => {
-      const result = await service.initiateSetup('user_123', 'user@example.com');
+      const result = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
 
-      const pending = await service.initiateSetup('user_123', 'user@example.com');
+      const pending = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       expect(pending.secret).toBeDefined();
       expect(pending.recoveryCodes).toHaveLength(8);
     });
 
     it('uses custom issuer when provided', async () => {
-      const result = await service.initiateSetup('user_123', 'user@example.com', 'CustomApp');
+      const result = await service.initiateSetup(
+        ACCOUNT_ID,
+        'user_123',
+        'user@example.com',
+        'CustomApp'
+      );
 
       expect(result.provisioningUri).toContain('CustomApp');
     });
@@ -94,10 +101,10 @@ describe('MfaService', () => {
 
   describe('confirmSetup', () => {
     it('confirms setup and returns record with decrypted secret', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      const record = await service.confirmSetup('user_123', token);
+      const record = await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
       expect(record.userId).toBe('user_123');
       expect(record.isActive).toBe(true);
@@ -105,36 +112,38 @@ describe('MfaService', () => {
     });
 
     it('persists encrypted secret to repository', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      const persisted = await repo.findByUserId('user_123');
+      const persisted = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(persisted).toBeDefined();
       expect(persisted?.isActive).toBe(true);
       expect(persisted?.secret).not.toBe(setup.secret);
     });
 
     it('throws when no pending setup exists', async () => {
-      await expect(service.confirmSetup('user_123', '000000')).rejects.toThrow(
+      await expect(service.confirmSetup(ACCOUNT_ID, 'user_123', '000000')).rejects.toThrow(
         'No pending MFA setup found'
       );
     });
 
     it('throws when TOTP token is invalid', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
 
-      await expect(service.confirmSetup('user_123', '000000')).rejects.toThrow('Invalid TOTP code');
+      await expect(service.confirmSetup(ACCOUNT_ID, 'user_123', '000000')).rejects.toThrow(
+        'Invalid TOTP code'
+      );
     });
 
     it('clears pending setup after confirmation', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      await expect(service.confirmSetup('user_123', token)).rejects.toThrow(
+      await expect(service.confirmSetup(ACCOUNT_ID, 'user_123', token)).rejects.toThrow(
         'No pending MFA setup found'
       );
     });
@@ -142,23 +151,24 @@ describe('MfaService', () => {
 
   describe('verifyLogin', () => {
     it('verifies login with valid TOTP for confirmed user', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      const result = await service.verifyLogin('user_123', token);
+      const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
 
       expect(result).toBe(true);
     });
 
     it('returns false for non-existent user', async () => {
-      const result = await service.verifyLogin('nonexistent', '000000');
+      const result = await service.verifyLogin(ACCOUNT_ID, 'nonexistent', '000000');
 
       expect(result).toBe(false);
     });
 
     it('returns false for inactive MFA', async () => {
       await repo.create({
+        accountId: ACCOUNT_ID,
         userId: 'user_inactive',
         secret: 'SECRET',
         isActive: false,
@@ -166,69 +176,79 @@ describe('MfaService', () => {
         createdAt: new Date().toISOString()
       });
 
-      const result = await service.verifyLogin('user_inactive', '000000');
+      const result = await service.verifyLogin(ACCOUNT_ID, 'user_inactive', '000000');
 
       expect(result).toBe(false);
     });
 
     it('returns false for wrong TOTP', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      const result = await service.verifyLogin('user_123', '000000');
+      const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', '000000');
 
       expect(result).toBe(false);
     });
 
     it('verifies login for pending setup', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      const result = await service.verifyLogin('user_123', token);
+      const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
 
       expect(result).toBe(true);
     });
 
     it('rejects pending setup with wrong token', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
 
-      const result = await service.verifyLogin('user_123', '000000');
+      const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', '000000');
 
       expect(result).toBe(false);
     });
 
     it('updates lastUsedAt after successful verification', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      await service.verifyLogin('user_123', token);
+      await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
 
-      const record = await repo.findByUserId('user_123');
+      const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record?.lastUsedAt).toBeDefined();
     });
   });
 
   describe('isMfaActive', () => {
     it('returns true for active MFA user', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      const result = await service.isMfaActive('user_123');
+      const result = await service.isMfaActive(ACCOUNT_ID, 'user_123');
 
       expect(result).toBe(true);
     });
 
     it('returns false for user without MFA', async () => {
-      const result = await service.isMfaActive('nonexistent');
+      const result = await service.isMfaActive(ACCOUNT_ID, 'nonexistent');
 
       expect(result).toBe(false);
     });
 
+    it('does not expose an active credential to another account', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', generateCurrentTOTP(setup.secret));
+
+      await expect(
+        service.isMfaActive('00000000-0000-4000-8000-000000000002', 'user_123')
+      ).resolves.toBe(false);
+    });
+
     it('returns false for inactive MFA user', async () => {
       await repo.create({
+        accountId: ACCOUNT_ID,
         userId: 'user_inactive',
         secret: 'SECRET',
         isActive: false,
@@ -236,7 +256,7 @@ describe('MfaService', () => {
         createdAt: new Date().toISOString()
       });
 
-      const result = await service.isMfaActive('user_inactive');
+      const result = await service.isMfaActive(ACCOUNT_ID, 'user_inactive');
 
       expect(result).toBe(false);
     });
@@ -244,52 +264,54 @@ describe('MfaService', () => {
 
   describe('disableMfa', () => {
     it('disables MFA with valid TOTP', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      await service.disableMfa('user_123', token);
+      await service.disableMfa(ACCOUNT_ID, 'user_123', token);
 
-      const record = await repo.findByUserId('user_123');
+      const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record).toBeUndefined();
     });
 
     it('throws when MFA not configured', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      await expect(service.disableMfa('user_nonexistent', token)).rejects.toThrow(
+      await expect(service.disableMfa(ACCOUNT_ID, 'user_nonexistent', token)).rejects.toThrow(
         'MFA is not configured'
       );
     });
 
     it('throws when token is invalid', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
 
-      await expect(service.disableMfa('user_123', '000000')).rejects.toThrow('Invalid TOTP code');
+      await expect(service.disableMfa(ACCOUNT_ID, 'user_123', '000000')).rejects.toThrow(
+        'Invalid TOTP code'
+      );
     });
   });
 
   describe('regenerateRecoveryCodes', () => {
     it('returns new recovery codes and persists hashed versions', async () => {
-      const setup = await service.initiateSetup('user_123', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await service.confirmSetup('user_123', token);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
       const originalCodes = setup.recoveryCodes;
 
-      const newCodes = await service.regenerateRecoveryCodes('user_123');
+      const newCodes = await service.regenerateRecoveryCodes(ACCOUNT_ID, 'user_123');
 
       expect(newCodes).toHaveLength(8);
       expect(newCodes).not.toEqual(originalCodes);
 
-      const record = await repo.findByUserId('user_123');
+      const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record?.recoveryCodes).toHaveLength(8);
     });
 
     it('throws when MFA not configured', async () => {
-      await expect(service.regenerateRecoveryCodes('nonexistent')).rejects.toThrow(
+      await expect(service.regenerateRecoveryCodes(ACCOUNT_ID, 'nonexistent')).rejects.toThrow(
         'MFA is not configured'
       );
     });
@@ -298,7 +320,7 @@ describe('MfaService', () => {
   describe('MfaService without repository', () => {
     it('initiateSetup works without repository', async () => {
       const noRepo = new MfaService();
-      const result = await noRepo.initiateSetup('user_no_repo', 'test@example.com');
+      const result = await noRepo.initiateSetup(ACCOUNT_ID, 'user_no_repo', 'test@example.com');
 
       expect(result.secret).toBeDefined();
     });
@@ -306,7 +328,7 @@ describe('MfaService', () => {
     it('verifyLogin returns false without repository (no record)', async () => {
       const noRepo = new MfaService();
 
-      const result = await noRepo.verifyLogin('user_no_repo', '000000');
+      const result = await noRepo.verifyLogin(ACCOUNT_ID, 'user_no_repo', '000000');
 
       expect(result).toBe(false);
     });
@@ -314,39 +336,39 @@ describe('MfaService', () => {
     it('isMfaActive returns false without repository', async () => {
       const noRepo = new MfaService();
 
-      const result = await noRepo.isMfaActive('user_no_repo');
+      const result = await noRepo.isMfaActive(ACCOUNT_ID, 'user_no_repo');
 
       expect(result).toBe(false);
     });
 
     it('confirmSetup does not persist without repository', async () => {
       const noRepo = new MfaService();
-      const setup = await noRepo.initiateSetup('user_no_repo', 'test@example.com');
+      const setup = await noRepo.initiateSetup(ACCOUNT_ID, 'user_no_repo', 'test@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
-      const record = await noRepo.confirmSetup('user_no_repo', token);
+      const record = await noRepo.confirmSetup(ACCOUNT_ID, 'user_no_repo', token);
 
       expect(record.userId).toBe('user_no_repo');
     });
 
     it('disableMfa throws without repository (no record to delete)', async () => {
       const noRepo = new MfaService();
-      const setup = await noRepo.initiateSetup('user_no_repo', 'test@example.com');
+      const setup = await noRepo.initiateSetup(ACCOUNT_ID, 'user_no_repo', 'test@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await noRepo.confirmSetup('user_no_repo', token);
+      await noRepo.confirmSetup(ACCOUNT_ID, 'user_no_repo', token);
 
-      await expect(noRepo.disableMfa('user_no_repo', token)).rejects.toThrow(
+      await expect(noRepo.disableMfa(ACCOUNT_ID, 'user_no_repo', token)).rejects.toThrow(
         'MFA is not configured'
       );
     });
 
     it('regenerateRecoveryCodes throws without repository (no record to update)', async () => {
       const noRepo = new MfaService();
-      const setup = await noRepo.initiateSetup('user_no_repo', 'test@example.com');
+      const setup = await noRepo.initiateSetup(ACCOUNT_ID, 'user_no_repo', 'test@example.com');
       const token = generateCurrentTOTP(setup.secret);
-      await noRepo.confirmSetup('user_no_repo', token);
+      await noRepo.confirmSetup(ACCOUNT_ID, 'user_no_repo', token);
 
-      await expect(noRepo.regenerateRecoveryCodes('user_no_repo')).rejects.toThrow(
+      await expect(noRepo.regenerateRecoveryCodes(ACCOUNT_ID, 'user_no_repo')).rejects.toThrow(
         'MFA is not configured'
       );
     });

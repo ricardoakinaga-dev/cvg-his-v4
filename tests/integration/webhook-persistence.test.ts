@@ -11,7 +11,7 @@ import { queryOne, cleanupRegistry, uuid } from '../helpers/db-helpers.js';
 // PostgreSQL persistence.
 // ============================================================================
 
-const TEST_ACCOUNT_ID = 'acc_test_001';
+const TEST_ACCOUNT_ID = 'a1000000-0000-4000-8000-000000000001';
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
 const TEST_URL = 'https://example.com/webhook';
 
@@ -31,7 +31,18 @@ beforeAll(async () => {
 
   db = drizzle(pool, { schema });
   webhookRepo = new DatabaseWebhookRepository(db as never);
-  webhooksService = new WebhooksService({ repository: webhookRepo });
+  webhooksService = new WebhooksService({
+    repository: webhookRepo,
+    resolveHostname: async () => ['93.184.216.34'],
+    deliverRequest: async () => ({ success: true, statusCode: 204 })
+  });
+
+  await pool.query(
+    `INSERT INTO accounts (id, tenant_id, slug, name, is_active)
+     VALUES ($1, '00000000-0000-0000-0000-000000000001', $2, 'Webhook Test', true)
+     ON CONFLICT (id) DO NOTHING`,
+    [TEST_ACCOUNT_ID, `webhook-test-${TEST_ACCOUNT_ID}`]
+  );
 
   await cleanupWebhooks();
 });
@@ -91,7 +102,7 @@ describe('WH-001 — Webhook Registration with Database Persistence', () => {
 
     cleanupRegistry.register('webhooks', created.id);
 
-    const retrieved = await webhooksService.get(created.id);
+    const retrieved = await webhooksService.get(TEST_ACCOUNT_ID as never, created.id);
 
     expect(retrieved).not.toBeNull();
     expect(retrieved!.id).toBe(created.id);
@@ -127,7 +138,7 @@ describe('WH-001 — Webhook Registration with Database Persistence', () => {
 
     cleanupRegistry.register('webhooks', created.id);
 
-    const updated = await webhooksService.update(created.id, {
+    const updated = await webhooksService.update(TEST_ACCOUNT_ID as never, created.id, {
       url: `${TEST_URL}/updated`,
       isActive: false
     });
@@ -146,11 +157,11 @@ describe('WH-001 — Webhook Registration with Database Persistence', () => {
 
     cleanupRegistry.register('webhooks', created.id);
 
-    const deleted = await webhooksService.delete(created.id);
+    const deleted = await webhooksService.delete(TEST_ACCOUNT_ID as never, created.id);
 
     expect(deleted).toBe(true);
 
-    const retrieved = await webhooksService.get(created.id);
+    const retrieved = await webhooksService.get(TEST_ACCOUNT_ID as never, created.id);
     expect(retrieved!.isActive).toBe(false);
   });
 });
@@ -171,7 +182,7 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
       TEST_ACCOUNT_ID as never,
-      { url: 'http://localhost:99999/webhook', events: ['billing.record.created'] }
+      { url: `${TEST_URL}/delivery`, events: ['billing.record.created'] }
     );
 
     cleanupRegistry.register('webhooks', webhook.id);
@@ -192,9 +203,9 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
 
     expect(dispatched).toBe(1);
 
-    const deliveries = await webhooksService.listDeliveries(webhook.id);
+    const deliveries = await webhooksService.listDeliveries(TEST_ACCOUNT_ID as never, webhook.id);
     expect(deliveries.length).toBe(1);
-    expect(deliveries[0].status).toBe('failed');
+    expect(deliveries[0].status).toBe('delivered');
     expect(deliveries[0].event).toBe('billing.record.created');
   });
 
@@ -207,7 +218,7 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
 
     cleanupRegistry.register('webhooks', webhook.id);
 
-    await webhooksService.update(webhook.id, { isActive: false });
+    await webhooksService.update(TEST_ACCOUNT_ID as never, webhook.id, { isActive: false });
 
     const dispatched = await webhooksService.dispatch(
       TEST_ACCOUNT_ID as never,
@@ -245,7 +256,7 @@ describe('WH-003 — Delivery Log Cascade Delete', () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
       TEST_ACCOUNT_ID as never,
-      { url: 'http://localhost:99999/delivery-test', events: ['billing.record.created'] }
+      { url: `${TEST_URL}/delivery-test`, events: ['billing.record.created'] }
     );
 
     cleanupRegistry.register('webhooks', webhook.id);
@@ -260,7 +271,7 @@ describe('WH-003 — Delivery Log Cascade Delete', () => {
     );
     expect(beforeDelete?.count).toBeGreaterThan(0);
 
-    await webhooksService.delete(webhook.id);
+    await webhooksService.delete(TEST_ACCOUNT_ID as never, webhook.id);
 
     const afterDelete = await queryOne<{ count: number }>(
       `SELECT COUNT(*)::int as count FROM webhook_deliveries WHERE webhook_id = $1`,

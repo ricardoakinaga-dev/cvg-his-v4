@@ -27,8 +27,6 @@ import { loginViaToken } from '../fixtures/spa-fixture';
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';
 const HEADING_SELECTOR = 'h1, h2, h3, [role="heading"]';
-const CANONICAL_OWNER_IDS = ['owner_maria_silva', 'owner_joao_souza'] as const;
-const CANONICAL_PATIENT_IDS = ['patient_luna'] as const;
 const VISUAL_OWNER_NAME = 'Maria Visual Snapshot';
 const VISUAL_OWNER_DOCUMENT = 'VISUAL-OWNER-001';
 const VISUAL_PATIENT_NAME = 'Luna Visual Snapshot';
@@ -53,76 +51,97 @@ test.describe('Visual Regression — List Pages', () => {
 
   test('owners list page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
+    const owner = await createVisualOwner(token);
 
-    await navigateTo(page, '/owners');
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
-    await keepCanonicalTableRows(page, CANONICAL_OWNER_IDS);
-    await normalizeMetricValues(page, '.summary-card__value', ['00', '00', '00', '00']);
-    await normalizeOwnersTable(page);
+    try {
+      await navigateTo(page, '/owners');
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await keepCanonicalTableRows(page, [owner.id]);
+      await normalizeMetricValues(page, '.summary-card__value', ['00', '00', '00', '00']);
+      await normalizeOwnersTable(page);
 
-    await stabilizeVisual(page, pageProfiles.listPage);
+      await stabilizeVisual(page, pageProfiles.listPage);
 
-    await expect(page).toHaveScreenshot('owners-list-page.png', {
-      maxDiffPixels: 100,
-      fullPage: false
-    });
+      await expect(page).toHaveScreenshot('owners-list-page.png', {
+        maxDiffPixels: 100,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 
   test('patients list page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
 
-    await navigateTo(page, '/patients');
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
-    await keepCanonicalTableRows(page, CANONICAL_PATIENT_IDS);
-    await normalizeMetricValues(page, '.overview-metric__value', ['00', '00', '00', '00']);
-    await normalizePatientsTable(page);
+    try {
+      await navigateTo(page, '/patients');
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await keepCanonicalTableRows(page, [patient.id]);
+      await normalizeMetricValues(page, '.overview-metric__value, .summary-card__value', ['00', '00', '00', '00']);
+      await normalizePatientsTable(page);
 
-    await stabilizeVisual(page, pageProfiles.listPage);
+      await stabilizeVisual(page, pageProfiles.listPage);
 
-    await expect(page).toHaveScreenshot('patients-list-page.png', {
-      maxDiffPixels: 100,
-      fullPage: false
-    });
+      await expect(page).toHaveScreenshot('patients-list-page.png', {
+        maxDiffPixels: 100,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 
   test('appointments kanban page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
+    const appointment = await createVisualAppointment(token, patient.id, owner.id);
 
-    await navigateTo(page, '/appointments');
+    try {
+      await stubVisualSchedulingOverview(page, appointment.id);
+      await navigateTo(page, '/appointments');
 
-    const canonicalCard = page.locator('.kanban-card', { hasText: 'Luna' }).first();
-    const hasCanonicalCard = await canonicalCard.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasCanonicalCard) {
-      test.skip(true, 'No canonical appointment card available — skipping snapshot');
-      return;
+      await page
+        .getByRole('button', { name: `Selecionar ${appointment.referenceDate}`, exact: true })
+        .click();
+
+      const canonicalCard = page.locator('.timeline-item', { hasText: 'Luna' }).first();
+      await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible({
+        timeout: 15000
+      });
+
+      await waitForPageSettled(page, {
+        contentSelector: '.appointments-cockpit__layout',
+        timeout: 15000
+      });
+      await keepCanonicalKanbanCards(page, 'Luna');
+      await normalizeVisualText(page, { [VISUAL_PATIENT_NAME]: 'Luna' });
+
+      await stabilizeVisual(page, pageProfiles.kanbanPage);
+
+      await expect(page).toHaveScreenshot('appointments-kanban-page.png', {
+        maxDiffPixels: 150,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/appointments/${appointment.id}`);
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
     }
-
-    await waitForPageSettled(page, {
-      contentSelector: '.kanban-column',
-      timeout: 15000
-    });
-    await keepCanonicalKanbanCards(page, 'Luna');
-
-    await stabilizeVisual(page, pageProfiles.kanbanPage);
-
-    await expect(page).toHaveScreenshot('appointments-kanban-page.png', {
-      maxDiffPixels: 150,
-      fullPage: false
-    });
   });
 
   test('encounters list page', async ({ page }) => {
-    const token = await ensureAuthToken(page);
-    if (!token) return;
+    await ensureAuthToken(page);
 
     await stubEmptyCollection(page, '/encounters');
     await navigateTo(page, '/encounters');
@@ -147,9 +166,9 @@ test.describe('Visual Regression — List Pages', () => {
   });
 
   test('inpatient list page', async ({ page }) => {
-    const token = await ensureAuthToken(page);
-    if (!token) return;
+    await ensureAuthToken(page);
 
+    await stubEmptyCollection(page, '/inpatient');
     await navigateTo(page, '/inpatient');
     await waitForPageSettled(page, {
       contentSelector: HEADING_SELECTOR,
@@ -166,10 +185,9 @@ test.describe('Visual Regression — List Pages', () => {
   });
 
   test('billing list page', async ({ page }) => {
-    const token = await ensureAuthToken(page);
-    if (!token) return;
+    await ensureAuthToken(page);
 
-    await stubEmptyCollection(page, '/billing');
+    await stubEmptyFinancialReceivables(page);
     await navigateTo(page, '/billing');
     await waitForPageSettled(page, {
       contentSelector: HEADING_SELECTOR,
@@ -197,7 +215,6 @@ test.describe('Visual Regression — Detail Pages', () => {
 
   test('owner detail page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
 
     const owner = await createVisualOwner(token);
 
@@ -208,6 +225,7 @@ test.describe('Visual Regression — Detail Pages', () => {
         timeout: 15000
       });
       await normalizeVisualText(page, {
+        [owner.id]: 'owner_maria_silva',
         [owner.documentId]: VISUAL_OWNER_DOCUMENT
       });
 
@@ -224,7 +242,6 @@ test.describe('Visual Regression — Detail Pages', () => {
 
   test('patient detail page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
 
     const owner = await createVisualOwner(token);
     const patient = await createVisualPatient(token, owner.id);
@@ -237,8 +254,11 @@ test.describe('Visual Regression — Detail Pages', () => {
       });
       await normalizeVisualText(page, {
         [owner.documentId]: VISUAL_OWNER_DOCUMENT,
-        [patient.name]: VISUAL_PATIENT_NAME
+        [patient.name]: VISUAL_PATIENT_NAME,
+        ...(patient.legacyVetusId ? { [String(patient.legacyVetusId)]: '1' } : {})
       });
+      await normalizeDateTimes(page);
+      await normalizePatientIdentifiers(page);
 
       await stabilizeVisual(page, pageProfiles.detailPage);
 
@@ -254,49 +274,106 @@ test.describe('Visual Regression — Detail Pages', () => {
 
   test('encounter detail page', async ({ page }) => {
     const token = await ensureAuthToken(page);
-    if (!token) return;
 
-    await navigateTo(page, '/encounters');
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
+    const encounter = await createVisualEncounter(token, patient.id, owner.id);
 
-    const firstEncounterLink = page.locator('a[href*="/encounters/"]').first();
-    const hasEncounter = await firstEncounterLink.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasEncounter) {
-      test.skip(true, 'No encounters available for detail snapshot');
-      return;
+    try {
+      await navigateTo(page, `/encounters/${encounter.id}`);
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await normalizeVisualText(page, {
+        [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+        [patient.name]: VISUAL_PATIENT_NAME
+      });
+
+      await stabilizeVisual(page, pageProfiles.detailPage);
+
+      await expect(page).toHaveScreenshot('encounter-detail-page.png', {
+        maxDiffPixels: 150,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/encounters/${encounter.id}`);
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
     }
-
-    await firstEncounterLink.click();
-    await waitForPageSettled(page, {
-      contentSelector: HEADING_SELECTOR,
-      timeout: 15000
-    });
-
-    await stabilizeVisual(page, pageProfiles.detailPage);
-
-    await expect(page).toHaveScreenshot('encounter-detail-page.png', {
-      maxDiffPixels: 150,
-      fullPage: false
-    });
   });
 
   test('billing detail page', async ({ page }) => {
-    test.skip(true, 'Billing detail snapshot requires a canonical seed record');
+    const token = await ensureAuthToken(page);
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
+    const encounter = await createVisualEncounter(token, patient.id, owner.id);
+    await createVisualBillingEstimate(token, encounter.id);
+
+    try {
+      await navigateTo(page, `/billing/${encounter.id}`);
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await normalizeVisualText(page, {
+        [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+        [patient.name]: VISUAL_PATIENT_NAME,
+        [encounter.id]: 'encounter_visual',
+        [encounter.id.slice(0, 8)]: 'encounter_visual'
+      });
+
+      await stabilizeVisual(page, pageProfiles.detailPage);
+
+      await expect(page).toHaveScreenshot('billing-detail-page.png', {
+        maxDiffPixels: 150,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/encounters/${encounter.id}`);
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 
   test('appointment detail page', async ({ page }) => {
-    test.skip(true, 'Appointment detail snapshot requires a canonical seed record');
+    const token = await ensureAuthToken(page);
+    const owner = await createVisualOwner(token);
+    const patient = await createVisualPatient(token, owner.id);
+    const appointment = await createVisualAppointment(token, patient.id, owner.id);
+
+    try {
+      await navigateTo(page, `/appointments/${appointment.id}`);
+      await waitForPageSettled(page, {
+        contentSelector: HEADING_SELECTOR,
+        timeout: 15000
+      });
+      await normalizeVisualText(page, {
+        [owner.documentId]: VISUAL_OWNER_DOCUMENT,
+        [patient.name]: VISUAL_PATIENT_NAME
+      });
+
+      await stabilizeVisual(page, pageProfiles.detailPage);
+
+      await expect(page).toHaveScreenshot('appointment-detail-page.png', {
+        maxDiffPixels: 150,
+        fullPage: false
+      });
+    } finally {
+      await deleteVisualResource(token, `/appointments/${appointment.id}`);
+      await deleteVisualResource(token, `/patients/${patient.id}`);
+      await deleteVisualResource(token, `/owners/${owner.id}`);
+    }
   });
 });
 
-async function ensureAuthToken(page: Page): Promise<string | null> {
+async function ensureAuthToken(page: Page): Promise<string> {
   await loginViaToken(page);
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
-  return process.env.E2E_AUTH_TOKEN ?? null;
+  const token = process.env.E2E_AUTH_TOKEN;
+  expect(token, 'E2E_AUTH_TOKEN must be available after browser login').toBeTruthy();
+  return token as string;
 }
 
 async function createVisualOwner(token: string): Promise<{ id: string; documentId: string }> {
@@ -327,7 +404,7 @@ async function createVisualOwner(token: string): Promise<{ id: string; documentI
 async function createVisualPatient(
   token: string,
   ownerId: string
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; legacyVetusId?: string | number }> {
   const response = await fetch(`${API_URL}/patients`, {
     method: 'POST',
     headers: {
@@ -348,11 +425,170 @@ async function createVisualPatient(
     throw new Error(`Failed to create visual patient: ${response.status} ${await response.text()}`);
   }
 
-  const patient = (await response.json()) as { id: string };
+  const patient = (await response.json()) as { id: string; legacyVetusId?: string | number };
   return { ...patient, name: VISUAL_PATIENT_NAME };
 }
 
+async function createVisualEncounter(
+  token: string,
+  patientId: string,
+  ownerId: string
+): Promise<{ id: string }> {
+  const response = await fetch(`${API_URL}/encounters`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      patientId,
+      ownerId,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Visual regression encounter'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create visual encounter: ${response.status} ${await response.text()}`);
+  }
+
+  return (await response.json()) as { id: string };
+}
+
+async function createVisualBillingEstimate(token: string, encounterId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/billing/estimate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ encounterId, administrativeNotes: 'Visual regression billing' })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create visual billing estimate: ${response.status} ${await response.text()}`);
+  }
+}
+
+async function createVisualAppointment(
+  token: string,
+  patientId: string,
+  ownerId: string
+): Promise<{ id: string; referenceDate: string }> {
+  const scheduledAt = new Date();
+  scheduledAt.setHours(10, 0, 0, 0);
+  const response = await fetch(`${API_URL}/appointments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      patientId,
+      ownerId,
+      scheduledAt: scheduledAt.toISOString(),
+      visitType: 'scheduled',
+      reason: 'Visual regression appointment'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create visual appointment: ${response.status} ${await response.text()}`);
+  }
+
+  const appointment = (await response.json()) as { id: string };
+  return { ...appointment, referenceDate: scheduledAt.toISOString().slice(0, 10) };
+}
+
+async function stubVisualSchedulingOverview(page: Page, appointmentId: string): Promise<void> {
+  await page.route('**/scheduling/overview*', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      items?: Array<{ id: string; practitionerStaffId?: string }>;
+      professionals?: unknown[];
+      blocks?: unknown[];
+      stats?: Record<string, unknown>;
+    };
+    const items = (payload.items ?? []).filter((item) => item.id === appointmentId);
+    const professionals = [
+      {
+        id: 'visual-nurse',
+        fullName: 'Enfermagem Inicial',
+        department: 'Triagem',
+        jobTitle: 'Enfermeira',
+        specialty: 'Enfermagem',
+        unit: 'Triagem',
+        status: 'active'
+      },
+      {
+        id: 'visual-vet',
+        fullName: 'Veterinario Responsavel',
+        department: 'Clinica',
+        jobTitle: 'Medico Veterinario',
+        specialty: 'Clinica geral',
+        unit: 'Clinica',
+        status: 'active'
+      }
+    ];
+    const referenceDate = new URL(route.request().url()).searchParams.get('referenceDate')
+      ?? new Date().toISOString().slice(0, 10);
+    const blocks = professionals.map((professional, index) => ({
+      id: `visual-block-${index}`,
+      accountId: 'visual-account',
+      title: 'Intervalo operacional',
+      kind: 'lunch_break',
+      startsAt: `${referenceDate}T12:00:00.000Z`,
+      endsAt: `${referenceDate}T13:00:00.000Z`,
+      practitionerStaffId: professional.id,
+      unit: professional.unit,
+      resourceLabel: undefined
+    }));
+
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        items,
+        professionals,
+        blocks,
+        stats: {
+          ...(payload.stats ?? {}),
+          total: items.length,
+          scheduled: items.filter((item) => !item.practitionerStaffId).length,
+          checkedIn: 0,
+          completed: 0,
+          cancelled: 0,
+          conflicts: 0,
+          unassigned: items.length
+        }
+      }
+    });
+  });
+}
+
 async function deleteVisualResource(token: string, path: string): Promise<void> {
+  if (path.startsWith('/appointments/')) {
+    const appointmentId = path.split('/')[2];
+    const cancelResponse = await fetch(`${API_URL}/appointments/${appointmentId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ reason: 'Visual E2E cleanup' })
+    });
+    if (!cancelResponse.ok && cancelResponse.status !== 404) {
+      throw new Error(`Failed to cancel visual resource ${path}: ${cancelResponse.status}`);
+    }
+    return;
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` }
@@ -390,14 +626,39 @@ async function normalizeVisualText(page: Page, replacements: Record<string, stri
   }, Object.entries(replacements));
 }
 
+async function normalizeDateTimes(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (node.textContent) {
+        node.textContent = node.textContent.replace(
+          /\b\d{2}\/\d{2}\/\d{4},\s+\d{2}:\d{2}:\d{2}\b/g,
+          '01/01/2026, 10:00:00'
+        );
+      }
+      node = walker.nextNode();
+    }
+  });
+}
+
+async function normalizePatientIdentifiers(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    document.querySelectorAll<HTMLElement>('.animal-kicker').forEach((element) => {
+      element.textContent = (element.textContent || '').replace(/^ID\s+[^·]+\s+·/, 'ID 1 ·');
+    });
+  });
+}
+
 async function keepCanonicalTableRows(page: Page, allowedIds: readonly string[]): Promise<void> {
   await page.evaluate((ids) => {
-    const rows = Array.from(document.querySelectorAll('tbody tr'));
-    for (const row of rows) {
-      const html = row.innerHTML;
+    const records = Array.from(document.querySelectorAll('tbody tr, .owner-card, .patient-card'));
+    for (const record of records) {
+      const html = record.innerHTML;
       const keep = ids.some((id) => html.includes(id));
       if (!keep) {
-        row.remove();
+        record.remove();
       }
     }
   }, [...allowedIds]);
@@ -492,6 +753,34 @@ async function normalizeBillingOverview(page: Page): Promise<void> {
 
 async function normalizeOwnersTable(page: Page): Promise<void> {
   await page.evaluate(() => {
+    const ownerCards = Array.from(document.querySelectorAll<HTMLElement>('.owners-list-page .owner-card'));
+    const resultSummary = document.querySelector<HTMLElement>('.owners-list-page__section-head p');
+    if (resultSummary) resultSummary.textContent = 'Mostrando 1 - 1 de 1 resultados';
+
+    ownerCards.forEach((card) => {
+      const name = card.querySelector<HTMLElement>('.owner-card__name');
+      if (name) name.textContent = 'Maria Silva';
+
+      const avatar = card.querySelector<HTMLElement>('.owner-card__avatar');
+      if (avatar) avatar.textContent = 'MS';
+
+      card.querySelectorAll<HTMLElement>('.fact-row').forEach((fact) => {
+        const label = fact.querySelector<HTMLElement>('.fact-row__label')?.textContent?.trim();
+        const value = fact.querySelector<HTMLElement>('.fact-row__label')?.nextElementSibling as HTMLElement | null;
+        if (!value) return;
+
+        const replacementByLabel: Record<string, string> = {
+          ID: 'owner_maria_silva',
+          'CPF/CNPJ': 'TUTOR-001',
+          'Contato principal': '(11) 98888-1111',
+          'Animais do cliente': '0',
+          Cadastro: '24/03/2026'
+        };
+        const replacement = label ? replacementByLabel[label] : undefined;
+        if (replacement) value.textContent = replacement;
+      });
+    });
+
     const presets = [
       { name: 'Maria Silva', document: 'TUTOR-001', contact: '(11) 98888-1111', status: 'Ativo' },
       { name: 'Joao Souza', document: 'TUTOR-002', contact: '(11) 97777-2222', status: 'Ativo' }
@@ -521,6 +810,23 @@ async function normalizeOwnersTable(page: Page): Promise<void> {
 
 async function normalizePatientsTable(page: Page): Promise<void> {
   await page.evaluate(() => {
+    const patientCards = Array.from(document.querySelectorAll<HTMLElement>('.patients-list-page .patient-card'));
+    patientCards.forEach((card) => {
+      const name = card.querySelector<HTMLElement>('.patient-card__name');
+      if (name) name.textContent = 'Luna';
+
+      const meta = card.querySelector<HTMLElement>('.patient-card__meta');
+      if (meta) meta.textContent = 'Canina · SRD';
+
+      const id = card.querySelector<HTMLElement>('.patient-card__id');
+      if (id) id.textContent = 'ID patient_luna';
+    });
+
+    const featuredName = document.querySelector<HTMLElement>('.featured-patient__name');
+    if (featuredName) featuredName.textContent = 'Luna';
+    const featuredMeta = document.querySelector<HTMLElement>('.featured-patient__meta');
+    if (featuredMeta) featuredMeta.textContent = 'Canina · SRD · Maria Silva';
+
     const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.patients-list-page tbody tr'));
     rows.forEach((row) => {
       const cells = row.querySelectorAll<HTMLTableCellElement>('td');
@@ -543,7 +849,7 @@ async function normalizePatientsTable(page: Page): Promise<void> {
 
 async function keepCanonicalKanbanCards(page: Page, canonicalText: string): Promise<void> {
   await page.evaluate((text) => {
-    const cards = Array.from(document.querySelectorAll('.kanban-card'));
+    const cards = Array.from(document.querySelectorAll('.timeline-item'));
     for (const card of cards) {
       if (!(card.textContent || '').includes(text)) {
         card.remove();
@@ -565,6 +871,36 @@ async function stubEmptyCollection(page: Page, path: string): Promise<void> {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ items: [] })
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+}
+
+async function stubEmptyFinancialReceivables(page: Page): Promise<void> {
+  await page.route('**/financial/receivables*', async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().resourceType() === 'document') {
+      await route.continue();
+      return;
+    }
+
+    if (route.request().method() === 'GET' && url.pathname.endsWith('/financial/receivables')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          page: 1,
+          pageSize: 20,
+          total: 0,
+          openCount: 0,
+          settledCount: 0,
+          totalOutstanding: 0,
+          totalSettled: 0
+        })
       });
       return;
     }

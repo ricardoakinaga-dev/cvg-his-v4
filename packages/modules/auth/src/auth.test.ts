@@ -7,6 +7,7 @@ import { MfaService } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { UsersService } from '@cvg-his-v2/module-users';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { AuthService } from './index.js';
 import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
@@ -14,13 +15,16 @@ import type { SessionRepository } from './repositories/session.repository.js';
 import { generateCurrentTOTP } from './totp-wrapper.js';
 
 const SEED_PASSWORD = 'seed_admin';
+const ACCOUNT_ID = 'acc_cvg_demo';
 
-function createAuthService(options: {
-  readonly mfa?: MfaService;
-  readonly sessionRepository?: SessionRepository;
-  readonly secret?: string;
-  readonly verifierSecrets?: readonly string[];
-} = {}) {
+function createAuthService(
+  options: {
+    readonly mfa?: MfaService;
+    readonly sessionRepository?: SessionRepository;
+    readonly secret?: string;
+    readonly verifierSecrets?: readonly string[];
+  } = {}
+) {
   const users = new UsersService();
   const staff = new StaffService();
   const accessControl = new AccessControlService();
@@ -84,7 +88,10 @@ test('AuthService: login requires MFA for critical role when MFA is enabled', as
   assert.ok('requiresMfa' in result);
   assert.equal(result.requiresMfa, true);
   assert.equal(result.userId, 'user_admin');
-  assert.deepEqual(result.mfaMethods, ['totp']);
+  assert.deepEqual(result.mfaMethods, []);
+  assert.equal(result.enrollmentRequired, true);
+  assert.ok(result.challengeId);
+  assert.equal(auth.getPendingMfaEnrollmentUser(result.challengeId).id, 'user_admin');
 });
 
 test('AuthService: login does not require MFA for non-critical role', async () => {
@@ -108,16 +115,51 @@ test('AuthService: completeMfaLogin returns session after valid TOTP', async () 
   );
   assert.ok('requiresMfa' in loginResult);
 
-  const setup = await mfa.initiateSetup('user_admin', 'admin@cvg-his.local');
+  const setup = await mfa.initiateSetup(ACCOUNT_ID, 'user_admin', 'admin@cvg-his.local');
   const token = generateCurrentTOTP(setup.secret);
 
   const session = await auth.completeMfaLogin(
-    { userId: 'user_admin', token },
+    { userId: 'user_admin', token, challengeId: loginResult.challengeId! },
     'corr-test-mfa2-complete'
   );
 
   assert.ok('accessToken' in session);
   assert.equal(session.principal.user.username, 'admin');
+});
+
+test('AuthService: active MFA still requires the second factor after password login', async () => {
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => true
+  } as unknown as MfaService;
+  const auth = createAuthService({ mfa });
+
+  const result = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-test-active-mfa'
+  );
+
+  assert.ok('requiresMfa' in result);
+  assert.equal(result.requiresMfa, true);
+  assert.deepEqual(result.mfaMethods, ['totp']);
+  assert.equal(result.enrollmentRequired, false);
+});
+
+test('AuthService: MFA completion requires a preceding successful password login', async () => {
+  const mfa = new MfaService();
+  const auth = createAuthService({ mfa });
+  const setup = await mfa.initiateSetup(ACCOUNT_ID, 'user_admin', 'admin@cvg-his.local');
+  const token = generateCurrentTOTP(setup.secret);
+
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        { userId: 'user_admin', token, challengeId: 'missing-challenge' },
+        'corr-test-no-password'
+      ),
+    AuthenticationError
+  );
 });
 
 test('AuthService: refresh rotates tokens but keeps same session', async () => {
@@ -128,7 +170,7 @@ test('AuthService: refresh rotates tokens but keeps same session', async () => {
   const originalSessionId = login.principal.session.sessionId;
   const originalRefresh = login.refreshToken;
 
-  const refreshed = auth.refresh({ refreshToken: login.refreshToken }, 'corr-test-4-refresh');
+  const refreshed = await auth.refresh({ refreshToken: login.refreshToken }, 'corr-test-4-refresh');
 
   assert.equal(refreshed.principal.session.sessionId, originalSessionId);
   assert.notEqual(refreshed.refreshToken, originalRefresh);
@@ -146,7 +188,7 @@ test('AuthService: hydrateFromRepository restores persisted session cache for ac
   await authB.hydrateFromRepository(['user_admin' as never]);
 
   const principal = authB.authenticateAccessToken(login.accessToken);
-  const refreshed = authB.refresh(
+  const refreshed = await authB.refresh(
     { refreshToken: login.refreshToken },
     'corr-test-4b-refresh'
   );
@@ -162,9 +204,9 @@ test('AuthService: revoked session cannot be refreshed', async () => {
   const login = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-test-5');
   assert.ok('accessToken' in login);
 
-  auth.logout({ refreshToken: login.refreshToken }, 'corr-test-5-logout');
+  await auth.logout({ refreshToken: login.refreshToken }, 'corr-test-5-logout');
 
-  assert.throws(
+  await assert.rejects(
     () => auth.refresh({ refreshToken: login.refreshToken }, 'corr-test-5-should-fail'),
     (err) => {
       assert.ok(err instanceof AuthenticationError);
@@ -196,10 +238,16 @@ test('AuthService: revokeOtherSessions keeps current session active and revokes 
   assert.ok('accessToken' in first);
   assert.ok('accessToken' in second);
 
-  const revoked = auth.revokeOtherSessions(second.principal.session.sessionId, 'corr-revoke-others');
+  const revoked = await auth.revokeOtherSessions(
+    second.principal.session.sessionId,
+    'corr-revoke-others'
+  );
 
   assert.equal(revoked, 1);
-  assert.equal(auth.listSessionsForUser('user_admin' as never)[0].sessionId, second.principal.session.sessionId);
+  assert.equal(
+    auth.listSessionsForUser('user_admin' as never)[0].sessionId,
+    second.principal.session.sessionId
+  );
   assert.throws(
     () => auth.authenticateAccessToken(first.accessToken),
     (err) => {
@@ -214,12 +262,18 @@ test('AuthService: revokeOtherSessions keeps current session active and revokes 
 test('AuthService: revokeSessionForUser revokes only the targeted sibling session', async () => {
   const auth = createAuthService();
 
-  const first = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-target-1');
-  const second = await auth.login({ username: 'admin', password: 'seed_admin' }, 'corr-revoke-target-2');
+  const first = await auth.login(
+    { username: 'admin', password: 'seed_admin' },
+    'corr-revoke-target-1'
+  );
+  const second = await auth.login(
+    { username: 'admin', password: 'seed_admin' },
+    'corr-revoke-target-2'
+  );
   assert.ok('accessToken' in first);
   assert.ok('accessToken' in second);
 
-  const revoked = auth.revokeSessionForUser(
+  const revoked = await auth.revokeSessionForUser(
     second.principal.session.sessionId,
     first.principal.session.sessionId,
     'corr-revoke-target'
@@ -235,6 +289,41 @@ test('AuthService: revokeSessionForUser revokes only the targeted sibling sessio
   );
   const principal = auth.authenticateAccessToken(second.accessToken);
   assert.equal(principal.session.sessionId, second.principal.session.sessionId);
+});
+
+test('AuthService: session revocations persist inside the session tenant context', async () => {
+  const tenantContexts: Array<string | undefined> = [];
+  const delegate = new InMemorySessionRepository();
+  const sessionRepository: SessionRepository = {
+    create: (session) => delegate.create(session),
+    update: (session) => {
+      tenantContexts.push(getTenantContext()?.accountId);
+      return delegate.update(session);
+    },
+    findById: (id) => delegate.findById(id),
+    findByUserId: (userId) => delegate.findByUserId(userId),
+    delete: (id) => delegate.delete(id)
+  };
+  const auth = createAuthService({ sessionRepository });
+
+  const first = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-tenant-1');
+  const second = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-tenant-2');
+  const third = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-tenant-3');
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+  assert.ok('accessToken' in third);
+
+  await auth.logout({ refreshToken: first.refreshToken }, 'corr-tenant-logout');
+  await auth.revokeSessionForUser(
+    third.principal.session.sessionId,
+    second.principal.session.sessionId,
+    'corr-tenant-target'
+  );
+  const fourth = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-tenant-4');
+  assert.ok('accessToken' in fourth);
+  await auth.revokeOtherSessions(fourth.principal.session.sessionId, 'corr-tenant-others');
+
+  assert.deepEqual(tenantContexts, [ACCOUNT_ID, ACCOUNT_ID, ACCOUNT_ID]);
 });
 
 test('AuthService: previous verifier secrets allow rotated auth secret rollout without breaking sessions', async () => {
@@ -255,7 +344,10 @@ test('AuthService: previous verifier secrets allow rotated auth secret rollout w
   await rotatedAuth.hydrateFromRepository(['user_admin' as never]);
 
   const principal = rotatedAuth.authenticateAccessToken(login.accessToken);
-  const refreshed = rotatedAuth.refresh({ refreshToken: login.refreshToken }, 'corr-rotate-refresh');
+  const refreshed = await rotatedAuth.refresh(
+    { refreshToken: login.refreshToken },
+    'corr-rotate-refresh'
+  );
 
   assert.equal(principal.user.id, 'user_admin');
   assert.notEqual(refreshed.accessToken, login.accessToken);

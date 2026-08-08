@@ -38,6 +38,48 @@ test('InpatientService admit creates stay linked to encounter', () => {
   assert.equal(service.list(encounter.id).length, 1);
 });
 
+test('InpatientService waits for atomic admission rollback before rejecting persistence', async () => {
+  const encounter = {
+    id: 'encounter_atomic',
+    accountId: 'acc_test',
+    patientId: 'patient_atomic',
+    ownerId: 'owner_atomic',
+    createdByUserId: 'user_atomic'
+  };
+  const service = new InpatientService(
+    { getOrThrow: () => encounter } as never,
+    {
+      stayRepository: {
+        create: async () => {},
+        createWithBedOccupation: async () => {
+          throw new Error('bed occupation failed');
+        },
+        update: async () => {},
+        findById: async () => null,
+        findByEncounterId: async () => [],
+        findByAccountId: async () => []
+      }
+    }
+  );
+
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: '01',
+      bedId: 'bed_atomic'
+    },
+    encounter.accountId,
+    encounter.createdByUserId as never
+  );
+
+  await assert.rejects(() => service.waitForPersistence(), /bed occupation failed/);
+  assert.throws(() => service.getOrThrow(stay.id), NotFoundError);
+  assert.equal(service.list({ encounterId: encounter.id, includeDischarged: true }).length, 0);
+});
+
 test('InpatientService list filters stays by patient across encounters', () => {
   const encounters = {
     getOrThrow(encounterId: string) {
@@ -414,4 +456,28 @@ test('SectorBedService buildBedMap reads only durable stay columns', async () =>
   assert.equal(bedMap.items[0]?.beds[0]?.patientId, 'patient_1');
   assert.equal(executedSql.includes('unit'), false);
   assert.equal(executedSql.includes('ward'), false);
+});
+
+test('SectorBedService keeps an in-memory sector and bed lifecycle usable', async () => {
+  const service = new SectorBedService();
+  const accountId = 'acc_test' as never;
+
+  const sector = await service.createSector(accountId, {
+    code: 'OBS-E2E',
+    name: 'Observação',
+    kind: 'observation'
+  });
+  const bed = await service.createBed(accountId, {
+    sectorId: sector.id,
+    code: 'OBS-01',
+    name: 'Leito de observação',
+    supportsSpecies: 'feline'
+  });
+
+  assert.equal((await service.listSectors(accountId)).length, 1);
+  assert.equal((await service.listBeds(accountId, sector.id)).length, 1);
+  assert.equal((await service.getBedForAccountOrThrow(accountId, bed.id)).status, 'available');
+
+  await service.setBedOccupied(bed.id);
+  assert.equal((await service.getBedForAccountOrThrow(accountId, bed.id)).status, 'occupied');
 });

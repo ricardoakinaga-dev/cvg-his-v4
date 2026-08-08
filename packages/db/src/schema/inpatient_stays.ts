@@ -6,7 +6,8 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  uuid
+  uuid,
+  varchar
 } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
@@ -38,14 +39,23 @@ export const inpatientStays = pgTable(
       .references(() => owners.id, { onDelete: 'cascade' }),
     encounterId: uuid('encounter_id').references(() => encounters.id, { onDelete: 'set null' }),
     wardId: uuid('ward_id')
-      .notNull()
       .references(() => wards.id),
     bedId: uuid('bed_id')
-      .notNull()
       .references(() => beds.id),
-    status: inpatientStayStatusEnum('status').notNull().default('active'),
+    unit: varchar('unit', { length: 100 }).notNull(),
+    ward: varchar('ward', { length: 100 }).notNull(),
+    bed: varchar('bed', { length: 50 }).notNull(),
+    sectorId: varchar('sector_id', { length: 255 }),
+    status: varchar('status', { length: 50 }).notNull().default('admitted'),
     admittedAt: timestamp('admitted_at', { withTimezone: true }).notNull().defaultNow(),
     dischargedAt: timestamp('discharged_at', { withTimezone: true }),
+    dischargeReason: varchar('discharge_reason', { length: 500 }),
+    transferToUnit: varchar('transfer_to_unit', { length: 100 }),
+    transferToWard: varchar('transfer_to_ward', { length: 100 }),
+    transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
+    transferToBedId: uuid('transfer_to_bed_id').references(() => beds.id, {
+      onDelete: 'set null'
+    }),
     admittedByUserId: uuid('admitted_by_user_id')
       .notNull()
       .references(() => users.id),
@@ -71,6 +81,6 @@ export const inpatientStays = pgTable(
     ),
     activeBedUnique: uniqueIndex('inpatient_stays_active_bed_unique')
       .on(table.bedId)
-      .where(sql`${table.status} = 'active'`)
+      .where(sql`${table.status} IN ('admitted', 'stable')`)
   })
 );

@@ -1,6 +1,8 @@
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { PagarMePixAdapter, type CreatePixIntentInput } from '@cvg-his-v2/module-pix';
 import type { AccountId } from '@cvg-his-v2/shared-types';
+import type { PixTransactionRepository } from './pix-transaction-repository.js';
+import type { CardTransactionRepository } from './card-transaction-repository.js';
 
 export interface PixPaymentIntentInput {
   readonly accountId: string;
@@ -20,6 +22,7 @@ export interface PixPaymentIntentSummary {
   readonly description: string;
   readonly qrCodePayload: string;
   readonly qrCodeBase64: string;
+  readonly providerTransactionId?: string;
   readonly expiresAt: string;
   readonly status: 'pending' | 'completed';
   readonly createdAt: string;
@@ -27,10 +30,11 @@ export interface PixPaymentIntentSummary {
 
 export interface PixPaymentConfirmResult {
   readonly transactionId: string;
-  readonly status: 'completed';
+  readonly accountId: string;
+  readonly status: 'pending' | 'completed' | 'expired' | 'cancelled';
   readonly providerTransactionId?: string;
   readonly billingRecordId?: string;
-  readonly completedAt: string;
+  readonly completedAt?: string;
 }
 
 export interface CardPaymentIntentInput {
@@ -108,8 +112,12 @@ export interface PaymentGateway {
   };
   createPixIntent(input: PixPaymentIntentInput): Promise<PixPaymentIntentSummary>;
   createCardIntent?(input: CardPaymentIntentInput): Promise<CardPaymentIntentSummary>;
+  findCardIntent(
+    accountId: string,
+    transactionId: string
+  ): Promise<CardPaymentIntentSummary | null>;
   captureCardIntent?(transactionId: string): Promise<CardPaymentCaptureResult>;
-  confirmPayment?(transactionId: string): PixPaymentConfirmResult;
+  confirmPayment?(transactionId: string): Promise<PixPaymentConfirmResult | null>;
 }
 
 export class LocalPixPaymentGateway implements PaymentGateway {
@@ -182,6 +190,18 @@ export class LocalPixPaymentGateway implements PaymentGateway {
     return intent;
   }
 
+  async findCardIntent(
+    accountId: string,
+    transactionId: string
+  ): Promise<CardPaymentIntentSummary | null> {
+    const intent = this.#cardIntents.get(transactionId);
+    if (!intent || intent.accountId !== accountId) {
+      return null;
+    }
+
+    return { ...intent, card: { ...intent.card } };
+  }
+
   async captureCardIntent(transactionId: string): Promise<CardPaymentCaptureResult> {
     const existing = this.#cardIntents.get(transactionId);
     if (!existing) {
@@ -214,16 +234,18 @@ export class LocalPixPaymentGateway implements PaymentGateway {
     };
   }
 
-  confirmPayment(transactionId: string): PixPaymentConfirmResult {
+  async confirmPayment(transactionId: string): Promise<PixPaymentConfirmResult | null> {
     const intent = this.#intents.get(transactionId);
+    if (!intent) return null;
     return {
       transactionId,
+      accountId: intent.accountId,
       status: 'completed',
-      providerTransactionId: intent?.billingRecordId
+      providerTransactionId: intent.billingRecordId
         ? `local_confirm_${transactionId}_for_${intent.billingRecordId}`
         : `local_confirm_${transactionId}`,
       completedAt: nowIso(),
-      billingRecordId: intent?.billingRecordId
+      billingRecordId: intent.billingRecordId
     };
   }
 }
@@ -238,14 +260,28 @@ export class LocalPixPaymentGateway implements PaymentGateway {
 export class PagarMePaymentGatewayAdapter implements PaymentGateway {
   readonly #adapter: PagarMePixAdapter;
   readonly #apiKey: string;
+  readonly #baseUrl: string;
+  readonly #pixTransactions?: PixTransactionRepository;
+  readonly #cardTransactions?: CardTransactionRepository;
+  readonly #pixIntents = new Map<string, PixPaymentIntentSummary>();
+  readonly #cardIntents = new Map<string, CardPaymentIntentSummary>();
   readonly paymentProviders = {
     pix: 'pagarme',
     cards: 'pagarme-card'
   } as const;
 
-  constructor(options: { readonly apiKey: string; readonly pixKey: string }) {
+  constructor(options: {
+    readonly apiKey: string;
+    readonly pixKey: string;
+    readonly baseUrl?: string;
+    readonly pixTransactions?: PixTransactionRepository;
+    readonly cardTransactions?: CardTransactionRepository;
+  }) {
     this.#apiKey = options.apiKey;
-    this.#adapter = new PagarMePixAdapter(options);
+    this.#baseUrl = options.baseUrl ?? 'https://api.pagar.me';
+    this.#pixTransactions = options.pixTransactions;
+    this.#cardTransactions = options.cardTransactions;
+    this.#adapter = new PagarMePixAdapter({ ...options, baseUrl: this.#baseUrl });
   }
 
   async createPixIntent(input: PixPaymentIntentInput): Promise<PixPaymentIntentSummary> {
@@ -260,7 +296,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
     const result = await this.#adapter.createIntent(adapterInput);
     const { transaction, qrCodeBase64, qrCodePayload } = result;
 
-    return {
+    const intent: PixPaymentIntentSummary = {
       id: transaction.id as string,
       provider: 'pagarme' as const,
       accountId: input.accountId,
@@ -270,23 +306,91 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
       description: input.description,
       qrCodePayload,
       qrCodeBase64,
+      providerTransactionId: transaction.providerTransactionId,
       expiresAt: transaction.expiresAt,
       status: transaction.status === 'completed' ? 'completed' : 'pending',
       createdAt: transaction.createdAt
     };
+    this.#pixIntents.set(intent.id, intent);
+    await this.#pixTransactions?.create({
+      transactionId: intent.id,
+      provider: 'pagarme',
+      accountId: intent.accountId,
+      billingRecordId: intent.billingRecordId,
+      amount: intent.amount,
+      currency: intent.currency,
+      description: intent.description,
+      qrCodePayload: intent.qrCodePayload,
+      qrCodeBase64: intent.qrCodeBase64,
+      expiresAt: intent.expiresAt,
+      status: intent.status === 'completed' ? 'completed' : 'pending',
+      createdAt: intent.createdAt,
+      updatedAt: intent.createdAt,
+      providerTransactionId: intent.providerTransactionId,
+      billingSettlementStatus: intent.billingRecordId
+        ? intent.status === 'completed'
+          ? 'pending_billing'
+          : 'awaiting_payment'
+        : 'not_applicable',
+      cashReconciliationStatus: 'pending'
+    });
+    return intent;
   }
 
-  confirmPayment(transactionId: string): PixPaymentConfirmResult {
-    // Fire-and-forget: actual settlement confirmation comes via Pagar.me webhook.
-    // The route handler expects a sync return so we fulfill with the incoming id.
-    void this.#adapter.confirmPayment(transactionId as any).catch(() => {
-      // swallow: webhook handler is the authoritative confirmation path
+  async confirmPayment(transactionId: string): Promise<PixPaymentConfirmResult | null> {
+    const intent = await this.#findPixIntent(transactionId);
+    if (!intent) return null;
+    const result = await this.#adapter.confirmPayment(
+      transactionId as never,
+      (intent.providerTransactionId ?? transactionId) as never
+    );
+    const completedAt = result.completedAt;
+    await this.#pixTransactions?.updateStatus({
+      transactionId,
+      status: result.status,
+      updatedAt: completedAt ?? nowIso(),
+      providerTransactionId: result.providerTransactionId ?? intent.providerTransactionId,
+      providerConfirmationId: result.providerTransactionId,
+      completedAt,
+      lastProviderSyncAt: completedAt ?? nowIso(),
+      ...(result.status === 'completed' && intent.billingRecordId
+        ? { billingSettlementStatus: 'pending_billing' as const }
+        : {})
     });
     return {
       transactionId,
-      status: 'completed',
-      completedAt: nowIso()
+      accountId: intent.accountId,
+      billingRecordId: intent.billingRecordId,
+      status: result.status,
+      providerTransactionId: result.providerTransactionId,
+      completedAt: result.completedAt
     };
+  }
+
+  async #findPixIntent(transactionId: string): Promise<PixPaymentIntentSummary | null> {
+    const inMemory = this.#pixIntents.get(transactionId);
+    if (inMemory) return { ...inMemory };
+
+    const persisted = await this.#pixTransactions?.findByTransactionId(transactionId);
+    if (!persisted) return null;
+
+    const intent: PixPaymentIntentSummary = {
+      id: persisted.transactionId,
+      provider: persisted.provider,
+      accountId: persisted.accountId,
+      billingRecordId: persisted.billingRecordId,
+      amount: persisted.amount,
+      currency: persisted.currency,
+      description: persisted.description,
+      qrCodePayload: persisted.qrCodePayload,
+      qrCodeBase64: persisted.qrCodeBase64,
+      providerTransactionId: persisted.providerTransactionId,
+      expiresAt: persisted.expiresAt,
+      status: persisted.status === 'completed' ? 'completed' : 'pending',
+      createdAt: persisted.createdAt
+    };
+    this.#pixIntents.set(transactionId, intent);
+    return { ...intent };
   }
 
   async createCardIntent(input: CardPaymentIntentInput): Promise<CardPaymentIntentSummary> {
@@ -297,7 +401,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
       throw new Error('PagarMe card payments require customer name and email');
     }
 
-    const response = await fetch('https://api.pagar.me/core/v5/orders', {
+    const response = await fetch(`${this.#baseUrl}/core/v5/orders`, {
       method: 'POST',
       headers: {
         authorization: `Basic ${Buffer.from(`${this.#apiKey}:`).toString('base64')}`,
@@ -370,7 +474,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
               ? 'failed'
               : 'pending';
 
-    return {
+    const intent: CardPaymentIntentSummary = {
       id: String(charge?.code ?? payload.code ?? createCorrelationId('card')),
       provider: 'pagarme-card',
       accountId: input.accountId,
@@ -395,11 +499,56 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
         ? String(lastTransaction.acquirer_nsu)
         : undefined
     };
+    this.#cardIntents.set(intent.id, intent);
+    await this.#cardTransactions?.create({
+      transactionId: intent.id,
+      provider: 'pagarme-card',
+      accountId: intent.accountId,
+      billingRecordId: intent.billingRecordId,
+      amount: intent.amount,
+      currency: intent.currency,
+      description: intent.description,
+      installments: intent.installments,
+      status: intent.status,
+      createdAt: intent.createdAt,
+      updatedAt: intent.createdAt,
+      capturedAt: intent.status === 'captured' ? intent.createdAt : undefined,
+      lastProviderSyncAt: intent.createdAt,
+      providerOrderId: intent.providerOrderId,
+      providerChargeId: intent.providerChargeId,
+      providerAuthorizationCode: intent.providerAuthorizationCode,
+      providerReferenceId: intent.providerReferenceId,
+      cardHolderName: intent.card.holderName,
+      cardBrand: intent.card.brand,
+      cardLast4: intent.card.last4,
+      billingSettlementStatus: intent.billingRecordId
+        ? intent.status === 'captured'
+          ? 'pending_billing'
+          : intent.status === 'authorized_pending_capture'
+            ? 'awaiting_capture'
+            : 'failed'
+        : 'not_applicable'
+    });
+    return intent;
+  }
+
+  async findCardIntent(
+    accountId: string,
+    transactionId: string
+  ): Promise<CardPaymentIntentSummary | null> {
+    const intent = await this.#findCardIntent(transactionId);
+    if (!intent || intent.accountId !== accountId) {
+      return null;
+    }
+
+    return { ...intent, card: { ...intent.card } };
   }
 
   async captureCardIntent(transactionId: string): Promise<CardPaymentCaptureResult> {
+    const existing = await this.#findCardIntent(transactionId);
+    const providerChargeId = existing?.providerChargeId ?? transactionId;
     const response = await fetch(
-      `https://api.pagar.me/core/v5/charges/${encodeURIComponent(transactionId)}/capture`,
+      `${this.#baseUrl}/core/v5/charges/${encodeURIComponent(providerChargeId)}/capture`,
       {
         method: 'POST',
         headers: {
@@ -410,6 +559,14 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
     );
 
     if (!response.ok) {
+      await this.#cardTransactions?.updateStatus({
+        transactionId,
+        status: 'failed',
+        updatedAt: nowIso(),
+        lastProviderSyncAt: nowIso(),
+        providerChargeId,
+        failureReason: `PagarMe capture failed with status ${response.status}`
+      });
       return {
         transactionId,
         provider: 'pagarme-card',
@@ -421,7 +578,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
 
     const payload = (await response.json()) as Record<string, any>;
     const lastTransaction = payload.last_transaction ?? {};
-    return {
+    const result: CardPaymentCaptureResult = {
       transactionId,
       provider: 'pagarme-card',
       status: 'captured',
@@ -432,7 +589,66 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
       providerReferenceId: lastTransaction?.acquirer_nsu
         ? String(lastTransaction.acquirer_nsu)
         : undefined,
+      billingRecordId: existing?.billingRecordId,
       capturedAt: String(payload.updated_at ?? nowIso())
     };
+    const captured: CardPaymentIntentSummary | null = existing
+      ? {
+          ...existing,
+          status: 'captured',
+          providerChargeId: result.providerChargeId,
+          providerAuthorizationCode: result.providerAuthorizationCode ?? existing.providerAuthorizationCode,
+          providerReferenceId: result.providerReferenceId ?? existing.providerReferenceId
+        }
+      : null;
+    if (captured) {
+      this.#cardIntents.set(transactionId, captured);
+    }
+    await this.#cardTransactions?.updateStatus({
+      transactionId,
+      status: 'captured',
+      updatedAt: result.capturedAt,
+      capturedAt: result.capturedAt,
+      lastProviderSyncAt: result.capturedAt,
+      providerChargeId: result.providerChargeId,
+      providerAuthorizationCode: result.providerAuthorizationCode,
+      providerReferenceId: result.providerReferenceId,
+      billingSettlementStatus: existing?.billingRecordId ? 'pending_billing' : undefined
+    });
+    return result;
+  }
+
+  async #findCardIntent(transactionId: string): Promise<CardPaymentIntentSummary | null> {
+    const inMemory = this.#cardIntents.get(transactionId);
+    if (inMemory) return { ...inMemory, card: { ...inMemory.card } };
+
+    const persisted = await this.#cardTransactions?.findByTransactionId(transactionId);
+    if (!persisted) return null;
+
+    const status: CardPaymentIntentSummary['status'] =
+      persisted.status === 'voided' ? 'failed' : persisted.status;
+    const intent: CardPaymentIntentSummary = {
+      id: persisted.transactionId,
+      provider: persisted.provider,
+      accountId: persisted.accountId,
+      billingRecordId: persisted.billingRecordId,
+      amount: persisted.amount,
+      currency: persisted.currency,
+      description: persisted.description,
+      installments: persisted.installments,
+      status,
+      card: {
+        holderName: persisted.cardHolderName ?? '',
+        brand: persisted.cardBrand,
+        last4: persisted.cardLast4 ?? ''
+      },
+      createdAt: persisted.createdAt,
+      providerOrderId: persisted.providerOrderId,
+      providerChargeId: persisted.providerChargeId,
+      providerAuthorizationCode: persisted.providerAuthorizationCode,
+      providerReferenceId: persisted.providerReferenceId
+    };
+    this.#cardIntents.set(transactionId, intent);
+    return { ...intent, card: { ...intent.card } };
   }
 }

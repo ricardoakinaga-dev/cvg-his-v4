@@ -3,7 +3,9 @@ import { test } from 'vitest';
 
 import { WebhooksService } from './index.js';
 import type { WebhookRepository } from './index.js';
-import type { WebhookSummary } from '@cvg-his-v2/shared-types';
+import type { AccountId, WebhookId, WebhookSummary } from '@cvg-his-v2/shared-types';
+
+const ACCOUNT_ID = 'acc_test' as AccountId;
 
 function createMockRepository(): WebhookRepository {
   const webhooks: Map<string, WebhookSummary> = new Map();
@@ -15,11 +17,12 @@ function createMockRepository(): WebhookRepository {
     async update(webhook: WebhookSummary): Promise<void> {
       webhooks.set(webhook.id, webhook);
     },
-    async delete(id: never): Promise<void> {
+    async delete(_accountId: AccountId, id: WebhookId): Promise<void> {
       webhooks.delete(id as string);
     },
-    async findById(id: never): Promise<WebhookSummary | null> {
-      return webhooks.get(id as string) ?? null;
+    async findById(accountId: AccountId, id: WebhookId): Promise<WebhookSummary | null> {
+      const webhook = webhooks.get(id as string);
+      return webhook?.accountId === accountId ? webhook : null;
     },
     async findByAccount(): Promise<readonly WebhookSummary[]> {
       return Array.from(webhooks.values());
@@ -93,6 +96,82 @@ test('WebhooksService register normalizes URL and rejects non-HTTP protocols', a
       }),
     /HTTP or HTTPS/
   );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'http://127.0.0.1/internal',
+        events: ['billing.record.created']
+      }),
+    /private network/
+  );
+});
+
+test('WebhooksService signs outbound payloads with the configured secret', async () => {
+  const repo = createMockRepository();
+  let signature = '';
+  const service = new WebhooksService({
+    repository: repo,
+    resolveHostname: async () => ['8.8.8.8'],
+    deliverRequest: async (request) => {
+      signature = request.headers['X-Webhook-Signature'] ?? '';
+      return { success: true, statusCode: 200, body: 'ok' };
+    }
+  });
+  const webhook = await service.register('user_1' as never, 'acc_test' as never, {
+    url: 'https://example.com/webhook',
+    events: ['webhook.test'],
+    secret: 'delivery-secret'
+  });
+  const result = await service.test(webhook.id, 'acc_test' as never);
+  assert.equal(result?.success, true);
+  assert.match(signature, /^sha256=[a-f0-9]{64}$/);
+});
+
+test('WebhooksService pins delivery to the public address that was validated', async () => {
+  const repo = createMockRepository();
+  let deliveredAddress = '';
+  let deliveredHostname = '';
+  const service = new WebhooksService({
+    repository: repo,
+    resolveHostname: async () => ['1.1.1.1'],
+    deliverRequest: async (request) => {
+      deliveredAddress = request.address;
+      deliveredHostname = new URL(request.url).hostname;
+      return { success: true, statusCode: 204 };
+    }
+  });
+  const webhook = await service.register('user_1' as never, 'acc_test' as never, {
+    url: 'https://webhooks.example.com/events',
+    events: ['webhook.test']
+  });
+
+  const result = await service.test(webhook.id, 'acc_test' as never);
+
+  assert.equal(result?.success, true);
+  assert.equal(deliveredAddress, '1.1.1.1');
+  assert.equal(deliveredHostname, 'webhooks.example.com');
+});
+
+test('WebhooksService rejects IPv4-mapped IPv6 private targets after DNS resolution', async () => {
+  const repo = createMockRepository();
+  let deliveryAttempted = false;
+  const service = new WebhooksService({
+    repository: repo,
+    resolveHostname: async () => ['::ffff:7f00:1'],
+    deliverRequest: async () => {
+      deliveryAttempted = true;
+      return { success: true, statusCode: 200 };
+    }
+  });
+  const webhook = await service.register('user_1' as never, 'acc_test' as never, {
+    url: 'https://webhooks.example.com/events',
+    events: ['webhook.test']
+  });
+
+  const result = await service.test(webhook.id, 'acc_test' as never);
+
+  assert.equal(result?.success, false);
+  assert.equal(deliveryAttempted, false);
 });
 
 test('WebhooksService register returns webhook even without repository', async () => {
@@ -128,7 +207,18 @@ test('WebhooksService list returns webhooks for account', async () => {
 test('WebhooksService get returns null for non-existent webhook', async () => {
   const service = new WebhooksService({ repository: undefined });
 
-  const result = await service.get('wh_nonexistent' as never);
+  const result = await service.get(ACCOUNT_ID, 'wh_nonexistent' as never);
+  assert.equal(result, null);
+});
+
+test('WebhooksService get does not expose a webhook to another account', async () => {
+  const service = new WebhooksService({ repository: createMockRepository() });
+  const webhook = await service.register('user_1' as never, ACCOUNT_ID, {
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created']
+  });
+
+  const result = await service.get('acc_other' as AccountId, webhook.id);
   assert.equal(result, null);
 });
 
@@ -141,7 +231,7 @@ test('WebhooksService update modifies webhook fields', async () => {
     events: ['billing.record.created']
   });
 
-  const updated = await service.update(created.id, {
+  const updated = await service.update(ACCOUNT_ID, created.id, {
     url: 'https://example.com/updated',
     events: ['billing.status_changed']
   });
@@ -160,10 +250,10 @@ test('WebhooksService delete deactivates webhook', async () => {
     events: ['billing.record.created']
   });
 
-  const deleted = await service.delete(created.id);
+  const deleted = await service.delete(ACCOUNT_ID, created.id);
   assert.equal(deleted, true);
 
-  const found = await service.get(created.id);
+  const found = await service.get(ACCOUNT_ID, created.id);
   assert.ok(found);
   assert.equal(found!.isActive, false);
 });
@@ -186,13 +276,17 @@ test('WebhooksService test returns null when repository is undefined', async () 
 test('WebhooksService retestDelivery returns null for non-existent webhook', async () => {
   const service = new WebhooksService({ repository: undefined });
 
-  const result = await service.retestDelivery('wh_123' as never, 'del_123' as never, 'acc_test' as never);
+  const result = await service.retestDelivery(
+    'wh_123' as never,
+    'del_123' as never,
+    'acc_test' as never
+  );
   assert.equal(result, null);
 });
 
 test('WebhooksService getDeliveryStats returns null when repository is undefined', async () => {
   const service = new WebhooksService({ repository: undefined });
 
-  const result = await service.getDeliveryStats('wh_123' as never);
+  const result = await service.getDeliveryStats(ACCOUNT_ID, 'wh_123' as never);
   assert.equal(result, null);
 });

@@ -3,13 +3,15 @@
     <AppPageHeader
       title="Layout de Email de Vacina"
       :breadcrumbs="['Marketing', 'Configurações', 'Layout de Email de Vacina']"
-      subtitle="Template seguro de lembrete vacinal, sem envio ou salvamento real"
-      :primary-action="{ label: 'Salvar', disabled: true }"
+      subtitle="Template de lembrete vacinal persistido por tenant e sujeito a consentimento"
     />
 
-    <DsAlert variant="warning">
-      Superfície segura para preservar a ordem Vetus de Marketing. O template pode ser preparado localmente; salvar,
-      enviar email e alterar automações permanecem bloqueados até existir contrato auditável.
+    <DsAlert variant="info">
+      O layout é persistido por tenant. O envio permanece sujeito a consentimento, provider de e-mail e auditoria.
+    </DsAlert>
+
+    <DsAlert v-if="errorMessage" variant="danger" dismissible @dismiss="errorMessage = ''">
+      {{ errorMessage }}
     </DsAlert>
 
     <DsAlert v-if="statusMessage" variant="success" dismissible @dismiss="statusMessage = ''">
@@ -19,8 +21,8 @@
     <section class="vaccine-email-summary-grid" aria-label="Resumo do layout de email de vacina">
       <DsStatCard label="Template de vacina preventivo" value="Email" />
       <DsStatCard :label="`${dynamicKeys.length} chaves Vetus`" value="Chaves" />
-      <DsStatCard label="Salvar bloqueado" value="Segurança" />
-      <DsStatCard label="Sem envio real" value="Canal" />
+      <DsStatCard label="Persistência" :value="loading ? '…' : 'Tenant'" />
+      <DsStatCard label="Envio" value="Consentido" />
     </section>
 
     <form class="vaccine-email-form" aria-label="Layout de e-mail de vacina" @submit.prevent="preparePreview">
@@ -69,7 +71,13 @@
           Preparar prévia
         </DsButton>
         <DsButton variant="secondary" type="button" @click="resetTemplate">Restaurar padrão</DsButton>
-        <DsButton id="vaccine-email-save" variant="primary" disabled>Salvar</DsButton>
+        <DsButton
+          id="vaccine-email-save"
+          variant="primary"
+          :loading="saving"
+          :disabled="loading || saving || !canPreparePreview"
+          @click="saveTemplate"
+        >Salvar</DsButton>
       </div>
     </form>
 
@@ -90,12 +98,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import { marketingService } from '@/services/marketing';
 
 const DEFAULT_TITLE = 'Lembrete Vacinas Anuais';
 const DEFAULT_BODY = [
@@ -158,6 +167,9 @@ const body = ref(DEFAULT_BODY);
 const preparedTitle = ref('');
 const preparedBody = ref('');
 const statusMessage = ref('');
+const errorMessage = ref('');
+const loading = ref(false);
+const saving = ref(false);
 
 const canPreparePreview = computed(() => Boolean(title.value.trim() && body.value.trim()));
 const previewTitle = computed(() => preparedTitle.value || replaceKeys(title.value));
@@ -167,7 +179,39 @@ function preparePreview() {
   if (!canPreparePreview.value) return;
   preparedTitle.value = replaceKeys(title.value.trim());
   preparedBody.value = replaceKeys(body.value.trim());
-  statusMessage.value = 'Layout preparado sem salvar';
+  statusMessage.value = 'Layout preparado para salvar';
+}
+
+async function loadTemplate(): Promise<void> {
+  loading.value = true;
+  try {
+    const setting = await marketingService.getSetting('vaccine_email');
+    const values = setting?.values ?? {};
+    if (typeof values.title === 'string' && values.title.trim()) title.value = values.title;
+    if (typeof values.body === 'string' && values.body.trim()) body.value = values.body;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível carregar o layout.';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function saveTemplate(): Promise<void> {
+  if (!canPreparePreview.value) return;
+  saving.value = true;
+  errorMessage.value = '';
+  try {
+    await marketingService.saveSetting({
+      key: 'vaccine_email',
+      channel: 'email',
+      values: { title: title.value.trim(), body: body.value.trim() }
+    });
+    statusMessage.value = 'Layout de e-mail salvo por tenant.';
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível salvar o layout.';
+  } finally {
+    saving.value = false;
+  }
 }
 
 function insertKey(key: string) {
@@ -185,6 +229,10 @@ function resetTemplate() {
 function replaceKeys(value: string): string {
   return dynamicKeys.reduce((result, key) => result.replaceAll(key, sampleValues[key] ?? key), value);
 }
+
+onMounted(() => {
+  void loadTemplate();
+});
 </script>
 
 <style scoped>

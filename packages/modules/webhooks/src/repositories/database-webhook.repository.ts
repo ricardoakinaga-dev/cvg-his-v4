@@ -41,15 +41,21 @@ export class DatabaseWebhookRepository implements WebhookRepository {
         isActive: webhook.isActive,
         updatedAt: new Date(webhook.updatedAt)
       })
-      .where(eq(webhooks.id, webhook.id));
+      .where(and(eq(webhooks.id, webhook.id), eq(webhooks.accountId, webhook.accountId)));
   }
 
-  public async delete(webhookId: WebhookId): Promise<void> {
-    await this.#db.delete(webhooks).where(eq(webhooks.id, webhookId));
+  public async delete(accountId: AccountId, webhookId: WebhookId): Promise<void> {
+    await this.#db
+      .delete(webhooks)
+      .where(and(eq(webhooks.id, webhookId), eq(webhooks.accountId, accountId)));
   }
 
-  public async findById(id: WebhookId): Promise<WebhookSummary | null> {
-    const result = await this.#db.select().from(webhooks).where(eq(webhooks.id, id)).limit(1);
+  public async findById(accountId: AccountId, id: WebhookId): Promise<WebhookSummary | null> {
+    const result = await this.#db
+      .select()
+      .from(webhooks)
+      .where(and(eq(webhooks.id, id), eq(webhooks.accountId, accountId)))
+      .limit(1);
 
     if (result.length === 0) {
       return null;
@@ -82,6 +88,7 @@ export class DatabaseWebhookRepository implements WebhookRepository {
   public async createDelivery(delivery: WebhookDeliverySummary): Promise<void> {
     await this.#db.insert(webhookDeliveries).values({
       id: delivery.id,
+      accountId: delivery.accountId,
       webhookId: delivery.webhookId,
       event: delivery.event,
       payload: delivery.payload,
@@ -106,30 +113,50 @@ export class DatabaseWebhookRepository implements WebhookRepository {
         responseBody: delivery.responseBody ?? null,
         nextRetryAt: delivery.nextRetryAt ? new Date(delivery.nextRetryAt) : null
       })
-      .where(eq(webhookDeliveries.id, delivery.id));
+      .where(
+        and(
+          eq(webhookDeliveries.id, delivery.id),
+          eq(webhookDeliveries.accountId, delivery.accountId)
+        )
+      );
   }
 
-  public async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
-    await this.#db.delete(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
+  public async deleteDeliveriesByWebhook(
+    accountId: AccountId,
+    webhookId: WebhookId
+  ): Promise<void> {
+    await this.#db
+      .delete(webhookDeliveries)
+      .where(
+        and(eq(webhookDeliveries.webhookId, webhookId), eq(webhookDeliveries.accountId, accountId))
+      );
   }
 
   public async findDeliveriesByWebhook(
+    accountId: AccountId,
     webhookId: WebhookId
   ): Promise<readonly WebhookDeliverySummary[]> {
     const result = await this.#db
       .select()
       .from(webhookDeliveries)
-      .where(eq(webhookDeliveries.webhookId, webhookId))
+      .where(
+        and(eq(webhookDeliveries.webhookId, webhookId), eq(webhookDeliveries.accountId, accountId))
+      )
       .orderBy(desc(webhookDeliveries.createdAt));
 
     return result.map((row) => this.mapRowToDelivery(row));
   }
 
-  public async findPendingDeliveries(limit: number): Promise<readonly WebhookDeliverySummary[]> {
+  public async findPendingDeliveries(
+    accountId: AccountId,
+    limit: number
+  ): Promise<readonly WebhookDeliverySummary[]> {
     const result = await this.#db
       .select()
       .from(webhookDeliveries)
-      .where(eq(webhookDeliveries.status, 'pending'))
+      .where(
+        and(eq(webhookDeliveries.accountId, accountId), eq(webhookDeliveries.status, 'pending'))
+      )
       .orderBy(asc(webhookDeliveries.createdAt))
       .limit(limit);
 
@@ -152,6 +179,7 @@ export class DatabaseWebhookRepository implements WebhookRepository {
   private mapRowToDelivery(row: typeof webhookDeliveries.$inferSelect): WebhookDeliverySummary {
     return {
       id: row.id as WebhookDeliveryId,
+      accountId: row.accountId as AccountId,
       webhookId: row.webhookId as WebhookId,
       event: row.event,
       payload: row.payload as Record<string, unknown>,

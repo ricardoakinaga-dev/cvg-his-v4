@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid
 } from 'drizzle-orm/pg-core';
 
@@ -47,6 +48,15 @@ export const patients = pgTable(
   (table) => ({
     accountNameIdx: index('idx_patients_account_name').on(table.accountId, table.name),
     accountMicrochipIdx: index('idx_patients_account_microchip').on(table.accountId, table.microchip),
-    ownerIdIdx: index('idx_patients_owner_id').on(table.ownerId)
+    ownerIdIdx: index('idx_patients_owner_id').on(table.ownerId),
+    accountIdIdUnique: uniqueIndex('idx_patients_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
+    accountIdOwnerUnique: uniqueIndex('idx_patients_account_id_owner_unique').on(
+      table.accountId,
+      table.id,
+      table.ownerId
+    )
   })
 );

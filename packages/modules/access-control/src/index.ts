@@ -672,6 +672,7 @@ export class AccessControlService {
   readonly #userAssignments = new Map<UserId, readonly AccessPermissionAssignmentSummary[]>();
   readonly #teamAssignments = new Map<AccessTeamId, readonly AccessPermissionAssignmentSummary[]>();
   readonly #sectorAssignments = new Map<AccessSectorId, readonly AccessPermissionAssignmentSummary[]>();
+  readonly #hydratedUserIdsByAccount = new Map<AccountId, readonly UserId[]>();
 
   public constructor(options?: AccessControlServiceOptions) {
     this.#repository = options?.repository;
@@ -683,7 +684,7 @@ export class AccessControlService {
 
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
     if (!this.#repository || !accountId) return;
-    const [roles, permissions, teams, sectors, membershipsTeams, membershipsSectors, assignments] =
+    const [roles, permissions, teams, sectors, membershipsTeams, membershipsSectors, assignments, accountUserIds] =
       await Promise.all([
         this.#repository.findAllRoles(),
         this.#repository.findAllPermissions(),
@@ -691,7 +692,8 @@ export class AccessControlService {
         this.#repository.findAllSectors(accountId),
         this.#repository.findTeamMemberships(accountId),
         this.#repository.findSectorMemberships(accountId),
-        this.#repository.findPermissionAssignments(accountId)
+        this.#repository.findPermissionAssignments(accountId),
+        this.#repository.findUserIdsByAccount?.(accountId) ?? Promise.resolve([])
       ]);
 
     this.#roles = roles.length ? roles.map(mapRoleRecord) : [...roleCatalog];
@@ -699,14 +701,34 @@ export class AccessControlService {
       ? permissions.map(mapPermissionRecord)
       : [...permissionCatalog];
 
-    this.#teams.clear();
+    const previousTeamIds = Array.from(this.#teams.values())
+      .filter((team) => team.accountId === accountId)
+      .map((team) => team.id);
+    const previousSectorIds = Array.from(this.#sectors.values())
+      .filter((sector) => sector.accountId === accountId)
+      .map((sector) => sector.id);
+    const previousUserIds = this.#hydratedUserIdsByAccount.get(accountId) ?? [];
+
+    for (const teamId of previousTeamIds) {
+      this.#teams.delete(teamId);
+      this.#teamAssignments.delete(teamId);
+    }
     for (const team of teams) this.#teams.set(team.id, team);
 
-    this.#sectors.clear();
+    for (const sectorId of previousSectorIds) {
+      this.#sectors.delete(sectorId);
+      this.#sectorAssignments.delete(sectorId);
+    }
     for (const sector of sectors) this.#sectors.set(sector.id, sector);
 
-    this.#userRoleCodes.clear();
+    for (const userId of previousUserIds) {
+      this.#userRoleCodes.delete(userId);
+      this.#teamMembershipsByUser.delete(userId);
+      this.#sectorMembershipsByUser.delete(userId);
+      this.#userAssignments.delete(userId);
+    }
     const userIds = new Set<UserId>([
+      ...accountUserIds,
       ...membershipsTeams.map((membership) => membership.userId),
       ...membershipsSectors.map((membership) => membership.userId),
       ...assignments
@@ -722,14 +744,13 @@ export class AccessControlService {
         );
       }
     }
+    this.#hydratedUserIdsByAccount.set(accountId, [...userIds]);
 
-    this.#teamMembershipsByUser.clear();
     for (const membership of membershipsTeams) {
       const existing = this.#teamMembershipsByUser.get(membership.userId) ?? [];
       this.#teamMembershipsByUser.set(membership.userId, [...existing, membership.subjectId as AccessTeamId]);
     }
 
-    this.#sectorMembershipsByUser.clear();
     for (const membership of membershipsSectors) {
       const existing = this.#sectorMembershipsByUser.get(membership.userId) ?? [];
       this.#sectorMembershipsByUser.set(membership.userId, [
@@ -738,9 +759,6 @@ export class AccessControlService {
       ]);
     }
 
-    this.#userAssignments.clear();
-    this.#teamAssignments.clear();
-    this.#sectorAssignments.clear();
     for (const assignment of assignments) {
       this.#storeAssignment(assignment);
     }

@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" --ignore-pattern \"src/**/*.d.ts\"",
     "test": "vitest run --passWithNoTests",
     "build": "tsc -b tsconfig.json --force",
     "db:generate": "tsc -p tsconfig.json && drizzle-kit generate --config=drizzle.config.ts",

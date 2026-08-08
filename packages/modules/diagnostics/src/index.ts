@@ -67,7 +67,7 @@ export class DiagnosticsService {
   private async persistOrder(order: DiagnosticOrderSummary): Promise<void> {
     const repo = this.#repository;
     if (repo) {
-      this.#pendingPersist = this.#pendingPersist.then(async () => {
+      const operation = this.#pendingPersist.then(async () => {
         const existing = await repo.findById(order.id);
         if (existing) {
           await repo.update(order);
@@ -75,7 +75,8 @@ export class DiagnosticsService {
           await repo.create(order);
         }
       });
-      await this.#pendingPersist;
+      this.#pendingPersist = operation.catch(() => undefined);
+      await operation;
     }
   }
 
@@ -109,7 +110,7 @@ export class DiagnosticsService {
     return this.#catalog.find((entry) => entry.id === catalogId);
   }
 
-  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
+  private buildOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
     if (payload.patientId !== encounter.patientId) {
       throw new Error('patientId must match the encounter patient');
@@ -132,11 +133,42 @@ export class DiagnosticsService {
       createdAt: now,
       updatedAt: now
     };
-    this.#orders.set(order.id, order);
-    this.persistOrder(order).catch((err) =>
-      console.error('Failed to persist diagnostic order:', err)
-    );
     return order;
+  }
+
+  private requireSynchronousPersistenceMode(): void {
+    if (this.#repository) {
+      throw new Error(
+        'Database-backed diagnostics require createOrderAndPersist or recordResultAndPersist'
+      );
+    }
+  }
+
+  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
+    this.requireSynchronousPersistenceMode();
+    const order = this.buildOrder(payload);
+    this.#orders.set(order.id, order);
+    return order;
+  }
+
+  public async createOrderAndPersist(
+    payload: CreateDiagnosticOrderRequest
+  ): Promise<DiagnosticOrderSummary> {
+    const order = this.buildOrder(payload);
+    await this.persistOrder(order);
+    this.#orders.set(order.id, order);
+    return order;
+  }
+
+  public async createOrderAndPersistForAccount(
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ): Promise<DiagnosticOrderSummary> {
+    const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
+    return this.createOrderAndPersist(payload);
   }
 
   public list(encounterId?: string): readonly DiagnosticOrderSummary[] {
@@ -171,7 +203,7 @@ export class DiagnosticsService {
     return order;
   }
 
-  public recordResult(
+  private buildResult(
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
@@ -223,10 +255,38 @@ export class DiagnosticsService {
       }),
       updatedAt: now
     };
-    this.#orders.set(orderId, updated);
-    this.updateOrder(updated).catch((err) =>
-      console.error('Failed to update diagnostic order:', err)
-    );
     return updated;
+  }
+
+  public recordResult(
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ): DiagnosticOrderSummary {
+    this.requireSynchronousPersistenceMode();
+    const updated = this.buildResult(orderId, payload);
+    this.#orders.set(orderId, updated);
+    return updated;
+  }
+
+  public async recordResultAndPersist(
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ): Promise<DiagnosticOrderSummary> {
+    const updated = this.buildResult(orderId, payload);
+    await this.updateOrder(updated);
+    this.#orders.set(orderId, updated);
+    return updated;
+  }
+
+  public async recordResultAndPersistForAccount(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ): Promise<DiagnosticOrderSummary> {
+    const order = this.#orders.get(orderId);
+    if (!order || order.accountId !== accountId) {
+      throw new NotFoundError('Diagnostic order not found', { orderId });
+    }
+    return this.recordResultAndPersist(orderId, payload);
   }
 }

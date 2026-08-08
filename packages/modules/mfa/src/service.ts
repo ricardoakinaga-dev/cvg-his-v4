@@ -47,6 +47,7 @@ export class MfaService {
   }
 
   async initiateSetup(
+    accountId: string,
     userId: string,
     accountName: string,
     issuer = 'CVG-HIS-V2'
@@ -55,13 +56,14 @@ export class MfaService {
     const recoveryCodes = generateRecoveryCodes();
     const provisioningUri = generateProvisioningUri(secret, accountName, issuer);
 
-    this.#pendingSetups.set(userId, { secret, recoveryCodes });
+    this.#pendingSetups.set(this.#recordKey(accountId, userId), { secret, recoveryCodes });
 
     return { secret, provisioningUri, recoveryCodes };
   }
 
-  async confirmSetup(userId: string, token: string): Promise<MfaRecord> {
-    const pending = this.#pendingSetups.get(userId);
+  async confirmSetup(accountId: string, userId: string, token: string): Promise<MfaRecord> {
+    const recordKey = this.#recordKey(accountId, userId);
+    const pending = this.#pendingSetups.get(recordKey);
     if (!pending) {
       throw new Error('No pending MFA setup found. Please initiate setup first.');
     }
@@ -79,6 +81,7 @@ export class MfaService {
     const recoveryCodesToPersist = pending.recoveryCodes.map(hashRecoveryCode);
 
     const record: MfaRecord = {
+      accountId,
       userId,
       secret: secretToPersist,
       isActive: true,
@@ -89,13 +92,14 @@ export class MfaService {
       lastRecoveryCodesRegeneratedAt: undefined
     };
 
-    this.#pendingSetups.delete(userId);
+    this.#pendingSetups.delete(recordKey);
 
     if (this.#repository) {
       await this.#repository.create(record);
     }
 
     return {
+      accountId,
       userId,
       secret: pending.secret,
       isActive: true,
@@ -105,8 +109,8 @@ export class MfaService {
     };
   }
 
-  async verifyLogin(userId: string, token: string): Promise<boolean> {
-    const pending = this.#pendingSetups.get(userId);
+  async verifyLogin(accountId: string, userId: string, token: string): Promise<boolean> {
+    const pending = this.#pendingSetups.get(this.#recordKey(accountId, userId));
     if (pending) {
       if (verifyTOTP(pending.secret, token)) {
         return true;
@@ -114,7 +118,7 @@ export class MfaService {
       return false;
     }
 
-    const record = await this.#getRecord(userId);
+    const record = await this.#getRecord(accountId, userId);
     if (!record || !record.isActive) {
       return false;
     }
@@ -144,13 +148,13 @@ export class MfaService {
     return verified;
   }
 
-  async isMfaActive(userId: string): Promise<boolean> {
-    const record = await this.#getRecord(userId);
+  async isMfaActive(accountId: string, userId: string): Promise<boolean> {
+    const record = await this.#getRecord(accountId, userId);
     return record?.isActive ?? false;
   }
 
-  async disableMfa(userId: string, token: string): Promise<void> {
-    const record = await this.#getRecord(userId);
+  async disableMfa(accountId: string, userId: string, token: string): Promise<void> {
+    const record = await this.#getRecord(accountId, userId);
     if (!record) {
       throw new Error('MFA is not configured for this user.');
     }
@@ -164,12 +168,12 @@ export class MfaService {
     }
 
     if (this.#repository) {
-      await this.#repository.delete(userId);
+      await this.#repository.delete(accountId, userId);
     }
   }
 
-  async regenerateRecoveryCodes(userId: string): Promise<readonly string[]> {
-    const record = await this.#getRecord(userId);
+  async regenerateRecoveryCodes(accountId: string, userId: string): Promise<readonly string[]> {
+    const record = await this.#getRecord(accountId, userId);
     if (!record) {
       throw new Error('MFA is not configured for this user.');
     }
@@ -206,18 +210,18 @@ export class MfaService {
       recoveryCodes: updatedCodes
     };
 
-    if (this.#repository) {
-      void this.#repository.update(updated).catch(() => {});
-    }
-
     return updated;
   }
 
-  async #getRecord(userId: string): Promise<MfaRecord | undefined> {
+  async #getRecord(accountId: string, userId: string): Promise<MfaRecord | undefined> {
     if (this.#repository) {
-      return this.#repository.findByUserId(userId);
+      return this.#repository.findByUserId(accountId, userId);
     }
     return undefined;
+  }
+
+  #recordKey(accountId: string, userId: string): string {
+    return `${accountId}:${userId}`;
   }
 }
 

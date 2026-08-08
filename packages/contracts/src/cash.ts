@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import {
-  createPaginatedResponseSchema,
   idParamSchema,
   paginationQuerySchema,
   trim,

@@ -1,4 +1,5 @@
-import { getPool } from '@cvg-his-v2/shared-database';
+import { sql } from 'drizzle-orm';
+import { getPool, withTenantTransaction } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
@@ -23,7 +24,7 @@ export interface CashMovementRecord {
   readonly id: string;
   readonly cashRegisterId: string;
   readonly accountId: AccountId;
-  readonly movementType: 'opening' | 'closing' | 'payment' | 'supply' | 'withdrawal' | 'adjustment';
+  readonly movementType: 'opening' | 'closing' | 'payment' | 'supply' | 'deposit' | 'withdrawal' | 'adjustment';
   readonly amount: number;
   readonly runningBalance: number;
   readonly reference: string | null;
@@ -34,6 +35,10 @@ export interface CashMovementRecord {
 
 export interface CashRepository {
   openRegister(register: CashRegisterRecord): Promise<void>;
+  openRegisterWithMovement?(
+    register: CashRegisterRecord,
+    movement: CashMovementRecord
+  ): Promise<void>;
   closeRegister(
     id: string,
     closingAmount: number,
@@ -43,6 +48,17 @@ export interface CashRepository {
     closedAt: string,
     updatedAt: string
   ): Promise<void>;
+  closeRegisterWithMovement?(
+    accountId: AccountId,
+    id: string,
+    closingAmount: number,
+    expectedClosingAmount: number,
+    difference: number,
+    closedByUserId: UserId,
+    closedAt: string,
+    updatedAt: string,
+    movement: CashMovementRecord
+  ): Promise<void>;
   findOpenRegister(accountId: AccountId): Promise<CashRegisterRecord | null>;
   findRegistersByAccount(
     accountId: AccountId,
@@ -50,6 +66,16 @@ export interface CashRepository {
   ): Promise<readonly CashRegisterRecord[]>;
   findById(id: string): Promise<CashRegisterRecord | null>;
   createMovement(movement: CashMovementRecord): Promise<void>;
+  /**
+   * Locks the register, derives the current balance and appends the movement
+   * in the same PostgreSQL transaction. The returned row contains the
+   * database-authoritative running balance.
+   */
+  recordMovementAtomically?(
+    accountId: AccountId,
+    registerId: string,
+    movement: CashMovementRecord
+  ): Promise<CashMovementRecord>;
   findMovementsByRegister(cashRegisterId: string): Promise<readonly CashMovementRecord[]>;
   findMovementsByAccount(
     accountId: AccountId,
@@ -60,6 +86,24 @@ export interface CashRepository {
 }
 
 export class DatabaseCashRepository implements CashRepository {
+  async openRegisterWithMovement(
+    register: CashRegisterRecord,
+    movement: CashMovementRecord
+  ): Promise<void> {
+    await withTenantTransaction(register.accountId, async (database) => {
+      await database.execute(sql`INSERT INTO cash_registers
+        (id, account_id, opened_by_user_id, opening_amount, status, notes, opened_at, created_at, updated_at)
+        VALUES (${register.id}, ${register.accountId}, ${register.openedByUserId},
+          ${register.openingAmount}, ${register.status}, ${register.notes},
+          ${new Date(register.openedAt)}, ${new Date(register.createdAt)}, ${new Date(register.updatedAt)})`);
+      await database.execute(sql`INSERT INTO cash_movements
+        (id, cash_register_id, account_id, movement_type, amount, running_balance, reference, notes, created_by_user_id, created_at)
+        VALUES (${movement.id}, ${movement.cashRegisterId}, ${movement.accountId},
+          ${movement.movementType}, ${movement.amount}, ${movement.runningBalance},
+          ${movement.reference}, ${movement.notes}, ${movement.createdByUserId}, ${new Date(movement.createdAt)})`);
+    });
+  }
+
   async openRegister(register: CashRegisterRecord): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
@@ -102,6 +146,36 @@ export class DatabaseCashRepository implements CashRepository {
           new Date(updatedAt)
         ]
       );
+    });
+  }
+
+  async closeRegisterWithMovement(
+    accountId: AccountId,
+    id: string,
+    closingAmount: number,
+    expectedClosingAmount: number,
+    difference: number,
+    closedByUserId: UserId,
+    closedAt: string,
+    updatedAt: string,
+    movement: CashMovementRecord
+  ): Promise<void> {
+    await withTenantTransaction(accountId, async (database) => {
+      const result = await database.execute(sql`UPDATE cash_registers
+        SET status = 'closed', closing_amount = ${closingAmount},
+            expected_closing_amount = ${expectedClosingAmount}, difference = ${difference},
+            closed_by_user_id = ${closedByUserId}, closed_at = ${new Date(closedAt)},
+            updated_at = ${new Date(updatedAt)}
+        WHERE id = ${id} AND account_id = ${accountId} AND status = 'open'`);
+      if (result.rowCount !== 1) {
+        throw new Error('Cash register was already closed or is outside the current account');
+      }
+
+      await database.execute(sql`INSERT INTO cash_movements
+        (id, cash_register_id, account_id, movement_type, amount, running_balance, reference, notes, created_by_user_id, created_at)
+        VALUES (${movement.id}, ${movement.cashRegisterId}, ${movement.accountId},
+          ${movement.movementType}, ${movement.amount}, ${movement.runningBalance},
+          ${movement.reference}, ${movement.notes}, ${movement.createdByUserId}, ${new Date(movement.createdAt)})`);
     });
   }
 
@@ -158,6 +232,50 @@ export class DatabaseCashRepository implements CashRepository {
     });
   }
 
+  async recordMovementAtomically(
+    accountId: AccountId,
+    registerId: string,
+    movement: CashMovementRecord
+  ): Promise<CashMovementRecord> {
+    return withTenantTransaction(accountId, async (database) => {
+      const register = await database.execute(sql`SELECT status
+        FROM cash_registers
+        WHERE id = ${registerId} AND account_id = ${accountId}
+        FOR UPDATE`);
+      if (register.rowCount !== 1 || register.rows[0]?.status !== 'open') {
+        throw new Error('Cash register was not found or is already closed');
+      }
+
+      const balanceResult = await database.execute(sql`SELECT running_balance
+        FROM cash_movements
+        WHERE cash_register_id = ${registerId} AND account_id = ${accountId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`);
+      const currentBalance = Number(balanceResult.rows[0]?.running_balance ?? 0);
+      const amount = Number(movement.amount);
+      const nextBalance =
+        movement.movementType === 'withdrawal' || movement.movementType === 'deposit'
+          ? currentBalance - amount
+          : currentBalance + amount;
+      if (nextBalance < 0) {
+        throw new Error('Insufficient balance for withdrawal');
+      }
+
+      const persisted: CashMovementRecord = {
+        ...movement,
+        accountId,
+        cashRegisterId: registerId,
+        runningBalance: Math.round(nextBalance * 100) / 100
+      };
+      await database.execute(sql`INSERT INTO cash_movements
+        (id, cash_register_id, account_id, movement_type, amount, running_balance, reference, notes, created_by_user_id, created_at)
+        VALUES (${persisted.id}, ${persisted.cashRegisterId}, ${persisted.accountId},
+          ${persisted.movementType}, ${persisted.amount}, ${persisted.runningBalance},
+          ${persisted.reference}, ${persisted.notes}, ${persisted.createdByUserId}, ${new Date(persisted.createdAt)})`);
+      return persisted;
+    });
+  }
+
   async findMovementsByRegister(cashRegisterId: string): Promise<readonly CashMovementRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
@@ -196,10 +314,14 @@ export class DatabaseCashRepository implements CashRepository {
   async calculateCurrentBalance(cashRegisterId: string): Promise<number> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        `SELECT COALESCE(MAX(running_balance), 0) as balance FROM cash_movements WHERE cash_register_id = $1`,
+        `SELECT COALESCE(running_balance, 0) as balance
+           FROM cash_movements
+          WHERE cash_register_id = $1
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1`,
         [cashRegisterId]
       );
-      return parseFloat(result.rows[0].balance);
+      return parseFloat(result.rows[0]?.balance ?? '0');
     });
   }
 

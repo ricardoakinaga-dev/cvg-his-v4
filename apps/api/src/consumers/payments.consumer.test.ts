@@ -84,6 +84,7 @@ function createMockEncounterFinancialService() {
 function makePixConfirmedEvent(billingRecordId: string): OutboxEvent {
   return {
     id: 'evt_123',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.pix.confirmed',
@@ -109,6 +110,7 @@ function makePixConfirmedEvent(billingRecordId: string): OutboxEvent {
 function makePixIntentCreatedEvent(intentId = 'pix_intent_1', billingRecordId?: string): OutboxEvent {
   return {
     id: 'evt_pix_001',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_pix_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.pix.intent.created',
@@ -139,6 +141,7 @@ function makePixIntentCreatedEvent(intentId = 'pix_intent_1', billingRecordId?: 
 function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?: string): OutboxEvent {
   return {
     id: 'evt_card_001',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_card_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.card.intent.created',
@@ -174,6 +177,7 @@ function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?
 function makeCardCompletedEvent(billingRecordId: string): OutboxEvent {
   return {
     id: 'evt_card_complete_001',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_card_complete_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.card.completed',
@@ -291,6 +295,7 @@ test('PaymentsEventHandlers ignores billing.status_changed events (no-op)', asyn
 
   const event: OutboxEvent = {
     id: 'evt_456',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_xyz' as never,
     moduleName: 'billing' as never,
     eventType: 'billing.status_changed',

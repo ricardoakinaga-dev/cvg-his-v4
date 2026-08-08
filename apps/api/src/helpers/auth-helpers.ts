@@ -40,7 +40,7 @@ export async function requireApiKey(
     throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
   }
 
-  void apiKeys.updateLastUsed(apiKey.id);
+  await apiKeys.updateLastUsed(apiKey.id);
   return { apiKey };
 }
 

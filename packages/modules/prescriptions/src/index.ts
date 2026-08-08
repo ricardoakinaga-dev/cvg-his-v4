@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
@@ -37,6 +38,9 @@ export interface PrescriptionSummary {
   readonly deleteReason?: string;
   readonly lastRevisionReason?: string;
   readonly lastRevisionByUserId?: UserId;
+  readonly signedAt?: string;
+  readonly signedByUserId?: UserId;
+  readonly signatureHash?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   /** Medication name (same as title) */
@@ -47,7 +51,28 @@ export interface PrescriptionSummary {
   readonly route?: string;
   /** Parsed from content line "Frequência: X" */
   readonly frequency?: string;
+  /** Parsed from content line "Duração: X" */
+  readonly duration?: string;
   readonly notes?: string;
+}
+
+export interface PrescriptionRevisionSummary {
+  readonly id: string;
+  readonly prescriptionId: PrescriptionId;
+  readonly version: number;
+  readonly title: string;
+  readonly content: string;
+  readonly authorUserId: UserId;
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
+export interface PrescriptionSignatureSummary {
+  readonly prescriptionId: PrescriptionId;
+  readonly version: number;
+  readonly signedByUserId: UserId;
+  readonly signedAt: string;
+  readonly signatureHash: string;
 }
 
 export interface PrescriptionDocumentContext {
@@ -85,6 +110,7 @@ export interface PrescriptionDocument {
     readonly dosage?: string;
     readonly route?: string;
     readonly frequency?: string;
+    readonly duration?: string;
     readonly notes?: string;
   }>;
   readonly footer: string;
@@ -99,6 +125,7 @@ export interface CreatePrescriptionRequest {
   readonly dosage?: string;
   readonly route?: string;
   readonly frequency?: string;
+  readonly duration?: string;
   readonly notes?: string;
 }
 
@@ -125,6 +152,7 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
   let dosage: string | undefined;
   let route: string | undefined;
   let frequency: string | undefined;
+  let duration: string | undefined;
   let notes: string | undefined;
 
   for (const line of lines) {
@@ -132,6 +160,7 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
     if (trimmed.startsWith('Posologia:')) dosage = trimmed.slice('Posologia:'.length).trim();
     else if (trimmed.startsWith('Via:')) route = trimmed.slice('Via:'.length).trim();
     else if (trimmed.startsWith('Frequência:')) frequency = trimmed.slice('Frequência:'.length).trim();
+    else if (trimmed.startsWith('Duração:')) duration = trimmed.slice('Duração:'.length).trim();
     else if (trimmed.startsWith('Observações:')) notes = trimmed.slice('Observações:'.length).trim();
   }
 
@@ -157,6 +186,7 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
     dosage,
     route,
     frequency,
+    duration,
     notes
   };
 }
@@ -166,6 +196,7 @@ function formatPrescriptionContent(payload: CreatePrescriptionRequest): string {
   if (payload.dosage) lines.push(`Posologia: ${payload.dosage}`);
   if (payload.route) lines.push(`Via: ${payload.route}`);
   if (payload.frequency) lines.push(`Frequência: ${payload.frequency}`);
+  if (payload.duration) lines.push(`Duração: ${payload.duration}`);
   if (payload.notes) lines.push(`Observações: ${payload.notes}`);
   return lines.join('\n');
 }
@@ -181,6 +212,14 @@ export interface PrescriptionRepository {
     accountId: AccountId,
     options: { offset: number; limit: number }
   ): Promise<{ items: readonly PrescriptionSummary[]; total: number }>;
+  createRevision?(revision: PrescriptionRevisionSummary): Promise<void>;
+  findRevisions?(prescriptionId: PrescriptionId): Promise<readonly PrescriptionRevisionSummary[]>;
+  sign?(signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }): Promise<void>;
+  findSignature?(
+    accountId: AccountId,
+    prescriptionId: PrescriptionId,
+    version: number
+  ): Promise<PrescriptionSignatureSummary | null>;
 }
 
 /**
@@ -189,6 +228,8 @@ export interface PrescriptionRepository {
  */
 export class InMemoryPrescriptionRepository implements PrescriptionRepository {
   readonly #store = new Map<string, ClinicalEntrySummary>();
+  readonly #revisions = new Map<string, PrescriptionRevisionSummary[]>();
+  readonly #signatures = new Map<string, PrescriptionSignatureSummary>();
 
   async create(prescription: PrescriptionSummary): Promise<void> {
     this.#store.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
@@ -235,6 +276,27 @@ export class InMemoryPrescriptionRepository implements PrescriptionRepository {
       total: all.length,
     };
   }
+
+  async createRevision(revision: PrescriptionRevisionSummary): Promise<void> {
+    const current = this.#revisions.get(revision.prescriptionId) ?? [];
+    this.#revisions.set(revision.prescriptionId, [...current, revision]);
+  }
+
+  async findRevisions(prescriptionId: PrescriptionId): Promise<readonly PrescriptionRevisionSummary[]> {
+    return [...(this.#revisions.get(prescriptionId) ?? [])];
+  }
+
+  async sign(signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }): Promise<void> {
+    this.#signatures.set(`${signature.prescriptionId}:${signature.version}`, signature);
+  }
+
+  async findSignature(
+    _accountId: AccountId,
+    prescriptionId: PrescriptionId,
+    version: number
+  ): Promise<PrescriptionSignatureSummary | null> {
+    return this.#signatures.get(`${prescriptionId}:${version}`) ?? null;
+  }
 }
 
 export interface PrescriptionsServiceOptions {
@@ -251,6 +313,8 @@ export interface PrescriptionsServiceOptions {
 export class PrescriptionsService {
   readonly #prescriptionRepository?: PrescriptionRepository;
   readonly #prescriptions = new Map<PrescriptionId, ClinicalEntrySummary>();
+  readonly #revisions = new Map<PrescriptionId, PrescriptionRevisionSummary[]>();
+  readonly #signatures = new Map<PrescriptionId, PrescriptionSignatureSummary>();
   #pendingPersist = Promise.resolve();
   #lastPersist = Promise.resolve();
 
@@ -266,6 +330,18 @@ export class PrescriptionsService {
     const prescriptions = await this.#prescriptionRepository.findByAccountId(accountId);
     for (const prescription of prescriptions) {
       this.#prescriptions.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
+      if (this.#prescriptionRepository.findRevisions) {
+        const revisions = await this.#prescriptionRepository.findRevisions(prescription.id);
+        this.#revisions.set(prescription.id, [...revisions]);
+      }
+      if (this.#prescriptionRepository.findSignature) {
+        const signature = await this.#prescriptionRepository.findSignature(
+          accountId,
+          prescription.id,
+          prescription.version
+        );
+        if (signature) this.#signatures.set(prescription.id, signature);
+      }
     }
   }
 
@@ -322,15 +398,31 @@ export class PrescriptionsService {
 
     this.#prescriptions.set(entry.id as PrescriptionId, entry);
 
+    const initialRevision: PrescriptionRevisionSummary = {
+      id: createCorrelationId('rxrev'),
+      prescriptionId: entry.id as PrescriptionId,
+      version: entry.version,
+      title: entry.title,
+      content: entry.content,
+      authorUserId: entry.authoredByUserId,
+      reason: 'Prescription created',
+      createdAt: entry.createdAt
+    };
+    this.#appendRevision(initialRevision);
+
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(entry);
       if (prescription) {
         this.#enqueuePersist(
-          () => this.#prescriptionRepository!.create(prescription),
+          async () => {
+            await this.#prescriptionRepository!.create(prescription);
+            await this.#prescriptionRepository!.createRevision?.(initialRevision);
+          },
           () => {
             if (this.#prescriptions.get(entry.id as PrescriptionId) === entry) {
               this.#prescriptions.delete(entry.id as PrescriptionId);
             }
+            this.#revisions.delete(entry.id as PrescriptionId);
           }
         );
       }
@@ -346,7 +438,11 @@ export class PrescriptionsService {
     if (!entry) throw new NotFoundError('Prescription not found', { prescriptionId });
     const prescription = toPrescriptionSummary(entry);
     if (!prescription) throw new NotFoundError('Prescription not found', { prescriptionId });
-    return prescription;
+    const signature = this.#signatures.get(prescriptionId);
+    return signature
+      && signature.version === prescription.version
+      ? { ...prescription, signedAt: signature.signedAt, signedByUserId: signature.signedByUserId, signatureHash: signature.signatureHash }
+      : prescription;
   }
 
   public renderDocument(
@@ -381,13 +477,18 @@ export class PrescriptionsService {
       dosage: prescription.dosage,
       route: prescription.route,
       frequency: prescription.frequency,
+      duration: prescription.duration,
       notes: prescription.notes
     };
     const footer = [
       `Profissional: ${context.professional.name}`,
       context.professional.license ? `Registro: ${context.professional.license}` : '',
       `Emitida em: ${prescription.createdAt}`,
-      `Identificador: ${prescription.id}`
+      `Identificador: ${prescription.id}`,
+      prescription.signedAt
+        ? `Assinatura digital: ${prescription.signedByUserId ?? 'profissional autorizado'} em ${prescription.signedAt}`
+        : 'Assinatura digital: pendente',
+      prescription.signatureHash ? `Hash: ${prescription.signatureHash}` : ''
     ]
       .filter(Boolean)
       .join('\n');
@@ -400,6 +501,7 @@ export class PrescriptionsService {
       medication.dosage ? `Posologia: ${medication.dosage}` : '',
       medication.route ? `Via: ${medication.route}` : '',
       medication.frequency ? `Frequencia: ${medication.frequency}` : '',
+      medication.duration ? `Duracao: ${medication.duration}` : '',
       medication.notes ? `Orientacoes: ${medication.notes}` : '',
       footer
     ]
@@ -443,7 +545,7 @@ export class PrescriptionsService {
   public update(prescriptionId: PrescriptionId, actorUserId: UserId, payload: UpdatePrescriptionRequest): PrescriptionSummary {
     const current = this.getById(prescriptionId);
     if (current.deletedAt) throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
-    requireNonEmptyString(payload.reason, 'reason');
+    const reason = requireNonEmptyString(payload.reason, 'reason');
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {
         prescriptionId, expectedVersion: payload.expectedVersion, currentVersion: current.version
@@ -456,19 +558,34 @@ export class PrescriptionsService {
       title: payload.title ?? current.title,
       content: payload.content ?? current.content,
       version: current.version + 1,
-      lastRevisionReason: payload.reason,
+      lastRevisionReason: reason,
       lastRevisionByUserId: actorUserId,
       updatedAt: now
     } as ClinicalEntrySummary;
 
     this.#prescriptions.set(prescriptionId, updated);
+    const revision: PrescriptionRevisionSummary = {
+      id: createCorrelationId('rxrev'),
+      prescriptionId,
+      version: current.version,
+      title: current.title,
+      content: current.content,
+      authorUserId: current.authoredByUserId,
+      reason,
+      createdAt: now
+    };
+    this.#appendRevision(revision);
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(updated);
       if (prescription) {
         this.#enqueuePersist(
-          () => this.#prescriptionRepository!.update(prescription),
+          async () => {
+            await this.#prescriptionRepository!.createRevision?.(revision);
+            await this.#prescriptionRepository!.update(prescription);
+          },
           () => {
             this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
+            this.#removeRevision(prescriptionId, revision.id);
           }
         );
       }
@@ -489,6 +606,7 @@ export class PrescriptionsService {
     }
 
     const now = nowIso();
+    const reason = requireNonEmptyString(payload.reason, 'reason');
     const updated: ClinicalEntrySummary = {
       ...current,
       version: current.version + 1,
@@ -499,13 +617,28 @@ export class PrescriptionsService {
     };
 
     this.#prescriptions.set(prescriptionId, updated);
+    const revision: PrescriptionRevisionSummary = {
+      id: createCorrelationId('rxrev'),
+      prescriptionId,
+      version: current.version,
+      title: current.title,
+      content: current.content,
+      authorUserId: current.authoredByUserId,
+      reason,
+      createdAt: now
+    };
+    this.#appendRevision(revision);
     if (this.#prescriptionRepository) {
       const prescription = toPrescriptionSummary(updated);
       if (prescription) {
         this.#enqueuePersist(
-          () => this.#prescriptionRepository!.update(prescription),
+          async () => {
+            await this.#prescriptionRepository!.createRevision?.(revision);
+            await this.#prescriptionRepository!.update(prescription);
+          },
           () => {
             this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
+            this.#removeRevision(prescriptionId, revision.id);
           }
         );
       }
@@ -514,5 +647,58 @@ export class PrescriptionsService {
     const prescription = toPrescriptionSummary(updated);
     if (!prescription) throw new ValidationError('Failed to build prescription summary');
     return prescription;
+  }
+
+  public getRevisions(prescriptionId: PrescriptionId): readonly PrescriptionRevisionSummary[] {
+    this.getById(prescriptionId);
+    return [...(this.#revisions.get(prescriptionId) ?? [])];
+  }
+
+  public sign(
+    prescriptionId: PrescriptionId,
+    actorUserId: UserId,
+    expectedVersion?: number
+  ): PrescriptionSummary {
+    const current = this.getById(prescriptionId);
+    if (current.deletedAt) throw new ValidationError('Cannot sign an archived prescription');
+    if (expectedVersion !== undefined && expectedVersion !== current.version) {
+      throw new ValidationError('Prescription version mismatch', {
+        prescriptionId,
+        expectedVersion,
+        currentVersion: current.version
+      });
+    }
+    if (this.#signatures.get(prescriptionId)?.version === current.version) {
+      throw new ValidationError('Prescription version is already signed', { prescriptionId });
+    }
+    const signedAt = nowIso();
+    const signature: PrescriptionSignatureSummary = {
+      prescriptionId,
+      version: current.version,
+      signedByUserId: actorUserId,
+      signedAt,
+      signatureHash: createHash('sha256')
+        .update(`${current.accountId}|${current.id}|${current.version}|${current.content}|${actorUserId}|${signedAt}`)
+        .digest('hex')
+    };
+    this.#signatures.set(prescriptionId, signature);
+    this.#enqueuePersist(
+      () => this.#prescriptionRepository?.sign?.({ ...signature, accountId: current.accountId }) ?? Promise.resolve(),
+      () => this.#signatures.delete(prescriptionId)
+    );
+    return { ...current, ...signature };
+  }
+
+  #appendRevision(revision: PrescriptionRevisionSummary): void {
+    const current = this.#revisions.get(revision.prescriptionId) ?? [];
+    this.#revisions.set(revision.prescriptionId, [...current, revision]);
+  }
+
+  #removeRevision(prescriptionId: PrescriptionId, revisionId: string): void {
+    const current = this.#revisions.get(prescriptionId) ?? [];
+    this.#revisions.set(
+      prescriptionId,
+      current.filter((revision) => revision.id !== revisionId)
+    );
   }
 }

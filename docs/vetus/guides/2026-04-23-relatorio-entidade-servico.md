@@ -11,15 +11,15 @@ Escopo:
 
 Evidências principais:
 
-- [servicos-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/screenshots/servicos-lista.png)
-- [servicos-lista.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/servicos-lista.json)
-- [servicos-lista.html](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/servicos-lista.html)
-- [estado-pos-login.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/estado-pos-login.json)
-- [estado-servicos.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/estado-servicos.json)
-- [network-lite.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/network-lite.json)
-- [2026-04-23-relatorio-entidade-agenda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-agenda.md)
-- [2026-04-23-relatorio-entidade-comanda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-comanda.md)
-- [2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md)
+- [servicos-lista.png](../inspection/2026-04-23T23-16-39-933Z-servicos/screenshots/servicos-lista.png)
+- [servicos-lista.json](../inspection/2026-04-23T23-16-39-933Z-servicos/servicos-lista.json)
+- [servicos-lista.html](../inspection/2026-04-23T23-16-39-933Z-servicos/servicos-lista.html)
+- [estado-pos-login.json](../inspection/2026-04-23T23-16-39-933Z-servicos/estado-pos-login.json)
+- [estado-servicos.json](../inspection/2026-04-23T23-16-39-933Z-servicos/estado-servicos.json)
+- [network-lite.json](../inspection/2026-04-23T23-16-39-933Z-servicos/network-lite.json)
+- [2026-04-23-relatorio-entidade-agenda.md](../guides/2026-04-23-relatorio-entidade-agenda.md)
+- [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
+- [2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md](../guides/2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md)
 
 Nota de segurança:
 
@@ -58,7 +58,7 @@ O caminho de acesso atual é híbrido:
 3. o beta emite um `accessToken` para `erp.vetus.com.br/NewLogin.htm?...`;
 4. o legado conclui a sessão e entrega `Servicos.htm`.
 
-Isso está confirmado no recorte de rede em [network-lite.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/network-lite.json).
+Isso está confirmado no recorte de rede em [network-lite.json](../inspection/2026-04-23T23-16-39-933Z-servicos/network-lite.json).
 
 Leitura:
 
@@ -95,7 +95,7 @@ Isso contrasta com os módulos beta observados antes:
 
 Evidência principal:
 
-- [servicos-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-16-39-933Z-servicos/screenshots/servicos-lista.png)
+- [servicos-lista.png](../inspection/2026-04-23T23-16-39-933Z-servicos/screenshots/servicos-lista.png)
 
 Título da tela:
 

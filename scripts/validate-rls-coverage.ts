@@ -4,6 +4,21 @@ import { resolve } from 'node:path';
 import { analyzeRlsMigrationCoverage, type RlsMigrationFile } from '../packages/db/src/rls.js';
 
 const migrationsDir = resolve(process.cwd(), 'packages/db/migrations');
+const requiredTenantTables = [
+  'access_teams',
+  'access_sectors',
+  'access_team_memberships',
+  'access_sector_memberships',
+  'access_user_permissions',
+  'access_team_permissions',
+  'access_sector_permissions',
+  'mfa_credentials',
+  'encounter_timeline',
+  'webhook_deliveries',
+  'owner_patient_links',
+  'inpatient_progress',
+  'surgery_cases'
+] as const;
 
 function loadMigrationFiles(): RlsMigrationFile[] {
   return readdirSync(migrationsDir)
@@ -15,9 +30,12 @@ function loadMigrationFiles(): RlsMigrationFile[] {
     }));
 }
 
-const report = analyzeRlsMigrationCoverage(loadMigrationFiles());
+const report = analyzeRlsMigrationCoverage(loadMigrationFiles(), { requiredTenantTables });
 const failing = report.tables.filter(
-  (table) => table.status === 'missing_rls' || table.status === 'missing_policy'
+  (table) =>
+    table.status === 'missing_account_scope' ||
+    table.status === 'missing_rls' ||
+    table.status === 'missing_policy'
 );
 
 if (failing.length > 0) {

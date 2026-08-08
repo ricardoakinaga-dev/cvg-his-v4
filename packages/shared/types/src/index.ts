@@ -37,6 +37,7 @@ export type InventoryItemId = Brand<string, 'InventoryItemId'>;
 export type InventoryConsumptionId = Brand<string, 'InventoryConsumptionId'>;
 export type InventoryLotId = Brand<string, 'InventoryLotId'>;
 export type InventoryStockMovementId = Brand<string, 'InventoryStockMovementId'>;
+export type InventoryReservationId = Brand<string, 'InventoryReservationId'>;
 export type NotificationId = Brand<string, 'NotificationId'>;
 export type NotificationJobId = Brand<string, 'NotificationJobId'>;
 export type SectorId = Brand<string, 'SectorId'>;
@@ -328,6 +329,16 @@ export interface PatientSummary {
   readonly updatedAt: string;
 }
 
+export interface PatientMergeSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly sourcePatientId: PatientId;
+  readonly targetPatientId: PatientId;
+  readonly mergedByUserId: UserId;
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
 export interface OwnerPatientLinkSummary {
   readonly id: OwnerPatientLinkId;
   readonly accountId: AccountId;
@@ -353,6 +364,15 @@ export interface SchedulingAppointmentSummary {
   readonly specialty?: string;
   readonly resourceLabel?: string;
   readonly status: 'scheduled' | 'checked_in' | 'completed' | 'cancelled';
+  readonly canonicalStatus?:
+    | 'scheduled'
+    | 'confirmed'
+    | 'in_progress'
+    | 'completed'
+    | 'cancelled'
+    | 'no_show'
+    | 'checked_in';
+  readonly clinicalType?: 'consultation' | 'vaccination' | 'surgery' | 'exam' | 'return' | 'other';
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -444,7 +464,12 @@ export interface QueueEntrySummary {
     | 'completed'
     | 'cancelled';
   readonly clinicalStatus?: 'not_started' | 'in_progress' | 'pending' | 'completed';
-  readonly billingStatus?: 'not_started' | 'pending_origin' | 'ready_for_finance' | 'in_billing' | 'closed';
+  readonly billingStatus?:
+    | 'not_started'
+    | 'pending_origin'
+    | 'ready_for_finance'
+    | 'in_billing'
+    | 'closed';
   readonly handoffStatus?:
     | 'not_started'
     | 'sent_to_reception'
@@ -546,7 +571,8 @@ export interface EncounterTimelineEventSummary {
     | 'handoff_pending_resolved'
     | 'handoff_returned_to_clinic'
     | 'handoff_sent_to_finance'
-    | 'encounter_closed';
+    | 'encounter_closed'
+    | 'encounter_reopened';
   readonly summary: string;
   readonly actorUserId: UserId;
   readonly occurredAt: string;
@@ -705,6 +731,10 @@ export interface AttachmentSummary {
   readonly checksum: string;
   readonly sizeBytes?: number;
   readonly source: 'upload';
+  readonly scanStatus: 'quarantined' | 'available' | 'rejected';
+  readonly scanProvider?: string;
+  readonly scanReason?: string;
+  readonly scannedAt?: string;
   readonly uploadedByUserId: UserId;
   readonly createdAt: string;
 }
@@ -714,6 +744,8 @@ export interface InpatientStaySummary {
   readonly accountId: AccountId;
   readonly encounterId: EncounterId;
   readonly patientId: PatientId;
+  readonly ownerId: OwnerId;
+  readonly admittedByUserId: UserId;
   readonly unit: string;
   readonly ward: string;
   readonly bed: string;
@@ -862,13 +894,16 @@ export interface ExamCatalogEntry {
   readonly preparationInstructions?: string;
 }
 
+/** Canonical lifecycle for a billing record across API, database and SPA. */
+export type BillingRecordStatus = 'draft' | 'estimated' | 'open' | 'settled';
+
 export interface BillingRecordSummary {
   readonly id: BillingRecordId;
   readonly accountId: AccountId;
   readonly encounterId: EncounterId;
   readonly patientId: PatientId;
   readonly ownerId: OwnerId;
-  readonly status: 'draft' | 'estimated' | 'open' | 'settled';
+  readonly status: BillingRecordStatus;
   readonly subtotalAmount: number;
   readonly currency: 'BRL';
   readonly administrativeNotes?: string;
@@ -940,6 +975,7 @@ export interface InventoryLotSummary {
   readonly itemName: string;
   readonly lotNumber: string;
   readonly quantity: number;
+  readonly reservedQuantity?: number;
   readonly unit: string;
   readonly location?: string;
   readonly supplier?: string;
@@ -948,6 +984,35 @@ export interface InventoryLotSummary {
   readonly status: 'active' | 'expiring' | 'expired' | 'depleted';
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export type InventoryReservationStatus = 'reserved' | 'released' | 'consumed' | 'returned';
+
+export interface InventoryReservationSummary {
+  readonly id: InventoryReservationId;
+  readonly accountId: AccountId;
+  readonly inventoryItemId: InventoryItemId;
+  readonly inventoryLotId: InventoryLotId;
+  readonly lotNumber: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly unitCostAmount: number;
+  readonly status: InventoryReservationStatus;
+  readonly sourceEntityType:
+    | 'encounter'
+    | 'diagnostic_order'
+    | 'surgery_case'
+    | 'inpatient_stay'
+    | 'prescription'
+    | 'other';
+  readonly sourceEntityId?: string;
+  readonly reference?: string;
+  readonly reservedByUserId: UserId;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly releasedAt?: string;
+  readonly consumedAt?: string;
+  readonly returnedAt?: string;
 }
 
 export interface InventoryStockMovementSummary {
@@ -1081,6 +1146,7 @@ export interface WebhookSummary {
 
 export interface WebhookDeliverySummary {
   readonly id: WebhookDeliveryId;
+  readonly accountId: AccountId;
   readonly webhookId: WebhookId;
   readonly event: string;
   readonly payload: Record<string, unknown>;

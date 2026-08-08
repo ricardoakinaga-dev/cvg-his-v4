@@ -22,6 +22,8 @@ export interface NfseEmitterConfig {
   readonly provider: NfseIssuerConfig;
   readonly issuer: NfseIssuer;
   readonly regime: 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
+  /** Test/development-only escape hatch for the deterministic local simulator. */
+  readonly allowSimulation?: boolean;
 }
 
 export interface NfseIssuerConfig {
@@ -299,7 +301,23 @@ export class NfseEmitter {
       throw new Error(`Cannot cancel document in status: ${document.status}`);
     }
 
-    // In production: call provider cancellation API
+    if (this.config.allowSimulation === false) {
+      const cancellationXml = `<?xml version="1.0" encoding="UTF-8"?>
+<CancelarNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
+  <Id>${document.id}</Id>
+  <Numero>${document.numero}</Numero>
+  <Motivo>${escapeXml(reason)}</Motivo>
+</CancelarNfse>`;
+      const result = await this.sendToProvider(cancellationXml, `${document.id}:cancel`);
+      return {
+        ...document,
+        status: 'cancelled',
+        authorizationCode: result.authorizationCode,
+        verificationUrl: result.verificationUrl,
+        observations: `${document.observations ?? ''}\n[Cancelamento: ${reason}]`
+      };
+    }
+
     return {
       ...document,
       status: 'cancelled',
@@ -313,21 +331,72 @@ export class NfseEmitter {
   }> {
     const { apiUrl, apiKey } = this.config.provider;
 
-    // In production: make actual SOAP/REST call to provider
-    // Example for Abrasf:
-    // const response = await fetch(apiUrl, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/xml',
-    //     'Authorization': `Bearer ${apiKey}`
-    //   },
-    //   body: xml
-    // });
+    if (this.config.allowSimulation !== false) {
+      return {
+        authorizationCode: `AUT${Date.now().toString().padStart(15, '0')}`,
+        verificationUrl: `${apiUrl}/verificar/${generateNfseId('chk')}`
+      };
+    }
 
-    // Simulated response
+    if (!apiUrl || apiUrl.endsWith('.invalid') || (!apiKey && !this.config.provider.certificate)) {
+      throw new Error('NFS-e provider credentials and endpoint are required outside test mode');
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          'Content-Type': 'application/xml',
+          Accept: 'application/json, application/xml, text/xml'
+        },
+        body: _xml
+      });
+    } catch (error) {
+      throw new Error(
+        `NFS-e provider request failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(`NFS-e provider rejected document with status ${response.status}`);
+    }
+
+    const body = await response.text();
+    let parsed: { authorizationCode?: string; verificationUrl?: string } = {};
+    try {
+      parsed = JSON.parse(body) as typeof parsed;
+    } catch {
+      const authorizationMatch = body.match(/<(?:AuthorizationCode|CodigoAutorizacao)>([^<]+)</i);
+      if (authorizationMatch?.[1]) parsed.authorizationCode = authorizationMatch[1];
+      const verificationMatch = body.match(/<(?:VerificationUrl|UrlConsulta)>([^<]+)</i);
+      if (verificationMatch?.[1]) parsed.verificationUrl = verificationMatch[1];
+    }
+
+    const authorizationCode =
+      parsed.authorizationCode ?? response.headers.get('x-authorization-code') ?? undefined;
+    if (!authorizationCode) {
+      throw new Error('NFS-e provider response did not include an authorization code');
+    }
+
     return {
-      authorizationCode: `AUT${Date.now().toString().padStart(15, '0')}`,
-      verificationUrl: `${apiUrl}/verificar/${generateNfseId('chk')}`
+      authorizationCode,
+      verificationUrl:
+        parsed.verificationUrl ?? response.headers.get('x-verification-url') ?? `${apiUrl}/${_documentId}`
     };
   }
+}
+
+function escapeXml(value: string): string {
+  return value.replace(/[<>&'\"]/g, (character) => {
+    const entities: Record<string, string> = {
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '"': '&quot;'
+    };
+    return entities[character] ?? character;
+  });
 }

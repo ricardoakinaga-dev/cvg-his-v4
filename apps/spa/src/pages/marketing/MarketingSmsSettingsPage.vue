@@ -3,13 +3,16 @@
     <AppPageHeader
       title="Configurações de SMS"
       :breadcrumbs="['Marketing', 'Configurações', 'Configurações de SMS']"
-      subtitle="Automações SMS Vetus-like para agenda e aniversários, sem disparo ou salvamento real"
-      :primary-action="{ label: 'Salvar', disabled: true }"
+      subtitle="Automações SMS por tenant, com consentimento e disparo controlado pelo canal"
     />
 
-    <DsAlert variant="warning">
-      Superfície segura para preservar a ordem Vetus de Marketing. As automações podem ser revisadas localmente;
-      salvar, consumir saldo e disparar SMS permanecem bloqueados até existir contrato auditável.
+    <DsAlert variant="info">
+      As preferências são persistidas por tenant. O envio continua sujeito a consentimento, provider configurado,
+      saldo e auditoria de cada campanha.
+    </DsAlert>
+
+    <DsAlert v-if="errorMessage" variant="danger" dismissible @dismiss="errorMessage = ''">
+      {{ errorMessage }}
     </DsAlert>
 
     <DsAlert v-if="statusMessage" variant="success" dismissible @dismiss="statusMessage = ''">
@@ -19,8 +22,8 @@
     <section class="sms-settings-summary-grid" aria-label="Resumo das configurações de SMS">
       <DsStatCard label="Automações Vetus mapeadas" value="3" />
       <DsStatCard label="Saldo não consumido" value="0 SMS" />
-      <DsStatCard label="Salvar bloqueado" value="Segurança" />
-      <DsStatCard label="Sem automação real" value="Canal" />
+      <DsStatCard label="Preferências" :value="loading ? '…' : 'Persistidas'" />
+      <DsStatCard label="Provider" value="Controlado" />
     </section>
 
     <form class="sms-settings-form" aria-label="Configurações de SMS" @submit.prevent="prepareSettings">
@@ -43,7 +46,13 @@
           Preparar configuração
         </DsButton>
         <DsButton variant="secondary" type="button" @click="restoreVetusState">Restaurar padrão Vetus</DsButton>
-        <DsButton id="marketing-sms-settings-save" variant="primary" disabled>Salvar</DsButton>
+        <DsButton
+          id="marketing-sms-settings-save"
+          variant="primary"
+          :loading="saving"
+          :disabled="loading || saving"
+          @click="saveSettings"
+        >Salvar</DsButton>
       </div>
     </form>
 
@@ -60,17 +69,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCheckbox from '@cvg-his-v2/design-system/vue/DsCheckbox.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import { marketingService } from '@/services/marketing';
 
 const agendaSms = ref(true);
 const animalBirthdaySms = ref(true);
 const clientBirthdaySms = ref(true);
 const statusMessage = ref('');
+const errorMessage = ref('');
+const loading = ref(false);
+const saving = ref(false);
 
 const automations = [
   {
@@ -97,7 +110,44 @@ const automations = [
 ];
 
 function prepareSettings() {
-  statusMessage.value = 'Configuração preparada sem salvar';
+  statusMessage.value = 'Configuração preparada para salvar';
+  errorMessage.value = '';
+}
+
+async function loadSettings(): Promise<void> {
+  loading.value = true;
+  try {
+    const setting = await marketingService.getSetting('sms_automations');
+    const values = setting?.values ?? {};
+    if (typeof values.agenda === 'boolean') agendaSms.value = values.agenda;
+    if (typeof values.animalBirthday === 'boolean') animalBirthdaySms.value = values.animalBirthday;
+    if (typeof values.clientBirthday === 'boolean') clientBirthdaySms.value = values.clientBirthday;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível carregar as configurações.';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function saveSettings(): Promise<void> {
+  saving.value = true;
+  errorMessage.value = '';
+  try {
+    await marketingService.saveSetting({
+      key: 'sms_automations',
+      channel: 'sms',
+      values: {
+        agenda: agendaSms.value,
+        animalBirthday: animalBirthdaySms.value,
+        clientBirthday: clientBirthdaySms.value
+      }
+    });
+    statusMessage.value = 'Configuração de SMS salva por tenant.';
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível salvar as configurações.';
+  } finally {
+    saving.value = false;
+  }
 }
 
 function restoreVetusState() {
@@ -106,6 +156,10 @@ function restoreVetusState() {
   clientBirthdaySms.value = true;
   statusMessage.value = '';
 }
+
+onMounted(() => {
+  void loadSettings();
+});
 </script>
 
 <style scoped>

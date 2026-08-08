@@ -35,10 +35,16 @@ import type {
 
 import { CFOP_TABLE, type CfopSection } from './cfop-table.js';
 import { DEFAULT_TAX_RATES, TaxCalculator, type TaxRegime } from './tax-calculator.js';
-import { DatabaseFiscalRepository } from './database-fiscal.repository.js';
+import {
+  DatabaseFiscalRepository,
+  type PersistedNfseDocument
+} from './database-fiscal.repository.js';
 import {
   NfseEmitter,
+  type NfseAddress,
   type NfseDocument,
+  type NfseIssuer,
+  type NfseProvider,
   type NfseServiceLine
 } from './nfse-emitter.js';
 import type { AccountId } from '@cvg-his-v2/shared-types';
@@ -414,11 +420,7 @@ const inMemoryCfopEntries: FiscalCfopSummary[] = CFOP_TABLE.map((entry) => ({
 }));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
 
-type NfseIssuerDocument = NfseDocument & {
-  municipalityCode: string;
-  apiUrl: string;
-  environment: 'producao' | 'homologacao';
-};
+type NfseIssuerDocument = PersistedNfseDocument;
 
 function createTaxPreview(): FiscalTaxPreview {
   const calculator = new TaxCalculator(DEFAULT_TAX_RATES, 'SP', 'simples_nacional');
@@ -707,33 +709,56 @@ function toFiscalDocumentSummary(document: NfseDocument): FiscalNfseDocumentSumm
 function toEmitter(
   provider: NfseIssuerDocument['provider'],
   municipalityCode: string,
-  apiUrl: string
+  apiUrl: string,
+  allowSimulation = true,
+  runtime?: FiscalNfseRuntimeConfig
 ): NfseEmitter {
+  const effectiveProvider = runtime?.provider ?? provider;
+  const effectiveMunicipalityCode = runtime?.municipalityCode ?? municipalityCode;
+  const effectiveApiUrl = runtime?.apiUrl ?? apiUrl;
   return new NfseEmitter({
     provider: {
-      provider,
-      apiUrl,
-      municipalityCode
+      provider: effectiveProvider,
+      apiUrl: effectiveApiUrl,
+      municipalityCode: effectiveMunicipalityCode,
+      apiKey: runtime?.apiKey,
+      certificate: runtime?.certificate
     },
-    issuer: {
-      cnpj: '99999999000101',
-      inscricaoMunicipal: '000001',
-      razaoSocial: 'CVG HIS Ltda',
-      nomeFantasia: 'CVG HIS',
-      address: {
-        street: 'Avenida Exemplo',
-        number: '1000',
-        district: 'Centro',
-        city: 'Sao Paulo',
-        state: 'SP',
-        zipCode: '01000000',
-        country: 'BR'
-      },
-      phone: '(11) 4000-0000',
-      email: 'fiscal@cvg-his.example.com'
-    },
-    regime: 'simples_nacional'
+    issuer: runtime?.issuer ?? defaultNfseIssuer(),
+    regime: runtime?.regime ?? 'simples_nacional',
+    allowSimulation
   });
+}
+
+export interface FiscalNfseRuntimeConfig {
+  readonly provider: NfseProvider;
+  readonly apiUrl: string;
+  readonly municipalityCode: string;
+  readonly apiKey?: string;
+  readonly certificate?: Buffer;
+  readonly issuer?: NfseIssuer;
+  readonly regime?: 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
+}
+
+function defaultNfseIssuer(): NfseIssuer {
+  const address: NfseAddress = {
+    street: 'Avenida Exemplo',
+    number: '1000',
+    district: 'Centro',
+    city: 'Sao Paulo',
+    state: 'SP',
+    zipCode: '01000000',
+    country: 'BR'
+  };
+  return {
+    cnpj: '99999999000101',
+    inscricaoMunicipal: '000001',
+    razaoSocial: 'CVG HIS Ltda',
+    nomeFantasia: 'CVG HIS',
+    address,
+    phone: '(11) 4000-0000',
+    email: 'fiscal@cvg-his.example.com'
+  };
 }
 
 function nextDocumentId(): string {
@@ -751,10 +776,21 @@ function todayDate(): string {
 export class FiscalService {
   private readonly dbRepo?: DatabaseFiscalRepository;
   private readonly accountId?: AccountId;
+  private readonly allowNfseSimulation: boolean;
+  private readonly nfseRuntime?: FiscalNfseRuntimeConfig;
 
-  constructor(dbRepo?: DatabaseFiscalRepository, accountId?: AccountId) {
+  constructor(
+    dbRepo?: DatabaseFiscalRepository,
+    accountId?: AccountId,
+    options: {
+      readonly allowNfseSimulation?: boolean;
+      readonly nfse?: FiscalNfseRuntimeConfig;
+    } = {}
+  ) {
     this.dbRepo = dbRepo;
     this.accountId = accountId;
+    this.allowNfseSimulation = options.allowNfseSimulation ?? true;
+    this.nfseRuntime = options.nfse;
   }
 
   private hasDbRepo(): boolean {
@@ -1447,6 +1483,15 @@ export class FiscalService {
   public async listNfseDocuments(
     filters: FiscalNfseDocumentFilters = {}
   ): Promise<FiscalNfseDocumentSummary[]> {
+    if (this.hasDbRepo()) {
+      const documents = await this.dbRepo!.listNfseDocuments({
+        accountId: this.accountId!,
+        status: filters.status,
+        customerSearch: filters.customerSearch
+      });
+      return documents.map((document) => toFiscalDocumentSummary(document));
+    }
+
     const normalizedSearch = normalizeTerm(filters.customerSearch);
 
     return inMemoryNfseDocuments
@@ -1460,6 +1505,11 @@ export class FiscalService {
   }
 
   public async getNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
+    if (this.hasDbRepo()) {
+      const found = await this.dbRepo!.findNfseDocument(this.accountId!, id);
+      return found ? toFiscalDocumentSummary(found) : null;
+    }
+
     const found = inMemoryNfseDocuments.find((document) => document.id === id);
     return found ? toFiscalDocumentSummary(found) : null;
   }
@@ -1476,17 +1526,26 @@ export class FiscalService {
       phone: payload.customer.phone?.trim() || undefined
     };
     const services = normalizeServices(payload.services);
-    const provider = payload.provider ?? 'abrasf';
+    const provider = this.nfseRuntime?.provider ?? payload.provider ?? 'abrasf';
     const documentNumber = assertPositiveInteger(
       payload.numero,
       'numero',
       nextDocumentNumber()
     );
     const competencia = payload.competencia?.trim() || todayDate();
-    const municipalityCode = payload.municipalityCode?.trim() || '3550308';
-    const apiUrl = payload.apiUrl?.trim() || 'https://simulator.example.invalid/nfse';
+    const municipalityCode =
+      this.nfseRuntime?.municipalityCode ?? (payload.municipalityCode?.trim() || '3550308');
+    const apiUrl =
+      this.nfseRuntime?.apiUrl
+      ?? (payload.apiUrl?.trim() || 'https://simulator.example.invalid/nfse');
 
-    const draft = toEmitter(provider, municipalityCode, apiUrl).createDraft({
+    const draft = toEmitter(
+      provider,
+      municipalityCode,
+      apiUrl,
+      this.allowNfseSimulation,
+      this.nfseRuntime
+    ).createDraft({
       numero: documentNumber,
       competencia,
       customer,
@@ -1505,18 +1564,50 @@ export class FiscalService {
       environment: 'homologacao'
     };
 
+    if (this.hasDbRepo()) {
+      const persisted = await this.dbRepo!.createNfseDocument(this.accountId!, document);
+      return toFiscalDocumentSummary(persisted);
+    }
+
     inMemoryNfseDocuments.unshift(document);
     return toFiscalDocumentSummary(document);
   }
 
   public async issueNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
+    if (this.hasDbRepo()) {
+      const current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
+      if (!current) return null;
+
+      const emitter = toEmitter(
+        current.provider,
+        current.municipalityCode,
+        current.apiUrl,
+        this.allowNfseSimulation,
+        this.nfseRuntime
+      );
+      const next: NfseIssuerDocument = {
+        ...(await emitter.issue(current)),
+        municipalityCode: current.municipalityCode,
+        apiUrl: current.apiUrl,
+        environment: current.environment
+      };
+      const persisted = await this.dbRepo!.updateNfseDocument(this.accountId!, next);
+      return persisted ? toFiscalDocumentSummary(persisted) : null;
+    }
+
     const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
     if (index === -1) {
       return null;
     }
 
     const current = inMemoryNfseDocuments[index];
-    const emitter = toEmitter(current.provider, current.municipalityCode, current.apiUrl);
+    const emitter = toEmitter(
+      current.provider,
+      current.municipalityCode,
+      current.apiUrl,
+      this.allowNfseSimulation,
+      this.nfseRuntime
+    );
     const nextDocument = await emitter.issue(current);
     const next: NfseIssuerDocument = {
       ...nextDocument,
@@ -1533,13 +1624,40 @@ export class FiscalService {
     id: string,
     payload: CancelFiscalNfseDocumentRequest
   ): Promise<FiscalNfseDocumentSummary | null> {
+    if (this.hasDbRepo()) {
+      const current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
+      if (!current) return null;
+
+      const emitter = toEmitter(
+        current.provider,
+        current.municipalityCode,
+        current.apiUrl,
+        this.allowNfseSimulation,
+        this.nfseRuntime
+      );
+      const next: NfseIssuerDocument = {
+        ...(await emitter.cancel(current, assertNonEmpty(payload.reason, 'reason'))),
+        municipalityCode: current.municipalityCode,
+        apiUrl: current.apiUrl,
+        environment: current.environment
+      };
+      const persisted = await this.dbRepo!.updateNfseDocument(this.accountId!, next);
+      return persisted ? toFiscalDocumentSummary(persisted) : null;
+    }
+
     const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
     if (index === -1) {
       return null;
     }
 
     const current = inMemoryNfseDocuments[index];
-    const emitter = toEmitter(current.provider, current.municipalityCode, current.apiUrl);
+    const emitter = toEmitter(
+      current.provider,
+      current.municipalityCode,
+      current.apiUrl,
+      this.allowNfseSimulation,
+      this.nfseRuntime
+    );
     const nextDocument = await emitter.cancel(current, assertNonEmpty(payload.reason, 'reason'));
     const next: NfseIssuerDocument = {
       ...nextDocument,

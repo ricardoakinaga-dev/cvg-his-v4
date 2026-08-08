@@ -159,3 +159,52 @@ test('handleCashRoutes exposes Vetus-like drawer dashboard and controlled write 
   assert.equal(payload.movements.length, 2);
   assert.equal(payload.byPaymentMethod[0]?.method, 'Dinheiro');
 });
+
+test('handleCashRoutes records deposit and exposes reconciliation', async () => {
+  const cash = new CashService();
+  const handlers = {
+    cash,
+    audit: createAudit() as never,
+    requirePrincipal: () => createPrincipal()
+  };
+  await handleCashRoutes(
+    '/cash-register/open',
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ openingAmount: 100 }));
+      }
+    } as never,
+    new MockResponse() as never,
+    'corr-cash-deposit-open',
+    handlers
+  );
+  const depositResponse = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/movements',
+    {
+      method: 'POST',
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ movementType: 'deposit', amount: 25, reference: 'DEP-01' }));
+      }
+    } as never,
+    depositResponse as never,
+    'corr-cash-deposit',
+    handlers
+  );
+  assert.equal(depositResponse.statusCode, 201);
+  assert.equal(depositResponse.bodyJson<{ movementType: string; runningBalance: number }>().movementType, 'deposit');
+  assert.equal(depositResponse.bodyJson<{ runningBalance: number }>().runningBalance, 75);
+
+  const reconciliationResponse = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/reconciliation',
+    { method: 'GET', url: '/cash-register/reconciliation' } as never,
+    reconciliationResponse as never,
+    'corr-cash-reconciliation',
+    handlers
+  );
+  const reconciliation = reconciliationResponse.bodyJson<{ expectedAmount: number; totalOut: number }>();
+  assert.equal(reconciliation.expectedAmount, 75);
+  assert.equal(reconciliation.totalOut, 25);
+});

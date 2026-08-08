@@ -84,4 +84,25 @@ describe('tenant context', () => {
       )
     ).toThrow('Account ID is required');
   });
+
+  it('does not let request headers override authenticated identity fallbacks', () => {
+    const ctx = resolveTenantFromRequest(
+      createRequest({
+        'x-tenant-id': 'spoofed-tenant',
+        'x-account-id': 'spoofed-account',
+        'x-user-id': 'spoofed-user'
+      }),
+      {
+        defaultTenantId: 'trusted-tenant',
+        fallbackAccountId: 'trusted-account',
+        fallbackUserId: 'trusted-user'
+      }
+    );
+
+    expect(ctx).toMatchObject({
+      tenantId: 'trusted-tenant',
+      accountId: 'trusted-account',
+      userId: 'trusted-user'
+    });
+  });
 });

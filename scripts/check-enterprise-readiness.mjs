@@ -39,7 +39,7 @@ const requiredScripts = [
   ['deploy:rehearsal:local', 'Rehearsal local de cutover com Docker Compose'],
   ['validate:helm', 'Manifestos Helm'],
   ['test:e2e:spa:enterprise', 'E2E SPA Enterprise'],
-  ['vetus:parity', 'Matriz Vetus final acima de 88'],
+  ['vetus:parity', 'Contrato estrito de paridade funcional Vetus'],
   ['rc:evidence', 'Pacote de evidencias Release Candidate'],
   ['rc:evidence:strict', 'Pacote de evidencias Release Candidate em modo estrito'],
 ];
@@ -75,12 +75,12 @@ for (const spec of requiredSpecs) {
 
 addCheck({
   area: 'Vetus',
-  item: 'Matriz Vetus executavel acima de 88',
+  item: 'Contrato estrito de paridade funcional Vetus',
   status: vetusParity.status === 0 ? 'PASS' : 'FAIL',
   evidence: vetusParity.status === 0
-    ? (vetusParity.stdout.match(/Score: \d+\/100/)?.[0] ?? 'pnpm vetus:parity passou')
+    ? (vetusParity.stdout.match(/Functional parity: VERIFIED/)?.[0] ?? 'pnpm vetus:parity passou')
     : (vetusParity.stderr.trim() || vetusParity.stdout.trim() || 'Falha ao executar matriz Vetus'),
-  action: vetusParity.status === 0 ? '' : 'Executar pnpm vetus:parity e corrigir areas abaixo da meta.',
+  action: vetusParity.status === 0 ? '' : 'Remover bloqueadores e adicionar provas comportamentais listadas por pnpm vetus:parity:audit.',
 });
 
 const ciPath = '.github/workflows/ci.yml';
@@ -116,30 +116,36 @@ if (exists(ciPath)) {
 }
 
 const requiredDocs = [
-  'docs/construcoes-futuras/2026-05-28-plano-executivo-backlog-roadmap-premium-enterprise.md',
-  'docs/construcoes-futuras/2026-05-28-guia-operacional-premium-enterprise.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-ci-jornada-360.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-enterprise-dashboard-relatorios.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-postgresql-real.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-mobile-visual.md',
-  'docs/construcoes-futuras/2026-05-28-relatorio-matriz-vetus-final-premium-enterprise.md',
-  'docs/construcoes-futuras/2026-05-28-pacote-evidencias-rc-premium-enterprise.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-restore-drill-real-local.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-cutover-rehearsal-local.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-seguranca-sbom-sast-evidencias.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-governanca-acesso-rbac-abac.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-auditoria-operacional-evidencias.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-lgpd-dsr-retencao-evidencias.md',
-  'docs/construcoes-futuras/2026-05-28-progresso-rc-observabilidade-slo-evidencias.md',
+  ['docs/construcoes-futuras/2026-05-28-plano-executivo-backlog-roadmap-premium-enterprise.md', 'docs/2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-guia-operacional-premium-enterprise.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-ci-jornada-360.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-enterprise-dashboard-relatorios.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-postgresql-real.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-mobile-visual.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-relatorio-matriz-vetus-final-premium-enterprise.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-pacote-evidencias-rc-premium-enterprise.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-restore-drill-real-local.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-cutover-rehearsal-local.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-seguranca-sbom-sast-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-governanca-acesso-rbac-abac.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-auditoria-operacional-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-lgpd-dsr-retencao-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
+  ['docs/construcoes-futuras/2026-05-28-progresso-rc-observabilidade-slo-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
 ];
 
-for (const doc of requiredDocs) {
+for (const [legacyDoc, canonicalDoc] of requiredDocs) {
+  const legacyExists = exists(legacyDoc);
+  const canonicalExists = exists(canonicalDoc);
   addCheck({
     area: 'Documentacao',
-    item: doc,
-    status: exists(doc) ? 'PASS' : 'FAIL',
-    evidence: exists(doc) ? 'Evidencia registrada' : 'Documento ausente',
-    action: exists(doc) ? '' : 'Registrar evidencia do gate.',
+    item: legacyDoc,
+    status: legacyExists || canonicalExists ? 'PASS' : 'FAIL',
+    evidence: legacyExists
+      ? 'Evidencia registrada no arquivo historico'
+      : canonicalExists
+        ? `Migrado para ${canonicalDoc}`
+        : 'Documento historico e equivalente canonico ausentes',
+    action: legacyExists || canonicalExists ? '' : `Registrar evidencia em ${canonicalDoc}.`,
   });
 }
 

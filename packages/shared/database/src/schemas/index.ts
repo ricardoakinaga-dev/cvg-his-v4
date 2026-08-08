@@ -9,18 +9,23 @@ import {
   numeric,
   date,
   text,
-  uuid
+  uuid,
+  primaryKey
 } from 'drizzle-orm/pg-core';
 
 export const sessions = pgTable('sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  userId: varchar('user_id', { length: 255 }).notNull(),
-  tokenHash: varchar('token_hash', { length: 255 }).notNull(),
-  refreshTokenHash: varchar('refresh_token_hash', { length: 255 }),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  accountId: uuid('account_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  authTime: timestamp('auth_time', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  refreshExpiresAt: timestamp('refresh_expires_at', { withTimezone: true }).notNull(),
+  active: boolean('active').notNull().default(true),
+  roleCodes: jsonb('role_codes').notNull().default([]),
+  refreshNonce: varchar('refresh_nonce', { length: 255 }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const auditEvents = pgTable('audit_events', {
@@ -75,10 +80,22 @@ export const patients = pgTable('patients', {
 
 export const ownerPatientLinks = pgTable('owner_patient_links', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  relationship: varchar('relationship', { length: 50 }),
+  accountId: uuid('account_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
+  relationship: varchar('relationship', { length: 50 }).notNull(),
   isPrimary: boolean('is_primary').notNull().default(false),
+  financialResponsible: boolean('financial_responsible').notNull().default(false),
+  createdAt: timestamp('created_at').notNull()
+});
+
+export const patientMerges = pgTable('patient_merges', {
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  sourcePatientId: uuid('source_patient_id').notNull(),
+  targetPatientId: uuid('target_patient_id').notNull(),
+  mergedByUserId: uuid('merged_by_user_id').notNull(),
+  reason: varchar('reason', { length: 1000 }).notNull(),
   createdAt: timestamp('created_at').notNull()
 });
 
@@ -99,10 +116,11 @@ export const encounters = pgTable('encounters', {
 
 export const encounterTimeline = pgTable('encounter_timeline', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
   eventType: varchar('event_type', { length: 100 }).notNull(),
   summary: varchar('summary', { length: 500 }),
-  actorUserId: varchar('actor_user_id', { length: 255 }),
+  actorUserId: uuid('actor_user_id'),
   metadata: jsonb('metadata'),
   occurredAt: timestamp('occurred_at').notNull()
 });
@@ -146,6 +164,16 @@ export const entryRevisions = pgTable('entry_revisions', {
   createdAt: timestamp('created_at').notNull()
 });
 
+export const prescriptionSignatures = pgTable('prescription_signatures', {
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  prescriptionId: varchar('prescription_id', { length: 255 }).notNull(),
+  version: integer('version').notNull(),
+  signedByUserId: uuid('signed_by_user_id').notNull(),
+  signatureHash: varchar('signature_hash', { length: 128 }).notNull(),
+  signedAt: timestamp('signed_at').notNull()
+});
+
 export const clinicalTimeline = pgTable('clinical_timeline', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: uuid('account_id').notNull(),
@@ -155,7 +183,10 @@ export const clinicalTimeline = pgTable('clinical_timeline', {
   summary: varchar('summary', { length: 500 }),
   actorUserId: uuid('actor_user_id'),
   clinicalEntryId: varchar('clinical_entry_id', { length: 255 }),
-  attachmentId: uuid('attachment_id'),
+  // V2 attachments use varchar IDs (for example att_<correlation>), while
+  // legacy documents used UUIDs. Keep the timeline link polymorphic across
+  // both storage rails instead of coercing the active attachment ID to UUID.
+  attachmentId: varchar('attachment_id', { length: 255 }),
   occurredAt: timestamp('occurred_at').notNull()
 });
 
@@ -171,6 +202,10 @@ export const attachments = pgTable('attachments', {
   checksum: varchar('checksum', { length: 255 }).notNull(),
   sizeBytes: bigint('size_bytes', { mode: 'number' }),
   source: varchar('source', { length: 50 }).notNull(),
+  scanStatus: varchar('scan_status', { length: 32 }).notNull().default('available'),
+  scanProvider: varchar('scan_provider', { length: 100 }),
+  scanReason: varchar('scan_reason', { length: 500 }),
+  scannedAt: timestamp('scanned_at'),
   uploadedByUserId: varchar('uploaded_by_user_id', { length: 255 }),
   createdAt: timestamp('created_at').notNull()
 });
@@ -279,15 +314,17 @@ export const notificationJobs = pgTable('notification_jobs', {
 });
 
 export const inpatientStays = pgTable('inpatient_stays', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  encounterId: uuid('encounter_id'),
+  patientId: uuid('patient_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  admittedByUserId: uuid('admitted_by_user_id').notNull(),
   unit: varchar('unit', { length: 100 }).notNull(),
   ward: varchar('ward', { length: 100 }).notNull(),
   bed: varchar('bed', { length: 50 }).notNull(),
   sectorId: varchar('sector_id', { length: 255 }),
-  bedId: varchar('bed_id', { length: 255 }),
+  bedId: uuid('bed_id'),
   status: varchar('status', { length: 50 }).notNull(),
   admittedAt: timestamp('admitted_at').notNull(),
   dischargedAt: timestamp('discharged_at'),
@@ -295,18 +332,18 @@ export const inpatientStays = pgTable('inpatient_stays', {
   transferToUnit: varchar('transfer_to_unit', { length: 100 }),
   transferToWard: varchar('transfer_to_ward', { length: 100 }),
   transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
-  transferToBedId: varchar('transfer_to_bed_id', { length: 255 }),
+  transferToBedId: uuid('transfer_to_bed_id'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
 
 export const inpatientProgress = pgTable('inpatient_progress', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  stayId: varchar('stay_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  note: varchar('note', { length: 5000 }).notNull(),
-  authoredByUserId: varchar('authored_by_user_id', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  stayId: uuid('stay_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  note: text('note').notNull(),
+  authoredByUserId: uuid('authored_by_user_id').notNull(),
   createdAt: timestamp('created_at').notNull()
 });
 
@@ -342,13 +379,13 @@ export const inpatientDailyCharges = pgTable('inpatient_daily_charges', {
 });
 
 export const surgeryCases = pgTable('surgery_cases', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   procedureName: varchar('procedure_name', { length: 255 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  surgeonUserId: varchar('surgeon_user_id', { length: 255 }),
+  surgeonUserId: uuid('surgeon_user_id'),
   surgicalTeam: jsonb('surgical_team'),
   preparationNotes: varchar('preparation_notes', { length: 2000 }),
   operativeNotes: varchar('operative_notes', { length: 5000 }),
@@ -379,6 +416,21 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
+
+export const laboratoryResultImports = pgTable('laboratory_result_imports', {
+  accountId: uuid('account_id').notNull(),
+  externalResultId: varchar('external_result_id', { length: 120 }).notNull(),
+  orderId: varchar('order_id', { length: 120 }).notNull(),
+  equipmentId: varchar('equipment_id', { length: 120 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull(),
+  importedAt: timestamp('imported_at').notNull(),
+  resultSummary: varchar('result_summary', { length: 4000 }).notNull(),
+  failureReason: varchar('failure_reason', { length: 1000 }),
+  attemptCount: integer('attempt_count').notNull().default(1),
+  lastAttemptAt: timestamp('last_attempt_at').notNull()
+}, (table) => ({
+  pk: primaryKey({ columns: [table.accountId, table.externalResultId] })
+}));
 
 export const laboratoryEquipment = pgTable('laboratory_equipment', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -442,6 +494,7 @@ export const beds = pgTable('beds', {
 
 export const mfaCredentials = pgTable('mfa_credentials', {
   id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
   userId: uuid('user_id').notNull(),
   secretEncrypted: text('secret_encrypted').notNull(),
   isActive: boolean('is_active').notNull().default(false),
@@ -575,7 +628,7 @@ export const preventiveEvents = pgTable('preventive_events', {
 
 export const webhooks = pgTable('webhooks', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
   url: varchar('url', { length: 2048 }).notNull(),
   events: jsonb('events').$type<string[]>().notNull(),
   secret: varchar('secret', { length: 512 }),
@@ -586,6 +639,7 @@ export const webhooks = pgTable('webhooks', {
 
 export const webhookDeliveries = pgTable('webhook_deliveries', {
   id: varchar('id', { length: 255 }).primaryKey(),
+  accountId: uuid('account_id').notNull(),
   webhookId: varchar('webhook_id', { length: 255 }).notNull(),
   event: varchar('event', { length: 100 }).notNull(),
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),

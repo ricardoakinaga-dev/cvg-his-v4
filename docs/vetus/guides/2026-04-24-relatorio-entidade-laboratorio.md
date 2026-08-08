@@ -10,16 +10,16 @@ Escopo:
 
 Evidências principais:
 
-- [laboratorio-exames.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-exames.png)
-- [laboratorio-exames.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-exames.json)
-- [laboratorio-laudos.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-laudos.png)
-- [laboratorio-laudos.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-laudos.json)
-- [laboratorio-tipos-laudo.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-tipos-laudo.png)
-- [laboratorio-tipos-laudo.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-tipos-laudo.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/network.json)
-- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:381)
-- [03-MODELO-DADOS.md](/root/cvg-his-v2/docs/vetus/guides/03-MODELO-DADOS.md:1176)
-- [04-ESPECIFICACAO-APIS.md](/root/cvg-his-v2/docs/vetus/guides/04-ESPECIFICACAO-APIS.md:921)
+- [laboratorio-exames.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-exames.png)
+- [laboratorio-exames.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-exames.json)
+- [laboratorio-laudos.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-laudos.png)
+- [laboratorio-laudos.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-laudos.json)
+- [laboratorio-tipos-laudo.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-tipos-laudo.png)
+- [laboratorio-tipos-laudo.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-tipos-laudo.json)
+- [network.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/network.json)
+- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
+- [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
+- [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)
 
 Nota de segurança:
 

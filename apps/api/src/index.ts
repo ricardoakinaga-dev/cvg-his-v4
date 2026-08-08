@@ -8,9 +8,57 @@ import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-f
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
 import { resolveApiStartup } from './startup-secrets.js';
+import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
+import {
+  ClamAvAttachmentSecurityScanner,
+  LocalAttachmentSecurityScanner,
+  S3CompatibleFileStorage
+} from '@cvg-his-v2/module-attachments';
+import type { NfseIssuer, NfseProvider } from '@cvg-his-v2/module-fiscal';
 
 const version = '0.1.0';
 let runtimeLogger = createLogger('cvg-his-v2-api-bootstrap');
+
+const NFSE_PROVIDERS: readonly NfseProvider[] = ['abrasf', 'iss_sp', 'iss_net', 'nota_rio'];
+
+function parseNfseProvider(value: string | undefined): NfseProvider | undefined {
+  if (!value) return undefined;
+  if (!NFSE_PROVIDERS.includes(value as NfseProvider)) {
+    throw new Error(`NFSE_PROVIDER must be one of: ${NFSE_PROVIDERS.join(', ')}`);
+  }
+  return value as NfseProvider;
+}
+
+function parseNfseIssuer(value: string | undefined): NfseIssuer | undefined {
+  if (!value) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error('NFSE_ISSUER_JSON must contain valid JSON');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('NFSE_ISSUER_JSON must contain an object');
+  }
+  const issuer = parsed as Partial<NfseIssuer>;
+  if (
+    !issuer.cnpj
+    || !issuer.inscricaoMunicipal
+    || !issuer.razaoSocial
+    || !issuer.address
+    || typeof issuer.address !== 'object'
+  ) {
+    throw new Error('NFSE_ISSUER_JSON must include cnpj, inscricaoMunicipal, razaoSocial and address');
+  }
+  return issuer as NfseIssuer;
+}
+
+function parseNfseCertificate(value: string | undefined): Buffer | undefined {
+  if (!value) return undefined;
+  const certificate = Buffer.from(value, 'base64');
+  if (certificate.length === 0) throw new Error('NFSE_CERTIFICATE_BASE64 must not be empty');
+  return certificate;
+}
 
 process.on('uncaughtException', (error) => {
   runtimeLogger.error('uncaught exception in api runtime', {
@@ -96,6 +144,32 @@ async function main() {
     skipDatabase: !databaseUrl
   });
 
+  const productionLike = ['production', 'prod', 'staging', 'stage'].includes(config.environment);
+  const attachmentScanner = productionLike
+    ? config.attachmentScannerHost
+      ? new ClamAvAttachmentSecurityScanner({
+          host: config.attachmentScannerHost,
+          port: config.attachmentScannerPort,
+          timeoutMs: config.attachmentScannerTimeoutMs
+        })
+      : undefined
+    : new LocalAttachmentSecurityScanner();
+  const fileStorage =
+    productionLike &&
+    config.attachmentStorageS3Endpoint &&
+    config.attachmentStorageS3Bucket &&
+    config.attachmentStorageS3AccessKey &&
+    config.attachmentStorageS3SecretKey
+      ? new S3CompatibleFileStorage({
+          endpoint: config.attachmentStorageS3Endpoint,
+          bucket: config.attachmentStorageS3Bucket,
+          accessKeyId: config.attachmentStorageS3AccessKey,
+          secretAccessKey: config.attachmentStorageS3SecretKey,
+          region: config.attachmentStorageS3Region,
+          pathStyle: config.attachmentStorageS3PathStyle
+        })
+      : bootstrapResult.fileStorage;
+
   const repos = bootstrapResult.repositories;
   const repoCount = [
     repos.session,
@@ -136,7 +210,7 @@ async function main() {
   const workerDetail = workerReady
     ? `Worker can consume notification jobs via shared database repository; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
     : databaseConfigured && bootstrapResult.databaseHealthy && !bootstrapResult.repositoriesUseDatabase
-      ? 'Database is healthy, but runtime repositories are intentionally kept in-memory until UUID/schema compatibility is completed'
+      ? 'Database is healthy, but runtime repositories were explicitly disabled by API_DISABLE_INCOMPATIBLE_DB_REPOS'
       : databaseConfigured
       ? `Worker dependency degraded: notification repository not ready for shared DB processing; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
       : 'Worker dependency not configured because DATABASE_URL is absent';
@@ -183,18 +257,43 @@ async function main() {
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
     authRateLimitMaxRequests: config.authRateLimitMaxRequests,
     authRateLimitWindowMs: config.authRateLimitWindowMs,
+    trustedProxyCidrs: config.trustedProxyCidrs,
     enableMfa: config.enableMfa,
     mfaEncryptionKey: config.mfaEncryptionKey,
     repositories: bootstrapResult.repositories,
-    fileStorage: bootstrapResult.fileStorage,
-    sectorBedOptions: db ? { databaseClient: db } : undefined,
+    fileStorage,
+    attachmentScanner,
+    // A healthy database is not enough to opt individual aggregates into
+    // persistence: the bootstrap contract must have initialized all required
+    // repositories before the canonical runtime is selected.
+    sectorBedOptions: persistenceMode === 'database' && db ? { databaseClient: db } : undefined,
+    unitOfWork: bootstrapResult.unitOfWork,
     featureFlagsProvider: config.featureFlagsProvider,
     runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
+    preserveSeedUsersWithRepository: persistenceMode !== 'database',
+    preserveSeedMasterDataWithRepository: persistenceMode !== 'database',
+    requireUuidEntityIdentifiers: persistenceMode === 'database',
+    useDatabaseCatalogStores: persistenceMode === 'database',
+    vetusImportLogRepository: persistenceMode === 'database'
+      ? new DatabaseVetusImportLogRepository()
+      : undefined,
     // GAP-06: pre-resolved feature flags passed directly (already awaited above)
     featureFlags,
     pagarmeApiKey: config.pagarmeApiKey,
     pagarmePixKey: config.pagarmePixKey,
     pixMockMode: config.pixMockMode,
+    nfseProvider: parseNfseProvider(config.nfseProvider),
+    nfseApiUrl: config.nfseApiUrl,
+    nfseApiKey: config.nfseApiKey,
+    nfseMunicipalityCode: config.nfseMunicipalityCode,
+    nfseCertificate: parseNfseCertificate(config.nfseCertificateBase64),
+    nfseIssuer: parseNfseIssuer(config.nfseIssuerJson),
+    nfseRegime:
+      config.nfseRegime === 'simples_nacional'
+      || config.nfseRegime === 'lucro_presumido'
+      || config.nfseRegime === 'lucro_real'
+        ? config.nfseRegime
+        : undefined,
     resendApiKey: config.resendApiKey,
     emailFrom: config.emailFrom,
     emailMockMode: config.emailMockMode,
@@ -204,6 +303,7 @@ async function main() {
     googleCalendarAccessToken: config.googleCalendarAccessToken,
     googleCalendarCalendarId: config.googleCalendarCalendarId,
     googleCalendarMockMode: config.googleCalendarMockMode,
+    whatsappWebhookSecret: process.env['WHATSAPP_WEBHOOK_SECRET'],
     redisUrl: config.redisUrl,
     secretsManager
   });

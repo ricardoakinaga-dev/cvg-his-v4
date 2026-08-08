@@ -1,4 +1,4 @@
-import { createHash, scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, scrypt, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
@@ -161,6 +161,8 @@ export class UsersService {
   readonly #repository?: UsersRepository;
   readonly #users = new Map<UserId, UserRecord>();
   readonly #usersByUsername = new Map<string, UserRecord>();
+  readonly #usersByAccountUsername = new Map<string, UserRecord>();
+  readonly #ambiguousUsernames = new Set<string>();
 
   public constructor(
     options?: UsersServiceOptions,
@@ -170,8 +172,7 @@ export class UsersService {
     const seedEnabled = options?.seedUsersEnabled ?? isSeedEnvironment();
     if (seedEnabled) {
       for (const user of seedUsers) {
-        this.#users.set(user.id, user);
-        this.#usersByUsername.set(user.username, user);
+        this.#indexUser(user);
       }
     }
   }
@@ -189,7 +190,7 @@ export class UsersService {
       const userRecord: UserRecord = {
         id: dbUser.id as UserId,
         accountId: dbUser.accountId,
-        username: dbUser.email.split('@')[0],
+        username: dbUser.username || dbUser.email.split('@')[0],
         email: dbUser.email,
         displayName: dbUser.fullName,
         status: dbUser.isActive ? 'active' : 'inactive',
@@ -199,13 +200,18 @@ export class UsersService {
         passwordHash: dbUser.passwordHash,
         roleCodes
       };
-      this.#users.set(userRecord.id, userRecord);
-      this.#usersByUsername.set(userRecord.username, userRecord);
+      this.#indexUser(userRecord);
     }
   }
 
   public list(): readonly UserSummary[] {
     return Array.from(this.#users.values()).map(stripSecrets);
+  }
+
+  public listForAccount(accountId: AccountId): readonly UserSummary[] {
+    return Array.from(this.#users.values())
+      .filter((user) => user.accountId === accountId)
+      .map(stripSecrets);
   }
 
   public getOrThrow(userId: UserId): UserRecord {
@@ -216,8 +222,19 @@ export class UsersService {
     return user;
   }
 
-  public findByUsername(username: string): UserRecord | undefined {
-    return this.#usersByUsername.get(username);
+  public getForAccountOrThrow(userId: UserId, accountId: AccountId): UserRecord {
+    const user = this.getOrThrow(userId);
+    if (user.accountId !== accountId) {
+      throw new NotFoundError('User not found', { userId });
+    }
+    return user;
+  }
+
+  public findByUsername(username: string, accountId?: AccountId): UserRecord | undefined {
+    if (accountId) {
+      return this.#usersByAccountUsername.get(`${accountId}:${username}`);
+    }
+    return this.#ambiguousUsernames.has(username) ? undefined : this.#usersByUsername.get(username);
   }
 
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
@@ -225,6 +242,7 @@ export class UsersService {
   }
 
   public async create(input: {
+    readonly accountId: AccountId;
     readonly username: string;
     readonly email: string;
     readonly password: string;
@@ -236,11 +254,11 @@ export class UsersService {
       throw new Error('Username already exists');
     }
     const now = nowIso();
-    const id = ('user_' + Math.random().toString(36).slice(2, 10)) as UserId;
+    const id = randomUUID() as UserId;
     const passwordHash = await hashPassword(input.password);
     const user: UserRecord = {
       id,
-      accountId: 'acc_cvg_demo' as AccountId,
+      accountId: input.accountId,
       username: input.username,
       email: input.email,
       passwordHash,
@@ -250,13 +268,12 @@ export class UsersService {
       createdAt: now,
       updatedAt: now
     };
-    this.#users.set(id, user);
-    this.#usersByUsername.set(user.username, user);
-
     if (this.#repository) {
       await this.#repository.create({
         id,
         accountId: user.accountId,
+        username: user.username,
+        roleCode: input.roleCode,
         email: user.email,
         passwordHash: user.passwordHash,
         fullName: user.displayName,
@@ -265,6 +282,8 @@ export class UsersService {
         updatedAt: user.updatedAt
       });
     }
+
+    this.#indexUser(user);
 
     return stripSecrets(user);
   }
@@ -286,13 +305,11 @@ export class UsersService {
       updatedAt: nowIso()
     };
 
-    this.#users.set(userId, updated);
-    this.#usersByUsername.set(updated.username, updated);
-
     if (this.#repository) {
       await this.#repository.update({
         id: updated.id,
         accountId: updated.accountId,
+        username: updated.username,
         email: updated.email,
         passwordHash: updated.passwordHash,
         fullName: updated.displayName,
@@ -302,7 +319,38 @@ export class UsersService {
       });
     }
 
+    this.#users.set(userId, updated);
+    this.#usersByAccountUsername.set(`${updated.accountId}:${updated.username}`, updated);
+    if (!this.#ambiguousUsernames.has(updated.username)) {
+      this.#usersByUsername.set(updated.username, updated);
+    }
+
     return stripSecrets(updated);
+  }
+
+  public async updateForAccount(
+    userId: UserId,
+    accountId: AccountId,
+    changes: {
+      readonly displayName?: string;
+      readonly email?: string;
+      readonly status?: 'active' | 'inactive';
+    }
+  ): Promise<UserSummary> {
+    this.getForAccountOrThrow(userId, accountId);
+    return this.update(userId, changes);
+  }
+
+  #indexUser(user: UserRecord): void {
+    const existing = this.#usersByUsername.get(user.username);
+    if (existing && existing.accountId !== user.accountId) {
+      this.#ambiguousUsernames.add(user.username);
+      this.#usersByUsername.delete(user.username);
+    } else if (!this.#ambiguousUsernames.has(user.username)) {
+      this.#usersByUsername.set(user.username, user);
+    }
+    this.#users.set(user.id, user);
+    this.#usersByAccountUsername.set(`${user.accountId}:${user.username}`, user);
   }
 }
 

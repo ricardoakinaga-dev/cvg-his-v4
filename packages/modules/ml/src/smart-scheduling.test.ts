@@ -56,6 +56,43 @@ describe('SmartSchedulingService', () => {
       const result = await service.predictDuration({ visitType: 'consulta' });
       expect(result.confidence).toBeGreaterThan(0.7);
     });
+
+    it('combines specialty, reason and midday operational factors', async () => {
+      const result = await service.predictDuration({
+        visitType: 'custom',
+        specialty: 'Cardiologia',
+        reason: 'Retorno para ultrassom',
+        scheduledAt: '2026-07-10T12:00:00.000Z'
+      });
+
+      expect(result.predictedMinutes).toBe(55);
+      expect(result.confidence).toBeCloseTo(0.75);
+      expect(result.factors).toEqual(
+        expect.arrayContaining([
+          'Specialty buffer (Cardiologia): +10min',
+          'Return-like reason: -5min',
+          'Complex procedure keyword: +15min',
+          'Midday operational buffer: +5min'
+        ])
+      );
+    });
+
+    it('handles walk-ins, invalid dates and bounded history confidence', async () => {
+      const walkIn = await service.predictDuration({
+        visitType: 'walk_in',
+        previousVisits: 10,
+        scheduledAt: 'invalid-date'
+      });
+      const returnVisit = await service.predictDuration({
+        visitType: 'return',
+        reason: 'retorno simples'
+      });
+
+      expect(walkIn.predictedMinutes).toBe(50);
+      expect(walkIn.confidence).toBeCloseTo(0.9);
+      expect(returnVisit.predictedMinutes).toBe(20);
+      expect(returnVisit.factors).not.toContain('Return-like reason: -5min');
+    });
   });
 
   describe('getRecommendation', () => {
@@ -103,6 +140,17 @@ describe('SmartSchedulingService', () => {
 
       const result = await service.optimizeSlotAllocation(slots, predictions);
       expect(result[0].utilization).toBeCloseTo(0.667, 2); // 20/30
+    });
+
+    it('leaves unavailable slots and slots without predictions unchanged', async () => {
+      const slots = [
+        { id: 'missing', startTime: '09:00', endTime: '09:30', duration: 30, available: true },
+        { id: 'blocked', startTime: '09:30', endTime: '10:00', duration: 30, available: false }
+      ];
+
+      const result = await service.optimizeSlotAllocation(slots, new Map([['blocked', 20]]));
+
+      expect(result).toEqual(slots);
     });
   });
 

@@ -6,7 +6,7 @@ import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { InpatientService } from '@cvg-his-v2/module-inpatient';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { AuthenticatedPrincipal, InpatientStaySummary } from '@cvg-his-v2/shared-types';
 
 import { handleInpatientRoutes } from './inpatient-routes.js';
 
@@ -79,12 +79,12 @@ class MockResponse extends Writable {
   }
 }
 
-function createPrincipal(): AuthenticatedPrincipal {
+function createPrincipal(accountId = 'acc_cvg_demo'): AuthenticatedPrincipal {
   const now = new Date().toISOString();
   return {
     user: {
       id: 'user-1' as never,
-      accountId: 'acc_cvg_demo' as never,
+      accountId: accountId as never,
       username: 'nurse',
       email: 'nurse@example.com',
       displayName: 'Nurse',
@@ -95,7 +95,7 @@ function createPrincipal(): AuthenticatedPrincipal {
     session: {
       sessionId: 'session-1' as never,
       userId: 'user-1' as never,
-      accountId: 'acc_cvg_demo' as never,
+      accountId: accountId as never,
       createdAt: now,
       expiresAt: now,
       authTime: now,
@@ -168,6 +168,70 @@ test('handleInpatientRoutes generates handover preview with latest progress and 
     'Pendente avaliacao de retorno e ajuste de fluidoterapia'
   );
   assert.equal(payload.items[0]?.requiresAttention, true);
+});
+
+test('handleInpatientRoutes hides inpatient resources from another account', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/progress`,
+      new MockRequest({ method: 'GET', url: `/inpatient/${stay.id}/progress` }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-cross-account',
+      {
+        inpatient,
+        sectorBedService: {} as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal('acc_other')
+      }
+    ),
+    /Inpatient stay not found/
+  );
+});
+
+test('handleInpatientRoutes admits the patient from an existing encounter', async () => {
+  const inpatient = createInpatientService();
+  const existingStay = inpatient.list()[0];
+  assert.ok(existingStay);
+  inpatient.updateStatus(existingStay.id, {
+    status: 'discharged',
+    dischargeReason: 'Alta antes da readmissao de teste'
+  });
+  const response = new MockResponse();
+
+  const handled = await handleInpatientRoutes(
+    '/inpatient',
+    new MockRequest({
+      method: 'POST',
+      url: '/inpatient',
+      body: {
+        encounterId: existingStay.encounterId,
+        patientId: existingStay.patientId,
+        unit: 'Internacao clinica',
+        ward: 'Ala B',
+        bed: 'B-02'
+      }
+    }) as never,
+    response as never,
+    'corr-inpatient-admit',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  const admitted = response.bodyJson<InpatientStaySummary>();
+  assert.equal(admitted.encounterId, existingStay.encounterId);
+  assert.equal(admitted.patientId, existingStay.patientId);
+  assert.equal(admitted.ownerId, existingStay.ownerId);
+  assert.equal(admitted.status, 'admitted');
 });
 
 test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {

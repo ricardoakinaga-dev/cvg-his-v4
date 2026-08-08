@@ -35,3 +35,25 @@ export function appendAudit(audit: AuditService, params: AuditParams): void {
     correlationId: params.correlationId
   });
 }
+
+/**
+ * Persists an audit event before a surrounding tenant command commits.
+ * The fallback keeps lightweight route mocks and in-memory mode compatible.
+ */
+export async function appendAuditAndWait(audit: AuditService, params: AuditParams): Promise<void> {
+  if (typeof audit.writeAndWait === 'function') {
+    await audit.writeAndWait({
+      actorId: params.actorId,
+      accountId: params.accountId,
+      module: params.module,
+      action: params.action,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      payloadSummary: params.payloadSummary,
+      riskLevel: params.riskLevel,
+      correlationId: params.correlationId
+    });
+    return;
+  }
+  appendAudit(audit, params);
+}

@@ -18,7 +18,7 @@
       </div>
       <div class="overview-card">
         <span class="overview-card__value">{{ hasRefreshToken ? 'Sim' : 'Não' }}</span>
-        <span class="overview-card__label">Refresh token local</span>
+        <span class="overview-card__label">Refresh cookie HttpOnly</span>
       </div>
       <div class="overview-card">
         <span class="overview-card__value">{{ health.ok ? 'OK' : '—' }}</span>
@@ -176,7 +176,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { healthService, type SloReportResponse, type SloStatus } from '@/services/health';
 import { spaRuntimeConfig } from '@/config/runtime';
-import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
+import { useAuthStore } from '@/stores/auth';
 
 interface HealthSnapshot {
   id: string;
@@ -187,6 +187,7 @@ interface HealthSnapshot {
 }
 
 const HEALTH_HISTORY_STORAGE_KEY = 'cvg-his-v2:api-client-health-history';
+const authStore = useAuthStore();
 const loading = ref(true);
 const error = ref('');
 const successMessage = ref('');
@@ -196,10 +197,10 @@ const correlationId = ref(`spa-${Date.now()}`);
 const healthHistory = ref<HealthSnapshot[]>(loadHealthHistory());
 
 const apiBaseLabel = computed(() => spaRuntimeConfig.apiBaseUrl || 'mesma origem');
-const accessToken = computed(() => localStorage.getItem(AUTH_STORAGE_KEYS.accessToken));
+const accessToken = computed(() => authStore.accessToken);
 const hasAccessToken = computed(() => accessToken.value != null);
-const hasRefreshToken = computed(() => localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken) != null);
 const isLoggedIn = computed(() => hasAccessToken.value);
+const hasRefreshToken = computed(() => isLoggedIn.value);
 const decodedTokenPayload = computed<Record<string, unknown> | null>(() => decodeTokenPayload(accessToken.value));
 const tokenAccountId = computed(
   () => (decodedTokenPayload.value?.accountId as string) ?? (decodedTokenPayload.value?.account_id as string) ?? ''

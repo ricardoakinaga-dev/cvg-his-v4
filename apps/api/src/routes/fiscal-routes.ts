@@ -33,6 +33,7 @@ import type {
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
+import { readJsonBody as readLimitedJsonBody } from '../helpers/common.js';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -85,17 +86,7 @@ function getScopedFiscalService(
 }
 
 async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  if (chunks.length === 0) {
-    return {} as T;
-  }
-
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T;
+  return (await readLimitedJsonBody(request)) as T;
 }
 
 export async function handleFiscalRoutes(

@@ -73,6 +73,7 @@ export async function handleDischargesRoutes(
       principal.user.id as never,
       payload
     );
+    await discharges.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -97,7 +98,10 @@ export async function handleDischargesRoutes(
   ) {
     const principal = requirePrincipal(request, 'encounters.read');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
-    const discharge = discharges.getById(dischargeId as never);
+    const discharge = discharges.getByIdForAccount(
+      principal.user.accountId as never,
+      dischargeId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -122,7 +126,15 @@ export async function handleDischargesRoutes(
     const { expectedVersion, ...payload } = body as UpdateDischargeRequest & {
       expectedVersion?: number;
     };
+    const current = discharges.getByIdForAccount(
+      principal.user.accountId as never,
+      dischargeId as never
+    );
     const discharge = discharges.update(dischargeId as never, payload, expectedVersion);
+    if (discharge.accountId !== current.accountId) {
+      throw new Error('Discharge account context changed unexpectedly');
+    }
+    await discharges.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

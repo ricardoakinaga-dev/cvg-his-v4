@@ -1,6 +1,7 @@
 import { loadWorkerConfig } from '@cvg-his-v2/shared-config';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
+import { missingProductionConsumers } from '@cvg-his-v2/module-event-bus';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import {
@@ -25,8 +26,16 @@ async function main() {
     notificationRepository: bootstrap.notificationRepository
   });
   const eventBus = createWorkerEventBus({
-    eventBusRepository: bootstrap.outboxRepository
+    eventBusRepository: bootstrap.outboxRepository,
+    unitOfWork: bootstrap.unitOfWork,
+    workerId: process.env.WORKER_INSTANCE_ID?.trim()
   });
+  const missingConsumers = missingProductionConsumers(eventBus.consumerNames);
+  if (!eventBus.deliveryGuaranteesDurable || missingConsumers.length > 0) {
+    throw new Error(
+      `Worker event bus is not ready: missing durable consumers: ${missingConsumers.join(', ')}`
+    );
+  }
 
   await runWorkerTick(
     logger,

@@ -3,8 +3,8 @@ import {
   SpaPage,
   ApiCall,
   CleanupTracker,
+  getE2EAccessToken,
   loginViaToken,
-  CreatedResource
 } from './fixtures/spa-fixture';
 
 /**
@@ -63,11 +63,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
   test('navega para internação, valida lista, Bed Board e detalhe', async ({ page }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
+    const token = process.env.E2E_AUTH_TOKEN ?? (await getE2EAccessToken());
 
     const apiCall = new ApiCall(token);
     const cleanup = new CleanupTracker(apiCall);
@@ -143,11 +139,11 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
         const verButton = page.getByRole('button', { name: 'Ver' }).first();
         if (await verButton.isVisible({ timeout: 5000 }).catch(() => false)) {
           await verButton.click();
-          await page.waitForURL(/\/inpatient\/inp-/, { timeout: 10000 });
+          await page.waitForURL(/\/inpatient\/[0-9a-f-]{36}/, { timeout: 10000 });
 
           // Validate detail page
           await expect(
-            mainContent.getByRole('heading', { name: /Detalhes da Internacao/ })
+            mainContent.getByRole('heading', { name: /Detalhes da Internação/ })
           ).toBeVisible({ timeout: 15000 });
           console.log('   ✅ Inpatient detail page loaded');
 
@@ -181,11 +177,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
   test('valida elementos da lista de internação', async ({ page }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
+    const token = process.env.E2E_AUTH_TOKEN ?? (await getE2EAccessToken());
 
     await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -207,7 +199,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
     // Validate admit patient button and its link
     const admitBtn = mainContent.getByRole('link', { name: /Admitir Paciente/ });
     await expect(admitBtn).toBeVisible({ timeout: 10000 });
-    await expect(admitBtn).toHaveAttribute('href', '/encounters');
+    await expect(admitBtn).toHaveAttribute('href', '/inpatient/admit');
 
     console.log('   ✅ Inpatient list page elements validated');
   });

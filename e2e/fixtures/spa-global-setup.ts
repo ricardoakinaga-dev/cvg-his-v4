@@ -8,8 +8,8 @@ import { chromium, type FullConfig } from '@playwright/test';
  * 2. Authenticates via API and saves the token
  * 3. Verifies the SPA is reachable
  *
- * The SPA uses localStorage for auth tokens, so tests will inject
- * the token directly into localStorage before navigating.
+ * The SPA keeps access tokens in memory and uses an HttpOnly refresh cookie;
+ * individual tests therefore perform the browser login flow before navigating.
  */
 
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';

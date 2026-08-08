@@ -50,7 +50,10 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'DATABASE_URL', path: 'staging/database', required: true },
       { key: 'REDIS_URL', path: 'staging/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'staging/pagarme', required: false },
-      { key: 'PAGARME_PIX_KEY', path: 'staging/pagarme', required: false }
+      { key: 'PAGARME_PIX_KEY', path: 'staging/pagarme', required: false },
+      { key: 'NFSE_API_KEY', path: 'staging/nfse', required: false },
+      { key: 'NFSE_CERTIFICATE_BASE64', path: 'staging/nfse', required: false },
+      { key: 'NFSE_ISSUER_JSON', path: 'staging/nfse', required: false }
     ]);
   });
 
@@ -69,7 +72,10 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'DATABASE_URL', path: 'development/database', required: false },
       { key: 'REDIS_URL', path: 'development/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'development/pagarme', required: false },
-      { key: 'PAGARME_PIX_KEY', path: 'development/pagarme', required: false }
+      { key: 'PAGARME_PIX_KEY', path: 'development/pagarme', required: false },
+      { key: 'NFSE_API_KEY', path: 'development/nfse', required: false },
+      { key: 'NFSE_CERTIFICATE_BASE64', path: 'development/nfse', required: false },
+      { key: 'NFSE_ISSUER_JSON', path: 'development/nfse', required: false }
     ]);
   });
 
@@ -98,7 +104,10 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'production/mfa', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'production/mfa_version', required: false },
       { key: 'REDIS_URL', path: 'production/redis', required: false },
-      { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false }
+      { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false },
+      { key: 'NFSE_API_KEY', path: 'production/nfse', required: false },
+      { key: 'NFSE_CERTIFICATE_BASE64', path: 'production/nfse', required: false },
+      { key: 'NFSE_ISSUER_JSON', path: 'production/nfse', required: false }
     ]);
     expect(resolved.AUTH_SECRET).toBe('vault-auth-secret');
     expect(resolved.DATABASE_URL).toBe('postgres://already-set');
@@ -121,7 +130,10 @@ describe('startup-secrets runtime coverage', () => {
         DATABASE_URL: 'postgres://configured',
         REDIS_URL: 'redis://configured',
         PAGARME_API_KEY: 'configured-pagarme',
-        PAGARME_PIX_KEY: 'configured-pix'
+        PAGARME_PIX_KEY: 'configured-pix',
+        NFSE_API_KEY: 'configured-nfse',
+        NFSE_CERTIFICATE_BASE64: 'configured-cert',
+        NFSE_ISSUER_JSON: '{"cnpj":"configured"}'
       },
       { provider: 'vault', getMany } as never
     );

@@ -274,6 +274,26 @@ test('CounterSalesService close requires full payment', async () => {
   assert.ok(closed.sale.closedAt);
 });
 
+test('CounterSalesService invokes close effects before returning the closed sale', async () => {
+  const callbacks: Array<{ saleId: string; total: number; paymentCount: number }> = [];
+  const service = new CounterSalesService({
+    onClose: async (input, result) => {
+      callbacks.push({
+        saleId: input.sale.id,
+        total: result.sale.total,
+        paymentCount: input.payments.length
+      });
+    }
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 120 });
+  await service.addPayment(sale.id, { method: 'pix', amount: 120 });
+
+  await service.close(sale.id, USER_ID);
+
+  assert.deepEqual(callbacks, [{ saleId: sale.id, total: 120, paymentCount: 1 }]);
+});
+
 test('CounterSalesService cancel works on open sale', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
@@ -514,4 +534,63 @@ test('CounterSalesService close does not record credit_card in cash movements', 
   const result = await service.close(sale.id, USER_ID);
   assert.equal(result.sale.status, 'closed');
   assert.equal(recorded, false);
+});
+
+test('CounterSalesService delegates close effects to one transaction boundary and keeps sale open on rollback', async () => {
+  let transactionCalls = 0;
+  const service = new CounterSalesService({
+    closeTransaction: async (_input, _execute) => {
+      transactionCalls += 1;
+      throw new Error('injected transaction failure');
+    }
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+  await service.addPayment(sale.id, { method: 'pix', amount: 100 });
+
+  await assert.rejects(() => service.close(sale.id, USER_ID), /injected transaction failure/);
+  assert.equal(transactionCalls, 1);
+  assert.equal(service.findById(sale.id)?.status, 'open');
+});
+
+test('CounterSalesService closes a sale only once under concurrent requests', async () => {
+  let inventoryCalls = 0;
+  let releaseInventory!: () => void;
+  const inventoryReleased = new Promise<void>((resolve) => {
+    releaseInventory = resolve;
+  });
+  const service = new CounterSalesService({
+    inventoryService: {
+      async consumeForSale() {
+        inventoryCalls += 1;
+        await inventoryReleased;
+        return {
+          id: 'cons-concurrent',
+          inventoryItemId: 'inv-1',
+          quantity: 1,
+          unit: 'un',
+          costAmount: 0
+        };
+      }
+    }
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, {
+    itemType: 'product',
+    nameSnapshot: 'Item',
+    codeSnapshot: 'SKU-001',
+    unitPrice: 100,
+    quantity: 1
+  });
+  await service.addPayment(sale.id, { method: 'pix', amount: 100 });
+
+  const first = service.close(sale.id, USER_ID);
+  const second = service.close(sale.id, USER_ID);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  releaseInventory();
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+
+  assert.equal(firstResult.sale.status, 'closed');
+  assert.equal(secondResult.sale.status, 'closed');
+  assert.equal(inventoryCalls, 1);
 });

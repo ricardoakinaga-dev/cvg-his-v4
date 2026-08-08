@@ -134,7 +134,7 @@ test('AttachmentsService listByLinkedEntity filters attachments', async () => {
 test('AttachmentsService upload with file content computes real checksum', async () => {
   const { service, record } = createService();
 
-  const fileContent = Buffer.from('test file content for integrity check');
+  const fileContent = Buffer.from('%PDF-1.7\nclinical attachment test');
   const expectedChecksum = createHash('sha256').update(fileContent).digest('hex');
 
   const attachment = await service.upload(
@@ -158,7 +158,7 @@ test('AttachmentsService upload with file content computes real checksum', async
 test('AttachmentsService upload rejects mismatched checksum', async () => {
   const { service, record } = createService();
 
-  const fileContent = Buffer.from('test file content');
+  const fileContent = Buffer.from('%PDF-1.7\nclinical attachment test');
   const wrongChecksum = 'sha256-wrong-checksum-value';
 
   await assert.rejects(
@@ -177,4 +177,86 @@ test('AttachmentsService upload rejects mismatched checksum', async () => {
       ),
     { name: 'ValidationError' }
   );
+});
+
+test('AttachmentsService rejects content flagged by the security scanner', async () => {
+  const { record } = createService();
+  const service = new AttachmentsService({
+    encounters: { getOrThrow: () => ({ accountId: 'acc_test' }) } as never,
+    medicalRecords: { getRecordOrThrowAsync: async () => record } as never,
+    diagnostics: { getOrThrow: () => ({ accountId: 'acc_test' }) } as never,
+    scanner: {
+      async scan() {
+        return { status: 'rejected', provider: 'test-av', reason: 'infected' } as const;
+      }
+    }
+  });
+
+  await assert.rejects(
+    () => service.upload('user_admin' as never, {
+      linkedEntityType: 'medical_record',
+      linkedEntityId: record.id,
+      category: 'document',
+      fileName: 'blocked.pdf',
+      mimeType: 'application/pdf',
+      checksum: createHash('sha256').update('%PDF-1.7\nblocked').digest('hex'),
+      contentBase64: Buffer.from('%PDF-1.7\nblocked').toString('base64')
+    }, Buffer.from('%PDF-1.7\nblocked')),
+    /security scanner/
+  );
+});
+
+test('AttachmentsService quarantines metadata-only uploads and marks binary uploads available', async () => {
+  const { service, record } = createService();
+  const metadataOnly = await service.upload('user_admin' as never, {
+    linkedEntityType: 'medical_record', linkedEntityId: record.id, category: 'document',
+    fileName: 'pending.pdf', mimeType: 'application/pdf', checksum: 'pending'
+  });
+  assert.equal(metadataOnly.scanStatus, 'quarantined');
+
+  const content = Buffer.from('%PDF-1.7\nclean');
+  const binary = await service.upload('user_admin' as never, {
+    linkedEntityType: 'medical_record', linkedEntityId: record.id, category: 'document',
+    fileName: 'clean.pdf', mimeType: 'application/pdf',
+    checksum: createHash('sha256').update(content).digest('hex')
+  }, content);
+  assert.equal(binary.scanStatus, 'available');
+  assert.equal(binary.scanProvider, 'local-heuristic');
+});
+
+test('AttachmentsService does not expose an attachment when persistence fails', async () => {
+  const { encounter, record, order } = createService();
+  const service = new AttachmentsService({
+    encounters: { getOrThrow: () => encounter } as never,
+    medicalRecords: { getRecordOrThrowAsync: async () => record } as never,
+    diagnostics: { getOrThrow: () => order } as never,
+    repository: {
+      async create() {
+        throw new Error('database unavailable');
+      },
+      async findById() {
+        return null;
+      },
+      async findByLinkedEntity() {
+        return [];
+      },
+      async deleteById() {
+        return false;
+      }
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      service.upload('user_admin' as never, {
+        linkedEntityType: 'encounter',
+        linkedEntityId: encounter.id,
+        category: 'document',
+        fileName: 'failure.pdf',
+        mimeType: 'application/pdf',
+        checksum: 'checksum'
+      }),
+    /database unavailable/
+  );
+  assert.deepEqual(await service.listByLinkedEntity('encounter', encounter.id), []);
 });

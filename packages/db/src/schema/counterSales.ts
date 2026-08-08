@@ -1,6 +1,4 @@
-import { sql } from 'drizzle-orm';
 import {
-  boolean,
   index,
   integer,
   numeric,
@@ -12,8 +10,6 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
-import { products } from './products.js';
-import { services } from './services.js';
 
 // =====================
 // Enums

@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_PROXY_API_TARGET?: string;
   readonly VITE_DISABLE_PWA?: '0' | '1' | 'true' | 'false';
+  readonly VITE_ACCOUNT_ID?: string;
 }
 
 interface ImportMeta {

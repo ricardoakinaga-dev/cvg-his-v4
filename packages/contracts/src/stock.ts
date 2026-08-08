@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
 import {
-  createPaginatedResponseSchema,
-  idParamSchema,
   paginationQuerySchema,
   searchQuerySchema,
   trim,
@@ -176,4 +174,3 @@ export type StockSummaryResponse = z.infer<typeof stockSummaryResponseSchema>;
 
 // Stock Item ID param
 export const stockItemIdParamSchema = z.object({ id: uuidSchema });
-

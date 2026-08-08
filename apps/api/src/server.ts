@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
-import { getPool } from '@cvg-his-v2/shared-database';
+import { getDatabaseTransactionScope, getPool } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import type { SecretsManager } from '@cvg-his-v2/secrets';
@@ -48,6 +48,7 @@ import type {
   UpdateWebhookRequest
 } from '@cvg-his-v2/shared-contracts';
 import {
+  AppError,
   AuthenticationError,
   ForbiddenError,
   NotFoundError,
@@ -75,6 +76,7 @@ import type {
 import {
   createInMemoryOidcStateStore,
   createStatelessOidcStateStore,
+  getClientIp,
   handleAuthRoutes
 } from './routes/auth-routes.js';
 import { handleOpenApiRoutes } from './routes/openapi-routes.js';
@@ -120,7 +122,7 @@ import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
 import { handleCounterSalesRoutes } from './routes/counter-sales-routes.js';
 import { handleOwnersRoutes } from './routes/owners-routes.js';
 import { handlePatientsRoutes } from './routes/patients-routes.js';
-import { handleVetusImportRoutes, type VetusImportSummary } from './routes/vetus-import-routes.js';
+import { handleVetusImportRoutes } from './routes/vetus-import-routes.js';
 import { handleUsersStaffQuotesRoutes } from './routes/users-staff-quotes-routes.js';
 import {
   ChaosEngine,
@@ -143,6 +145,14 @@ import {
 } from './google-calendar-gateway.js';
 import { InMemoryGoogleCalendarSyncRepository } from './google-calendar-sync-repository.js';
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
+import { createTenantCommandRunner } from './helpers/tenant-command.js';
+import { readJsonBody, readJsonBodyOrEmpty } from './helpers/request-body.js';
+import { applyBufferedResponse, createBufferedResponse, type BufferedResponseSnapshot } from './helpers/response-buffer.js';
+import {
+  createAttachmentDownloadToken,
+  verifyAttachmentDownloadToken,
+  type AttachmentDownloadClaims
+} from './helpers/attachment-download-token.js';
 import {
   getMetricsText,
   httpErrorsTotal,
@@ -168,7 +178,10 @@ import {
   type Span
 } from './tracing.js';
 import { generateSLOReport, getSLOConfigs } from './slos.js';
-import type { FileStorage } from '@cvg-his-v2/module-attachments';
+import type {
+  AttachmentSecurityScanner,
+  FileStorage
+} from '@cvg-his-v2/module-attachments';
 import { getAppState } from './app-state.js';
 import { WebAuthnServiceImpl, InMemoryWebAuthnRepository } from '@cvg-his-v2/module-mfa';
 import {
@@ -185,8 +198,14 @@ import {
   DisasterRecoveryControlService,
   IncidentResponseControlService
 } from '@cvg-his-v2/module-soc2';
-import { FiscalService } from '@cvg-his-v2/module-fiscal';
+import {
+  FiscalService,
+  type FiscalNfseRuntimeConfig,
+  type NfseIssuer,
+  type NfseProvider
+} from '@cvg-his-v2/module-fiscal';
 import { DatabaseFeatureFlagRepository } from '@cvg-his-v2/module-feature-flags';
+import type { JsonValue, TenantUnitOfWork } from '@cvg-his-v2/shared-database';
 import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
 import {
   DemandForecastingService,
@@ -194,6 +213,11 @@ import {
   OcrFiscalService
 } from '@cvg-his-v2/module-ml';
 import { MlTelemetryService } from './ml-telemetry.js';
+import { InMemoryAgendaConfigRepository } from './repositories/agenda-config-repository.js';
+import {
+  InMemoryVetusImportLogRepository,
+  type VetusImportLogRepository
+} from './repositories/vetus-import-log-repository.js';
 
 export interface ApiServerOptions {
   readonly appName: string;
@@ -206,20 +230,37 @@ export interface ApiServerOptions {
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests?: number;
   readonly authRateLimitWindowMs?: number;
+  readonly trustedProxyCidrs?: readonly string[];
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
+  readonly attachmentScanner?: AttachmentSecurityScanner;
   readonly sectorBedOptions?: SectorBedServiceOptions;
+  readonly unitOfWork?: TenantUnitOfWork;
   readonly featureFlagsProvider?: string;
   /** Pre-resolved feature flags snapshot (GAP-06: avoids async call inside createApiServer) */
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
   /** Gates distributed runtime state (Redis-backed session, encounter timeline, etc.) */
   readonly runtimeDistributedStateEnabled?: boolean;
+  /** Keeps canonical seed principals available with repository-backed runtime. */
+  readonly preserveSeedUsersWithRepository?: boolean;
   /** Keeps canonical owner/patient registry seeds available with repository-backed runtime. */
   readonly preserveSeedMasterDataWithRepository?: boolean;
+  /** Enforces UUID entity identifiers for the canonical SQL persistence mode. */
+  readonly requireUuidEntityIdentifiers?: boolean;
+  /** Keeps auxiliary catalog stores aligned with the persistence mode selected by bootstrap. */
+  readonly useDatabaseCatalogStores?: boolean;
+  readonly vetusImportLogRepository?: VetusImportLogRepository;
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
+  readonly nfseProvider?: NfseProvider;
+  readonly nfseApiUrl?: string;
+  readonly nfseApiKey?: string;
+  readonly nfseMunicipalityCode?: string;
+  readonly nfseCertificate?: Buffer;
+  readonly nfseIssuer?: NfseIssuer;
+  readonly nfseRegime?: FiscalNfseRuntimeConfig['regime'];
   /** When true, forces LocalPixPaymentGateway (mock) even if pagarme keys are set. Default: false (PagarMe default). */
   readonly pixMockMode?: boolean;
   readonly resendApiKey?: string;
@@ -231,6 +272,7 @@ export interface ApiServerOptions {
   readonly googleCalendarAccessToken?: string;
   readonly googleCalendarCalendarId?: string;
   readonly googleCalendarMockMode?: boolean;
+  readonly whatsappWebhookSecret?: string;
   /** Redis URL for distributed rate limiting. When set, auth rate limiter uses Redis backend. */
   readonly redisUrl?: string;
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
@@ -279,6 +321,79 @@ function isProductionLikeEnvironment(environment: string): boolean {
   );
 }
 
+export function assertProductionProviderReadiness(
+  options: Pick<
+    ApiServerOptions,
+    | 'pagarmeApiKey'
+    | 'pagarmePixKey'
+    | 'nfseProvider'
+    | 'nfseApiUrl'
+    | 'nfseApiKey'
+    | 'nfseMunicipalityCode'
+    | 'nfseCertificate'
+    | 'nfseIssuer'
+    | 'pixMockMode'
+    | 'resendApiKey'
+    | 'emailMockMode'
+    | 'smsApiKey'
+    | 'smsMockMode'
+    | 'googleCalendarAccessToken'
+    | 'googleCalendarCalendarId'
+    | 'googleCalendarMockMode'
+    | 'attachmentScanner'
+    | 'fileStorage'
+  > & { readonly environment: string }
+): void {
+  if (!isProductionLikeEnvironment(options.environment)) {
+    return;
+  }
+
+  const missingProviders: string[] = [];
+  if (options.pixMockMode === true || !options.pagarmeApiKey || !options.pagarmePixKey) {
+    missingProviders.push('Pagar.me PIX (PAGARME_API_KEY/PAGARME_PIX_KEY)');
+  }
+  if (
+    !options.nfseProvider
+    || !options.nfseApiUrl
+    || !options.nfseMunicipalityCode
+    || (!options.nfseApiKey && !options.nfseCertificate)
+    || !options.nfseIssuer
+  ) {
+    missingProviders.push(
+      'NFS-e municipal provider (NFSE_API_URL/NFSE_MUNICIPALITY_CODE/NFSE_API_KEY or NFSE_CERTIFICATE/NFSE_ISSUER_JSON)'
+    );
+  }
+  if (options.emailMockMode === true || !options.resendApiKey) {
+    missingProviders.push('Resend (RESEND_API_KEY)');
+  }
+  if (options.smsMockMode === true || !options.smsApiKey) {
+    missingProviders.push('SMS provider (SMS_API_KEY)');
+  }
+  if (
+    options.googleCalendarMockMode === true ||
+    !options.googleCalendarAccessToken ||
+    !options.googleCalendarCalendarId
+  ) {
+    missingProviders.push(
+      'Google Calendar (GOOGLE_CALENDAR_ACCESS_TOKEN/GOOGLE_CALENDAR_CALENDAR_ID)'
+    );
+  }
+  if (options.attachmentScanner?.productionReady !== true) {
+    missingProviders.push('ClamAV attachment scanner (ATTACHMENT_SCANNER_HOST)');
+  }
+  if (options.fileStorage?.productionReady !== true) {
+    missingProviders.push(
+      'private S3/MinIO attachment storage (ATTACHMENT_STORAGE_S3_*)'
+    );
+  }
+
+  if (missingProviders.length > 0) {
+    throw new Error(
+      `Production-like API cannot start with mock or missing providers: ${missingProviders.join(', ')}`
+    );
+  }
+}
+
 function isSecureRequest(request: IncomingMessage): boolean {
   if ((request.socket as { encrypted?: boolean }).encrypted) {
     return true;
@@ -287,6 +402,31 @@ function isSecureRequest(request: IncomingMessage): boolean {
   const forwardedProto = request.headers['x-forwarded-proto'];
   const headerValue = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
   return headerValue?.split(',')[0].trim().toLowerCase() === 'https';
+}
+
+function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
+  if (contentBase64 === undefined) return undefined;
+  if (typeof contentBase64 !== 'string') {
+    throw new ValidationError('contentBase64 must be a base64 string', { field: 'contentBase64' });
+  }
+
+  const normalized = contentBase64.trim();
+  if (
+    normalized.length === 0 ||
+    normalized.length > 36_000_000 ||
+    normalized.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)
+  ) {
+    throw new ValidationError('contentBase64 is invalid', { field: 'contentBase64' });
+  }
+
+  const content = Buffer.from(normalized, 'base64');
+  if (content.length > 25 * 1024 * 1024 || content.toString('base64') !== normalized) {
+    throw new ValidationError('contentBase64 is invalid or exceeds the upload limit', {
+      field: 'contentBase64'
+    });
+  }
+  return content;
 }
 
 function appendVaryHeader(response: ServerResponse, headerName: string): void {
@@ -765,7 +905,9 @@ class DatabaseResponsibilityTermStore implements ResponsibilityTermStore {
   }
 }
 
-function createResponsibilityTermStore(): ResponsibilityTermStore {
+function createResponsibilityTermStore(useDatabase: boolean): ResponsibilityTermStore {
+  if (!useDatabase) return new InMemoryResponsibilityTermStore();
+
   try {
     getPool();
     return new DatabaseResponsibilityTermStore();
@@ -1235,7 +1377,9 @@ class DatabaseBreedStore implements BreedStore {
   }
 }
 
-function createBreedStore(): BreedStore {
+function createBreedStore(useDatabase: boolean): BreedStore {
+  if (!useDatabase) return new InMemoryBreedStore();
+
   try {
     getPool();
     return new DatabaseBreedStore();
@@ -1743,7 +1887,9 @@ class DatabaseAnimalSpeciesStore implements AnimalSpeciesStore {
   }
 }
 
-function createAnimalSpeciesStore(): AnimalSpeciesStore {
+function createAnimalSpeciesStore(useDatabase: boolean): AnimalSpeciesStore {
+  if (!useDatabase) return new InMemoryAnimalSpeciesStore();
+
   try {
     getPool();
     return new DatabaseAnimalSpeciesStore();
@@ -2085,7 +2231,9 @@ class DatabaseCoatColorStore implements CoatColorStore {
   }
 }
 
-function createCoatColorStore(): CoatColorStore {
+function createCoatColorStore(useDatabase: boolean): CoatColorStore {
+  if (!useDatabase) return new InMemoryCoatColorStore();
+
   try {
     getPool();
     return new DatabaseCoatColorStore();
@@ -2492,7 +2640,9 @@ class DatabaseCustomerGroupStore implements CustomerGroupStore {
   }
 }
 
-function createCustomerGroupStore(): CustomerGroupStore {
+function createCustomerGroupStore(useDatabase: boolean): CustomerGroupStore {
+  if (!useDatabase) return new InMemoryCustomerGroupStore();
+
   try {
     getPool();
     return new DatabaseCustomerGroupStore();
@@ -2513,11 +2663,14 @@ interface PreventiveEventSummary {
   readonly animalName: string;
   readonly eventDate: string;
   readonly itemType: PreventiveItemType;
+  readonly protocolCode: string | null;
+  readonly lotNumber: string | null;
   readonly description: string;
   readonly status: PreventiveEventStatus;
   readonly observation: string | null;
   readonly executedAt: string | null;
   readonly executedObservation: string | null;
+  readonly nextDoseDate: string | null;
   readonly rescheduledFromId: string | null;
   readonly reminderEmailPreparedAt: string | null;
   readonly createdAt: string;
@@ -2531,6 +2684,8 @@ interface PreventiveEventInput {
   readonly animalName?: string;
   readonly eventDate?: string;
   readonly itemType?: PreventiveItemType;
+  readonly protocolCode?: string | null;
+  readonly lotNumber?: string | null;
   readonly description?: string;
   readonly observation?: string | null;
   readonly status?: PreventiveEventStatus;
@@ -2582,6 +2737,8 @@ const preventiveStatuses = new Set<PreventiveEventStatus>(['scheduled', 'execute
 const preventiveMaxNameLength = 160;
 const preventiveMaxDescriptionLength = 255;
 const preventiveMaxObservationLength = 1000;
+const preventiveMaxProtocolLength = 120;
+const preventiveMaxLotLength = 120;
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizePreventiveText(
@@ -2658,6 +2815,10 @@ function mapPreventiveDate(value: unknown): string {
   return String(value).slice(0, 10);
 }
 
+function mapPreventiveOptionalDate(value: unknown): string | null {
+  return value ? mapPreventiveDate(value) : null;
+}
+
 function mapPreventiveTimestamp(value: unknown): string | null {
   if (!value) return null;
   return new Date(value as string | Date).toISOString();
@@ -2673,11 +2834,14 @@ function mapPreventiveEventRow(row: Record<string, unknown>): PreventiveEventSum
     animalName: row.animal_name as string,
     eventDate: mapPreventiveDate(row.event_date),
     itemType: row.item_type as PreventiveItemType,
+    protocolCode: (row.protocol_code as string | null) ?? null,
+    lotNumber: (row.lot_number as string | null) ?? null,
     description: row.description as string,
     status: row.status as PreventiveEventStatus,
     observation: (row.observation as string | null) ?? null,
     executedAt: mapPreventiveTimestamp(row.executed_at),
     executedObservation: (row.executed_observation as string | null) ?? null,
+    nextDoseDate: mapPreventiveOptionalDate(row.next_dose_date),
     rescheduledFromId: (row.rescheduled_from_id as string | null) ?? null,
     reminderEmailPreparedAt: mapPreventiveTimestamp(row.reminder_email_prepared_at),
     createdAt: new Date(row.created_at as string | Date).toISOString(),
@@ -2700,6 +2864,16 @@ function createPreventiveEventSummary(
     animalName: normalizePreventiveText(input.animalName, 'animalName', preventiveMaxNameLength),
     eventDate: normalizePreventiveDate(input.eventDate, 'eventDate'),
     itemType: normalizePreventiveItemType(input.itemType),
+    protocolCode: normalizePreventiveOptionalText(
+      input.protocolCode,
+      'protocolCode',
+      preventiveMaxProtocolLength
+    ),
+    lotNumber: normalizePreventiveOptionalText(
+      input.lotNumber,
+      'lotNumber',
+      preventiveMaxLotLength
+    ),
     description: normalizePreventiveText(
       input.description,
       'description',
@@ -2713,6 +2887,7 @@ function createPreventiveEventSummary(
     ),
     executedAt: null,
     executedObservation: null,
+    nextDoseDate: null,
     rescheduledFromId,
     reminderEmailPreparedAt: null,
     createdAt: now,
@@ -2757,6 +2932,18 @@ class InMemoryPreventiveEventStore implements PreventiveEventStore {
         input.itemType !== undefined
           ? normalizePreventiveItemType(input.itemType)
           : existing.itemType,
+      protocolCode:
+        input.protocolCode !== undefined
+          ? normalizePreventiveOptionalText(
+              input.protocolCode,
+              'protocolCode',
+              preventiveMaxProtocolLength
+            )
+          : existing.protocolCode,
+      lotNumber:
+        input.lotNumber !== undefined
+          ? normalizePreventiveOptionalText(input.lotNumber, 'lotNumber', preventiveMaxLotLength)
+          : existing.lotNumber,
       description:
         input.description !== undefined
           ? normalizePreventiveText(
@@ -2822,6 +3009,7 @@ class InMemoryPreventiveEventStore implements PreventiveEventStore {
         'observation',
         preventiveMaxObservationLength
       ),
+      nextDoseDate: normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo'),
       observation:
         normalizePreventiveOptionalText(
           input.observation,
@@ -2842,6 +3030,7 @@ class InMemoryPreventiveEventStore implements PreventiveEventStore {
       status: 'scheduled',
       executedAt: null,
       executedObservation: null,
+      nextDoseDate: null,
       rescheduledFromId: event.id,
       reminderEmailPreparedAt: null,
       observation: 'Reagendado apos baixa.',
@@ -2944,6 +3133,18 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
         input.itemType !== undefined
           ? normalizePreventiveItemType(input.itemType)
           : existing.itemType,
+      protocolCode:
+        input.protocolCode !== undefined
+          ? normalizePreventiveOptionalText(
+              input.protocolCode,
+              'protocolCode',
+              preventiveMaxProtocolLength
+            )
+          : existing.protocolCode,
+      lotNumber:
+        input.lotNumber !== undefined
+          ? normalizePreventiveOptionalText(input.lotNumber, 'lotNumber', preventiveMaxLotLength)
+          : existing.lotNumber,
       description:
         input.description !== undefined
           ? normalizePreventiveText(
@@ -2974,10 +3175,12 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
              owner_id = $5,
              event_date = $6,
              item_type = $7,
-             description = $8,
-             status = $9,
-             observation = $10,
-             updated_at = $11
+             protocol_code = $8,
+             lot_number = $9,
+             description = $10,
+             status = $11,
+             observation = $12,
+             updated_at = $13
          WHERE id = $1
          RETURNING *`,
         [
@@ -2988,6 +3191,8 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
           updated.ownerId,
           updated.eventDate,
           updated.itemType,
+          updated.protocolCode,
+          updated.lotNumber,
           updated.description,
           updated.status,
           updated.observation,
@@ -3086,52 +3291,47 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
       'observation',
       preventiveMaxObservationLength
     );
+    const rescheduleTo = normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo');
     const now = new Date();
 
     return await withTenantQuery(getPool(), async (client) => {
-      await client.query('BEGIN');
-      try {
-        const updateResult = await client.query(
-          `UPDATE preventive_events
-           SET status = 'executed',
-               executed_at = $2,
-               executed_observation = $3,
-               observation = COALESCE($3, observation),
-               updated_at = $2
-           WHERE id = $1
-           RETURNING *`,
-          [eventId, now, executedObservation]
-        );
-        const event = mapPreventiveEventRow(updateResult.rows[0]);
+      const updateResult = await client.query(
+        `UPDATE preventive_events
+         SET status = 'executed',
+             executed_at = $2,
+             executed_observation = $3,
+             observation = COALESCE($3, observation),
+             next_dose_date = $4,
+             updated_at = $2
+         WHERE id = $1
+         RETURNING *`,
+        [eventId, now, executedObservation, rescheduleTo]
+      );
+      const event = mapPreventiveEventRow(updateResult.rows[0]);
 
-        const rescheduleTo = normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo');
-        if (!rescheduleTo) {
-          await client.query('COMMIT');
-          return { event, rescheduledEvent: null };
-        }
-
-        const rescheduledEvent = createPreventiveEventSummary(
-          existing.accountId,
-          {
-            patientId: existing.patientId,
-            ownerId: existing.ownerId,
-            clientName: existing.clientName,
-            animalName: existing.animalName,
-            eventDate: rescheduleTo,
-            itemType: existing.itemType,
-            description: existing.description,
-            observation: 'Reagendado apos baixa.',
-            status: 'scheduled'
-          },
-          event.id
-        );
-        const insertResult = await this.insertEventWithClient(client, rescheduledEvent);
-        await client.query('COMMIT');
-        return { event, rescheduledEvent: insertResult };
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
+      if (!rescheduleTo) {
+        return { event, rescheduledEvent: null };
       }
+
+      const rescheduledEvent = createPreventiveEventSummary(
+        existing.accountId,
+        {
+          patientId: existing.patientId,
+          ownerId: existing.ownerId,
+          clientName: existing.clientName,
+          animalName: existing.animalName,
+          eventDate: rescheduleTo,
+          itemType: existing.itemType,
+          protocolCode: existing.protocolCode,
+          lotNumber: existing.lotNumber,
+          description: existing.description,
+          observation: 'Reagendado apos baixa.',
+          status: 'scheduled'
+        },
+        event.id
+      );
+      const insertResult = await this.insertEventWithClient(client, rescheduledEvent);
+      return { event, rescheduledEvent: insertResult };
     });
   }
 
@@ -3199,6 +3399,9 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
          animal_name,
          event_date,
          item_type,
+         protocol_code,
+         lot_number,
+         next_dose_date,
          description,
          status,
          observation,
@@ -3209,7 +3412,7 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
          created_at,
          updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING *`,
       [
         event.id,
@@ -3220,6 +3423,9 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
         event.animalName,
         event.eventDate,
         event.itemType,
+        event.protocolCode,
+        event.lotNumber,
+        event.nextDoseDate,
         event.description,
         event.status,
         event.observation,
@@ -3235,8 +3441,8 @@ class DatabasePreventiveEventStore implements PreventiveEventStore {
   }
 }
 
-function createPreventiveEventStore(): PreventiveEventStore {
-  if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
+function createPreventiveEventStore(useDatabase: boolean): PreventiveEventStore {
+  if (!useDatabase) {
     return new InMemoryPreventiveEventStore();
   }
 
@@ -3248,8 +3454,49 @@ function createPreventiveEventStore(): PreventiveEventStore {
   }
 }
 
+function shouldUseTenantCommand(pathname: string, method: string | undefined): boolean {
+  if (!method || ['GET', 'HEAD', 'OPTIONS'].includes(method)) return false;
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/auth/')) return false;
+  if (
+    pathname === '/webhooks/whatsapp/inbound' ||
+    pathname === '/api/webhooks/whatsapp/inbound'
+  ) {
+    return false;
+  }
+  // Chaos experiments intentionally alter process-wide state and are not
+  // tenant data commands. Their own authorization and audit remain separate.
+  if (pathname.startsWith('/chaos/')) return false;
+  return true;
+}
+
+async function readTenantCommandPayload(request: IncomingMessage, url: URL): Promise<JsonValue> {
+  const body = await readJsonBodyOrEmpty(
+    request,
+    url.pathname === '/attachments' ? 32 * 1024 * 1024 : 1_048_576
+  );
+  const commandBody =
+    url.pathname === '/attachments' && typeof body === 'object' && body !== null && !Array.isArray(body)
+      ? {
+          ...(body as Record<string, unknown>),
+          // Never duplicate a binary upload into the idempotency payload. The
+          // declared checksum remains part of the command identity while the
+          // route receives the cached original body below.
+          ...(typeof (body as Record<string, unknown>).contentBase64 === 'string'
+            ? { contentBase64: `omitted:${String((body as Record<string, unknown>).checksum ?? '')}` }
+            : {})
+        }
+      : body;
+  return {
+    path: url.pathname,
+    query: Object.fromEntries(url.searchParams.entries()),
+    body: commandBody as JsonValue
+  };
+}
+
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
+  const agendaConfigRepository =
+    options.repositories?.agendaConfig ?? new InMemoryAgendaConfigRepository();
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
   const effectiveRuntimeDistributedStateEnabled =
     options.runtimeDistributedStateEnabled ??
@@ -3274,6 +3521,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     laboratory,
     billing,
     encounterFinancial,
+    ledger,
     financialPayables,
     financialStatements,
     commercial,
@@ -3281,6 +3529,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     packages,
     reports,
     inventory,
+    procurement,
     notifications,
     audit,
     discharges,
@@ -3300,6 +3549,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     pixTransactions,
     cardTransactions,
     smartScheduling,
+    whatsAppProvider,
     initialize
   } = createApiRuntime({
     authSecret: options.authSecret,
@@ -3310,24 +3560,33 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     mfaEncryptionKey: options.mfaEncryptionKey,
     repositories: options.repositories,
     fileStorage: options.fileStorage,
+    attachmentScanner: options.attachmentScanner,
     sectorBedOptions: options.sectorBedOptions,
     runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
     notificationsWhatsappRemindersEnabled:
       options.featureFlags?.notificationsWhatsappRemindersEnabled,
-    preserveSeedUsersWithRepository: options.environment === 'test',
+    preserveSeedUsersWithRepository:
+      options.preserveSeedUsersWithRepository ?? options.environment === 'test',
     preserveSeedMasterDataWithRepository:
-      options.preserveSeedMasterDataWithRepository ?? options.environment !== 'test'
+      options.preserveSeedMasterDataWithRepository ?? false,
+    requireUuidEntityIdentifiers: options.requireUuidEntityIdentifiers,
+    unitOfWork: options.unitOfWork
   });
-  // PagarMe is preferred only when both credentials are present.
-  // Without complete credentials, the runtime must fall back to LocalPix so
-  // bootstrap, test, and validation environments stay operational.
+  const runTenantCommand = createTenantCommandRunner({
+    environment: options.environment,
+    unitOfWork: options.unitOfWork
+  });
+  // Local providers are deliberately limited to development/test environments.
   const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
+  assertProductionProviderReadiness(options);
   const usePixMock = options.pixMockMode === true || !hasPagarmeCredentials;
   const paymentGateway = usePixMock
     ? new LocalPixPaymentGateway()
     : new PagarMePaymentGatewayAdapter({
         apiKey: options.pagarmeApiKey!,
-        pixKey: options.pagarmePixKey!
+        pixKey: options.pagarmePixKey!,
+        pixTransactions,
+        cardTransactions
       });
 
   const paymentGatewayLabel =
@@ -3363,19 +3622,36 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         calendarId: options.googleCalendarCalendarId!
       });
   const googleCalendarSyncs = new InMemoryGoogleCalendarSyncRepository();
-  const laboratoryResultImports = new InMemoryLaboratoryResultImportRepository();
+  const laboratoryResultImports =
+    options.repositories?.laboratoryResultImport ?? new InMemoryLaboratoryResultImportRepository();
   const ocrFiscal = new OcrFiscalService();
   const demandForecasting = new DemandForecastingService();
   const labAnomalyDetection = new LabAnomalyDetectionService();
-  const fiscal = new FiscalService();
+  const nfseRuntime =
+    options.nfseProvider && options.nfseApiUrl && options.nfseMunicipalityCode
+      ? {
+          provider: options.nfseProvider,
+          apiUrl: options.nfseApiUrl,
+          municipalityCode: options.nfseMunicipalityCode,
+          apiKey: options.nfseApiKey,
+          certificate: options.nfseCertificate,
+          issuer: options.nfseIssuer,
+          regime: options.nfseRegime
+        }
+      : undefined;
+  const fiscal = new FiscalService(undefined, undefined, {
+    allowNfseSimulation: !isProductionLikeEnvironment(options.environment),
+    nfse: nfseRuntime
+  });
   const mlTelemetry = new MlTelemetryService();
-  const responsibilityTerms = createResponsibilityTermStore();
-  const breeds = createBreedStore();
-  const animalSpecies = createAnimalSpeciesStore();
-  const coatColors = createCoatColorStore();
-  const customerGroups = createCustomerGroupStore();
-  const preventiveEvents = createPreventiveEventStore();
-  const vetusImportLogStore = new Map<string, VetusImportSummary>();
+  const useDatabaseCatalogStores = options.useDatabaseCatalogStores ?? true;
+  const responsibilityTerms = createResponsibilityTermStore(useDatabaseCatalogStores);
+  const breeds = createBreedStore(useDatabaseCatalogStores);
+  const animalSpecies = createAnimalSpeciesStore(useDatabaseCatalogStores);
+  const coatColors = createCoatColorStore(useDatabaseCatalogStores);
+  const customerGroups = createCustomerGroupStore(useDatabaseCatalogStores);
+  const preventiveEvents = createPreventiveEventStore(useDatabaseCatalogStores);
+  const vetusImportLogStore = options.vetusImportLogRepository ?? new InMemoryVetusImportLogRepository();
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
@@ -3383,7 +3659,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     authRateLimitWindowMs: options.authRateLimitWindowMs,
     authRateLimitMaxRequests: options.authRateLimitMaxRequests,
     redisUrl: options.redisUrl,
-    runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled
+    runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+    requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
   });
 
   // ABAC engine — layered on top of RBAC for fine-grained policy enforcement
@@ -3459,8 +3736,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       dayOfWeek: now.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6,
       hourOfDay: now.getHours(),
       ipAddress:
-        request.headers['x-forwarded-for']?.toString().split(',')[0].trim() ??
-        request.socket.remoteAddress,
+        getClientIp(request, options.trustedProxyCidrs),
       userAgent: request.headers['user-agent']
     };
   }
@@ -3573,6 +3849,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       void handleRequest(request, response);
     });
   });
+  server.headersTimeout = 15_000;
+  server.requestTimeout = 30_000;
+  server.keepAliveTimeout = 5_000;
 
   return Object.assign(server, { ready });
 
@@ -3693,19 +3972,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
 
-      // Chaos engineering endpoints (operational - protected by network policy in production)
+      // Chaos engineering endpoints are privileged because experiments can alter process-wide behavior.
       const chaosMatch = request.url?.match(/^\/chaos\/experiments\/([^/]+)\/(start|stop)$/);
       if (chaosMatch && request.method === 'POST') {
+        requirePrincipal(request, 'users.manage');
         const [, experimentId, action] = chaosMatch;
         try {
           if (action === 'start') {
-            // Parse body for durationMs and other options
-            const chunks: Buffer[] = [];
-            for await (const chunk of request) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-            const bodyText = Buffer.concat(chunks).toString('utf8');
-            const body = bodyText ? JSON.parse(bodyText) : {};
+            const body = await readJsonBody(request);
             const result = await chaos.start(experimentId, body);
             response.setHeader('content-type', 'application/json');
             response.statusCode = result.ok ? 200 : 409;
@@ -3731,6 +4005,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
       // List all available chaos experiments
       if (request.url === '/chaos/experiments' && request.method === 'GET') {
+        requirePrincipal(request, 'users.manage');
         const appState = getAppState();
         const activeExperimentIds = chaos
           .listActiveExperiments()
@@ -3770,6 +4045,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       }
 
       // Extract accountId from Authorization header if present
+      const signedAttachmentClaims: AttachmentDownloadClaims | null =
+        pathname.match(/^\/attachments\/[^/]+\/content$/) && url.searchParams.has('token')
+          ? verifyAttachmentDownloadToken(options.authSecret, url.searchParams.get('token') ?? '')
+          : null;
       let accountId: string | undefined = undefined;
       let userId: string | undefined;
       const authHeader = request.headers['authorization'];
@@ -3799,6 +4078,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             // Invalid API keys are rejected later at route level.
           }
         }
+      }
+      if (!accountId && signedAttachmentClaims) {
+        accountId = signedAttachmentClaims.accountId;
       }
 
       const isPublicTenantlessRoute =
@@ -3839,6 +4121,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
       return await withSpanContext(span, async () =>
         runWithTenantContext(tenantCtx, async () => {
+          const dispatchRequest = async (): Promise<void> => {
           if (
             await handleAuthRoutes(pathname, request, response, correlationId, {
               auth,
@@ -3852,6 +4135,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               webauthnChallengeTtlMs: WEBAUTHN_CHALLENGE_TTL_MS,
               oidcStateStore,
               oidcStateTtlMs: OIDC_STATE_TTL_MS,
+              refreshCookieMaxAgeSeconds: options.refreshTokenTtlSeconds,
+              secureCookies: isProductionLikeEnvironment(options.environment),
+              csrfAllowedOrigins: corsAllowedOrigins,
+              trustedProxyCidrs: options.trustedProxyCidrs,
               requirePrincipal,
               appendAudit
             })
@@ -3953,7 +4240,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               encounters,
               smartScheduling,
               audit,
-              requirePrincipal
+              requirePrincipal,
+              runCommand: runTenantCommand
             })
           ) {
             return;
@@ -3962,7 +4250,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleAgendaConfigRoutes(pathname, request, response, correlationId, {
               audit,
-              requirePrincipal
+              repository: agendaConfigRepository,
+              requirePrincipal,
+              refreshScheduling: (accountId) => scheduling.hydrateFromDatabase(accountId as never)
             })
           ) {
             return;
@@ -3973,6 +4263,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const encounterId = url.searchParams.get('encounterId');
 
             if (encounterId) {
+              requireEncounterForAccount(encounterId, principal.user.accountId);
               const record = await medicalRecords.getRecordByEncounterOrThrowAsync(
                 encounterId as never
               );
@@ -4009,6 +4300,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               url.searchParams.get('encounterId'),
               'encounterId'
             );
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -4032,6 +4324,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (pathname === '/medical-records/entries' && request.method === 'POST') {
             const principal = requirePrincipal(request, 'medical-records.manage');
             const payload = (await readJsonBody(request)) as CreateClinicalEntryRequest;
+            requireEncounterForAccount(payload.encounterId, principal.user.accountId);
             // ABAC enforcement: only clinical staff can write medical records
             enforceAbac(
               'medical-records.manage',
@@ -4045,19 +4338,57 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               },
               request
             );
-            const entry = medicalRecords.addEntry(principal.user.id, payload);
-            await medicalRecords.waitForPersistence();
-            appendAudit(
-              principal.user.id,
-              principal.user.accountId,
-              'medical-records',
-              'create_entry',
-              'clinical-entry',
-              entry.id,
-              `${entry.entryType} created for encounter ${entry.encounterId}`,
-              'high',
-              correlationId
-            );
+            const rawIdempotencyKey = request.headers['idempotency-key'];
+            const idempotencyKey = Array.isArray(rawIdempotencyKey)
+              ? rawIdempotencyKey[0]
+              : rawIdempotencyKey;
+            if (isProductionLikeEnvironment(options.environment) && !idempotencyKey) {
+              throw new ValidationError('Idempotency-Key header is required for clinical entry creation');
+            }
+
+            const writeAudit = async (
+              entry: Awaited<ReturnType<typeof medicalRecords.createEntryAtomically>>
+            ) =>
+              audit.writeAndWait({
+                actorId: principal.user.id,
+                accountId: principal.user.accountId,
+                module: 'medical-records',
+                action: 'create_entry',
+                entityType: 'clinical-entry',
+                entityId: entry.id,
+                payloadSummary: `${entry.entryType} created for encounter ${entry.encounterId}`,
+                riskLevel: 'high',
+                correlationId
+              });
+
+            let entry: Awaited<ReturnType<typeof medicalRecords.createEntryAtomically>>;
+            if (options.unitOfWork && idempotencyKey && !getDatabaseTransactionScope()) {
+              const execution = await options.unitOfWork.execute(
+                {
+                  accountId: principal.user.accountId,
+                  actorUserId: principal.user.id,
+                  correlationId,
+                  operation: 'medical-records.create-entry',
+                  idempotencyKey
+                },
+                payload as unknown as JsonValue,
+                async () => {
+                  const created = await medicalRecords.createEntryAtomically(
+                    principal.user.id,
+                    payload
+                  );
+                  await writeAudit(created);
+                  return created as unknown as JsonValue;
+                }
+              );
+              entry = execution.value as unknown as typeof entry;
+            } else {
+              entry = await medicalRecords.createEntryAtomically(
+                principal.user.id,
+                payload
+              );
+              await writeAudit(entry);
+            }
             response.statusCode = 201;
             response.end(JSON.stringify(entry));
             return;
@@ -4073,6 +4404,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               medicalRecordEntryParts[4] === 'revisions'
             ) {
               const principal = requirePrincipal(request, 'medical-records.read');
+              const entry = await medicalRecords.getEntryOrThrowAsync(entryId as never);
+              if (entry.accountId !== principal.user.accountId) {
+                throw new NotFoundError('Clinical entry not found', { entryId });
+              }
               const revisions = await medicalRecords.getEntryRevisionsAsync(entryId as never);
               appendAudit(
                 principal.user.id,
@@ -4091,6 +4426,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             }
 
             const principal = requirePrincipal(request, 'medical-records.manage');
+            const existingEntry = await medicalRecords.getEntryOrThrowAsync(entryId as never);
+            if (existingEntry.accountId !== principal.user.accountId) {
+              throw new NotFoundError('Clinical entry not found', { entryId });
+            }
 
             if (request.method === 'PATCH' && medicalRecordEntryParts.length === 4) {
               const payload = (await readJsonBody(request)) as UpdateClinicalEntryRequest;
@@ -4149,6 +4488,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               url.searchParams.get('encounterId'),
               'encounterId'
             );
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -4179,6 +4519,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               url.searchParams.get('linkedEntityId'),
               'linkedEntityId'
             );
+            await requireAttachmentTargetForAccount(
+              linkedEntityType,
+              linkedEntityId,
+              principal.user.accountId
+            );
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -4199,10 +4544,110 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             return;
           }
 
+          const attachmentDownloadUrlMatch = pathname.match(/^\/attachments\/([^/]+)\/download-url$/);
+          if (attachmentDownloadUrlMatch && request.method === 'POST') {
+            const principal = requirePrincipal(request, 'attachments.read');
+            const attachmentId = requireNonEmptyString(attachmentDownloadUrlMatch[1], 'attachmentId');
+            const attachment = await attachments.getById(attachmentId);
+            if (!attachment || attachment.accountId !== principal.user.accountId) {
+              throw new NotFoundError('Attachment not found', { attachmentId });
+            }
+            if (attachment.scanStatus !== 'available') {
+              throw new AppError(
+                'ATTACHMENT_NOT_AVAILABLE',
+                'Attachment is not available until security scanning completes',
+                409,
+                { scanStatus: attachment.scanStatus }
+              );
+            }
+            const expiresAt = Date.now() + 5 * 60 * 1000;
+            const token = createAttachmentDownloadToken(options.authSecret, {
+              attachmentId: attachment.id,
+              accountId: attachment.accountId,
+              expiresAt
+            });
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'attachments',
+              'create_download_url',
+              'attachment',
+              attachment.id,
+              'Short-lived attachment download URL issued',
+              'medium',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(
+              JSON.stringify({
+                url: `/attachments/${encodeURIComponent(attachment.id)}/content?token=${encodeURIComponent(token)}`,
+                expiresAt: new Date(expiresAt).toISOString()
+              })
+            );
+            return;
+          }
+
+          const attachmentContentMatch = pathname.match(/^\/attachments\/([^/]+)\/content$/);
+          if (attachmentContentMatch && request.method === 'GET') {
+            const attachmentId = requireNonEmptyString(attachmentContentMatch[1], 'attachmentId');
+            const signedClaims = signedAttachmentClaims;
+            const principal = signedClaims ? undefined : requirePrincipal(request, 'attachments.read');
+            const attachment = await attachments.getById(attachmentId);
+            const requestedAccountId = signedClaims?.accountId ?? principal?.user.accountId;
+            if (
+              !attachment ||
+              !requestedAccountId ||
+              attachment.accountId !== requestedAccountId ||
+              (signedClaims && signedClaims.attachmentId !== attachment.id)
+            ) {
+              throw new NotFoundError('Attachment not found', { attachmentId });
+            }
+            if (attachment.scanStatus !== 'available') {
+              throw new AppError(
+                'ATTACHMENT_NOT_AVAILABLE',
+                'Attachment is not available until security scanning completes',
+                409,
+                { scanStatus: attachment.scanStatus }
+              );
+            }
+            const content = await attachments.getFileContent(attachment.storageKey);
+            if (!content) throw new NotFoundError('Attachment content not found', { attachmentId });
+            const safeFileName = attachment.fileName.replace(/[\r\n"\\]/g, '_');
+            response.setHeader('content-type', attachment.mimeType);
+            response.setHeader('content-length', String(content.length));
+            response.setHeader('content-disposition', `attachment; filename="${safeFileName}"`);
+            response.setHeader('x-content-type-options', 'nosniff');
+            appendAudit(
+              principal?.user.id ?? 'signed-download',
+              attachment.accountId,
+              'attachments',
+              signedClaims ? 'download_signed' : 'download',
+              'attachment',
+              attachment.id,
+              `Attachment ${attachment.id} downloaded`,
+              'high',
+              correlationId
+            );
+            await audit.waitForPersistence();
+            response.statusCode = 200;
+            response.end(content);
+            return;
+          }
+
           if (pathname === '/attachments' && request.method === 'POST') {
             const principal = requirePrincipal(request, 'attachments.manage');
-            const payload = (await readJsonBody(request)) as CreateAttachmentRequest;
-            const attachment = await attachments.upload(principal.user.id, payload);
+            const payload = (await readJsonBody(request, 32 * 1024 * 1024)) as CreateAttachmentRequest;
+            await requireAttachmentTargetForAccount(
+              payload.linkedEntityType,
+              payload.linkedEntityId,
+              principal.user.accountId
+            );
+            const fileContent = decodeAttachmentContent(payload.contentBase64);
+            const attachment = await attachments.upload(
+              principal.user.id,
+              payload,
+              fileContent
+            );
 
             if (payload.linkedEntityType === 'encounter') {
               medicalRecords.ensureRecord(payload.linkedEntityId as never);
@@ -4231,6 +4676,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 `Attachment added to diagnostic order ${order.id}`
               );
             }
+
+            await medicalRecords.waitForPersistence();
 
             appendAudit(
               principal.user.id,
@@ -4268,6 +4715,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             response.end(
               JSON.stringify({
                 items: inpatient.list({
+                  accountId: principal.user.accountId,
                   encounterId,
                   patientId,
                   includeDischarged
@@ -4673,7 +5121,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               correlationId
             );
             response.statusCode = 200;
-            response.end(JSON.stringify({ items: encounters.listAll() }));
+            response.end(
+              JSON.stringify({
+                items: encounters
+                  .listAll()
+                  .filter((encounter) => encounter.accountId === principal.user.accountId)
+              })
+            );
             return;
           }
 
@@ -4729,6 +5183,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ) {
             const principal = requirePrincipal(request, 'encounters.read');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -4754,6 +5209,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ) {
             const principal = requirePrincipal(request, 'encounters.manage');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             const payload = (await readJsonBody(request)) as TransitionEncounterRequest;
             const encounter = encounters.transitionEncounter(
               encounterId as never,
@@ -4785,6 +5241,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ) {
             const principal = requirePrincipal(request, 'encounters.manage');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             const payload = (await readJsonBody(request)) as CloseEncounterRequest;
             const encounter = encounters.closeEncounter(
               encounterId as never,
@@ -4810,8 +5267,41 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           }
 
           if (
+            pathname.startsWith('/encounters/') &&
+            pathname.endsWith('/reopen') &&
+            request.method === 'POST'
+          ) {
+            const principal = requirePrincipal(request, 'encounters.manage');
+            const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+            requireEncounterForAccount(encounterId, principal.user.accountId);
+            const payload = (await readJsonBody(request)) as { readonly reason: string };
+            const encounter = encounters.reopenEncounter(
+              encounterId as never,
+              principal.user.id,
+              payload.reason
+            );
+            await syncQueueWithEncounter(encounter.id, encounter.status);
+            await encounters.waitForPersistence();
+            appendAudit(
+              principal.user.id,
+              principal.user.accountId,
+              'encounters',
+              'reopen',
+              'encounter',
+              encounter.id,
+              `Encounter reopened: ${payload.reason}`,
+              'high',
+              correlationId
+            );
+            response.statusCode = 200;
+            response.end(JSON.stringify(encounter));
+            return;
+          }
+
+          if (
             await handleFinancialRoutes(pathname, request, response, correlationId, {
               encounterFinancial,
+              ledger,
               financialPayables,
               financialStatements,
               billing,
@@ -4866,10 +5356,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           }
 
           if (
-            await handleMarketingRoutes(pathname, request, response, correlationId, {
-              marketing,
-              smsGateway,
-              audit,
+          await handleMarketingRoutes(pathname, request, response, correlationId, {
+            marketing,
+            smsGateway,
+            emailGateway,
+            whatsAppProvider,
+            audit,
               requirePrincipal
             })
           ) {
@@ -4879,7 +5371,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (pathname.startsWith('/encounters/') && request.method === 'GET') {
             const principal = requirePrincipal(request, 'encounters.read');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-            const encounter = encounters.getOrThrow(encounterId as never);
+            const encounter = requireEncounterForAccount(encounterId, principal.user.accountId);
 
             if (pathname.endsWith('/summary')) {
               const timeline = await encounters.listTimelineAsync(encounterId as never);
@@ -4939,6 +5431,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (pathname.startsWith('/encounters/') && request.method === 'DELETE') {
             const principal = requirePrincipal(request, 'encounters.manage');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
+            requireEncounterForAccount(encounterId, principal.user.accountId);
             encounters.deleteEncounter(encounterId as never);
             appendAudit(
               principal.user.id,
@@ -4959,6 +5452,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (pathname === '/triage' && request.method === 'GET') {
             const principal = requirePrincipal(request, 'triage.read');
             const encounterId = url.searchParams.get('encounterId') ?? undefined;
+            if (encounterId) {
+              requireEncounterForAccount(encounterId, principal.user.accountId);
+            }
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -4971,7 +5467,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               correlationId
             );
             response.statusCode = 200;
-            response.end(JSON.stringify({ items: triage.list(encounterId as never) }));
+            response.end(
+              JSON.stringify({
+                items: triage
+                  .list(encounterId as never)
+                  .filter((record) => record.accountId === principal.user.accountId)
+              })
+            );
             return;
           }
 
@@ -4979,7 +5481,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const principal = requirePrincipal(request, 'triage.manage');
             const payload = (await readJsonBody(request)) as CreateTriageRequest;
             const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId');
-            const currentEncounter = encounters.getOrThrow(encounterId as never);
+            const currentEncounter = requireEncounterForAccount(
+              encounterId,
+              principal.user.accountId
+            );
             if (currentEncounter.status === 'reception') {
               encounters.transitionEncounter(currentEncounter.id, principal.user.id, {
                 nextStatus: 'in_triage'
@@ -5025,6 +5530,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const principal = requirePrincipal(request, 'triage.read');
             const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
             const record = triage.getOrThrow(triageId as never);
+            if (record.accountId !== principal.user.accountId) {
+              throw new NotFoundError('Triage record not found', { triageId });
+            }
             appendAudit(
               principal.user.id,
               principal.user.accountId,
@@ -5046,6 +5554,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
             const payload = (await readJsonBody(request)) as UpdateTriageRequest;
             const before = triage.getOrThrow(triageId as never);
+            if (before.accountId !== principal.user.accountId) {
+              throw new NotFoundError('Triage record not found', { triageId });
+            }
             const record = await triage.updateTriage(triageId as never, payload, principal.user.id);
             encounters.appendTimeline(record.encounterId, {
               accountId: record.accountId,
@@ -5105,7 +5616,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             await handleCommissionRoutes(pathname, request, response, correlationId, {
               commissions,
               audit,
-              requirePrincipal
+              requirePrincipal,
+              runCommand: runTenantCommand
             })
           ) {
             return;
@@ -5117,6 +5629,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               patients,
               audit,
               importLogStore: vetusImportLogStore,
+              importBatchStore: vetusImportLogStore,
               requirePrincipal
             })
           ) {
@@ -6394,9 +6907,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleInventoryRoutes(pathname, request, response, correlationId, {
               inventory,
+              procurement,
               audit,
               requirePrincipal,
-              enforceAbac
+              enforceAbac,
+              runCommand: runTenantCommand
             })
           ) {
             return;
@@ -6456,6 +6971,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleSurgeryRoutes(pathname, request, response, correlationId, {
               surgery,
+              encounters,
               audit,
               requirePrincipal
             })
@@ -6510,7 +7026,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             paymentGateway,
             apiKeys,
             audit,
-            cardTransactions
+            cardTransactions,
+            billing
           });
           if (await paymentsHandled) return;
 
@@ -6591,7 +7108,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               audit,
               requirePrincipal,
               notificationsWhatsappInboundActionsEnabled:
-                featureFlags.notificationsWhatsappInboundActionsEnabled
+                featureFlags.notificationsWhatsappInboundActionsEnabled,
+              inboundWebhookSecret: options.whatsappWebhookSecret
             })
           ) {
             return;
@@ -6601,6 +7119,37 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           response.end(
             JSON.stringify({ code: 'NOT_FOUND', message: 'Route not found', correlationId })
           );
+          };
+
+          if (shouldUseTenantCommand(pathname, request.method) && tenantCtx.accountId) {
+            const payload = await readTenantCommandPayload(request, url);
+            const realResponse = response;
+            const buffered = createBufferedResponse(realResponse);
+            response = buffered.response;
+            try {
+              const execution = await runTenantCommand({
+                request,
+                accountId: tenantCtx.accountId,
+                actorUserId: tenantCtx.userId ?? `api-key:${tenantCtx.accountId}`,
+                correlationId,
+                operation: `${request.method ?? 'UNKNOWN'} ${pathname}`,
+                payload,
+                command: async () => {
+                  await dispatchRequest();
+                  await audit.waitForPersistence();
+                  return buffered.snapshot();
+                }
+              });
+              response = realResponse;
+              applyBufferedResponse(realResponse, execution as unknown as BufferedResponseSnapshot);
+            } catch (error) {
+              response = realResponse;
+              throw error;
+            }
+            return;
+          }
+
+          await dispatchRequest();
         })
       );
     } catch (error) {
@@ -6644,13 +7193,51 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
     }
 
-    void apiKeys.updateLastUsed(apiKey.id);
+    const rateLimit = await apiKeys.checkRateLimit(
+      apiKey.id,
+      apiKey.rateLimit,
+      apiKey.rateLimitWindow
+    );
+    if (!rateLimit.allowed) {
+      throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
+        resetAt: rateLimit.resetAt.toISOString()
+      });
+    }
+
+    await apiKeys.updateLastUsed(apiKey.id);
     return { apiKey };
   }
 
   function sanitizeApiKey(apiKey: ApiKeySummary): Omit<ApiKeySummary, 'keyHash'> {
     const { keyHash: _keyHash, ...safe } = apiKey;
     return safe;
+  }
+
+  function requireEncounterForAccount(encounterId: string, accountId: string) {
+    const encounter = encounters.getOrThrow(encounterId as never);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    return encounter;
+  }
+
+  async function requireAttachmentTargetForAccount(
+    linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
+    linkedEntityId: string,
+    accountId: string
+  ): Promise<void> {
+    const targetAccountId =
+      linkedEntityType === 'encounter'
+        ? requireEncounterForAccount(linkedEntityId, accountId).accountId
+        : linkedEntityType === 'medical_record'
+          ? (await medicalRecords.getRecordOrThrowAsync(linkedEntityId as never)).accountId
+          : diagnostics.getOrThrow(linkedEntityId as never).accountId;
+    if (targetAccountId !== accountId) {
+      throw new NotFoundError('Attachment target not found', {
+        linkedEntityType,
+        linkedEntityId
+      });
+    }
   }
 
   async function syncQueueWithEncounter(
@@ -6704,27 +7291,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 function readHeader(request: IncomingMessage, headerName: string): string | undefined {
   const value = request.headers[headerName];
   return typeof value === 'string' ? value : undefined;
-}
-
-async function readJsonBody(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  if (chunks.length === 0) {
-    throw new ValidationError('Request body is required');
-  }
-
-  const body = Buffer.concat(chunks).toString('utf8');
-  try {
-    return JSON.parse(body) as unknown;
-  } catch (error) {
-    throw new ValidationError('Request body must be valid JSON', {
-      cause: error
-    });
-  }
 }
 
 // --- Body Validation Helper (F06 Hardening) ---

@@ -60,6 +60,7 @@ export interface CommissionCalculationSummary {
   readonly reviewedByUserId: UserId | null;
   readonly paidByUserId: UserId | null;
   readonly cancelledByUserId: UserId | null;
+  readonly payableId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly reviewedAt: string | null;
@@ -102,10 +103,55 @@ export interface CommissionRepository {
 
 export interface CommissionsServiceOptions {
   readonly repository?: CommissionRepository;
+  readonly payableGateway?: CommissionPayableGateway;
+  /**
+   * Executes compound commission mutations in the caller's tenant transaction.
+   * Database adapters already reuse an active tenant transaction scope.
+   */
+  readonly transaction?: <T>(accountId: AccountId, operation: () => Promise<T>) => Promise<T>;
+}
+
+export type CommissionPaymentMethod = 'cash' | 'bank_transfer' | 'pix' | 'card' | 'cheque' | 'other';
+
+export interface CommissionPayableGateway {
+  createPayable(
+    accountId: AccountId,
+    createdByUserId: UserId,
+    input: {
+      readonly supplierName: string;
+      readonly description: string;
+      readonly category: string;
+      readonly costCenterCode: string;
+      readonly costCenterName: string;
+      readonly issuedAt?: string;
+      readonly dueAt: string;
+      readonly totalAmount: number;
+      readonly sourceExpenseId?: string | null;
+      readonly notes?: string | null;
+    }
+  ): Promise<{ readonly id: string }>;
+  payPayable(
+    accountId: AccountId,
+    paidByUserId: UserId,
+    payableId: string,
+    input: {
+      readonly amountPaid: number;
+      readonly paymentMethod?: CommissionPaymentMethod | null;
+      readonly paymentReference?: string | null;
+      readonly notes?: string | null;
+    }
+  ): Promise<unknown>;
+}
+
+export interface MarkCommissionPaidInput {
+  readonly paymentMethod?: CommissionPaymentMethod | null;
+  readonly paymentReference?: string | null;
 }
 
 export class CommissionsService {
   readonly #repository?: CommissionRepository;
+  readonly #payableGateway?: CommissionPayableGateway;
+  readonly #transaction?: <T>(accountId: AccountId, operation: () => Promise<T>) => Promise<T>;
   readonly #rules = new Map<string, CommissionRuleSummary>();
   readonly #calculations = new Map<string, CommissionCalculationSummary>();
   readonly #lines = new Map<string, CommissionLineSummary>();
@@ -113,6 +159,8 @@ export class CommissionsService {
 
   public constructor(options?: CommissionsServiceOptions) {
     this.#repository = options?.repository;
+    this.#payableGateway = options?.payableGateway;
+    this.#transaction = options?.transaction;
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -139,27 +187,29 @@ export class CommissionsService {
     createdByUserId: UserId,
     input: CreateCommissionRuleInput
   ): Promise<CommissionRuleSummary> {
-    const scope = input.scope ?? inferRuleScope(input);
-    validateRuleScope(scope, input);
-    const now = nowIso();
-    const rule: CommissionRuleSummary = {
-      id: createCorrelationId('comm_rule'),
-      accountId,
-      description: requireTrimmed(input.description, 'description'),
-      scope,
-      staffId: normalizeOptional(input.staffId),
-      department: normalizeOptional(input.department),
-      jobTitle: normalizeOptional(input.jobTitle),
-      itemKind: input.itemKind ?? 'any',
-      percentage: requirePercentage(input.percentage),
-      isActive: input.isActive ?? true,
-      createdByUserId,
-      createdAt: now,
-      updatedAt: now
-    };
-    this.#rules.set(rule.id, rule);
-    await this.#repository?.saveRule(rule);
-    return rule;
+    return this.#runInTransaction(accountId, async () => {
+      const scope = input.scope ?? inferRuleScope(input);
+      validateRuleScope(scope, input);
+      const now = nowIso();
+      const rule: CommissionRuleSummary = {
+        id: createCorrelationId('comm_rule'),
+        accountId,
+        description: requireTrimmed(input.description, 'description'),
+        scope,
+        staffId: normalizeOptional(input.staffId),
+        department: normalizeOptional(input.department),
+        jobTitle: normalizeOptional(input.jobTitle),
+        itemKind: input.itemKind ?? 'any',
+        percentage: requirePercentage(input.percentage),
+        isActive: input.isActive ?? true,
+        createdByUserId,
+        createdAt: now,
+        updatedAt: now
+      };
+      this.#rules.set(rule.id, rule);
+      await this.#repository?.saveRule(rule);
+      return rule;
+    });
   }
 
   public listRules(accountId: AccountId, filters?: { active?: boolean }): readonly CommissionRuleSummary[] {
@@ -174,99 +224,152 @@ export class CommissionsService {
     createdByUserId: UserId,
     input: CalculateCommissionsInput
   ): Promise<CommissionCalculationDetail> {
-    const periodStart = normalizeDate(input.periodStart, 'periodStart');
-    const periodEnd = normalizeDate(input.periodEnd, 'periodEnd');
-    if (periodStart > periodEnd) {
-      throw new ValidationError('periodStart must be before or equal to periodEnd', { periodStart, periodEnd });
-    }
+    return this.#runInTransaction(accountId, async () => {
+      const periodStart = normalizeDate(input.periodStart, 'periodStart');
+      const periodEnd = normalizeDate(input.periodEnd, 'periodEnd');
+      if (periodStart > periodEnd) {
+        throw new ValidationError('periodStart must be before or equal to periodEnd', { periodStart, periodEnd });
+      }
 
-    const now = nowIso();
-    const calculation: CommissionCalculationSummary = {
-      id: createCorrelationId('comm_calc'),
-      accountId,
-      number: this.#nextNumber(),
-      periodStart,
-      periodEnd,
-      status: 'draft',
-      totalBaseAmount: 0,
-      totalCommissionAmount: 0,
-      createdByUserId,
-      reviewedByUserId: null,
-      paidByUserId: null,
-      cancelledByUserId: null,
-      createdAt: now,
-      updatedAt: now,
-      reviewedAt: null,
-      paidAt: null,
-      cancelledAt: null,
-      notes: normalizeOptional(input.notes)
-    };
-    this.#calculations.set(calculation.id, calculation);
-    await this.#repository?.saveCalculation(calculation);
+      const now = nowIso();
+      const calculation: CommissionCalculationSummary = {
+        id: createCorrelationId('comm_calc'),
+        accountId,
+        number: this.#nextNumber(),
+        periodStart,
+        periodEnd,
+        status: 'draft',
+        totalBaseAmount: 0,
+        totalCommissionAmount: 0,
+        createdByUserId,
+        reviewedByUserId: null,
+        paidByUserId: null,
+        cancelledByUserId: null,
+        payableId: null,
+        createdAt: now,
+        updatedAt: now,
+        reviewedAt: null,
+        paidAt: null,
+        cancelledAt: null,
+        notes: normalizeOptional(input.notes)
+      };
+      this.#calculations.set(calculation.id, calculation);
+      await this.#repository?.saveCalculation(calculation);
 
-    const lines = input.lines
-      .filter((line) => isWithinPeriod(normalizeDate(line.occurredAt, 'occurredAt'), periodStart, periodEnd))
-      .map((line) => this.#calculateLine(accountId, calculation.id, line));
+      const lines = input.lines
+        .filter((line) => isWithinPeriod(normalizeDate(line.occurredAt, 'occurredAt'), periodStart, periodEnd))
+        .map((line) => this.#calculateLine(accountId, calculation.id, line));
 
-    for (const line of lines) {
-      this.#lines.set(line.id, line);
-      await this.#repository?.saveLine(line);
-    }
+      for (const line of lines) {
+        this.#lines.set(line.id, line);
+        await this.#repository?.saveLine(line);
+      }
 
-    const completed = this.#replaceCalculation(calculation, {
-      totalBaseAmount: roundMoney(lines.reduce((total, line) => total + line.baseAmount, 0)),
-      totalCommissionAmount: roundMoney(lines.reduce((total, line) => total + line.commissionAmount, 0))
+      const completed = this.#replaceCalculation(calculation, {
+        totalBaseAmount: roundMoney(lines.reduce((total, line) => total + line.baseAmount, 0)),
+        totalCommissionAmount: roundMoney(lines.reduce((total, line) => total + line.commissionAmount, 0))
+      });
+      await this.#repository?.updateCalculation(completed);
+      return this.detail(accountId, completed.id);
     });
-    await this.#repository?.updateCalculation(completed);
-    return this.detail(accountId, completed.id);
   }
 
   public async review(accountId: AccountId, calculationId: string, reviewedByUserId: UserId): Promise<CommissionCalculationDetail> {
-    const calculation = this.#getCalculation(accountId, calculationId);
-    if (calculation.status !== 'draft') {
-      throw new ConflictError('Only draft commission calculations can be reviewed', {
-        calculationId,
-        status: calculation.status
+    return this.#runInTransaction(accountId, async () => {
+      const calculation = this.#getCalculation(accountId, calculationId);
+      if (calculation.status !== 'draft') {
+        throw new ConflictError('Only draft commission calculations can be reviewed', {
+          calculationId,
+          status: calculation.status
+        });
+      }
+      const reviewed = this.#replaceCalculation(calculation, {
+        status: 'reviewed',
+        reviewedByUserId,
+        reviewedAt: nowIso()
       });
-    }
-    const reviewed = this.#replaceCalculation(calculation, {
-      status: 'reviewed',
-      reviewedByUserId,
-      reviewedAt: nowIso()
+      await this.#repository?.updateCalculation(reviewed);
+      return this.detail(accountId, reviewed.id);
     });
-    await this.#repository?.updateCalculation(reviewed);
-    return this.detail(accountId, reviewed.id);
   }
 
-  public async markPaid(accountId: AccountId, calculationId: string, paidByUserId: UserId): Promise<CommissionCalculationDetail> {
-    const calculation = this.#getCalculation(accountId, calculationId);
-    if (calculation.status !== 'reviewed') {
-      throw new ConflictError('Only reviewed commission calculations can be paid', {
-        calculationId,
-        status: calculation.status
+  public async markPaid(
+    accountId: AccountId,
+    calculationId: string,
+    paidByUserId: UserId,
+    input: MarkCommissionPaidInput = {}
+  ): Promise<CommissionCalculationDetail> {
+    return this.#runInTransaction(accountId, async () => {
+      const calculation = this.#getCalculation(accountId, calculationId);
+      if (calculation.status !== 'reviewed') {
+        throw new ConflictError('Only reviewed commission calculations can be paid', {
+          calculationId,
+          status: calculation.status
+        });
+      }
+
+      let payableId = calculation.payableId;
+      if (this.#payableGateway && calculation.totalCommissionAmount > 0) {
+        if (!input.paymentMethod) {
+          throw new ValidationError('paymentMethod is required when commission payment is connected to finance');
+        }
+
+        if (!payableId) {
+          const issuedAt = nowIso().slice(0, 10);
+          const dueAt = issuedAt > calculation.periodEnd ? issuedAt : calculation.periodEnd;
+          const staffNames = [...new Set(
+            this.detail(accountId, calculation.id).lines.map((line) => line.staffName.trim()).filter(Boolean)
+          )];
+          const payable = await this.#payableGateway.createPayable(accountId, paidByUserId, {
+            supplierName: staffNames.length > 0 ? `Comissões: ${staffNames.join(', ')}` : 'Comissões de profissionais',
+            description: `Pagamento da apuração ${calculation.number}`,
+            category: 'comissoes',
+            costCenterCode: '4.2.01-comissoes',
+            costCenterName: 'Comissões de profissionais',
+            issuedAt,
+            dueAt,
+            totalAmount: calculation.totalCommissionAmount,
+            sourceExpenseId: calculation.id,
+            notes: calculation.notes
+          });
+          payableId = payable.id;
+          const linked = this.#replaceCalculation(calculation, { payableId });
+          await this.#repository?.updateCalculation(linked);
+        }
+
+        await this.#payableGateway.payPayable(accountId, paidByUserId, payableId, {
+          amountPaid: calculation.totalCommissionAmount,
+          paymentMethod: input.paymentMethod,
+          paymentReference: input.paymentReference ?? calculation.number,
+          notes: `Pagamento da apuração ${calculation.number}`
+        });
+      }
+
+      const paid = this.#replaceCalculation(calculation, {
+        status: 'paid',
+        paidByUserId,
+        paidAt: nowIso(),
+        payableId
       });
-    }
-    const paid = this.#replaceCalculation(calculation, {
-      status: 'paid',
-      paidByUserId,
-      paidAt: nowIso()
+      await this.#repository?.updateCalculation(paid);
+      return this.detail(accountId, paid.id);
     });
-    await this.#repository?.updateCalculation(paid);
-    return this.detail(accountId, paid.id);
   }
 
   public async cancel(accountId: AccountId, calculationId: string, cancelledByUserId: UserId): Promise<CommissionCalculationDetail> {
-    const calculation = this.#getCalculation(accountId, calculationId);
-    if (calculation.status === 'paid') {
-      throw new ConflictError('Paid commission calculations cannot be cancelled', { calculationId });
-    }
-    const cancelled = this.#replaceCalculation(calculation, {
-      status: 'cancelled',
-      cancelledByUserId,
-      cancelledAt: nowIso()
+    return this.#runInTransaction(accountId, async () => {
+      const calculation = this.#getCalculation(accountId, calculationId);
+      if (calculation.status === 'paid') {
+        throw new ConflictError('Paid commission calculations cannot be cancelled', { calculationId });
+      }
+      const cancelled = this.#replaceCalculation(calculation, {
+        status: 'cancelled',
+        cancelledByUserId,
+        cancelledAt: nowIso()
+      });
+      await this.#repository?.updateCalculation(cancelled);
+      return this.detail(accountId, cancelled.id);
     });
-    await this.#repository?.updateCalculation(cancelled);
-    return this.detail(accountId, cancelled.id);
   }
 
   public listCalculations(accountId: AccountId): readonly CommissionCalculationDetail[] {
@@ -350,6 +453,27 @@ export class CommissionsService {
     this.#calculations.set(updated.id, updated);
     return updated;
   }
+
+  async #runInTransaction<T>(accountId: AccountId, operation: () => Promise<T>): Promise<T> {
+    const rules = new Map(this.#rules);
+    const calculations = new Map(this.#calculations);
+    const lines = new Map(this.#lines);
+    const numberCounter = this.#numberCounter;
+    try {
+      return await (this.#transaction
+        ? this.#transaction(accountId, operation)
+        : operation());
+    } catch (error) {
+      this.#rules.clear();
+      for (const [id, rule] of rules) this.#rules.set(id, rule);
+      this.#calculations.clear();
+      for (const [id, calculation] of calculations) this.#calculations.set(id, calculation);
+      this.#lines.clear();
+      for (const [id, line] of lines) this.#lines.set(id, line);
+      this.#numberCounter = numberCounter;
+      throw error;
+    }
+  }
 }
 
 /* v8 ignore start -- SQL repository adapter covered by integration tests. */
@@ -373,8 +497,8 @@ export class DatabaseCommissionRepository implements CommissionRepository {
           id, account_id, calculation_number, period_start, period_end, status,
           total_base_amount, total_commission_amount, created_by_user_id, reviewed_by_user_id,
           paid_by_user_id, cancelled_by_user_id, created_at, updated_at, reviewed_at,
-          paid_at, cancelled_at, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+          paid_at, cancelled_at, notes, payable_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
         calculationParams(calculation)
       );
     });
@@ -388,7 +512,7 @@ export class DatabaseCommissionRepository implements CommissionRepository {
              total_base_amount = $7, total_commission_amount = $8, created_by_user_id = $9,
              reviewed_by_user_id = $10, paid_by_user_id = $11, cancelled_by_user_id = $12,
              created_at = $13, updated_at = $14, reviewed_at = $15, paid_at = $16,
-             cancelled_at = $17, notes = $18
+             cancelled_at = $17, notes = $18, payable_id = $19
          WHERE id = $1 AND account_id = $2`,
         calculationParams(calculation)
       );
@@ -560,7 +684,8 @@ function calculationParams(calculation: CommissionCalculationSummary): unknown[]
     nullableTimestamp(calculation.reviewedAt),
     nullableTimestamp(calculation.paidAt),
     nullableTimestamp(calculation.cancelledAt),
-    calculation.notes
+    calculation.notes,
+    calculation.payableId
   ];
 }
 
@@ -617,6 +742,7 @@ function mapCalculation(row: Record<string, unknown>): CommissionCalculationSumm
     reviewedByUserId: row.reviewed_by_user_id as UserId | null,
     paidByUserId: row.paid_by_user_id as UserId | null,
     cancelledByUserId: row.cancelled_by_user_id as UserId | null,
+    payableId: (row.payable_id as string | null) ?? null,
     createdAt: dateIso(row.created_at),
     updatedAt: dateIso(row.updated_at),
     reviewedAt: row.reviewed_at ? dateIso(row.reviewed_at) : null,

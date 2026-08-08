@@ -4,6 +4,7 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type {
   EncounterFinancialService,
+  FinancialLedgerService,
   FinancialIncomeStatementService,
   FinancialPayablePaymentMethod,
   FinancialPayableReconciliationStatus,
@@ -26,6 +27,7 @@ import type {
 
 export interface FinancialRoutesHandlers {
   encounterFinancial: EncounterFinancialService;
+  ledger?: FinancialLedgerService;
   financialPayables: FinancialPayablesService;
   financialStatements: FinancialIncomeStatementService;
   billing: BillingService;
@@ -547,6 +549,8 @@ export async function handleFinancialRoutes(
     pathname === '/financial/receivables'
     || pathname === '/financial/payables'
     || pathname === '/financial/income-statement'
+    || pathname === '/financial/ledger'
+    || pathname === '/financial/ledger/reconciliation'
     || pathname === '/financial/aging'
     || pathname === '/financial/reconciliation'
     || pathname === '/financial/reconciliation/cards'
@@ -558,7 +562,7 @@ export async function handleFinancialRoutes(
     return false;
   }
 
-  const { encounterFinancial, financialPayables, financialStatements, audit, requirePrincipal } = handlers;
+  const { encounterFinancial, ledger, financialPayables, financialStatements, audit, requirePrincipal } = handlers;
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/financial/payables' && request.method === 'GET') {
@@ -606,6 +610,88 @@ export async function handleFinancialRoutes(
     });
 
     return json(response, 200, result);
+  }
+
+  if (
+    (pathname === '/financial/ledger' || pathname === '/financial/ledger/reconciliation')
+    && request.method === 'GET'
+  ) {
+    const principal = requirePrincipal(request, 'billing.read');
+    if (!ledger) {
+      return json(response, 503, {
+        error: 'financial_ledger_unavailable',
+        message: 'The canonical financial ledger is not configured'
+      });
+    }
+
+    const dateFrom = url.searchParams.get('dateFrom') ?? undefined;
+    const dateTo = url.searchParams.get('dateTo') ?? undefined;
+    const entries = await ledger.listByAccount(
+      principal.user.accountId as never,
+      dateFrom,
+      dateTo
+    );
+
+    if (pathname === '/financial/ledger') {
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'billing',
+        action: 'list_financial_ledger',
+        entityType: 'financial-journal-entry',
+        entityId: 'all',
+        payloadSummary: `Canonical financial ledger listed with ${entries.length} entries`,
+        riskLevel: 'low',
+        correlationId
+      });
+      return json(response, 200, {
+        accountId: principal.user.accountId,
+        dateFrom: dateFrom ?? null,
+        dateTo: dateTo ?? null,
+        items: entries
+      });
+    }
+
+    const totals = entries.reduce(
+      (summary, entry) => {
+        const debit = entry.lines.reduce((total, line) => total + line.debit, 0);
+        const credit = entry.lines.reduce((total, line) => total + line.credit, 0);
+        return {
+          debit: summary.debit + debit,
+          credit: summary.credit + credit,
+          lineCount: summary.lineCount + entry.lines.length,
+          unbalancedEntryIds:
+            Math.round(debit * 100) !== Math.round(credit * 100)
+              ? [...summary.unbalancedEntryIds, entry.id]
+              : summary.unbalancedEntryIds
+        };
+      },
+      { debit: 0, credit: 0, lineCount: 0, unbalancedEntryIds: [] as string[] }
+    );
+    const roundedDebit = Math.round(totals.debit * 100) / 100;
+    const roundedCredit = Math.round(totals.credit * 100) / 100;
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'billing',
+      action: 'reconcile_financial_ledger',
+      entityType: 'financial-journal-entry',
+      entityId: 'all',
+      payloadSummary: `Canonical ledger reconciled: ${entries.length} entries`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, {
+      accountId: principal.user.accountId,
+      dateFrom: dateFrom ?? null,
+      dateTo: dateTo ?? null,
+      entryCount: entries.length,
+      lineCount: totals.lineCount,
+      totalDebit: roundedDebit,
+      totalCredit: roundedCredit,
+      balanced: totals.unbalancedEntryIds.length === 0 && roundedDebit === roundedCredit,
+      unbalancedEntryIds: totals.unbalancedEntryIds
+    });
   }
 
   if (pathname === '/financial/reconciliation/payables' && request.method === 'GET') {

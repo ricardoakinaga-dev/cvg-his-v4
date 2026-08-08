@@ -5,6 +5,7 @@ import type {
   BedSummary,
   BillingItemSummary,
   BillingRecordSummary,
+  BillingRecordStatus,
   ClinicalHandoffPriority,
   ClinicalHandoffStatus,
   ClinicalHandoffSummary,
@@ -23,6 +24,7 @@ import type {
   InventoryConsumptionSummary,
   InventoryItemSummary,
   InventoryLotSummary,
+  InventoryReservationSummary,
   InventoryStockMovementSummary,
   LaboratoryEquipmentSummary,
   LaboratoryReferenceValueSummary,
@@ -87,6 +89,7 @@ export interface HealthResponse extends HealthStatus {
 export interface LoginRequest {
   readonly username: string;
   readonly password: string;
+  readonly accountId?: string;
 }
 
 export interface AuthTokens {
@@ -96,6 +99,16 @@ export interface AuthTokens {
 }
 
 export interface AuthSessionResponse extends AuthTokens {
+  readonly principal: AuthenticatedPrincipal;
+}
+
+/**
+ * Browser-facing session payload. The refresh token is delivered through an
+ * HttpOnly cookie and must never be exposed to JavaScript.
+ */
+export interface BrowserAuthSessionResponse {
+  readonly accessToken: string;
+  readonly tokenType: 'Bearer';
   readonly principal: AuthenticatedPrincipal;
 }
 
@@ -294,6 +307,15 @@ export interface CreateOwnerPatientLinkRequest {
   readonly patientId: string;
   readonly relationshipType: 'primary' | 'secondary' | 'financial';
   readonly financialResponsible: boolean;
+}
+
+export interface UpdateOwnerPatientLinkRequest {
+  readonly financialResponsible?: boolean;
+}
+
+export interface MergePatientRequest {
+  readonly targetPatientId: string;
+  readonly reason: string;
 }
 
 export interface OwnerPatientLinkListResponse {
@@ -834,6 +856,10 @@ export interface CloseEncounterRequest {
   readonly closeReason: string;
 }
 
+export interface ReopenEncounterRequest {
+  readonly reason: string;
+}
+
 export interface EncounterListResponse {
   readonly items: readonly EncounterSummary[];
 }
@@ -966,6 +992,8 @@ export interface CreateAttachmentRequest {
   readonly fileName: string;
   readonly mimeType: string;
   readonly checksum: string;
+  /** Optional base64-encoded binary for JSON clients; multipart remains supported by adapters. */
+  readonly contentBase64?: string;
 }
 
 export interface AttachmentListResponse {
@@ -1170,7 +1198,7 @@ export interface CreateBillingItemRequest {
 }
 
 export interface UpdateBillingStatusRequest {
-  readonly status: 'draft' | 'estimated' | 'open' | 'settled';
+  readonly status: BillingRecordStatus;
   readonly administrativeNotes?: string;
 }
 
@@ -1187,6 +1215,7 @@ export type CashMovementType =
   | 'closing'
   | 'payment'
   | 'supply'
+  | 'deposit'
   | 'withdrawal'
   | 'adjustment';
 
@@ -1241,13 +1270,27 @@ export interface CashDrawerDashboardResponse {
   readonly recentRegisters: readonly CashClosedRegisterSummary[];
 }
 
+export interface CashReconciliationResponse {
+  readonly registerId: string;
+  readonly accountId: string;
+  readonly status: 'open' | 'closed';
+  readonly openingAmount: number;
+  readonly expectedAmount: number;
+  readonly declaredAmount: number | null;
+  readonly difference: number | null;
+  readonly totalIn: number;
+  readonly totalOut: number;
+  readonly movementCount: number;
+  readonly reconciledAt: string;
+}
+
 export interface OpenCashRegisterRequest {
   readonly openingAmount: number;
   readonly notes?: string | null;
 }
 
 export interface CreateCashMovementRequest {
-  readonly movementType: 'supply' | 'withdrawal' | 'adjustment';
+  readonly movementType: 'supply' | 'deposit' | 'withdrawal' | 'adjustment';
   readonly amount: number;
   readonly reference?: string | null;
   readonly notes?: string | null;
@@ -1299,6 +1342,24 @@ export interface InventoryConsumptionListResponse {
 
 export interface InventoryLotListResponse {
   readonly items: readonly InventoryLotSummary[];
+}
+
+export interface CreateInventoryReservationRequest {
+  readonly inventoryItemId: string;
+  readonly quantity: number;
+  readonly sourceEntityType:
+    | 'encounter'
+    | 'diagnostic_order'
+    | 'surgery_case'
+    | 'inpatient_stay'
+    | 'prescription'
+    | 'other';
+  readonly sourceEntityId?: string;
+  readonly reference?: string;
+}
+
+export interface InventoryReservationListResponse {
+  readonly items: readonly InventoryReservationSummary[];
 }
 
 export interface CreateInventoryStockAdjustmentRequest {
@@ -1486,6 +1547,8 @@ export interface LoginMfaRequiredResponse {
   readonly requiresMfa: true;
   readonly userId: string;
   readonly mfaMethods: readonly string[];
+  readonly challengeId: string;
+  readonly enrollmentRequired?: boolean;
 }
 
 export interface CreateWebhookRequest {

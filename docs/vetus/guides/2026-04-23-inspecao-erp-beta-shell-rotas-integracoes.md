@@ -19,11 +19,11 @@ Restrições respeitadas:
 
 ## Evidências
 
-- Artefatos brutos: [artifacts.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-00-01-706Z/artifacts.json)
-- Shell autenticado: [03-shell-expanded.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/03-shell-expanded.png)
-- Home: [-inicio.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-inicio.png)
-- Comandas: [-comandas.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-comandas.png)
-- Dashboard financeiro: [-dashboard-financeiro.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-dashboard-financeiro.png)
+- Artefatos brutos: [artifacts.json](../inspection/2026-04-23T22-00-01-706Z/artifacts.json)
+- Shell autenticado: [03-shell-expanded.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/03-shell-expanded.png)
+- Home: [-inicio.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-inicio.png)
+- Comandas: [-comandas.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-comandas.png)
+- Dashboard financeiro: [-dashboard-financeiro.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-dashboard-financeiro.png)
 
 ## Veredito executivo
 

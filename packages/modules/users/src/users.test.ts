@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { UsersService, comparePassword, createSeedUsers, hashPassword } from './index.js';
 import type { UsersRepository } from './repositories/database-users.repository.js';
@@ -63,6 +64,7 @@ describe('UsersService', () => {
 
   it('creates user, hashes password and verifies it successfully', async () => {
     const created = await service.create({
+      accountId: 'acc_quality' as AccountId,
       username: 'quality_user',
       email: 'quality@cvg.local',
       password: 'StrongPass123!',
@@ -84,6 +86,7 @@ describe('UsersService', () => {
     const repoService = new UsersService({ repository }, []);
 
     const created = await repoService.create({
+      accountId: 'acc_repo' as AccountId,
       username: 'repo_user',
       email: 'repo@cvg.local',
       password: 'RepoPass123!'
@@ -150,8 +153,50 @@ describe('UsersService', () => {
     expect(await hydratedService.verifyPassword(hydrated!, 'HydratedPass123!')).toBe(true);
   });
 
+  it('does not resolve an unscoped username shared by multiple accounts', async () => {
+    const passwordHash = await hashPassword('SharedPass123!');
+    const repository = new InMemoryUsersRepository([
+      {
+        id: 'user_shared_first' as UserId,
+        accountId: 'acc_first' as AccountId,
+        username: 'shared',
+        email: 'shared-first@cvg.local',
+        passwordHash,
+        fullName: 'Shared First',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-01T10:00:00.000Z'
+      },
+      {
+        id: 'user_shared_second' as UserId,
+        accountId: 'acc_second' as AccountId,
+        username: 'shared',
+        email: 'shared-second@cvg.local',
+        passwordHash,
+        fullName: 'Shared Second',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-01T10:00:00.000Z'
+      }
+    ]);
+    const hydratedService = new UsersService({ repository }, []);
+
+    await hydratedService.hydrateFromDatabase();
+
+    expect(hydratedService.findByUsername('shared')).toBeUndefined();
+    expect(hydratedService.findByUsername('shared', 'acc_first' as AccountId)?.id).toBe(
+      'user_shared_first'
+    );
+    expect(hydratedService.findByUsername('shared', 'acc_second' as AccountId)?.id).toBe(
+      'user_shared_second'
+    );
+  });
+
   it('rejects duplicate usernames', async () => {
     await service.create({
+      accountId: 'acc_first' as AccountId,
       username: 'duplicated',
       email: 'first@cvg.local',
       password: 'FirstPass123!'
@@ -159,10 +204,38 @@ describe('UsersService', () => {
 
     await expect(
       service.create({
+        accountId: 'acc_second' as AccountId,
         username: 'duplicated',
         email: 'second@cvg.local',
         password: 'SecondPass123!'
       })
     ).rejects.toThrow('Username already exists');
+  });
+
+  it('isolates account-scoped reads and writes', async () => {
+    const first = await service.create({
+      accountId: 'acc_first' as AccountId,
+      username: 'first_user',
+      email: 'first@cvg.local',
+      password: 'FirstPass123!'
+    });
+    await service.create({
+      accountId: 'acc_second' as AccountId,
+      username: 'second_user',
+      email: 'second@cvg.local',
+      password: 'SecondPass123!'
+    });
+
+    expect(service.listForAccount('acc_first' as AccountId).map((user) => user.id)).toEqual([
+      first.id
+    ]);
+    expect(() =>
+      service.getForAccountOrThrow(first.id, 'acc_second' as AccountId)
+    ).toThrow(NotFoundError);
+    await expect(
+      service.updateForAccount(first.id, 'acc_second' as AccountId, {
+        displayName: 'Cross tenant update'
+      })
+    ).rejects.toThrow(NotFoundError);
   });
 });

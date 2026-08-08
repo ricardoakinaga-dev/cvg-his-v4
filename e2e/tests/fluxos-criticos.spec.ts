@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/cvg-his.fixture';
+import type { APIRequestContext } from '@playwright/test';
 
 /**
  * E2E Test: Fluxos Críticos de Validação Sistêmica (Phase 4)
@@ -69,14 +70,124 @@ function buildAppointmentPayload(
   };
 }
 
+type AvailableAppointmentSlot = {
+  professionalUserId: string;
+  scheduledAt: string;
+};
+
+async function findAvailableAppointmentSlot(
+  apiContext: APIRequestContext,
+  patientId: string,
+  preferredProfessionalUserId?: string
+): Promise<AvailableAppointmentSlot> {
+  const availabilityResponse = await apiContext.get('/availability', {
+    params: { page: 1, pageSize: 100 }
+  });
+  expect(availabilityResponse.ok()).toBeTruthy();
+  const availabilityPayload = await availabilityResponse.json();
+  let availability = Array.isArray(availabilityPayload.items)
+    ? availabilityPayload.items
+    : [];
+
+  if (availability.length === 0) {
+    const staffResponse = await apiContext.get('/staff');
+    expect(staffResponse.ok()).toBeTruthy();
+    const staffPayload = await staffResponse.json();
+    const staff = staffPayload.items?.find((item: { status?: string }) => item.status !== 'inactive')
+      ?? staffPayload.items?.[0];
+    expect(staff?.id).toBeTruthy();
+    expect(staff?.userId ?? staff?.id).toBeTruthy();
+
+    const seedDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const createAvailabilityResponse = await apiContext.post('/availability', {
+      data: {
+        professionalUserId: staff.userId ?? staff.id,
+        dayOfWeek: seedDate.getUTCDay(),
+        startTime: '08:00',
+        endTime: '17:00',
+        slotDurationMinutes: 30,
+        timezone: 'America/Sao_Paulo',
+        notes: 'Disponibilidade criada pelo fluxo E2E autocontido'
+      }
+    });
+    expect(createAvailabilityResponse.ok()).toBeTruthy();
+    availability = [await createAvailabilityResponse.json()];
+  }
+
+  const selectedAvailability = availability.find(
+    (item: { professionalUserId: string }) =>
+      !preferredProfessionalUserId || item.professionalUserId === preferredProfessionalUserId
+  ) ?? availability[0];
+  expect(selectedAvailability?.professionalUserId).toBeTruthy();
+  const staffListResponse = await apiContext.get('/staff');
+  expect(staffListResponse.ok()).toBeTruthy();
+  const staffListPayload = await staffListResponse.json();
+  const selectedStaff = staffListPayload.items?.find(
+    (item: { id?: string; userId?: string }) =>
+      item.userId === selectedAvailability.professionalUserId ||
+      item.id === selectedAvailability.professionalUserId
+  );
+  const practitionerStaffId = selectedStaff?.id ?? selectedAvailability.professionalUserId;
+
+  const firstCandidate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  firstCandidate.setUTCHours(9, 0, 0, 0);
+  for (let dayOffset = 0; dayOffset < 21; dayOffset += 1) {
+    for (let slotOffset = 0; slotOffset < 24; slotOffset += 1) {
+      const candidate = new Date(firstCandidate);
+      candidate.setUTCDate(candidate.getUTCDate() + dayOffset);
+      candidate.setUTCHours(9 + Math.floor(slotOffset / 2), (slotOffset % 2) * 30, 0, 0);
+      if (candidate.getUTCDay() !== selectedAvailability.dayOfWeek) continue;
+
+      const checkResponse = await apiContext.get('/scheduling/availability', {
+        params: {
+          scheduledAt: candidate.toISOString(),
+          patientId,
+          practitionerStaffId,
+          durationMinutes: 30
+        }
+      });
+      expect(checkResponse.ok()).toBeTruthy();
+      const check = await checkResponse.json();
+      if (check.available === true) {
+        return {
+          professionalUserId: practitionerStaffId,
+          scheduledAt: candidate.toISOString()
+        };
+      }
+    }
+  }
+
+  throw new Error('No available appointment slot was found for the E2E fixture');
+}
+
 async function loginAs(apiContext: import('@playwright/test').APIRequestContext, username: string, password: string) {
-  const response = await apiContext.post('/auth/login', {
+  let response = await apiContext.post('/auth/login', {
     data: { username, password }
   });
+  if (!response.ok()) {
+    const roleCode = username === 'inventory' ? 'inventory' : 'veterinarian';
+    const generatedUsername = `${username}_e2e_${Date.now()}`;
+    const createResponse = await apiContext.post('/users', {
+      data: {
+        username: generatedUsername,
+        email: `${generatedUsername}@cvg.local`,
+        password,
+        roleCode,
+        displayName: `${roleCode} E2E`
+      }
+    });
+    expect(createResponse.ok()).toBeTruthy();
+    response = await apiContext.post('/auth/login', {
+      data: { username: generatedUsername, password }
+    });
+  }
   expect(response.ok()).toBeTruthy();
   const session = await response.json();
+  const userId = session.principal?.user?.id;
+  expect(userId).toBeTruthy();
   return {
-    Authorization: `Bearer ${session.accessToken}`
+    headers: { Authorization: `Bearer ${session.accessToken}` },
+    userId: userId as string
   };
 }
 
@@ -118,7 +229,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(loginRes.ok()).toBeTruthy();
       const session = await loginRes.json();
       expect(session.accessToken).toBeTruthy();
-      expect(session.refreshToken).toBeTruthy();
+      const refreshCookie = (await loginRes.headersArray())
+        .filter((header) => header.name.toLowerCase() === 'set-cookie')
+        .map((header) => header.value)
+        .join('; ');
+      expect(refreshCookie).toContain('cvg_his_refresh=');
+      expect(refreshCookie).toContain('HttpOnly');
+      expect(refreshCookie).toContain('SameSite=Strict');
       console.log(`   ✅ User logged in successfully`);
 
       // 3. Validate access to permitted operation (owners via reception role)
@@ -256,19 +373,17 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(staffRes.ok()).toBeTruthy();
       const staffList = await staffRes.json();
       expect(staffList.items.length).toBeGreaterThan(0);
-      professionalUserId = staffList.items[0].id;
+      const appointmentSlot = await findAvailableAppointmentSlot(apiContext, patientId);
+      professionalUserId = appointmentSlot.professionalUserId;
       console.log(`   ✅ Profissional elegível: ${professionalUserId}`);
 
       // 4. Create appointment with eligible professional
-      const startAt = new Date();
-      startAt.setDate(startAt.getDate() + 1);
-      startAt.setHours(14, 0, 0, 0);
       const appointmentRes = await apiContext.post('/appointments', {
         data: buildAppointmentPayload(
           patientId,
           ownerId,
           professionalUserId,
-          startAt.toISOString(),
+          appointmentSlot.scheduledAt,
           'Consulta de rotina - Flow 3 E2E'
         )
       });
@@ -321,25 +436,21 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const patient = await patientRes.json();
       flow4PatientId = patient.id;
 
-      const staffRes = await apiContext.get('/staff');
-      const staffList = await staffRes.json();
-      flow4ProfessionalUserId =
-        staffList.items.find((item: any) => item.id !== 'staff_admin')?.id ?? staffList.items[0].id;
-
-      const startAt = new Date();
-      startAt.setDate(startAt.getDate() + 2);
-      startAt.setHours(15, 0, 0, 0);
+      const appointmentSlot = await findAvailableAppointmentSlot(apiContext, flow4PatientId);
+      flow4ProfessionalUserId = appointmentSlot.professionalUserId;
       const appointmentRes = await apiContext.post('/appointments', {
         data: buildAppointmentPayload(
           flow4PatientId,
           flow4OwnerId,
           flow4ProfessionalUserId,
-          startAt.toISOString(),
+          appointmentSlot.scheduledAt,
           'Consulta de rotina - Flow 4 E2E'
         )
       });
+      expect(appointmentRes.ok()).toBeTruthy();
       const appointment = await appointmentRes.json();
       flow4AppointmentId = appointment.id;
+      expect(flow4AppointmentId).toBeTruthy();
       console.log(`   ✅ Agendamento criado: ${flow4AppointmentId}`);
 
       // Check-in the appointment (creates queue entry)
@@ -601,6 +712,20 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const inventoryRes = await apiContext.get('/inventory');
       expect(inventoryRes.ok()).toBeTruthy();
       const inventory = await inventoryRes.json();
+      if (inventory.items.length === 0) {
+        const createInventoryRes = await apiContext.post('/inventory', {
+          data: {
+            sku: `E2E-FLOW7-${Date.now()}`,
+            name: 'Item de estoque Flow 7 E2E',
+            unit: 'unidade',
+            onHandQuantity: 6,
+            reorderLevel: 1,
+            unitCostAmount: 10
+          }
+        });
+        expect(createInventoryRes.ok()).toBeTruthy();
+        inventory.items = [await createInventoryRes.json()];
+      }
       expect(inventory.items.length).toBeGreaterThan(0);
       inventoryItemId = inventory.items[0].id;
       initialQuantity = inventory.items[0].onHandQuantity;
@@ -614,7 +739,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const inventoryHeaders = await loginAs(apiContext, 'inventory', 'seed_inventory');
       // 1. Consume inventory item during encounter
       const consumeRes = await apiContext.post('/inventory/consumptions', {
-        headers: inventoryHeaders,
+        headers: inventoryHeaders.headers,
         data: {
           encounterId: flow7EncounterId,
           inventoryItemId,
@@ -630,7 +755,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Consumo registrado: 2 unidades do item ${inventoryItemId}`);
 
       // 2. Verify stock was reduced (list all items and find ours)
-      const updatedItemsRes = await apiContext.get('/inventory', { headers: inventoryHeaders });
+      const updatedItemsRes = await apiContext.get('/inventory', { headers: inventoryHeaders.headers });
       expect(updatedItemsRes.ok()).toBeTruthy();
       const updatedItems = await updatedItemsRes.json();
       const updatedItem = updatedItems.items.find((i: any) => i.id === inventoryItemId);
@@ -642,7 +767,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 3. Verify consumption is linked to encounter
       const consumptionsRes = await apiContext.get('/inventory/consumptions', {
-        headers: inventoryHeaders,
+        headers: inventoryHeaders.headers,
         params: { encounterId: flow7EncounterId }
       });
       expect(consumptionsRes.ok()).toBeTruthy();
@@ -766,12 +891,12 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const vetHeaders = await loginAs(apiContext, 'vet', 'seed_vet');
       // 1. Request surgery case
       const surgeryRes = await apiContext.post('/surgeries', {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         data: {
           encounterId: flow9EncounterId,
           patientId: flow9PatientId,
           procedureName: 'Ortopedia de quadril',
-          surgeonUserId: 'user_vet',
+          surgeonUserId: vetHeaders.userId,
           scheduledAt: new Date(Date.now() + 86400000).toISOString(),
           preparationNotes: 'Cirurgia ortopedica - Flow 9 E2E'
         }
@@ -787,7 +912,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 2. Update surgery status to scheduled
       const updateRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         data: { status: 'pre_op' }
       });
       expect(updateRes.ok()).toBeTruthy();
@@ -797,7 +922,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 3. Update to in_progress
       const inProgressRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         data: { status: 'in_progress' }
       });
       expect(inProgressRes.ok()).toBeTruthy();
@@ -807,13 +932,13 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 4. Update to completed
       const recoveryRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         data: { status: 'recovery' }
       });
       expect(recoveryRes.ok()).toBeTruthy();
 
       const completedRes = await apiContext.post(`/surgeries/${flow9SurgeryCaseId}/status`, {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         data: { status: 'completed' }
       });
       expect(completedRes.ok()).toBeTruthy();
@@ -823,7 +948,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 5. Verify surgery is listable by encounter
       const listRes = await apiContext.get('/surgeries', {
-        headers: vetHeaders,
+        headers: vetHeaders.headers,
         params: { encounterId: flow9EncounterId }
       });
       expect(listRes.ok()).toBeTruthy();

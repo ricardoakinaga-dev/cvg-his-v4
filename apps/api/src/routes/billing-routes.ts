@@ -13,6 +13,8 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { requireEnum, requireOptionalString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -206,7 +208,20 @@ export async function handleBillingRoutes(
   ) {
     const principal = requirePrincipal(request, 'billing.manage');
     const encounterId = pathname.split('/')[2];
-    const payload = (await readJsonBody(request)) as UpdateBillingStatusRequest;
+    const rawPayload = await readJsonBody(request);
+    if (typeof rawPayload !== 'object' || rawPayload === null || Array.isArray(rawPayload)) {
+      throw new ValidationError('Billing status request must be a JSON object');
+    }
+    const payloadObject = rawPayload as Record<string, unknown>;
+    const payload = {
+      status: requireEnum(payloadObject.status, 'status', [
+        'draft',
+        'estimated',
+        'open',
+        'settled'
+      ]),
+      administrativeNotes: requireOptionalString(payloadObject.administrativeNotes)
+    } satisfies UpdateBillingStatusRequest;
     enforceAbac(
       'billing.manage',
       principal,

@@ -1,5 +1,7 @@
 # Relatorio - Matriz Vetus Final Premium Enterprise
 
+> **SUPERADO EM 10/07/2026:** a nota deste documento media existencia de arquivos e textos, nao paridade comportamental. Consulte `docs/2026-07-10-auditoria-paridade-funcional-vetus.md` e o gate estrito atual `pnpm vetus:parity`.
+
 Data: 2026-05-28  
 Comando de verificacao: `pnpm vetus:parity`  
 Meta de paridade: `88/100`  

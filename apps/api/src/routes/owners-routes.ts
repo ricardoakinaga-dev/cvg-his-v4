@@ -10,6 +10,7 @@ import type {
   UpdateOwnerRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -73,7 +74,9 @@ export async function handleOwnersRoutes(
     const status = url.searchParams.get('status') ?? undefined;
     const financialResponsible = url.searchParams.get('financialResponsible');
 
-    let items = owners.list(query);
+    let items = owners
+      .list(query)
+      .filter((owner) => owner.accountId === principal.user.accountId);
 
     if (status === 'active' || status === 'inactive') {
       items = items.filter((owner) => owner.status === status);
@@ -144,9 +147,15 @@ export async function handleOwnersRoutes(
     const principal = requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
     const owner = owners.getOrThrow(ownerId as never);
+    if (owner.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
     const relatedPatients = patients
       .list()
-      .filter((patient) => patient.primaryOwnerId === owner.id)
+      .filter(
+        (patient) =>
+          patient.accountId === principal.user.accountId && patient.primaryOwnerId === owner.id
+      )
       .map((patient) => ({
         id: patient.id,
         name: patient.name,
@@ -155,7 +164,10 @@ export async function handleOwnersRoutes(
       }));
     const totalEncounters = encounters
       .listAll()
-      .filter((encounter) => encounter.ownerId === owner.id).length;
+      .filter(
+        (encounter) =>
+          encounter.accountId === principal.user.accountId && encounter.ownerId === owner.id
+      ).length;
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -201,6 +213,9 @@ export async function handleOwnersRoutes(
     }
 
     const owner = owners.getOrThrow(ownerId as never);
+    if (owner.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -238,6 +253,10 @@ export async function handleOwnersRoutes(
       );
     }
     const body = (await readJsonBody(request)) as UpdateOwnerRequest;
+    const existing = owners.getOrThrow(ownerId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
 
     const owner = owners.update(ownerId as never, body);
     await owners.waitForPersistence();
@@ -278,6 +297,10 @@ export async function handleOwnersRoutes(
       );
     }
 
+    const existing = owners.getOrThrow(ownerId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
     const owner = owners.update(ownerId as never, { status: 'inactive' });
     await owners.waitForPersistence();
 

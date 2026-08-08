@@ -1,4 +1,4 @@
-import { getPool } from '@cvg-his-v2/shared-database';
+import { getPool, withTenantTransaction } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, EncounterId, UserId } from '@cvg-his-v2/shared-types';
 import type {
@@ -106,12 +106,28 @@ function mapPayable(row: Record<string, unknown>): FinancialPayableRecord {
 }
 
 export class DatabaseEncounterFinancialRepository implements EncounterFinancialRepository {
+  async withTransaction<T>(accountId: AccountId, operation: () => Promise<T>): Promise<T> {
+    return withTenantTransaction(accountId, operation);
+  }
+
   async findFinancialAccountByEncounter(
     encounterId: EncounterId
   ): Promise<EncounterFinancialAccountRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         'SELECT * FROM encounter_financial_accounts WHERE encounter_id = $1 LIMIT 1',
+        [encounterId]
+      );
+      return result.rows[0] ? mapFinancialAccount(result.rows[0] as Record<string, unknown>) : null;
+    });
+  }
+
+  async findFinancialAccountByEncounterForUpdate(
+    encounterId: EncounterId
+  ): Promise<EncounterFinancialAccountRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM encounter_financial_accounts WHERE encounter_id = $1 LIMIT 1 FOR UPDATE',
         [encounterId]
       );
       return result.rows[0] ? mapFinancialAccount(result.rows[0] as Record<string, unknown>) : null;
@@ -256,6 +272,16 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
     });
   }
 
+  async findReceivableByIdForUpdate(receivableId: string): Promise<EncounterReceivableRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM encounter_receivables WHERE id = $1 LIMIT 1 FOR UPDATE',
+        [receivableId]
+      );
+      return result.rows[0] ? mapReceivable(result.rows[0] as Record<string, unknown>) : null;
+    });
+  }
+
   async listPaymentsByFinancialAccount(
     financialAccountId: string
   ): Promise<readonly EncounterReceivablePaymentRecord[]> {
@@ -329,6 +355,10 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
 }
 
 export class DatabaseFinancialPayablesRepository implements FinancialPayablesRepository {
+  async withTransaction<T>(accountId: AccountId, operation: () => Promise<T>): Promise<T> {
+    return withTenantTransaction(accountId, operation);
+  }
+
   async savePayable(payable: FinancialPayableRecord): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       await client.query(
@@ -389,6 +419,16 @@ export class DatabaseFinancialPayablesRepository implements FinancialPayablesRep
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         'SELECT * FROM financial_payables WHERE id = $1 LIMIT 1',
+        [payableId]
+      );
+      return result.rows[0] ? mapPayable(result.rows[0] as Record<string, unknown>) : null;
+    });
+  }
+
+  async findPayableByIdForUpdate(payableId: string): Promise<FinancialPayableRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM financial_payables WHERE id = $1 LIMIT 1 FOR UPDATE',
         [payableId]
       );
       return result.rows[0] ? mapPayable(result.rows[0] as Record<string, unknown>) : null;

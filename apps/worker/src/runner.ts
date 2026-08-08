@@ -2,11 +2,15 @@ import {
   NotificationsService,
   type NotificationRepository
 } from '@cvg-his-v2/module-notifications';
-import { EventBusService } from '@cvg-his-v2/module-event-bus';
+import {
+  EventBusService,
+  TenantUnitOfWorkConsumerGuard
+} from '@cvg-his-v2/module-event-bus';
 import { ReportsService, type ReportRepository, type ReportScheduleSummary } from '@cvg-his-v2/module-reports';
 import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
+import type { TenantUnitOfWork } from '@cvg-his-v2/shared-database';
 import { runScheduledReportJob } from './jobs/scheduled-report-job.js';
 
 export interface WorkerTickContext {
@@ -16,12 +20,15 @@ export interface WorkerTickContext {
   readonly persistenceMode: 'database' | 'in-memory';
   readonly databaseHealthy: boolean;
   readonly databaseDetail: string;
+  readonly accountId?: AccountId;
 }
 
 export interface WorkerOptions {
   readonly notificationRepository?: NotificationRepository;
   readonly eventBusRepository?: OutboxRepository;
   readonly reportRepository?: ReportRepository;
+  readonly unitOfWork?: TenantUnitOfWork;
+  readonly workerId?: string;
 }
 
 export interface AdministrativeExecutiveReportSources {
@@ -83,7 +90,16 @@ export function createWorkerNotifications(options?: WorkerOptions): Notification
 }
 
 export function createWorkerEventBus(options?: WorkerOptions): EventBusService {
-  return new EventBusService(options?.eventBusRepository);
+  return new EventBusService(
+    options?.eventBusRepository,
+    undefined,
+    {
+      workerId: options?.workerId,
+      consumerGuard: options?.unitOfWork
+        ? new TenantUnitOfWorkConsumerGuard(options.unitOfWork)
+        : undefined
+    }
+  );
 }
 
 export function createWorkerReports(options?: WorkerOptions): ReportsService {
@@ -298,7 +314,7 @@ export async function runWorkerTick(
   context: WorkerTickContext,
   notifications: NotificationsService = defaultNotifications
 ) {
-  const processed = await notifications.processPendingFromRepository({ limit: 25 });
+  const processed = await notifications.processPendingFromRepository({ limit: 25 }, context.accountId);
 
   logger.info('worker notification tick complete', {
     service: context.service,

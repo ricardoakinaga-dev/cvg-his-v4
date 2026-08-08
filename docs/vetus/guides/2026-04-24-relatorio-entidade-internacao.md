@@ -10,15 +10,15 @@ Escopo:
 
 Evidências principais:
 
-- [internacao-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/screenshots/internacao-lista.png)
-- [internacao-lista.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.json)
-- [internacao-lista.html](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.html)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/network.json)
-- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:294)
-- [03-MODELO-DADOS.md](/root/cvg-his-v2/docs/vetus/guides/03-MODELO-DADOS.md:573)
-- [04-ESPECIFICACAO-APIS.md](/root/cvg-his-v2/docs/vetus/guides/04-ESPECIFICACAO-APIS.md:1133)
-- [2026-04-23-relatorio-entidade-comanda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-comanda.md)
-- [2026-04-24-relatorio-entidade-vacinas-vermifugos.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-24-relatorio-entidade-vacinas-vermifugos.md)
+- [internacao-lista.png](../inspection/2026-04-24T00-21-08-764Z-internacao/screenshots/internacao-lista.png)
+- [internacao-lista.json](../inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.json)
+- [internacao-lista.html](../inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.html)
+- [network.json](../inspection/2026-04-24T00-21-08-764Z-internacao/network.json)
+- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
+- [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
+- [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)
+- [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
+- [2026-04-24-relatorio-entidade-vacinas-vermifugos.md](../guides/2026-04-24-relatorio-entidade-vacinas-vermifugos.md)
 
 Nota de segurança:
 
@@ -129,8 +129,8 @@ Sinal confirmado:
 
 A documentação interna também reforça isso:
 
-- o planejamento do projeto prevê `Abertura de comanda vinculada` em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:301).
-- a modelagem de `hospitalizations` prevê `command_id` em [03-MODELO-DADOS.md](/root/cvg-his-v2/docs/vetus/guides/03-MODELO-DADOS.md:587).
+- o planejamento do projeto prevê `Abertura de comanda vinculada` em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md).
+- a modelagem de `hospitalizations` prevê `command_id` em [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md).
 
 Leitura:
 

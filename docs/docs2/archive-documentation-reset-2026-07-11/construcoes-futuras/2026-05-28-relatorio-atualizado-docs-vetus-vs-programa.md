@@ -1,5 +1,7 @@
 # Relatorio atualizado - Docs, Vetus e programa construido
 
+> **SUPERADO EM 10/07/2026:** os scores de paridade abaixo eram estruturais e nao comprovavam jornadas ponta a ponta. A fonte atual e `docs/2026-07-10-auditoria-paridade-funcional-vetus.md`.
+
 Data: 2026-05-28  
 Base principal:
 

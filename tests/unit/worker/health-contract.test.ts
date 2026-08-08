@@ -21,7 +21,11 @@ describe('worker health contract', () => {
         ticksCompleted: 5,
         lastTickAt: '2026-04-17T00:00:00.000Z',
         lastError: null,
-        initialized: true
+        initialized: true,
+        requiredEventBusConsumers: ['payments'],
+        registeredEventBusConsumers: ['payments'],
+        deliveryGuaranteesReady: true,
+        durableConsumerGuardReady: true
       }
     );
 
@@ -45,7 +49,11 @@ describe('worker health contract', () => {
         ticksCompleted: 0,
         lastTickAt: null,
         lastError: 'connection refused',
-        initialized: true
+        initialized: true,
+        requiredEventBusConsumers: ['payments'],
+        registeredEventBusConsumers: ['payments'],
+        deliveryGuaranteesReady: true,
+        durableConsumerGuardReady: true
       }
     );
 
@@ -67,5 +75,34 @@ describe('worker health contract', () => {
     expect(response.liveness.live).toBe(true);
     expect(response.liveness.initialized).toBe(false);
     expect(response.readiness.ready).toBe(false);
+  });
+
+  it('fails readiness when no event bus consumers are registered', () => {
+    const response = createWorkerReadinessResponse(
+      'worker',
+      'production',
+      '0.1.0',
+      { headers: {} } as never,
+      {
+        databaseConfigured: true,
+        databaseHealthy: true,
+        databaseDetail: 'database connected',
+        persistenceMode: 'database',
+        ticksCompleted: 5,
+        lastTickAt: '2026-07-12T00:00:00.000Z',
+        lastError: null,
+        initialized: true,
+        requiredEventBusConsumers: ['payments', 'billing', 'webhooks'],
+        registeredEventBusConsumers: [],
+        deliveryGuaranteesReady: true,
+        durableConsumerGuardReady: true
+      } as never
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.readiness.ready).toBe(false);
+    expect(response.readiness.productionReady).toBe(false);
+    expect(response.dependencies.worker.state).toBe('degraded');
+    expect(response.dependencies.worker.detail).toContain('missing event bus consumers');
   });
 });

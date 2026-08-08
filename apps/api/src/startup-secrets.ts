@@ -25,7 +25,10 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   DATABASE_URL: 'database',
   REDIS_URL: 'redis',
   PAGARME_API_KEY: 'pagarme',
-  PAGARME_PIX_KEY: 'pagarme'
+  PAGARME_PIX_KEY: 'pagarme',
+  NFSE_API_KEY: 'nfse',
+  NFSE_CERTIFICATE_BASE64: 'nfse',
+  NFSE_ISSUER_JSON: 'nfse'
 };
 
 function isTruthy(value: string | undefined): boolean {

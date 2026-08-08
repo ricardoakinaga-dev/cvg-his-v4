@@ -122,11 +122,11 @@ test.describe('Login Real + Owner/Patient via UI', () => {
 
     await expect(page.locator('#fullName')).toHaveJSProperty('required', true);
     await expect(page.locator('#fullName')).toHaveValue('');
-    await expect(page.locator('#contact-value-0')).toHaveValue('');
+    await expect(page.locator('#phone1')).toHaveValue('');
 
     const ownerRequiredState = await page.evaluate(() => {
       const fullName = document.querySelector('#fullName') as HTMLInputElement | null;
-      const contactValue = document.querySelector('#contact-value-0') as HTMLInputElement | null;
+      const contactValue = document.querySelector('#phone1') as HTMLInputElement | null;
       return {
         fullNameInvalid: fullName ? !fullName.checkValidity() : false,
         contactInvalid: contactValue ? !contactValue.checkValidity() : false
@@ -164,7 +164,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     expect(patientRequiredState.nameInvalid).toBe(true);
     expect(patientRequiredState.speciesInvalid).toBe(true);
     expect(patientRequiredState.sexInvalid).toBe(true);
-    await expect(page.getByPlaceholder('Buscar tutor por nome...')).toHaveValue('');
+    await expect(page.getByPlaceholder('Buscar cliente por nome...')).toHaveValue('');
     await expect(page).toHaveURL(/\/patients\/new$/, { timeout: 5000 });
     console.log('   ✅ Patient form exposes required-field invalid state before submission');
   });

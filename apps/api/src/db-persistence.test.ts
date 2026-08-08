@@ -677,7 +677,7 @@ describe('Database Persistence Integration Tests', () => {
       }
     );
 
-    const order = runtime.diagnostics.createOrder({
+    const order = await runtime.diagnostics.createOrderAndPersist({
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Hemograma',
@@ -685,14 +685,14 @@ describe('Database Persistence Integration Tests', () => {
       reason: 'Check-up cirurgico'
     });
 
-    runtime.diagnostics.recordResult(order.id, {
+    await runtime.diagnostics.recordResultAndPersist(order.id, {
       status: 'collected',
       collectedByUserId: 'lab_user'
     });
 
     await sleep(50);
 
-    const resulted = runtime.diagnostics.recordResult(order.id, {
+    const resulted = await runtime.diagnostics.recordResultAndPersist(order.id, {
       status: 'resulted',
       resultSummary: 'Hemograma sem alteracoes relevantes',
       resultAttachmentId: 'att_diag_test' as never,

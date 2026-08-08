@@ -4,6 +4,16 @@ export type MarketingChannel = 'sms' | 'whatsapp' | 'email';
 export type MarketingCampaignStatus = 'draft' | 'scheduled' | 'running' | 'sent' | 'cancelled';
 export type MarketingDeliveryStatus = 'queued' | 'sent' | 'failed' | 'skipped';
 export type MarketingConsentPurpose = 'marketing' | 'transactional' | 'preventive';
+export type MarketingSettingKey = 'sms_automations' | 'vaccine_email';
+
+export interface MarketingSettingSummary {
+  readonly accountId: string;
+  readonly key: MarketingSettingKey;
+  readonly channel: 'sms' | 'email';
+  readonly values: Readonly<Record<string, boolean | string>>;
+  readonly updatedByUserId: string;
+  readonly updatedAt: string;
+}
 
 export interface MarketingSegmentCriteria {
   readonly ownerGroups?: readonly string[];
@@ -104,6 +114,10 @@ interface ListResponse<T> {
   readonly items: readonly T[];
 }
 
+interface SettingResponse {
+  readonly setting: MarketingSettingSummary | null;
+}
+
 export const marketingService = {
   async listSegments(): Promise<MarketingSegmentSummary[]> {
     const response = await apiRequest<ListResponse<MarketingSegmentSummary>>('/marketing/segments');
@@ -179,5 +193,26 @@ export const marketingService = {
       `/marketing/campaigns/${encodeURIComponent(campaignId)}/deliveries`
     );
     return [...(response.items ?? [])];
+  },
+
+  async getSetting(key: MarketingSettingKey): Promise<MarketingSettingSummary | null> {
+    const response = await apiRequest<SettingResponse>(
+      `/marketing/settings?key=${encodeURIComponent(key)}`
+    );
+    return response.setting ?? null;
+  },
+
+  async saveSetting(payload: {
+    readonly key: MarketingSettingKey;
+    readonly channel: 'sms' | 'email';
+    readonly values: Readonly<Record<string, boolean | string>>;
+  }): Promise<MarketingSettingSummary> {
+    return apiRequest<MarketingSettingSummary>(
+      `/marketing/settings/${encodeURIComponent(payload.key)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ channel: payload.channel, values: payload.values })
+      }
+    );
   }
 };

@@ -3,6 +3,7 @@ import type { IncomingMessage } from 'node:http';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleBillingRoutes } from './billing-routes.js';
@@ -418,4 +419,27 @@ test('handleBillingRoutes PATCH /billing/:encounterId/status does not create mis
   assert.equal(updated, false);
   const body = response.bodyJson<{ code: string }>();
   assert.equal(body.code, 'BILLING_RECORD_NOT_FOUND');
+});
+
+test('handleBillingRoutes rejects billing status outside the canonical lifecycle', async () => {
+  const response = new MockResponse();
+
+  await assert.rejects(
+    () =>
+      handleBillingRoutes(
+        '/billing/enc-1/status',
+        createJsonRequest('PATCH', '/billing/enc-1/status', {
+          status: 'confirmed'
+        }),
+        response as never,
+        'corr-billing-invalid-status',
+        {
+          billing: createMockBilling() as never,
+          audit: createMockAudit() as never,
+          requirePrincipal: () => createPrincipal(),
+          enforceAbac: () => {}
+        }
+      ),
+    ValidationError
+  );
 });

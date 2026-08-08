@@ -180,6 +180,62 @@ export interface SectorBedServiceOptions {
   readonly databaseClient?: DatabaseClient;
 }
 
+function copySector(sector: SectorSummary): SectorSummary {
+  return { ...sector };
+}
+
+function copyBed(bed: BedSummary): BedSummary {
+  return { ...bed };
+}
+
+function createInMemoryRepositories(): {
+  readonly sectorRepository: SectorRepository;
+  readonly bedRepository: BedRepository;
+} {
+  const sectorById = new Map<SectorId, SectorSummary>();
+  const bedById = new Map<BedId, BedSummary>();
+
+  return {
+    sectorRepository: {
+      create: async (sector) => {
+        sectorById.set(sector.id, copySector(sector));
+      },
+      findById: async (sectorId) => {
+        const sector = sectorById.get(sectorId);
+        return sector ? copySector(sector) : null;
+      },
+      findByAccountId: async (accountId) =>
+        [...sectorById.values()]
+          .filter((sector) => sector.accountId === accountId)
+          .map(copySector)
+    },
+    bedRepository: {
+      create: async (bed) => {
+        bedById.set(bed.id, copyBed(bed));
+      },
+      update: async (bed) => {
+        bedById.set(bed.id, copyBed(bed));
+      },
+      findById: async (bedId) => {
+        const bed = bedById.get(bedId);
+        return bed ? copyBed(bed) : null;
+      },
+      findBySectorId: async (sectorId) =>
+        [...bedById.values()]
+          .filter((bed) => bed.sectorId === sectorId)
+          .map(copyBed),
+      findByAccountId: async (accountId) =>
+        [...bedById.values()]
+          .filter((bed) => bed.accountId === accountId)
+          .map(copyBed),
+      findByStatus: async (sectorId, status) =>
+        [...bedById.values()]
+          .filter((bed) => bed.sectorId === sectorId && bed.status === status)
+          .map(copyBed)
+    }
+  };
+}
+
 export class SectorBedService {
   readonly #sectorRepo: SectorRepository;
   readonly #bedRepo: BedRepository;
@@ -192,19 +248,9 @@ export class SectorBedService {
       this.#bedRepo = options.bedRepository ?? new DatabaseBedRepository(options.databaseClient);
       this.#db = options.databaseClient;
     } else {
-      this.#sectorRepo = options.sectorRepository ?? {
-        create: async () => {},
-        findById: async () => null,
-        findByAccountId: async () => []
-      };
-      this.#bedRepo = options.bedRepository ?? {
-        create: async () => {},
-        update: async () => {},
-        findById: async () => null,
-        findBySectorId: async () => [],
-        findByAccountId: async () => [],
-        findByStatus: async () => []
-      };
+      const memoryRepositories = createInMemoryRepositories();
+      this.#sectorRepo = options.sectorRepository ?? memoryRepositories.sectorRepository;
+      this.#bedRepo = options.bedRepository ?? memoryRepositories.bedRepository;
     }
   }
 

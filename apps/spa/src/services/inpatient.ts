@@ -15,6 +15,21 @@ import type {
 } from '@/types/inpatient';
 
 export const inpatientService = {
+  async admit(payload: {
+    encounterId: string;
+    patientId: string;
+    unit: string;
+    ward: string;
+    bed: string;
+    sectorId?: string;
+    bedId?: string;
+  }): Promise<InpatientStaySummary> {
+    return apiRequest<InpatientStaySummary>('/inpatient', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
   async list(
     filters?: string | {
       encounterId?: string;

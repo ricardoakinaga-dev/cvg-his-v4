@@ -129,3 +129,82 @@ test('handleLaboratoryIntegrationRoutes imports equipment result and exposes rep
   assert.equal(report.summary.total, 1);
   assert.equal(report.summary.imported, 1);
 });
+
+test('records failed equipment imports and retries by tenant-scoped correlation', async () => {
+  const apiKeys = new ApiKeysService(createInMemoryRuntimeRepositories().apiKey);
+  const created = await apiKeys.create({
+    accountId: 'acc_cvg_retry' as never,
+    name: 'Equipment retry key',
+    permissions: ['integrations.read', 'notifications.manage'],
+    createdBy: 'user_admin'
+  });
+  const audit = new AuditService();
+  const laboratoryResultImports = new InMemoryLaboratoryResultImportRepository();
+  let firstAttempt = true;
+  const laboratory = {
+    getOrder: () => {
+      if (firstAttempt) {
+        firstAttempt = false;
+        throw new Error('provider sandbox temporarily unavailable');
+      }
+      return {
+        id: 'order_retry',
+        accountId: 'acc_cvg_retry',
+        encounterId: 'encounter_retry',
+        patientId: 'patient_retry',
+        status: 'requested',
+        updatedAt: '2026-08-07T12:00:00.000Z'
+      };
+    },
+    recordResultAndPersist: async (_orderId: string, payload: Record<string, unknown>) => ({
+      id: 'order_retry',
+      accountId: 'acc_cvg_retry',
+      encounterId: 'encounter_retry',
+      patientId: 'patient_retry',
+      status: payload.status,
+      resultSummary: payload.resultSummary,
+      updatedAt: '2026-08-07T12:00:00.000Z'
+    })
+  } as never;
+  const handlers = {
+    laboratory,
+    laboratoryResultImports,
+    apiKeys,
+    audit
+  };
+
+  const failedResponse = new MockResponse();
+  await handleLaboratoryIntegrationRoutes(
+    '/integrations/laboratory/equipment-results/imports',
+    createRequest(created.rawKey, {
+      externalResultId: 'ext_retry',
+      orderId: 'order_retry',
+      equipmentId: 'equip_retry',
+      resultSummary: 'Resultado pendente'
+    }),
+    failedResponse as never,
+    'corr-lab-failed',
+    handlers
+  );
+
+  assert.equal(failedResponse.statusCode, 202);
+  assert.equal(failedResponse.bodyJson<{ status: string; attemptCount: number }>().status, 'failed');
+  assert.equal(failedResponse.bodyJson<{ status: string; attemptCount: number }>().attemptCount, 1);
+
+  const retryResponse = new MockResponse();
+  await handleLaboratoryIntegrationRoutes(
+    '/integrations/laboratory/equipment-results/imports/ext_retry/retry',
+    createRequest(created.rawKey, {}, {
+      method: 'POST',
+      url: '/integrations/laboratory/equipment-results/imports/ext_retry/retry'
+    }),
+    retryResponse as never,
+    'corr-lab-retry',
+    handlers
+  );
+
+  const retried = retryResponse.bodyJson<{ status: string; attemptCount: number }>();
+  assert.equal(retryResponse.statusCode, 200);
+  assert.equal(retried.status, 'imported');
+  assert.equal(retried.attemptCount, 2);
+});

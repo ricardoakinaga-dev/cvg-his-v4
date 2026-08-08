@@ -37,22 +37,20 @@ export * from './services.js';
  * ==========================================
  */
 
-import { appointmentsContract, AppointmentsContract } from './appointments.js';
+import { appointmentsContract } from './appointments.js';
 import {
   availabilityContract,
-  typeConfigContract,
-  AvailabilityContract,
-  TypeConfigContract
+  typeConfigContract
 } from './agendaConfig.js';
-import { ownersContract, OwnersContract } from './owners.js';
-import { patientsContract, PatientsContract } from './patients.js';
+import { ownersContract } from './owners.js';
+import { patientsContract } from './patients.js';
 import { encounterBillingContract } from './encounterBilling.js';
 import { encounterFinancialContract } from './encounterFinancial.js';
-import { encountersContract, EncountersContract } from './encounters.js';
-import { examOrdersContract, examResultsContract, ExamOrdersContract, ExamResultsContract } from './exams.js';
-import { integrationContract, IntegrationContract } from './integration.js';
-import { productsContract, ProductsContract } from './products.js';
-import { servicesContract, ServicesContract } from './services.js';
+import { encountersContract } from './encounters.js';
+import { examOrdersContract, examResultsContract } from './exams.js';
+import { integrationContract } from './integration.js';
+import { productsContract } from './products.js';
+import { servicesContract } from './services.js';
 
 /**
  * Complete API contract definition

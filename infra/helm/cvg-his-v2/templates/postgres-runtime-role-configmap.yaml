@@ -1,0 +1,42 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-postgres-runtime-role
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+data:
+  init-runtime-role.sh: |-
+    #!/bin/sh
+    set -eu
+    until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do sleep 1; done
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+      --set=api_user="$POSTGRES_API_USER" --set=api_password="$POSTGRES_API_PASSWORD" \
+      --set=worker_user="$POSTGRES_WORKER_USER" --set=worker_password="$POSTGRES_WORKER_PASSWORD" \
+      --set=db_name="$POSTGRES_DB" <<'SQL'
+    SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'api_user', :'api_password')
+    WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'api_user')\gexec
+    SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'worker_user', :'worker_password')
+    WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'worker_user')\gexec
+    ALTER ROLE :"api_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'api_password';
+    ALTER ROLE :"worker_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'worker_password';
+    GRANT CONNECT ON DATABASE :"db_name" TO :"api_user";
+    GRANT CONNECT ON DATABASE :"db_name" TO :"worker_user";
+    GRANT USAGE ON SCHEMA public TO :"api_user", :"worker_user";
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"api_user", :"worker_user";
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO :"api_user", :"worker_user";
+    SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO %I', c.relname, :'api_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> 'audit_events'\gexec
+    SELECT format('GRANT INSERT, SELECT ON TABLE public.%I TO %I', c.relname, :'api_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
+    SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO %I', c.relname, :'worker_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> 'audit_events'\gexec
+    SELECT format('GRANT INSERT, SELECT ON TABLE public.%I TO %I', c.relname, :'worker_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
+    REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_events FROM :"api_user", :"worker_user";
+    SQL
+{{- end }}

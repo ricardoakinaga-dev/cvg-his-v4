@@ -5,7 +5,6 @@ import { registerRoute, NavigationRoute, Route } from 'workbox-routing';
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
-import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
 // Workbox manifest type
 declare const self: ServiceWorkerGlobalScope & {
@@ -36,23 +35,6 @@ registerRoute(
     denylist: [/\/api\//, /\/auth\//]
   })
 );
-
-// API calls - Network First with fallback
-const apiHandler = new NetworkFirst({
-  cacheName: 'api-cache',
-  networkTimeoutSeconds: 10,
-  plugins: [
-    new CacheableResponsePlugin({
-      statuses: [0, 200]
-    }),
-    new ExpirationPlugin({
-      maxEntries: 100,
-      maxAgeSeconds: 5 * 60 // 5 minutes
-    })
-  ]
-});
-
-registerRoute(/\/api\/v1\//, apiHandler);
 
 // Static assets - Cache First
 registerRoute(
@@ -93,35 +75,6 @@ registerRoute(
       })
     ]
   })
-);
-
-// Background sync for failed POST/PUT/DELETE requests
-const bgSyncPlugin = new BackgroundSyncPlugin('api-queue', {
-  maxRetentionTime: 24 * 60, // Retry for 24 hours
-  onSync: async ({ queue }: { queue: { shiftRequest: () => Promise<{ request: Request } | undefined>; unshiftRequest: (entry: { request: Request }) => Promise<void> } }) => {
-    let entry: { request: Request } | undefined;
-    while ((entry = await queue.shiftRequest()) !== undefined) {
-      try {
-        await fetch(entry.request);
-      } catch (error) {
-        // Put back in queue if failed
-        await queue.unshiftRequest(entry);
-        throw error;
-      }
-    }
-  }
-});
-
-// Register route for API mutations with background sync
-registerRoute(
-  ({ request }: { request: Request }) =>
-    ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method) &&
-    /\/api\/v1\//.test(request.url),
-  new NetworkFirst({
-    cacheName: 'api-mutations',
-    plugins: [bgSyncPlugin]
-  }),
-  'POST'
 );
 
 // ============= SERVICE WORKER LIFECYCLE =============

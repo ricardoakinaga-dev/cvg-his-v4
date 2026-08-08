@@ -39,7 +39,7 @@ export class DatabaseDischargeRepository implements DischargeRepository {
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
         `UPDATE discharges SET outcome = $2, clinical_summary = $3, continuity_instructions = $4, follow_up_date = $5, follow_up_notes = $6, version = $7, updated_at = $8
-         WHERE id = $1`,
+         WHERE id = $1 AND account_id = $9 AND account_id = app.current_account_id()`,
         [
           discharge.id,
           discharge.outcome ?? null,
@@ -48,7 +48,8 @@ export class DatabaseDischargeRepository implements DischargeRepository {
           discharge.followUpDate ? new Date(discharge.followUpDate) : null,
           discharge.followUpNotes ?? null,
           discharge.version,
-          new Date(discharge.updatedAt)
+          new Date(discharge.updatedAt),
+          discharge.accountId
         ]
       );
     });

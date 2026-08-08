@@ -60,6 +60,8 @@ spec:
             - configMapRef:
                 name: {{ include "cvg-his-v2.api.configmapName" . }}
           env:
+            - name: DATABASE_REQUIRE_RLS_ROLE
+              value: "1"
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
@@ -70,7 +72,48 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.postgres.secretName" . }}
-                  key: {{ .Values.postgresql.secretKeys.url }}
+                  key: {{ .Values.postgresql.secretKeys.apiUrl }}
+            {{- if .Values.api.attachmentStorage.existingSecret }}
+            - name: ATTACHMENT_STORAGE_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentStorage.existingSecret }}
+                  key: {{ .Values.api.attachmentStorage.secretKeys.endpoint }}
+            - name: ATTACHMENT_STORAGE_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentStorage.existingSecret }}
+                  key: {{ .Values.api.attachmentStorage.secretKeys.bucket }}
+            - name: ATTACHMENT_STORAGE_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentStorage.existingSecret }}
+                  key: {{ .Values.api.attachmentStorage.secretKeys.accessKey }}
+            - name: ATTACHMENT_STORAGE_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentStorage.existingSecret }}
+                  key: {{ .Values.api.attachmentStorage.secretKeys.secretKey }}
+            {{- end }}
+            {{- if .Values.api.attachmentScanner.existingSecret }}
+            - name: ATTACHMENT_SCANNER_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentScanner.existingSecret }}
+                  key: {{ .Values.api.attachmentScanner.secretKeys.host }}
+            - name: ATTACHMENT_SCANNER_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentScanner.existingSecret }}
+                  key: {{ .Values.api.attachmentScanner.secretKeys.port }}
+                  optional: true
+            - name: ATTACHMENT_SCANNER_TIMEOUT_MS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.attachmentScanner.existingSecret }}
+                  key: {{ .Values.api.attachmentScanner.secretKeys.timeoutMs }}
+                  optional: true
+            {{- end }}
             {{- if or .Values.redis.enabled .Values.redis.url .Values.redis.existingSecret }}
             - name: REDIS_URL
               valueFrom:

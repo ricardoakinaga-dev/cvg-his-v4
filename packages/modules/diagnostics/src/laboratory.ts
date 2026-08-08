@@ -30,11 +30,27 @@ interface DiagnosticsOrdersGateway {
   listByAccount(accountId: AccountId): readonly DiagnosticOrderSummary[];
   listCatalog(): readonly ExamCatalogEntry[];
   createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary;
+  createOrderAndPersist?: (
+    payload: CreateDiagnosticOrderRequest
+  ) => Promise<DiagnosticOrderSummary>;
+  createOrderAndPersistForAccount?: (
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ) => Promise<DiagnosticOrderSummary>;
   getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary;
   recordResult(
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary;
+  recordResultAndPersist?: (
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ) => Promise<DiagnosticOrderSummary>;
+  recordResultAndPersistForAccount?: (
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ) => Promise<DiagnosticOrderSummary>;
 }
 
 export interface LaboratoryCatalogRepository {
@@ -350,11 +366,58 @@ export class LaboratoryService {
     return this.#diagnostics.createOrder(payload);
   }
 
+  public async createOrderAndPersist(
+    payload: CreateDiagnosticOrderRequest
+  ): Promise<DiagnosticOrderSummary> {
+    if (this.#diagnostics.createOrderAndPersist) {
+      return this.#diagnostics.createOrderAndPersist(payload);
+    }
+
+    return this.#diagnostics.createOrder(payload);
+  }
+
+  public async createOrderAndPersistForAccount(
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ): Promise<DiagnosticOrderSummary> {
+    if (this.#diagnostics.createOrderAndPersistForAccount) {
+      return this.#diagnostics.createOrderAndPersistForAccount(accountId, payload);
+    }
+    const order = await this.createOrderAndPersist(payload);
+    if (order.accountId !== accountId) {
+      throw new Error('Diagnostic order does not belong to the current account');
+    }
+    return order;
+  }
+
   public recordResult(
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
     return this.#diagnostics.recordResult(orderId, payload);
+  }
+
+  public async recordResultAndPersist(
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ): Promise<DiagnosticOrderSummary> {
+    if (this.#diagnostics.recordResultAndPersist) {
+      return this.#diagnostics.recordResultAndPersist(orderId, payload);
+    }
+
+    return this.#diagnostics.recordResult(orderId, payload);
+  }
+
+  public async recordResultAndPersistForAccount(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: RecordDiagnosticResultRequest
+  ): Promise<DiagnosticOrderSummary> {
+    if (this.#diagnostics.recordResultAndPersistForAccount) {
+      return this.#diagnostics.recordResultAndPersistForAccount(accountId, orderId, payload);
+    }
+    const order = this.getOrder(accountId, orderId);
+    return this.recordResultAndPersist(order.id, payload);
   }
 
   public async getDashboardSummary(accountId: AccountId): Promise<LaboratoryDashboardSummary> {
@@ -381,14 +444,8 @@ export class LaboratoryService {
       );
     }
 
-    try {
-      await this.#catalogRepository.ensureSeedData(accountId);
-      return this.#catalogRepository.listEquipment(accountId);
-    } catch {
-      return [...DEFAULT_LABORATORY_EQUIPMENT].sort((left, right) =>
-        left.name.localeCompare(right.name)
-      );
-    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.listEquipment(accountId);
   }
 
   public async getEquipment(
@@ -441,14 +498,8 @@ export class LaboratoryService {
       );
     }
 
-    try {
-      await this.#catalogRepository.ensureSeedData(accountId);
-      return this.#catalogRepository.listReportTypes(accountId);
-    } catch {
-      return [...DEFAULT_LABORATORY_REPORT_TYPES].sort((left, right) =>
-        left.name.localeCompare(right.name)
-      );
-    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.listReportTypes(accountId);
   }
 
   public async getReportType(
@@ -503,15 +554,8 @@ export class LaboratoryService {
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
 
-    try {
-      await this.#catalogRepository.ensureSeedData(accountId);
-      return this.#catalogRepository.listReferenceValues(accountId, filterExam);
-    } catch {
-      const normalizedFilter = normalizeText(filterExam);
-      return [...DEFAULT_LABORATORY_REFERENCE_VALUES]
-        .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
-        .sort((left, right) => left.parameter.localeCompare(right.parameter));
-    }
+    await this.#catalogRepository.ensureSeedData(accountId);
+    return this.#catalogRepository.listReferenceValues(accountId, filterExam);
   }
 
   public async getReferenceValue(

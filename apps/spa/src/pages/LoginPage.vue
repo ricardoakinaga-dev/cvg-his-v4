@@ -16,6 +16,14 @@
           autocomplete="username"
         />
         <DsInput
+          id="account"
+          v-model="accountId"
+          type="text"
+          label="Conta"
+          placeholder="Código da clínica"
+          autocomplete="off"
+        />
+        <DsInput
           id="password"
           v-model="password"
           type="password"
@@ -40,7 +48,7 @@ import { ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { apiRequest } from '@/services/api';
-import type { AuthSessionResponse, LoginMfaRequiredResponse } from '@cvg-his-v2/shared-contracts';
+import type { BrowserAuthSessionResponse, LoginMfaRequiredResponse } from '@cvg-his-v2/shared-contracts';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -52,6 +60,7 @@ const authStore = useAuthStore();
 
 const email = ref('');
 const password = ref('');
+const accountId = ref(import.meta.env.VITE_ACCOUNT_ID?.trim() ?? '');
 const error = ref('');
 const loading = ref(false);
 const nextPath = computed(() => (typeof route.query.next === 'string' ? route.query.next : '/'));
@@ -61,18 +70,24 @@ async function handleLogin() {
   loading.value = true;
 
   try {
-    const response = await apiRequest<AuthSessionResponse | LoginMfaRequiredResponse>(
+    const response = await apiRequest<BrowserAuthSessionResponse | LoginMfaRequiredResponse>(
       '/auth/login',
       {
         method: 'POST',
         skipAuth: true,
-        body: JSON.stringify({ username: email.value, password: password.value })
+        body: JSON.stringify({
+          username: email.value,
+          password: password.value,
+          ...(accountId.value.trim() ? { accountId: accountId.value.trim() } : {})
+        })
       }
     );
 
     if ('requiresMfa' in response) {
       authStore.setMfaRequired(true);
       authStore.setPendingMfaUserId(response.userId);
+      authStore.setPendingMfaChallengeId(response.challengeId ?? null);
+      authStore.setMfaSetupRequired(response.enrollmentRequired ?? false);
       router.push({
         path: '/auth/mfa',
         query: nextPath.value && nextPath.value !== '/' ? { next: nextPath.value } : undefined
@@ -80,14 +95,17 @@ async function handleLogin() {
       return;
     }
 
-    authStore.setTokens(response.accessToken, response.refreshToken);
+    authStore.setTokens(response.accessToken);
     authStore.clearMfaChallenge();
 
     // Full page reload to ensure auth state is fresh
     window.location.href = window.location.origin + nextPath.value;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Falha ao fazer login';
-    error.value = message;
+    error.value =
+      message === 'Invalid username or password'
+        ? 'Usuário ou senha inválidos. No ambiente local, deixe o campo Conta vazio.'
+        : message;
   } finally {
     loading.value = false;
   }

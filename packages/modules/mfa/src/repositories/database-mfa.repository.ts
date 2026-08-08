@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { mfaCredentials } from '@cvg-his-v2/shared-database';
 import type { MfaRecord, MfaRepository } from './mfa-repository.interface.js';
@@ -10,17 +10,23 @@ export class DatabaseMfaRepository implements MfaRepository {
     this.#db = db;
   }
 
-  async findByUserId(userId: string): Promise<MfaRecord | undefined> {
+  async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
     const rows = await this.#db
       .select()
       .from(mfaCredentials)
-      .where(eq(mfaCredentials.userId, userId as never))
+      .where(
+        and(
+          eq(mfaCredentials.accountId, accountId as never),
+          eq(mfaCredentials.userId, userId as never)
+        )
+      )
       .limit(1);
 
     if (rows.length === 0) return undefined;
 
     const row = rows[0];
     return {
+      accountId: row.accountId as string,
       userId: row.userId as string,
       secret: row.secretEncrypted,
       isActive: row.isActive,
@@ -34,6 +40,7 @@ export class DatabaseMfaRepository implements MfaRepository {
 
   async create(record: MfaRecord): Promise<void> {
     await this.#db.insert(mfaCredentials).values({
+      accountId: record.accountId as never,
       userId: record.userId as never,
       secretEncrypted: record.secret,
       isActive: record.isActive,
@@ -56,10 +63,22 @@ export class DatabaseMfaRepository implements MfaRepository {
           ? (new Date(record.lastRecoveryCodesRegeneratedAt) as never)
           : undefined
       })
-      .where(eq(mfaCredentials.userId, record.userId as never));
+      .where(
+        and(
+          eq(mfaCredentials.accountId, record.accountId as never),
+          eq(mfaCredentials.userId, record.userId as never)
+        )
+      );
   }
 
-  async delete(userId: string): Promise<void> {
-    await this.#db.delete(mfaCredentials).where(eq(mfaCredentials.userId, userId as never));
+  async delete(accountId: string, userId: string): Promise<void> {
+    await this.#db
+      .delete(mfaCredentials)
+      .where(
+        and(
+          eq(mfaCredentials.accountId, accountId as never),
+          eq(mfaCredentials.userId, userId as never)
+        )
+      );
   }
 }

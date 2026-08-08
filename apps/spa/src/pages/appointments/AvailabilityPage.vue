@@ -12,7 +12,19 @@
     <section class="config-grid">
       <DsCard title="Nova disponibilidade">
         <div class="form-grid">
-          <DsInput v-model="form.professionalUserId" label="Profissional" placeholder="staff_camila_vet" />
+          <label class="field">
+            <span>Profissional</span>
+            <select v-model="form.professionalUserId" :disabled="loadingProfessionals">
+              <option value="" disabled>Selecione um profissional</option>
+              <option
+                v-for="member in professionals"
+                :key="member.id"
+                :value="member.userId ?? member.id"
+              >
+                {{ member.fullName }} ({{ member.id }})
+              </option>
+            </select>
+          </label>
           <label class="field">
             <span>Dia da semana</span>
             <select v-model.number="form.dayOfWeek">
@@ -51,16 +63,20 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import type { StaffSummary } from '@cvg-his-v2/shared-types';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { agendaConfigService } from '@/services/agendaConfig';
+import { staffService } from '@/services/staff';
 import type { AvailabilityRecord } from '@/types/agendaConfig';
 
 const items = ref<AvailabilityRecord[]>([]);
 const loading = ref(true);
+const loadingProfessionals = ref(true);
+const professionals = ref<StaffSummary[]>([]);
 const saving = ref(false);
 const notice = ref<{ variant: 'success' | 'danger'; message: string } | null>(null);
 const form = ref({
@@ -101,6 +117,26 @@ async function loadAvailability() {
   }
 }
 
+async function loadProfessionals() {
+  loadingProfessionals.value = true;
+  try {
+    professionals.value = (await staffService.list()).filter((member) => member.status === 'active');
+    if (!form.value.professionalUserId && professionals.value[0]) {
+      form.value = {
+        ...form.value,
+        professionalUserId: professionals.value[0].userId ?? professionals.value[0].id
+      };
+    }
+  } catch (error) {
+    notice.value = {
+      variant: 'danger',
+      message: error instanceof Error ? error.message : 'Falha ao carregar profissionais.'
+    };
+  } finally {
+    loadingProfessionals.value = false;
+  }
+}
+
 async function createAvailability() {
   if (!form.value.professionalUserId.trim()) return;
   saving.value = true;
@@ -133,7 +169,9 @@ async function createAvailability() {
   }
 }
 
-onMounted(loadAvailability);
+onMounted(() => {
+  void Promise.all([loadAvailability(), loadProfessionals()]);
+});
 </script>
 
 <style scoped>

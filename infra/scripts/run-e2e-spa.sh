@@ -30,6 +30,12 @@ DATABASE_URL_E2E="postgres://postgres:postgres@localhost:5434/cvg_his_e2e"
 E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@cvg-his.local}"
 E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-${E2E_ADMIN_EMAIL%@*}}"
 E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-seed_admin}"
+E2E_SECOND_ADMIN_EMAIL="${E2E_SECOND_ADMIN_EMAIL:-admin-b@cvg-his.local}"
+E2E_SECOND_ADMIN_USERNAME="${E2E_SECOND_ADMIN_USERNAME:-admin_b}"
+E2E_SECOND_ADMIN_PASSWORD="${E2E_SECOND_ADMIN_PASSWORD:-seed_admin_b}"
+E2E_SECOND_TENANT_SLUG="${E2E_SECOND_TENANT_SLUG:-e2e-secondary}"
+E2E_SECOND_ACCOUNT_SLUG="${E2E_SECOND_ACCOUNT_SLUG:-e2e-secondary}"
+E2E_SECOND_UNIT_CODE="${E2E_SECOND_UNIT_CODE:-hq}"
 API_E2E_PORT=3111
 SPA_E2E_PORT=3112
 LOCK_FILE="${TMPDIR:-/tmp}/cvg-his-v2-e2e.lock"
@@ -181,9 +187,12 @@ if [ $RETRY -eq $MAX_RETRIES ]; then
   exit 1
 fi
 
-# 3. Build database scripts once so migrate/seed can run from emitted JS.
+# 3. Build database and API scripts once so migrate/seed/restart checks can run
+# from emitted JS. The release gate may already have built them, but this script
+# is intentionally self-contained when invoked directly.
 echo "   🧱 Building database scripts..."
 pnpm --filter @cvg-his/db build >/dev/null
+pnpm --filter @cvg-his-v2/api build >/dev/null
 
 # 4. Apply DB schema before API startup so cache-hydrated runtime sees seeded users.
 # Retry briefly because PostgreSQL can report healthy before it is fully ready for reset/migrate work.
@@ -211,7 +220,14 @@ SEED_ATTEMPT=1
 while [ $SEED_ATTEMPT -le $SEED_RETRIES ]; do
   if DATABASE_URL="$DATABASE_URL_E2E" \
     ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
+    ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
     ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+    SECOND_ADMIN_EMAIL="$E2E_SECOND_ADMIN_EMAIL" \
+    SECOND_ADMIN_USERNAME="$E2E_SECOND_ADMIN_USERNAME" \
+    SECOND_ADMIN_PASSWORD="$E2E_SECOND_ADMIN_PASSWORD" \
+    SECOND_TENANT_SLUG="$E2E_SECOND_TENANT_SLUG" \
+    SECOND_ACCOUNT_SLUG="$E2E_SECOND_ACCOUNT_SLUG" \
+    SECOND_UNIT_CODE="$E2E_SECOND_UNIT_CODE" \
       node "$ROOT_DIR/packages/db/dist/seed.js"; then
     break
   fi
@@ -225,6 +241,12 @@ while [ $SEED_ATTEMPT -le $SEED_RETRIES ]; do
   SEED_ATTEMPT=$((SEED_ATTEMPT + 1))
   sleep 2
 done
+
+echo "   🔁 Verifying canonical PostgreSQL runtime after connection restart..."
+DATABASE_URL="$DATABASE_URL_E2E" \
+CANONICAL_DB_TEST_USERNAME="$E2E_ADMIN_USERNAME" \
+CANONICAL_DB_TEST_PASSWORD="$E2E_ADMIN_PASSWORD" \
+  node "$ROOT_DIR/apps/api/dist/canonical-db-runtime.test.js"
 
 # Ensure Playwright does not reuse stale local API/SPA processes from prior runs.
 echo "   🧽 Clearing stale local API/SPA ports..."
@@ -242,8 +264,12 @@ E2E_AUTH_TOKEN="" \
 E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
 E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
 E2E_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+E2E_SECOND_ADMIN_USERNAME="$E2E_SECOND_ADMIN_USERNAME" \
+E2E_SECOND_ADMIN_EMAIL="$E2E_SECOND_ADMIN_EMAIL" \
+E2E_SECOND_ADMIN_PASSWORD="$E2E_SECOND_ADMIN_PASSWORD" \
 E2E_DATABASE_URL="$DATABASE_URL_E2E" \
 E2E_REDIS_URL="redis://127.0.0.1:6381" \
+E2E_DATABASE_MODE="1" \
 API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
 AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
 API_URL="http://localhost:${API_E2E_PORT}" \

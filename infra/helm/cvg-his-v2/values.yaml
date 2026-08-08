@@ -37,6 +37,21 @@ api:
     secretKey: AUTH_SECRET
     value: ""
 
+  attachmentStorage:
+    existingSecret: ""
+    secretKeys:
+      endpoint: endpoint
+      bucket: bucket
+      accessKey: access-key
+      secretKey: secret-key
+
+  attachmentScanner:
+    existingSecret: ""
+    secretKeys:
+      host: host
+      port: port
+      timeoutMs: timeout-ms
+
   service:
     type: ClusterIP
     port: 3001
@@ -84,6 +99,9 @@ api:
     AUTH_ACCESS_TOKEN_TTL_SECONDS: "900"
     AUTH_REFRESH_TOKEN_TTL_SECONDS: "604800"
     FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
+    ATTACHMENT_SCANNER_HOST: ""
+    ATTACHMENT_SCANNER_PORT: "3310"
+    ATTACHMENT_SCANNER_TIMEOUT_MS: "5000"
     RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
     VAULT_ENABLED: "false"
     OTEL_ENABLED: "false"
@@ -221,9 +239,17 @@ postgresql:
   existingSecret: ""
   secretKeys:
     url: url
+    apiUrl: api-url
+    workerUrl: worker-url
     password: password
+    apiPassword: api-password
+    workerPassword: worker-password
   url: ""
+  apiUrl: ""
+  workerUrl: ""
   password: ""
+  apiPassword: ""
+  workerPassword: ""
 
   persistence:
     enabled: true
@@ -243,6 +269,8 @@ postgresql:
   auth:
     database: cvg_his_v2
     username: postgres
+    apiUsername: cvg_api
+    workerUsername: cvg_worker
     # password injected via secret — never store plaintext
 
 # ──────────────────────────────────────────────

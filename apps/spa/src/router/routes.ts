@@ -1044,6 +1044,17 @@ export const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'inpatient/admit',
+        name: 'InpatientAdmission',
+        component: () => import('@/pages/inpatient/InpatientAdmissionPage.vue'),
+        meta: {
+          title: 'Admitir paciente',
+          breadcrumb: 'Admitir',
+          breadcrumbParent: 'Internação',
+          icon: '🛏️'
+        }
+      },
+      {
         path: 'inpatient/:id',
         name: 'InpatientDetail',
         component: () => import('@/pages/inpatient/InpatientDetailPage.vue'),

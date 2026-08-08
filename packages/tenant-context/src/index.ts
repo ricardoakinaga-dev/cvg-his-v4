@@ -22,6 +22,7 @@ export {
 } from './query-helpers.js';
 
 export {
+  withTenantDrizzle,
   withTenantQuery,
   withTenantQueryExplicit
 } from './tenant-db.js';

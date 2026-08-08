@@ -8,6 +8,8 @@ const mockAuthStore = {
   setTokens: vi.fn(),
   setMfaRequired: vi.fn(),
   setPendingMfaUserId: vi.fn(),
+  setPendingMfaChallengeId: vi.fn(),
+  setMfaSetupRequired: vi.fn(),
   clearMfaChallenge: vi.fn()
 };
 
@@ -37,7 +39,9 @@ describe('LoginPage', () => {
     mockApiRequest.mockResolvedValue({
       requiresMfa: true,
       userId: 'user-123',
-      mfaMethods: ['totp']
+      mfaMethods: ['totp'],
+      challengeId: 'challenge-123',
+      enrollmentRequired: false
     });
 
     const LoginPage = (await import('../../LoginPage.vue')).default;
@@ -45,6 +49,7 @@ describe('LoginPage', () => {
 
     await wrapper.find('#email').setValue('admin');
     await wrapper.find('#password').setValue('secret');
+    await wrapper.find('#account').setValue('account-123');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -55,7 +60,13 @@ describe('LoginPage', () => {
         skipAuth: true
       })
     );
+    expect(JSON.parse(mockApiRequest.mock.calls[0][1].body)).toEqual({
+      username: 'admin',
+      password: 'secret',
+      accountId: 'account-123'
+    });
     expect(mockAuthStore.setPendingMfaUserId).toHaveBeenCalledWith('user-123');
+    expect(mockAuthStore.setPendingMfaChallengeId).toHaveBeenCalledWith('challenge-123');
     expect(mockAuthStore.setMfaRequired).toHaveBeenCalledWith(true);
     expect(mockRouterPush).toHaveBeenCalledWith({
       path: '/auth/mfa',

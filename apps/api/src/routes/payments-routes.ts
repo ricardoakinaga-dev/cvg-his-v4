@@ -8,6 +8,7 @@ import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { BillingService } from '@cvg-his-v2/module-billing';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 import { requireApiKey } from '../helpers/auth-helpers.js';
@@ -22,6 +23,7 @@ export interface PaymentsHandlers {
   apiKeys: ApiKeysService;
   audit: AuditService;
   cardTransactions: CardTransactionRepository;
+  billing: BillingService;
 }
 
 /**
@@ -36,11 +38,17 @@ export function handlePaymentsRoutes(
   correlationId: string,
   handlers: PaymentsHandlers
 ): Promise<boolean> | boolean {
-  const { eventBus, paymentGateway, apiKeys, audit, cardTransactions } = handlers;
+  const { eventBus, paymentGateway, apiKeys, audit, cardTransactions, billing } = handlers;
 
   // POST /payments/pix/intents — create PIX intent
   if (pathname === '/payments/pix/intents' && request.method === 'POST') {
-    return handlePixIntentCreate(request, response, correlationId, { eventBus, paymentGateway, apiKeys, audit });
+    return handlePixIntentCreate(request, response, correlationId, {
+      eventBus,
+      paymentGateway,
+      apiKeys,
+      audit,
+      billing
+    });
   }
 
   // POST /payments/cards/intents — create card intent
@@ -49,7 +57,8 @@ export function handlePaymentsRoutes(
       eventBus,
       paymentGateway,
       apiKeys,
-      audit
+      audit,
+      billing
     });
   }
 
@@ -59,7 +68,9 @@ export function handlePaymentsRoutes(
       eventBus,
       paymentGateway,
       apiKeys,
-      audit
+      audit,
+      cardTransactions,
+      billing
     });
   }
 
@@ -89,8 +100,9 @@ async function handlePixIntentCreate(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
+    audit,
+    billing
+  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'billing'>
 ): Promise<boolean> {
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
   const body = (await readJsonBody(request)) as Record<string, unknown>;
@@ -108,10 +120,24 @@ async function handlePixIntentCreate(
     throw new ValidationError('amount must be a positive number');
   }
 
+  const billingRecordId =
+    typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined;
+  if (billingRecordId) {
+    const record = billing.getOrThrow(billingRecordId as never);
+    if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
+      throw new ValidationError('billingRecordId does not belong to the API key account');
+    }
+    if (record.currency !== 'BRL' || record.subtotalAmount !== body.amount) {
+      throw new ValidationError('amount must match the billing record balance');
+    }
+    if (record.status === 'settled') {
+      throw new ValidationError('billing record is already settled');
+    }
+  }
+
   const intent = await paymentGateway.createPixIntent({
     accountId: apiKeyPrincipal.apiKey.accountId,
-    billingRecordId:
-      typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined,
+    billingRecordId,
     amount: body.amount,
     description: String(body.description),
     expirationMinutes:
@@ -135,6 +161,7 @@ async function handlePixIntentCreate(
       status: intent.status,
       qrCodePayload: intent.qrCodePayload,
       qrCodeBase64: intent.qrCodeBase64,
+      providerTransactionId: intent.providerTransactionId,
       expiresAt: intent.expiresAt,
       createdAt: intent.createdAt
     }
@@ -190,8 +217,9 @@ async function handleCardIntentCreate(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
+    audit,
+    billing
+  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'billing'>
 ): Promise<boolean> {
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
 
@@ -227,13 +255,27 @@ async function handleCardIntentCreate(
     throw new ValidationError('last4 must be a 4-digit string');
   }
 
+  const billingRecordId =
+    typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined;
+  if (billingRecordId) {
+    const record = billing.getOrThrow(billingRecordId as never);
+    if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
+      throw new ValidationError('billingRecordId does not belong to the API key account');
+    }
+    if (record.currency !== 'BRL' || record.subtotalAmount !== body.amount) {
+      throw new ValidationError('amount must match the billing record balance');
+    }
+    if (record.status === 'settled') {
+      throw new ValidationError('billing record is already settled');
+    }
+  }
+
   const installments =
     typeof body.installments === 'number' ? Math.max(1, Math.floor(body.installments)) : 1;
 
   const intent = await paymentGateway.createCardIntent({
     accountId: apiKeyPrincipal.apiKey.accountId,
-    billingRecordId:
-      typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined,
+    billingRecordId,
     amount: body.amount,
     description: String(body.description),
     cardHolderName: String(body.cardHolderName),
@@ -362,11 +404,50 @@ async function handleCardIntentCapture(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
+    audit,
+    cardTransactions,
+    billing
+  }: Pick<
+    PaymentsHandlers,
+    'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'cardTransactions' | 'billing'
+  >
 ): Promise<boolean> {
   const intentId = pathname.split('/')[4];
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
+
+  const gatewayIntent = await paymentGateway.findCardIntent(
+    apiKeyPrincipal.apiKey.accountId,
+    intentId
+  );
+  const persistedTransaction = gatewayIntent
+    ? null
+    : await cardTransactions.findByTransactionId(intentId);
+  if (
+    (!gatewayIntent && !persistedTransaction) ||
+    (persistedTransaction && persistedTransaction.accountId !== apiKeyPrincipal.apiKey.accountId)
+  ) {
+    response.statusCode = 404;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+    return true;
+  }
+
+  const billingRecordId = gatewayIntent?.billingRecordId ?? persistedTransaction?.billingRecordId;
+  if (billingRecordId) {
+    const record = billing.getOrThrow(billingRecordId as never);
+    if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
+      response.statusCode = 404;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+      return true;
+    }
+    if (record.status === 'settled') {
+      response.statusCode = 409;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ code: 'PAYMENT_ALREADY_SETTLED', message: 'Payment already settled' }));
+      return true;
+    }
+  }
 
   if (!paymentGateway.captureCardIntent) {
     response.statusCode = 501;
@@ -552,11 +633,25 @@ async function handlePixIntentConfirm(
     return true;
   }
 
-  const confirmResult = paymentGateway.confirmPayment(intentId);
+  const confirmResult = await paymentGateway.confirmPayment(intentId);
   if (!confirmResult) {
     response.statusCode = 404;
     response.setHeader('content-type', 'application/json');
     response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+    return true;
+  }
+  if (confirmResult.accountId !== apiKeyPrincipal.apiKey.accountId) {
+    response.statusCode = 404;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+    return true;
+  }
+  if (confirmResult.status !== 'completed' || !confirmResult.completedAt) {
+    response.statusCode = 409;
+    response.setHeader('content-type', 'application/json');
+    response.end(
+      JSON.stringify({ code: 'PAYMENT_NOT_COMPLETED', message: 'Payment is not completed' })
+    );
     return true;
   }
 

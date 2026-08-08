@@ -20,7 +20,8 @@ const files = {
   caddy: read('infra/docker/Caddyfile.v2'),
   deployDoc: read('docs/130-instalacao-publicacao-cvg-his-v2-real.md'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
-  policy: read('docs/470-politica-migracao-e-deploy.md')
+  policy: read('docs/2026-08-07-politica-migracao-e-deploy-cvg-his-v4.md') ??
+    read('docs/470-politica-migracao-e-deploy.md')
 };
 
 const requiredBuildCommand =

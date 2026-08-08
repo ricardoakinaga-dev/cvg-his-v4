@@ -106,8 +106,8 @@ export class RedisRateLimiterStore implements RateLimiterStore {
       } finally {
         await client.quit();
       }
-    } catch {
-      return undefined;
+    } catch (error) {
+      throw new Error('Redis rate limiter unavailable', { cause: error as Error });
     }
   }
 
@@ -127,8 +127,8 @@ export class RedisRateLimiterStore implements RateLimiterStore {
       } finally {
         await client.quit();
       }
-    } catch {
-      // Redis write failure is swallowed — caller falls back to in-memory
+    } catch (error) {
+      throw new Error('Redis rate limiter unavailable', { cause: error as Error });
     }
   }
 
@@ -142,8 +142,8 @@ export class RedisRateLimiterStore implements RateLimiterStore {
       } finally {
         await client.quit();
       }
-    } catch {
-      // swallow
+    } catch (error) {
+      throw new Error('Redis rate limiter unavailable', { cause: error as Error });
     }
   }
 
@@ -164,8 +164,8 @@ export class RedisRateLimiterStore implements RateLimiterStore {
       } finally {
         await client.quit();
       }
-    } catch {
-      // swallow
+    } catch (error) {
+      throw new Error('Redis rate limiter unavailable', { cause: error as Error });
     }
   }
 }
@@ -233,10 +233,7 @@ export class RateLimiter {
     const tenantPart = key.tenantId ? `t:${key.tenantId}` : undefined;
     const routePart = `r:${key.route}`;
 
-    if (userPart) return buildKey(userPart, routePart);
-    if (accountPart) return buildKey(accountPart, routePart);
-    if (ipPart) return buildKey(ipPart, routePart);
-    return buildKey(tenantPart, routePart);
+    return buildKey(userPart, accountPart, ipPart, tenantPart, routePart);
   }
 
   private createBlockedInfo(entry: { count: number; resetAt: number }, now: number): RateLimitInfo {

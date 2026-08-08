@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { index, integer, numeric, pgTable, text, timestamp, uuid, boolean, pgEnum } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';

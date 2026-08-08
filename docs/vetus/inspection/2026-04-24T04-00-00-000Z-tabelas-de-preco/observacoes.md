@@ -10,8 +10,8 @@ Segundo relatório da nova trilha de gaps prioritários:
 
 - screenshot da rota beta `/tabelas-de-preco`
 - artefato estrutural em `docs/vetus/inspection/2026-04-23T22-00-01-706Z/artifacts.json`
-- [2026-04-23-relatorio-entidade-servico.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-servico.md:152)
-- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:531)
+- [2026-04-23-relatorio-entidade-servico.md](../../guides/2026-04-23-relatorio-entidade-servico.md)
+- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
 
 ## Achados principais
 

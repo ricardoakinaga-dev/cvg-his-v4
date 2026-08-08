@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import {
   EncounterFinancialService,
@@ -7,10 +8,130 @@ import {
   FinancialPayablesService,
   InMemoryEncounterFinancialRepository,
   InMemoryFinancialPayablesRepository,
+  FinancialLedgerService,
+  InMemoryFinancialLedgerRepository,
   type EncounterFinancialAccountRecord,
   type EncounterReceivablePaymentRecord,
   type EncounterReceivableRecord
 } from './index.js';
+
+test('FinancialLedgerService validates, normalizes, persists and deduplicates balanced entries', async () => {
+  const repository = new InMemoryFinancialLedgerRepository();
+  const service = new FinancialLedgerService(repository);
+
+  const entry = await service.postEntry({
+    accountId: 'acc_cvg_demo' as never,
+    sourceType: 'receivable_payment',
+    sourceId: 'payment_1',
+    description: '  Recebimento de consulta  ',
+    occurredAt: '2026-04-13T10:00:00.000Z',
+    lines: [
+      { accountCode: '1.1.1', debit: 100.004, credit: 0, memo: ' Caixa ' },
+      { accountCode: '4.1.1', debit: 0, credit: 100.004 }
+    ]
+  });
+
+  assert.equal(entry.description, 'Recebimento de consulta');
+  assert.equal(entry.lines[0]?.debit, 100);
+  assert.equal(entry.lines[0]?.memo, 'Caixa');
+  assert.equal(entry.lines[1]?.credit, 100);
+
+  const replay = await service.postEntry({
+    accountId: 'acc_cvg_demo' as never,
+    sourceType: 'receivable_payment',
+    sourceId: 'payment_1',
+    description: 'Replay idempotente',
+    lines: [
+      { accountCode: '1.1.1', debit: 100, credit: 0 },
+      { accountCode: '4.1.1', debit: 0, credit: 100 }
+    ]
+  });
+  assert.equal(replay.id, entry.id);
+  assert.equal(await service.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'payment_1') !== null, true);
+  assert.equal((await service.listByAccount('acc_cvg_demo' as never, '2026-04-01', '2026-04-30')).length, 1);
+  assert.equal((await service.listByAccount('acc_other' as never)).length, 0);
+
+  const generated = await repository.postEntry({
+    ...entry,
+    id: undefined as never,
+    sourceId: 'payment_2'
+  });
+  assert.ok(generated.id);
+  assert.equal(await repository.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'missing'), null);
+});
+
+test('FinancialLedgerService uses the repository transaction when available', async () => {
+  const calls: string[] = [];
+  class TransactionalLedgerRepository extends InMemoryFinancialLedgerRepository {
+    async withTransaction<T>(accountId: never, operation: () => Promise<T>): Promise<T> {
+      calls.push(String(accountId));
+      return operation();
+    }
+  }
+  const service = new FinancialLedgerService(new TransactionalLedgerRepository());
+
+  await service.postEntry({
+    accountId: 'acc_tx' as never,
+    sourceType: 'expense',
+    sourceId: 'expense_1',
+    description: 'Despesa',
+    lines: [
+      { accountCode: '5.1', debit: 50, credit: 0 },
+      { accountCode: '2.1', debit: 0, credit: 50 }
+    ]
+  });
+
+  assert.deepEqual(calls, ['acc_tx']);
+});
+
+test('FinancialLedgerService rejects malformed journal entries', async () => {
+  const service = new FinancialLedgerService(new InMemoryFinancialLedgerRepository());
+  const balancedLines = [
+    { accountCode: '1.1', debit: 10, credit: 0 },
+    { accountCode: '4.1', debit: 0, credit: 10 }
+  ];
+
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [] }),
+    /at least two lines/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
+      { accountCode: '1.1', debit: -1, credit: 0 },
+      { accountCode: '4.1', debit: 0, credit: 1 }
+    ] }),
+    /finite and non-negative/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
+      { accountCode: '1.1', debit: 1, credit: 1 },
+      { accountCode: '4.1', debit: 0, credit: 2 }
+    ] }),
+    /either debit or credit/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
+      { accountCode: '1.1', debit: 0, credit: 0 },
+      { accountCode: '4.1', debit: 0, credit: 1 }
+    ] }),
+    /either debit or credit/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
+      { accountCode: '1.1', debit: 10, credit: 0 },
+      { accountCode: '4.1', debit: 0, credit: 9 }
+    ] }),
+    /must balance/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', occurredAt: 'not-a-date', lines: balancedLines }),
+    /valid ISO date/
+  );
+  await assert.rejects(
+    () => service.postEntry({ accountId: ' ' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: balancedLines }),
+    /accountId/
+  );
+});
 
 function createFinancialService(
   repository = new InMemoryEncounterFinancialRepository(),
@@ -343,6 +464,63 @@ test('EncounterFinancialService lists receivables with pagination and search', a
   assert.equal(firstPage.openCount, 2);
   assert.equal(firstPage.totalOutstanding, 190);
   assert.match(firstPage.data[0]!.ownerName, /Maria/);
+});
+
+test('EncounterFinancialService omits orphaned receivables instead of failing the worklist', async () => {
+  const repository = new InMemoryEncounterFinancialRepository();
+  await repository.upsertFinancialAccount({
+    id: 'efa_orphan',
+    accountId: 'acc_cvg_demo' as never,
+    encounterId: 'enc_missing' as never,
+    financialStatus: 'pending',
+    subtotalSnapshot: 100,
+    discountTotalSnapshot: 0,
+    totalSnapshot: 100,
+    paidAmount: 0,
+    balanceDue: 100,
+    closedByUserId: null,
+    closedAt: null,
+    notes: null,
+    snapshotJson: '{}',
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  });
+  await repository.replaceReceivables('efa_orphan', [
+    {
+      id: 'er_orphan',
+      accountId: 'acc_cvg_demo' as never,
+      encounterId: 'enc_missing' as never,
+      financialAccountId: 'efa_orphan',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela 1/1',
+      dueAt: null,
+      status: 'open',
+      amountOriginal: 100,
+      amountPaid: 0,
+      amountOutstanding: 100,
+      issuedAt: '2026-04-13T00:00:00.000Z',
+      settledAt: null,
+      notes: null,
+      createdAt: '2026-04-13T00:00:00.000Z',
+      updatedAt: '2026-04-13T00:00:00.000Z'
+    }
+  ]);
+
+  const service = new EncounterFinancialService(
+    {
+      getOrThrow() {
+        throw new NotFoundError('Encounter not found');
+      }
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { repository }
+  );
+
+  const result = await service.listReceivables({ accountId: 'acc_cvg_demo' as never });
+  assert.equal(result.total, 0);
+  assert.deepEqual(result.data, []);
 });
 
 test('EncounterFinancialService records payment by billing record and settles receivables in order', async () => {

@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveProductionReadiness } from './bootstrap.js';
+import {
+  assertProductionDatabaseReadiness,
+  findMissingProductionRepositories,
+  isProductionLikeEnvironment,
+  productionDatabaseRepositoryKeys,
+  resolveProductionReadiness
+} from './bootstrap.js';
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
 import type { RuntimeRepositories } from './runtime.js';
 
@@ -239,6 +245,38 @@ test('resolveProductionReadiness accepts database owner-patient link repository'
   assert.equal(readiness.criticalRepositoriesReady, true);
   assert.equal(readiness.ownerPatientLinkPersistence, 'database');
   assert.deepEqual(readiness.missingCriticalRepositories, []);
+});
+
+test('production database readiness identifies every repository still backed by memory', () => {
+  const repositories = createRuntimeRepositories();
+
+  assert.deepEqual(findMissingProductionRepositories(repositories), [
+    ...productionDatabaseRepositoryKeys.filter((key) => !repositories[key])
+  ]);
+  assert.equal(
+    findMissingProductionRepositories(repositories).includes('session'),
+    false
+  );
+  assert.equal(
+    findMissingProductionRepositories(repositories).includes('billing'),
+    true
+  );
+});
+
+test('production database readiness refuses missing repositories and unit of work', () => {
+  assert.throws(
+    () =>
+      assertProductionDatabaseReadiness({
+        repositories: createRuntimeRepositories()
+      }),
+    /Production database runtime is not ready.*billing.*unitOfWork/s
+  );
+});
+
+test('production-like environment detection includes explicit schema enforcement', () => {
+  assert.equal(isProductionLikeEnvironment({ NODE_ENV: 'test' }), false);
+  assert.equal(isProductionLikeEnvironment({ DATABASE_REQUIRE_SCHEMA: '1' }), true);
+  assert.equal(isProductionLikeEnvironment({ DATABASE_REQUIRE_RLS_ROLE: '1' }), true);
 });
 
 test('createLivenessResponse returns live even before full initialization', () => {

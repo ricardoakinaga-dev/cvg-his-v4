@@ -76,6 +76,12 @@
       <template #cell-itemType="{ row }">
         {{ preventiveItemTypeLabel((row as PreventiveEventSummary).itemType) }}
       </template>
+      <template #cell-protocolCode="{ row }">
+        {{ (row as PreventiveEventSummary).protocolCode || 'Sem protocolo' }}
+      </template>
+      <template #cell-lotNumber="{ row }">
+        {{ (row as PreventiveEventSummary).lotNumber || 'Sem lote' }}
+      </template>
       <template #cell-status="{ row }">
         <StatusBadge
           :label="statusLabel((row as PreventiveEventSummary).status)"
@@ -160,6 +166,12 @@
         </DsInput>
         <DsInput v-model="scheduleForm.eventDate" type="date" label="Data" />
         <DsInput
+          v-model="scheduleForm.protocolCode"
+          label="Protocolo"
+          placeholder="V10, antirrábica..."
+        />
+        <DsInput v-model="scheduleForm.lotNumber" label="Lote" placeholder="Lote do produto" />
+        <DsInput
           v-model="scheduleForm.description"
           class="modal-grid__wide"
           label="Vacina/Vermífugo"
@@ -194,7 +206,11 @@
           label="Observação"
           placeholder="Observação da aplicação"
         />
-        <DsInput v-model="executeForm.rescheduleTo" type="date" label="Reagendar para" />
+        <DsInput
+          v-model="executeForm.rescheduleTo"
+          type="date"
+          label="Reagendar para / próxima dose"
+        />
       </div>
       <template #footer>
         <DsButton variant="secondary" @click="closeExecuteModal">Cancelar</DsButton>
@@ -254,6 +270,8 @@ const columns: DataTableColumn[] = [
   { key: 'animalName', label: 'Animal' },
   { key: 'eventDate', label: 'Data' },
   { key: 'itemType', label: 'Tipo' },
+  { key: 'protocolCode', label: 'Protocolo' },
+  { key: 'lotNumber', label: 'Lote' },
   { key: 'description', label: 'Descrição' },
   { key: 'status', label: 'Status' },
   { key: 'scheduleStatus', label: 'Agenda' },
@@ -291,8 +309,10 @@ const scheduleForm = ref({
   clientName: '',
   animalName: queryParam('animal') || 'Não Definido',
   itemType: 'vaccine' as PreventiveItemType,
+  protocolCode: '',
+  lotNumber: '',
   description: '',
-  eventDate: new Date().toISOString().slice(0, 10),
+  eventDate: toLocalDateInputValue(new Date()),
   observation: ''
 });
 const executeForm = ref({
@@ -353,6 +373,8 @@ function openScheduleModal(event?: PreventiveEventSummary) {
         clientName: event.clientName,
         animalName: event.animalName,
         itemType: event.itemType,
+        protocolCode: event.protocolCode ?? '',
+        lotNumber: event.lotNumber ?? '',
         description: event.description,
         eventDate: event.eventDate,
         observation: event.observation ?? ''
@@ -361,8 +383,10 @@ function openScheduleModal(event?: PreventiveEventSummary) {
         clientName: '',
         animalName: queryParam('animal') || 'Não Definido',
         itemType: 'vaccine',
+        protocolCode: '',
+        lotNumber: '',
         description: '',
-        eventDate: new Date().toISOString().slice(0, 10),
+        eventDate: toLocalDateInputValue(new Date()),
         observation: ''
       };
   scheduleModalOpen.value = true;
@@ -384,6 +408,8 @@ async function saveSchedule() {
     patientId: selectedEvent.value?.patientId ?? (appliedFilters.value.patientId || null),
     ownerId: selectedEvent.value?.ownerId ?? (appliedFilters.value.ownerId || null),
     itemType: scheduleForm.value.itemType,
+    protocolCode: scheduleForm.value.protocolCode.trim() || null,
+    lotNumber: scheduleForm.value.lotNumber.trim() || null,
     description: scheduleForm.value.description.trim(),
     eventDate: scheduleForm.value.eventDate,
     observation: scheduleForm.value.observation.trim() || null
@@ -505,10 +531,21 @@ function statusLabel(status: PreventiveStatus): string {
   return status === 'executed' ? 'Executada' : 'Agendada';
 }
 
+function toLocalDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function scheduleStatus(event: PreventiveEventSummary): { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' } {
   if (event.status === 'executed') {
     return {
-      label: event.executedAt ? `Executada em ${formatDate(event.executedAt.slice(0, 10))}` : 'Executada',
+      label: event.nextDoseDate
+        ? `Executada · próxima ${formatDate(event.nextDoseDate)}`
+        : event.executedAt
+          ? `Executada em ${formatDate(event.executedAt.slice(0, 10))}`
+          : 'Executada',
       tone: 'success'
     };
   }

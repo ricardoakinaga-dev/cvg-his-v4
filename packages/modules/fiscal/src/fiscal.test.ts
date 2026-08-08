@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
+import type { AccountId } from '@cvg-his-v2/shared-types';
+
+import type {
+  DatabaseFiscalRepository,
+  PersistedNfseDocument
+} from './database-fiscal.repository.js';
 import { FiscalService } from './service.js';
 
 test('FiscalService returns searchable CFOP data from the backend catalog', async () => {
@@ -462,4 +468,67 @@ test('FiscalService cria e altera ciclo documental NFS-e', async () => {
   const single = await service.getNfseDocument(created.id);
   assert.equal(single?.status, 'cancelled');
   assert.equal(single?.authorizationCode, issued?.authorizationCode);
+});
+
+test('FiscalService persists the NFS-e lifecycle through the tenant repository', async () => {
+  const accountId = 'account-nfse-test' as AccountId;
+  const documents: PersistedNfseDocument[] = [];
+  const repository = {
+    listNfseDocuments: async (filters: { status?: PersistedNfseDocument['status']; customerSearch?: string }) =>
+      documents
+        .filter((document) => !filters.status || document.status === filters.status)
+        .filter((document) => !filters.customerSearch || document.customer.name.includes(filters.customerSearch))
+        .map((document) => ({ ...document })),
+    findNfseDocument: async (_account: AccountId, id: string) =>
+      documents.find((document) => document.id === id) ?? null,
+    createNfseDocument: async (_account: AccountId, document: PersistedNfseDocument) => {
+      documents.unshift({ ...document });
+      return { ...document };
+    },
+    updateNfseDocument: async (_account: AccountId, document: PersistedNfseDocument) => {
+      const index = documents.findIndex((current) => current.id === document.id);
+      if (index === -1) return null;
+      documents[index] = { ...document };
+      return { ...document };
+    }
+  } as unknown as DatabaseFiscalRepository;
+
+  const createDocument = async (service: FiscalService) => service.createNfseDocument({
+    numero: 9021,
+    provider: 'abrasf',
+    customer: {
+      type: 'cnpj',
+      document: '12.345.678/0001-90',
+      name: 'Tenant Persistente'
+    },
+    services: [{
+      description: 'Consulta veterinária',
+      codigoServico: '0407',
+      cnae: '7500-1/00',
+      quantity: 1,
+      unitValue: 180,
+      totalValue: 180,
+      issRate: 0.05,
+      issValue: 9,
+      pisValue: 0,
+      cofinsValue: 0,
+      csllValue: 0,
+      irrfValue: 0,
+      inssValue: 0
+    }]
+  });
+
+  const firstService = new FiscalService(repository, accountId);
+  const created = await createDocument(firstService);
+  assert.equal(documents.length, 1);
+  assert.equal((await firstService.listNfseDocuments({ status: 'draft' }))[0]?.id, created.id);
+
+  const secondService = new FiscalService(repository, accountId);
+  const issued = await secondService.issueNfseDocument(created.id);
+  assert.equal(issued?.status, 'issued');
+  assert.equal((await secondService.getNfseDocument(created.id))?.status, 'issued');
+
+  const cancelled = await secondService.cancelNfseDocument(created.id, { reason: 'cancelamento de teste' });
+  assert.equal(cancelled?.status, 'cancelled');
+  assert.equal((await new FiscalService(repository, accountId).getNfseDocument(created.id))?.status, 'cancelled');
 });

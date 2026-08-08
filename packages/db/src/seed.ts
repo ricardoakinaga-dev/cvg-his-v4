@@ -18,6 +18,22 @@ const DEFAULT_TENANT_SLUG = 'default';
 const DEFAULT_ACCOUNT_SLUG = 'default';
 const DEFAULT_UNIT_CODE = 'hq';
 
+type AccountUnitSeedOptions = {
+  readonly tenantSlug: string;
+  readonly tenantName: string;
+  readonly accountSlug: string;
+  readonly accountName: string;
+  readonly unitCode: string;
+  readonly unitName: string;
+};
+
+type SeedAdminCredentials = {
+  readonly email: string;
+  readonly password: string;
+  readonly username?: string;
+  readonly fullName?: string;
+};
+
 // Role seeds now use AccessControlService codes (not @cvg-his/rbac codes)
 // This eliminates the dual RBAC divergence between seed and enforcement
 const roleSeeds = [
@@ -77,6 +93,39 @@ const permissionSeeds = [
   { key: 'billing.manage', description: 'Permite criar e gerenciar itens de cobranca.' },
   { key: 'inventory.read', description: 'Permite leitura de itens de estoque.' },
   { key: 'inventory.manage', description: 'Permite registrar consumo de estoque.' },
+  { key: 'prescriptions.read', description: 'Permite leitura de prescricoes clinicas.' },
+  { key: 'prescriptions.write', description: 'Permite criar e alterar prescricoes clinicas.' },
+  {
+    key: 'prescription-executions.read',
+    description: 'Permite leitura da execucao de prescricoes.'
+  },
+  {
+    key: 'prescription-executions.manage',
+    description: 'Permite gerenciar a execucao de prescricoes.'
+  },
+  { key: 'discharges.read', description: 'Permite leitura de altas clinicas.' },
+  { key: 'discharges.manage', description: 'Permite gerenciar altas clinicas.' },
+  { key: 'fiscal.read', description: 'Permite leitura de configuracoes fiscais.' },
+  { key: 'fiscal.manage', description: 'Permite gerenciar configuracoes fiscais.' },
+  { key: 'product.read', description: 'Permite leitura do cadastro de produtos.' },
+  { key: 'product.write', description: 'Permite gerenciar o cadastro de produtos.' },
+  {
+    key: 'service.read',
+    description: 'Permite leitura dos cadastros auxiliares e servicos.'
+  },
+  {
+    key: 'service.write',
+    description: 'Permite gerenciar cadastros auxiliares e servicos.'
+  },
+  { key: 'counter_sale.read', description: 'Permite leitura de vendas de balcao.' },
+  { key: 'counter_sale.write', description: 'Permite gerenciar vendas de balcao.' },
+  { key: 'quote.read', description: 'Permite leitura de orcamentos.' },
+  { key: 'quote.write', description: 'Permite gerenciar orcamentos.' },
+  { key: 'webhooks.read', description: 'Permite leitura de webhooks.' },
+  { key: 'webhooks.manage', description: 'Permite gerenciar webhooks.' },
+  { key: 'integrations.read', description: 'Permite leitura de integracoes.' },
+  { key: 'integrations.manage', description: 'Permite gerenciar integracoes.' },
+  { key: 'api_keys.manage', description: 'Permite gerenciar chaves de API.' },
   { key: 'notifications.read', description: 'Permite leitura de notificacoes operacionais.' },
   { key: 'notifications.manage', description: 'Permite criar e processar notificacoes.' }
 ];
@@ -192,64 +241,77 @@ function hashPassword(rawPassword: string): string {
   return createHash('sha256').update(rawPassword).digest('hex');
 }
 
-async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitId: string }> {
+async function ensureAccountAndUnit(
+  options: AccountUnitSeedOptions
+): Promise<{ accountId: string; unitId: string }> {
   await db
     .insert(tenants)
     .values({
-      slug: DEFAULT_TENANT_SLUG,
-      name: 'Tenant padrao'
+      slug: options.tenantSlug,
+      name: options.tenantName
     })
     .onConflictDoNothing({ target: tenants.slug });
 
   const [tenant] = await db
     .select({ id: tenants.id })
     .from(tenants)
-    .where(eq(tenants.slug, DEFAULT_TENANT_SLUG))
+    .where(eq(tenants.slug, options.tenantSlug))
     .limit(1);
 
   if (!tenant) {
-    throw new Error('Failed to ensure default tenant');
+    throw new Error(`Failed to ensure tenant ${options.tenantSlug}`);
   }
 
   await db
     .insert(accounts)
     .values({
       tenantId: tenant.id,
-      slug: DEFAULT_ACCOUNT_SLUG,
-      name: 'Conta padrao'
+      slug: options.accountSlug,
+      name: options.accountName
     })
     .onConflictDoNothing({ target: accounts.slug });
 
   const [account] = await db
     .select({ id: accounts.id })
     .from(accounts)
-    .where(eq(accounts.slug, DEFAULT_ACCOUNT_SLUG))
+    .where(eq(accounts.slug, options.accountSlug))
     .limit(1);
 
   if (!account) {
-    throw new Error('Failed to ensure default account');
+    throw new Error(`Failed to ensure account ${options.accountSlug}`);
   }
 
   await db
     .insert(units)
     .values({
       accountId: account.id,
-      code: DEFAULT_UNIT_CODE,
-      name: 'Unidade Central'
+      code: options.unitCode,
+      name: options.unitName
     })
     .onConflictDoNothing({ target: [units.accountId, units.code] });
 
   const [unit] = await db
     .select({ id: units.id })
     .from(units)
-    .where(and(eq(units.accountId, account.id), eq(units.code, DEFAULT_UNIT_CODE)))
+    .where(and(eq(units.accountId, account.id), eq(units.code, options.unitCode)))
     .limit(1);
 
   if (!unit) {
-    throw new Error('Failed to ensure default unit');
+    throw new Error(`Failed to ensure unit ${options.unitCode} for account ${options.accountSlug}`);
   }
 
   return { accountId: account.id, unitId: unit.id };
+}
+
+async function ensureDefaultAccountAndUnit(): Promise<{ accountId: string; unitId: string }> {
+  return ensureAccountAndUnit({
+    tenantSlug: DEFAULT_TENANT_SLUG,
+    tenantName: 'Tenant padrao',
+    accountSlug: DEFAULT_ACCOUNT_SLUG,
+    accountName: 'Conta padrao',
+    unitCode: DEFAULT_UNIT_CODE,
+    unitName: 'Unidade Central'
+  });
 }
 
 async function seedPermissionsAndRoles(): Promise<void> {
@@ -317,9 +379,13 @@ async function seedPermissionsAndRoles(): Promise<void> {
   }
 }
 
-async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+async function seedAdminUser(
+  accountId: string,
+  unitId: string,
+  credentials?: SeedAdminCredentials
+): Promise<void> {
+  const adminEmail = credentials?.email ?? process.env.ADMIN_EMAIL;
+  const adminPassword = credentials?.password ?? process.env.ADMIN_PASSWORD;
 
   if (!adminEmail || !adminPassword) {
     console.info('ADMIN_EMAIL/ADMIN_PASSWORD nao definidos. Seed de usuario admin foi pulado.');
@@ -331,9 +397,11 @@ async function seedAdminUser(accountId: string, unitId: string): Promise<void> {
     .values({
       accountId,
       unitId,
+      username:
+        credentials?.username?.trim() || process.env.ADMIN_USERNAME?.trim() || adminEmail.split('@')[0]!,
       email: adminEmail,
       passwordHash: hashPassword(adminPassword),
-      fullName: 'Administrador Seed'
+      fullName: credentials?.fullName ?? 'Administrador Seed'
     })
     .onConflictDoNothing({ target: [users.accountId, users.email] });
 
@@ -368,6 +436,30 @@ async function runSeed(): Promise<void> {
     const { accountId, unitId } = await ensureDefaultAccountAndUnit();
     await seedPermissionsAndRoles();
     await seedAdminUser(accountId, unitId);
+
+    const secondAdminEmail = process.env.SECOND_ADMIN_EMAIL?.trim();
+    const secondAdminPassword = process.env.SECOND_ADMIN_PASSWORD;
+    if (secondAdminEmail && secondAdminPassword) {
+      const secondTenantSlug = process.env.SECOND_TENANT_SLUG?.trim() || 'e2e-secondary';
+      const secondAccountSlug = process.env.SECOND_ACCOUNT_SLUG?.trim() || secondTenantSlug;
+      const secondUnitCode = process.env.SECOND_UNIT_CODE?.trim() || DEFAULT_UNIT_CODE;
+      const second = await ensureAccountAndUnit({
+        tenantSlug: secondTenantSlug,
+        tenantName: 'Tenant secundario E2E',
+        accountSlug: secondAccountSlug,
+        accountName: 'Conta secundaria E2E',
+        unitCode: secondUnitCode,
+        unitName: 'Unidade Secundaria E2E'
+      });
+      await seedAdminUser(second.accountId, second.unitId, {
+        email: secondAdminEmail,
+        password: secondAdminPassword,
+        username: process.env.SECOND_ADMIN_USERNAME?.trim() || secondAdminEmail.split('@')[0]!,
+        fullName: 'Administrador Tenant B'
+      });
+      console.info(`Seed secundario concluido para tenant ${secondTenantSlug}.`);
+    }
+
     console.info('Seed concluido com sucesso.');
   } finally {
     await closeDbConnection();

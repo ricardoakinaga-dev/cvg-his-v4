@@ -10,15 +10,15 @@ Escopo:
 
 Evidências principais:
 
-- [pacotes-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-lista.png)
-- [pacotes-lista.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-lista.json)
-- [pacotes-detalhe.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-detalhe.png)
-- [pacotes-detalhe.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-detalhe.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/network.json)
-- [2026-04-23-relatorio-entidade-agenda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-agenda.md)
-- [2026-04-23-relatorio-entidade-comanda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-comanda.md)
-- [2026-04-23-relatorio-entidade-vendas.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-vendas.md)
-- [2026-04-23-relatorio-entidade-financeiro.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-financeiro.md)
+- [pacotes-lista.png](../inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-lista.png)
+- [pacotes-lista.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-lista.json)
+- [pacotes-detalhe.png](../inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-detalhe.png)
+- [pacotes-detalhe.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-detalhe.json)
+- [network.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/network.json)
+- [2026-04-23-relatorio-entidade-agenda.md](../guides/2026-04-23-relatorio-entidade-agenda.md)
+- [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
+- [2026-04-23-relatorio-entidade-vendas.md](../guides/2026-04-23-relatorio-entidade-vendas.md)
+- [2026-04-23-relatorio-entidade-financeiro.md](../guides/2026-04-23-relatorio-entidade-financeiro.md)
 
 Nota de segurança:
 

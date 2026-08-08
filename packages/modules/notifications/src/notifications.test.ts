@@ -39,7 +39,7 @@ test('NotificationsService: processPending moves notifications to sent', async (
   const queued = notifications.list('queued');
   assert.equal(queued.length, 2);
 
-  const processed = notifications.processPending({ limit: 10 });
+  const processed = await notifications.processPending({ limit: 10 });
   assert.equal(processed.length, 2);
 
   const sent = notifications.list('sent');
@@ -61,7 +61,7 @@ test('NotificationsService: processPending respects limit', async () => {
     });
   }
 
-  const processed = notifications.processPending({ limit: 2 });
+  const processed = await notifications.processPending({ limit: 2 });
   assert.equal(processed.length, 2);
 
   const remaining = notifications.list('queued');
@@ -85,7 +85,7 @@ test('NotificationsService: list filters by status', async () => {
     message: 'Test'
   });
 
-  notifications.processPending({ limit: 1 });
+  await notifications.processPending({ limit: 1 });
 
   const queued = notifications.list('queued');
   const sent = notifications.list('sent');
@@ -104,7 +104,7 @@ test('NotificationsService: listJobs returns job entries', async () => {
     message: 'Test message'
   });
 
-  notifications.processPending({ limit: 1 });
+  await notifications.processPending({ limit: 1 });
 
   const jobs = notifications.listJobs();
   assert.ok(jobs.length >= 1);
@@ -232,7 +232,7 @@ test('NotificationsService: processPending fires onNotificationSent callback', a
     message: 'Should trigger callback'
   });
 
-  const processed = notifications.processPending({ limit: 10 });
+  const processed = await notifications.processPending({ limit: 10 });
   assert.equal(processed.length, 1);
   assert.equal(processed[0].status, 'sent');
   assert.ok(callbackInvocation !== null);

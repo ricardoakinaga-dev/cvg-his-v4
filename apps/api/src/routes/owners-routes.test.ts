@@ -6,7 +6,7 @@ import { AbacEngine } from '@cvg-his-v2/module-access-control';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
@@ -375,4 +375,45 @@ test('handleOwnersRoutes GET /owners/:id/summary returns linked patients and enc
   ]);
   assert.equal(payload.stats.totalPatients, 1);
   assert.equal(payload.stats.totalEncounters, 1);
+});
+
+test('handleOwnersRoutes hides owners from another account', async () => {
+  const owners = new OwnersService();
+  const foreignOwner = owners.create('acc_other' as never, {
+    fullName: 'Foreign Owner',
+    contacts: [{ type: 'phone', label: 'Principal', value: '+5511999999999', primary: true }],
+    financialResponsible: true
+  });
+  const routeHandlers = {
+    owners,
+    audit: { write: () => {} } as never,
+    requirePrincipal: () => createPrincipal()
+  };
+
+  const listResponse = new MockResponse();
+  await handleOwnersRoutes(
+    '/owners',
+    new MockRequest({ method: 'GET', url: '/owners' }) as never,
+    listResponse as never,
+    'corr-owners-tenant-list',
+    routeHandlers
+  );
+  assert.equal(
+    listResponse.bodyJson<{ items: Array<{ id: string }> }>().items.some(
+      (owner) => owner.id === foreignOwner.id
+    ),
+    false
+  );
+
+  await assert.rejects(
+    () =>
+      handleOwnersRoutes(
+        `/owners/${foreignOwner.id}`,
+        new MockRequest({ method: 'GET', url: `/owners/${foreignOwner.id}` }) as never,
+        new MockResponse() as never,
+        'corr-owners-tenant-read',
+        routeHandlers
+      ),
+    NotFoundError
+  );
 });

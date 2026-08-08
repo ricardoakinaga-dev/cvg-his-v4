@@ -4,6 +4,7 @@ export type CommissionRuleScope = 'global' | 'department' | 'job_title' | 'staff
 export type CommissionItemKind = 'service' | 'product' | 'procedure' | 'exam' | 'other';
 export type CommissionCalculationStatus = 'draft' | 'reviewed' | 'paid' | 'cancelled';
 export type CommissionSourceType = 'billing_item' | 'counter_sale_item' | 'package_consumption' | 'manual';
+export type CommissionPaymentMethod = 'cash' | 'bank_transfer' | 'pix' | 'card' | 'cheque' | 'other';
 
 export interface CommissionRuleSummary {
   readonly id: string;
@@ -67,6 +68,7 @@ export interface CommissionCalculationDetail {
   readonly reviewedByUserId: string | null;
   readonly paidByUserId: string | null;
   readonly cancelledByUserId: string | null;
+  readonly payableId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly reviewedAt: string | null;
@@ -123,9 +125,13 @@ export const commissionService = {
     });
   },
 
-  async pay(calculationId: string): Promise<CommissionCalculationDetail> {
+  async pay(
+    calculationId: string,
+    payload: { readonly paymentMethod: CommissionPaymentMethod; readonly paymentReference?: string | null }
+  ): Promise<CommissionCalculationDetail> {
     return apiRequest<CommissionCalculationDetail>(`/commission-calculations/${encodeURIComponent(calculationId)}/pay`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify(payload)
     });
   },
 

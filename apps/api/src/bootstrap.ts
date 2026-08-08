@@ -2,9 +2,12 @@ import {
   createDatabaseClient,
   closeDatabaseClient,
   checkDatabaseHealth,
+  checkDatabaseRuntimeRole,
   getDatabaseClient,
   getPool,
-  type DatabaseClient
+  createTenantUnitOfWork,
+  type DatabaseClient,
+  type TenantUnitOfWork
 } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import {
@@ -20,9 +23,14 @@ import { DatabaseOwnerRepository } from '@cvg-his-v2/module-owners';
 import type { OwnerRepository } from '@cvg-his-v2/module-owners';
 import {
   DatabasePatientRepository,
-  DatabaseOwnerPatientLinkRepository
+  DatabaseOwnerPatientLinkRepository,
+  DatabasePatientMergeRepository
 } from '@cvg-his-v2/module-patients';
-import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/module-patients';
+import type {
+  PatientRepository,
+  OwnerPatientLinkRepository
+} from '@cvg-his-v2/module-patients';
+import { DatabaseLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import {
   DatabaseClinicalHandoffRepository,
   DatabaseEncounterRepository,
@@ -85,13 +93,26 @@ import { DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
 import { DatabasePackageRepository } from '@cvg-his-v2/module-packages';
 import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
 import { DatabaseMarketingRepository } from '@cvg-his-v2/module-marketing';
+import { DatabaseCommercialRepository } from '@cvg-his-v2/module-commercial';
+import { DatabaseCashRepository } from '@cvg-his-v2/module-cash';
+import { DatabaseCounterSalesRepository } from '@cvg-his-v2/module-counter-sales';
+import { DatabaseProductsRepository } from '@cvg-his-v2/module-products';
+import { DatabaseServicesRepository } from '@cvg-his-v2/module-services';
+import { DatabaseQuotesRepository } from '@cvg-his-v2/module-quotes';
 import {
   DatabaseEncounterFinancialRepository,
-  DatabaseFinancialPayablesRepository
+  DatabaseFinancialPayablesRepository,
+  DatabaseFinancialLedgerRepository
 } from '@cvg-his-v2/module-financial';
-import { DatabaseInventoryRepository } from '@cvg-his-v2/module-inventory';
+import {
+  DatabaseInventoryRepository,
+  DatabaseProcurementRepository
+} from '@cvg-his-v2/module-inventory';
 import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
-import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
+import {
+  DatabaseStaffRepository,
+  DatabaseStaffTimeOffRepository
+} from '@cvg-his-v2/module-staff';
 import { DatabaseUsersRepository } from '@cvg-his-v2/module-users';
 import { DatabaseTriageRepository } from '@cvg-his-v2/module-triage';
 import { DatabaseAccessControlRepository } from '@cvg-his-v2/module-access-control';
@@ -113,6 +134,10 @@ import type {
   WebhookId,
   WebhookSummary
 } from '@cvg-his-v2/shared-types';
+import {
+  DatabaseAgendaConfigRepository
+} from './repositories/database-agenda-config.repository.js';
+import { InMemoryAgendaConfigRepository } from './repositories/agenda-config-repository.js';
 import type {
   OwnerId,
   OwnerSummary,
@@ -157,6 +182,7 @@ export interface BootstrapResult {
   repositoriesUseDatabase: boolean;
   repositories: RuntimeRepositories;
   fileStorage: FileStorage;
+  unitOfWork?: TenantUnitOfWork;
 }
 
 const logger = createLogger('bootstrap');
@@ -211,6 +237,20 @@ async function databaseTableExists(tableName: string): Promise<boolean> {
   return result.rows[0]?.exists === true;
 }
 
+async function databaseTableHasColumns(
+  tableName: string,
+  requiredColumns: readonly string[]
+): Promise<boolean> {
+  const result = await getPool().query<{ column_name: string }>(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  const availableColumns = new Set(result.rows.map((row) => row.column_name));
+  return requiredColumns.every((column) => availableColumns.has(column));
+}
+
 export interface DependencyCheckResult {
   name: string;
   healthy: boolean;
@@ -260,6 +300,105 @@ export interface ProductionReadinessStatus {
   criticalRepositoriesReady: boolean;
   missingCriticalRepositories: readonly string[];
   ownerPatientLinkPersistence: OwnerPatientLinkPersistence;
+}
+
+/**
+ * Repositories that must never be replaced by an in-memory Map when the API
+ * is running against PostgreSQL in a production-like environment.
+ *
+ * The list is intentionally explicit: adding a repository-backed service
+ * without adding it here would make the bootstrap contract silently weaker.
+ */
+export const productionDatabaseRepositoryKeys = [
+  'session',
+  'audit',
+  'owner',
+  'patient',
+  'ownerPatientLink',
+  'encounter',
+  'encounterTimeline',
+  'clinicalHandoff',
+  'medicalRecord',
+  'clinicalEntry',
+  'clinicalTimeline',
+  'entryRevision',
+  'attachment',
+  'notification',
+  'inpatientStay',
+  'inpatientProgress',
+  'inpatientOccurrence',
+  'inpatientDailyCharge',
+  'surgeryCase',
+  'diagnosticOrder',
+  'laboratoryCatalog',
+  'discharge',
+  'prescriptionExecution',
+  'administrationEvent',
+  'prescription',
+  'billing',
+  'commercial',
+  'commissions',
+  'packages',
+  'reports',
+  'inventory',
+  'procurement',
+  'scheduling',
+  'triage',
+  'users',
+  'accessControl',
+  'products',
+  'services',
+  'counterSales',
+  'quotes',
+  'cash',
+  'staff',
+  'staffTimeOff',
+  'mfa',
+  'consent',
+  'dsr',
+  'marketing',
+  'webhook',
+  'apiKey',
+  'outbox',
+  'encounterFinancial',
+  'financialPayables',
+  'ledger',
+  'pixTransaction'
+] as const satisfies readonly (keyof RuntimeRepositories)[];
+
+export function isProductionLikeEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env
+): boolean {
+  return (
+    environment.NODE_ENV === 'production' ||
+    environment.DATABASE_REQUIRE_RLS_ROLE === '1' ||
+    environment.DATABASE_REQUIRE_SCHEMA === '1'
+  );
+}
+
+export function findMissingProductionRepositories(
+  repositories: RuntimeRepositories
+): readonly string[] {
+  return productionDatabaseRepositoryKeys.filter((repositoryKey) => !repositories[repositoryKey]);
+}
+
+export function assertProductionDatabaseReadiness(options: {
+  repositories: RuntimeRepositories;
+  unitOfWork?: TenantUnitOfWork;
+}): void {
+  const missingRepositories = findMissingProductionRepositories(options.repositories);
+  const missingContracts = [
+    ...(missingRepositories.length > 0
+      ? [`repositories=${missingRepositories.join(',')}`]
+      : []),
+    ...(!options.unitOfWork ? ['unitOfWork'] : [])
+  ];
+
+  if (missingContracts.length > 0) {
+    throw new Error(
+      `Production database runtime is not ready; refusing in-memory fallback (${missingContracts.join('; ')})`
+    );
+  }
 }
 
 export function resolveProductionReadiness(options: {
@@ -374,6 +513,9 @@ class InMemoryPatientRepository {
 class InMemoryOwnerPatientLinkRepository {
   readonly #links = new Map<OwnerPatientLinkId, OwnerPatientLinkSummary>();
   async create(link: OwnerPatientLinkSummary): Promise<void> {
+    this.#links.set(link.id, link);
+  }
+  async update(link: OwnerPatientLinkSummary): Promise<void> {
     this.#links.set(link.id, link);
   }
   async findById(id: OwnerPatientLinkId): Promise<OwnerPatientLinkSummary | null> {
@@ -652,12 +794,16 @@ class InMemoryWebhookRepository {
     this.#webhooks.set(webhook.id, webhook);
   }
 
-  async delete(webhookId: WebhookId): Promise<void> {
-    this.#webhooks.delete(webhookId);
+  async delete(accountId: AccountId, webhookId: WebhookId): Promise<void> {
+    const webhook = this.#webhooks.get(webhookId);
+    if (webhook?.accountId === accountId) {
+      this.#webhooks.delete(webhookId);
+    }
   }
 
-  async findById(id: WebhookId): Promise<WebhookSummary | null> {
-    return this.#webhooks.get(id) ?? null;
+  async findById(accountId: AccountId, id: WebhookId): Promise<WebhookSummary | null> {
+    const webhook = this.#webhooks.get(id);
+    return webhook?.accountId === accountId ? webhook : null;
   }
 
   async findByAccount(accountId: AccountId): Promise<readonly WebhookSummary[]> {
@@ -666,10 +812,7 @@ class InMemoryWebhookRepository {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  async findActiveByEvent(
-    accountId: AccountId,
-    event: string
-  ): Promise<readonly WebhookSummary[]> {
+  async findActiveByEvent(accountId: AccountId, event: string): Promise<readonly WebhookSummary[]> {
     return Array.from(this.#webhooks.values()).filter(
       (webhook) =>
         webhook.accountId === accountId && webhook.isActive && webhook.events.includes(event)
@@ -684,25 +827,29 @@ class InMemoryWebhookRepository {
     this.#deliveries.set(delivery.id, delivery);
   }
 
-  async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
+  async deleteDeliveriesByWebhook(accountId: AccountId, webhookId: WebhookId): Promise<void> {
     for (const [deliveryId, delivery] of this.#deliveries.entries()) {
-      if (delivery.webhookId === webhookId) {
+      if (delivery.accountId === accountId && delivery.webhookId === webhookId) {
         this.#deliveries.delete(deliveryId);
       }
     }
   }
 
   async findDeliveriesByWebhook(
+    accountId: AccountId,
     webhookId: WebhookId
   ): Promise<readonly WebhookDeliverySummary[]> {
     return Array.from(this.#deliveries.values())
-      .filter((delivery) => delivery.webhookId === webhookId)
+      .filter((delivery) => delivery.accountId === accountId && delivery.webhookId === webhookId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  async findPendingDeliveries(limit: number): Promise<readonly WebhookDeliverySummary[]> {
+  async findPendingDeliveries(
+    accountId: AccountId,
+    limit: number
+  ): Promise<readonly WebhookDeliverySummary[]> {
     return Array.from(this.#deliveries.values())
-      .filter((delivery) => delivery.status === 'pending')
+      .filter((delivery) => delivery.accountId === accountId && delivery.status === 'pending')
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
       .slice(0, limit);
   }
@@ -733,7 +880,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     entryRevision: new InMemoryEntryRevisionRepository(),
     attachment: new InMemoryAttachmentRepository(),
     notification: new InMemoryNotificationRepository() as NotificationRepository,
-    webhook: new InMemoryWebhookRepository()
+    webhook: new InMemoryWebhookRepository(),
+    agendaConfig: new InMemoryAgendaConfigRepository()
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
@@ -761,14 +909,26 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     results.databaseDetail = health.detail;
 
     if (health.healthy) {
+      const productionLike = isProductionLikeEnvironment();
+      if (productionLike) {
+        const runtimeRole = await checkDatabaseRuntimeRole();
+        if (!runtimeRole.safe) {
+          throw new Error(`Unsafe PostgreSQL runtime role: ${runtimeRole.detail}`);
+        }
+      }
       logger.info('Database connection established, using real database repositories', {
         detail: health.detail
       });
 
       if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
+        if (productionLike) {
+          throw new Error(
+            'Database runtime repositories cannot be disabled in a production-like environment'
+          );
+        }
         results.databaseDetail =
-          'Database healthy, but runtime remains in-memory because legacy text IDs are incompatible with the canonical UUID schema for E2E/runtime flows';
-        logger.warn('Database runtime repositories disabled by compatibility guard', {
+          'Database healthy, but runtime repositories were explicitly disabled by API_DISABLE_INCOMPATIBLE_DB_REPOS';
+        logger.warn('Database runtime repositories disabled by explicit configuration', {
           detail: results.databaseDetail
         });
         return results;
@@ -776,6 +936,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
 
       // Get the database client and create real repositories
       const db = getDatabaseClient();
+      const deliveryGuaranteesReady =
+        (await databaseTableExists('idempotency_requests')) &&
+        (await databaseTableExists('inbox_events'));
+      if (deliveryGuaranteesReady) {
+        results.unitOfWork = createTenantUnitOfWork(getPool());
+      }
       const ownerPatientLinksReady = await databaseTableExists('owner_patient_links');
       const clinicalEntriesReady = await databaseTableExists('clinical_entries');
       const billingTablesReady =
@@ -799,77 +965,218 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         (await databaseTableExists('marketing_campaigns')) &&
         (await databaseTableExists('marketing_campaign_deliveries'));
       const financialPayablesReady = await databaseTableExists('financial_payables');
+      const ledgerTablesReady =
+        (await databaseTableExists('financial_journal_entries')) &&
+        (await databaseTableExists('financial_journal_lines'));
       const inpatientOccurrenceReady = await databaseTableExists('inpatient_occurrences');
       const inpatientDailyChargesReady = await databaseTableExists('inpatient_daily_charges');
+      const inpatientStayRepositoryReady = await databaseTableHasColumns('inpatient_stays', [
+        'unit',
+        'ward',
+        'bed',
+        'sector_id'
+      ]);
+      const inpatientProgressReady = await databaseTableHasColumns('inpatient_progress', [
+        'account_id',
+        'stay_id',
+        'encounter_id',
+        'note',
+        'authored_by_user_id'
+      ]);
+      const surgeryCasesReady = await databaseTableHasColumns('surgery_cases', [
+        'account_id',
+        'encounter_id',
+        'patient_id',
+        'procedure_name',
+        'status'
+      ]);
       const inventoryStockMovementsReady = await databaseTableExists('inventory_stock_movements');
       const clinicalHandoffsReady = await databaseTableExists('clinical_handoffs');
+      const commercialTablesReady = (
+        await Promise.all(
+          [
+            'loyalty_programs',
+            'loyalty_points',
+            'loyalty_redemptions',
+            'price_tables',
+            'price_table_items',
+            'pos_sync_jobs'
+          ].map((table) => databaseTableExists(table))
+        )
+      ).every(Boolean);
+      const catalogTablesReady =
+        (await databaseTableExists('products')) && (await databaseTableExists('services'));
+      const cashTablesReady =
+        (await databaseTableExists('cash_registers')) &&
+        (await databaseTableExists('cash_movements'));
+      const counterSalesTablesReady =
+        (await databaseTableExists('counter_sales')) &&
+        (await databaseTableExists('counter_sale_items')) &&
+        (await databaseTableExists('counter_sale_payments'));
+      const quotesTablesReady =
+        (await databaseTableExists('quotes')) && (await databaseTableExists('quote_items'));
+      const inventoryTablesReady =
+        (await databaseTableExists('inventory_items')) &&
+        (await databaseTableExists('inventory_consumptions')) &&
+        (await databaseTableExists('inventory_lots'));
+      const procurementTablesReady =
+        (await databaseTableExists('inventory_purchases')) &&
+        (await databaseTableExists('inventory_purchase_lines')) &&
+        (await databaseTableExists('inventory_transfers'));
+      const staffTimeOffTableReady =
+        (await databaseTableExists('staff')) && (await databaseTableExists('staff_time_off'));
+      const schedulingTablesReady =
+        (await databaseTableExists('appointments')) &&
+        (await databaseTableExists('scheduling_queue_entries')) &&
+        (await databaseTableExists('scheduling_queue_transfers'));
+      const triageTablesReady =
+        (await databaseTableExists('triage_records')) &&
+        (await databaseTableExists('triage_record_versions'));
+      const usersTablesReady =
+        (await databaseTableExists('users')) &&
+        (await databaseTableExists('roles')) &&
+        (await databaseTableExists('permissions')) &&
+        (await databaseTableExists('user_roles')) &&
+        (await databaseTableExists('role_permissions'));
+      const accessControlTablesReady =
+        usersTablesReady &&
+        (await databaseTableExists('access_teams')) &&
+        (await databaseTableExists('access_sectors')) &&
+        (await databaseTableExists('access_team_memberships')) &&
+        (await databaseTableExists('access_sector_memberships')) &&
+        (await databaseTableExists('access_user_permissions')) &&
+        (await databaseTableExists('access_team_permissions')) &&
+        (await databaseTableExists('access_sector_permissions'));
+      const encounterFinancialTablesReady =
+        (await databaseTableExists('encounter_financial_accounts')) &&
+        (await databaseTableExists('encounter_receivables')) &&
+        (await databaseTableExists('encounter_receivable_payments'));
+      const prescriptionExecutionTablesReady =
+        (await databaseTableExists('prescription_executions')) &&
+        (await databaseTableExists('administration_events'));
+      const dischargeTableReady = await databaseTableExists('discharges');
+      const consentTablesReady =
+        (await databaseTableExists('consent_records')) &&
+        (await databaseTableExists('data_subject_requests'));
+      const webhookTablesReady =
+        (await databaseTableExists('webhooks')) &&
+        (await databaseTableExists('webhook_deliveries'));
+      const apiKeyTablesReady =
+        (await databaseTableExists('api_keys')) &&
+        (await databaseTableExists('api_key_usage')) &&
+        (await databaseTableExists('api_key_rate_limits'));
+      const mfaTablesReady = await databaseTableExists('mfa_credentials');
+      const outboxTablesReady = await databaseTableExists('outbox_events');
+      const pixTablesReady = await databaseTableExists('pix_transactions');
+      const laboratoryResultImportsReady = await databaseTableExists('laboratory_result_imports');
 
       results.repositories = {
-        // Sessions remain in-memory in the runtime until the canonical
-        // sessions table/contract is promoted into the migration baseline.
-        session: new InMemorySessionRepository(),
+        session: new DatabaseSessionRepository(db),
         audit: new DatabaseAuditRepository(db),
         owner: new DatabaseOwnerRepository(db),
         patient: new DatabasePatientRepository(db),
         ownerPatientLink: ownerPatientLinksReady
           ? new DatabaseOwnerPatientLinkRepository(db)
           : undefined,
+        patientMerge: (await databaseTableExists('patient_merges'))
+          ? new DatabasePatientMergeRepository(db)
+          : undefined,
+        laboratoryResultImport: laboratoryResultImportsReady
+          ? new DatabaseLaboratoryResultImportRepository(db)
+          : undefined,
         encounter: new DatabaseEncounterRepository(db),
         encounterTimeline: new DatabaseEncounterTimelineRepository(db),
         clinicalHandoff: clinicalHandoffsReady
           ? new DatabaseClinicalHandoffRepository()
-          : new InMemoryClinicalHandoffRepository(),
+          : productionLike
+            ? undefined
+            : new InMemoryClinicalHandoffRepository(),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
         clinicalEntry: new DatabaseClinicalEntryRepository(db),
         clinicalTimeline: new DatabaseClinicalTimelineRepository(db),
         entryRevision: new DatabaseEntryRevisionRepository(db),
         attachment: new DatabaseAttachmentRepository(db),
         notification: new DatabaseNotificationRepository(db) as NotificationRepository,
-        inpatientStay: new DatabaseInpatientStayRepository(db),
-        inpatientProgress: new DatabaseInpatientProgressRepository(db),
+        inpatientStay: inpatientStayRepositoryReady
+          ? new DatabaseInpatientStayRepository(db)
+          : undefined,
+        inpatientProgress:
+          inpatientStayRepositoryReady && inpatientProgressReady
+            ? new DatabaseInpatientProgressRepository(db)
+            : undefined,
         inpatientOccurrence: inpatientOccurrenceReady
           ? new DatabaseInpatientOccurrenceRepository(db)
           : undefined,
         inpatientDailyCharge: inpatientDailyChargesReady
           ? new DatabaseInpatientDailyChargeRepository(db)
           : undefined,
-        surgeryCase: new DatabaseSurgeryCaseRepository(db),
+        surgeryCase: surgeryCasesReady ? new DatabaseSurgeryCaseRepository(db) : undefined,
         diagnosticOrder: new DatabaseDiagnosticOrderRepository(db),
-        laboratoryCatalog: new DatabaseLaboratoryCatalogRepository(db) as LaboratoryCatalogRepository,
-        discharge: new DatabaseDischargeRepository(),
-        prescriptionExecution: new DatabasePrescriptionExecutionRepository(),
-        administrationEvent: new DatabaseAdministrationEventRepository(),
+        laboratoryCatalog: new DatabaseLaboratoryCatalogRepository(
+          db
+        ) as LaboratoryCatalogRepository,
+        discharge: dischargeTableReady ? new DatabaseDischargeRepository() : undefined,
+        prescriptionExecution: prescriptionExecutionTablesReady
+          ? new DatabasePrescriptionExecutionRepository()
+          : undefined,
+        administrationEvent: prescriptionExecutionTablesReady
+          ? new DatabaseAdministrationEventRepository()
+          : undefined,
         prescription: clinicalEntriesReady ? new DatabasePrescriptionRepository(db) : undefined,
         billing: billingTablesReady ? new DatabaseBillingRepository() : undefined,
+        commercial: commercialTablesReady ? new DatabaseCommercialRepository() : undefined,
         commissions: commissionsTablesReady ? new DatabaseCommissionRepository() : undefined,
         packages: packagesTablesReady ? new DatabasePackageRepository() : undefined,
         reports: reportsTablesReady ? new DatabaseReportRepository() : undefined,
         marketing: marketingTablesReady ? new DatabaseMarketingRepository() : undefined,
-        encounterFinancial: new DatabaseEncounterFinancialRepository(),
-        financialPayables: financialPayablesReady ? new DatabaseFinancialPayablesRepository() : undefined,
-        inventory: new DatabaseInventoryRepository({
-          stockMovementsEnabled: inventoryStockMovementsReady
-        }),
-        scheduling: new DatabaseSchedulingRepository(),
-        triage: new DatabaseTriageRepository(),
-        users: new DatabaseUsersRepository(),
-        accessControl: new DatabaseAccessControlRepository(),
-        staff: new DatabaseStaffRepository(),
-        mfa: new DatabaseMfaRepository(db),
-        consent: new DatabaseConsentRepository(db),
-        dsr: new DatabaseDsrRepository(db),
-        webhook: new DatabaseWebhookRepository(db),
-        apiKey: new DatabaseApiKeyRepository(),
-        outbox: new DatabaseOutboxRepository(),
-        pixTransaction: new DatabasePixTransactionRepository()
+        encounterFinancial: encounterFinancialTablesReady
+          ? new DatabaseEncounterFinancialRepository()
+          : undefined,
+        financialPayables: financialPayablesReady
+          ? new DatabaseFinancialPayablesRepository()
+          : undefined,
+        ledger: ledgerTablesReady ? new DatabaseFinancialLedgerRepository() : undefined,
+        inventory: inventoryTablesReady
+          ? new DatabaseInventoryRepository({
+              stockMovementsEnabled: inventoryStockMovementsReady
+          })
+          : undefined,
+        procurement: procurementTablesReady ? new DatabaseProcurementRepository() : undefined,
+        scheduling: schedulingTablesReady ? new DatabaseSchedulingRepository() : undefined,
+        agendaConfig: schedulingTablesReady ? new DatabaseAgendaConfigRepository() : undefined,
+        triage: triageTablesReady ? new DatabaseTriageRepository() : undefined,
+        users: usersTablesReady ? new DatabaseUsersRepository() : undefined,
+        accessControl: accessControlTablesReady ? new DatabaseAccessControlRepository() : undefined,
+        products: catalogTablesReady ? new DatabaseProductsRepository() : undefined,
+        services: catalogTablesReady ? new DatabaseServicesRepository() : undefined,
+        counterSales: counterSalesTablesReady ? new DatabaseCounterSalesRepository() : undefined,
+        quotes: quotesTablesReady ? new DatabaseQuotesRepository() : undefined,
+        cash: cashTablesReady ? new DatabaseCashRepository() : undefined,
+        staff: await databaseTableExists('staff') ? new DatabaseStaffRepository() : undefined,
+        staffTimeOff: staffTimeOffTableReady
+          ? new DatabaseStaffTimeOffRepository()
+          : undefined,
+        mfa: mfaTablesReady ? new DatabaseMfaRepository(db) : undefined,
+        consent: consentTablesReady ? new DatabaseConsentRepository(db) : undefined,
+        dsr: consentTablesReady ? new DatabaseDsrRepository(db) : undefined,
+        webhook: webhookTablesReady ? new DatabaseWebhookRepository(db) : undefined,
+        apiKey: apiKeyTablesReady ? new DatabaseApiKeyRepository() : undefined,
+        outbox: outboxTablesReady ? new DatabaseOutboxRepository() : undefined,
+        pixTransaction: pixTablesReady ? new DatabasePixTransactionRepository() : undefined
       };
+      if (productionLike) {
+        assertProductionDatabaseReadiness({
+          repositories: results.repositories,
+          unitOfWork: results.unitOfWork
+        });
+      }
       results.repositoriesUseDatabase = true;
       results.fileStorage = new LocalFileStorage({
         basePath: options.fileStoragePath ?? '/tmp/cvg-his-v2-attachments'
       });
       logger.info('Database repositories initialized for critical auth/encounter runtime', {
         auditPersistence: 'database',
-        sessionPersistence: 'in-memory',
+    sessionPersistence: 'database',
         ownerPatientLinkPersistence: ownerPatientLinksReady ? 'database' : 'derived-from-patient',
         prescriptionPersistence: clinicalEntriesReady ? 'database' : 'in-memory',
         billingPersistence: billingTablesReady ? 'database' : 'in-memory',
@@ -879,6 +1186,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         marketingPersistence: marketingTablesReady ? 'database' : 'in-memory',
         financialPayablesPersistence: financialPayablesReady ? 'database' : 'in-memory',
         inventoryStockMovementsPersistence: inventoryStockMovementsReady ? 'database' : 'disabled',
+        procurementPersistence: procurementTablesReady ? 'database' : 'in-memory',
+        staffTimeOffPersistence: staffTimeOffTableReady ? 'database' : 'in-memory',
+        inpatientStayPersistence: inpatientStayRepositoryReady ? 'database' : 'in-memory',
+        inpatientProgressPersistence:
+          inpatientStayRepositoryReady && inpatientProgressReady ? 'database' : 'in-memory',
+        surgeryPersistence: surgeryCasesReady ? 'database' : 'in-memory',
         encounterTimelinePersistence: 'database'
       });
     } else {
@@ -887,6 +1200,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
     }
   } catch (error) {
+    if (isProductionLikeEnvironment()) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     results.databaseDetail = message;
     logger.error('Database initialization failed, using in-memory repositories', {

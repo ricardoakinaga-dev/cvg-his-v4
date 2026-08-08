@@ -40,6 +40,8 @@ spa:
 postgresql:
   enabled: true
   password: postgres
+  apiPassword: cvg-api-development-password
+  workerPassword: cvg-worker-development-password
   persistence:
     enabled: true
     size: 1Gi

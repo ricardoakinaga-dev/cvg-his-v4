@@ -18,6 +18,7 @@ test('BillingEventHandlers handles billing.record.created without error', async 
 
   const event: OutboxEvent = {
     id: 'evt_bil_001',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_bil_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'billing.record.created',
@@ -47,6 +48,7 @@ test('BillingEventHandlers handles billing.status_changed without error', async 
 
   const event: OutboxEvent = {
     id: 'evt_bil_002',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_bil_xyz' as never,
     moduleName: 'billing' as never,
     eventType: 'billing.status_changed',
@@ -77,6 +79,7 @@ test('BillingEventHandlers ignores payment.pix.confirmed events (PIX flow is han
 
   const event: OutboxEvent = {
     id: 'evt_pix_999',
+    accountId: 'acc_test' as never,
     correlationId: 'corr_pix_xyz' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.pix.confirmed',

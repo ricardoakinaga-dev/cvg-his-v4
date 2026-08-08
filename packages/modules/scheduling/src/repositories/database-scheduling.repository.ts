@@ -33,17 +33,26 @@ export interface SchedulingRepository {
 export class DatabaseSchedulingRepository implements SchedulingRepository {
   async createAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
-      return await client.query(
+      const result = await client.query(
         `INSERT INTO appointments
-           (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, practitioner_staff_id, service_id, unit, specialty, resource_label, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+           (id, account_id, owner_id, patient_id, start_at, end_at, visit_type, reason,
+            practitioner_staff_id, professional_user_id, service_id, unit, specialty,
+            resource_label, status,
+            type, notes, created_at, updated_at)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                (SELECT staff_record.user_id
+                 FROM staff AS staff_record
+                 WHERE staff_record.id = $9 AND staff_record.account_id = $2),
+                $10, $11, $12, $13, $14, $15, $16, $17, $18
+         WHERE $2::uuid = app.current_account_id()
+         RETURNING id`,
         [
           appointment.id,
           appointment.accountId,
           appointment.ownerId,
           appointment.patientId,
           new Date(appointment.scheduledAt),
-          appointment.durationMinutes ?? null,
+          appointmentEnd(appointment),
           appointment.visitType,
           appointment.reason ?? null,
           appointment.practitionerStaffId ?? null,
@@ -51,51 +60,77 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
           appointment.unit ?? null,
           appointment.specialty ?? null,
           appointment.resourceLabel ?? null,
-          appointment.status,
+          appointmentDatabaseStatus(appointment),
+          appointmentClinicalType(appointment),
+          appointment.reason ?? null,
           new Date(appointment.createdAt),
           new Date(appointment.updatedAt)
         ]
       );
+      if (result.rowCount !== 1) {
+        throw new Error('Appointment account does not match the active tenant context');
+      }
+      return result;
     });
   }
 
   async updateAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
-      return await client.query(
+      const result = await client.query(
         `UPDATE appointments
-            SET status = $2,
-                reason = $3,
-                scheduled_at = $4,
-                duration = $5,
-                visit_type = $6,
-                practitioner_staff_id = $7,
-                service_id = $8,
-                unit = $9,
-                specialty = $10,
-                resource_label = $11,
-                updated_at = $12
-          WHERE id = $1`,
+            SET status = $3,
+                reason = $4,
+                notes = $4,
+                start_at = $5,
+                end_at = $6,
+                visit_type = $7,
+                practitioner_staff_id = $8,
+                professional_user_id = (
+                  SELECT staff_record.user_id
+                  FROM staff AS staff_record
+                  WHERE staff_record.id = $8
+                    AND staff_record.account_id = $2
+                ),
+                service_id = $9,
+                unit = $10,
+                specialty = $11,
+                resource_label = $12,
+                type = $13,
+                updated_at = $14
+          WHERE id = $1
+            AND account_id = $2
+            AND account_id = app.current_account_id()`,
         [
           appointment.id,
-          appointment.status,
+          appointment.accountId,
+          appointmentDatabaseStatus(appointment),
           appointment.reason ?? null,
           new Date(appointment.scheduledAt),
-          appointment.durationMinutes ?? null,
+          appointmentEnd(appointment),
           appointment.visitType,
           appointment.practitionerStaffId ?? null,
           appointment.serviceId ?? null,
           appointment.unit ?? null,
           appointment.specialty ?? null,
           appointment.resourceLabel ?? null,
+          appointmentClinicalType(appointment),
           new Date(appointment.updatedAt)
         ]
       );
+      if (result.rowCount !== 1) {
+        throw new Error(`Appointment not found in current account: ${appointment.id}`);
+      }
+      return result;
     });
   }
 
   async findAppointmentById(id: AppointmentId): Promise<SchedulingAppointmentSummary | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM appointments WHERE id = $1', [id]);
+      const result = await client.query(
+        `SELECT * FROM appointments
+         WHERE id = $1 AND account_id = app.current_account_id()`,
+        [id]
+      );
       if (result.rows.length === 0) return null;
       return this.mapAppointment(result.rows[0]);
     });
@@ -104,10 +139,17 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
   async findAllAppointments(accountId?: AccountId): Promise<readonly SchedulingAppointmentSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = accountId
-        ? await client.query('SELECT * FROM appointments WHERE account_id = $1 ORDER BY scheduled_at ASC', [
-            accountId
-          ])
-        : await client.query('SELECT * FROM appointments ORDER BY scheduled_at ASC');
+        ? await client.query(
+            `SELECT * FROM appointments
+             WHERE account_id = $1 AND account_id = app.current_account_id()
+             ORDER BY start_at ASC`,
+            [accountId]
+          )
+        : await client.query(
+            `SELECT * FROM appointments
+             WHERE account_id = app.current_account_id()
+             ORDER BY start_at ASC`
+          );
       return result.rows.map((r: Record<string, unknown>) => this.mapAppointment(r));
     });
   }
@@ -275,16 +317,18 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       accountId: row.account_id as AccountId,
       patientId: row.patient_id as PatientId,
       ownerId: row.owner_id as OwnerId,
-      scheduledAt: new Date(row.scheduled_at as string).toISOString(),
-      durationMinutes: (row.duration as number | null) ?? undefined,
-      visitType: row.visit_type as SchedulingAppointmentSummary['visitType'],
-      reason: (row.reason as string) ?? undefined,
+      scheduledAt: new Date(row.start_at as string).toISOString(),
+      durationMinutes: appointmentDuration(row.start_at, row.end_at),
+      visitType: mapVisitType(row.visit_type, row.type),
+      reason: String(row.reason ?? row.notes ?? 'Agendamento'),
       practitionerStaffId: (row.practitioner_staff_id as StaffId | null) ?? undefined,
       serviceId: (row.service_id as string | null) ?? undefined,
       unit: (row.unit as string | null) ?? undefined,
       specialty: (row.specialty as string | null) ?? undefined,
       resourceLabel: (row.resource_label as string | null) ?? undefined,
-      status: row.status as SchedulingAppointmentSummary['status'],
+      status: mapAppointmentStatus(row.status),
+      canonicalStatus: row.status as SchedulingAppointmentSummary['canonicalStatus'],
+      clinicalType: row.type as SchedulingAppointmentSummary['clinicalType'],
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };
@@ -350,4 +394,54 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       createdAt: new Date(row.created_at as string).toISOString()
     };
   }
+}
+
+function appointmentEnd(appointment: SchedulingAppointmentSummary): Date {
+  const startAt = new Date(appointment.scheduledAt);
+  const durationMinutes = appointment.durationMinutes ?? 30;
+  return new Date(startAt.getTime() + durationMinutes * 60_000);
+}
+
+function appointmentDuration(startAt: unknown, endAt: unknown): number {
+  const start = new Date(startAt as string).getTime();
+  const end = new Date(endAt as string).getTime();
+  return Math.max(1, Math.round((end - start) / 60_000));
+}
+
+function appointmentClinicalType(
+  appointment: SchedulingAppointmentSummary
+): NonNullable<SchedulingAppointmentSummary['clinicalType']> {
+  if (appointment.clinicalType) return appointment.clinicalType;
+  if (appointment.visitType === 'return') return 'return';
+  if (appointment.visitType === 'walk_in') return 'other';
+  return 'consultation';
+}
+
+function appointmentDatabaseStatus(
+  appointment: SchedulingAppointmentSummary
+): NonNullable<SchedulingAppointmentSummary['canonicalStatus']> {
+  if (
+    appointment.canonicalStatus &&
+    mapAppointmentStatus(appointment.canonicalStatus) === appointment.status
+  ) {
+    return appointment.canonicalStatus;
+  }
+  return appointment.status;
+}
+
+function mapVisitType(
+  visitType: unknown,
+  clinicalType: unknown
+): SchedulingAppointmentSummary['visitType'] {
+  if (visitType === 'walk_in' || visitType === 'scheduled' || visitType === 'return') {
+    return visitType;
+  }
+  return clinicalType === 'return' ? 'return' : 'scheduled';
+}
+
+function mapAppointmentStatus(status: unknown): SchedulingAppointmentSummary['status'] {
+  if (status === 'checked_in' || status === 'in_progress') return 'checked_in';
+  if (status === 'completed') return 'completed';
+  if (status === 'cancelled' || status === 'no_show') return 'cancelled';
+  return 'scheduled';
 }

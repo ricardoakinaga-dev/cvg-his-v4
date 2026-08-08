@@ -63,9 +63,17 @@ async function proxyApi(req, res, url) {
     });
 
     const responseHeaders = Object.fromEntries(upstream.headers.entries());
+    const setCookies =
+      typeof upstream.headers.getSetCookie === 'function'
+        ? upstream.headers.getSetCookie()
+        : [];
     delete responseHeaders.connection;
     delete responseHeaders['content-encoding'];
+    delete responseHeaders['set-cookie'];
 
+    if (setCookies.length > 0) {
+      res.setHeader('set-cookie', setCookies);
+    }
     res.writeHead(upstream.status, responseHeaders);
     if (req.method === 'HEAD') {
       res.end();

@@ -11,6 +11,17 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
+export {
+  FinancialLedgerService,
+  InMemoryFinancialLedgerRepository,
+  type FinancialJournalEntry,
+  type FinancialJournalEntryInput,
+  type FinancialJournalLine,
+  type FinancialJournalLineInput,
+  type FinancialLedgerRepository
+} from './ledger.js';
+export { DatabaseFinancialLedgerRepository } from './repositories/database-ledger.repository.js';
+
 export type EncounterFinancialStatus = 'pending' | 'partial' | 'paid';
 export type EncounterReceivableStatus = 'open' | 'settled';
 export type EncounterReceivablePaymentExternalReferenceType =
@@ -131,7 +142,9 @@ export interface FinancialPayablesRepository {
   savePayable(payable: FinancialPayableRecord): Promise<void>;
   updatePayable(payable: FinancialPayableRecord): Promise<void>;
   findPayableById(payableId: string): Promise<FinancialPayableRecord | null>;
+  findPayableByIdForUpdate?(payableId: string): Promise<FinancialPayableRecord | null>;
   listPayables(filters?: FinancialPayableListFilters): Promise<readonly FinancialPayableRecord[]>;
+  withTransaction?<T>(accountId: AccountId, operation: () => Promise<T>): Promise<T>;
 }
 
 export interface EncounterFinancialRepository {
@@ -155,6 +168,11 @@ export interface EncounterFinancialRepository {
   listReceivables(
     filters?: EncounterReceivableListFilters
   ): Promise<readonly EncounterReceivableRecord[]>;
+  withTransaction?<T>(accountId: AccountId, operation: () => Promise<T>): Promise<T>;
+  findFinancialAccountByEncounterForUpdate?(
+    encounterId: EncounterId
+  ): Promise<EncounterFinancialAccountRecord | null>;
+  findReceivableByIdForUpdate?(receivableId: string): Promise<EncounterReceivableRecord | null>;
 }
 
 export interface CloseEncounterFinancialInput {
@@ -574,47 +592,60 @@ export class FinancialPayablesService {
     payableId: string,
     input: PayFinancialPayableInput
   ): Promise<FinancialPayableRecord> {
-    const payable = await this.#getPayable(accountId, payableId);
-    if (payable.status !== 'open' && payable.status !== 'partial') {
-      throw new ConflictError('Only open or partial payables can be paid', { payableId, status: payable.status });
-    }
     const amountPaid = requirePositiveCurrency(input.amountPaid, 'amountPaid');
-    if (amountPaid > payable.outstandingAmount) {
-      throw new ConflictError('Payment exceeds outstanding payable balance', {
-        payableId,
+    const execute = async (): Promise<FinancialPayableRecord> => {
+      const payable = this.#repository.findPayableByIdForUpdate
+        ? await this.#repository.findPayableByIdForUpdate(payableId)
+        : await this.#repository.findPayableById(payableId);
+      if (!payable || payable.accountId !== accountId) {
+        throw new NotFoundError('Financial payable not found', { payableId });
+      }
+      if (payable.status !== 'open' && payable.status !== 'partial') {
+        throw new ConflictError('Only open or partial payables can be paid', {
+          payableId,
+          status: payable.status
+        });
+      }
+      if (amountPaid > payable.outstandingAmount) {
+        throw new ConflictError('Payment exceeds outstanding payable balance', {
+          payableId,
+          amountPaid,
+          outstandingAmount: payable.outstandingAmount
+        });
+      }
+      const now = nowIso();
+      const nextPaid = roundCurrency(payable.paidAmount + amountPaid);
+      const nextOutstanding = roundCurrency(Math.max(payable.totalAmount - nextPaid, 0));
+      const paymentMethod = normalizePayablePaymentMethod(input.paymentMethod);
+      const paymentReference = normalizeOptional(input.paymentReference);
+      const updated: FinancialPayableRecord = {
+        ...payable,
+        paidAmount: nextPaid,
+        outstandingAmount: nextOutstanding,
+        status: nextOutstanding <= 0 ? 'paid' : 'partial',
+        notes: normalizeOptional(input.notes) ?? payable.notes,
+        paymentMethod,
+        paymentReference,
+        reconciliationStatus: this.#derivePayableReconciliationStatus(paymentMethod, nextOutstanding),
+        reconciliationReference: null,
+        paidByUserId,
+        paidAt: nextOutstanding <= 0 ? now : payable.paidAt,
+        updatedAt: now
+      };
+      await this.#onPayablePaid?.({
+        payable: updated,
         amountPaid,
-        outstandingAmount: payable.outstandingAmount
+        paymentMethod,
+        paymentReference,
+        paidByUserId,
+        paidAt: now
       });
-    }
-    const now = nowIso();
-    const nextPaid = roundCurrency(payable.paidAmount + amountPaid);
-    const nextOutstanding = roundCurrency(Math.max(payable.totalAmount - nextPaid, 0));
-    const paymentMethod = normalizePayablePaymentMethod(input.paymentMethod);
-    const paymentReference = normalizeOptional(input.paymentReference);
-    const updated: FinancialPayableRecord = {
-      ...payable,
-      paidAmount: nextPaid,
-      outstandingAmount: nextOutstanding,
-      status: nextOutstanding <= 0 ? 'paid' : 'partial',
-      notes: normalizeOptional(input.notes) ?? payable.notes,
-      paymentMethod,
-      paymentReference,
-      reconciliationStatus: this.#derivePayableReconciliationStatus(paymentMethod, nextOutstanding),
-      reconciliationReference: null,
-      paidByUserId,
-      paidAt: nextOutstanding <= 0 ? now : payable.paidAt,
-      updatedAt: now
+      await this.#repository.updatePayable(updated);
+      return updated;
     };
-    await this.#onPayablePaid?.({
-      payable: updated,
-      amountPaid,
-      paymentMethod,
-      paymentReference,
-      paidByUserId,
-      paidAt: now
-    });
-    await this.#repository.updatePayable(updated);
-    return updated;
+    return this.#repository.withTransaction
+      ? this.#repository.withTransaction(accountId, execute)
+      : execute();
   }
 
   public async cancelPayable(
@@ -1193,10 +1224,26 @@ export class EncounterFinancialService {
     });
 
     const data = [];
+    const resolveOrSkipMissing = <T>(resolve: () => T): T | null => {
+      try {
+        return resolve();
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          return null;
+        }
+        throw error;
+      }
+    };
+
     for (const receivable of receivables) {
-      const encounter = this.#encounters.getOrThrow(receivable.encounterId);
-      const patient = this.#patients.getOrThrow(encounter.patientId);
-      const owner = this.#owners.getOrThrow(encounter.ownerId);
+      const encounter = resolveOrSkipMissing(() =>
+        this.#encounters.getOrThrow(receivable.encounterId)
+      );
+      if (!encounter) continue;
+      const patient = resolveOrSkipMissing(() => this.#patients.getOrThrow(encounter.patientId));
+      if (!patient) continue;
+      const owner = resolveOrSkipMissing(() => this.#owners.getOrThrow(encounter.ownerId));
+      if (!owner) continue;
       const account = await this.#repository.findFinancialAccountByEncounter(receivable.encounterId);
       if (!account) continue;
       const row = {
@@ -1262,68 +1309,90 @@ export class EncounterFinancialService {
       externalReferenceId: string | null;
     }>
   ): Promise<void> {
-    const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
-    if (!account) {
+    const initialAccount = await this.#repository.findFinancialAccountByEncounter(encounterId);
+    if (!initialAccount) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
     }
-    const now = nowIso();
-    for (const allocation of allocations) {
-      const receivable = await this.#repository.findReceivableById(allocation.receivableId);
-      if (!receivable) {
-        throw new NotFoundError('Encounter receivable not found', {
-          receivableId: allocation.receivableId
-        });
+    const execute = async (): Promise<void> => {
+      const account = this.#repository.findFinancialAccountByEncounterForUpdate
+        ? await this.#repository.findFinancialAccountByEncounterForUpdate(encounterId)
+        : initialAccount;
+      if (!account) {
+        throw new NotFoundError('Encounter financial account not found', { encounterId });
       }
-      const nextPaid = roundCurrency(receivable.amountPaid + allocation.amountPaid);
-      const nextOutstanding = roundCurrency(Math.max(receivable.amountOriginal - nextPaid, 0));
-      const updatedReceivable: EncounterReceivableRecord = {
-        ...receivable,
-        amountPaid: nextPaid,
-        amountOutstanding: nextOutstanding,
-        status: nextOutstanding <= 0 ? 'settled' : 'open',
-        settledAt: nextOutstanding <= 0 ? now : receivable.settledAt,
+      const now = nowIso();
+      for (const allocation of allocations) {
+        const receivable = this.#repository.findReceivableByIdForUpdate
+          ? await this.#repository.findReceivableByIdForUpdate(allocation.receivableId)
+          : await this.#repository.findReceivableById(allocation.receivableId);
+        if (!receivable || receivable.accountId !== account.accountId) {
+          throw new NotFoundError('Encounter receivable not found', {
+            receivableId: allocation.receivableId
+          });
+        }
+        if (allocation.amountPaid <= 0 || allocation.amountPaid > receivable.amountOutstanding) {
+          throw new ConflictError('Payment exceeds outstanding receivable balance', {
+            receivableId: allocation.receivableId,
+            amountPaid: allocation.amountPaid,
+            outstandingAmount: receivable.amountOutstanding
+          });
+        }
+        const nextPaid = roundCurrency(receivable.amountPaid + allocation.amountPaid);
+        const nextOutstanding = roundCurrency(Math.max(receivable.amountOriginal - nextPaid, 0));
+        const updatedReceivable: EncounterReceivableRecord = {
+          ...receivable,
+          amountPaid: nextPaid,
+          amountOutstanding: nextOutstanding,
+          status: nextOutstanding <= 0 ? 'settled' : 'open',
+          settledAt: nextOutstanding <= 0 ? now : receivable.settledAt,
+          updatedAt: now
+        };
+        await this.#repository.updateReceivable(updatedReceivable);
+
+        const payment: EncounterReceivablePaymentRecord = {
+          id: createCorrelationId('erp'),
+          accountId: account.accountId,
+          encounterId,
+          financialAccountId,
+          receivableId: receivable.id,
+          amountPaid: allocation.amountPaid,
+          paidAt: now,
+          paidByUserId: allocation.paidByUserId,
+          externalReferenceType: allocation.externalReferenceType,
+          externalReferenceId: allocation.externalReferenceId,
+          notes: allocation.notes,
+          createdAt: now
+        };
+        await this.#repository.createPayment(payment);
+        await this.#onReceivablePaid?.(payment);
+      }
+
+      const receivables = await this.#repository.listReceivablesByFinancialAccount(financialAccountId);
+      const totalAmount = roundCurrency(
+        receivables.reduce((sum, receivable) => sum + receivable.amountOriginal, 0)
+      );
+      const totalPaid = roundCurrency(
+        receivables.reduce((sum, receivable) => sum + receivable.amountPaid, 0)
+      );
+      const totalOutstanding = roundCurrency(
+        receivables.reduce((sum, receivable) => sum + receivable.amountOutstanding, 0)
+      );
+
+      await this.#repository.upsertFinancialAccount({
+        ...account,
+        totalSnapshot: totalAmount,
+        subtotalSnapshot: totalAmount,
+        paidAmount: totalPaid,
+        balanceDue: totalOutstanding,
+        financialStatus: deriveFinancialStatus(totalOutstanding, totalPaid, totalAmount),
         updatedAt: now
-      };
-      await this.#repository.updateReceivable(updatedReceivable);
-
-      const payment: EncounterReceivablePaymentRecord = {
-        id: createCorrelationId('erp'),
-        accountId: account.accountId,
-        encounterId,
-        financialAccountId,
-        receivableId: receivable.id,
-        amountPaid: allocation.amountPaid,
-        paidAt: now,
-        paidByUserId: allocation.paidByUserId,
-        externalReferenceType: allocation.externalReferenceType,
-        externalReferenceId: allocation.externalReferenceId,
-        notes: allocation.notes,
-        createdAt: now
-      };
-      await this.#repository.createPayment(payment);
-      await this.#onReceivablePaid?.(payment);
+      });
+    };
+    if (this.#repository.withTransaction) {
+      await this.#repository.withTransaction(initialAccount.accountId, execute);
+    } else {
+      await execute();
     }
-
-    const receivables = await this.#repository.listReceivablesByFinancialAccount(financialAccountId);
-    const totalAmount = roundCurrency(
-      receivables.reduce((sum, receivable) => sum + receivable.amountOriginal, 0)
-    );
-    const totalPaid = roundCurrency(
-      receivables.reduce((sum, receivable) => sum + receivable.amountPaid, 0)
-    );
-    const totalOutstanding = roundCurrency(
-      receivables.reduce((sum, receivable) => sum + receivable.amountOutstanding, 0)
-    );
-
-    await this.#repository.upsertFinancialAccount({
-      ...account,
-      totalSnapshot: totalAmount,
-      subtotalSnapshot: totalAmount,
-      paidAmount: totalPaid,
-      balanceDue: totalOutstanding,
-      financialStatus: deriveFinancialStatus(totalOutstanding, totalPaid, totalAmount),
-      updatedAt: now
-    });
   }
 }
 

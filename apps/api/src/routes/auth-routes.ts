@@ -12,6 +12,8 @@ import {
 import type { MfaService, WebAuthnService } from '@cvg-his-v2/module-mfa';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
+  AuthSessionResponse,
+  BrowserAuthSessionResponse,
   LoginRequest,
   LogoutRequest,
   RefreshSessionRequest,
@@ -19,6 +21,7 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { toErrorResponse } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { readJsonBody } from '../helpers/common.js';
 
@@ -43,7 +46,13 @@ interface AuthRateLimitInfo {
 }
 
 interface AuthRateLimiter {
-  check(input: { ip: string; route: string }): Promise<AuthRateLimitInfo>;
+  check(input: {
+    ip: string;
+    route: string;
+    accountId?: string;
+    userId?: string;
+    tenantId?: string;
+  }): Promise<AuthRateLimitInfo>;
 }
 
 interface AuthLogger {
@@ -78,7 +87,9 @@ function consumeWebAuthnChallenge(
   store: Map<string, WebAuthnChallengeValue>,
   key: string,
   ttlMs: number
-): { ok: true; challenge: string } | { ok: false; code: 'INVALID_CHALLENGE' | 'CHALLENGE_EXPIRED'; message: string } {
+):
+  | { ok: true; challenge: string }
+  | { ok: false; code: 'INVALID_CHALLENGE' | 'CHALLENGE_EXPIRED'; message: string } {
   const stored = store.get(key);
   if (!stored) {
     return {
@@ -142,19 +153,21 @@ export function createStatelessOidcStateStore(secret: string): OidcStateStore {
       const expectedBuffer = Buffer.from(signOidcState(secret, payload));
 
       if (
-        signatureBuffer.length !== expectedBuffer.length
-        || !timingSafeEqual(signatureBuffer, expectedBuffer)
+        signatureBuffer.length !== expectedBuffer.length ||
+        !timingSafeEqual(signatureBuffer, expectedBuffer)
       ) {
         return null;
       }
 
       try {
-        const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as OidcStateValue;
+        const parsed = JSON.parse(
+          Buffer.from(payload, 'base64url').toString('utf8')
+        ) as OidcStateValue;
         if (
-          typeof parsed.codeChallenge !== 'string'
-          || typeof parsed.codeVerifier !== 'string'
-          || typeof parsed.redirectUri !== 'string'
-          || typeof parsed.createdAt !== 'number'
+          typeof parsed.codeChallenge !== 'string' ||
+          typeof parsed.codeVerifier !== 'string' ||
+          typeof parsed.redirectUri !== 'string' ||
+          typeof parsed.createdAt !== 'number'
         ) {
           return null;
         }
@@ -181,9 +194,17 @@ export interface AuthRoutesHandlers {
   oidcConfig: OIDCConfig | null;
   oidcStateStore: OidcStateStore;
   oidcStateTtlMs: number;
+  refreshCookieMaxAgeSeconds?: number;
+  secureCookies?: boolean;
+  /** Browser origins allowed to send cookie-backed session mutations. */
+  csrfAllowedOrigins?: readonly string[];
+  trustedProxyCidrs?: readonly string[];
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
   appendAudit: AuditAppender;
 }
+
+export const REFRESH_SESSION_COOKIE_NAME = 'cvg_his_refresh';
+const DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function readHeader(request: IncomingMessage, headerName: string): string | undefined {
   const value = request.headers[headerName];
@@ -195,6 +216,141 @@ function sendJson(response: ServerResponse, statusCode: number, payload: unknown
   response.setHeader('content-type', 'application/json');
   response.end(JSON.stringify(payload));
   return true;
+}
+
+function appendSetCookie(response: ServerResponse, value: string): void {
+  const current = response.getHeader('set-cookie');
+  const existing = Array.isArray(current)
+    ? current.map(String)
+    : current === undefined
+      ? []
+      : [String(current)];
+  response.setHeader('set-cookie', [...existing, value]);
+}
+
+function serializeRefreshCookie(
+  token: string | null,
+  maxAgeSeconds: number,
+  secure: boolean
+): string {
+  const attributes = [
+    `${REFRESH_SESSION_COOKIE_NAME}=${token ? encodeURIComponent(token) : ''}`,
+    `Max-Age=${token ? Math.max(0, Math.floor(maxAgeSeconds)) : 0}`,
+    'Path=/api',
+    'HttpOnly',
+    'SameSite=Strict'
+  ];
+  if (secure) {
+    attributes.push('Secure');
+  }
+  if (!token) {
+    attributes.push('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  }
+  return attributes.join('; ');
+}
+
+function setRefreshCookie(
+  response: ServerResponse,
+  token: string | null,
+  handlers: Pick<AuthRoutesHandlers, 'refreshCookieMaxAgeSeconds' | 'secureCookies'>
+): void {
+  appendSetCookie(
+    response,
+    serializeRefreshCookie(
+      token,
+      handlers.refreshCookieMaxAgeSeconds ?? DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS,
+      handlers.secureCookies ?? process.env.NODE_ENV === 'production'
+    )
+  );
+}
+
+function readCookie(request: IncomingMessage, name: string): string | undefined {
+  const header = request.headers.cookie;
+  if (typeof header !== 'string') {
+    return undefined;
+  }
+
+  for (const part of header.split(';')) {
+    const separatorIndex = part.indexOf('=');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+    const key = part.slice(0, separatorIndex).trim();
+    if (key !== name) {
+      continue;
+    }
+    const rawValue = part.slice(separatorIndex + 1).trim();
+    try {
+      return decodeURIComponent(rawValue);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function isAllowedCookieOrigin(
+  request: IncomingMessage,
+  allowedOrigins: readonly string[] | undefined
+): boolean {
+  const origin = readHeader(request, 'origin');
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+    return allowedOrigins?.includes(parsed.origin) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+function rejectCookieMutationWithoutTrustedOrigin(
+  request: IncomingMessage,
+  response: ServerResponse,
+  allowedOrigins: readonly string[] | undefined
+): boolean {
+  if (isAllowedCookieOrigin(request, allowedOrigins)) {
+    return false;
+  }
+
+  sendJson(response, 403, {
+    code: 'CSRF_ORIGIN_DENIED',
+    message: 'The request origin is not allowed to mutate the browser session.'
+  });
+  return true;
+}
+
+function readRefreshToken(payload: unknown, request: IncomingMessage): string | undefined {
+  if (payload && typeof payload === 'object') {
+    const refreshToken = (payload as { refreshToken?: unknown }).refreshToken;
+    if (typeof refreshToken === 'string' && refreshToken.trim().length > 0) {
+      return refreshToken;
+    }
+  }
+  return readCookie(request, REFRESH_SESSION_COOKIE_NAME);
+}
+
+function toBrowserSession(session: AuthSessionResponse): BrowserAuthSessionResponse {
+  return {
+    accessToken: session.accessToken,
+    tokenType: session.tokenType,
+    principal: session.principal
+  };
+}
+
+function sendAuthSession(
+  response: ServerResponse,
+  session: AuthSessionResponse,
+  handlers: Pick<AuthRoutesHandlers, 'refreshCookieMaxAgeSeconds' | 'secureCookies'>
+): true {
+  setRefreshCookie(response, session.refreshToken, handlers);
+  return sendJson(response, 200, toBrowserSession(session));
 }
 
 function sendRateLimited(response: ServerResponse, rateLimitInfo: AuthRateLimitInfo): boolean {
@@ -218,10 +374,71 @@ function sendRateLimited(response: ServerResponse, rateLimitInfo: AuthRateLimitI
   return true;
 }
 
-function getClientIp(request: IncomingMessage): string {
-  return request.headers['x-forwarded-for']?.toString().split(',')[0].trim()
-    ?? request.socket.remoteAddress
-    ?? 'unknown';
+function normalizeIpAddress(value: string): string {
+  return value.trim().toLowerCase().replace(/^::ffff:/, '');
+}
+
+function ipv4ToNumber(value: string): number | undefined {
+  const parts = value.split('.');
+  if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
+    return undefined;
+  }
+  const octets = parts.map(Number);
+  if (octets.some((part) => part < 0 || part > 255)) {
+    return undefined;
+  }
+  return (((octets[0] * 256 + octets[1]) * 256 + octets[2]) * 256 + octets[3]) >>> 0;
+}
+
+function isTrustedProxyAddress(address: string, trustedProxyCidrs: readonly string[]): boolean {
+  const normalizedAddress = normalizeIpAddress(address);
+  const addressNumber = ipv4ToNumber(normalizedAddress);
+
+  return trustedProxyCidrs.some((entry) => {
+    const normalizedEntry = normalizeIpAddress(entry);
+    const [network, prefix] = normalizedEntry.split('/');
+    if (prefix === undefined) {
+      return normalizedAddress === normalizedEntry;
+    }
+    if (addressNumber === undefined) {
+      return false;
+    }
+    const networkNumber = ipv4ToNumber(network);
+    const prefixLength = Number(prefix);
+    if (
+      networkNumber === undefined ||
+      !Number.isInteger(prefixLength) ||
+      prefixLength < 0 ||
+      prefixLength > 32
+    ) {
+      return false;
+    }
+    const mask = prefixLength === 0 ? 0 : (0xffffffff << (32 - prefixLength)) >>> 0;
+    return (addressNumber & mask) === (networkNumber & mask);
+  });
+}
+
+export function getClientIp(
+  request: IncomingMessage,
+  trustedProxyCidrs: readonly string[] = []
+): string {
+  const remoteAddress = request.socket.remoteAddress ?? '';
+  if (!isTrustedProxyAddress(remoteAddress, trustedProxyCidrs)) {
+    return normalizeIpAddress(remoteAddress || 'unknown');
+  }
+
+  const forwardedFor = request.headers['x-forwarded-for']?.toString();
+  if (forwardedFor) {
+    const chain = forwardedFor.split(',').map(normalizeIpAddress).filter(Boolean);
+    for (let index = chain.length - 1; index >= 0; index -= 1) {
+      const candidate = chain[index];
+      if (candidate && !isTrustedProxyAddress(candidate, trustedProxyCidrs)) {
+        return candidate;
+      }
+    }
+  }
+
+  return normalizeIpAddress(remoteAddress || 'unknown');
 }
 
 function getMfaService(auth: AuthService): MfaService | undefined {
@@ -247,6 +464,7 @@ export async function handleAuthRoutes(
     oidcConfig,
     oidcStateStore,
     oidcStateTtlMs,
+    trustedProxyCidrs,
     requirePrincipal,
     appendAudit
   } = handlers;
@@ -289,17 +507,22 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/login' && request.method === 'POST') {
+    const payload = (await readJsonBody(request).catch(() => ({}))) as LoginRequest;
     const rateLimitInfo = await authRateLimiter.check({
-      ip: getClientIp(request),
-      route: '/auth/login'
+      ip: getClientIp(request, trustedProxyCidrs),
+      route: '/auth/login',
+      accountId: payload.accountId,
+      userId: payload.username
     });
     if (sendRateLimited(response, rateLimitInfo)) {
       return true;
     }
 
     try {
-      const payload = (await readJsonBody(request)) as LoginRequest;
       const session = await auth.login(payload, correlationId);
+      if ('refreshToken' in session && 'accessToken' in session) {
+        return sendAuthSession(response, session, handlers);
+      }
       return sendJson(response, 200, session);
     } catch (error) {
       logger.error('auth login failed', { correlationId, error });
@@ -311,20 +534,34 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/refresh' && request.method === 'POST') {
-    const payload = (await readJsonBody(request)) as RefreshSessionRequest;
-    const session = auth.refresh(payload, correlationId);
-    return sendJson(response, 200, session);
+    if (rejectCookieMutationWithoutTrustedOrigin(request, response, handlers.csrfAllowedOrigins)) {
+      return true;
+    }
+    const payload = await readJsonBody(request).catch(() => ({}));
+    const refreshToken = readRefreshToken(payload, request);
+    if (!refreshToken) {
+      return sendJson(response, 401, {
+        code: 'SESSION_NOT_FOUND',
+        message: 'Session not found'
+      });
+    }
+    const session = await auth.refresh({ refreshToken } satisfies RefreshSessionRequest, correlationId);
+    return sendAuthSession(response, session, handlers);
   }
 
   if (pathname === '/auth/logout' && request.method === 'POST') {
+    if (rejectCookieMutationWithoutTrustedOrigin(request, response, handlers.csrfAllowedOrigins)) {
+      return true;
+    }
     const payload = (await readJsonBody(request).catch(() => ({}))) as LogoutRequest;
-    auth.logout(
+    await auth.logout(
       {
-        refreshToken: payload.refreshToken,
+        refreshToken: readRefreshToken(payload, request),
         accessToken: extractBearerToken(readHeader(request, 'authorization'))
       },
       correlationId
     );
+    setRefreshCookie(response, null, handlers);
     response.statusCode = 204;
     response.end();
     return true;
@@ -332,7 +569,7 @@ export async function handleAuthRoutes(
 
   if (pathname === '/auth/logout-all-others' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'auth.session.read');
-    const revoked = auth.revokeOtherSessions(principal.session.sessionId, correlationId);
+    const revoked = await auth.revokeOtherSessions(principal.session.sessionId, correlationId);
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -344,14 +581,17 @@ export async function handleAuthRoutes(
       'medium',
       correlationId
     );
-    return sendJson(response, 200, { revokedSessions: revoked, keptSessionId: principal.session.sessionId });
+    return sendJson(response, 200, {
+      revokedSessions: revoked,
+      keptSessionId: principal.session.sessionId
+    });
   }
 
   const revokeSessionMatch = pathname.match(/^\/auth\/sessions\/([^/]+)\/revoke$/);
   if (revokeSessionMatch && request.method === 'POST') {
     const principal = requirePrincipal(request, 'auth.session.read');
     const targetSessionId = revokeSessionMatch[1] as never;
-    const revoked = auth.revokeSessionForUser(
+    const revoked = await auth.revokeSessionForUser(
       principal.session.sessionId,
       targetSessionId,
       correlationId
@@ -363,7 +603,9 @@ export async function handleAuthRoutes(
       'session_revoke',
       'session',
       String(targetSessionId),
-      revoked ? `Revoked session ${targetSessionId}` : `Session ${targetSessionId} already inactive`,
+      revoked
+        ? `Revoked session ${targetSessionId}`
+        : `Session ${targetSessionId} already inactive`,
       'medium',
       correlationId
     );
@@ -375,19 +617,59 @@ export async function handleAuthRoutes(
 
   if (pathname === '/auth/login/mfa' && request.method === 'POST') {
     const rateLimitInfo = await authRateLimiter.check({
-      ip: getClientIp(request),
-      route: '/auth/login/mfa'
+      ip: getClientIp(request, trustedProxyCidrs),
+      route: '/auth/login/mfa',
+      userId: request.headers['x-mfa-user-id']?.toString()
     });
     if (sendRateLimited(response, rateLimitInfo)) {
       return true;
     }
 
-    const payload = (await readJsonBody(request)) as { userId: string; token: string };
+    const payload = (await readJsonBody(request)) as {
+      userId: string;
+      token: string;
+      challengeId: string;
+    };
     const result = await auth.completeMfaLogin(
-      { userId: payload.userId, token: payload.token },
+      { userId: payload.userId, token: payload.token, challengeId: payload.challengeId },
       correlationId
     );
-    return sendJson(response, 200, result);
+    return sendAuthSession(response, result, handlers);
+  }
+
+  if (pathname === '/auth/mfa/enroll' && request.method === 'POST') {
+    const mfaService = getMfaService(auth);
+    if (!mfaService) {
+      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
+    }
+    const payload = (await readJsonBody(request)) as { challengeId: string };
+    const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
+    const user = auth.getPendingMfaEnrollmentUser(challengeId);
+    if (await mfaService.isMfaActive(user.accountId, user.id)) {
+      return sendJson(response, 409, {
+        code: 'MFA_ALREADY_ACTIVE',
+        message: 'MFA is already active'
+      });
+    }
+    const setup = await mfaService.initiateSetup(user.accountId, user.id, user.email, appName);
+    return sendJson(response, 200, setup);
+  }
+
+  if (pathname === '/auth/mfa/enroll/confirm' && request.method === 'POST') {
+    const mfaService = getMfaService(auth);
+    if (!mfaService) {
+      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
+    }
+    const payload = (await readJsonBody(request)) as { challengeId: string; token: string };
+    const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
+    const token = requireNonEmptyString(payload.token, 'token');
+    const user = auth.getPendingMfaEnrollmentUser(challengeId);
+    await mfaService.confirmSetup(user.accountId, user.id, token);
+    const result = await auth.completeMfaLogin(
+      { userId: user.id, token, challengeId },
+      correlationId
+    );
+    return sendAuthSession(response, result, handlers);
   }
 
   if (pathname === '/mfa/setup' && request.method === 'POST') {
@@ -397,6 +679,7 @@ export async function handleAuthRoutes(
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
     const setup = await mfaService.initiateSetup(
+      principal.user.accountId,
       principal.user.id,
       principal.user.email,
       appName
@@ -411,7 +694,11 @@ export async function handleAuthRoutes(
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
     const payload = (await readJsonBody(request)) as { token: string };
-    const record = await mfaService.confirmSetup(principal.user.id, payload.token);
+    const record = await mfaService.confirmSetup(
+      principal.user.accountId,
+      principal.user.id,
+      payload.token
+    );
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -432,7 +719,7 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 200, { isActive: false, isRequired: false });
     }
-    const isActive = await mfaService.isMfaActive(principal.user.id);
+    const isActive = await mfaService.isMfaActive(principal.user.accountId, principal.user.id);
     const isRequired = mfaService.isMfaRequired(principal.access.roleCodes);
     return sendJson(response, 200, { isActive, isRequired });
   }
@@ -444,7 +731,7 @@ export async function handleAuthRoutes(
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
     const payload = (await readJsonBody(request)) as { token: string };
-    await mfaService.disableMfa(principal.user.id, payload.token);
+    await mfaService.disableMfa(principal.user.accountId, principal.user.id, payload.token);
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -465,14 +752,20 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const codes = await mfaService.regenerateRecoveryCodes(principal.user.id);
+    const codes = await mfaService.regenerateRecoveryCodes(
+      principal.user.accountId,
+      principal.user.id
+    );
     return sendJson(response, 200, { recoveryCodes: codes });
   }
 
   if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
-      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' });
+      return sendJson(response, 501, {
+        code: 'NOT_IMPLEMENTED',
+        message: 'WebAuthn not configured'
+      });
     }
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
@@ -494,7 +787,10 @@ export async function handleAuthRoutes(
   if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
-      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' });
+      return sendJson(response, 501, {
+        code: 'NOT_IMPLEMENTED',
+        message: 'WebAuthn not configured'
+      });
     }
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
@@ -544,7 +840,10 @@ export async function handleAuthRoutes(
   if (pathname === '/auth/mfa/webauthn/authenticate' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
-      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' });
+      return sendJson(response, 501, {
+        code: 'NOT_IMPLEMENTED',
+        message: 'WebAuthn not configured'
+      });
     }
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
@@ -567,7 +866,10 @@ export async function handleAuthRoutes(
   if (pathname === '/auth/mfa/webauthn/assert' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
-      return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'WebAuthn not configured' });
+      return sendJson(response, 501, {
+        code: 'NOT_IMPLEMENTED',
+        message: 'WebAuthn not configured'
+      });
     }
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
@@ -630,9 +932,13 @@ export async function handleAuthRoutes(
       return sendJson(response, 501, { code: 'NOT_CONFIGURED', message: 'OIDC not configured' });
     }
     if (!featureFlags.authOidcEnabled) {
-      return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'OIDC login is not enabled' });
+      return sendJson(response, 403, {
+        code: 'FLAG_DISABLED',
+        message: 'OIDC login is not enabled'
+      });
     }
-    const redirectUri = request.headers['x-oidc-redirect-uri']?.toString() ?? oidcConfig.redirectUri;
+    const redirectUri =
+      request.headers['x-oidc-redirect-uri']?.toString() ?? oidcConfig.redirectUri;
     const pkce = generatePKCE();
     const state = oidcStateStore.create({
       codeChallenge: pkce.codeChallenge,
@@ -651,7 +957,10 @@ export async function handleAuthRoutes(
       return sendJson(response, 501, { code: 'NOT_CONFIGURED', message: 'OIDC not configured' });
     }
     if (!featureFlags.authOidcEnabled) {
-      return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'OIDC login is not enabled' });
+      return sendJson(response, 403, {
+        code: 'FLAG_DISABLED',
+        message: 'OIDC login is not enabled'
+      });
     }
 
     const url = new URL(request.url ?? '/', 'http://localhost');

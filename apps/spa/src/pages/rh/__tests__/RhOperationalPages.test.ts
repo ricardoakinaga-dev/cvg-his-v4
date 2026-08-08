@@ -198,6 +198,7 @@ const commissionCalculations: CommissionCalculationDetail[] = [
     reviewedByUserId: null,
     paidByUserId: null,
     cancelledByUserId: null,
+    payableId: null,
     createdAt: '2026-04-30T12:00:00.000Z',
     updatedAt: '2026-04-30T12:00:00.000Z',
     reviewedAt: null,

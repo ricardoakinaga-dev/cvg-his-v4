@@ -19,10 +19,17 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-cvg_his_v2}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:-cvg_runtime}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}
+      POSTGRES_API_USER: ${POSTGRES_API_USER:-cvg_api}
+      POSTGRES_API_PASSWORD: ${POSTGRES_API_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-cvg_worker}
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}}
     ports:
       - '5432:5432'
     volumes:
       - cvg_his_v2_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cvg_his_v2}']
       interval: 5s
@@ -42,6 +49,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  runtime-role-init:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-cvg_his_v2}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:-cvg_runtime}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}
+      POSTGRES_API_USER: ${POSTGRES_API_USER:-cvg_api}
+      POSTGRES_API_PASSWORD: ${POSTGRES_API_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-cvg_worker}
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./infra/postgres/init-runtime-role.sh:/usr/local/bin/init-runtime-role.sh:ro
+    entrypoint: ['/bin/sh', '/usr/local/bin/init-runtime-role.sh']
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.124.1
@@ -89,9 +117,11 @@ services:
       PORT: 3001
       APP_NAME: cvg-his-v2-api
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3002,http://127.0.0.1:3002,http://localhost:5173,http://127.0.0.1:5173}
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      DATABASE_URL: postgres://${POSTGRES_API_USER:-cvg_api}:${POSTGRES_API_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD}}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      DATABASE_REQUIRE_RLS_ROLE: '1'
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      WHATSAPP_WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET:?WHATSAPP_WEBHOOK_SECRET is required}
       FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
       AUTH_ACCESS_TOKEN_TTL_SECONDS: ${AUTH_ACCESS_TOKEN_TTL_SECONDS:-900}
       AUTH_REFRESH_TOKEN_TTL_SECONDS: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:-604800}
@@ -105,8 +135,8 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://otel-collector:4318/v1/traces}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     depends_on:
-      postgres:
-        condition: service_healthy
+      runtime-role-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       otel-collector:
@@ -126,8 +156,9 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       APP_NAME: cvg-his-v2-worker
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
-      WORKER_ACCOUNT_ID: ${WORKER_ACCOUNT_ID:-}
+      DATABASE_URL: postgres://${POSTGRES_WORKER_USER:-cvg_worker}:${POSTGRES_WORKER_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD}}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      DATABASE_REQUIRE_RLS_ROLE: '1'
+      WORKER_ACCOUNT_IDS: ${WORKER_ACCOUNT_IDS:?WORKER_ACCOUNT_IDS is required}
       WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAME: ${WORKER_OTEL_SERVICE_NAME:-cvg-his-v2-worker}
@@ -135,8 +166,8 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://otel-collector:4318/v1/traces}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     depends_on:
-      postgres:
-        condition: service_healthy
+      runtime-role-init:
+        condition: service_completed_successfully
       cvg-his-v2-api:
         condition: service_healthy
       otel-collector:

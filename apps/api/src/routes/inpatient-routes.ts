@@ -11,6 +11,7 @@ import type { SectorBedService } from '@cvg-his-v2/module-inpatient';
 import type {
   CreateSectorRequest,
   CreateBedRequest,
+  CreateInpatientAdmissionRequest,
   UpdateBedRequest,
   InpatientDailyChargeWorklistResponse,
   InpatientHandoverPreviewResponse,
@@ -19,6 +20,7 @@ import type {
   MarkInpatientDailyChargeBilledRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientProgressSummary,
   InpatientStaySummary
@@ -29,6 +31,18 @@ import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
 
 const bedCollectionPaths = new Set(['/beds', '/boxes-de-internacao', '/box-internacao']);
+
+function requireStayForAccount(
+  inpatient: InpatientService,
+  stayId: string,
+  accountId: string
+): InpatientStaySummary {
+  const stay = inpatient.getOrThrow(stayId as never);
+  if (stay.accountId !== accountId) {
+    throw new NotFoundError('Inpatient stay not found', { stayId });
+  }
+  return stay;
+}
 
 function parseBedId(pathname: string): string | null {
   const match = pathname.match(/^\/beds\/([^/]+)$/);
@@ -69,6 +83,59 @@ export async function handleInpatientRoutes(
   handlers: InpatientRoutesHandlers
 ): Promise<boolean> {
   const { inpatient, billing, sectorBedService, audit, requirePrincipal: rp } = handlers;
+
+  if (pathname === '/inpatient' && request.method === 'POST') {
+    const principal = rp(request, 'inpatient.manage');
+    const payload = (await readJsonBody(request)) as CreateInpatientAdmissionRequest;
+    requireNonEmptyString(payload.encounterId, 'encounterId');
+    requireNonEmptyString(payload.patientId, 'patientId');
+    requireNonEmptyString(payload.unit, 'unit');
+    requireNonEmptyString(payload.ward, 'ward');
+    requireNonEmptyString(payload.bed, 'bed');
+    let validatedBed: Awaited<ReturnType<SectorBedService['getBedForAccountOrThrow']>> | undefined;
+    let validatedSector: Awaited<ReturnType<SectorBedService['getSectorOrThrow']>> | undefined;
+    if (payload.bedId || payload.sectorId) {
+      requireNonEmptyString(payload.bedId, 'bedId');
+      requireNonEmptyString(payload.sectorId, 'sectorId');
+      const bed = await sectorBedService.getBedForAccountOrThrow(
+        principal.user.accountId as never,
+        payload.bedId as never
+      );
+      if (bed.sectorId !== payload.sectorId) {
+        throw new NotFoundError('Bed not found', { bedId: payload.bedId });
+      }
+      const sector = await sectorBedService.getSectorOrThrow(payload.sectorId as never);
+      if (sector.accountId !== principal.user.accountId) {
+        throw new NotFoundError('Sector not found', { sectorId: payload.sectorId });
+      }
+      validatedBed = bed;
+      validatedSector = sector;
+    }
+    const stay = inpatient.admit(
+      {
+        ...payload,
+        ...(validatedBed && { bed: validatedBed.code, bedId: validatedBed.id }),
+        ...(validatedSector && { ward: validatedSector.name, sectorId: validatedSector.id })
+      },
+      principal.user.accountId,
+      principal.user.id as never
+    );
+    await inpatient.waitForPersistence();
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'inpatient',
+      action: 'admit',
+      entityType: 'inpatient-stay',
+      entityId: stay.id,
+      payloadSummary: `Patient admitted to ${stay.unit} / ${stay.ward} / ${stay.bed}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(stay));
+    return true;
+  }
 
   // GET /sectors
   if (pathname === '/sectors' && request.method === 'GET') {
@@ -271,6 +338,7 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: InpatientHandoverPreviewResponse = inpatient.buildHandoverPreview({
+      accountId: principal.user.accountId,
       unit: url.searchParams.get('unit') ?? undefined,
       ward: url.searchParams.get('ward') ?? undefined,
       includeDischarged: url.searchParams.get('includeDischarged') === 'true'
@@ -297,6 +365,7 @@ export async function handleInpatientRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const status = url.searchParams.get('status') || undefined;
     const items = inpatient.listDailyChargeWorklist({
+      accountId: principal.user.accountId,
       status: status as never,
       unit: url.searchParams.get('unit') || undefined,
       ward: url.searchParams.get('ward') || undefined
@@ -334,9 +403,14 @@ export async function handleInpatientRoutes(
   ) {
     const principal = rp(request, 'inpatient.manage');
     const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
-    const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload = (await readJsonBody(request)) as { bedId: string; sectorId: string };
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
+    await sectorBedService.getBedForAccountOrThrow(
+      principal.user.accountId as never,
+      payload.bedId as never
+    );
     const stay = await inpatient.assignBed(stayId as never, payload as never);
+    await inpatient.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -362,7 +436,13 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.manage');
     const stayId = requireNonEmptyString(pathname.split('/')[2], 'stayId');
     const payload = (await readJsonBody(request)) as { bedId: string; sectorId: string };
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
+    await sectorBedService.getBedForAccountOrThrow(
+      principal.user.accountId as never,
+      payload.bedId as never
+    );
     const stay = await inpatient.transferBed(stayId as never, payload as never);
+    await inpatient.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -394,8 +474,9 @@ export async function handleInpatientRoutes(
       transferToUnit?: string;
       transferToWard?: string;
     };
-    const previousStay = inpatient.getOrThrow(stayId as never);
+    const previousStay = requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const stay = inpatient.updateStatus(stayId as never, payload);
+    await inpatient.waitForPersistence();
     handlers.onStatusUpdated?.({
       stay,
       previousStatus: previousStay.status,
@@ -426,6 +507,7 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.read');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const progress = inpatient.listProgress(stayId as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ items: progress }));
@@ -441,6 +523,7 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.read');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const occurrences = inpatient.listOccurrences(stayId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -467,11 +550,13 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.manage');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const payload = (await readJsonBody(request)) as Omit<AddInpatientOccurrenceRequest, 'stayId'>;
     const occurrence = inpatient.addOccurrence(principal.user.id as never, {
       ...payload,
       stayId
     });
+    await inpatient.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -497,6 +582,7 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.read');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const charges = inpatient.listDailyCharges(stayId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -523,11 +609,13 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.manage');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const payload = (await readJsonBody(request)) as Omit<CreateInpatientDailyChargeRequest, 'stayId'>;
     const charge = inpatient.createDailyCharge(principal.user.id as never, {
       ...payload,
       stayId
     });
+    await inpatient.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -556,6 +644,7 @@ export async function handleInpatientRoutes(
     const stayId = parts[2];
     const chargeId = parts[4];
     if (!stayId || !chargeId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const payload = (await readJsonBody(request)) as MarkInpatientDailyChargeBilledRequest;
     const pendingCharge = inpatient
       .listDailyCharges(stayId as never)
@@ -579,6 +668,7 @@ export async function handleInpatientRoutes(
       ...payload,
       billingRecordId
     });
+    await inpatient.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -604,11 +694,13 @@ export async function handleInpatientRoutes(
     const principal = rp(request, 'inpatient.manage');
     const stayId = pathname.split('/')[2];
     if (!stayId) { return false; }
+    requireStayForAccount(inpatient, stayId, principal.user.accountId);
     const payload = (await readJsonBody(request)) as { note: string };
     const progress = inpatient.addProgress(principal.user.id as never, {
       stayId,
       note: payload.note
     });
+    await inpatient.waitForPersistence();
     handlers.onProgressAdded?.({
       stay: inpatient.getOrThrow(stayId as never),
       progress,

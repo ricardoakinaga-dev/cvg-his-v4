@@ -69,6 +69,7 @@ Preencha ao menos:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `AUTH_SECRET`
+- `WHATSAPP_WEBHOOK_SECRET`
 - `AUTH_ACCESS_TOKEN_TTL_SECONDS`
 - `AUTH_REFRESH_TOKEN_TTL_SECONDS`
 - `WORKER_INTERVAL_MS`
@@ -77,6 +78,7 @@ Regras:
 
 - `POSTGRES_PASSWORD` nao pode ficar no placeholder
 - `AUTH_SECRET` deve ter 32 ou mais caracteres reais
+- `WHATSAPP_WEBHOOK_SECRET` deve ser independente e enviado pelo gateway no header `x-webhook-secret`
 - use apenas `.env.v2` para a stack real
 
 ### 2. Validar o compose antes de subir

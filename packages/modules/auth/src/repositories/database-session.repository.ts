@@ -20,20 +20,19 @@ export class DatabaseSessionRepository implements SessionRepository {
       id: session.sessionId,
       accountId: session.accountId,
       userId: session.userId,
-      tokenHash: '', // Will be updated when tokens are created
-      refreshTokenHash: session.refreshNonce,
+      authTime: new Date(session.authTime),
       expiresAt: new Date(session.expiresAt),
+      refreshExpiresAt: new Date(session.refreshExpiresAt),
+      active: session.active,
+      roleCodes: [...session.roleCodes],
+      refreshNonce: session.refreshNonce,
+      revokedAt: session.revokedAt ? new Date(session.revokedAt) : null,
       createdAt: new Date(session.createdAt),
       updatedAt: new Date(session.createdAt)
     });
   }
 
   public async update(session: PersistedSessionRecord | UpdateSessionParams): Promise<void> {
-    if ('active' in session && session.active === false) {
-      await this.delete(session.sessionId);
-      return;
-    }
-
     const updateData: Record<string, unknown> = {
       updatedAt: new Date()
     };
@@ -42,7 +41,19 @@ export class DatabaseSessionRepository implements SessionRepository {
       updateData.expiresAt = new Date(session.expiresAt);
     }
     if ('refreshNonce' in session && session.refreshNonce) {
-      updateData.refreshTokenHash = session.refreshNonce;
+      updateData.refreshNonce = session.refreshNonce;
+    }
+    if ('refreshExpiresAt' in session && session.refreshExpiresAt) {
+      updateData.refreshExpiresAt = new Date(session.refreshExpiresAt);
+    }
+    if ('active' in session && session.active !== undefined) {
+      updateData.active = session.active;
+    }
+    if ('revokedAt' in session && session.revokedAt) {
+      updateData.revokedAt = new Date(session.revokedAt);
+    }
+    if ('roleCodes' in session) {
+      updateData.roleCodes = [...session.roleCodes];
     }
     await this.#db.update(sessions).set(updateData).where(eq(sessions.id, session.sessionId));
   }
@@ -60,12 +71,13 @@ export class DatabaseSessionRepository implements SessionRepository {
       userId: row.userId as UserId,
       accountId: row.accountId as AccountId,
       createdAt: row.createdAt.toISOString(),
-      authTime: row.createdAt.toISOString(),
+      authTime: row.authTime.toISOString(),
       expiresAt: row.expiresAt.toISOString(),
-      refreshExpiresAt: row.expiresAt.toISOString(),
-      active: true,
-      roleCodes: [],
-      refreshNonce: row.refreshTokenHash ?? ''
+      refreshExpiresAt: row.refreshExpiresAt.toISOString(),
+      active: row.active,
+      roleCodes: row.roleCodes as readonly string[],
+      refreshNonce: row.refreshNonce,
+      revokedAt: row.revokedAt?.toISOString()
     };
   }
 
@@ -77,12 +89,13 @@ export class DatabaseSessionRepository implements SessionRepository {
       userId: row.userId as UserId,
       accountId: row.accountId as AccountId,
       createdAt: row.createdAt.toISOString(),
-      authTime: row.createdAt.toISOString(),
+      authTime: row.authTime.toISOString(),
       expiresAt: row.expiresAt.toISOString(),
-      refreshExpiresAt: row.expiresAt.toISOString(),
-      active: true,
-      roleCodes: [],
-      refreshNonce: row.refreshTokenHash ?? ''
+      refreshExpiresAt: row.refreshExpiresAt.toISOString(),
+      active: row.active,
+      roleCodes: row.roleCodes as readonly string[],
+      refreshNonce: row.refreshNonce,
+      revokedAt: row.revokedAt?.toISOString()
     }));
   }
 

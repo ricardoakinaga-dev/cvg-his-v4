@@ -89,7 +89,10 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
       ['DATABASE_URL', 'production/database', true],
       ['REDIS_URL', 'production/redis', false],
       ['PAGARME_API_KEY', 'production/pagarme', false],
-      ['PAGARME_PIX_KEY', 'production/pagarme', false]
+      ['PAGARME_PIX_KEY', 'production/pagarme', false],
+      ['NFSE_API_KEY', 'production/nfse', false],
+      ['NFSE_CERTIFICATE_BASE64', 'production/nfse', false],
+      ['NFSE_ISSUER_JSON', 'production/nfse', false]
     ]
   );
 });

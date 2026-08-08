@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 
 const mockClearSession = vi.fn();
 const mockRouterReplace = vi.fn();
@@ -20,6 +19,7 @@ async function importApiModule(currentRoute = '/owners?tab=all') {
 
   vi.doMock('@/stores/auth', () => ({
     useAuthStore: () => ({
+      accessToken: 'access-token',
       user: {
         accountId: 'account-123'
       },
@@ -41,7 +41,6 @@ describe('apiRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, 'access-token');
   });
 
   afterEach(() => {
@@ -80,6 +79,42 @@ describe('apiRequest', () => {
       const headers = requestInit.headers as Headers;
       expect(headers.get('Authorization')).toBe('Bearer access-token');
       expect(headers.get('x-account-id')).toBe('account-123');
+      expect(requestInit.credentials).toBe('include');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('invalidates API and offline caches after a successful mutation', async () => {
+    const deleteCachedRequest = vi.fn().mockResolvedValue(true);
+    const cache = {
+      keys: vi.fn().mockResolvedValue([
+        { url: 'http://localhost/api/owners/owner-1' },
+        { url: 'http://localhost/assets/app.js' }
+      ]),
+      delete: deleteCachedRequest
+    };
+    vi.stubGlobal('caches', {
+      keys: vi.fn().mockResolvedValue(['api-cache']),
+      open: vi.fn().mockResolvedValue(cache)
+    });
+    localStorage.setItem('pwa-cache-owners', JSON.stringify({ data: [] }));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      statusText: 'No Content'
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule();
+
+    try {
+      await apiRequest('/owners/owner-1', { method: 'DELETE' });
+
+      expect(deleteCachedRequest).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem('pwa-cache-owners')).toBeNull();
+      expect((mockFetch.mock.calls[0]?.[1] as RequestInit).credentials).toBe('include');
     } finally {
       cleanup();
     }

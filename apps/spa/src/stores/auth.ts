@@ -3,11 +3,14 @@ import { AUTH_STORAGE_KEYS } from '@cvg-his-v2/shared-auth-sdk';
 import type { AuthState } from '@/types';
 
 const STORAGE_KEYS = {
+  // These keys are kept only to remove tokens written by older releases.
+  // Access/refresh tokens are no longer read from or persisted in storage.
   ACCESS_TOKEN: AUTH_STORAGE_KEYS.accessToken,
   REFRESH_TOKEN: AUTH_STORAGE_KEYS.refreshToken,
   MFA_REQUIRED: AUTH_STORAGE_KEYS.mfaRequired,
   MFA_SETUP_REQUIRED: AUTH_STORAGE_KEYS.mfaSetupRequired,
-  MFA_USER_ID: 'cvg-his-v2:mfa_user_id'
+  MFA_USER_ID: 'cvg-his-v2:mfa_user_id',
+  MFA_CHALLENGE_ID: 'cvg-his-v2:mfa_challenge_id'
 } as const;
 
 function loadFromStorage(key: string): string | null {
@@ -86,22 +89,22 @@ function userFromToken(token: string | null): AuthState['user'] {
   return {
     id: (payload.sub as string) ?? null,
     email: (payload.email as string) ?? null,
-    name: ((payload.displayName as string) ?? (payload.name as string) ?? null),
+    name: (payload.displayName as string) ?? (payload.name as string) ?? null,
     roles: (payload.roles as string[]) ?? [],
-    accountId: ((payload.accountId as string) ?? (payload.account_id as string) ?? null)
+    accountId: (payload.accountId as string) ?? (payload.account_id as string) ?? null
   };
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => {
-    const accessToken = loadFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
     return {
-      accessToken,
-      refreshToken: loadFromStorage(STORAGE_KEYS.REFRESH_TOKEN),
+      accessToken: null,
+      refreshToken: null,
       mfaRequired: loadFromStorage(STORAGE_KEYS.MFA_REQUIRED) === 'true',
       mfaSetupRequired: loadFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED) === 'true',
       pendingMfaUserId: loadFromStorage(STORAGE_KEYS.MFA_USER_ID),
-      user: userFromToken(accessToken)
+      pendingMfaChallengeId: loadFromStorage(STORAGE_KEYS.MFA_CHALLENGE_ID),
+      user: emptyUser()
     };
   },
 
@@ -119,12 +122,29 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    setTokens(accessToken: string, refreshToken?: string) {
+    setTokens(accessToken: string, _refreshToken?: string) {
       this.accessToken = accessToken;
-      this.refreshToken = refreshToken ?? null;
-      saveToStorage(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-      if (refreshToken) saveToStorage(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      // Refresh tokens are delivered in an HttpOnly cookie and are never
+      // exposed to JavaScript or persisted in browser storage.
+      this.refreshToken = null;
       this.user = userFromToken(accessToken);
+    },
+
+    async restoreSession(): Promise<boolean> {
+      try {
+        const { apiRequest } = await import('@/services/api');
+        const session = await apiRequest<{ accessToken: string }>('/auth/refresh', {
+          method: 'POST',
+          skipAuth: true,
+          body: '{}'
+        });
+        this.setTokens(session.accessToken);
+        this.clearMfaChallenge();
+        return true;
+      } catch {
+        this.clearSession();
+        return false;
+      }
     },
 
     clearSession() {
@@ -133,12 +153,14 @@ export const useAuthStore = defineStore('auth', {
       this.mfaRequired = false;
       this.mfaSetupRequired = false;
       this.pendingMfaUserId = null;
+      this.pendingMfaChallengeId = null;
       this.user = emptyUser();
       removeFromStorage(STORAGE_KEYS.ACCESS_TOKEN);
       removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN);
       removeFromStorage(STORAGE_KEYS.MFA_REQUIRED);
       removeFromStorage(STORAGE_KEYS.MFA_SETUP_REQUIRED);
       removeFromStorage(STORAGE_KEYS.MFA_USER_ID);
+      removeFromStorage(STORAGE_KEYS.MFA_CHALLENGE_ID);
     },
 
     setMfaRequired(required: boolean) {
@@ -159,9 +181,20 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    setPendingMfaChallengeId(challengeId: string | null) {
+      this.pendingMfaChallengeId = challengeId;
+      if (challengeId) {
+        saveToStorage(STORAGE_KEYS.MFA_CHALLENGE_ID, challengeId);
+      } else {
+        removeFromStorage(STORAGE_KEYS.MFA_CHALLENGE_ID);
+      }
+    },
+
     clearMfaChallenge() {
       this.setMfaRequired(false);
+      this.setMfaSetupRequired(false);
       this.setPendingMfaUserId(null);
+      this.setPendingMfaChallengeId(null);
     },
 
     setMfaSetupRequired(required: boolean) {

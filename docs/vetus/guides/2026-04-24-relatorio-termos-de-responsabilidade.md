@@ -25,7 +25,7 @@ Nesta rodada, o acervo local **não possui captura direta da tela aberta** de `T
 
 A rotina aparece explicitamente em:
 
-- [02-ANALISE-SISTEMA-VETUS.md](/root/cvg-his-v2/docs/vetus/guides/02-ANALISE-SISTEMA-VETUS.md:108), com a linha:
+- [02-ANALISE-SISTEMA-VETUS.md](../guides/02-ANALISE-SISTEMA-VETUS.md), com a linha:
   - `Termos de Responsabilidade | .../Cadastros/Termos.htm | Legado`
 - artefatos de menu legacy já preservados no acervo;
 - inventário global de módulos e rotas do shell híbrido.
@@ -36,7 +36,7 @@ O documento de planejamento já descreve o item como:
 
 - `Termos de Responsabilidade: Documentos legais`
 
-Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:377).
+Isso aparece em [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md).
 
 ### 2.3 Posicionamento no produto
 

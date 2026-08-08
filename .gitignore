@@ -9,6 +9,7 @@ artifacts/
 test-results/
 playwright-report/
 e2e/report/
+.playwright-mcp/
 .freeze-manifest.json
 vetus-screenshots/
 .claude/

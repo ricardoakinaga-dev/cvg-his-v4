@@ -125,6 +125,140 @@ test('CommissionsService enforces review and payment lifecycle', async () => {
   await assert.rejects(() => service.cancel(ACCOUNT, calculation.id, USER), ConflictError);
 });
 
+test('CommissionsService settles the linked financial payable before marking the calculation paid', async () => {
+  const calls: string[] = [];
+  const payableGateway = {
+    async createPayable() {
+      calls.push('create');
+      return { id: 'payable-commission-1' };
+    },
+    async payPayable(_accountId: AccountId, _userId: UserId, payableId: string, input: { amountPaid: number; paymentMethod?: string | null }) {
+      calls.push(`pay:${payableId}:${input.amountPaid}:${input.paymentMethod}`);
+    }
+  };
+  const service = new CommissionsService({ payableGateway });
+  await service.createRule(ACCOUNT, USER, { description: 'Global', percentage: 10 });
+  const calculation = await service.calculate(ACCOUNT, USER, {
+    periodStart: '2026-05-01',
+    periodEnd: '2026-05-31',
+    lines: [{
+      staffId: 'staff-1',
+      staffName: 'Rafael',
+      itemKind: 'service',
+      sourceType: 'manual',
+      sourceId: 'manual-1',
+      sourceDescription: 'Procedimento',
+      baseAmount: 500,
+      occurredAt: '2026-05-20'
+    }]
+  });
+
+  await service.review(ACCOUNT, calculation.id, USER);
+  const paid = await service.markPaid(ACCOUNT, calculation.id, USER, {
+    paymentMethod: 'bank_transfer',
+    paymentReference: 'TRF-001'
+  });
+
+  assert.equal(paid.status, 'paid');
+  assert.equal(paid.payableId, 'payable-commission-1');
+  assert.deepEqual(calls, ['create', 'pay:payable-commission-1:50:bank_transfer']);
+});
+
+test('CommissionsService executes payable creation, settlement and calculation update in one transaction boundary', async () => {
+  const transactionOperations: string[] = [];
+  const payableGateway = {
+    async createPayable() {
+      transactionOperations.push('create-payable');
+      return { id: 'payable-commission-transaction' };
+    },
+    async payPayable() {
+      transactionOperations.push('pay-payable');
+    }
+  };
+  const service = new CommissionsService({
+    payableGateway,
+    transaction: async (_accountId: AccountId, operation: () => Promise<unknown>) => {
+      transactionOperations.push('begin');
+      const result = await operation();
+      transactionOperations.push('commit');
+      return result;
+    }
+  } as never);
+
+  await service.createRule(ACCOUNT, USER, { description: 'Global', percentage: 10 });
+  const calculation = await service.calculate(ACCOUNT, USER, {
+    periodStart: '2026-05-01',
+    periodEnd: '2026-05-31',
+    lines: [{
+      staffId: 'staff-1',
+      staffName: 'Rafael',
+      itemKind: 'service',
+      sourceType: 'manual',
+      sourceId: 'manual-transaction',
+      sourceDescription: 'Procedimento',
+      baseAmount: 500,
+      occurredAt: '2026-05-20'
+    }]
+  });
+
+  await service.review(ACCOUNT, calculation.id, USER);
+  transactionOperations.length = 0;
+  await service.markPaid(ACCOUNT, calculation.id, USER, { paymentMethod: 'pix' });
+
+  assert.deepEqual(transactionOperations, [
+    'begin',
+    'create-payable',
+    'pay-payable',
+    'commit'
+  ]);
+});
+
+test('CommissionsService restores its in-memory lifecycle when the transaction rolls back', async () => {
+  let rollback = false;
+  const service = new CommissionsService({
+    payableGateway: {
+      async createPayable() {
+        return { id: 'payable-commission-rollback' };
+      },
+      async payPayable() {
+        return undefined;
+      }
+    },
+    transaction: async (_accountId: AccountId, operation: () => Promise<unknown>) => {
+      const result = await operation();
+      if (rollback) throw new Error('transaction rolled back');
+      return result;
+    }
+  } as never);
+
+  await service.createRule(ACCOUNT, USER, { description: 'Global', percentage: 10 });
+  const calculation = await service.calculate(ACCOUNT, USER, {
+    periodStart: '2026-05-01',
+    periodEnd: '2026-05-31',
+    lines: [{
+      staffId: 'staff-rollback',
+      staffName: 'Rafael',
+      itemKind: 'service',
+      sourceType: 'manual',
+      sourceId: 'manual-rollback',
+      sourceDescription: 'Procedimento',
+      baseAmount: 500,
+      occurredAt: '2026-05-20'
+    }]
+  });
+  await service.review(ACCOUNT, calculation.id, USER);
+
+  rollback = true;
+  await assert.rejects(
+    () => service.markPaid(ACCOUNT, calculation.id, USER, { paymentMethod: 'pix' }),
+    /transaction rolled back/
+  );
+
+  const restored = service.detail(ACCOUNT, calculation.id);
+  assert.equal(restored.status, 'reviewed');
+  assert.equal(restored.payableId, null);
+});
+
 test('CommissionsService validates rules, dates and account boundaries', async () => {
   const service = new CommissionsService();
   await assert.rejects(

@@ -95,7 +95,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     // Submit
     await page.getByRole('button', { name: 'Salvar Agendamento' }).click();
 
-    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/appointments\/(?!new$)[^/]+$/, { timeout: 10000 });
     console.log('   ✅ Appointment created');
 
     const appointmentUrl = page.url();
@@ -113,7 +113,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
       timeout: 15000
     });
 
-    await page.locator('#referenceDate').fill(referenceDate);
+    await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar' }).click();
     await page.waitForLoadState('networkidle');
 
@@ -128,7 +128,13 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     console.log('   🔍 Opening appointment detail...');
     await appointmentCard.click();
 
-    await expect(page).toHaveURL(/\/appointments\/appt_/, { timeout: 10000 });
+    const appointmentDrawer = page.getByRole('dialog');
+    await expect(appointmentDrawer).toBeVisible({ timeout: 10000 });
+    await expect(appointmentDrawer).toContainText(patientName);
+    await expect(appointmentDrawer).toContainText(ownerName);
+    await appointmentDrawer.getByRole('link', { name: 'Ver detalhe completo' }).click();
+
+    await expect(page).toHaveURL(/\/appointments\/(?!new$)[^/]+$/, { timeout: 10000 });
     await expect(page.getByRole('heading', { name: /Agendamento/ }).first()).toBeVisible({
       timeout: 15000
     });
@@ -154,8 +160,8 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('#referenceDate').fill(referenceDate);
-    await page.getByRole('button', { name: 'Cancelado' }).click();
+    await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
+    await page.getByRole('button', { name: 'Cancelado', exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar' }).click();
     await page.waitForLoadState('networkidle');
 
@@ -190,16 +196,16 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
       timeout: 10000
     });
 
-    await expect(page.getByText(/Cockpit multiprofissional/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Coluna temporal por data/)).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('button', { name: 'Atualizar' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: /Fila operacional/ })).toBeVisible({
+    await expect(page.getByRole('link', { name: 'Esteira', exact: true })).toBeVisible({
       timeout: 10000
     });
-    await expect(page.getByRole('button', { name: /\+ Criar agendamento/ }).first()).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Criar agendamento', exact: true }).first()).toBeVisible({
       timeout: 10000
     });
-    await expect(page.getByText('Filtro e contexto')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('#referenceDate')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Filtrar por...')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.mini-calendar__day--selected')).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('tablist', { name: /Modo da agenda/ })).toBeVisible({
       timeout: 10000
     });

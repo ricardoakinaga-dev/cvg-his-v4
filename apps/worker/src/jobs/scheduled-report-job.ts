@@ -1,5 +1,4 @@
 import type {
-  ReportExecutionDetail,
   ReportScheduleSummary,
   ReportsService
 } from '@cvg-his-v2/module-reports';
@@ -53,6 +52,7 @@ export async function runScheduledReportJob(
   const executionMetrics: ScheduledReportExecutionMetric[] = [];
 
   for (const schedule of dueSchedules) {
+    let exportId: string | null = null;
     try {
       const rows = await context.resolveRows(schedule);
       const execution = await reports.execute(context.accountId, context.runAsUserId, {
@@ -60,30 +60,46 @@ export async function runScheduledReportJob(
         filters: schedule.filters,
         rows
       });
-      const exported = await exportForRecipients(reports, context.runAsUserId, schedule, execution);
+      const exported = schedule.recipients.length > 0
+        ? await reports.exportExecution(context.accountId, context.runAsUserId, execution.id, schedule.format)
+        : null;
+      let deliveryFailure: string | null = null;
       if (exported) {
-        await reports.recordScheduleDeliveries(context.accountId, schedule.id, {
-          executionId: execution.id,
-          recipients: schedule.recipients,
-          status: 'sent',
-          format: schedule.format,
-          deliveredAt: context.asOf
-        });
+        exportId = exported.id;
+        const delivery = await reports.deliverExport(
+          context.accountId,
+          schedule.id,
+          execution.id,
+          exported,
+          schedule.recipients,
+          context.asOf
+        );
+        if (delivery.failures.length > 0) {
+          deliveryFailure = delivery.failures
+            .map((failure) => `${failure.recipient}: ${failure.error}`)
+            .join('; ');
+          failures.push({
+            scheduleId: schedule.id,
+            reportId: schedule.reportId,
+            error: deliveryFailure
+          });
+        }
       }
       await reports.recordScheduleExecution(context.accountId, schedule.id, {
         executionId: execution.id,
-        ranAt: context.asOf
+        ranAt: context.asOf,
+        error: deliveryFailure
       });
       executions.push({
         scheduleId: schedule.id,
         reportId: schedule.reportId,
         executionId: execution.id,
         rowCount: execution.rowCount,
-        exported
+        exported: Boolean(exported)
       });
       executionMetrics.push({
         reportId: schedule.reportId,
-        outcome: exported ? 'exported' : 'executed',
+        outcome: deliveryFailure ? 'failed' : exported ? 'exported' : 'executed',
         rowState: execution.rowCount > 0 ? 'filled' : 'empty'
       });
     } catch (error) {
@@ -98,9 +114,10 @@ export async function runScheduledReportJob(
         outcome: 'failed',
         rowState: 'not_executed'
       });
-      if (schedule.recipients.length > 0) {
+      if (schedule.recipients.length > 0 && !exportId) {
         await reports.recordScheduleDeliveries(context.accountId, schedule.id, {
           recipients: schedule.recipients,
+          exportId,
           status: 'failed',
           format: schedule.format,
           deliveredAt: context.asOf,
@@ -141,15 +158,4 @@ export async function runScheduledReportJob(
     executions,
     failures
   };
-}
-
-async function exportForRecipients(
-  reports: ReportsService,
-  userId: UserId,
-  schedule: ReportScheduleSummary,
-  execution: ReportExecutionDetail
-): Promise<boolean> {
-  if (schedule.recipients.length === 0) return false;
-  await reports.exportExecution(schedule.accountId, userId, execution.id, schedule.format);
-  return true;
 }

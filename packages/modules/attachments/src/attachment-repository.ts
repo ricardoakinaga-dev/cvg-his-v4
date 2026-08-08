@@ -33,6 +33,10 @@ export class DatabaseAttachmentRepository implements AttachmentRepository {
       checksum: attachment.checksum,
       sizeBytes: attachment.sizeBytes ?? null,
       source: attachment.source,
+      scanStatus: attachment.scanStatus,
+      scanProvider: attachment.scanProvider ?? null,
+      scanReason: attachment.scanReason ?? null,
+      scannedAt: attachment.scannedAt ? new Date(attachment.scannedAt) : null,
       uploadedByUserId: attachment.uploadedByUserId,
       createdAt: new Date(attachment.createdAt)
     });
@@ -80,6 +84,10 @@ export class DatabaseAttachmentRepository implements AttachmentRepository {
       checksum: row.checksum,
       sizeBytes: row.sizeBytes ?? undefined,
       source: row.source as AttachmentSummary['source'],
+      scanStatus: (row.scanStatus ?? 'available') as AttachmentSummary['scanStatus'],
+      scanProvider: row.scanProvider ?? undefined,
+      scanReason: row.scanReason ?? undefined,
+      scannedAt: row.scannedAt?.toISOString(),
       uploadedByUserId: (row.uploadedByUserId ?? '') as UserId,
       createdAt: row.createdAt.toISOString()
     };

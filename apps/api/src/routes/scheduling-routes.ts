@@ -20,9 +20,12 @@ import type {
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { JsonValue } from '@cvg-his-v2/shared-database';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
-import { appendAudit } from '../helpers/audit-helper.js';
+import { appendAudit, appendAuditAndWait } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-command.js';
 import {
   recordSmartSchedulingRecommendation,
   recordSmartSchedulingRecommendationApplied
@@ -36,6 +39,7 @@ export interface SchedulingRoutesHandlers {
   featureFlags?: Pick<ApiFeatureFlagsSnapshot, 'mlSmartSchedulingEnabled'>;
   telemetry?: MlTelemetryService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  runCommand?: TenantCommandRunner;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -65,6 +69,7 @@ export async function handleSchedulingRoutes(
   handlers: SchedulingRoutesHandlers
 ): Promise<boolean> {
   const { scheduling, encounters, smartScheduling, audit, requirePrincipal, featureFlags, telemetry } = handlers;
+  const runCommand = handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -101,27 +106,38 @@ export async function handleSchedulingRoutes(
   if (pathname === '/appointments' && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
-    const appointment = await scheduling.createAppointment(principal.user.accountId, payload);
-    if (payload.smartSchedulingRecommendationId) {
-      telemetry?.recordSmartSchedulingApplication({
-        accountId: principal.user.accountId,
-        recommendationId: payload.smartSchedulingRecommendationId,
-        appliedDurationMinutes: payload.durationMinutes
-      });
-      recordSmartSchedulingRecommendationApplied({
-        visitType: payload.visitType ?? 'scheduled'
-      });
-    }
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const appointment = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'create_appointment',
-      entityType: 'appointment',
-      entityId: appointment.id,
-      payloadSummary: `Appointment created for patient ${appointment.patientId}`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.appointments.create',
+      payload: payload as unknown as JsonValue,
+      command: async () => {
+        const created = await scheduling.createAppointment(principal.user.accountId, payload);
+        if (payload.smartSchedulingRecommendationId) {
+          telemetry?.recordSmartSchedulingApplication({
+            accountId: principal.user.accountId,
+            recommendationId: payload.smartSchedulingRecommendationId,
+            appliedDurationMinutes: payload.durationMinutes
+          });
+          recordSmartSchedulingRecommendationApplied({
+            visitType: payload.visitType ?? 'scheduled'
+          });
+        }
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'create_appointment',
+          entityType: 'appointment',
+          entityId: created.id,
+          payloadSummary: `Appointment created for patient ${created.patientId}`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return created;
+      }
     });
     return json(response, 201, appointment);
   }
@@ -199,6 +215,9 @@ export async function handleSchedulingRoutes(
     const principal = requirePrincipal(request, 'scheduling.read');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+    if (appointment.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Appointment not found', { appointmentId });
+    }
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -216,19 +235,34 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/appointments/') && pathname.endsWith('/cancel') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const existing = scheduling.getAppointmentOrThrow(appointmentId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Appointment not found', { appointmentId });
+    }
     const body = (await readJsonBody(request).catch(() => ({}))) as Record<string, unknown>;
     const reason = typeof body.reason === 'string' ? body.reason : undefined;
-    const cancelled = await scheduling.cancelAppointment(appointmentId as never, reason);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const cancelled = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'cancel_appointment',
-      entityType: 'appointment',
-      entityId: cancelled.id,
-      payloadSummary: `Appointment cancelled for patient ${cancelled.patientId}`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.appointments.cancel',
+      payload: { appointmentId, reason: reason ?? null },
+      command: async () => {
+        const updated = await scheduling.cancelAppointment(appointmentId as never, reason);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'cancel_appointment',
+          entityType: 'appointment',
+          entityId: updated.id,
+          payloadSummary: `Appointment cancelled for patient ${updated.patientId}`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return updated;
+      }
     });
     return json(response, 200, cancelled);
   }
@@ -240,22 +274,37 @@ export async function handleSchedulingRoutes(
   ) {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
+    const existing = scheduling.getAppointmentOrThrow(appointmentId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Appointment not found', { appointmentId });
+    }
     const payload = (await readJsonBody(request)) as RescheduleAppointmentRequest;
-    const rescheduled = await scheduling.rescheduleAppointment(
-      principal.user.accountId,
-      appointmentId as never,
-      payload
-    );
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const rescheduled = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'reschedule_appointment',
-      entityType: 'appointment',
-      entityId: rescheduled.id,
-      payloadSummary: `Appointment rescheduled for patient ${rescheduled.patientId}`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.appointments.reschedule',
+      payload: { appointmentId, ...payload } as unknown as JsonValue,
+      command: async () => {
+        const updated = await scheduling.rescheduleAppointment(
+          principal.user.accountId,
+          appointmentId as never,
+          payload
+        );
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'reschedule_appointment',
+          entityType: 'appointment',
+          entityId: updated.id,
+          payloadSummary: `Appointment rescheduled for patient ${updated.patientId}`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return updated;
+      }
     });
     return json(response, 200, rescheduled);
   }
@@ -271,6 +320,9 @@ export async function handleSchedulingRoutes(
     const principal = requirePrincipal(request, 'encounters.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+    if (appointment.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Appointment not found', { appointmentId });
+    }
     const existingEncounter = encounters
       .listActive()
       .find((encounter) => encounter.patientId === appointment.patientId);
@@ -398,17 +450,28 @@ export async function handleSchedulingRoutes(
   if (pathname === '/queue/check-in' && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as CheckInQueueRequest;
-    const entry = await scheduling.checkIn(principal.user.accountId, payload);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'check_in',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Patient ${entry.patientId} checked in`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.check-in',
+      payload: payload as unknown as JsonValue,
+      command: async () => {
+        const created = await scheduling.checkIn(principal.user.accountId, payload);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'check_in',
+          entityType: 'queue-entry',
+          entityId: created.id,
+          payloadSummary: `Patient ${created.patientId} checked in`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return created;
+      }
     });
     return json(response, 201, entry);
   }
@@ -416,17 +479,32 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/queue/') && pathname.endsWith('/call') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-    const entry = await scheduling.callQueueEntry(queueEntryId as never);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'call_queue_entry',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Queue entry ${entry.id} called`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.call',
+      payload: { queueEntryId },
+      command: async () => {
+        const called = await scheduling.callQueueEntry(queueEntryId as never);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'call_queue_entry',
+          entityType: 'queue-entry',
+          entityId: called.id,
+          payloadSummary: `Queue entry ${called.id} called`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return called;
+      }
     });
     return json(response, 200, entry);
   }
@@ -434,6 +512,10 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/queue/') && pathname.endsWith('/transfer') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
     const payload = (await readJsonBody(request)) as {
       readonly toSector?: string;
       readonly sentByUserId?: string;
@@ -446,7 +528,7 @@ export async function handleSchedulingRoutes(
       readonly billingRecordId?: string;
       readonly counterSaleId?: string;
     };
-    const entry = await scheduling.transferQueueEntry(queueEntryId as never, {
+    const transferPayload = {
       toSector: requireNonEmptyString(payload.toSector, 'toSector'),
       sentByUserId: payload.sentByUserId?.trim() || principal.user.id,
       receivedByUserId: payload.receivedByUserId,
@@ -457,17 +539,29 @@ export async function handleSchedulingRoutes(
       urgency: payload.urgency,
       billingRecordId: payload.billingRecordId,
       counterSaleId: payload.counterSaleId
-    });
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    };
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'transfer_queue_entry',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Queue entry ${entry.id} transferred to ${entry.currentSector}`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.transfer',
+      payload: { queueEntryId, ...transferPayload } as unknown as JsonValue,
+      command: async () => {
+        const transferred = await scheduling.transferQueueEntry(queueEntryId as never, transferPayload);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'transfer_queue_entry',
+          entityType: 'queue-entry',
+          entityId: transferred.id,
+          payloadSummary: `Queue entry ${transferred.id} transferred to ${transferred.currentSector}`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return transferred;
+      }
     });
     return json(response, 200, entry);
   }
@@ -475,17 +569,32 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/queue/') && pathname.endsWith('/start-care') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-    const entry = await scheduling.transitionQueueEntry(queueEntryId as never, 'in_care' as never);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'start_care',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Queue entry ${entry.id} transitioned to in_care`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.start-care',
+      payload: { queueEntryId },
+      command: async () => {
+        const started = await scheduling.transitionQueueEntry(queueEntryId as never, 'in_care' as never);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'start_care',
+          entityType: 'queue-entry',
+          entityId: started.id,
+          payloadSummary: `Queue entry ${started.id} transitioned to in_care`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return started;
+      }
     });
     return json(response, 200, entry);
   }
@@ -493,17 +602,32 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/queue/') && pathname.endsWith('/complete') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-    const entry = await scheduling.completeQueueEntry(queueEntryId as never);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'complete_queue_entry',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Queue entry ${entry.id} completed`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.complete',
+      payload: { queueEntryId },
+      command: async () => {
+        const completed = await scheduling.completeQueueEntry(queueEntryId as never);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'complete_queue_entry',
+          entityType: 'queue-entry',
+          entityId: completed.id,
+          payloadSummary: `Queue entry ${completed.id} completed`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return completed;
+      }
     });
     return json(response, 200, entry);
   }
@@ -511,17 +635,32 @@ export async function handleSchedulingRoutes(
   if (pathname.startsWith('/queue/') && pathname.endsWith('/no-show') && method === 'POST') {
     const principal = requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
-    const entry = await scheduling.transitionQueueEntry(queueEntryId as never, 'cancelled' as never);
-    appendAudit(audit, {
-      actorId: principal.user.id,
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const entry = await runCommand({
+      request,
       accountId: principal.user.accountId,
-      module: 'scheduling',
-      action: 'no_show',
-      entityType: 'queue-entry',
-      entityId: entry.id,
-      payloadSummary: `Queue entry ${entry.id} marked as no_show`,
-      riskLevel: 'high',
-      correlationId
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.no-show',
+      payload: { queueEntryId },
+      command: async () => {
+        const cancelled = await scheduling.transitionQueueEntry(queueEntryId as never, 'cancelled' as never);
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'no_show',
+          entityType: 'queue-entry',
+          entityId: cancelled.id,
+          payloadSummary: `Queue entry ${cancelled.id} marked as no_show`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return cancelled;
+      }
     });
     return json(response, 200, entry);
   }

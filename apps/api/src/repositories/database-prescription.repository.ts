@@ -1,10 +1,13 @@
-import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { clinicalEntries } from '@cvg-his-v2/shared-database';
+import { clinicalEntries, entryRevisions, prescriptionSignatures } from '@cvg-his-v2/shared-database';
 import {
   type PrescriptionRepository,
   type PrescriptionSummary,
   type PrescriptionId,
+  type PrescriptionRevisionSummary,
+  type PrescriptionSignatureSummary,
   toPrescriptionSummary
 } from '@cvg-his-v2/module-prescriptions';
 import type { AccountId, EncounterId, PatientId } from '@cvg-his-v2/shared-types';
@@ -54,6 +57,80 @@ export class DatabasePrescriptionRepository implements PrescriptionRepository {
       })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .where(eq(clinicalEntries.id, prescription.id) as any);
+  }
+
+  public async createRevision(revision: PrescriptionRevisionSummary): Promise<void> {
+    await this.#db.insert(entryRevisions).values({
+      id: revision.id,
+      entryId: revision.prescriptionId,
+      version: revision.version,
+      title: revision.title,
+      content: revision.content,
+      authorUserId: revision.authorUserId,
+      reason: revision.reason,
+      createdAt: new Date(revision.createdAt)
+    });
+  }
+
+  public async findRevisions(
+    prescriptionId: PrescriptionId
+  ): Promise<readonly PrescriptionRevisionSummary[]> {
+    const rows = await this.#db
+      .select()
+      .from(entryRevisions)
+      .where(eq(entryRevisions.entryId, prescriptionId));
+    return rows.map((row) => ({
+      id: row.id,
+      prescriptionId,
+      version: row.version,
+      title: row.title,
+      content: row.content,
+      authorUserId: row.authorUserId as PrescriptionSummary['authoredByUserId'],
+      reason: row.reason ?? 'Revision',
+      createdAt: row.createdAt.toISOString()
+    }));
+  }
+
+  public async sign(
+    signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }
+  ): Promise<void> {
+    await this.#db.insert(prescriptionSignatures).values({
+      id: randomUUID(),
+      accountId: signature.accountId,
+      prescriptionId: signature.prescriptionId,
+      version: signature.version,
+      signedByUserId: signature.signedByUserId,
+      signatureHash: signature.signatureHash,
+      signedAt: new Date(signature.signedAt)
+    });
+  }
+
+  public async findSignature(
+    accountId: AccountId,
+    prescriptionId: PrescriptionId,
+    version: number
+  ): Promise<PrescriptionSignatureSummary | null> {
+    const rows = await this.#db
+      .select()
+      .from(prescriptionSignatures)
+      .where(
+        and(
+          eq(prescriptionSignatures.accountId, accountId),
+          eq(prescriptionSignatures.prescriptionId, prescriptionId),
+          eq(prescriptionSignatures.version, version)
+        )
+      )
+      .limit(1);
+    const row = rows[0];
+    return row
+      ? {
+          prescriptionId,
+          version: row.version,
+          signedByUserId: row.signedByUserId as PrescriptionSummary['authoredByUserId'],
+          signedAt: row.signedAt.toISOString(),
+          signatureHash: row.signatureHash
+        }
+      : null;
   }
 
   public async findById(id: PrescriptionId): Promise<PrescriptionSummary | null> {

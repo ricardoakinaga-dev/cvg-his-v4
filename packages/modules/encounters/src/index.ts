@@ -94,6 +94,7 @@ export interface EncountersServiceOptions {
   readonly patients: PatientsService;
   readonly encounterRepository?: EncounterRepository;
   readonly encounterTimelineRepository?: EncounterTimelineRepository;
+  readonly requireUuidIdentifiers?: boolean;
   readonly onEncounterCreated?: (encounter: EncounterSummary) => Promise<void>;
   readonly onEncounterStatusChanged?: (
     encounter: EncounterSummary,
@@ -108,6 +109,7 @@ export class EncountersService {
   readonly #timeline = new Map<EncounterId, EncounterTimelineEventSummary[]>();
   readonly #encounterRepository?: EncounterRepository;
   readonly #encounterTimelineRepository?: EncounterTimelineRepository;
+  readonly #requireUuidIdentifiers: boolean;
   readonly #onEncounterCreated?: (encounter: EncounterSummary) => Promise<void>;
   readonly #onEncounterStatusChanged?: (
     encounter: EncounterSummary,
@@ -115,12 +117,15 @@ export class EncountersService {
   ) => Promise<void>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
+  #pendingCallbacks: Promise<void> = Promise.resolve();
 
   public constructor(options: EncountersServiceOptions) {
     this.#owners = options.owners;
     this.#patients = options.patients;
     this.#encounterRepository = options.encounterRepository;
     this.#encounterTimelineRepository = options.encounterTimelineRepository;
+    this.#requireUuidIdentifiers =
+      options.requireUuidIdentifiers ?? options.encounterRepository !== undefined;
     this.#onEncounterCreated = options.onEncounterCreated;
     this.#onEncounterStatusChanged = options.onEncounterStatusChanged;
   }
@@ -163,11 +168,18 @@ export class EncountersService {
 
   public async waitForPersistence(): Promise<void> {
     try {
-      await this.#lastPersist;
+      await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
     } finally {
       this.#pendingPersist = this.#pendingPersist.catch(() => {});
       this.#lastPersist = this.#pendingPersist;
+      this.#pendingCallbacks = this.#pendingCallbacks.catch(() => {});
     }
+  }
+
+  #enqueueCallback(callback: () => Promise<void>): void {
+    const pending = this.#pendingCallbacks.then(callback);
+    this.#pendingCallbacks = pending;
+    void pending.catch(() => undefined);
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
@@ -190,10 +202,16 @@ export class EncountersService {
   ): EncounterSummary {
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
-    this.#patients.getOrThrow(patientId);
-    this.#owners.getOrThrow(ownerId);
+    const patient = this.#patients.getOrThrow(patientId);
+    const owner = this.#owners.getOrThrow(ownerId);
+    if (patient.accountId !== accountId || owner.accountId !== accountId) {
+      throw new ValidationError('Patient and owner must belong to the current account');
+    }
+    if (patient.primaryOwnerId !== ownerId) {
+      throw new ValidationError('Owner must be the primary owner of the patient');
+    }
 
-    if (this.#encounterRepository && (!isUuid(patientId) || !isUuid(ownerId))) {
+    if (this.#requireUuidIdentifiers && (!isUuid(patientId) || !isUuid(ownerId))) {
       throw new ValidationError(
         'Patient and owner must be persisted with UUID identifiers before opening an encounter',
         {
@@ -250,7 +268,9 @@ export class EncountersService {
       actorUserId
     });
 
-    void this.#onEncounterCreated?.(encounter);
+    if (this.#onEncounterCreated) {
+      this.#enqueueCallback(() => this.#onEncounterCreated!(encounter));
+    }
 
     return encounter;
   }
@@ -294,7 +314,9 @@ export class EncountersService {
       );
     }
 
-    void this.#onEncounterStatusChanged?.(updated, current.status);
+    if (this.#onEncounterStatusChanged) {
+      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+    }
 
     return updated;
   }
@@ -336,8 +358,46 @@ export class EncountersService {
       );
     }
 
-    void this.#onEncounterStatusChanged?.(updated, current.status);
+    if (this.#onEncounterStatusChanged) {
+      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+    }
 
+    return updated;
+  }
+
+  public reopenEncounter(
+    encounterId: EncounterId,
+    actorUserId: UserId,
+    reason: string
+  ): EncounterSummary {
+    const current = this.getOrThrow(encounterId);
+    if (current.status !== 'closed') {
+      throw new ConflictError('Only a closed encounter can be reopened', { encounterId });
+    }
+    const reopenReason = requireNonEmptyString(reason, 'reason');
+    const updated: EncounterSummary = {
+      ...current,
+      status: 'reception',
+      closedAt: undefined,
+      closeReason: undefined,
+      updatedAt: nowIso()
+    };
+    this.#encounters.set(encounterId, updated);
+    this.appendTimeline(encounterId, {
+      accountId: updated.accountId,
+      eventType: 'encounter_reopened',
+      summary: `Encounter reopened: ${reopenReason}`,
+      actorUserId
+    });
+    if (this.#encounterRepository) {
+      this.#enqueuePersist(
+        () => this.#encounterRepository!.update(updated),
+        () => this.#encounters.set(encounterId, current)
+      );
+    }
+    if (this.#onEncounterStatusChanged) {
+      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+    }
     return updated;
   }
 
@@ -436,6 +496,7 @@ export class ClinicalHandoffsService {
   ) => Promise<void>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
+  #pendingCallbacks: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options: ClinicalHandoffsServiceOptions = {}) {
     this.#encounters = encounters;
@@ -479,11 +540,18 @@ export class ClinicalHandoffsService {
 
   public async waitForPersistence(): Promise<void> {
     try {
-      await this.#lastPersist;
+      await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
     } finally {
       this.#pendingPersist = this.#pendingPersist.catch(() => {});
       this.#lastPersist = this.#pendingPersist;
+      this.#pendingCallbacks = this.#pendingCallbacks.catch(() => {});
     }
+  }
+
+  #enqueueCallback(callback: () => Promise<void>): void {
+    const pending = this.#pendingCallbacks.then(callback);
+    this.#pendingCallbacks = pending;
+    void pending.catch(() => undefined);
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
@@ -574,7 +642,9 @@ export class ClinicalHandoffsService {
       );
     }
 
-    void this.#onHandoffSent?.(handoff);
+    if (this.#onHandoffSent) {
+      this.#enqueueCallback(() => this.#onHandoffSent!(handoff));
+    }
     return handoff;
   }
 
@@ -624,7 +694,9 @@ export class ClinicalHandoffsService {
       );
     }
 
-    void this.#onHandoffAcknowledged?.(updated, current.handoffStatus);
+    if (this.#onHandoffAcknowledged) {
+      this.#enqueueCallback(() => this.#onHandoffAcknowledged!(updated, current.handoffStatus));
+    }
     return updated;
   }
 
@@ -719,7 +791,12 @@ export class ClinicalHandoffsService {
       returnedToClinicResponsibleId: payload.toResponsibleId?.trim() || undefined,
       updatedAt: now
     };
-    return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_returned_to_clinic');
+    return this.#commitHandoffTransition(
+      current,
+      updated,
+      actorUserId,
+      'handoff_returned_to_clinic'
+    );
   }
 
   public sendToFinance(
@@ -751,10 +828,7 @@ export class ClinicalHandoffsService {
     return this.#commitHandoffTransition(current, updated, actorUserId, 'handoff_sent_to_finance');
   }
 
-  #assertMutableForReceptionAction(
-    accountId: AccountId,
-    handoff: ClinicalHandoffSummary
-  ): void {
+  #assertMutableForReceptionAction(accountId: AccountId, handoff: ClinicalHandoffSummary): void {
     if (handoff.accountId !== accountId) {
       throw new NotFoundError('Clinical handoff not found', { handoffId: handoff.id });
     }
@@ -788,7 +862,9 @@ export class ClinicalHandoffsService {
       );
     }
 
-    void this.#onHandoffAcknowledged?.(updated, current.handoffStatus);
+    if (this.#onHandoffAcknowledged) {
+      this.#enqueueCallback(() => this.#onHandoffAcknowledged!(updated, current.handoffStatus));
+    }
     return updated;
   }
 }

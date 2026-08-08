@@ -59,33 +59,32 @@ export class WebhooksEventHandlers {
   }
 
   async handle(event: OutboxEvent): Promise<void> {
-    const ctx = event.payload as WebhookDispatchContext;
-    if (!ctx?.accountId) return;
+    const ctx: WebhookDispatchContext = { ...event.payload, accountId: event.accountId };
 
     switch (event.eventType) {
       case 'patient.created':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'patient.created', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'patient.created', ctx);
         break;
       case 'appointment.scheduled':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'appointment.scheduled', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'appointment.scheduled', ctx);
         break;
       case 'appointment.status_changed':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'appointment.status_changed', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'appointment.status_changed', ctx);
         break;
       case 'encounter.created':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'encounter.created', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'encounter.created', ctx);
         break;
       case 'encounter.status_changed':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'encounter.status_changed', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'encounter.status_changed', ctx);
         break;
       case 'billing.record.created':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'billing.record.created', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'billing.record.created', ctx);
         break;
       case 'billing.status_changed':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'billing.status_changed', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'billing.status_changed', ctx);
         break;
       case 'notification.sent':
-        await this.#webhooks.dispatch(ctx.accountId as AccountId, 'notification.sent', ctx);
+        await this.#webhooks.dispatch(event.accountId as AccountId, 'notification.sent', ctx);
         break;
       default:
         break;

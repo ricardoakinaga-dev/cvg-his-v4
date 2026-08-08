@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { test } from 'vitest';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { DatabaseOutboxRepository, EventBusService } from './event-bus.service.js';
 
 const mockCorrelationId = 'corr_test_123' as CorrelationId;
 const mockModuleName = 'notifications' as ModuleName;
+const mockAccountId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as any;
 
 function createMockRepository() {
   const events: any[] = [];
   return {
+    deliveryGuarantees: 'ephemeral' as const,
     events, // expose for test assertions
     create: async (event: any) => { events.push(event); },
     update: async (event: any) => {
@@ -25,6 +28,83 @@ function createMockRepository() {
           new Date(e.scheduledAt) <= now
       );
     },
+    claimPending: async ({ limit, leaseOwner, leaseMs }: any) => {
+      const now = Date.now();
+      return events
+        .filter(
+          (event) =>
+            ((event.status === 'pending' || event.status === 'retrying') &&
+              new Date(event.scheduledAt).getTime() <= now) ||
+            (event.status === 'processing' &&
+              new Date(event.leaseExpiresAt ?? 0).getTime() <= now)
+        )
+        .filter((event) => event.attempts < event.maxAttempts)
+        .slice(0, limit)
+        .map((event) => {
+          const claimed = {
+            ...event,
+            status: 'processing',
+            attempts: event.attempts + 1,
+            leaseOwner,
+            leaseToken: randomUUID(),
+            leaseVersion: (event.leaseVersion ?? 0) + 1,
+            leaseExpiresAt: new Date(now + leaseMs).toISOString()
+          };
+          events[events.findIndex((candidate) => candidate.id === event.id)] = claimed;
+          return {
+            event: claimed,
+            leaseOwner,
+            leaseToken: claimed.leaseToken,
+            leaseVersion: claimed.leaseVersion,
+            leaseExpiresAt: claimed.leaseExpiresAt
+          };
+        });
+    },
+    renewClaim: async (claim: any, leaseMs: number) => {
+      const event = events.find((candidate) => candidate.id === claim.event.id);
+      if (!event || event.leaseToken !== claim.leaseToken || event.status !== 'processing') return false;
+      event.leaseExpiresAt = new Date(Date.now() + leaseMs).toISOString();
+      return true;
+    },
+    completeClaim: async (claim: any, processedAt: string) => {
+      const index = events.findIndex((candidate) => candidate.id === claim.event.id);
+      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      events[index] = { ...events[index], status: 'completed', processedAt, leaseToken: null };
+      return true;
+    },
+    retryClaim: async (claim: any, input: any) => {
+      const index = events.findIndex((candidate) => candidate.id === claim.event.id);
+      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      events[index] = { ...events[index], status: 'retrying', ...input, leaseToken: null };
+      return true;
+    },
+    failClaim: async (claim: any, error: string) => {
+      const index = events.findIndex((candidate) => candidate.id === claim.event.id);
+      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      events[index] = { ...events[index], status: 'failed', error, leaseToken: null };
+      return true;
+    },
+    reprocess: async (eventId: string) => {
+      const index = events.findIndex((candidate) => candidate.id === eventId);
+      if (index < 0 || !['failed', 'retrying'].includes(events[index].status)) return null;
+      events[index] = {
+        ...events[index],
+        status: 'pending',
+        attempts: 0,
+        error: null,
+        scheduledAt: new Date().toISOString()
+      };
+      return events[index];
+    },
+    peekPending: async (limit: number) => {
+      const now = new Date();
+      return events.filter(
+        (e) =>
+          (e.status === 'pending' || e.status === 'retrying') &&
+          e.attempts < e.maxAttempts &&
+          new Date(e.scheduledAt) <= now
+      ).slice(0, limit);
+    },
     findFailed: async (limit: number) => events
       .filter((e) => e.status === 'failed')
       .slice(0, limit),
@@ -37,6 +117,7 @@ test('EventBusService publish creates a new event', async () => {
   const service = new EventBusService(repo as any);
 
   const result = await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'notification.sent',
@@ -56,6 +137,7 @@ test('EventBusService publish with custom maxAttempts', async () => {
   const service = new EventBusService(repo as any);
 
   const result = await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -91,8 +173,10 @@ test('DatabaseOutboxRepository maps jsonb payload objects returned by pg', () =>
 test('EventBusService processPending marks events as completed', async () => {
   const repo = createMockRepository();
   const service = new EventBusService(repo as any);
+  service.subscribe(async () => {});
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -106,11 +190,30 @@ test('EventBusService processPending marks events as completed', async () => {
   assert.ok(processed[0].processedAt);
 });
 
+test('EventBusService leaves pending events untouched when no consumers are registered', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  await service.publish({
+    accountId: mockAccountId,
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.unhandled',
+    payload: {}
+  });
+
+  const processed = await service.processPending(10);
+
+  assert.deepEqual(processed, []);
+  assert.equal(repo.events[0].status, 'pending');
+});
+
 test('EventBusService getEvent returns event by id', async () => {
   const repo = createMockRepository();
   const service = new EventBusService(repo as any);
 
   const published = await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -128,12 +231,14 @@ test('EventBusService getEventsByCorrelationId returns events for correlation', 
   const service = new EventBusService(repo as any);
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event1',
     payload: {}
   });
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event2',
@@ -155,6 +260,7 @@ test('EventBusService subscribe calls handler when event is processed', async ()
   });
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -165,7 +271,11 @@ test('EventBusService subscribe calls handler when event is processed', async ()
 
   assert.equal(handledEvents.length, 1);
   assert.equal(handledEvents[0].eventType, 'test.event');
-  assert.deepEqual(handledEvents[0].payload, { key: 'value' });
+  assert.deepEqual(handledEvents[0].payload, {
+    key: 'value',
+    accountId: mockAccountId,
+    _meta: { accountId: mockAccountId }
+  });
 
   unsubscribe();
 });
@@ -182,6 +292,7 @@ test('EventBusService subscribe returns unsubscribe function', async () => {
   unsubscribe();
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -202,6 +313,7 @@ test('EventBusService multiple handlers are all called', async () => {
   service.subscribe(async () => { calls.push(2); });
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.event',
@@ -217,8 +329,7 @@ test('EventBusService multiple handlers are all called', async () => {
 
 test('EventBusService processPending schedules retry with backoff on failure', async () => {
   const repo = createMockRepository();
-  // Use tiny backoff (1ms base) so tests run fast
-  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
+  const service = new EventBusService(repo as any, { baseMs: 1_000, maxMs: 1_000 });
 
   // Subscribe a handler that always throws — forcing a retry
   service.subscribe(async () => {
@@ -226,6 +337,7 @@ test('EventBusService processPending schedules retry with backoff on failure', a
   });
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.retry_event',
@@ -260,6 +372,7 @@ test('EventBusService processPending moves event to DLQ after max attempts', asy
   });
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.dlq_event',
@@ -290,6 +403,7 @@ test('EventBusService getDeadLetterEvents returns failed events', async () => {
   service.subscribe(async () => { throw new Error('always fails'); });
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.dlq_1',
@@ -299,6 +413,7 @@ test('EventBusService getDeadLetterEvents returns failed events', async () => {
   await service.processPending(10);
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.dlq_2',
@@ -320,6 +435,7 @@ test('EventBusService reprocessEvent resets failed event to pending', async () =
 
   // Publish an event that will fail and go to DLQ
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.reprocess_event',
@@ -356,12 +472,14 @@ test('EventBusService getPendingEvents returns pending/retrying events', async (
   const service = new EventBusService(repo as any);
 
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.pending_1',
     payload: {}
   });
   await service.publish({
+    accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
     eventType: 'test.pending_2',
@@ -371,4 +489,177 @@ test('EventBusService getPendingEvents returns pending/retrying events', async (
   const pending = await service.getPendingEvents(50);
   // Both events are pending (not processed yet)
   assert.ok(pending.length >= 2);
+});
+
+test('EventBusService getPendingEvents uses a read-only repository query', async () => {
+  const repo = createMockRepository();
+  repo.events.push({ id: 'pending-read-only', status: 'pending' });
+  repo.findPending = async () => {
+    throw new Error('claiming query must not be used by a read endpoint');
+  };
+  repo.peekPending = async () => repo.events;
+  const service = new EventBusService(repo as any);
+
+  const pending = await service.getPendingEvents(10);
+
+  assert.equal(pending[0]?.id, 'pending-read-only');
+  assert.equal(repo.events[0]?.status, 'pending');
+});
+
+test('retry executes only the consumer that has no committed inbox receipt', async () => {
+  const repo = createMockRepository();
+  const receipts = new Set<string>();
+  const consumerGuard = {
+    async executeOnce(event: any, consumerName: string, handler: () => Promise<void>) {
+      const key = `${event.accountId}:${consumerName}:${event.id}`;
+      if (receipts.has(key)) return false;
+      await handler();
+      receipts.add(key);
+      return true;
+    }
+  };
+  const service = new EventBusService(
+    repo as any,
+    { baseMs: 1, maxMs: 1 },
+    { workerId: 'worker-test', leaseMs: 60_000, consumerGuard } as never
+  );
+  let callsA = 0;
+  let callsB = 0;
+
+  (service.subscribe as any)('consumer-a', async () => {
+    callsA += 1;
+  });
+  (service.subscribe as any)('consumer-b', async () => {
+    callsB += 1;
+    if (callsB === 1) throw new Error('retry consumer b');
+  });
+  await service.publish({
+    accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as never,
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.partial-retry',
+    payload: { accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }
+  });
+
+  await service.processPending(1);
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await service.processPending(1);
+
+  assert.equal(callsA, 1);
+  assert.equal(callsB, 2);
+  assert.equal(repo.events[0]?.status, 'completed');
+  assert.equal(receipts.size, 2);
+});
+
+test('renews the lease while a slow consumer is running', async () => {
+  const repo = createMockRepository();
+  let renewals = 0;
+  const originalRenew = repo.renewClaim;
+  repo.renewClaim = async (claim: any, leaseMs: number) => {
+    renewals += 1;
+    return originalRenew(claim, leaseMs);
+  };
+  const service = new EventBusService(
+    repo as any,
+    undefined,
+    { workerId: 'worker-heartbeat', leaseMs: 1_000 }
+  );
+  service.subscribe('slow-consumer', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  });
+  await service.publish({
+    accountId: mockAccountId,
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.slow',
+    payload: {}
+  });
+
+  const processed = await service.processPending(1);
+
+  assert.equal(processed.length, 1);
+  assert.ok(renewals >= 1);
+});
+
+test('claims one event at a time so queued leases cannot expire', async () => {
+  const repo = createMockRepository();
+  const claimLimits: number[] = [];
+  const originalClaim = repo.claimPending;
+  repo.claimPending = async (input: any) => {
+    claimLimits.push(input.limit);
+    return originalClaim(input);
+  };
+  const service = new EventBusService(repo as any);
+  service.subscribe('sequential-consumer', async () => {});
+  for (const eventType of ['test.batch-a', 'test.batch-b']) {
+    await service.publish({
+      accountId: mockAccountId,
+      correlationId: mockCorrelationId,
+      moduleName: mockModuleName,
+      eventType,
+      payload: {}
+    });
+  }
+
+  const processed = await service.processPending(2);
+
+  assert.equal(processed.length, 2);
+  assert.deepEqual(claimLimits, [1, 1]);
+});
+
+test('rejects a payload that attempts to change the event tenant', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  await assert.rejects(
+    service.publish({
+      accountId: mockAccountId,
+      correlationId: mockCorrelationId,
+      moduleName: mockModuleName,
+      eventType: 'test.cross-tenant',
+      payload: { accountId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' }
+    }),
+    /does not match event account/
+  );
+  assert.equal(repo.events.length, 0);
+});
+
+test('quarantines a claimed event without canonical tenant metadata', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any, { baseMs: 1_000, maxMs: 1_000 });
+  let handlerCalls = 0;
+  service.subscribe('canonical-consumer', async () => {
+    handlerCalls += 1;
+  });
+  await service.publish({
+    accountId: mockAccountId,
+    correlationId: mockCorrelationId,
+    moduleName: mockModuleName,
+    eventType: 'test.missing-tenant-metadata',
+    payload: {}
+  });
+  repo.events[0] = {
+    ...repo.events[0],
+    payload: { accountId: mockAccountId }
+  };
+
+  await service.processPending(1);
+
+  assert.equal(handlerCalls, 0);
+  assert.equal(repo.events[0]?.status, 'retrying');
+  assert.match(repo.events[0]?.error ?? '', /_meta must be an object/);
+});
+
+test('requires a durable guard for any repository not explicitly marked ephemeral', async () => {
+  const repository = {
+    ...createMockRepository(),
+    deliveryGuarantees: 'durable' as const
+  };
+  const service = new EventBusService(repository as any);
+  service.subscribe('durable-consumer', async () => {});
+
+  await assert.rejects(
+    service.processPending(1),
+    /requires a durable consumer guard/
+  );
 });

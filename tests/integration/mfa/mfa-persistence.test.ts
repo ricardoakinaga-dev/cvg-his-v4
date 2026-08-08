@@ -23,7 +23,8 @@ import { queryOne, queryMany } from '../../helpers/db-helpers.js';
 // ============================================================================
 
 const MFA_ENCRYPTION_KEY = 'integration-test-mfa-encryption-key-12345';
-const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
+const TEST_USER_ID = '00000000-0000-0000-0000-000000000099';
+const TEST_ACCOUNT_ID = 'a0000000-0000-0000-0000-000000000001';
 
 let pool: Pool;
 let db: ReturnType<typeof drizzle>;
@@ -57,8 +58,8 @@ beforeAll(async () => {
   `);
 
   await pool.query(`
-    INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
-    VALUES ('${TEST_USER_ID}', 'a0000000-0000-0000-0000-000000000001', 'mfa-test@cvg-his-v2.com', '${hashPassword('test-password-123')}', 'MFA Test User', true)
+    INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active)
+    VALUES ('${TEST_USER_ID}', '${TEST_ACCOUNT_ID}', 'mfa-test-user', 'mfa-test@cvg-his-v2.com', '${hashPassword('test-password-123')}', 'MFA Test User', true)
     ON CONFLICT (id) DO NOTHING
   `);
 
@@ -71,9 +72,7 @@ afterAll(async () => {
 });
 
 async function cleanupMfa(userId: string): Promise<void> {
-  await db
-    .delete(schema.mfaCredentials)
-    .where(eq(schema.mfaCredentials.userId, userId as never));
+  await db.delete(schema.mfaCredentials).where(eq(schema.mfaCredentials.userId, userId as never));
 }
 
 // ============================================================================
@@ -81,7 +80,7 @@ async function cleanupMfa(userId: string): Promise<void> {
 // ============================================================================
 describe('MIT-001 — MFA Setup + Confirm with Database Persistence', () => {
   it('initiates setup and returns secret, provisioning URI, and recovery codes', async () => {
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
 
     expect(setup.secret).toBeDefined();
     expect(setup.secret.length).toBeGreaterThan(0);
@@ -91,17 +90,17 @@ describe('MIT-001 — MFA Setup + Confirm with Database Persistence', () => {
   });
 
   it('confirms setup and persists encrypted secret to database', async () => {
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
 
     const totpCode = generateCurrentTOTP(setup.secret);
     const secretRaw = setup.secret;
 
-    const record = await service.confirmSetup(TEST_USER_ID, totpCode);
+    const record = await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
     expect(record.isActive).toBe(true);
     expect(record.activatedAt).toBeDefined();
 
-    const dbRecord = await repo.findByUserId(TEST_USER_ID);
+    const dbRecord = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecord).toBeDefined();
     expect(dbRecord!.isActive).toBe(true);
     expect(dbRecord!.activatedAt).toBeDefined();
@@ -131,43 +130,43 @@ describe('MIT-002 — MFA Login with lastUsedAt Persistence', () => {
   it('verifies login with correct TOTP and updates lastUsedAt', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const dbRecordBefore = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordBefore = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordBefore!.lastUsedAt).toBeUndefined();
 
-    const isValid = await service.verifyLogin(TEST_USER_ID, totpCode);
+    const isValid = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
     expect(isValid).toBe(true);
 
-    const dbRecordAfter = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordAfter = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordAfter!.lastUsedAt).toBeDefined();
   });
 
   it('rejects login with invalid TOTP', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const isValid = await service.verifyLogin(TEST_USER_ID, '000000');
+    const isValid = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, '000000');
     expect(isValid).toBe(false);
   });
 
   it('verifies login with recovery code and consumes it', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
     const recoveryCode = setup.recoveryCodes[0];
-    const isValid = await service.verifyLogin(TEST_USER_ID, recoveryCode);
+    const isValid = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, recoveryCode);
     expect(isValid).toBe(true);
 
-    const secondUse = await service.verifyLogin(TEST_USER_ID, recoveryCode);
+    const secondUse = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, recoveryCode);
     expect(secondUse).toBe(false);
   });
 });
@@ -179,23 +178,23 @@ describe('MIT-003 — MFA Disable with Database Deletion', () => {
   it('disables MFA and deletes record from database', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const dbRecordBefore = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordBefore = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordBefore).toBeDefined();
 
-    await service.disableMfa(TEST_USER_ID, totpCode);
+    await service.disableMfa(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const dbRecordAfter = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordAfter = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordAfter).toBeUndefined();
   });
 
   it('throws error when disabling MFA that is not configured', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    await expect(service.disableMfa(TEST_USER_ID, '000000')).rejects.toThrow(
+    await expect(service.disableMfa(TEST_ACCOUNT_ID, TEST_USER_ID, '000000')).rejects.toThrow(
       'MFA is not configured for this user.'
     );
   });
@@ -208,27 +207,27 @@ describe('MIT-004 — Recovery Codes Regeneration with Persistence', () => {
   it('regenerates recovery codes and persists lastRecoveryCodesRegeneratedAt', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const dbRecordBefore = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordBefore = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordBefore!.lastRecoveryCodesRegeneratedAt).toBeUndefined();
 
-    const newCodes = await service.regenerateRecoveryCodes(TEST_USER_ID);
+    const newCodes = await service.regenerateRecoveryCodes(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(newCodes).toHaveLength(8);
 
-    const dbRecordAfter = await repo.findByUserId(TEST_USER_ID);
+    const dbRecordAfter = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordAfter!.lastRecoveryCodesRegeneratedAt).toBeDefined();
 
     const oldCodes = setup.recoveryCodes;
     for (const oldCode of oldCodes) {
-      const isValid = await service.verifyLogin(TEST_USER_ID, oldCode);
+      const isValid = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, oldCode);
       expect(isValid).toBe(false);
     }
 
     const newCode = newCodes[0];
-    const isValidNew = await service.verifyLogin(TEST_USER_ID, newCode);
+    const isValidNew = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, newCode);
     expect(isValidNew).toBe(true);
   });
 });
@@ -240,31 +239,31 @@ describe('MIT-005 — MFA Status from Database', () => {
   it('returns false when MFA is not configured', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const isActive = await service.isMfaActive(TEST_USER_ID);
+    const isActive = await service.isMfaActive(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(isActive).toBe(false);
   });
 
   it('returns true when MFA is active', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const isActive = await service.isMfaActive(TEST_USER_ID);
+    const isActive = await service.isMfaActive(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(isActive).toBe(true);
   });
 
   it('returns false after MFA is disabled', async () => {
     await cleanupMfa(TEST_USER_ID);
 
-    const setup = await service.initiateSetup(TEST_USER_ID, 'test@cvg-his-v2.com');
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
     const totpCode = generateCurrentTOTP(setup.secret);
-    await service.confirmSetup(TEST_USER_ID, totpCode);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    await service.disableMfa(TEST_USER_ID, totpCode);
+    await service.disableMfa(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    const isActive = await service.isMfaActive(TEST_USER_ID);
+    const isActive = await service.isMfaActive(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(isActive).toBe(false);
   });
 });

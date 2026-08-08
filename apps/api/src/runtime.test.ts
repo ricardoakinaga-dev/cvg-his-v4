@@ -66,7 +66,7 @@ test('login, session refresh and audit trail work end-to-end', async () => {
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
   assert.equal(principal.user.id, login.principal.user.id);
 
-  const refreshed = runtime.auth.refresh(
+  const refreshed = await runtime.auth.refresh(
     {
       refreshToken: login.refreshToken
     },
@@ -115,6 +115,24 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
       },
       async findByAccountId() {
         return [];
+      }
+    },
+    staff: {
+      async create() {
+        throw new Error('not implemented');
+      },
+      async findById() {
+        return null;
+      },
+      async findByAccountId(accountId) {
+        assertTenantAccount(accountId ?? '');
+        return [];
+      },
+      async findByUserId() {
+        return null;
+      },
+      async update() {
+        throw new Error('not implemented');
       }
     },
     owner: {
@@ -1140,7 +1158,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
     quantity: 2,
     sourceEntityType: 'encounter',
     sourceEntityId: encounter.id
-  });
+  }, inventoryUser.user.accountId);
 
   const notification = await runtime.notifications.create(finance.user.id, finance.user.accountId, {
     category: 'billing',
@@ -1151,7 +1169,7 @@ test('administrative modules keep billing, inventory and notifications linked wi
     message: 'Billing inicial liberado para acompanhamento administrativo.',
     severity: 'medium'
   });
-  const processed = runtime.notifications.processPending({ limit: 10 });
+  const processed = await runtime.notifications.processPending({ limit: 10 });
 
   assert.throws(
     () =>
@@ -1180,7 +1198,10 @@ test('administrative modules keep billing, inventory and notifications linked wi
     runtime.notifications.list('sent').some((entry) => entry.id === notification.id),
     true
   );
-  assert.equal(runtime.inventory.getItemOrThrow('inv_gauze' as never).onHandQuantity, 58);
+  assert.equal(
+    runtime.inventory.getItemOrThrow('inv_gauze' as never, inventoryUser.user.accountId).onHandQuantity,
+    58
+  );
 });
 
 test('AUD-008-02: repositories persist data across runtime re-instantiation (simulated restart)', async () => {
@@ -1582,7 +1603,7 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
 
   // Worker processes notifications using the SAME service instance
   // In current architecture, worker would need to receive the same service instance
-  const processed = runtime.notifications.processPending({ limit: 10 });
+  const processed = await runtime.notifications.processPending({ limit: 10 });
 
   assert.equal(processed.length, 1);
   assert.equal(processed[0].id, notification.id);
@@ -1632,7 +1653,7 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   );
 
   // Worker (runtime2) tries to process - finds nothing because it's a different instance
-  const processed = runtime2.notifications.processPending({ limit: 10 });
+  const processed = await runtime2.notifications.processPending({ limit: 10 });
 
   assert.equal(
     processed.length,
@@ -1705,7 +1726,7 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   assert.equal(notification.encounterId, encounter.id, 'Notification should link to encounter');
 
   // Process notification
-  const processed = runtime.notifications.processPending({ limit: 1 });
+  const processed = await runtime.notifications.processPending({ limit: 1 });
   assert.equal(processed.length, 1);
 
   // This proves: Cross-aggregate flows work correctly

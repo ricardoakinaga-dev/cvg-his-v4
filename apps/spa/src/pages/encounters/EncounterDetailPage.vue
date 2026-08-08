@@ -58,6 +58,14 @@
             <DsButton variant="secondary" tag="a" :to="`/patients/${encounter.patientId}`">
               Cadastro do paciente
             </DsButton>
+            <DsButton
+              v-if="encounter.status !== 'closed'"
+              variant="secondary"
+              tag="a"
+              :to="`/inpatient/admit?encounterId=${encodeURIComponent(encounter.id)}`"
+            >
+              Internar
+            </DsButton>
             <DsButton v-if="canTransition" variant="secondary" @click="showTransitionModal = true">
               Transicionar Status
             </DsButton>

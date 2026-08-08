@@ -3,7 +3,7 @@ import { apiRequest } from './api';
 export type ReportCategory = 'executive' | 'financial' | 'commercial' | 'clinical' | 'inventory' | 'staff';
 export type ReportColumnType = 'string' | 'number' | 'currency' | 'date' | 'datetime' | 'status';
 export type ReportExecutionStatus = 'completed';
-export type ReportFormat = 'json' | 'csv';
+export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'pdf';
 export type ReportScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 export type ReportScheduleDeliveryStatus = 'sent' | 'failed';
 
@@ -51,6 +51,7 @@ export interface ReportExportSummary {
   readonly format: ReportFormat;
   readonly filename: string;
   readonly contentType: string;
+  readonly contentEncoding: 'utf8' | 'base64';
   readonly content: string;
   readonly exportedByUserId: string;
   readonly exportedAt: string;
@@ -80,6 +81,7 @@ export interface ReportScheduleDeliverySummary {
   readonly accountId: string;
   readonly scheduleId: string;
   readonly executionId: string | null;
+  readonly exportId: string | null;
   readonly recipient: string;
   readonly status: ReportScheduleDeliveryStatus;
   readonly format: ReportFormat;

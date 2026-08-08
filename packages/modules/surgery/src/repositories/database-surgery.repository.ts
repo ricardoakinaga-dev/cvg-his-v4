@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { surgeryCases } from '@cvg-his-v2/shared-database';
 import type {
@@ -8,12 +8,14 @@ import type {
   SurgeryCaseSummary,
   EncounterId
 } from '@cvg-his-v2/shared-types';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface SurgeryCaseRepository {
   create(surgeryCase: SurgeryCaseSummary): Promise<void>;
   update(surgeryCase: SurgeryCaseSummary): Promise<void>;
   findById(id: SurgeryCaseId): Promise<SurgeryCaseSummary | null>;
   findByEncounterId(encounterId: EncounterId): Promise<readonly SurgeryCaseSummary[]>;
+  findByAccountId(accountId: AccountId): Promise<readonly SurgeryCaseSummary[]>;
 }
 
 export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
@@ -24,6 +26,10 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
   }
 
   public async create(surgeryCase: SurgeryCaseSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (surgeryCase.accountId !== accountId) {
+      throw new Error('Surgery case account does not match tenant context');
+    }
     await this.#db.insert(surgeryCases).values({
       id: surgeryCase.id,
       accountId: surgeryCase.accountId,
@@ -44,6 +50,10 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
   }
 
   public async update(surgeryCase: SurgeryCaseSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (surgeryCase.accountId !== accountId) {
+      throw new Error('Surgery case account does not match tenant context');
+    }
     await this.#db
       .update(surgeryCases)
       .set({
@@ -55,14 +65,15 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
         endedAt: surgeryCase.endedAt ? new Date(surgeryCase.endedAt) : null,
         updatedAt: new Date(surgeryCase.updatedAt)
       })
-      .where(eq(surgeryCases.id, surgeryCase.id));
+      .where(and(eq(surgeryCases.id, surgeryCase.id), eq(surgeryCases.accountId, accountId)));
   }
 
   public async findById(id: SurgeryCaseId): Promise<SurgeryCaseSummary | null> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(surgeryCases)
-      .where(eq(surgeryCases.id, id))
+      .where(and(eq(surgeryCases.id, id), eq(surgeryCases.accountId, accountId)))
       .limit(1);
 
     if (result.length === 0) {
@@ -73,11 +84,23 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
   }
 
   public async findByEncounterId(encounterId: EncounterId): Promise<readonly SurgeryCaseSummary[]> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(surgeryCases)
-      .where(eq(surgeryCases.encounterId, encounterId));
+      .where(and(eq(surgeryCases.encounterId, encounterId), eq(surgeryCases.accountId, accountId)));
 
+    return result.map((row) => this.mapRowToSurgeryCase(row));
+  }
+
+  public async findByAccountId(accountId: AccountId): Promise<readonly SurgeryCaseSummary[]> {
+    if (accountId !== requireAccountId()) {
+      throw new Error('Surgery case account does not match tenant context');
+    }
+    const result = await this.#db
+      .select()
+      .from(surgeryCases)
+      .where(eq(surgeryCases.accountId, accountId));
     return result.map((row) => this.mapRowToSurgeryCase(row));
   }
 

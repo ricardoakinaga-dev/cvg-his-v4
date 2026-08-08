@@ -275,7 +275,7 @@ describe('EncounterFormPage', () => {
     });
   });
 
-  it('blocks legacy Vetus identifiers before submitting encounter creation', async () => {
+  it('allows canonical prefixed patient and owner identifiers when creating an encounter', async () => {
     mockListFn.mockResolvedValue([
       ...mockPatients,
       {
@@ -304,20 +304,37 @@ describe('EncounterFormPage', () => {
           RouterLink: {
             template: '<a :href="to"><slot /></a>',
             props: ['to']
+          },
+          SearchSelect: {
+            template:
+              '<input id="patientId" :value="modelValue" @input="select($event.target.value)" />',
+            props: ['modelValue', 'options'],
+            emits: ['update:modelValue', 'change'],
+            methods: {
+              select(value: string) {
+                this.$emit('update:modelValue', value);
+                this.$emit('change', this.options.find((option: any) => option.value === value) ?? null);
+              }
+            }
           }
         }
       }
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('identificador legado do Vetus');
-    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined();
-
+    await wrapper.find('#patientId').setValue('patient_mogeb6qv_5b0gq64z');
     await wrapper.find('#reason').setValue('Consulta');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
-    expect(mockCreateFn).not.toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('identificador legado do Vetus');
+    expect(mockCreateFn).toHaveBeenCalledWith({
+      patientId: 'patient_mogeb6qv_5b0gq64z',
+      ownerId: 'owner_ricardo_akinaga',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Consulta'
+    });
   });
 
   it('shows error alert when create fails', async () => {

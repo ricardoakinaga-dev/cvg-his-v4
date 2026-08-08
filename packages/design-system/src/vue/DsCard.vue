@@ -6,8 +6,7 @@
     :aria-label="ariaLabel"
     :tabindex="interactive ? 0 : undefined"
     @click="interactive ? $emit('click') : undefined"
-    @keydown.enter="interactive ? $emit('click') : undefined"
-    @keydown.space.prevent="interactive ? $emit('click') : undefined"
+    @keydown="handleKeydown"
   >
     <div v-if="$slots.header || title" class="ds-card__header">
       <slot name="header">
@@ -44,9 +43,17 @@ const props = withDefaults(defineProps<DsCardProps>(), {
   href: undefined
 });
 
-defineEmits<{
+const emit = defineEmits<{
   click: [];
 }>();
+
+function handleKeydown(event: KeyboardEvent) {
+  if (!props.interactive || event.target !== event.currentTarget) return;
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+
+  if (event.key === ' ') event.preventDefault();
+  emit('click');
+}
 
 const resolvedTag = computed(() => {
   if (props.interactive && props.tag === 'div') return 'button';

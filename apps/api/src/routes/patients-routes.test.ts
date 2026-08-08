@@ -5,6 +5,7 @@ import test from 'node:test';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handlePatientsRoutes } from './patients-routes.js';
@@ -294,4 +295,53 @@ test('handlePatientsRoutes GET /patients/:id/summary returns owner snapshot and 
       status: 'open'
     }
   ]);
+});
+
+test('handlePatientsRoutes hides patients from another account', async () => {
+  const owners = new OwnersService();
+  const foreignOwner = owners.create('acc_other' as never, {
+    fullName: 'Foreign Owner',
+    contacts: [{ type: 'phone', label: 'Principal', value: '+5511999999999', primary: true }],
+    financialResponsible: true
+  });
+  const patients = new PatientsService({ owners });
+  const foreignPatient = patients.create('acc_other' as never, {
+    name: 'Foreign Patient',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: foreignOwner.id
+  });
+  const routeHandlers = {
+    patients,
+    owners,
+    audit: { write: () => {} } as never,
+    requirePrincipal: () => createPrincipal()
+  };
+
+  const listResponse = new MockResponse();
+  await handlePatientsRoutes(
+    '/patients',
+    new MockRequest({ method: 'GET', url: '/patients' }) as never,
+    listResponse as never,
+    'corr-patients-tenant-list',
+    routeHandlers
+  );
+  assert.equal(
+    listResponse.bodyJson<{ items: Array<{ id: string }> }>().items.some(
+      (patient) => patient.id === foreignPatient.id
+    ),
+    false
+  );
+
+  await assert.rejects(
+    () =>
+      handlePatientsRoutes(
+        `/patients/${foreignPatient.id}`,
+        new MockRequest({ method: 'GET', url: `/patients/${foreignPatient.id}` }) as never,
+        new MockResponse() as never,
+        'corr-patients-tenant-read',
+        routeHandlers
+      ),
+    NotFoundError
+  );
 });

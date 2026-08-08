@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -70,6 +72,7 @@ const LUNCH_BREAK_END_HOUR = 13;
 type SchedulingStaffMember = {
   id: StaffId;
   accountId: AccountId;
+  userId?: UserId;
   fullName: string;
   department: string;
   jobTitle: string;
@@ -79,6 +82,36 @@ type SchedulingStaffMember = {
 export interface SchedulingStaffLookup {
   list(accountId?: AccountId): readonly SchedulingStaffMember[];
   getOrThrow(staffId: StaffId, accountId?: AccountId): SchedulingStaffMember;
+}
+
+export interface SchedulingTimeOffLookup {
+  listTimeOffOverlaps(
+    accountId: AccountId,
+    staffId: StaffId,
+    startsAt: string,
+    endsAt: string
+  ): readonly { startsAt: string; endsAt: string; reason: string }[];
+}
+
+export interface SchedulingAgendaAvailability {
+  readonly id: string;
+  readonly accountId: string;
+  readonly professionalUserId: string;
+  readonly dayOfWeek: number;
+  readonly startTime: string;
+  readonly endTime: string;
+  readonly slotDurationMinutes: number;
+  readonly timezone?: string;
+  readonly effectiveFrom?: string | null;
+  readonly effectiveUntil?: string | null;
+  readonly notes: string | null;
+}
+
+export interface SchedulingAgendaConfigLookup {
+  listAvailability(
+    accountId: AccountId,
+    professionalUserId?: string
+  ): Promise<readonly SchedulingAgendaAvailability[]>;
 }
 
 export interface SchedulingServiceCatalog {
@@ -91,6 +124,8 @@ export interface SchedulingServiceCatalog {
 export interface SchedulingServiceOptions {
   readonly repository?: SchedulingRepository;
   readonly staff?: SchedulingStaffLookup;
+  readonly timeOff?: SchedulingTimeOffLookup;
+  readonly agendaConfig?: SchedulingAgendaConfigLookup;
   readonly services?: SchedulingServiceCatalog;
   readonly onAppointmentCreated?: (appointment: SchedulingAppointmentSummary) => Promise<void>;
   readonly onAppointmentStatusChanged?: (
@@ -156,6 +191,20 @@ function parseDate(input: string, fieldName: string): Date {
   return value;
 }
 
+function normalizeAppointmentPersistenceConflict(error: unknown): Error {
+  const candidate = error as { readonly code?: unknown; readonly constraint?: unknown };
+  if (
+    candidate?.code === '23P01' &&
+    typeof candidate.constraint === 'string' &&
+    candidate.constraint.startsWith('appointments_')
+  ) {
+    return new ConflictError('Appointment slot is unavailable for the requested schedule', {
+      constraint: candidate.constraint
+    });
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 function startOfUtcDay(input: Date): Date {
   const date = new Date(input);
   date.setUTCHours(0, 0, 0, 0);
@@ -172,6 +221,63 @@ function setUtcTime(input: Date, hour: number, minute = 0): Date {
   const date = new Date(input);
   date.setUTCHours(hour, minute, 0, 0);
   return date;
+}
+
+function parseTimeMinutes(value: string): number {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) throw new ValidationError('Agenda availability time must use HH:MM format', { value });
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) {
+    throw new ValidationError('Agenda availability time must use a valid clock time', { value });
+  }
+  return hours * 60 + minutes;
+}
+
+function localScheduleParts(input: Date, timezone: string): { dayOfWeek: number; minutes: number } {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(input);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const dayOfWeekByName: Record<string, number> = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6
+    };
+    const dayOfWeek = dayOfWeekByName[values.weekday ?? ''];
+    if (dayOfWeek === undefined) throw new Error('weekday unavailable');
+    return {
+      dayOfWeek,
+      minutes: Number(values.hour) * 60 + Number(values.minute)
+    };
+  } catch (error) {
+    if (error instanceof ValidationError) throw error;
+    throw new ValidationError('Agenda availability timezone is invalid', { timezone });
+  }
+}
+
+function localScheduleDate(input: Date, timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(input);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  } catch {
+    throw new ValidationError('Agenda availability timezone is invalid', { timezone });
+  }
 }
 
 function defaultDurationMinutes(
@@ -256,8 +362,11 @@ export class SchedulingService {
   readonly #owners: OwnersService;
   readonly #patients: PatientsService;
   readonly #staff?: SchedulingStaffLookup;
+  readonly #timeOff?: SchedulingTimeOffLookup;
+  readonly #agendaConfig?: SchedulingAgendaConfigLookup;
   readonly #services?: SchedulingServiceCatalog;
   readonly #appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
+  readonly #availabilityByAccount = new Map<AccountId, readonly SchedulingAgendaAvailability[]>();
   readonly #queue = new Map<QueueEntryId, QueueEntrySummary>();
   readonly #queueTransfers = new Map<QueueEntryId, QueueTransferSummary[]>();
   readonly #onAppointmentCreated?: (appointment: SchedulingAppointmentSummary) => Promise<void>;
@@ -276,6 +385,8 @@ export class SchedulingService {
     this.#owners = owners;
     this.#patients = patients;
     this.#staff = options?.staff;
+    this.#timeOff = options?.timeOff;
+    this.#agendaConfig = options?.agendaConfig;
     this.#services = options?.services;
     this.#onAppointmentCreated = options?.onAppointmentCreated;
     this.#onAppointmentStatusChanged = options?.onAppointmentStatusChanged;
@@ -290,18 +401,37 @@ export class SchedulingService {
   }
 
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
-    if (!this.#repository) return;
-    const appointments = await this.#repository.findAllAppointments(accountId);
-    for (const apt of appointments) {
-      this.#appointments.set(apt.id, apt);
-    }
-    const queueEntries = await this.#repository.findAllQueueEntries(accountId);
-    for (const entry of queueEntries) {
-      this.#queue.set(entry.id, entry);
-      const transfers = await this.#repository.findQueueTransfersByQueueEntry(entry.id);
-      if (transfers.length > 0) {
-        this.#queueTransfers.set(entry.id, [...transfers]);
+    if (this.#repository) {
+      const appointments = await this.#repository.findAllAppointments(accountId);
+      for (const apt of appointments) {
+        this.#appointments.set(apt.id, apt);
       }
+      const queueEntries = await this.#repository.findAllQueueEntries(accountId);
+      for (const entry of queueEntries) {
+        this.#queue.set(entry.id, entry);
+        const transfers = await this.#repository.findQueueTransfersByQueueEntry(entry.id);
+        if (transfers.length > 0) {
+          this.#queueTransfers.set(entry.id, [...transfers]);
+        }
+      }
+    }
+    if (this.#agendaConfig && accountId) {
+      const configuredAvailability = await this.#agendaConfig.listAvailability(accountId);
+      const staffMembers = this.#staff?.list(accountId) ?? [];
+      this.#availabilityByAccount.set(
+        accountId,
+        configuredAvailability.map((availability) => {
+          const staffMember = staffMembers.find(
+            (candidate) =>
+              candidate.userId === availability.professionalUserId ||
+              candidate.id === availability.professionalUserId
+          );
+
+          return staffMember
+            ? { ...availability, professionalUserId: staffMember.id }
+            : availability;
+        })
+      );
     }
   }
 
@@ -613,7 +743,7 @@ export class SchedulingService {
 
     const now = nowIso();
     const appointment: SchedulingAppointmentSummary = {
-      id: createCorrelationId('appt') as AppointmentId,
+      id: randomUUID() as AppointmentId,
       accountId,
       patientId,
       ownerId,
@@ -631,13 +761,17 @@ export class SchedulingService {
       updatedAt: now
     };
 
-    this.#appointments.set(appointment.id, appointment);
-
     if (this.#repository) {
-      await this.#repository.createAppointment(appointment);
+      try {
+        await this.#repository.createAppointment(appointment);
+      } catch (error) {
+        throw normalizeAppointmentPersistenceConflict(error);
+      }
     }
 
-    void this.#onAppointmentCreated?.(appointment);
+    this.#appointments.set(appointment.id, appointment);
+
+    await this.#onAppointmentCreated?.(appointment);
 
     return appointment;
   }
@@ -748,25 +882,33 @@ export class SchedulingService {
       updatedAt: now
     };
 
+    let checkedInAppointment: SchedulingAppointmentSummary | undefined;
+    let previousAppointmentStatus: SchedulingAppointmentSummary['status'] | undefined;
     if (appointmentId) {
       const appointment = this.getAppointmentOrThrow(appointmentId);
-      const previousStatus = appointment.status;
+      previousAppointmentStatus = appointment.status;
       const updatedAppointment: SchedulingAppointmentSummary = {
         ...appointment,
         status: 'checked_in',
         updatedAt: now
       };
-      this.#appointments.set(appointment.id, updatedAppointment);
       if (this.#repository) {
         await this.#repository.updateAppointment(updatedAppointment);
       }
-      void this.#onAppointmentStatusChanged?.(updatedAppointment, previousStatus);
+      checkedInAppointment = updatedAppointment;
     }
 
-    this.#queue.set(entry.id, entry);
     if (this.#repository) {
       await this.#repository.createQueueEntry(entry);
     }
+    if (checkedInAppointment && previousAppointmentStatus) {
+      this.#appointments.set(checkedInAppointment.id, checkedInAppointment);
+      await this.#onAppointmentStatusChanged?.(
+        checkedInAppointment,
+        previousAppointmentStatus
+      );
+    }
+    this.#queue.set(entry.id, entry);
     return entry;
   }
 
@@ -961,13 +1103,13 @@ export class SchedulingService {
       updatedAt: now
     };
 
-    this.#appointments.set(appointmentId, cancelledAppointment);
-
     if (this.#repository) {
       await this.#repository.updateAppointment(cancelledAppointment);
     }
 
-    void this.#onAppointmentStatusChanged?.(cancelledAppointment, current.status);
+    this.#appointments.set(appointmentId, cancelledAppointment);
+
+    await this.#onAppointmentStatusChanged?.(cancelledAppointment, current.status);
 
     return cancelledAppointment;
   }
@@ -1057,11 +1199,15 @@ export class SchedulingService {
       updatedAt: nowIso()
     };
 
-    this.#appointments.set(appointmentId, updated);
-
     if (this.#repository) {
-      await this.#repository.updateAppointment(updated);
+      try {
+        await this.#repository.updateAppointment(updated);
+      } catch (error) {
+        throw normalizeAppointmentPersistenceConflict(error);
+      }
     }
+
+    this.#appointments.set(appointmentId, updated);
 
     return updated;
   }
@@ -1155,13 +1301,13 @@ export class SchedulingService {
       updatedAt: nowIso()
     };
 
-    this.#appointments.set(updated.id, updated);
-
     if (this.#repository) {
       await this.#repository.updateAppointment(updated);
     }
 
-    void this.#onAppointmentStatusChanged?.(updated, current.status);
+    this.#appointments.set(updated.id, updated);
+
+    await this.#onAppointmentStatusChanged?.(updated, current.status);
   }
 
   private collectConflicts(
@@ -1178,10 +1324,7 @@ export class SchedulingService {
     const slotEnd = new Date(requestedAt);
     slotEnd.setUTCMinutes(slotEnd.getUTCMinutes() + durationMinutes);
     const conflicts: SchedulingConflictSummary[] = [];
-    const windowStart = setUtcTime(requestedAt, SCHEDULING_WINDOW_START_HOUR);
-    const windowEnd = setUtcTime(requestedAt, SCHEDULING_WINDOW_END_HOUR);
-
-    if (requestedAt < windowStart || slotEnd > windowEnd) {
+    if (!this.isWithinConfiguredAvailability(accountId, requestedAt, slotEnd, options.practitionerStaffId)) {
       conflicts.push({
         type: 'outside_hours',
         severity: 'critical',
@@ -1192,6 +1335,22 @@ export class SchedulingService {
     }
 
     if (options.practitionerStaffId) {
+      const timeOffs = this.#timeOff?.listTimeOffOverlaps(
+        accountId,
+        options.practitionerStaffId,
+        requestedAt.toISOString(),
+        slotEnd.toISOString()
+      ) ?? [];
+      for (const timeOff of timeOffs) {
+        conflicts.push({
+          type: 'staff_overlap',
+          severity: 'critical',
+          message: `O profissional está indisponível: ${timeOff.reason}.`,
+          startsAt: timeOff.startsAt,
+          endsAt: timeOff.endsAt
+        });
+      }
+
       const blocks = this.listOperationalBlocks(
         accountId,
         requestedAt.toISOString(),
@@ -1279,6 +1438,34 @@ export class SchedulingService {
     }
 
     return conflicts;
+  }
+
+  private isWithinConfiguredAvailability(
+    accountId: AccountId,
+    requestedAt: Date,
+    slotEnd: Date,
+    practitionerStaffId?: StaffId
+  ): boolean {
+    const configured = this.#availabilityByAccount.get(accountId);
+    if (!configured || !practitionerStaffId) {
+      const windowStart = setUtcTime(requestedAt, SCHEDULING_WINDOW_START_HOUR);
+      const windowEnd = setUtcTime(requestedAt, SCHEDULING_WINDOW_END_HOUR);
+      return requestedAt >= windowStart && slotEnd <= windowEnd;
+    }
+
+    const rows = configured.filter((row) => row.professionalUserId === practitionerStaffId);
+    if (rows.length === 0) return false;
+    return rows.some((row) => {
+      const timezone = row.timezone?.trim() || 'UTC';
+      const start = localScheduleParts(requestedAt, timezone);
+      const end = localScheduleParts(slotEnd, timezone);
+      const localDate = localScheduleDate(requestedAt, timezone);
+      if (row.effectiveFrom && localDate < row.effectiveFrom) return false;
+      if (row.effectiveUntil && localDate > row.effectiveUntil) return false;
+      if (start.dayOfWeek !== row.dayOfWeek || end.dayOfWeek !== row.dayOfWeek) return false;
+      return start.minutes >= parseTimeMinutes(row.startTime)
+        && end.minutes <= parseTimeMinutes(row.endTime);
+    });
   }
 
   private buildAvailabilitySuggestions(

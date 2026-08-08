@@ -11,6 +11,7 @@ export const users = pgTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     unitId: uuid('unit_id').references(() => units.id, { onDelete: 'set null' }),
+    username: varchar('username', { length: 128 }).notNull(),
     email: varchar('email', { length: 320 }).notNull(),
     passwordHash: varchar('password_hash', { length: 255 }).notNull(),
     fullName: varchar('full_name', { length: 255 }).notNull(),
@@ -19,6 +20,11 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    accountEmailUnique: uniqueIndex('users_account_email_unique').on(table.accountId, table.email)
+    accountEmailUnique: uniqueIndex('users_account_email_unique').on(table.accountId, table.email),
+    accountUsernameUnique: uniqueIndex('users_account_username_unique').on(
+      table.accountId,
+      table.username
+    ),
+    accountIdIdUnique: uniqueIndex('idx_users_account_id_id_unique').on(table.accountId, table.id)
   })
 );

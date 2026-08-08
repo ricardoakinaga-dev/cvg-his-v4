@@ -45,9 +45,15 @@ export async function handlePrescriptionExecutionsRoutes(
     const patientId = url.searchParams.get('patientId');
     let items;
     if (encounterId) {
-      items = prescriptionExecutions.listByEncounter(encounterId as never);
+      items = prescriptionExecutions.listByEncounter(
+        encounterId as never,
+        principal.user.accountId as never
+      );
     } else if (patientId) {
-      items = prescriptionExecutions.listByPatient(patientId as never);
+      items = prescriptionExecutions.listByPatient(
+        patientId as never,
+        principal.user.accountId as never
+      );
     } else {
       items = prescriptionExecutions.list(principal.user.accountId as never);
     }
@@ -87,6 +93,7 @@ export async function handlePrescriptionExecutionsRoutes(
       principal.user.accountId as never,
       payload
     );
+    await prescriptionExecutions.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -114,7 +121,10 @@ export async function handlePrescriptionExecutionsRoutes(
   ) {
     const principal = requirePrincipal(request, 'medical-records.read');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
-    const execution = prescriptionExecutions.getById(executionId as never);
+    const execution = prescriptionExecutions.getByIdForAccount(
+      principal.user.accountId as never,
+      executionId as never
+    );
     const events = prescriptionExecutions.getEvents(executionId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -141,11 +151,13 @@ export async function handlePrescriptionExecutionsRoutes(
     const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as ExecutePrescriptionRequest;
+    prescriptionExecutions.getByIdForAccount(principal.user.accountId as never, executionId as never);
     const execution = prescriptionExecutions.execute(
       executionId as never,
       principal.user.id as never,
       payload
     );
+    await prescriptionExecutions.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -171,11 +183,13 @@ export async function handlePrescriptionExecutionsRoutes(
     const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as SuspendPrescriptionRequest;
+    prescriptionExecutions.getByIdForAccount(principal.user.accountId as never, executionId as never);
     const execution = prescriptionExecutions.suspend(
       executionId as never,
       principal.user.id as never,
       payload
     );
+    await prescriptionExecutions.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -200,10 +214,12 @@ export async function handlePrescriptionExecutionsRoutes(
   ) {
     const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
+    prescriptionExecutions.getByIdForAccount(principal.user.accountId as never, executionId as never);
     const execution = prescriptionExecutions.resume(
       executionId as never,
       principal.user.id as never
     );
+    await prescriptionExecutions.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -229,11 +245,13 @@ export async function handlePrescriptionExecutionsRoutes(
     const principal = requirePrincipal(request, 'medical-records.manage');
     const executionId = requireNonEmptyString(pathname.split('/')[2], 'executionId');
     const payload = (await readJsonBody(request)) as LogAdministrationEventRequest;
+    prescriptionExecutions.getByIdForAccount(principal.user.accountId as never, executionId as never);
     const event = prescriptionExecutions.logEvent(
       executionId as never,
       principal.user.id as never,
       payload
     );
+    await prescriptionExecutions.waitForPersistence();
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

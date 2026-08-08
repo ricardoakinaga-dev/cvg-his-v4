@@ -1,5 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { withTenantQuery, withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
   UserId
@@ -8,6 +8,8 @@ import type {
 export interface UserRecord {
   readonly id: UserId;
   readonly accountId: AccountId;
+  readonly username?: string;
+  readonly roleCode?: string;
   readonly email: string;
   readonly passwordHash: string;
   readonly fullName: string;
@@ -29,20 +31,46 @@ export interface UsersRepository {
 export class DatabaseUsersRepository implements UsersRepository {
   async create(user: UserRecord): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
-      return await client.query(
-        `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [user.id, user.accountId, user.email, user.passwordHash, user.fullName,
+      let roleId: string | undefined;
+      if (user.roleCode) {
+        const role = await client.query<{ id: string }>('SELECT id FROM roles WHERE name = $1', [
+          user.roleCode
+        ]);
+        roleId = role.rows[0]?.id;
+        if (!roleId) {
+          throw new Error(`Role not found: ${user.roleCode}`);
+        }
+      }
+      await client.query(
+        `INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [user.id, user.accountId, user.username, user.email, user.passwordHash, user.fullName,
          user.isActive, new Date(user.createdAt), new Date(user.updatedAt)]
       );
+      if (roleId) {
+        await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
+          user.id,
+          roleId
+        ]);
+      }
     });
   }
 
   async update(user: UserRecord): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
-        `UPDATE users SET email = $2, password_hash = $3, full_name = $4, is_active = $5, updated_at = $6 WHERE id = $1`,
-        [user.id, user.email, user.passwordHash, user.fullName, user.isActive, new Date(user.updatedAt)]
+        `UPDATE users SET username = $3, email = $4, password_hash = $5, full_name = $6, is_active = $7, updated_at = $8
+         WHERE id = $1 AND account_id = $2`,
+        [
+          user.id,
+          user.accountId,
+          user.username,
+          user.email,
+          user.passwordHash,
+          user.fullName,
+          user.isActive,
+          new Date(user.updatedAt)
+        ]
       );
     });
   }
@@ -64,8 +92,16 @@ export class DatabaseUsersRepository implements UsersRepository {
   }
 
   async findAll(): Promise<readonly UserRecord[]> {
-    const result = await getPool().query('SELECT * FROM users ORDER BY full_name');
-    return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    const accounts = await getPool().query<{ id: string }>('SELECT id::text FROM accounts');
+    const users = await Promise.all(
+      accounts.rows.map(({ id }) =>
+        withTenantQueryExplicit(getPool(), id, async (client) => {
+          const result = await client.query('SELECT * FROM users ORDER BY full_name');
+          return result.rows.map((row: Record<string, unknown>) => this.mapRow(row));
+        })
+      )
+    );
+    return users.flat();
   }
 
   async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
@@ -91,6 +127,7 @@ export class DatabaseUsersRepository implements UsersRepository {
     return {
       id: row.id as UserId,
       accountId: row.account_id as AccountId,
+      username: row.username as string,
       email: row.email as string,
       passwordHash: row.password_hash as string,
       fullName: row.full_name as string,

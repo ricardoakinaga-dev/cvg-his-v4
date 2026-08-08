@@ -29,6 +29,12 @@ const mockStays = [
 ];
 
 const mockListFn = vi.fn().mockResolvedValue(mockStays);
+const mockListBedsFn = vi.fn().mockResolvedValue([
+  { id: 'bed-1', active: true },
+  { id: 'bed-2', active: true },
+  { id: 'bed-3', active: true },
+  { id: 'bed-4', active: true }
+]);
 const mockGetPatientName = vi
   .fn()
   .mockImplementation((id: string) => Promise.resolve(id === 'pat-1' ? 'Rex' : 'Mimi'));
@@ -37,6 +43,9 @@ vi.mock('@/services/inpatient', () => ({
   inpatientService: {
     get list() {
       return mockListFn;
+    },
+    get listBeds() {
+      return mockListBedsFn;
     }
   }
 }));
@@ -58,6 +67,12 @@ describe('InpatientListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListFn.mockResolvedValue(mockStays);
+    mockListBedsFn.mockResolvedValue([
+      { id: 'bed-1', active: true },
+      { id: 'bed-2', active: true },
+      { id: 'bed-3', active: true },
+      { id: 'bed-4', active: true }
+    ]);
     mockGetPatientName.mockImplementation((id: string) =>
       Promise.resolve(id === 'pat-1' ? 'Rex' : 'Mimi')
     );
@@ -131,6 +146,17 @@ describe('InpatientListPage', () => {
     expect(wrapper.text()).toContain('Estável');
   });
 
+  it('calculates occupancy from active beds and shows one compact summary', async () => {
+    const InpatientListPage = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(InpatientListPage);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('50%');
+    expect(wrapper.text()).toContain('2 de 4 leitos em uso');
+    expect(wrapper.findAll('.inpatient-list-page__overview')).toHaveLength(1);
+    expect(wrapper.find('.inpatient-list-page__story').exists()).toBe(false);
+  });
+
   it('shows navigation links to detail page', async () => {
     const InpatientListPage = (await import('../InpatientListPage.vue')).default;
     const wrapper = mount(InpatientListPage, {
@@ -187,6 +213,6 @@ describe('InpatientListPage', () => {
     await flushPromises();
     const admitLink = wrapper.findAll('a').find((a) => a.text().includes('Admitir Paciente'));
     expect(admitLink).toBeTruthy();
-    expect(admitLink!.attributes('href')).toBe('/encounters');
+    expect(admitLink!.attributes('href')).toBe('/inpatient/admit');
   });
 });

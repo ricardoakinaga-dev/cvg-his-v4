@@ -12,11 +12,14 @@ export interface PreventiveEventSummary {
   readonly animalName: string;
   readonly eventDate: string;
   readonly itemType: PreventiveItemType;
+  readonly protocolCode?: string | null;
+  readonly lotNumber?: string | null;
   readonly description: string;
   readonly status: PreventiveEventStatus;
   readonly observation: string | null;
   readonly executedAt: string | null;
   readonly executedObservation: string | null;
+  readonly nextDoseDate?: string | null;
   readonly rescheduledFromId: string | null;
   readonly reminderEmailPreparedAt: string | null;
   readonly createdAt: string;
@@ -45,6 +48,8 @@ export interface CreatePreventiveEventPayload {
   readonly ownerId?: string | null;
   readonly eventDate: string;
   readonly itemType: PreventiveItemType;
+  readonly protocolCode?: string | null;
+  readonly lotNumber?: string | null;
   readonly description: string;
   readonly observation?: string | null;
   readonly status?: PreventiveEventStatus;

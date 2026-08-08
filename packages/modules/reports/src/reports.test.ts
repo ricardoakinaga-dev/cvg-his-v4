@@ -35,7 +35,7 @@ test('ReportsService lists catalog and executes report rows with filters', async
   assert.throws(() => service.getExecution(OTHER_ACCOUNT, execution.id), Error);
 });
 
-test('ReportsService exports execution as CSV and JSON', async () => {
+test('ReportsService exports execution as CSV, JSON, XLSX and PDF', async () => {
   const service = new ReportsService();
   const execution = await service.execute(ACCOUNT, USER, {
     reportId: 'commission-calculations',
@@ -52,13 +52,73 @@ test('ReportsService exports execution as CSV and JSON', async () => {
   });
 
   const csv = await service.exportExecution(ACCOUNT, USER, execution.id, 'csv');
-  assert.equal(csv.contentType, 'text/csv');
+  assert.equal(csv.contentType, 'text/csv; charset=utf-8');
+  assert.equal(csv.contentEncoding, 'utf8');
   assert.match(csv.content, /Número,Período,Status,Base,Comissão,Linhas/);
   assert.match(csv.content, /COM-000001/);
 
   const json = await service.exportExecution(ACCOUNT, USER, execution.id, 'json');
-  assert.equal(json.contentType, 'application/json');
+  assert.equal(json.contentType, 'application/json; charset=utf-8');
+  assert.equal(json.contentEncoding, 'utf8');
   assert.match(json.content, /commission-calculations/);
+
+  const xlsx = await service.exportExecution(ACCOUNT, USER, execution.id, 'xlsx');
+  assert.equal(xlsx.contentType, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  assert.equal(xlsx.contentEncoding, 'base64');
+  assert.equal(Buffer.from(xlsx.content, 'base64').subarray(0, 2).toString('hex'), '504b');
+
+  const pdf = await service.exportExecution(ACCOUNT, USER, execution.id, 'pdf');
+  assert.equal(pdf.contentType, 'application/pdf');
+  assert.equal(pdf.contentEncoding, 'base64');
+  assert.match(Buffer.from(pdf.content, 'base64').toString('utf8', 0, 8), /%PDF-1\.4/);
+  assert.equal(service.getExport(ACCOUNT, xlsx.id).content, xlsx.content);
+  assert.throws(() => service.getExport(OTHER_ACCOUNT, xlsx.id), Error);
+});
+
+test('ReportsService records delivery failures when the provider is absent or rejects', async () => {
+  const scheduleInput = {
+    reportId: 'administrative-executive',
+    name: 'Executivo com falha de entrega',
+    frequency: 'daily' as const,
+    format: 'csv' as const,
+    recipients: ['financeiro@cvg.local']
+  };
+
+  const withoutProvider = new ReportsService();
+  const schedule = await withoutProvider.createSchedule(ACCOUNT, USER, scheduleInput);
+  const execution = await withoutProvider.execute(ACCOUNT, USER, {
+    reportId: schedule.reportId,
+    rows: [{ domain: 'financial', metric: 'Receita', value: 100, status: 'tracked' }]
+  });
+  const exported = await withoutProvider.exportExecution(ACCOUNT, USER, execution.id, 'csv');
+  const missingProvider = await withoutProvider.deliverExport(
+    ACCOUNT,
+    schedule.id,
+    execution.id,
+    exported,
+    schedule.recipients
+  );
+  assert.equal(missingProvider.failures[0]?.error, 'No report delivery provider is configured');
+  assert.equal(missingProvider.deliveries[0]?.status, 'failed');
+
+  const rejectingProvider = new ReportsService({
+    deliveryProvider: { deliver: async () => { throw 'SMTP indisponivel'; } }
+  });
+  const rejectingSchedule = await rejectingProvider.createSchedule(ACCOUNT, USER, scheduleInput);
+  const rejectingExecution = await rejectingProvider.execute(ACCOUNT, USER, {
+    reportId: rejectingSchedule.reportId,
+    rows: [{ domain: 'financial', metric: 'Receita', value: 100, status: 'tracked' }]
+  });
+  const rejectingExport = await rejectingProvider.exportExecution(ACCOUNT, USER, rejectingExecution.id, 'csv');
+  const rejected = await rejectingProvider.deliverExport(
+    ACCOUNT,
+    rejectingSchedule.id,
+    rejectingExecution.id,
+    rejectingExport,
+    rejectingSchedule.recipients
+  );
+  assert.equal(rejected.failures[0]?.error, 'SMTP indisponivel');
+  assert.equal(rejected.deliveries[0]?.status, 'failed');
 });
 
 test('ReportsService creates schedules and validates unsupported formats', async () => {
@@ -165,7 +225,9 @@ test('ReportsService records delivery history per schedule recipient', async () 
 });
 
 test('ReportsService retries failed schedule deliveries with an existing execution', async () => {
-  const service = new ReportsService();
+  const service = new ReportsService({
+    deliveryProvider: { deliver: async () => {} }
+  });
   const schedule = await service.createSchedule(ACCOUNT, USER, {
     reportId: 'administrative-executive',
     name: 'Executivo com retry',

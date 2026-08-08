@@ -2,6 +2,7 @@ import { loadWorkerConfig } from '@cvg-his-v2/shared-config';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
+import { PRODUCTION_EVENT_CONSUMERS } from '@cvg-his-v2/module-event-bus';
 import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
@@ -15,13 +16,13 @@ import {
   createWorkerLivenessResponse,
   createWorkerReadinessResponse
 } from './health.js';
+import { refreshWorkerAccounts } from './account-discovery.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
-const workerAccountId =
-  process.env.WORKER_ACCOUNT_ID?.trim() ||
-  (config.environment === 'development' || config.environment === 'test' ? 'acc_cvg_demo' : '');
+const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
+const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -97,16 +98,47 @@ async function main() {
   });
 
   const eventBus = createWorkerEventBus({
-    eventBusRepository: bootstrap.outboxRepository
+    eventBusRepository: bootstrap.outboxRepository,
+    unitOfWork: bootstrap.unitOfWork,
+    workerId: process.env.WORKER_INSTANCE_ID?.trim()
   });
 
   const reports = createWorkerReports({
     reportRepository: bootstrap.reportRepository
   });
 
-  if (workerAccountId) {
-    await reports.hydrateFromDatabase(workerAccountId as never);
-  }
+  const loadAccountIds =
+    bootstrap.loadAccountIds ?? (async () => bootstrap.accountIds ?? []);
+  let workerAccountIds: readonly string[] = [];
+  let lastAccountRefreshAt = 0;
+
+  const refreshAccounts = async (tolerateLoadFailure: boolean): Promise<void> => {
+    const refresh = await refreshWorkerAccounts({
+      currentAccountIds: workerAccountIds,
+      configuredAccountId: configuredWorkerAccountId,
+      loadAccountIds,
+      environment: config.environment,
+      tolerateLoadFailure
+    });
+
+    for (const accountId of refresh.discoveredAccountIds) {
+      await runWithTenantContext(
+        { tenantId: accountId, accountId, correlationId: createCorrelationId('worker-hydrate') },
+        () => reports.hydrateFromDatabase(accountId as never)
+      );
+    }
+
+    workerAccountIds = refresh.accountIds;
+    lastAccountRefreshAt = Date.now();
+    if (refresh.loadError) {
+      logger.warn('worker account refresh failed; retaining last known accounts', {
+        error: refresh.loadError,
+        accountCount: workerAccountIds.length
+      });
+    }
+  };
+
+  await refreshAccounts(false);
 
   const healthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -120,7 +152,11 @@ async function main() {
           ticksCompleted: workerState.ticksCompleted,
           lastTickAt: workerState.lastTickAt,
           lastError: workerState.lastError,
-          initialized: true
+          initialized: true,
+          requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
+          registeredEventBusConsumers: eventBus.consumerNames,
+          deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
+          durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
         }),
         worker: {
           startedAt: workerState.startedAt,
@@ -151,7 +187,11 @@ async function main() {
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
-        initialized: true
+        initialized: true,
+        requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
+        registeredEventBusConsumers: eventBus.consumerNames,
+        deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
+        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
       res.end(JSON.stringify(payload));
@@ -164,7 +204,11 @@ async function main() {
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
-        initialized: true
+        initialized: true,
+        requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
+        registeredEventBusConsumers: eventBus.consumerNames,
+        deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
+        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
       res.end(JSON.stringify(payload));
@@ -210,6 +254,10 @@ async function main() {
     const correlationId = createCorrelationId('worker');
     const tickStart = Date.now();
     try {
+      if (Date.now() - lastAccountRefreshAt >= ACCOUNT_REFRESH_INTERVAL_MS) {
+        await refreshAccounts(true);
+      }
+
       const tickContext = {
         service: config.appName,
         environment: config.environment,
@@ -219,45 +267,36 @@ async function main() {
         databaseDetail: 'connected'
       };
 
-      await withWorkerSpan(
-        'worker.notifications.tick',
-        {
-          'worker.correlation_id': correlationId,
-          'worker.persistence_mode': workerState.persistenceMode,
-          'worker.database_healthy': workerState.databaseHealthy
-        },
-        async () => {
-          await runWithTenantContext(
-            {
-              tenantId: workerAccountId || correlationId,
-              accountId: workerAccountId || undefined,
-              correlationId
-            },
-            () => runWorkerTick(logger, tickContext, notifications)
-          );
-        }
-      );
+      for (const accountId of workerAccountIds) {
+        const tenantContext = { tenantId: accountId, accountId, correlationId };
+        await withWorkerSpan(
+          'worker.notifications.tick',
+          {
+            'worker.correlation_id': correlationId,
+            'worker.account_id': accountId,
+            'worker.persistence_mode': workerState.persistenceMode,
+            'worker.database_healthy': workerState.databaseHealthy
+          },
+          () =>
+            runWithTenantContext(tenantContext, () =>
+              runWorkerTick(logger, { ...tickContext, accountId: accountId as never }, notifications)
+            )
+        );
 
-      await withWorkerSpan(
-        'worker.event_bus.tick',
-        {
-          'worker.correlation_id': correlationId,
-          'worker.persistence_mode': workerState.persistenceMode,
-          'worker.database_healthy': workerState.databaseHealthy
-        },
-        async () => {
-          await runWithTenantContext(
-            {
-              tenantId: workerAccountId || correlationId,
-              accountId: workerAccountId || undefined,
-              correlationId
-            },
-            () => runEventBusTick(logger, tickContext, eventBus)
-          );
-        }
-      );
+        await withWorkerSpan(
+          'worker.event_bus.tick',
+          {
+            'worker.correlation_id': correlationId,
+            'worker.account_id': accountId,
+            'worker.persistence_mode': workerState.persistenceMode,
+            'worker.database_healthy': workerState.databaseHealthy
+          },
+          () =>
+            runWithTenantContext(tenantContext, () =>
+              runEventBusTick(logger, tickContext, eventBus)
+            )
+        );
 
-      if (workerAccountId) {
         await withWorkerSpan(
           'worker.reports.scheduled.tick',
           {
@@ -268,8 +307,8 @@ async function main() {
           async () => {
             await runWithTenantContext(
               {
-                tenantId: workerAccountId,
-                accountId: workerAccountId,
+                tenantId: accountId,
+                accountId,
                 correlationId
               },
               () =>
@@ -277,8 +316,8 @@ async function main() {
                   logger,
                   {
                     ...tickContext,
-                    accountId: workerAccountId as never,
-                    runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || workerAccountId) as never
+                    accountId: accountId as never,
+                    runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
                   },
                   reports,
                   bootstrap.reportSources
@@ -291,6 +330,7 @@ async function main() {
       workerState.ticksCompleted++;
       workerState.lastTickAt = new Date().toISOString();
       workerState.lastTickDurationMs = Date.now() - tickStart;
+      workerState.lastError = null;
     } catch (error) {
       workerState.errors++;
       workerState.lastError = error instanceof Error ? error.message : String(error);

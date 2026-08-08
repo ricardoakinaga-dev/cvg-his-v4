@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -24,10 +25,16 @@ export interface ProductsServiceOptions {
 
 export class ProductsService {
   readonly #repository?: ProductsRepository;
+  readonly #useUuidIdentifiers: boolean;
   readonly #products = new Map<string, ProductSummary>();
 
   public constructor(options?: ProductsServiceOptions) {
     this.#repository = options?.repository;
+    this.#useUuidIdentifiers = Boolean(options?.repository);
+  }
+
+  #nextId(prefix: string): string {
+    return this.#useUuidIdentifiers ? randomUUID() : createCorrelationId(prefix);
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -54,7 +61,7 @@ export class ProductsService {
   ): Promise<ProductSummary> {
     const now = nowIso();
     const product: ProductSummary = {
-      id: createCorrelationId('prod'),
+      id: this.#nextId('prod'),
       accountId,
       name: input.name.trim(),
       code: input.code?.trim() ?? null,

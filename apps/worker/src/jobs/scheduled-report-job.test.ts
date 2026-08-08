@@ -21,7 +21,9 @@ const logger: Logger = {
 };
 
 test('runScheduledReportJob executes due schedules and advances recurrence', async () => {
-  const reports = new ReportsService();
+  const reports = new ReportsService({
+    deliveryProvider: { deliver: async () => {} }
+  });
   const schedule = await reports.createSchedule(ACCOUNT, USER, {
     reportId: 'administrative-executive',
     name: 'Diretoria diaria',

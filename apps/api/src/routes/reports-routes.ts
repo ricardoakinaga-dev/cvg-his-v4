@@ -41,6 +41,11 @@ function parseExecutionId(pathname: string, suffix = ''): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function parseExportId(pathname: string): string | null {
+  const match = pathname.match(/^\/reports\/exports\/([^/]+)$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 function parseScheduleId(pathname: string): string | null {
   const match = pathname.match(/^\/reports\/schedules\/([^/]+)$/);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
@@ -66,8 +71,8 @@ function parseScheduleDeliveryRetry(pathname: string): { scheduleId: string; del
 }
 
 function parseFormat(value: unknown): ReportFormat {
-  if (value === 'json' || value === 'csv') return value;
-  throw new ValidationError('format must be json or csv', { value });
+  if (value === 'json' || value === 'csv' || value === 'xlsx' || value === 'pdf') return value;
+  throw new ValidationError('format must be json, csv, xlsx or pdf', { value });
 }
 
 export async function handleReportsRoutes(
@@ -81,6 +86,12 @@ export async function handleReportsRoutes(
   if (pathname === '/reports/administrative-hubs') return false;
 
   const { reports, audit, requirePrincipal } = handlers;
+
+  const exportId = parseExportId(pathname);
+  if (exportId && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    return json(response, 200, reports.getExport(principal.user.accountId, exportId));
+  }
 
   if (pathname === '/reports/catalog' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'billing.read');

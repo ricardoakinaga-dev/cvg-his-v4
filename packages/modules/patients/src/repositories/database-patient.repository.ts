@@ -1,13 +1,14 @@
 import { eq, ilike, or, and, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { patients, ownerPatientLinks } from '@cvg-his-v2/shared-database';
+import { patients, ownerPatientLinks, patientMerges } from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
   OwnerId,
   PatientId,
   PatientSummary,
   OwnerPatientLinkId,
-  OwnerPatientLinkSummary
+  OwnerPatientLinkSummary,
+  PatientMergeSummary
 } from '@cvg-his-v2/shared-types';
 import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
@@ -21,6 +22,7 @@ export interface PatientRepository {
 
 export interface OwnerPatientLinkRepository {
   create(link: OwnerPatientLinkSummary): Promise<void>;
+  update?(link: OwnerPatientLinkSummary): Promise<void>;
   findById(id: OwnerPatientLinkId, accountId: AccountId): Promise<OwnerPatientLinkSummary | null>;
   findByPatientId(
     patientId: PatientId,
@@ -31,6 +33,10 @@ export interface OwnerPatientLinkRepository {
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]>;
   delete(id: OwnerPatientLinkId): Promise<void>;
+}
+
+export interface PatientMergeRepository {
+  create(merge: PatientMergeSummary): Promise<void>;
 }
 
 interface StoredPatientMetadata {
@@ -94,9 +100,7 @@ function parsePatientMetadata(raw: unknown): StoredPatientMetadata {
     version: 2,
     size: size === 'small' || size === 'medium' || size === 'large' ? size : undefined,
     status:
-      status === 'active' || status === 'inactive' || status === 'deceased'
-        ? status
-        : undefined,
+      status === 'active' || status === 'inactive' || status === 'deceased' ? status : undefined,
     isNeutered: readBoolean(raw, 'isNeutered'),
     pedigreeNumber: readString(raw, 'pedigreeNumber'),
     color: readString(raw, 'color'),
@@ -271,13 +275,18 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
   }
 
   public async create(link: OwnerPatientLinkSummary): Promise<void> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
+    if (link.accountId !== accountId) {
+      throw new Error('Owner-patient link account does not match tenant context');
+    }
     await this.#db.insert(ownerPatientLinks).values({
       id: link.id,
+      accountId: link.accountId,
       ownerId: link.ownerId,
       patientId: link.patientId,
       relationship: link.relationshipType,
       isPrimary: link.relationshipType === 'primary',
+      financialResponsible: link.financialResponsible,
       createdAt: new Date(link.createdAt)
     });
   }
@@ -286,11 +295,11 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     id: OwnerPatientLinkId,
     accountId: AccountId
   ): Promise<OwnerPatientLinkSummary | null> {
-    requireAccountId(); // Enforce tenant context
+    if (requireAccountId() !== accountId) return null;
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
-      .where(eq(ownerPatientLinks.id, id))
+      .where(and(eq(ownerPatientLinks.id, id), eq(ownerPatientLinks.accountId, accountId)))
       .limit(1);
 
     if (result.length === 0) {
@@ -298,56 +307,95 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     }
 
     const row = result[0];
-    return this.mapRowToLink(row, accountId);
+    return this.mapRowToLink(row);
   }
 
   public async findByPatientId(
     patientId: PatientId,
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]> {
-    requireAccountId(); // Enforce tenant context
+    if (requireAccountId() !== accountId) return [];
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
-      .where(eq(ownerPatientLinks.patientId, patientId));
+      .where(
+        and(eq(ownerPatientLinks.patientId, patientId), eq(ownerPatientLinks.accountId, accountId))
+      );
 
-    return result.map((row) => this.mapRowToLink(row, accountId));
+    return result.map((row) => this.mapRowToLink(row));
   }
 
   public async findByOwnerId(
     ownerId: OwnerId,
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]> {
-    requireAccountId(); // Enforce tenant context
+    if (requireAccountId() !== accountId) return [];
     const result = await this.#db
       .select()
       .from(ownerPatientLinks)
-      .where(eq(ownerPatientLinks.ownerId, ownerId));
+      .where(
+        and(eq(ownerPatientLinks.ownerId, ownerId), eq(ownerPatientLinks.accountId, accountId))
+      );
 
-    return result.map((row) => this.mapRowToLink(row, accountId));
+    return result.map((row) => this.mapRowToLink(row));
   }
 
   public async delete(id: OwnerPatientLinkId): Promise<void> {
-    requireAccountId(); // Enforce tenant context
-    await this.#db.delete(ownerPatientLinks).where(eq(ownerPatientLinks.id, id));
+    const accountId = requireAccountId();
+    await this.#db
+      .delete(ownerPatientLinks)
+      .where(and(eq(ownerPatientLinks.id, id), eq(ownerPatientLinks.accountId, accountId)));
   }
 
-  private mapRowToLink(
-    row: typeof ownerPatientLinks.$inferSelect,
-    accountId: AccountId
-  ): OwnerPatientLinkSummary {
+  public async update(link: OwnerPatientLinkSummary): Promise<void> {
+    const accountId = requireAccountId();
+    await this.#db
+      .update(ownerPatientLinks)
+      .set({
+        financialResponsible: link.financialResponsible,
+        patientId: link.patientId,
+        ownerId: link.ownerId,
+        relationship: link.relationshipType,
+        isPrimary: link.relationshipType === 'primary'
+      })
+      .where(and(eq(ownerPatientLinks.id, link.id), eq(ownerPatientLinks.accountId, accountId)));
+  }
+
+  private mapRowToLink(row: typeof ownerPatientLinks.$inferSelect): OwnerPatientLinkSummary {
     const relType = row.relationship ?? 'primary';
     return {
       id: row.id as OwnerPatientLinkId,
-      accountId,
+      accountId: row.accountId as AccountId,
       ownerId: row.ownerId as OwnerId,
       patientId: row.patientId as PatientId,
       relationshipType:
         relType === 'primary' || relType === 'secondary' || relType === 'financial'
           ? relType
           : ('primary' as 'primary' | 'secondary' | 'financial'),
-      financialResponsible: row.isPrimary,
+      financialResponsible: row.financialResponsible,
       createdAt: row.createdAt.toISOString()
     };
+  }
+}
+
+export class DatabasePatientMergeRepository implements PatientMergeRepository {
+  readonly #db: DatabaseClient;
+
+  public constructor(db: DatabaseClient) {
+    this.#db = db;
+  }
+
+  public async create(merge: PatientMergeSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (accountId !== merge.accountId) throw new Error('Patient merge account does not match tenant context');
+    await this.#db.insert(patientMerges).values({
+      id: merge.id,
+      accountId: merge.accountId,
+      sourcePatientId: merge.sourcePatientId,
+      targetPatientId: merge.targetPatientId,
+      mergedByUserId: merge.mergedByUserId,
+      reason: merge.reason,
+      createdAt: new Date(merge.createdAt)
+    });
   }
 }

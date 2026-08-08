@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 import type {
   AuthSessionResponse,
@@ -22,6 +22,7 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import type {
   PersistedSessionRecord,
   SessionRepository
@@ -66,6 +67,10 @@ export class AuthService {
   readonly #sessionRepository?: SessionRepository;
   readonly #bruteForce?: BruteForceProtection;
   readonly #sessions = new Map<SessionId, SessionRecord>();
+  readonly #pendingMfaLogins = new Map<
+    string,
+    { readonly accountId: string; readonly userId: UserId; readonly expiresAt: number }
+  >();
 
   public constructor(options: AuthServiceOptions) {
     this.#secret = options.secret;
@@ -88,7 +93,7 @@ export class AuthService {
   }
 
   public async login(
-    input: { readonly username: string; readonly password: string },
+    input: { readonly username: string; readonly password: string; readonly accountId?: string },
     correlationId: string
   ): Promise<AuthSessionResponse | LoginMfaRequiredResponse> {
     const username = requireNonEmptyString(input.username, 'username');
@@ -110,7 +115,7 @@ export class AuthService {
       throw new AuthenticationError('Account temporarily locked due to too many failed attempts');
     }
 
-    const user = this.#users.findByUsername(username);
+    const user = this.#users.findByUsername(username, input.accountId as never);
 
     if (!user || !(await this.#users.verifyPassword(user, password))) {
       if (this.#bruteForce) {
@@ -139,32 +144,40 @@ export class AuthService {
     }
 
     if (this.#mfa && this.#mfa.isMfaRequired(user.roleCodes)) {
-      const mfaActive = await this.#mfa.isMfaActive(user.id);
-      if (!mfaActive) {
-        this.#audit.write({
-          actorId: user.id,
-          accountId: user.accountId,
-          module: 'auth',
-          action: 'login_mfa_required',
-          entityType: 'user',
-          entityId: user.id,
-          correlationId,
-          payloadSummary: `MFA required for user ${user.username} with roles: ${user.roleCodes.join(', ')}`,
-          riskLevel: 'medium'
-        });
-        return {
-          requiresMfa: true,
-          userId: user.id,
-          mfaMethods: ['totp']
-        };
-      }
+      const challengeId = randomUUID();
+      const isMfaActive = await this.#runAsUser(user, correlationId, () =>
+        this.#mfa!.isMfaActive(user.accountId, user.id)
+      );
+      this.#pendingMfaLogins.set(challengeId, {
+        accountId: user.accountId,
+        userId: user.id,
+        expiresAt: Date.now() + 5 * 60 * 1000
+      });
+      this.#audit.write({
+        actorId: user.id,
+        accountId: user.accountId,
+        module: 'auth',
+        action: 'login_mfa_required',
+        entityType: 'user',
+        entityId: user.id,
+        correlationId,
+        payloadSummary: `MFA required for user ${user.username} with roles: ${user.roleCodes.join(', ')}`,
+        riskLevel: 'medium'
+      });
+      return {
+        requiresMfa: true,
+        userId: user.id,
+        mfaMethods: isMfaActive ? ['totp'] : [],
+        challengeId,
+        enrollmentRequired: !isMfaActive
+      };
     }
 
-    return this.#completeLogin(user, correlationId);
+    return this.#runAsUser(user, correlationId, () => this.#completeLogin(user, correlationId));
   }
 
   public async completeMfaLogin(
-    input: { readonly userId: string; readonly token: string },
+    input: { readonly userId: string; readonly token: string; readonly challengeId: string },
     correlationId: string
   ): Promise<AuthSessionResponse> {
     if (!this.#mfa) {
@@ -173,12 +186,19 @@ export class AuthService {
 
     const userId = requireNonEmptyString(input.userId, 'userId');
     const token = requireNonEmptyString(input.token, 'token');
+    const challengeId = requireNonEmptyString(input.challengeId, 'challengeId');
+    const userKey = userId as UserId;
+    const pendingEntry = this.#pendingMfaLogins.get(challengeId);
+    if (!pendingEntry || pendingEntry.userId !== userKey || pendingEntry.expiresAt < Date.now()) {
+      this.#pendingMfaLogins.delete(challengeId);
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
 
     if (this.#bruteForce?.isMfaLocked(userId)) {
       const remaining = this.#bruteForce.getRemainingLockSeconds(userId);
       this.#audit.write({
         actorId: userId,
-        accountId: 'unknown' as never,
+        accountId: pendingEntry.accountId as never,
         module: 'auth',
         action: 'mfa_blocked_locked',
         entityType: 'user',
@@ -192,14 +212,17 @@ export class AuthService {
       );
     }
 
-    const isValid = await this.#mfa.verifyLogin(userId, token);
+    const pendingUser = this.#users.getOrThrow(userKey);
+    const isValid = await this.#runAsUser(pendingUser, correlationId, () =>
+      this.#mfa!.verifyLogin(pendingEntry.accountId, userId, token)
+    );
     if (!isValid) {
       if (this.#bruteForce) {
         this.#bruteForce.recordMfaFailure(userId);
       }
       this.#audit.write({
         actorId: userId,
-        accountId: 'unknown' as never,
+        accountId: pendingEntry.accountId as never,
         module: 'auth',
         action: 'mfa_login_failed',
         entityType: 'user',
@@ -215,12 +238,34 @@ export class AuthService {
       this.#bruteForce.recordMfaSuccess(userId);
     }
 
-    const user = this.#users.getOrThrow(userId as UserId);
-    return this.#completeLogin(user, correlationId);
+    this.#pendingMfaLogins.delete(challengeId);
+    const user = this.#users.getOrThrow(userKey);
+    return this.#runAsUser(user, correlationId, () => this.#completeLogin(user, correlationId));
   }
 
-  #completeLogin(user: UserRecord, correlationId: string): AuthSessionResponse {
-    const session = this.#createSession(user);
+  #runAsUser<T>(user: UserRecord, correlationId: string, operation: () => T): T {
+    return runWithTenantContext(
+      {
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        accountId: user.accountId,
+        userId: user.id,
+        correlationId
+      },
+      operation
+    );
+  }
+
+  public getPendingMfaEnrollmentUser(challengeId: string): UserRecord {
+    const challenge = this.#pendingMfaLogins.get(challengeId);
+    if (!challenge || challenge.expiresAt < Date.now()) {
+      this.#pendingMfaLogins.delete(challengeId);
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+    return this.#users.getOrThrow(challenge.userId);
+  }
+
+  async #completeLogin(user: UserRecord, correlationId: string): Promise<AuthSessionResponse> {
+    const session = await this.#createSession(user);
     const principal = this.#buildPrincipal(user, session);
     const tokens = this.#createTokens(session);
 
@@ -242,7 +287,10 @@ export class AuthService {
     };
   }
 
-  public refresh(input: RefreshSessionRequest, correlationId: string): AuthSessionResponse {
+  public async refresh(
+    input: RefreshSessionRequest,
+    correlationId: string
+  ): Promise<AuthSessionResponse> {
     const token = requireNonEmptyString(input.refreshToken, 'refreshToken');
     const payload = this.#verifyToken(token, 'refresh');
     const session = this.#requireActiveSession(payload.session_id as SessionId, 'refresh');
@@ -258,13 +306,12 @@ export class AuthService {
       refreshExpiresAt: futureIso(this.#refreshTokenTtlSeconds),
       active: true
     };
-    this.#sessions.set(rotatedSession.sessionId, rotatedSession);
-
     if (this.#sessionRepository) {
-      this.#sessionRepository.update(rotatedSession).catch((err) => {
-        console.error('Failed to update session in database:', err);
-      });
+      await this.#runAsUser(this.#users.getOrThrow(session.userId), correlationId, () =>
+        this.#sessionRepository!.update(rotatedSession)
+      );
     }
+    this.#sessions.set(rotatedSession.sessionId, rotatedSession);
 
     const user = this.#users.getOrThrow(rotatedSession.userId);
     const principal = this.#buildPrincipal(user, rotatedSession);
@@ -288,10 +335,10 @@ export class AuthService {
     };
   }
 
-  public logout(
+  public async logout(
     input: { readonly refreshToken?: string; readonly accessToken?: string },
     correlationId: string
-  ): void {
+  ): Promise<void> {
     const token = input.refreshToken ?? input.accessToken;
     if (!token) {
       throw new AuthenticationError('A token is required to logout');
@@ -302,23 +349,18 @@ export class AuthService {
     const session = this.#requireActiveSession(payload.session_id as SessionId, type);
     const revokedAt = nowIso();
 
-    this.#sessions.set(session.sessionId, {
+    const revokedSession = {
       ...session,
       active: false,
       revokedAt
-    });
+    };
 
     if (this.#sessionRepository) {
-      this.#sessionRepository
-        .update({
-          ...session,
-          active: false,
-          revokedAt
-        })
-        .catch((err) => {
-          console.error('Failed to revoke session in database:', err);
-        });
+      await this.#runAsUser(this.#users.getOrThrow(session.userId), correlationId, () =>
+        this.#sessionRepository!.update(revokedSession)
+      );
     }
+    this.#sessions.set(session.sessionId, revokedSession);
 
     if (this.#bruteForce) {
       this.#bruteForce.recordSuccess(session.userId);
@@ -359,7 +401,10 @@ export class AuthService {
       .reverse();
   }
 
-  public revokeOtherSessions(currentSessionId: SessionId, correlationId: string): number {
+  public async revokeOtherSessions(
+    currentSessionId: SessionId,
+    correlationId: string
+  ): Promise<number> {
     const currentSession = this.#requireActiveSession(currentSessionId, 'access');
     let revoked = 0;
 
@@ -372,24 +417,21 @@ export class AuthService {
       }
 
       const revokedAt = nowIso();
-      this.#sessions.set(session.sessionId, {
+      const revokedSession = {
         ...session,
         active: false,
         revokedAt
-      });
-      revoked += 1;
+      };
 
       if (this.#sessionRepository) {
-        this.#sessionRepository
-          .update({
-            sessionId: session.sessionId,
-            active: false,
-            revokedAt
-          })
-          .catch((err) => {
-            console.error('Failed to revoke session in database:', err);
-          });
+        await this.#runAsUser(
+          this.#users.getOrThrow(currentSession.userId),
+          correlationId,
+          () => this.#sessionRepository!.update(revokedSession)
+        );
       }
+      this.#sessions.set(session.sessionId, revokedSession);
+      revoked += 1;
     }
 
     this.#audit.write({
@@ -407,11 +449,11 @@ export class AuthService {
     return revoked;
   }
 
-  public revokeSessionForUser(
+  public async revokeSessionForUser(
     currentSessionId: SessionId,
     targetSessionId: SessionId,
     correlationId: string
-  ): boolean {
+  ): Promise<boolean> {
     const currentSession = this.#requireActiveSession(currentSessionId, 'access');
     const targetSession = this.#sessions.get(targetSessionId);
 
@@ -428,23 +470,20 @@ export class AuthService {
     }
 
     const revokedAt = nowIso();
-    this.#sessions.set(targetSession.sessionId, {
+    const revokedSession = {
       ...targetSession,
       active: false,
       revokedAt
-    });
+    };
 
     if (this.#sessionRepository) {
-      this.#sessionRepository
-        .update({
-          sessionId: targetSession.sessionId,
-          active: false,
-          revokedAt
-        })
-        .catch((err) => {
-          console.error('Failed to revoke session in database:', err);
-        });
+      await this.#runAsUser(
+        this.#users.getOrThrow(currentSession.userId),
+        correlationId,
+        () => this.#sessionRepository!.update(revokedSession)
+      );
     }
+    this.#sessions.set(targetSession.sessionId, revokedSession);
 
     this.#audit.write({
       actorId: currentSession.userId,
@@ -470,7 +509,9 @@ export class AuthService {
 
     for (const userId of targetUserIds) {
       const user = this.#users.getOrThrow(userId);
-      const persistedSessions = await this.#sessionRepository.findByUserId(userId);
+      const persistedSessions = await this.#runAsUser(user, createCorrelationId('hydrate'), () =>
+        this.#sessionRepository!.findByUserId(userId)
+      );
 
       for (const session of persistedSessions) {
         const existing = this.#sessions.get(session.sessionId);
@@ -478,13 +519,14 @@ export class AuthService {
           ...(existing ?? session),
           ...session,
           roleCodes: user.roleCodes,
-          refreshNonce: session.refreshNonce || existing?.refreshNonce || createCorrelationId('rnonce')
+          refreshNonce:
+            session.refreshNonce || existing?.refreshNonce || createCorrelationId('rnonce')
         });
       }
     }
   }
 
-  #createSession(user: UserRecord): SessionRecord {
+  async #createSession(user: UserRecord): Promise<SessionRecord> {
     const authTime = nowIso();
     const session: SessionRecord = {
       sessionId: createCorrelationId('sess') as SessionId,
@@ -499,13 +541,11 @@ export class AuthService {
       refreshNonce: createCorrelationId('rnonce')
     };
 
-    this.#sessions.set(session.sessionId, session);
-
     if (this.#sessionRepository) {
-      this.#sessionRepository.create(session).catch((err) => {
-        console.error('Failed to persist session to database:', err);
-      });
+      await this.#sessionRepository.create(session);
     }
+
+    this.#sessions.set(session.sessionId, session);
 
     return session;
   }
@@ -603,10 +643,7 @@ export class AuthService {
     return payload;
   }
 
-  #requireActiveSession(
-    sessionId: SessionId,
-    tokenType: 'access' | 'refresh'
-  ): SessionRecord {
+  #requireActiveSession(sessionId: SessionId, tokenType: 'access' | 'refresh'): SessionRecord {
     const session = this.#sessions.get(sessionId);
     if (!session) {
       throw new NotFoundError('Session not found', { sessionId });

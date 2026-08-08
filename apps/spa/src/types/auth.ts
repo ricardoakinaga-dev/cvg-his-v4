@@ -4,6 +4,7 @@ export interface AuthState {
   mfaRequired: boolean;
   mfaSetupRequired: boolean;
   pendingMfaUserId: string | null;
+  pendingMfaChallengeId: string | null;
   user: {
     id: string | null;
     email: string | null;

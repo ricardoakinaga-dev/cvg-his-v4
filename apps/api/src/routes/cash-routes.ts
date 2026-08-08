@@ -43,6 +43,7 @@ function movementTypeLabel(type: CashMovementType): string {
     closing: 'Fechamento',
     payment: 'Pagamento',
     supply: 'Entrada',
+    deposit: 'Deposito bancario',
     withdrawal: 'Saida',
     adjustment: 'Ajuste'
   };
@@ -65,7 +66,7 @@ function paymentMethodFor(movement: CashMovementSummary): string {
 }
 
 function signedAmount(movement: CashMovementSummary): number {
-  if (movement.movementType === 'withdrawal') {
+  if (movement.movementType === 'withdrawal' || movement.movementType === 'deposit') {
     return -movement.amount;
   }
   return movement.amount;
@@ -157,10 +158,10 @@ async function buildDashboard(
 }
 
 function ensureMovementType(value: unknown): CreateCashMovementRequest['movementType'] {
-  if (value === 'supply' || value === 'withdrawal' || value === 'adjustment') {
+  if (value === 'supply' || value === 'deposit' || value === 'withdrawal' || value === 'adjustment') {
     return value;
   }
-  throw new ValidationError('movementType must be supply, withdrawal or adjustment');
+  throw new ValidationError('movementType must be supply, deposit, withdrawal or adjustment');
 }
 
 export async function handleCashRoutes(
@@ -204,6 +205,31 @@ export async function handleCashRoutes(
     });
 
     return json(response, 200, dashboard);
+  }
+
+  if (pathname === '/cash-register/reconciliation' && method === 'GET') {
+    const principal = requirePrincipal(request, 'billing.read');
+    const url = new URL(request.url ?? pathname, 'http://localhost');
+    const requestedRegisterId = url.searchParams.get('registerId');
+    const register = requestedRegisterId
+      ? cash.getOrThrow(requestedRegisterId)
+      : await cash.findOpenRegister(principal.user.accountId) ?? cash.listRegisters(principal.user.accountId, 1)[0];
+    if (!register) {
+      throw new ConflictError('No cash register available for reconciliation');
+    }
+    const reconciliation = await cash.getReconciliation(register.id, principal.user.accountId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'cash',
+      action: 'reconcile_register',
+      entityType: 'cash-register',
+      entityId: register.id,
+      payloadSummary: `Cash register ${register.id} reconciliation inspected`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, reconciliation);
   }
 
   if (

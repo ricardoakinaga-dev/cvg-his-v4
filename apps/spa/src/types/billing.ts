@@ -1,4 +1,6 @@
-export type BillingStatus = 'draft' | 'estimated' | 'open' | 'settled';
+import type { BillingRecordStatus } from '@cvg-his-v2/shared-types';
+
+export type BillingStatus = BillingRecordStatus;
 
 export type BillingItemType = 'service' | 'supply' | 'procedure' | 'exam' | 'daily_rate' | 'other';
 

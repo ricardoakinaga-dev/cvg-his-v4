@@ -48,6 +48,16 @@ export interface WhatsAppReminderSendResult {
   readonly provider?: WhatsAppProviderType;
 }
 
+export interface WhatsAppCampaignMessageData {
+  readonly accountId: AccountId;
+  readonly campaignId: string;
+  readonly ownerId: OwnerId;
+  readonly patientId?: PatientId;
+  readonly recipient: string;
+  readonly recipientName: string;
+  readonly body: string;
+}
+
 export class WhatsAppProviderService {
   readonly #settingsProvider: NotificationSettingsProvider;
   readonly #ownerLookup: OwnerLookup;
@@ -124,6 +134,43 @@ export class WhatsAppProviderService {
       return {
         sent: false,
         error: err instanceof Error ? err.message : 'Unknown error sending WhatsApp reminder'
+      };
+    }
+  }
+
+  async sendCampaignMessage(
+    data: WhatsAppCampaignMessageData
+  ): Promise<WhatsAppReminderSendResult> {
+    try {
+      const provider = await this.#getProvider(data.accountId);
+      const validation = await provider.validateConfiguration();
+      if (!validation.valid) {
+        return { sent: false, error: validation.error, provider: provider.type };
+      }
+
+      const result = await provider.sendMessage({
+        recipient: data.recipient,
+        recipientName: data.recipientName,
+        body: data.body,
+        templateName: 'marketing_campaign',
+        templateVariables: [],
+        appointmentId: `campaign:${data.campaignId}`,
+        patientId: data.patientId ?? ('marketing' as PatientId),
+        ownerId: data.ownerId
+      });
+      return {
+        sent: result.success,
+        messageId: result.messageId,
+        error: result.success ? undefined : result.errorMessage,
+        provider: provider.type
+      };
+    } catch (err) {
+      if (err instanceof ProviderNotConfiguredError || err instanceof MissingCredentialsError) {
+        return { sent: false, error: err.message };
+      }
+      return {
+        sent: false,
+        error: err instanceof Error ? err.message : 'Unknown error sending WhatsApp campaign'
       };
     }
   }

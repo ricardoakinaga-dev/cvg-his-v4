@@ -57,6 +57,7 @@
                       'mini-calendar__day--today': day.isToday,
                       'mini-calendar__day--selected': day.date === referenceDate
                     }"
+                    :aria-label="`Selecionar ${day.date}`"
                     @click="selectDate(day.date)"
                   >
                     {{ day.dayNumber }}

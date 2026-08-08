@@ -85,31 +85,25 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     });
     console.log('   ✅ Billing page loaded');
 
+    // Billing is intentionally created only after an explicit financial action.
+    await expect(page.getByText('Cobrança ainda não persistida')).toBeVisible({ timeout: 10000 });
+    await page
+      .locator('.billing-empty-state__actions')
+      .getByRole('button', { name: /Gerar estimativa/i })
+      .click();
+    await expect(page.getByText('Estimado', { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    console.log('   ✅ Estimate explicitly created');
+
     // Validate patient and owner info
     await expect(mainContent.getByText(patientName).first()).toBeVisible({ timeout: 10000 });
     await expect(mainContent.getByText(ownerName).first()).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Patient and owner info visible');
 
-    // Validate initial status (draft)
-    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Status: Rascunho (draft)');
-
-    // ── Step 3: Generate estimate ──
-    console.log('   📊 Generating estimate...');
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeVisible({
+    // The explicit creation action must not remain available after creation.
+    await expect(page.getByRole('button', { name: /Gerar estimativa/i })).toBeHidden({
       timeout: 10000
     });
-    await page.getByRole('button', { name: 'Gerar Estimativa' }).click();
-
-    // Wait for status to change to "Estimado"
-    await expect(page.getByLabel('Estimado')).toBeVisible({ timeout: 15000 });
-    console.log('   ✅ Status: Estimado (estimated)');
-
-    // "Gerar Estimativa" button should no longer be visible
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeHidden({
-      timeout: 10000
-    });
-    console.log('   ✅ "Gerar Estimativa" button hidden');
+    console.log('   ✅ Estimate action hidden after creation');
 
     // ── Step 4: Add billing items ──
     console.log('   📦 Adding billing items...');
@@ -161,7 +155,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change
-    await expect(page.getByLabel('Aberto')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Aberto', { exact: true }).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Aberto (open)');
 
     // ── Step 6: Settle the billing ──
@@ -176,7 +170,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change to "Quitado"
-    await expect(page.getByLabel('Quitado')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Quitado', { exact: true }).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Quitado (settled)');
 
     // ── Step 7: Validate final state ──
@@ -189,7 +183,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await expect(page.getByRole('button', { name: 'Atualizar Status' })).toBeHidden({
       timeout: 10000
     });
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeHidden({
+    await expect(page.getByRole('button', { name: /Gerar estimativa/i })).toBeHidden({
       timeout: 10000
     });
     console.log('   ✅ All action buttons hidden (settled is terminal)');
@@ -207,7 +201,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/billing`);
     await page.waitForLoadState('networkidle');
-    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
+    await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
       timeout: 15000
     });
     console.log('   ✅ Billing list accessible');
@@ -255,7 +249,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
+    await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
       timeout: 15000
     });
 
@@ -274,15 +268,17 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
       timeout: 15000
     });
 
-    // Validate status badge
-    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
+    // No billing record is created by a read-only detail navigation.
+    await expect(page.getByText('Cobrança ainda não persistida')).toBeVisible({ timeout: 10000 });
 
-    // Validate sections
-    await expect(page.getByText('Informa')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Itens de Cobran')).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.locator('.billing-empty-state__actions').getByRole('button', { name: /Gerar estimativa/i })
+    ).toBeVisible({
+      timeout: 10000
+    });
 
     // Validate back link
-    const backLink = page.getByRole('link', { name: 'Voltar' });
+    const backLink = page.getByRole('link', { name: 'Voltar' }).first();
     await expect(backLink).toBeVisible({ timeout: 10000 });
     await expect(backLink).toHaveAttribute('href', '/billing');
 

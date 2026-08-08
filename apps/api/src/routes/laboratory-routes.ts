@@ -21,6 +21,7 @@ import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
+import { readJsonBody as readLimitedJsonBody } from '../helpers/common.js';
 
 export interface LaboratoryRoutesHandlers {
   laboratory: LaboratoryService;
@@ -542,7 +543,10 @@ export async function handleLaboratoryRoutes(
   if ((isLaboratoryOrdersCollectionPath(pathname) || pathname === '/diagnostics/orders') && request.method === 'POST') {
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as CreateDiagnosticOrderRequest;
-    const order = laboratory.createOrder(payload);
+    const order = await laboratory.createOrderAndPersistForAccount(
+      principal.user.accountId as never,
+      payload
+    );
     handlers.onOrderCreated?.(order, principal.user.id);
 
     appendAudit(audit, {
@@ -566,13 +570,16 @@ export async function handleLaboratoryRoutes(
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const encounterIdFromPath = pathname.match(/^\/encounters\/([^/]+)\/exam-orders$/)?.[1];
-    const order = laboratory.createOrder({
-      encounterId: encounterIdFromPath ?? String(payload.encounterId ?? ''),
-      patientId: String(payload.patientId ?? ''),
-      examType: String(payload.examName ?? payload.examType ?? ''),
-      examCatalogId: typeof payload.examCode === 'string' ? payload.examCode : undefined,
-      reason: String(payload.notes ?? payload.reason ?? 'Pedido criado via surface enterprise')
-    });
+    const order = await laboratory.createOrderAndPersistForAccount(
+      principal.user.accountId as never,
+      {
+        encounterId: encounterIdFromPath ?? String(payload.encounterId ?? ''),
+        patientId: String(payload.patientId ?? ''),
+        examType: String(payload.examName ?? payload.examType ?? ''),
+        examCatalogId: typeof payload.examCode === 'string' ? payload.examCode : undefined,
+        reason: String(payload.notes ?? payload.reason ?? 'Pedido criado via surface enterprise')
+      }
+    );
     handlers.onOrderCreated?.(order, principal.user.id);
     return json(response, 201, {
       id: order.id,
@@ -755,7 +762,11 @@ export async function handleLaboratoryRoutes(
         signedByUserId: incomingPayload.signedByUserId ?? principal.user.id
       }
       : incomingPayload;
-    const order = laboratory.recordResult(orderId as never, payload);
+    const order = await laboratory.recordResultAndPersistForAccount(
+      principal.user.accountId as never,
+      orderId as never,
+      payload
+    );
     handlers.onOrderStatusChanged?.(order, payload, principal.user.id);
 
     appendAudit(audit, {
@@ -782,25 +793,29 @@ export async function handleLaboratoryRoutes(
         : payload.status === 'cancelled'
           ? 'cancelled'
           : 'collected';
-    const order = laboratory.recordResult(orderId as never, {
-      status,
-      resultSummary:
-        typeof payload.findings === 'string'
-          ? payload.findings
-          : typeof payload.interpretation === 'string'
-            ? payload.interpretation
-            : undefined,
-      resultAttachmentId:
-        typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
-      collectedByUserId: principal.user.id,
-      releasedByUserId: status === 'resulted' ? principal.user.id : undefined,
-      signedByUserId:
-        status === 'resulted'
-          ? typeof payload.signedByUserId === 'string'
-            ? payload.signedByUserId
-            : principal.user.id
-          : undefined
-    });
+    const order = await laboratory.recordResultAndPersistForAccount(
+      principal.user.accountId as never,
+      orderId as never,
+      {
+        status,
+        resultSummary:
+          typeof payload.findings === 'string'
+            ? payload.findings
+            : typeof payload.interpretation === 'string'
+              ? payload.interpretation
+              : undefined,
+        resultAttachmentId:
+          typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
+        collectedByUserId: principal.user.id,
+        releasedByUserId: status === 'resulted' ? principal.user.id : undefined,
+        signedByUserId:
+          status === 'resulted'
+            ? typeof payload.signedByUserId === 'string'
+              ? payload.signedByUserId
+              : principal.user.id
+            : undefined
+      }
+    );
     handlers.onOrderStatusChanged?.(
       order,
       {
@@ -1160,15 +1175,5 @@ export async function handleLaboratoryRoutes(
 }
 
 async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  if (chunks.length === 0) {
-    return {} as T;
-  }
-
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T;
+  return (await readLimitedJsonBody(request)) as T;
 }

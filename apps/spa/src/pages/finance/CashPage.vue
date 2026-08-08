@@ -43,6 +43,15 @@
         </form>
       </DsCard>
 
+      <DsCard title="Depósito Bancário">
+        <form class="cash-form" @submit.prevent="submitMovement('deposit')">
+          <DsInput v-model.number="depositForm.amount" type="number" label="Valor" min="0.01" step="0.01" required />
+          <DsInput v-model="depositForm.reference" label="Comprovante" placeholder="Ex: depósito 12345" />
+          <DsInput v-model="depositForm.notes" label="Observação" placeholder="Ex: depósito do fechamento" />
+          <DsButton variant="secondary" :loading="savingAction === 'deposit'">Registrar Depósito</DsButton>
+        </form>
+      </DsCard>
+
       <DsCard title="Fechar Gaveta">
         <form v-if="dashboard?.openRegister" class="cash-form" @submit.prevent="closeDrawer">
           <DsInput
@@ -125,7 +134,7 @@ import type {
   CreateCashMovementRequest
 } from '@cvg-his-v2/shared-contracts';
 
-type SavingAction = 'open' | 'entry' | 'withdrawal' | 'close' | '';
+type SavingAction = 'open' | 'entry' | 'withdrawal' | 'deposit' | 'close' | '';
 
 const loading = ref(false);
 const savingAction = ref<SavingAction>('');
@@ -143,6 +152,11 @@ const entryForm = ref({
   notes: ''
 });
 const withdrawalForm = ref({
+  amount: 0,
+  reference: '',
+  notes: ''
+});
+const depositForm = ref({
   amount: 0,
   reference: '',
   notes: ''
@@ -204,8 +218,16 @@ async function openDrawer() {
 }
 
 async function submitMovement(movementType: CreateCashMovementRequest['movementType']) {
-  const form = movementType === 'withdrawal' ? withdrawalForm.value : entryForm.value;
-  savingAction.value = movementType === 'withdrawal' ? 'withdrawal' : 'entry';
+  const form = movementType === 'withdrawal'
+    ? withdrawalForm.value
+    : movementType === 'deposit'
+      ? depositForm.value
+      : entryForm.value;
+  savingAction.value = movementType === 'withdrawal'
+    ? 'withdrawal'
+    : movementType === 'deposit'
+      ? 'deposit'
+      : 'entry';
   await runAction(async () => {
     await cashService.recordMovement({
       movementType,
@@ -216,6 +238,9 @@ async function submitMovement(movementType: CreateCashMovementRequest['movementT
     if (movementType === 'withdrawal') {
       withdrawalForm.value = { amount: 0, reference: '', notes: '' };
       successMessage.value = 'Saída de gaveta registrada.';
+    } else if (movementType === 'deposit') {
+      depositForm.value = { amount: 0, reference: '', notes: '' };
+      successMessage.value = 'Depósito bancário registrado.';
     } else {
       entryForm.value = { amount: 0, reference: '', notes: '' };
       successMessage.value = 'Entrada de gaveta registrada.';

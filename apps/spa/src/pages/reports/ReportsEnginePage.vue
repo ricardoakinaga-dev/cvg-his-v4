@@ -105,6 +105,22 @@
         >
           Exportar JSON
         </DsButton>
+        <DsButton
+          variant="secondary"
+          :loading="exporting === 'xlsx'"
+          :disabled="!selectedExecution"
+          @click="exportReport('xlsx')"
+        >
+          Exportar XLSX
+        </DsButton>
+        <DsButton
+          variant="secondary"
+          :loading="exporting === 'pdf'"
+          :disabled="!selectedExecution"
+          @click="exportReport('pdf')"
+        >
+          Exportar PDF
+        </DsButton>
       </div>
     </DsCard>
 
@@ -119,6 +135,8 @@
         <DsInput id="schedule-format" v-model="scheduleFormat" type="select" label="Formato">
           <option value="csv">CSV</option>
           <option value="json">JSON</option>
+          <option value="xlsx">XLSX</option>
+          <option value="pdf">PDF</option>
         </DsInput>
         <DsInput
           id="schedule-recipients"
@@ -341,6 +359,7 @@ import {
   type ReportDefinition,
   type ReportExecutionDetail,
   type ReportExecutionSummary,
+  type ReportExportSummary,
   type ReportFormat,
   type ReportScheduleDeliveryAlertSummary,
   type ReportScheduleDeliverySummary,
@@ -639,12 +658,30 @@ async function exportReport(format: ReportFormat): Promise<void> {
 
   try {
     const exported = await reportsService.exportExecution(selectedExecution.value.id, format);
+    downloadReportExport(exported);
     success.value = `Exportação gerada: ${exported.filename}.`;
   } catch (err) {
     error.value = errorMessage(err, 'Não foi possível exportar a execução.');
   } finally {
     exporting.value = '';
   }
+}
+
+function downloadReportExport(exported: ReportExportSummary): void {
+  const content =
+    exported.contentEncoding === 'base64'
+      ? Uint8Array.from(atob(exported.content), (character) => character.charCodeAt(0))
+      : exported.content;
+  const blob = new Blob([content], { type: exported.contentType });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = href;
+  anchor.download = exported.filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(href), 0);
 }
 
 async function createSchedule(): Promise<void> {

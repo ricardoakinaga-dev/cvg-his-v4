@@ -77,6 +77,7 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'PORT', required: false, defaultValue: String(DEFAULT_API_PORT), description: 'HTTP listen port for the API server.' },
   { app: 'api', key: 'HOST', required: false, defaultValue: DEFAULT_HOST, description: 'HTTP bind host for the API server.' },
   { app: 'api', key: 'CORS_ALLOWED_ORIGINS', required: false, defaultValue: DEFAULT_LOCAL_CORS_ALLOWED_ORIGINS.join(','), description: 'Comma-separated allowlist of allowed browser origins. Required explicitly in production-like environments.' },
+  { app: 'api', key: 'TRUSTED_PROXY_CIDRS', required: false, description: 'Comma-separated proxy IPs/CIDRs allowed to supply X-Forwarded-For and X-Forwarded-Proto.' },
   { app: 'api', key: 'AUTH_SECRET', required: false, defaultValue: INSECURE_DEFAULT_SECRET, sensitive: true, description: 'JWT/session secret. Required to be strong in production-like environments.' },
   { app: 'api', key: 'AUTH_ACCESS_TOKEN_TTL_SECONDS', required: false, defaultValue: String(DEFAULT_ACCESS_TOKEN_TTL_SECONDS), description: 'Access token TTL in seconds.' },
   { app: 'api', key: 'AUTH_REFRESH_TOKEN_TTL_SECONDS', required: false, defaultValue: String(DEFAULT_REFRESH_TOKEN_TTL_SECONDS), description: 'Refresh token TTL in seconds.' },
@@ -89,6 +90,15 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'OTEL_EXPORTER_OTLP_HEADERS', required: false, sensitive: true, description: 'Comma-separated OTLP headers in key=value format.' },
   { app: 'api', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' },
   { app: 'api', key: 'FILE_STORAGE_PATH', required: false, defaultValue: DEFAULT_FILE_STORAGE_PATH, description: 'Base directory for attachment storage.' },
+  { app: 'api', key: 'ATTACHMENT_SCANNER_HOST', required: false, description: 'ClamAV host used to scan clinical uploads in production-like environments.' },
+  { app: 'api', key: 'ATTACHMENT_SCANNER_PORT', required: false, defaultValue: '3310', description: 'ClamAV TCP port used for INSTREAM scanning.' },
+  { app: 'api', key: 'ATTACHMENT_SCANNER_TIMEOUT_MS', required: false, defaultValue: '5000', description: 'Maximum time allowed for an attachment security verdict.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_ENDPOINT', required: false, description: 'Private S3/MinIO endpoint for durable clinical attachments.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_BUCKET', required: false, description: 'Private bucket used for clinical attachments.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_ACCESS_KEY', required: false, sensitive: true, description: 'S3 access key for the attachment bucket.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_SECRET_KEY', required: false, sensitive: true, description: 'S3 secret key for the attachment bucket.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_REGION', required: false, defaultValue: 'us-east-1', description: 'S3 signing region.' },
+  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_PATH_STYLE', required: false, defaultValue: 'true', description: 'Use path-style addressing for MinIO-compatible endpoints.' },
   { app: 'api', key: 'ENABLE_MFA', required: false, defaultValue: 'false', description: 'Enable MFA runtime wiring in the API.' },
   { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY', required: false, sensitive: true, description: 'Encryption key used when MFA is enabled.' },
   { app: 'api', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
@@ -97,6 +107,13 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
   { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
   { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
+  { app: 'api', key: 'NFSE_PROVIDER', required: false, defaultValue: 'abrasf', description: 'Municipal NFS-e provider adapter.' },
+  { app: 'api', key: 'NFSE_API_URL', required: false, description: 'Municipal NFS-e endpoint used outside simulation mode.' },
+  { app: 'api', key: 'NFSE_API_KEY', required: false, sensitive: true, description: 'Municipal NFS-e API credential.' },
+  { app: 'api', key: 'NFSE_MUNICIPALITY_CODE', required: false, description: 'IBGE municipality code used by the NFS-e provider.' },
+  { app: 'api', key: 'NFSE_CERTIFICATE_BASE64', required: false, sensitive: true, description: 'Base64 encoded PFX/PEM certificate for signed NFS-e requests.' },
+  { app: 'api', key: 'NFSE_ISSUER_JSON', required: false, sensitive: true, description: 'JSON document with the NFS-e issuer registration and address.' },
+  { app: 'api', key: 'NFSE_REGIME', required: false, defaultValue: 'simples_nacional', description: 'Tax regime used by the NFS-e emitter.' },
   { app: 'api', key: 'RESEND_API_KEY', required: false, sensitive: true, description: 'Resend API key for transactional email provider.' },
   { app: 'api', key: 'EMAIL_FROM', required: false, defaultValue: 'noreply@cvg-his.local', description: 'Default sender used by the transactional email provider.' },
   { app: 'api', key: 'EMAIL_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalEmailGateway even if RESEND_API_KEY is set. Default: false (Resend is the default provider when configured).' },
@@ -145,6 +162,7 @@ export interface ApiAppConfig {
   readonly port: number;
   readonly host: string;
   readonly corsAllowedOrigins: readonly string[];
+  readonly trustedProxyCidrs: readonly string[];
   readonly authSecret: string;
   readonly authVerifierSecrets: readonly string[];
   readonly authSecretVersion?: string;
@@ -159,6 +177,15 @@ export interface ApiAppConfig {
   readonly otlpHeaders: Readonly<Record<string, string>>;
   readonly databaseUrl?: string;
   readonly fileStoragePath: string;
+  readonly attachmentScannerHost?: string;
+  readonly attachmentScannerPort: number;
+  readonly attachmentScannerTimeoutMs: number;
+  readonly attachmentStorageS3Endpoint?: string;
+  readonly attachmentStorageS3Bucket?: string;
+  readonly attachmentStorageS3AccessKey?: string;
+  readonly attachmentStorageS3SecretKey?: string;
+  readonly attachmentStorageS3Region: string;
+  readonly attachmentStorageS3PathStyle: boolean;
   readonly enableMfa: boolean;
   readonly mfaEncryptionKey?: string;
   readonly mfaEncryptionKeyVersion?: string;
@@ -168,6 +195,13 @@ export interface ApiAppConfig {
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
   readonly pixMockMode?: boolean;
+  readonly nfseProvider?: string;
+  readonly nfseApiUrl?: string;
+  readonly nfseApiKey?: string;
+  readonly nfseMunicipalityCode?: string;
+  readonly nfseCertificateBase64?: string;
+  readonly nfseIssuerJson?: string;
+  readonly nfseRegime?: string;
   readonly resendApiKey?: string;
   readonly emailFrom?: string;
   readonly emailMockMode?: boolean;
@@ -424,6 +458,7 @@ const apiEnvSchema = z
     PORT: portSchema.default(DEFAULT_API_PORT),
     HOST: nonEmptyStringSchema.default(DEFAULT_HOST),
     CORS_ALLOWED_ORIGINS: optionalNonEmptyStringSchema,
+    TRUSTED_PROXY_CIDRS: optionalNonEmptyStringSchema,
     AUTH_SECRET: nonEmptyStringSchema.default(INSECURE_DEFAULT_SECRET),
     AUTH_SECRET_PREVIOUS: optionalNonEmptyStringSchema,
     AUTH_SECRET_VERSION: optionalNonEmptyStringSchema,
@@ -438,6 +473,15 @@ const apiEnvSchema = z
     OTEL_EXPORTER_OTLP_HEADERS: optionalNonEmptyStringSchema,
     DATABASE_URL: optionalUrlSchema,
     FILE_STORAGE_PATH: nonEmptyStringSchema.default(DEFAULT_FILE_STORAGE_PATH),
+    ATTACHMENT_SCANNER_HOST: optionalNonEmptyStringSchema,
+    ATTACHMENT_SCANNER_PORT: portSchema.default(3310),
+    ATTACHMENT_SCANNER_TIMEOUT_MS: positiveNumberSchema.default(5_000),
+    ATTACHMENT_STORAGE_S3_ENDPOINT: optionalUrlSchema,
+    ATTACHMENT_STORAGE_S3_BUCKET: optionalNonEmptyStringSchema,
+    ATTACHMENT_STORAGE_S3_ACCESS_KEY: optionalNonEmptyStringSchema,
+    ATTACHMENT_STORAGE_S3_SECRET_KEY: optionalNonEmptyStringSchema,
+    ATTACHMENT_STORAGE_S3_REGION: nonEmptyStringSchema.default('us-east-1'),
+    ATTACHMENT_STORAGE_S3_PATH_STYLE: booleanStringSchema.default(true),
     ENABLE_MFA: booleanStringSchema.default(false),
     MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
     MFA_SECRET_ENCRYPTION_KEY_VERSION: optionalNonEmptyStringSchema,
@@ -447,6 +491,13 @@ const apiEnvSchema = z
     PAGARME_API_KEY: optionalNonEmptyStringSchema,
     PAGARME_PIX_KEY: optionalNonEmptyStringSchema,
     PIX_MOCK_MODE: booleanStringSchema.default(false),
+    NFSE_PROVIDER: nonEmptyStringSchema.default('abrasf'),
+    NFSE_API_URL: optionalUrlSchema,
+    NFSE_API_KEY: optionalNonEmptyStringSchema,
+    NFSE_MUNICIPALITY_CODE: optionalNonEmptyStringSchema,
+    NFSE_CERTIFICATE_BASE64: optionalNonEmptyStringSchema,
+    NFSE_ISSUER_JSON: optionalNonEmptyStringSchema,
+    NFSE_REGIME: nonEmptyStringSchema.default('simples_nacional'),
     RESEND_API_KEY: optionalNonEmptyStringSchema,
     EMAIL_FROM: optionalNonEmptyStringSchema.default('noreply@cvg-his.local'),
     EMAIL_MOCK_MODE: booleanStringSchema.default(false),
@@ -549,6 +600,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     port: parsed.PORT,
     host: parsed.HOST,
     corsAllowedOrigins: resolveCorsAllowedOrigins(parsed.NODE_ENV, parsed.CORS_ALLOWED_ORIGINS),
+    trustedProxyCidrs: parseSecretList(parsed.TRUSTED_PROXY_CIDRS),
     authSecret: parsed.AUTH_SECRET,
     authVerifierSecrets: parseSecretList(parsed.AUTH_SECRET_PREVIOUS),
     authSecretVersion: parsed.AUTH_SECRET_VERSION,
@@ -563,6 +615,15 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     otlpHeaders: parseOtlpHeaders(parsed.OTEL_EXPORTER_OTLP_HEADERS),
     databaseUrl: parsed.DATABASE_URL,
     fileStoragePath: parsed.FILE_STORAGE_PATH,
+    attachmentScannerHost: parsed.ATTACHMENT_SCANNER_HOST,
+    attachmentScannerPort: parsed.ATTACHMENT_SCANNER_PORT,
+    attachmentScannerTimeoutMs: parsed.ATTACHMENT_SCANNER_TIMEOUT_MS,
+    attachmentStorageS3Endpoint: parsed.ATTACHMENT_STORAGE_S3_ENDPOINT,
+    attachmentStorageS3Bucket: parsed.ATTACHMENT_STORAGE_S3_BUCKET,
+    attachmentStorageS3AccessKey: parsed.ATTACHMENT_STORAGE_S3_ACCESS_KEY,
+    attachmentStorageS3SecretKey: parsed.ATTACHMENT_STORAGE_S3_SECRET_KEY,
+    attachmentStorageS3Region: parsed.ATTACHMENT_STORAGE_S3_REGION,
+    attachmentStorageS3PathStyle: parsed.ATTACHMENT_STORAGE_S3_PATH_STYLE,
     enableMfa: parsed.ENABLE_MFA,
     mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
     mfaEncryptionKeyVersion: parsed.MFA_SECRET_ENCRYPTION_KEY_VERSION,
@@ -572,6 +633,13 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     pagarmeApiKey: parsed.PAGARME_API_KEY,
     pagarmePixKey: parsed.PAGARME_PIX_KEY,
     pixMockMode: parsed.PIX_MOCK_MODE,
+    nfseProvider: parsed.NFSE_PROVIDER,
+    nfseApiUrl: parsed.NFSE_API_URL,
+    nfseApiKey: parsed.NFSE_API_KEY,
+    nfseMunicipalityCode: parsed.NFSE_MUNICIPALITY_CODE,
+    nfseCertificateBase64: parsed.NFSE_CERTIFICATE_BASE64,
+    nfseIssuerJson: parsed.NFSE_ISSUER_JSON,
+    nfseRegime: parsed.NFSE_REGIME,
     resendApiKey: parsed.RESEND_API_KEY,
     emailFrom: parsed.EMAIL_FROM,
     emailMockMode: parsed.EMAIL_MOCK_MODE,

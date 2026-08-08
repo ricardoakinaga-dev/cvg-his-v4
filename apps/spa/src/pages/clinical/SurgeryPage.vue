@@ -1,6 +1,6 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Cirurgias']" title="Cirurgias" subtitle="Primeiro corte real da trilha cirúrgica na SPA">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Cirurgias']" title="Cirurgias" subtitle="Solicitação, preparo, procedimento e recuperação no mesmo fluxo.">
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
       </template>
@@ -87,7 +87,21 @@
           variant="hoverable"
         >
           <template #cell-createdAt="{ row }">
-            {{ formatDateTime((row as ClinicalEntrySummary).createdAt) }}
+            {{ formatDateTime((row as SurgeryCaseSummary).createdAt) }}
+          </template>
+          <template #cell-status="{ row }">
+            {{ statusLabel((row as SurgeryCaseSummary).status) }}
+          </template>
+          <template #cell-actions="{ row }">
+            <DsButton
+              v-if="nextStatus((row as SurgeryCaseSummary).status)"
+              size="sm"
+              variant="secondary"
+              :loading="updatingCaseId === (row as SurgeryCaseSummary).id"
+              @click="advanceCase(row as SurgeryCaseSummary)"
+            >
+              {{ nextStatusLabel((row as SurgeryCaseSummary).status) }}
+            </DsButton>
           </template>
         </DataTable>
       </DsCard>
@@ -123,16 +137,18 @@ import { encounterService } from '@/services/encounter';
 import { surgeryService } from '@/services/surgery';
 import { medicalRecordsService } from '@/services/medicalRecords';
 import type { EncounterSummary } from '@/types/encounter';
-import type { ClinicalEntrySummary, ClinicalTimelineEventSummary } from '@/types/medicalRecords';
+import type { ClinicalTimelineEventSummary } from '@/types/medicalRecords';
+import type { SurgeryCaseSummary, SurgeryStatus } from '@/types/surgery';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import { formatDateTime } from '@/utils/labels';
 
 const encounters = ref<EncounterSummary[]>([]);
-const surgeryRequests = ref<ClinicalEntrySummary[]>([]);
+const surgeryRequests = ref<SurgeryCaseSummary[]>([]);
 const surgeryTimeline = ref<ClinicalTimelineEventSummary[]>([]);
 const selectedEncounterId = ref('');
 const loading = ref(false);
 const submitting = ref(false);
+const updatingCaseId = ref('');
 const error = ref('');
 const successMessage = ref('');
 
@@ -145,9 +161,10 @@ const form = ref({
 });
 
 const surgeryColumns: DataTableColumn[] = [
-  { key: 'title', label: 'Procedimento' },
-  { key: 'content', label: 'Resumo' },
-  { key: 'createdAt', label: 'Criado em' }
+  { key: 'procedureName', label: 'Procedimento' },
+  { key: 'status', label: 'Etapa' },
+  { key: 'createdAt', label: 'Criado em' },
+  { key: 'actions', label: 'Ação' }
 ];
 
 const timelineColumns: DataTableColumn[] = [
@@ -215,17 +232,17 @@ async function submitSurgery() {
     await surgeryService.createRequest({
       encounterId: selectedEncounter.value.id,
       patientId: selectedEncounter.value.patientId,
-      title: form.value.procedureName.trim(),
-      content: [
-        form.value.surgeonUserId.trim() ? `Cirurgião: ${form.value.surgeonUserId.trim()}` : '',
-        form.value.scheduledAt.trim()
-          ? `Agendamento: ${new Date(form.value.scheduledAt).toISOString()}`
-          : '',
-        form.value.surgicalTeam.trim() ? `Equipe: ${form.value.surgicalTeam.trim()}` : '',
-        form.value.preparationNotes.trim() ? `Preparação: ${form.value.preparationNotes.trim()}` : ''
-      ]
-        .filter(Boolean)
-        .join('\n')
+      procedureName: form.value.procedureName.trim(),
+      ...(form.value.surgeonUserId.trim() && { surgeonUserId: form.value.surgeonUserId.trim() }),
+      ...(form.value.scheduledAt.trim() && {
+        scheduledAt: new Date(form.value.scheduledAt).toISOString()
+      }),
+      ...(form.value.surgicalTeam.trim() && {
+        surgicalTeam: form.value.surgicalTeam.split(',').map((item) => item.trim()).filter(Boolean)
+      }),
+      ...(form.value.preparationNotes.trim() && {
+        preparationNotes: form.value.preparationNotes.trim()
+      })
     });
     successMessage.value = 'Solicitação cirúrgica registrada.';
     resetForm();
@@ -234,6 +251,48 @@ async function submitSurgery() {
     error.value = err instanceof Error ? err.message : 'Erro ao registrar cirurgia';
   } finally {
     submitting.value = false;
+  }
+}
+
+const NEXT_STATUS: Partial<Record<SurgeryStatus, SurgeryStatus>> = {
+  requested: 'pre_op',
+  pre_op: 'in_progress',
+  in_progress: 'recovery',
+  recovery: 'completed'
+};
+
+function nextStatus(status: SurgeryStatus): SurgeryStatus | undefined {
+  return NEXT_STATUS[status];
+}
+
+function statusLabel(status: SurgeryStatus): string {
+  return {
+    requested: 'Solicitada',
+    pre_op: 'Pré-operatório',
+    in_progress: 'Em procedimento',
+    recovery: 'Recuperação',
+    completed: 'Concluída',
+    cancelled: 'Cancelada'
+  }[status];
+}
+
+function nextStatusLabel(status: SurgeryStatus): string {
+  const target = nextStatus(status);
+  return target ? `Avançar para ${statusLabel(target)}` : '';
+}
+
+async function advanceCase(surgeryCase: SurgeryCaseSummary) {
+  const target = nextStatus(surgeryCase.status);
+  if (!target) return;
+  updatingCaseId.value = surgeryCase.id;
+  error.value = '';
+  try {
+    await surgeryService.updateStatus(surgeryCase.id, target);
+    await refreshContext();
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Erro ao atualizar cirurgia';
+  } finally {
+    updatingCaseId.value = '';
   }
 }
 

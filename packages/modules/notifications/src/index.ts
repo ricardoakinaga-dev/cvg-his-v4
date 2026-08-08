@@ -186,17 +186,17 @@ export class NotificationsService {
         };
         await this.#repository.updateNotification(updated);
         processed.push(updated);
-        void this.#onNotificationSent?.(updated);
+        await this.#onNotificationSent?.(updated);
       }
     }
 
     return processed;
   }
 
-  public processPending(
+  public async processPending(
     payload: ProcessNotificationsRequest = {},
     accountId?: NotificationSummary['accountId']
-  ): readonly NotificationSummary[] {
+  ): Promise<readonly NotificationSummary[]> {
     const limit =
       typeof payload.limit === 'number' && payload.limit > 0 ? Math.floor(payload.limit) : 10;
     const pendingJobs = this.#jobs
@@ -227,7 +227,7 @@ export class NotificationsService {
         };
         this.#notifications[notificationIndex] = updated;
         processed.push(updated);
-        void this.#onNotificationSent?.(updated);
+        await this.#onNotificationSent?.(updated);
       }
     }
 

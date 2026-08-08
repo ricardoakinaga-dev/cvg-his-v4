@@ -43,6 +43,24 @@ spec:
                   key: password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_API_USER
+              value: {{ .Values.postgresql.auth.apiUsername | quote }}
+            - name: POSTGRES_WORKER_USER
+              value: {{ .Values.postgresql.auth.workerUsername | quote }}
+            - name: POSTGRES_API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.postgres.secretName" . }}
+                  key: {{ .Values.postgresql.secretKeys.apiPassword }}
+            - name: POSTGRES_WORKER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.postgres.secretName" . }}
+                  key: {{ .Values.postgresql.secretKeys.workerPassword }}
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "/usr/local/bin/init-runtime-role.sh"]
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}]
@@ -60,6 +78,14 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            - name: runtime-role-script
+              mountPath: /usr/local/bin/init-runtime-role.sh
+              subPath: init-runtime-role.sh
+      volumes:
+        - name: runtime-role-script
+          configMap:
+            name: {{ include "cvg-his-v2.fullname" . }}-postgres-runtime-role
+            defaultMode: 0555
   volumeClaimTemplates:
     - metadata:
         name: data

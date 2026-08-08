@@ -61,6 +61,7 @@ export async function handleUsersStaffQuotesRoutes(
       );
 
       const newUser = await users.create({
+        accountId: principal.user.accountId,
         username: payload.username as string,
         email: payload.email as string,
         password: payload.password as string,
@@ -111,7 +112,7 @@ export async function handleUsersStaffQuotesRoutes(
       correlationId
     });
     response.statusCode = 200;
-    response.end(JSON.stringify({ items: users.list() }));
+    response.end(JSON.stringify({ items: users.listForAccount(principal.user.accountId) }));
     return true;
   }
 
@@ -123,7 +124,7 @@ export async function handleUsersStaffQuotesRoutes(
     );
     const userId = requireNonEmptyString(pathname.split('/')[2], 'userId');
     if (request.method === 'GET') {
-      const user = users.getOrThrow(userId as never);
+      const user = users.getForAccountOrThrow(userId as never, principal.user.accountId);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -141,7 +142,11 @@ export async function handleUsersStaffQuotesRoutes(
     }
     if (request.method === 'PATCH') {
       const payload = (await readJsonBody(request)) as UpdateUserRequest;
-      const user = await users.update(userId as never, payload);
+      const user = await users.updateForAccount(
+        userId as never,
+        principal.user.accountId,
+        payload
+      );
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -162,6 +167,79 @@ export async function handleUsersStaffQuotesRoutes(
   // ==========================================================
   // STAFF
   // ==========================================================
+
+  // GET /staff/time-off — list absences/leave intervals
+  if (pathname === '/staff/time-off' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'staff.read');
+    const staffId = url.searchParams.get('staffId') ?? undefined;
+    const items = staff.listTimeOff(principal.user.accountId as never, staffId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'list_time_off',
+      entityType: 'staff-time-off',
+      entityId: staffId ?? 'all',
+      payloadSummary: 'Staff time off listed',
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // POST /staff/time-off — create an absence/leave interval
+  if (pathname === '/staff/time-off' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'staff.manage');
+    const payload = (await readJsonBody(request)) as {
+      staffId: string;
+      startsAt: string;
+      endsAt: string;
+      reason: string;
+    };
+    const timeOff = await staff.createTimeOff(principal.user.accountId as never, principal.user.id, {
+      staffId: requireNonEmptyString(payload.staffId, 'staffId') as never,
+      startsAt: requireNonEmptyString(payload.startsAt, 'startsAt'),
+      endsAt: requireNonEmptyString(payload.endsAt, 'endsAt'),
+      reason: requireNonEmptyString(payload.reason, 'reason')
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'create_time_off',
+      entityType: 'staff-time-off',
+      entityId: timeOff.id,
+      payloadSummary: `Staff time off created for ${timeOff.staffId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(timeOff));
+    return true;
+  }
+
+  // POST /staff/time-off/:id/cancel — cancel an absence/leave interval
+  if (pathname.startsWith('/staff/time-off/') && pathname.endsWith('/cancel') && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'staff.manage');
+    const timeOffId = requireNonEmptyString(pathname.split('/')[3], 'timeOffId');
+    const timeOff = await staff.cancelTimeOff(principal.user.accountId as never, timeOffId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'cancel_time_off',
+      entityType: 'staff-time-off',
+      entityId: timeOff.id,
+      payloadSummary: `Staff time off cancelled for ${timeOff.staffId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(timeOff));
+    return true;
+  }
 
   // GET /staff — list staff members
   if (pathname === '/staff' && request.method === 'GET') {

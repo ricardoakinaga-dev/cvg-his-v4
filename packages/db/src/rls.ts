@@ -12,7 +12,12 @@ export interface RlsMigrationCoverageTable {
   readonly rlsEnabled: boolean;
   readonly hasTenantPolicy: boolean;
   readonly policyUsesCurrentAccountId: boolean;
-  readonly status: 'protected' | 'missing_rls' | 'missing_policy' | 'documented_exception';
+  readonly status:
+    | 'protected'
+    | 'missing_account_scope'
+    | 'missing_rls'
+    | 'missing_policy'
+    | 'documented_exception';
   readonly missing: readonly string[];
 }
 
@@ -25,16 +30,10 @@ export interface RlsMigrationCoverageReport {
   readonly tables: readonly RlsMigrationCoverageTable[];
 }
 
-const DEFAULT_RLS_EXCEPTION_TABLES = new Set<string>([
-  'accounts',
-  'tenants',
-  'drizzle_migrations'
-]);
+const DEFAULT_RLS_EXCEPTION_TABLES = new Set<string>(['accounts', 'tenants', 'drizzle_migrations']);
 
 function stripSqlComments(sql: string): string {
-  return sql
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/--.*$/gm, ' ');
+  return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--.*$/gm, ' ');
 }
 
 function normalizeIdentifier(identifier: string): string {
@@ -52,23 +51,48 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function collectTenantTables(files: readonly RlsMigrationFile[]): Map<string, Set<string>> {
-  const tables = new Map<string, Set<string>>();
+interface CollectedMigrationTable {
+  readonly sourceFiles: Set<string>;
+  hasAccountId: boolean;
+}
+
+function collectCreatedTables(
+  files: readonly RlsMigrationFile[]
+): Map<string, CollectedMigrationTable> {
+  const tables = new Map<string, CollectedMigrationTable>();
   const createTablePattern =
     /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:"?public"?\.)?"?[a-zA-Z0-9_]+"?)\s*\(([\s\S]*?)\)\s*;/gi;
+  const addAccountIdPattern =
+    /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?((?:"?public"?\.)?"?[a-zA-Z0-9_]+"?)\s+ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"?account_id"?\s+(uuid|text|varchar|character\s+varying|char|bigint|integer)\b/gi;
 
   for (const file of files) {
     const sql = stripSqlComments(file.sql);
     for (const match of sql.matchAll(createTablePattern)) {
       const tableName = normalizeIdentifier(match[1] ?? '');
       const body = match[2] ?? '';
-      if (!tableName || !/"?account_id"?\s+(uuid|text|varchar|character varying|char|bigint|integer)/i.test(body)) {
-        continue;
-      }
+      if (!tableName) continue;
 
-      const sourceFiles = tables.get(tableName) ?? new Set<string>();
-      sourceFiles.add(file.name);
-      tables.set(tableName, sourceFiles);
+      const table = tables.get(tableName) ?? {
+        sourceFiles: new Set<string>(),
+        hasAccountId: false
+      };
+      table.sourceFiles.add(file.name);
+      table.hasAccountId ||=
+        /"?account_id"?\s+(uuid|text|varchar|character varying|char|bigint|integer)/i.test(body);
+      tables.set(tableName, table);
+    }
+
+    for (const match of sql.matchAll(addAccountIdPattern)) {
+      const tableName = normalizeIdentifier(match[1] ?? '');
+      if (!tableName) continue;
+
+      const table = tables.get(tableName) ?? {
+        sourceFiles: new Set<string>(),
+        hasAccountId: false
+      };
+      table.sourceFiles.add(file.name);
+      table.hasAccountId = true;
+      tables.set(tableName, table);
     }
   }
 
@@ -105,21 +129,39 @@ function policyUsesCurrentAccountId(combinedSql: string, tableName: string): boo
 
 export function analyzeRlsMigrationCoverage(
   files: readonly RlsMigrationFile[],
-  options?: { readonly exceptionTables?: readonly string[]; readonly generatedAt?: string }
+  options?: {
+    readonly exceptionTables?: readonly string[];
+    readonly requiredTenantTables?: readonly string[];
+    readonly generatedAt?: string;
+  }
 ): RlsMigrationCoverageReport {
   const exceptionTables = new Set([
     ...DEFAULT_RLS_EXCEPTION_TABLES,
     ...(options?.exceptionTables ?? []).map((table) => table.toLowerCase())
   ]);
-  const tenantTables = collectTenantTables(files);
+  const createdTables = collectCreatedTables(files);
+  const requiredTenantTables = new Set(
+    (options?.requiredTenantTables ?? []).map((table) => table.toLowerCase())
+  );
+  const tenantTables = new Map(
+    [...createdTables].filter(
+      ([tableName, table]) => table.hasAccountId || requiredTenantTables.has(tableName)
+    )
+  );
+  for (const tableName of requiredTenantTables) {
+    if (!tenantTables.has(tableName)) {
+      tenantTables.set(tableName, { sourceFiles: new Set(), hasAccountId: false });
+    }
+  }
   const combinedSql = stripSqlComments(files.map((file) => file.sql).join('\n\n'));
   const tables: RlsMigrationCoverageTable[] = [];
 
-  for (const [tableName, sourceFiles] of tenantTables.entries()) {
+  for (const [tableName, table] of tenantTables.entries()) {
     const rlsEnabled = hasRlsEnabled(combinedSql, tableName);
     const tenantPolicy = hasTenantPolicy(combinedSql, tableName);
     const usesCurrentAccount = policyUsesCurrentAccountId(combinedSql, tableName);
     const missing = [
+      ...(table.hasAccountId ? [] : ['account_id']),
       ...(rlsEnabled ? [] : ['ENABLE ROW LEVEL SECURITY']),
       ...(tenantPolicy ? [] : ['CREATE POLICY']),
       ...(usesCurrentAccount ? [] : ['app.current_account_id policy predicate'])
@@ -128,8 +170,8 @@ export function analyzeRlsMigrationCoverage(
 
     tables.push({
       tableName,
-      sourceFiles: [...sourceFiles].sort(),
-      hasAccountId: true,
+      sourceFiles: [...table.sourceFiles].sort(),
+      hasAccountId: table.hasAccountId,
       rlsEnabled,
       hasTenantPolicy: tenantPolicy,
       policyUsesCurrentAccountId: usesCurrentAccount,
@@ -138,9 +180,11 @@ export function analyzeRlsMigrationCoverage(
           ? 'protected'
           : isException
             ? 'documented_exception'
-            : rlsEnabled
-              ? 'missing_policy'
-              : 'missing_rls',
+            : !table.hasAccountId
+              ? 'missing_account_scope'
+              : rlsEnabled
+                ? 'missing_policy'
+                : 'missing_rls',
       missing
     });
   }
@@ -151,7 +195,12 @@ export function analyzeRlsMigrationCoverage(
     totalTenantTables: sortedTables.length,
     protectedTables: sortedTables.filter((table) => table.status === 'protected').length,
     exceptionTables: sortedTables.filter((table) => table.status === 'documented_exception').length,
-    failingTables: sortedTables.filter((table) => table.status === 'missing_policy' || table.status === 'missing_rls').length,
+    failingTables: sortedTables.filter(
+      (table) =>
+        table.status === 'missing_account_scope' ||
+        table.status === 'missing_policy' ||
+        table.status === 'missing_rls'
+    ).length,
     tables: sortedTables
   };
 }

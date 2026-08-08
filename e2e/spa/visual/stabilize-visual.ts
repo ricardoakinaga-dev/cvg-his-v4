@@ -176,6 +176,15 @@ export async function stabilizeVisual(page: Page, options?: StabilizeOptions): P
     });
   }
 
+  // The canonical PostgreSQL seed uses a UUID user id while the legacy
+  // in-memory fixture uses a text id. Keep the visual contract independent of
+  // the selected persistence backend without hiding the profile shell.
+  await page.locator('.topbar__profile span').evaluateAll((elements) => {
+    for (const element of elements) {
+      element.textContent = 'Id. user_adm';
+    }
+  });
+
   await page.addStyleTag({
     content: `
       .pwa-toast,

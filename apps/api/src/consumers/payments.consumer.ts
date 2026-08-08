@@ -50,6 +50,7 @@ interface PixIntentCreatedPayload {
   readonly description?: string;
   readonly qrCodePayload?: string;
   readonly qrCodeBase64?: string;
+  readonly providerTransactionId?: string;
 }
 
 interface PixConfirmedPayload {
@@ -187,6 +188,7 @@ export class PaymentsEventHandlers {
         status: initialStatus,
         createdAt,
         updatedAt: createdAt,
+        providerTransactionId: payload.providerTransactionId,
         billingSettlementStatus: payload.billingRecordId
           ? initialStatus === 'completed'
             ? 'pending_billing'
@@ -270,6 +272,22 @@ export class PaymentsEventHandlers {
     }
 
     try {
+      const billingRecord = this.#billing.getOrThrow(
+        payload.billingRecordId as BillingRecordId
+      );
+      if (
+        effectiveTransaction.accountId !== payload.accountId ||
+        effectiveTransaction.billingRecordId !== payload.billingRecordId ||
+        billingRecord.accountId !== payload.accountId
+      ) {
+        throw new Error('PIX confirmation does not match the billing account');
+      }
+      if (
+        effectiveTransaction.currency !== billingRecord.currency ||
+        effectiveTransaction.amount !== billingRecord.subtotalAmount
+      ) {
+        throw new Error('PIX confirmation amount does not match the billing record');
+      }
       await this.#billing.settleByRecordId(payload.billingRecordId as BillingRecordId);
 
       const hasReceivablePayment = await this.#hasReceivablePaymentLink(

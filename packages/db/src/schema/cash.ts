@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { index, numeric, pgTable, text, timestamp, uuid, pgEnum } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
@@ -18,6 +17,7 @@ export const cashMovementTypeEnum = pgEnum('cash_movement_type', [
   'closing',       // Fechamento (saldo final informado)
   'payment',       // Entrada por pagamento
   'supply',        // Suprimento (entrada de dinheiro)
+  'deposit',       // Depósito bancário (saída da gaveta)
   'withdrawal',    // Sangria (saída de dinheiro)
   'adjustment'     // Ajuste
 ]);

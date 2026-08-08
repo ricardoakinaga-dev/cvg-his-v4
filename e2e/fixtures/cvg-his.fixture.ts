@@ -94,9 +94,21 @@ export const test = base.extend<CVGHTestFixture>({
       const response = await apiContext.post('/owners', {
         data: {
           fullName: name,
-          document: `E2E-${Date.now()}`,
-          phoneMain: '11999999999',
-          email: `e2e-${Date.now()}@test.com`
+          documentId: `E2E-${Date.now()}`,
+          contacts: [
+            {
+              label: 'Celular',
+              value: '11999999999',
+              type: 'phone',
+              primary: true
+            },
+            {
+              label: 'Email',
+              value: `e2e-${Date.now()}@test.com`,
+              type: 'email'
+            }
+          ],
+          financialResponsible: true
         }
       });
       const data = await response.json();
@@ -110,9 +122,9 @@ export const test = base.extend<CVGHTestFixture>({
     const creator = async (ownerId: string, name = 'Paciente E2E Test') => {
       const response = await apiContext.post('/patients', {
         data: {
-          ownerId,
+          primaryOwnerId: ownerId,
           name,
-          species: 'Canina',
+          species: 'canine',
           breed: 'SRD',
           sex: 'male',
           microchip: `E2E-${Date.now()}`
@@ -136,11 +148,10 @@ export const test = base.extend<CVGHTestFixture>({
         data: {
           patientId,
           ownerId,
-          professionalUserId: professionalUserId || testUser.userId,
-          startAt: startAt.toISOString(),
-          endAt: endAt.toISOString(),
-          type: 'consultation',
-          notes: 'Agendamento E2E Test'
+          practitionerStaffId: professionalUserId || 'staff_vet',
+          scheduledAt: startAt.toISOString(),
+          visitType: 'scheduled',
+          reason: 'Agendamento E2E Test'
         }
       });
       const data = await response.json();
@@ -156,6 +167,8 @@ export const test = base.extend<CVGHTestFixture>({
         data: {
           patientId,
           ownerId,
+          visitType: 'walk_in',
+          origin: 'reception',
           reason: 'Atendimento E2E Test'
         }
       });

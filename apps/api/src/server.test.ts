@@ -3,10 +3,15 @@ import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { ChaosEngine } from '@cvg-his-v2/chaos';
+import {
+  ClamAvAttachmentSecurityScanner,
+  S3CompatibleFileStorage
+} from '@cvg-his-v2/module-attachments';
 
 import { setAppState } from './app-state.js';
 import { recordRequestSloObservation, resetRequestSloObservations } from './metrics.js';
-import { createApiServer } from './server.js';
+import { assertProductionProviderReadiness, createApiServer } from './server.js';
+import type { RuntimeRepositories } from './runtime.js';
 
 class MockRequest extends Readable {
   public readonly method: string;
@@ -126,6 +131,7 @@ function createServerUnderTest(overrides: Partial<Parameters<typeof createApiSer
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    whatsappWebhookSecret: 'test-webhook-secret',
     featureFlags: {
       providerName: 'test',
       enabledKeys: ['notifications.whatsapp.inbound_actions.enabled'],
@@ -181,7 +187,6 @@ async function performRequest(
   const response = new MockResponse();
 
   server.emit('request', request as never, response as never);
-  request.resume();
   await response.waitForEnd();
 
   return response;
@@ -236,6 +241,129 @@ test('server falls back to LocalPix when PagarMe credentials are absent', async 
   );
 });
 
+test('canonical repository-backed test runtime does not load legacy seed principals', async () => {
+  const server = createServerUnderTest({
+    preserveSeedUsersWithRepository: false,
+    requireUuidEntityIdentifiers: true,
+    repositories: {
+      users: {
+        async create() {},
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByEmail() {
+          return null;
+        },
+        async findAll() {
+          return [
+            {
+              id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
+              accountId: '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never,
+              username: 'dbadmin',
+              email: 'dbadmin@cvg.local',
+              passwordHash: 'cvg-his-v2-seed-salt-v1:seed_db_password',
+              fullName: 'Database Admin',
+              isActive: true,
+              createdAt: '2026-08-07T00:00:00.000Z',
+              updatedAt: '2026-08-07T00:00:00.000Z'
+            }
+          ];
+        },
+        async findRoleCodesByUserId() {
+          return ['admin'];
+        },
+        async findByAccountId() {
+          return [];
+        }
+      }
+    } as RuntimeRepositories
+  });
+  await server.ready;
+
+  const canonicalLogin = await performRequest(server, {
+    method: 'POST',
+    url: '/auth/login',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: { username: 'dbadmin', password: 'seed_db_password' }
+  });
+  const legacyLogin = await performRequest(server, {
+    method: 'POST',
+    url: '/auth/login',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: { username: 'admin', password: 'seed_admin' }
+  });
+
+  assert.equal(canonicalLogin.statusCode, 200);
+  assert.equal(legacyLogin.statusCode, 401);
+});
+
+test('catalog stores honor the in-memory persistence mode', async () => {
+  const server = createServerUnderTest({
+    useDatabaseCatalogStores: false
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/breeds?active=true',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{ items: Array<{ name: string }> }>();
+  assert.equal(payload.items.some((breed) => breed.name === 'Golden Retriever'), true);
+});
+
+test('tenant command envelope replays the complete HTTP response without repeating the mutation', async () => {
+  const executions = new Map<string, unknown>();
+  let commandCalls = 0;
+  const server = createServerUnderTest({
+    unitOfWork: {
+      async execute(
+        context: { idempotencyKey?: string },
+        _payload: unknown,
+        command: () => Promise<unknown>
+      ) {
+        const key = context.idempotencyKey ?? 'missing';
+        const previous = executions.get(key);
+        if (previous !== undefined) return { value: previous, replayed: true };
+        commandCalls += 1;
+        const value = await command();
+        executions.set(key, value);
+        return { value, replayed: false };
+      }
+    } as never
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const request = {
+    method: 'POST',
+    url: '/owners',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'owner-create-replay-1',
+      host: 'localhost'
+    },
+    body: {
+      fullName: 'Replay Owner',
+      contacts: [{ label: 'phone', value: '+5511999990000', type: 'phone', primary: true }],
+      financialResponsible: true
+    }
+  } as const;
+
+  const first = await performRequest(server, request);
+  const replay = await performRequest(server, request);
+
+  assert.equal(first.statusCode, 201);
+  assert.equal(replay.statusCode, 201);
+  assert.deepEqual(replay.bodyJson(), first.bodyJson());
+  assert.equal(commandCalls, 1);
+});
+
 test('CORS rejects an origin outside the allowlist', async () => {
   const server = createServerUnderTest({
     corsAllowedOrigins: ['https://app.example.com']
@@ -257,7 +385,40 @@ test('CORS rejects an origin outside the allowlist', async () => {
 test('HSTS is emitted only for secure production-like requests', async () => {
   const server = createServerUnderTest({
     environment: 'production',
-    corsAllowedOrigins: ['https://app.example.com']
+    corsAllowedOrigins: ['https://app.example.com'],
+    redisUrl: 'redis://127.0.0.1:6379/0',
+    runtimeDistributedStateEnabled: true,
+    pagarmeApiKey: 'pagarme-test-key',
+    pagarmePixKey: 'pagarme-test-pix-key',
+    nfseProvider: 'abrasf',
+    nfseApiUrl: 'https://nfse.test.example/api',
+    nfseApiKey: 'nfse-test-key',
+    nfseMunicipalityCode: '3550308',
+    nfseIssuer: {
+      cnpj: '12345678000190',
+      inscricaoMunicipal: '123456',
+      razaoSocial: 'CVG HIS Testes',
+      address: {
+        street: 'Rua de Testes',
+        number: '100',
+        district: 'Centro',
+        city: 'Sao Paulo',
+        state: 'SP',
+        zipCode: '01000000',
+        country: 'BR'
+      }
+    },
+    resendApiKey: 'resend-test-key',
+    smsApiKey: 'sms-test-key',
+    googleCalendarAccessToken: 'calendar-test-token',
+    googleCalendarCalendarId: 'calendar-test-id',
+    attachmentScanner: new ClamAvAttachmentSecurityScanner({ host: 'clamav.test' }),
+    fileStorage: new S3CompatibleFileStorage({
+      endpoint: 'https://s3.test.example',
+      bucket: 'cvg-test',
+      accessKeyId: 'test-access',
+      secretAccessKey: 'test-secret'
+    })
   });
 
   const secureResponse = await performRequest(server, {
@@ -284,6 +445,54 @@ test('HSTS is emitted only for secure production-like requests', async () => {
   });
 
   assert.equal(insecureResponse.getHeader('strict-transport-security'), undefined);
+});
+
+test('production-like API refuses missing or mock providers', () => {
+  assert.throws(
+    () =>
+      assertProductionProviderReadiness({
+        environment: 'production',
+        pixMockMode: true
+      }),
+    /cannot start with mock or missing providers/
+  );
+
+  assert.doesNotThrow(() =>
+    assertProductionProviderReadiness({
+      environment: 'production',
+      pagarmeApiKey: 'pagarme-test-key',
+      pagarmePixKey: 'pagarme-test-pix-key',
+      nfseProvider: 'abrasf',
+      nfseApiUrl: 'https://nfse.test.example',
+      nfseApiKey: 'nfse-test-key',
+      nfseMunicipalityCode: '3550308',
+      nfseIssuer: {
+        cnpj: '12345678000190',
+        inscricaoMunicipal: '123456',
+        razaoSocial: 'CVG HIS Teste',
+        address: {
+          street: 'Rua Teste',
+          number: '1',
+          district: 'Centro',
+          city: 'Sao Paulo',
+          state: 'SP',
+          zipCode: '01000000',
+          country: 'BR'
+        }
+      },
+      resendApiKey: 'resend-test-key',
+      smsApiKey: 'sms-test-key',
+      googleCalendarAccessToken: 'calendar-test-token',
+      googleCalendarCalendarId: 'calendar-test-id',
+      attachmentScanner: new ClamAvAttachmentSecurityScanner({ host: 'clamav.test' }),
+      fileStorage: new S3CompatibleFileStorage({
+        endpoint: 'https://s3.test.example',
+        bucket: 'cvg-test',
+        accessKeyId: 'test-access',
+        secretAccessKey: 'test-secret'
+      })
+    })
+  );
 });
 
 test('observability contract exposes request and trace correlation headers', async () => {
@@ -398,6 +607,14 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     redisUrl: 'redis://127.0.0.1:6379/0',
     runtimeDistributedStateEnabled: true
   });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const unauthorized = await performRequest(server, {
+    method: 'GET',
+    url: '/chaos/experiments',
+    headers: { host: 'localhost' }
+  });
+  assert.equal(unauthorized.statusCode, 401);
+  const chaosHeaders = { authorization: `Bearer ${accessToken}`, host: 'localhost' };
 
   const chaos = ChaosEngine.getInstance();
   for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
@@ -410,8 +627,8 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       method: 'POST',
       url: '/chaos/experiments/database-failure/start',
       headers: {
+        ...chaosHeaders,
         'content-type': 'application/json',
-        host: 'localhost'
       },
       body: { durationMs: 60_000 }
     });
@@ -421,8 +638,8 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       method: 'POST',
       url: '/chaos/experiments/redis-failure/start',
       headers: {
+        ...chaosHeaders,
         'content-type': 'application/json',
-        host: 'localhost'
       },
       body: { durationMs: 60_000 }
     });
@@ -432,8 +649,8 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       method: 'POST',
       url: '/chaos/experiments/worker-failure/start',
       headers: {
+        ...chaosHeaders,
         'content-type': 'application/json',
-        host: 'localhost'
       },
       body: { durationMs: 60_000, faultDelayMs: 5 }
     });
@@ -443,7 +660,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       method: 'GET',
       url: '/chaos/experiments',
       headers: {
-        host: 'localhost'
+        ...chaosHeaders
       }
     });
     assert.equal(experimentsResponse.statusCode, 200);
@@ -578,6 +795,73 @@ test('bootstrap serves extracted owners and patients routes over HTTP semantics'
   assert.equal(patientsResponse.statusCode, 200);
   const patientsPayload = patientsResponse.bodyJson<{ items: Array<{ patientId: string }> }>();
   assert.equal(patientsPayload.items[0]?.patientId, 'patient_luna');
+});
+
+test('repository-backed server does not expose non-persisted owner and patient seeds by default', async () => {
+  const server = createServerUnderTest({
+    environment: 'development',
+    repositories: {
+      owner: {
+        async create() {},
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async delete() {}
+      },
+      patient: {
+        async create() {},
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async delete() {}
+      },
+      ownerPatientLink: {
+        async create() {},
+        async findById() {
+          return null;
+        },
+        async findByPatientId() {
+          return [];
+        },
+        async findByOwnerId() {
+          return [];
+        },
+        async delete() {}
+      }
+    } as never
+  });
+  await server.ready;
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const ownersResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/owners',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  const patientsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/patients',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(ownersResponse.statusCode, 200);
+  assert.deepEqual(ownersResponse.bodyJson<{ items: unknown[] }>().items, []);
+  assert.equal(patientsResponse.statusCode, 200);
+  assert.deepEqual(patientsResponse.bodyJson<{ items: unknown[] }>().items, []);
 });
 
 test('bootstrap registers prescription routes over HTTP semantics', async () => {
@@ -1618,6 +1902,8 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
       animalName: 'Rex',
       eventDate: '2026-05-10',
       itemType: 'vaccine',
+      protocolCode: 'V10-ANUAL',
+      lotNumber: 'LOT-2026-001',
       description: 'Vacina V10 - reforco anual',
       observation: 'Avisar tutor com antecedencia.'
     }
@@ -1628,12 +1914,16 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     description: string;
     status: string;
     itemType: string;
+    protocolCode: string | null;
+    lotNumber: string | null;
     patientId: string | null;
     ownerId: string | null;
   }>();
   assert.equal(createdPreventive.description, 'Vacina V10 - reforco anual');
   assert.equal(createdPreventive.status, 'scheduled');
   assert.equal(createdPreventive.itemType, 'vaccine');
+  assert.equal(createdPreventive.protocolCode, 'V10-ANUAL');
+  assert.equal(createdPreventive.lotNumber, 'LOT-2026-001');
   assert.equal(createdPreventive.patientId, 'patient_rex');
   assert.equal(createdPreventive.ownerId, 'owner_maria');
 
@@ -1676,11 +1966,20 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   });
   assert.equal(executePreventiveResponse.statusCode, 200);
   const executePreventive = executePreventiveResponse.bodyJson<{
-    event: { status: string; executedObservation: string | null };
+    event: {
+      status: string;
+      executedObservation: string | null;
+      protocolCode: string | null;
+      lotNumber: string | null;
+      nextDoseDate: string | null;
+    };
     rescheduledEvent: { eventDate: string; status: string } | null;
   }>();
   assert.equal(executePreventive.event.status, 'executed');
   assert.equal(executePreventive.event.executedObservation, 'Aplicada sem intercorrencias.');
+  assert.equal(executePreventive.event.protocolCode, 'V10-ANUAL');
+  assert.equal(executePreventive.event.lotNumber, 'LOT-2026-001');
+  assert.equal(executePreventive.event.nextDoseDate, '2027-05-10');
   assert.equal(executePreventive.rescheduledEvent?.eventDate, '2027-05-10');
   assert.equal(executePreventive.rescheduledEvent?.status, 'scheduled');
 
@@ -1794,7 +2093,6 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
       host: 'localhost'
     },
     body: {
-      billingRecordId: 'bill_123',
       amount: 149.9,
       description: 'Consulta de acompanhamento',
       expirationMinutes: 45
@@ -1810,7 +2108,7 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   assert.equal(payment.provider, 'local-pix');
   assert.equal(payment.status, 'pending');
   assert.ok(payment.eventId);
-  assert.ok(payment.qrCodePayload.includes('bill_123'));
+  assert.ok(payment.qrCodePayload.length > 0);
 
   const cardIntentResponse = await performRequest(server, {
     method: 'POST',
@@ -1821,7 +2119,6 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
       host: 'localhost'
     },
     body: {
-      billingRecordId: 'bill_card_123',
       amount: 320,
       description: 'Internacao parcelada',
       cardHolderName: 'Maria Silva',
@@ -1920,7 +2217,11 @@ test('POST /webhooks/whatsapp/inbound confirms a scheduled appointment', async (
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestconfirm001',
       From: 'whatsapp:+5511999998888',
@@ -1976,7 +2277,11 @@ test('POST /webhooks/whatsapp/inbound cancels a scheduled appointment', async ()
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestcancel001',
       From: 'whatsapp:+5511999998888',
@@ -2030,7 +2335,11 @@ test('POST /webhooks/whatsapp/inbound with REMARCAR returns AGUARDANDO REMARCA',
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestremarcar001',
       From: 'whatsapp:+5511999998888',
@@ -2063,7 +2372,11 @@ test('POST /webhooks/whatsapp/inbound with malformed payload returns OK', async 
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestmalformed001',
       From: 'whatsapp:+5511999998888',
@@ -2082,7 +2395,11 @@ test('POST /webhooks/whatsapp/inbound returns CONFIRMADO even if appointment not
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestnotfound001',
       From: 'whatsapp:+5511999998888',
@@ -2124,7 +2441,11 @@ test('POST /webhooks/whatsapp/inbound CONFIRM returns CONFIRMADO (alias)', async
   const inboundResponse = await performRequest(server, {
     method: 'POST',
     url: '/webhooks/whatsapp/inbound',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-secret': 'test-webhook-secret',
+      host: 'localhost'
+    },
     body: {
       MessageSid: 'SMtestconfirmalias001',
       From: 'whatsapp:+5511999998888',

@@ -10,11 +10,15 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { users } from './users.js';
+import { accounts } from './accounts.js';
 
 export const mfaCredentials = pgTable(
   'mfa_credentials',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -30,6 +34,7 @@ export const mfaCredentials = pgTable(
   },
   (table) => ({
     userIdUnique: uniqueIndex('mfa_credentials_user_id_unique').on(table.userId),
-    userIdIdx: index('idx_mfa_credentials_user_id').on(table.userId)
+    userIdIdx: index('idx_mfa_credentials_user_id').on(table.userId),
+    accountUserIdx: index('idx_mfa_credentials_account_user').on(table.accountId, table.userId)
   })
 );

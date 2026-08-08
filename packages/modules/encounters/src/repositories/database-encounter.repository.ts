@@ -36,7 +36,10 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async create(encounter: EncounterSummary): Promise<void> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
+    if (encounter.accountId !== accountId) {
+      throw new Error('Encounter account does not match tenant context');
+    }
     await this.#db.insert(encounters).values({
       id: encounter.id,
       accountId: encounter.accountId,
@@ -54,7 +57,10 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async update(encounter: EncounterSummary): Promise<void> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
+    if (encounter.accountId !== accountId) {
+      throw new Error('Encounter account does not match tenant context');
+    }
     await this.#db
       .update(encounters)
       .set({
@@ -64,12 +70,16 @@ export class DatabaseEncounterRepository implements EncounterRepository {
         reason: encounter.reason,
         updatedAt: new Date(encounter.updatedAt)
       })
-      .where(eq(encounters.id, encounter.id));
+      .where(and(eq(encounters.id, encounter.id), eq(encounters.accountId, accountId)));
   }
 
   public async findById(id: EncounterId): Promise<EncounterSummary | null> {
-    requireAccountId(); // Enforce tenant context
-    const result = await this.#db.select().from(encounters).where(eq(encounters.id, id)).limit(1);
+    const accountId = requireAccountId();
+    const result = await this.#db
+      .select()
+      .from(encounters)
+      .where(and(eq(encounters.id, id), eq(encounters.accountId, accountId)))
+      .limit(1);
 
     if (result.length === 0) {
       return null;
@@ -80,11 +90,17 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findActiveByPatientId(patientId: PatientId): Promise<EncounterSummary | null> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(encounters)
-      .where(and(eq(encounters.patientId, patientId), ne(encounters.status, 'closed')))
+      .where(
+        and(
+          eq(encounters.patientId, patientId),
+          eq(encounters.accountId, accountId),
+          ne(encounters.status, 'closed')
+        )
+      )
       .limit(1);
 
     if (result.length === 0) {
@@ -96,7 +112,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findAll(accountId: AccountId): Promise<readonly EncounterSummary[]> {
-    requireAccountId(); // Enforce tenant context
+    if (requireAccountId() !== accountId) return [];
     const result = await this.#db
       .select()
       .from(encounters)
@@ -106,7 +122,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async findActive(accountId: AccountId): Promise<readonly EncounterSummary[]> {
-    requireAccountId(); // Enforce tenant context
+    if (requireAccountId() !== accountId) return [];
     const result = await this.#db
       .select()
       .from(encounters)
@@ -116,8 +132,10 @@ export class DatabaseEncounterRepository implements EncounterRepository {
   }
 
   public async delete(id: EncounterId): Promise<void> {
-    requireAccountId(); // Enforce tenant context
-    await this.#db.delete(encounters).where(eq(encounters.id, id));
+    const accountId = requireAccountId();
+    await this.#db
+      .delete(encounters)
+      .where(and(eq(encounters.id, id), eq(encounters.accountId, accountId)));
   }
 
   private mapRowToEncounter(row: typeof encounters.$inferSelect): EncounterSummary {
@@ -155,9 +173,13 @@ export class DatabaseEncounterTimelineRepository implements EncounterTimelineRep
   }
 
   public async create(event: EncounterTimelineEventSummary): Promise<void> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
+    if (event.accountId !== accountId) {
+      throw new Error('Encounter timeline account does not match tenant context');
+    }
     await this.#db.insert(encounterTimeline).values({
       id: event.id,
+      accountId: event.accountId,
       encounterId: event.encounterId,
       eventType: event.eventType,
       summary: event.summary,
@@ -170,16 +192,21 @@ export class DatabaseEncounterTimelineRepository implements EncounterTimelineRep
   public async findByEncounterId(
     encounterId: EncounterId
   ): Promise<readonly EncounterTimelineEventSummary[]> {
-    requireAccountId(); // Enforce tenant context
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(encounterTimeline)
-      .where(eq(encounterTimeline.encounterId, encounterId))
+      .where(
+        and(
+          eq(encounterTimeline.encounterId, encounterId),
+          eq(encounterTimeline.accountId, accountId)
+        )
+      )
       .orderBy(desc(encounterTimeline.occurredAt));
 
     return result.map((row) => ({
       id: row.id as EncounterTimelineEventId,
-      accountId: 'acc_cvg_demo' as AccountId,
+      accountId: row.accountId as AccountId,
       encounterId: row.encounterId as EncounterId,
       occurredAt: row.occurredAt.toISOString(),
       eventType: row.eventType as EncounterTimelineEventSummary['eventType'],

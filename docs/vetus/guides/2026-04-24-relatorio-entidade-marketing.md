@@ -10,18 +10,18 @@ Escopo:
 
 Evidências principais:
 
-- [marketing-sms-simples.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-simples.png)
-- [marketing-sms-simples.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-simples.json)
-- [marketing-sms-campanhas.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-campanhas.png)
-- [marketing-sms-campanhas.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-campanhas.json)
-- [marketing-sms-configuracao.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-configuracao.png)
-- [marketing-sms-configuracao.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-configuracao.json)
-- [marketing-layout-email-vacina.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-layout-email-vacina.png)
-- [marketing-layout-email-vacina.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/marketing-layout-email-vacina.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-07-05-970Z-marketing/network.json)
-- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:333)
-- [03-MODELO-DADOS.md](/root/cvg-his-v2/docs/vetus/guides/03-MODELO-DADOS.md:1499)
-- [04-ESPECIFICACAO-APIS.md](/root/cvg-his-v2/docs/vetus/guides/04-ESPECIFICACAO-APIS.md:1034)
+- [marketing-sms-simples.png](../inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-simples.png)
+- [marketing-sms-simples.json](../inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-simples.json)
+- [marketing-sms-campanhas.png](../inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-campanhas.png)
+- [marketing-sms-campanhas.json](../inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-campanhas.json)
+- [marketing-sms-configuracao.png](../inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-sms-configuracao.png)
+- [marketing-sms-configuracao.json](../inspection/2026-04-24T00-07-05-970Z-marketing/marketing-sms-configuracao.json)
+- [marketing-layout-email-vacina.png](../inspection/2026-04-24T00-07-05-970Z-marketing/screenshots/marketing-layout-email-vacina.png)
+- [marketing-layout-email-vacina.json](../inspection/2026-04-24T00-07-05-970Z-marketing/marketing-layout-email-vacina.json)
+- [network.json](../inspection/2026-04-24T00-07-05-970Z-marketing/network.json)
+- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
+- [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
+- [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)
 
 Nota de segurança:
 

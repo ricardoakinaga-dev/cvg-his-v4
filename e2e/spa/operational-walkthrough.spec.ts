@@ -69,6 +69,10 @@ test.describe('Walkthrough operacional principal', () => {
     await expect(page.getByRole('heading', { name: /Agenda/ }).first()).toBeVisible({
       timeout: 15000
     });
+    const referenceDate = scheduledAt.toISOString().slice(0, 10);
+    await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
+    await page.getByRole('button', { name: 'Aplicar', exact: true }).click();
+    await page.waitForLoadState('networkidle');
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
 
     await page.goto(`${SPA_URL}/reception`);
@@ -163,6 +167,7 @@ test.describe('Walkthrough operacional principal', () => {
       timeout: 15000
     });
     await expect(page.getByRole('heading', { name: 'Queixa principal' })).toBeVisible();
+    await page.getByTestId('clinical-step-plan').click();
     await expect(page.getByRole('heading', { name: 'Conduta e próximos passos' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Comanda', exact: true }).first()).toBeVisible();
 

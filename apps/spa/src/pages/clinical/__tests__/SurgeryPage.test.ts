@@ -5,6 +5,7 @@ const mockEncounterList = vi.fn();
 const mockTimeline = vi.fn();
 const mockSurgeryList = vi.fn();
 const mockSurgeryCreate = vi.fn();
+const mockSurgeryUpdateStatus = vi.fn();
 
 vi.mock('@/services/encounter', () => ({
   encounterService: {
@@ -21,7 +22,8 @@ vi.mock('@/services/medicalRecords', () => ({
 vi.mock('@/services/surgery', () => ({
   surgeryService: {
     listByEncounter: (...args: unknown[]) => mockSurgeryList(...args),
-    createRequest: (...args: unknown[]) => mockSurgeryCreate(...args)
+    createRequest: (...args: unknown[]) => mockSurgeryCreate(...args),
+    updateStatus: (...args: unknown[]) => mockSurgeryUpdateStatus(...args)
   }
 }));
 
@@ -57,16 +59,13 @@ describe('SurgeryPage', () => {
     ]);
     mockSurgeryList.mockResolvedValue([]);
     mockSurgeryCreate.mockResolvedValue({
-      id: 'entry-1',
+      id: 'surgery-1',
       accountId: 'acc-1',
-      medicalRecordId: 'mr-1',
       encounterId: 'enc-1',
       patientId: 'pat-1',
-      entryType: 'conduct',
-      title: 'Ovariohisterectomia',
-      content: 'Cirurgião: user-1',
-      authoredByUserId: 'user-1',
-      version: 1,
+      procedureName: 'Ovariohisterectomia',
+      status: 'requested',
+      surgeonUserId: 'user-1',
       createdAt: '2026-04-10T00:00:00Z',
       updatedAt: '2026-04-10T00:00:00Z'
     });
@@ -85,7 +84,7 @@ describe('SurgeryPage', () => {
       expect.objectContaining({
         encounterId: 'enc-1',
         patientId: 'pat-1',
-        title: 'Ovariohisterectomia'
+        procedureName: 'Ovariohisterectomia'
       })
     );
     expect(wrapper.text()).toContain('Solicitação cirúrgica registrada');

@@ -79,6 +79,67 @@ describe('rls helpers', () => {
     });
   });
 
+  it('fails required dependent tables that omit explicit account scope', () => {
+    const report = analyzeRlsMigrationCoverage(
+      [
+        {
+          name: '001_dependencies.sql',
+          sql: `
+            CREATE TABLE mfa_credentials (
+              id UUID PRIMARY KEY,
+              user_id UUID NOT NULL
+            );
+          `
+        }
+      ],
+      {
+        generatedAt: '2026-07-11T00:00:00.000Z',
+        requiredTenantTables: ['mfa_credentials']
+      }
+    );
+
+    expect(report).toMatchObject({
+      totalTenantTables: 1,
+      protectedTables: 0,
+      failingTables: 1
+    });
+    expect(report.tables[0]).toMatchObject({
+      tableName: 'mfa_credentials',
+      hasAccountId: false,
+      status: 'missing_account_scope'
+    });
+    expect(report.tables[0]?.missing).toContain('account_id');
+  });
+
+  it('recognizes account scope added by a later hardening migration', () => {
+    const report = analyzeRlsMigrationCoverage(
+      [
+        {
+          name: '001_create_delivery.sql',
+          sql: `CREATE TABLE webhook_deliveries (id UUID PRIMARY KEY);`
+        },
+        {
+          name: '002_scope_delivery.sql',
+          sql: `
+            ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS account_id UUID NOT NULL;
+            ALTER TABLE webhook_deliveries ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY webhook_deliveries_tenant_isolation ON webhook_deliveries
+              USING (account_id = app.current_account_id())
+              WITH CHECK (account_id = app.current_account_id());
+          `
+        }
+      ],
+      { requiredTenantTables: ['webhook_deliveries'] }
+    );
+
+    expect(report.tables[0]).toMatchObject({
+      tableName: 'webhook_deliveries',
+      hasAccountId: true,
+      status: 'protected',
+      sourceFiles: ['001_create_delivery.sql', '002_scope_delivery.sql']
+    });
+  });
+
   it('sets the current account id in the postgres session', async () => {
     const client = createMockClient();
     client.query.mockResolvedValue({ rows: [] });

@@ -43,6 +43,17 @@
         {{ successMessage }}
       </DsAlert>
 
+      <div v-if="setupData" class="mfa-setup">
+        <strong>Ativação do autenticador</strong>
+        <code>{{ setupData.secret }}</code>
+        <a :href="setupData.provisioningUri">Abrir no autenticador</a>
+        <div class="mfa-recovery-codes">
+          <code v-for="recoveryCode in setupData.recoveryCodes" :key="recoveryCode">
+            {{ recoveryCode }}
+          </code>
+        </div>
+      </div>
+
       <form class="mfa-form" @submit.prevent="handleSubmit">
         <DsInput
           id="mfa-user"
@@ -56,7 +67,7 @@
           v-model="token"
           label="Código MFA"
           placeholder="000000"
-          maxlength="6"
+          :maxlength="6"
           autocomplete="one-time-code"
           required
         />
@@ -69,7 +80,8 @@
       </form>
 
       <p v-if="nextTarget && nextTarget !== '/'" class="mfa-card__hint">
-        Após a validação, você será redirecionado para <code>{{ nextTarget }}</code>.
+        Após a validação, você será redirecionado para <code>{{ nextTarget }}</code
+        >.
       </p>
     </DsCard>
   </div>
@@ -80,7 +92,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { apiRequest } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
-import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
+import type { BrowserAuthSessionResponse, MfaSetupResponse } from '@cvg-his-v2/shared-contracts';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -95,6 +107,7 @@ const error = ref('');
 const successMessage = ref('');
 const loading = ref(false);
 const pendingUserIdModel = ref('');
+const setupData = ref<MfaSetupResponse | null>(null);
 
 const nextTarget = computed(() => (typeof route.query.next === 'string' ? route.query.next : '/'));
 const pendingUserId = computed(() => authStore.pendingMfaUserId || pendingUserIdModel.value);
@@ -109,16 +122,25 @@ async function handleSubmit() {
 
   loading.value = true;
   try {
-    const response = await apiRequest<AuthSessionResponse>('/auth/login/mfa', {
-      method: 'POST',
-      skipAuth: true,
-      body: JSON.stringify({
-        userId: pendingUserId.value,
-        token: token.value
-      })
-    });
+    const enrollmentRequired = authStore.mfaSetupRequired;
+    const response = await apiRequest<BrowserAuthSessionResponse>(
+      enrollmentRequired ? '/auth/mfa/enroll/confirm' : '/auth/login/mfa',
+      {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify(
+          enrollmentRequired
+            ? { token: token.value, challengeId: authStore.pendingMfaChallengeId }
+            : {
+                userId: pendingUserId.value,
+                token: token.value,
+                challengeId: authStore.pendingMfaChallengeId
+              }
+        )
+      }
+    );
 
-    authStore.setTokens(response.accessToken, response.refreshToken);
+    authStore.setTokens(response.accessToken);
     authStore.clearMfaChallenge();
     successMessage.value = 'MFA validado com sucesso.';
 
@@ -130,10 +152,24 @@ async function handleSubmit() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   pendingUserIdModel.value = authStore.pendingMfaUserId ?? '';
   if (!pendingUserIdModel.value && route.query.userId && typeof route.query.userId === 'string') {
     pendingUserIdModel.value = route.query.userId;
+  }
+  if (authStore.mfaSetupRequired && authStore.pendingMfaChallengeId) {
+    loading.value = true;
+    try {
+      setupData.value = await apiRequest<MfaSetupResponse>('/auth/mfa/enroll', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ challengeId: authStore.pendingMfaChallengeId })
+      });
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Falha ao iniciar MFA';
+    } finally {
+      loading.value = false;
+    }
   }
 });
 </script>
@@ -249,6 +285,24 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.mfa-setup {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px 0;
+  border-block: 1px solid var(--color-border, #d8dee8);
+}
+
+.mfa-setup code {
+  overflow-wrap: anywhere;
+}
+
+.mfa-recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
 }
 
 @media (max-width: 960px) {

@@ -41,6 +41,47 @@ test('DiagnosticsService createOrder creates requested diagnostic order', () => 
   assert.equal(service.list(encounter.id).length, 1);
 });
 
+test('DiagnosticsService durable create waits for persistence and does not publish a phantom order', async () => {
+  const { encounter } = createService();
+  const service = new DiagnosticsService(
+    {
+      getOrThrow(encounterId: string) {
+        assert.equal(encounterId, encounter.id);
+        return encounter;
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {
+          throw new Error('diagnostic database unavailable');
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+
+  await assert.rejects(
+    () =>
+      service.createOrderAndPersist({
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'xray',
+        reason: 'Persistência obrigatória'
+      }),
+    /diagnostic database unavailable/
+  );
+  assert.equal(service.list(encounter.id).length, 0);
+});
+
 test('DiagnosticsService recordResult updates status and summary', () => {
   const { service, encounter } = createService();
   const order = service.createOrder({

@@ -291,7 +291,7 @@ describe('runtime operational coverage', () => {
       message: 'Notification should publish an outbox event'
     });
 
-    const processed = runtime.notifications.processPending({ limit: 10 }, ACCOUNT_ID);
+    const processed = await runtime.notifications.processPending({ limit: 10 }, ACCOUNT_ID);
     const pendingEvents = await inMemoryRepos.outbox.findPending(10);
     const sentEvent = pendingEvents.find((event) => event.eventType === 'notification.sent');
 
@@ -437,6 +437,7 @@ describe('runtime operational coverage', () => {
     const observed = runtime.encounters.transitionEncounter(encounter.id, USER_ID, {
       nextStatus: 'observation'
     });
+    await runtime.encounters.waitForPersistence();
 
     const pendingEvents = await inMemoryRepos.outbox.findPending(10);
     const statusChangedEvent = pendingEvents.find(
@@ -481,6 +482,7 @@ describe('runtime operational coverage', () => {
       size: 'medium',
       primaryOwnerId: 'owner_maria_silva'
     });
+    await runtime.patients.waitForPersistence();
 
     const pendingEvents = await inMemoryRepos.outbox.findPending(10);
     const createdEvent = pendingEvents.find(

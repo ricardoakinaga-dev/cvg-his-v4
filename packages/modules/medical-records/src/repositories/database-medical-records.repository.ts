@@ -47,6 +47,11 @@ function isInvalidUuidSyntaxError(error: unknown): boolean {
   );
 }
 
+function allowSchemaCompatibilityFallback(): boolean {
+  if (process.env.DATABASE_ALLOW_SCHEMA_COMPATIBILITY === '1') return true;
+  return process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
+}
+
 export class DatabaseMedicalRecordRepository implements MedicalRecordRepository {
   readonly #db: DatabaseClient;
 
@@ -85,7 +90,7 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
         .where(eq(medicalRecords.id, id))
         .limit(1);
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return null;
       }
       throw error;
@@ -108,7 +113,10 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
         .where(eq(medicalRecords.encounterId, encounterId))
         .limit(1);
     } catch (error) {
-      if (isMissingRelationError(error) || isInvalidUuidSyntaxError(error)) {
+      if (
+        allowSchemaCompatibilityFallback() &&
+        (isMissingRelationError(error) || isInvalidUuidSyntaxError(error))
+      ) {
         return null;
       }
       throw error;
@@ -130,7 +138,7 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
         .from(medicalRecords)
         .where(eq(medicalRecords.accountId, accountId));
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return [];
       }
       throw error;
@@ -203,7 +211,7 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
         .where(eq(clinicalEntries.id, entryId))
         .limit(1);
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return null;
       }
       throw error;
@@ -223,7 +231,7 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
         .from(clinicalEntries)
         .where(eq(clinicalEntries.medicalRecordId, medicalRecordId));
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return [];
       }
       throw error;
@@ -285,7 +293,7 @@ export class DatabaseClinicalTimelineRepository implements ClinicalTimelineRepos
         .from(clinicalTimeline)
         .where(eq(clinicalTimeline.medicalRecordId, medicalRecordId));
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return [];
       }
       throw error;
@@ -334,7 +342,7 @@ export class DatabaseEntryRevisionRepository implements EntryRevisionRepository 
         .from(entryRevisions)
         .where(eq(entryRevisions.entryId, entryId));
     } catch (error) {
-      if (isMissingRelationError(error)) {
+      if (allowSchemaCompatibilityFallback() && isMissingRelationError(error)) {
         return [];
       }
       throw error;

@@ -53,10 +53,48 @@ export class PrescriptionExecutionsService {
   readonly #events = new Map<PrescriptionExecutionId, AdministrationEventSummary[]>();
   readonly #executionRepository?: PrescriptionExecutionRepository;
   readonly #eventRepository?: AdministrationEventRepository;
+  #pendingPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: PrescriptionExecutionsServiceOptions = {}) {
     this.#executionRepository = options.executionRepository;
     this.#eventRepository = options.eventRepository;
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#executionRepository) return;
+    const executions = await this.#executionRepository.findByAccountId(accountId);
+    for (const execution of executions) {
+      this.#executions.set(execution.id, execution);
+      const events = this.#eventRepository
+        ? await this.#eventRepository.findByExecutionId(execution.id)
+        : [];
+      this.#events.set(execution.id, [...events]);
+    }
+  }
+
+  public async waitForPersistence(): Promise<void> {
+    await this.#pendingPersist;
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await operation();
+        } catch (error) {
+          rollback?.();
+          throw error;
+        }
+      });
+    this.#pendingPersist = pending;
+  }
+
+  #replaceEvents(
+    executionId: PrescriptionExecutionId,
+    events: readonly AdministrationEventSummary[]
+  ): void {
+    this.#events.set(executionId, [...events]);
   }
 
   public getById(id: PrescriptionExecutionId): PrescriptionExecutionSummary {
@@ -67,16 +105,37 @@ export class PrescriptionExecutionsService {
     return execution;
   }
 
+  public getByIdForAccount(
+    accountId: AccountId,
+    id: PrescriptionExecutionId
+  ): PrescriptionExecutionSummary {
+    const execution = this.getById(id);
+    if (execution.accountId !== accountId) {
+      throw new NotFoundError('Prescription execution not found', { executionId: id });
+    }
+    return execution;
+  }
+
   public getEvents(executionId: PrescriptionExecutionId): readonly AdministrationEventSummary[] {
-    return this.#events.get(executionId) ?? [];
+    return [...(this.#events.get(executionId) ?? [])];
   }
 
-  public listByEncounter(encounterId: EncounterId): readonly PrescriptionExecutionSummary[] {
-    return Array.from(this.#executions.values()).filter((e) => e.encounterId === encounterId);
+  public listByEncounter(
+    encounterId: EncounterId,
+    accountId?: AccountId
+  ): readonly PrescriptionExecutionSummary[] {
+    return Array.from(this.#executions.values()).filter(
+      (e) => e.encounterId === encounterId && (!accountId || e.accountId === accountId)
+    );
   }
 
-  public listByPatient(patientId: PatientId): readonly PrescriptionExecutionSummary[] {
-    return Array.from(this.#executions.values()).filter((e) => e.patientId === patientId);
+  public listByPatient(
+    patientId: PatientId,
+    accountId?: AccountId
+  ): readonly PrescriptionExecutionSummary[] {
+    return Array.from(this.#executions.values()).filter(
+      (e) => e.patientId === patientId && (!accountId || e.accountId === accountId)
+    );
   }
 
   public list(accountId: AccountId): readonly PrescriptionExecutionSummary[] {
@@ -113,7 +172,7 @@ export class PrescriptionExecutionsService {
     this.#executions.set(execution.id, execution);
 
     // Log creation event
-    this.#addEvent(execution.id, {
+    const event: AdministrationEventSummary = {
       id: createCorrelationId('ae') as AdministrationEventId,
       executionId: execution.id,
       eventType: 'created',
@@ -121,11 +180,16 @@ export class PrescriptionExecutionsService {
       occurredAt: now,
       notes: 'Prescription execution created',
       createdAt: now
-    });
+    };
+    this.#addEvent(execution.id, event);
 
     if (this.#executionRepository) {
-      this.#executionRepository.create(execution).catch((err) => {
-        console.error('Failed to persist prescription execution:', err);
+      this.#enqueuePersist(async () => {
+        await this.#executionRepository!.create(execution);
+        await this.#eventRepository?.create(event);
+      }, () => {
+        this.#executions.delete(execution.id);
+        this.#events.delete(execution.id);
       });
     }
 
@@ -153,9 +217,10 @@ export class PrescriptionExecutionsService {
     };
 
     this.#executions.set(id, updated);
+    const previousEvents = this.getEvents(id);
 
     // Log execution event
-    this.#addEvent(id, {
+    const event: AdministrationEventSummary = {
       id: createCorrelationId('ae') as AdministrationEventId,
       executionId: id,
       eventType: payload.status === 'administered' ? 'administered' : 'not-administered',
@@ -164,11 +229,16 @@ export class PrescriptionExecutionsService {
       notes: payload.notes,
       vitalsSnapshot: payload.vitalsSnapshot,
       createdAt: now
-    });
+    };
+    this.#addEvent(id, event);
 
     if (this.#executionRepository) {
-      this.#executionRepository.update(updated).catch((err) => {
-        console.error('Failed to update prescription execution:', err);
+      this.#enqueuePersist(async () => {
+        await this.#executionRepository!.update(updated);
+        await this.#eventRepository?.create(event);
+      }, () => {
+        this.#executions.set(id, current);
+        this.#replaceEvents(id, previousEvents);
       });
     }
 
@@ -196,8 +266,9 @@ export class PrescriptionExecutionsService {
     };
 
     this.#executions.set(id, updated);
+    const previousEvents = this.getEvents(id);
 
-    this.#addEvent(id, {
+    const event: AdministrationEventSummary = {
       id: createCorrelationId('ae') as AdministrationEventId,
       executionId: id,
       eventType: 'suspended',
@@ -205,11 +276,16 @@ export class PrescriptionExecutionsService {
       occurredAt: now,
       notes: payload.reason,
       createdAt: now
-    });
+    };
+    this.#addEvent(id, event);
 
     if (this.#executionRepository) {
-      this.#executionRepository.update(updated).catch((err) => {
-        console.error('Failed to suspend prescription execution:', err);
+      this.#enqueuePersist(async () => {
+        await this.#executionRepository!.update(updated);
+        await this.#eventRepository?.create(event);
+      }, () => {
+        this.#executions.set(id, current);
+        this.#replaceEvents(id, previousEvents);
       });
     }
 
@@ -232,8 +308,9 @@ export class PrescriptionExecutionsService {
     };
 
     this.#executions.set(id, updated);
+    const previousEvents = this.getEvents(id);
 
-    this.#addEvent(id, {
+    const event: AdministrationEventSummary = {
       id: createCorrelationId('ae') as AdministrationEventId,
       executionId: id,
       eventType: 'resumed',
@@ -241,11 +318,16 @@ export class PrescriptionExecutionsService {
       occurredAt: now,
       notes: 'Execution resumed',
       createdAt: now
-    });
+    };
+    this.#addEvent(id, event);
 
     if (this.#executionRepository) {
-      this.#executionRepository.update(updated).catch((err) => {
-        console.error('Failed to resume prescription execution:', err);
+      this.#enqueuePersist(async () => {
+        await this.#executionRepository!.update(updated);
+        await this.#eventRepository?.create(event);
+      }, () => {
+        this.#executions.set(id, current);
+        this.#replaceEvents(id, previousEvents);
       });
     }
 
@@ -269,12 +351,14 @@ export class PrescriptionExecutionsService {
       createdAt: now
     };
 
+    const previousEvents = this.getEvents(id);
     this.#addEvent(id, event);
 
     if (this.#eventRepository) {
-      this.#eventRepository.create(event).catch((err) => {
-        console.error('Failed to persist administration event:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#eventRepository!.create(event),
+        () => this.#replaceEvents(id, previousEvents)
+      );
     }
 
     return event;
@@ -282,8 +366,7 @@ export class PrescriptionExecutionsService {
 
   #addEvent(executionId: PrescriptionExecutionId, event: AdministrationEventSummary): void {
     const existing = this.#events.get(executionId) ?? [];
-    existing.push(event);
-    this.#events.set(executionId, existing);
+    this.#events.set(executionId, [...existing, event]);
   }
 }
 

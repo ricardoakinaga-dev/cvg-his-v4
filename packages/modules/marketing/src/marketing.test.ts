@@ -10,7 +10,8 @@ import {
   type MarketingRepository,
   type MarketingCampaignDeliverySummary,
   type MarketingSegmentSummary,
-  type MarketingTemplateSummary
+  type MarketingTemplateSummary,
+  type MarketingSettingSummary
 } from './index.js';
 
 const ACCOUNT = 'acc-marketing-test' as AccountId;
@@ -77,6 +78,34 @@ test('MarketingService creates segments, templates and schedules campaigns with 
 
   assert.equal(service.listCampaigns(ACCOUNT)[0]?.id, campaign.id);
   assert.equal(service.listCampaigns(OTHER_ACCOUNT).length, 0);
+});
+
+test('MarketingService persists tenant-scoped automation settings without mutating prior values', async () => {
+  const service = new MarketingService();
+  const accountId = ACCOUNT;
+  const userId = USER;
+
+  const saved = await service.saveSetting(accountId, userId, {
+    key: 'sms_automations',
+    channel: 'sms',
+    values: {
+      agenda: true,
+      animalBirthday: false,
+      clientBirthday: true
+    }
+  });
+
+  assert.deepEqual(saved.values, { agenda: true, animalBirthday: false, clientBirthday: true });
+  const reloaded = await service.getSetting(accountId, 'sms_automations');
+  assert.deepEqual(reloaded, saved);
+
+  const updated = await service.saveSetting(accountId, userId, {
+    key: 'sms_automations',
+    channel: 'sms',
+    values: { ...saved.values, agenda: false }
+  });
+  assert.equal(updated.values.agenda, false);
+  assert.equal(saved.values.agenda, true);
 });
 
 test('MarketingService persists and hydrates marketing planning entities through repository contract', async () => {
@@ -166,11 +195,242 @@ test('MarketingService dispatches scheduled campaigns and records delivery outco
   assert.equal(service.listDeliveries(ACCOUNT, campaign.id).length, 2);
 });
 
+test('MarketingService retries a failed delivery and preserves attempt history', async () => {
+  const service = new MarketingService();
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Retry consentido',
+    criteria: { consentPurpose: 'marketing' }
+  });
+  const template = await service.createTemplate(ACCOUNT, USER, {
+    name: 'Retry SMS',
+    channel: 'sms',
+    body: 'Mensagem para {{ownerName}}'
+  });
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Retry campaign',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: template.id,
+    scheduledAt: '2026-06-01T09:00:00.000Z'
+  });
+  await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+  const failed = await service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+    audience: [{
+      ownerId: 'owner-retry',
+      ownerName: 'Maria',
+      consentPurposes: ['marketing'],
+      contacts: [{ type: 'sms', value: '5511000000000' }]
+    }],
+    gateway: new FakeMarketingGateway()
+  });
+  const failedDelivery = failed.deliveries[0];
+  assert.ok(failedDelivery);
+  assert.equal(failedDelivery.status, 'failed');
+  assert.equal(failedDelivery.attemptCount, 1);
+
+  const retried = await service.retryDelivery(ACCOUNT, USER, failedDelivery.id, {
+    async send(input) {
+      return {
+        status: 'sent',
+        provider: 'retry-provider',
+        providerMessageId: `retry-${input.to}`,
+        sentAt: '2026-06-01T09:05:00.000Z'
+      };
+    }
+  });
+  assert.equal(retried.status, 'sent');
+  assert.equal(retried.attemptCount, 2);
+  assert.equal(retried.provider, 'retry-provider');
+});
+
+test('MarketingService covers validation, durable consent and retry outcomes', async () => {
+  const emptyService = new MarketingService();
+  await emptyService.hydrateFromDatabase(ACCOUNT);
+  assert.equal(emptyService.persistenceMode, 'in-memory');
+
+  await assert.rejects(
+    () => emptyService.createTemplate(ACCOUNT, USER, {
+      name: 'SMS invalido',
+      channel: 'sms',
+      body: 'x'.repeat(161)
+    }),
+    /at most 160/
+  );
+
+  const repository = new InMemoryMarketingRepository();
+  const consent = new Map<string, boolean>([
+    ['owner-denied', true],
+    ['owner-allowed', true]
+  ]);
+  const service = new MarketingService({
+    repository,
+    requireConsentChecker: true,
+    consentChecker: {
+      async hasActiveConsent(_accountId, ownerId) {
+        return consent.get(ownerId) ?? false;
+      }
+    }
+  });
+
+  await assert.rejects(
+    () => service.saveSetting(ACCOUNT, USER, {
+      key: 'vaccine_email',
+      channel: 'sms',
+      values: {}
+    }),
+    /channel does not match/
+  );
+  await assert.rejects(
+    () => service.saveSetting(ACCOUNT, USER, {
+      key: 'sms_automations',
+      channel: 'sms',
+      values: { '   ': true }
+    }),
+    /keys must be non-empty/
+  );
+  await assert.rejects(
+    () => service.saveSetting(ACCOUNT, USER, {
+      key: 'sms_automations',
+      channel: 'sms',
+      values: { invalid: 1 as never }
+    }),
+    /values must be booleans or strings/
+  );
+  await assert.rejects(
+    () => service.saveSetting(ACCOUNT, USER, {
+      key: 'sms_automations',
+      channel: 'sms',
+      values: { invalid: 'x'.repeat(5001) }
+    }),
+    /text values must be at most 5000/
+  );
+
+  const setting = await service.saveSetting(ACCOUNT, USER, {
+    key: 'vaccine_email',
+    channel: 'email',
+    values: { enabled: true, subject: '  Vacina  ' }
+  });
+  assert.equal(setting.values.subject, 'Vacina');
+  assert.equal(await service.getSetting(ACCOUNT, 'vaccine_email'), setting);
+
+  const hydrated = new MarketingService({ repository });
+  assert.equal((await hydrated.getSetting(ACCOUNT, 'vaccine_email'))?.values.enabled, true);
+  assert.equal(await hydrated.getSetting(ACCOUNT, 'sms_automations'), null);
+
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Consentimento',
+    criteria: { consentPurpose: 'marketing' }
+  });
+  const smsTemplate = await service.createTemplate(ACCOUNT, USER, {
+    name: 'SMS',
+    channel: 'sms',
+    body: 'Ola {{ownerName}}'
+  });
+  await assert.rejects(
+    () => service.createCampaign(ACCOUNT, USER, {
+      name: 'Canal divergente',
+      channel: 'email',
+      segmentId: segment.id,
+      templateId: smsTemplate.id
+    }),
+    /must match template/
+  );
+  const campaignWithoutDate = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Sem data',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: smsTemplate.id
+  });
+  await assert.rejects(
+    () => service.scheduleCampaign(ACCOUNT, USER, campaignWithoutDate.id),
+    /scheduledAt is required/
+  );
+
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Consentimento retry',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: smsTemplate.id,
+    scheduledAt: '2026-08-07T12:00:00.000Z'
+  });
+  const scheduled = await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+  await assert.rejects(
+    () => service.scheduleCampaign(ACCOUNT, USER, scheduled.id),
+    /Only draft/
+  );
+
+  const gateway: MarketingDispatchGateway = {
+    async send(input) {
+      return {
+        status: 'failed',
+        provider: 'test-provider',
+        failureReason: `failed-${input.ownerId}`,
+        sentAt: '2026-08-07T12:01:00.000Z'
+      };
+    }
+  };
+  const dispatched = await service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+    gateway,
+    audience: [
+      {
+        ownerId: 'owner-denied',
+        ownerName: 'Negado',
+        consentPurposes: ['marketing'],
+        contacts: [{ type: 'sms', value: '5511999990001' }]
+      },
+      {
+        ownerId: 'owner-allowed',
+        ownerName: 'Permitido',
+        consentPurposes: ['marketing'],
+        contacts: [{ type: 'sms', value: '5511999990002' }]
+      }
+    ]
+  });
+  assert.equal(dispatched.summary.failed, 2);
+  consent.set('owner-denied', false);
+  const skipped = await service.retryDelivery(ACCOUNT, USER, dispatched.deliveries[0]!.id, gateway);
+  assert.equal(skipped.status, 'skipped');
+
+  consent.set('owner-allowed', true);
+  const retried = await service.retryDelivery(ACCOUNT, USER, dispatched.deliveries[1]!.id, {
+    async send() {
+      return {
+        status: 'sent',
+        provider: 'retry-provider',
+        providerMessageId: 'retry-message-1',
+        sentAt: '2026-08-07T12:02:00.000Z'
+      };
+    }
+  });
+  assert.equal(retried.status, 'sent');
+  await assert.rejects(
+    () => service.retryDelivery(ACCOUNT, USER, retried.id, gateway),
+    /Only failed/
+  );
+  await assert.rejects(
+    () => service.retryDelivery(OTHER_ACCOUNT, USER, retried.id, gateway),
+    /not found/
+  );
+  assert.equal(service.listDeliveries(ACCOUNT, campaign.id).length, 2);
+});
+
+test('MarketingService fails closed when durable consent is unavailable', async () => {
+  const service = new MarketingService({ requireConsentChecker: true });
+  await assert.rejects(
+    () => service.dispatchCampaign(ACCOUNT, USER, 'campaign-missing', {
+      audience: [],
+      gateway: new FakeMarketingGateway()
+    }),
+    /durable consent checker/
+  );
+});
+
 class InMemoryMarketingRepository implements MarketingRepository {
   readonly #segments = new Map<string, MarketingSegmentSummary>();
   readonly #templates = new Map<string, MarketingTemplateSummary>();
   readonly #campaigns = new Map<string, MarketingCampaignSummary>();
   readonly #deliveries = new Map<string, MarketingCampaignDeliverySummary>();
+  readonly #settings = new Map<string, MarketingSettingSummary>();
 
   async saveSegment(segment: MarketingSegmentSummary): Promise<void> {
     this.#segments.set(segment.id, segment);
@@ -186,6 +446,14 @@ class InMemoryMarketingRepository implements MarketingRepository {
 
   async saveDelivery(delivery: MarketingCampaignDeliverySummary): Promise<void> {
     this.#deliveries.set(delivery.id, delivery);
+  }
+
+  async findSetting(accountId: AccountId, key: MarketingSettingSummary['key']): Promise<MarketingSettingSummary | null> {
+    return this.#settings.get(`${accountId}:${key}`) ?? null;
+  }
+
+  async saveSetting(setting: MarketingSettingSummary): Promise<void> {
+    this.#settings.set(`${setting.accountId}:${setting.key}`, setting);
   }
 
   async findSegments(accountId: AccountId): Promise<readonly MarketingSegmentSummary[]> {

@@ -16,6 +16,7 @@ import type {
   PatientId,
   PatientSummary
 } from '@cvg-his-v2/shared-types';
+import type { PatientMergeSummary } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import {
   requireBoolean,
@@ -34,6 +35,7 @@ export interface PatientRepository {
 
 export interface OwnerPatientLinkRepository {
   create(link: OwnerPatientLinkSummary): Promise<void>;
+  update?(link: OwnerPatientLinkSummary): Promise<void>;
   findById(id: OwnerPatientLinkId, accountId: AccountId): Promise<OwnerPatientLinkSummary | null>;
   findByPatientId(
     patientId: PatientId,
@@ -44,6 +46,10 @@ export interface OwnerPatientLinkRepository {
     accountId: AccountId
   ): Promise<readonly OwnerPatientLinkSummary[]>;
   delete(id: OwnerPatientLinkId): Promise<void>;
+}
+
+export interface PatientMergeRepository {
+  create(merge: PatientMergeSummary): Promise<void>;
 }
 
 interface SearchQuery {
@@ -181,6 +187,7 @@ export interface PatientsServiceOptions {
   readonly owners: OwnersService;
   readonly patientRepository?: PatientRepository;
   readonly ownerPatientLinkRepository?: OwnerPatientLinkRepository;
+  readonly patientMergeRepository?: PatientMergeRepository;
   readonly seedPatients?: readonly PatientSummary[];
   readonly seedLinks?: readonly OwnerPatientLinkSummary[];
   readonly onPatientCreated?: (patient: PatientSummary) => Promise<void>;
@@ -192,14 +199,17 @@ export class PatientsService {
   readonly #links = new Map<OwnerPatientLinkId, OwnerPatientLinkSummary>();
   readonly #patientRepository?: PatientRepository;
   readonly #ownerPatientLinkRepository?: OwnerPatientLinkRepository;
+  readonly #patientMergeRepository?: PatientMergeRepository;
   readonly #onPatientCreated?: (patient: PatientSummary) => Promise<void>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
+  #pendingCallbacks: Promise<void> = Promise.resolve();
 
   public constructor(options: PatientsServiceOptions) {
     this.#owners = options.owners;
     this.#patientRepository = options.patientRepository;
     this.#ownerPatientLinkRepository = options.ownerPatientLinkRepository;
+    this.#patientMergeRepository = options.patientMergeRepository;
     this.#onPatientCreated = options.onPatientCreated;
 
     const seedPatients = options.seedPatients ?? createSeedPatients();
@@ -238,11 +248,18 @@ export class PatientsService {
 
   public async waitForPersistence(): Promise<void> {
     try {
-      await this.#lastPersist;
+      await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
     } finally {
       this.#pendingPersist = this.#pendingPersist.catch(() => {});
       this.#lastPersist = this.#pendingPersist;
+      this.#pendingCallbacks = this.#pendingCallbacks.catch(() => {});
     }
+  }
+
+  #enqueueCallback(callback: () => Promise<void>): void {
+    const pending = this.#pendingCallbacks.then(callback);
+    this.#pendingCallbacks = pending;
+    void pending.catch(() => undefined);
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
@@ -313,7 +330,10 @@ export class PatientsService {
       payload.primaryOwnerId,
       'primaryOwnerId'
     ) as OwnerId;
-    this.#owners.getOrThrow(primaryOwnerId);
+    const primaryOwner = this.#owners.getOrThrow(primaryOwnerId);
+    if (primaryOwner.accountId !== accountId) {
+      throw new ValidationError('Primary owner must belong to the same account as the patient');
+    }
 
     const name = requireNonEmptyString(payload.name, 'name');
     const species = requireNonEmptyString(payload.species, 'species');
@@ -388,7 +408,9 @@ export class PatientsService {
       );
     }
 
-    void this.#onPatientCreated?.(patient);
+    if (this.#onPatientCreated) {
+      this.#enqueueCallback(() => this.#onPatientCreated!(patient));
+    }
 
     return patient;
   }
@@ -399,7 +421,10 @@ export class PatientsService {
       payload.primaryOwnerId !== undefined
         ? (requireNonEmptyString(payload.primaryOwnerId, 'primaryOwnerId') as OwnerId)
         : current.primaryOwnerId;
-    this.#owners.getOrThrow(nextPrimaryOwnerId);
+    const nextPrimaryOwner = this.#owners.getOrThrow(nextPrimaryOwnerId);
+    if (nextPrimaryOwner.accountId !== current.accountId) {
+      throw new ValidationError('Primary owner must belong to the same account as the patient');
+    }
 
     const updated: PatientSummary = {
       ...current,
@@ -424,7 +449,9 @@ export class PatientsService {
           ? normalizeOptionalBoolean(payload.isNeutered)
           : current.isNeutered,
       microchip:
-        payload.microchip !== undefined ? requireOptionalString(payload.microchip) : current.microchip,
+        payload.microchip !== undefined
+          ? requireOptionalString(payload.microchip)
+          : current.microchip,
       pedigreeNumber:
         payload.pedigreeNumber !== undefined
           ? requireOptionalString(payload.pedigreeNumber)
@@ -434,7 +461,8 @@ export class PatientsService {
         payload.chronicDisease !== undefined
           ? requireOptionalString(payload.chronicDisease)
           : current.chronicDisease,
-      allergy: payload.allergy !== undefined ? requireOptionalString(payload.allergy) : current.allergy,
+      allergy:
+        payload.allergy !== undefined ? requireOptionalString(payload.allergy) : current.allergy,
       temperament:
         payload.temperament !== undefined
           ? requireOptionalString(payload.temperament)
@@ -478,8 +506,11 @@ export class PatientsService {
   ): OwnerPatientLinkSummary {
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
-    this.#owners.getOrThrow(ownerId);
+    const owner = this.#owners.getOrThrow(ownerId);
     const patient = this.getOrThrow(patientId);
+    if (owner.accountId !== accountId || patient.accountId !== accountId) {
+      throw new ValidationError('Owner and patient must belong to the current account');
+    }
 
     const duplicate = this.listLinks({ ownerId, patientId }).find(
       (link) => link.relationshipType === payload.relationshipType
@@ -519,6 +550,128 @@ export class PatientsService {
     }
 
     return link;
+  }
+
+  public updateLink(
+    accountId: AccountId,
+    linkId: OwnerPatientLinkId,
+    payload: { readonly financialResponsible?: boolean }
+  ): OwnerPatientLinkSummary {
+    const current = this.#links.get(linkId);
+    if (!current || current.accountId !== accountId) {
+      throw new NotFoundError('Owner-patient relationship not found', { linkId });
+    }
+    if (payload.financialResponsible === undefined) {
+      throw new ValidationError('At least one relationship field must be provided');
+    }
+
+    const updated: OwnerPatientLinkSummary = {
+      ...current,
+      financialResponsible: requireBoolean(payload.financialResponsible, 'financialResponsible')
+    };
+    this.#links.set(linkId, updated);
+    if (this.#ownerPatientLinkRepository) {
+      this.#enqueuePersist(
+        () => this.#ownerPatientLinkRepository!.update?.(updated) ?? Promise.resolve(),
+        () => this.#links.set(linkId, current)
+      );
+    }
+    return updated;
+  }
+
+  public deleteLink(accountId: AccountId, linkId: OwnerPatientLinkId): void {
+    const current = this.#links.get(linkId);
+    if (!current || current.accountId !== accountId) {
+      throw new NotFoundError('Owner-patient relationship not found', { linkId });
+    }
+    if (current.relationshipType === 'primary') {
+      throw new ValidationError('The primary relationship cannot be deleted; transfer it first');
+    }
+    this.#links.delete(linkId);
+    if (this.#ownerPatientLinkRepository) {
+      this.#enqueuePersist(
+        () => this.#ownerPatientLinkRepository!.delete(linkId),
+        () => this.#links.set(linkId, current)
+      );
+    }
+  }
+
+  public merge(
+    accountId: AccountId,
+    sourcePatientId: PatientId,
+    targetPatientId: PatientId,
+    actorUserId: import('@cvg-his-v2/shared-types').UserId,
+    reason: string
+  ): PatientSummary {
+    const source = this.getOrThrow(sourcePatientId);
+    const target = this.getOrThrow(targetPatientId);
+    if (source.accountId !== accountId || target.accountId !== accountId) {
+      throw new NotFoundError('Patient not found');
+    }
+    if (sourcePatientId === targetPatientId) {
+      throw new ValidationError('A patient cannot be merged with itself');
+    }
+    const mergeReason = requireNonEmptyString(reason, 'reason');
+    if (source.status === 'inactive') {
+      throw new ConflictError('Source patient is already inactive', { sourcePatientId });
+    }
+
+    const sourceLinks = this.listLinks({ patientId: sourcePatientId });
+    const targetLinks = this.listLinks({ patientId: targetPatientId });
+    const targetRelationKeys = new Set(
+      targetLinks.map((link) => `${link.ownerId}:${link.relationshipType}`)
+    );
+    const movedLinks: OwnerPatientLinkSummary[] = [];
+    const deletedLinks: OwnerPatientLinkSummary[] = [];
+    for (const link of sourceLinks) {
+      const duplicate = targetRelationKeys.has(`${link.ownerId}:${link.relationshipType}`);
+      if (duplicate || link.relationshipType === 'primary') {
+        deletedLinks.push(link);
+      } else {
+        const moved = { ...link, patientId: targetPatientId };
+        movedLinks.push(moved);
+        targetRelationKeys.add(`${link.ownerId}:${link.relationshipType}`);
+      }
+    }
+
+    const now = nowIso();
+    const mergedSource: PatientSummary = {
+      ...source,
+      status: 'inactive',
+      generalNotes: [source.generalNotes, `Merged into patient ${targetPatientId}: ${mergeReason}`]
+        .filter(Boolean)
+        .join('\n'),
+      updatedAt: now
+    };
+    this.#patients.set(sourcePatientId, mergedSource);
+    for (const link of deletedLinks) this.#links.delete(link.id);
+    for (const link of movedLinks) this.#links.set(link.id, link);
+
+    const merge: PatientMergeSummary = {
+      id: randomUUID(),
+      accountId,
+      sourcePatientId,
+      targetPatientId,
+      mergedByUserId: actorUserId,
+      reason: mergeReason,
+      createdAt: now
+    };
+    if (this.#patientRepository || this.#ownerPatientLinkRepository || this.#patientMergeRepository) {
+      this.#enqueuePersist(
+        async () => {
+          await this.#patientRepository?.update(mergedSource);
+          for (const link of deletedLinks) await this.#ownerPatientLinkRepository?.delete(link.id);
+          for (const link of movedLinks) await this.#ownerPatientLinkRepository?.update?.(link);
+          await this.#patientMergeRepository?.create(merge);
+        },
+        () => {
+          this.#patients.set(sourcePatientId, source);
+          for (const link of deletedLinks) this.#links.set(link.id, link);
+          for (const link of movedLinks) this.#links.set(link.id, sourceLinks.find((item) => item.id === link.id)!);
+        }
+      );
+    }
+    return mergedSource;
   }
 
   public searchMaster(query: string): {
@@ -591,5 +744,6 @@ export class PatientsService {
 export { createSeedLinks, createSeedPatients };
 export {
   DatabasePatientRepository,
-  DatabaseOwnerPatientLinkRepository
+  DatabaseOwnerPatientLinkRepository,
+  DatabasePatientMergeRepository
 } from './repositories/database-patient.repository.js';

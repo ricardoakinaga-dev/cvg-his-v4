@@ -29,8 +29,17 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
-import { getPool } from '@cvg-his-v2/shared-database';
+import {
+  createScopedDatabaseClient,
+  configureDatabaseTenantAccountResolver,
+  getDatabaseTransactionScope,
+  getPool,
+  type DatabaseClient
+} from '@cvg-his-v2/shared-database';
 import { requireAccountId } from './context.js';
+import { getTenantContext } from './context.js';
+
+configureDatabaseTenantAccountResolver(() => getTenantContext()?.accountId);
 
 /**
  * Executes a single query within a PostgreSQL transaction that has
@@ -56,6 +65,12 @@ export async function withTenantQuery<T>(
   return withTenantQueryExplicit(pool, accountId, fn);
 }
 
+export async function withTenantDrizzle<T>(
+  fn: (database: DatabaseClient) => Promise<T>
+): Promise<T> {
+  return withTenantQuery(getPool(), async (client) => fn(createScopedDatabaseClient(client)));
+}
+
 /**
  * Executes a single query within a PostgreSQL transaction that has
  * `app.current_account_id` set to the provided accountId.
@@ -72,19 +87,42 @@ export async function withTenantQueryExplicit<T>(
   accountId: string,
   fn: (client: PoolClient) => Promise<T>
 ): Promise<T> {
+  const activeScope = getDatabaseTransactionScope();
+  if (activeScope) {
+    if (!activeScope.isActive()) throw new Error('Tenant transaction scope is no longer active');
+    if (activeScope.pool !== pool) {
+      throw new Error('Nested tenant query cannot change database pool');
+    }
+    if (activeScope.accountId !== accountId) {
+      throw new Error('Nested tenant query cannot change account');
+    }
+    return fn(activeScope.client);
+  }
   const client: PoolClient = await pool.connect();
+  let transactionStarted = false;
+  let commitAttempted = false;
+  let releaseError: Error | undefined;
   try {
     await client.query('BEGIN');
+    transactionStarted = true;
     await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
     const result = await fn(client);
+    commitAttempted = true;
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK').catch(() => {
-      // Ignore rollback errors during error handling
-    });
+    if (commitAttempted) {
+      releaseError = error instanceof Error ? error : new Error(String(error));
+    }
+    if (transactionStarted) {
+      await client.query('ROLLBACK').catch((rollbackError: unknown) => {
+        releaseError = rollbackError instanceof Error
+          ? rollbackError
+          : new Error(String(rollbackError));
+      });
+    }
     throw error;
   } finally {
-    client.release();
+    client.release(releaseError);
   }
 }

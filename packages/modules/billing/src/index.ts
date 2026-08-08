@@ -11,6 +11,7 @@ import type {
   BillingItemSummary,
   BillingRecordId,
   BillingRecordSummary,
+  BillingRecordStatus,
   EncounterId,
   UserId
 } from '@cvg-his-v2/shared-types';
@@ -260,6 +261,21 @@ export class BillingService {
       throw new NotFoundError('Billing record not found', { encounterId });
     }
     const previousStatus = record.status;
+    const allowedTransitions: Record<BillingRecordStatus, readonly BillingRecordStatus[]> = {
+      draft: ['estimated', 'open'],
+      estimated: ['open', 'settled'],
+      open: ['settled'],
+      settled: []
+    };
+    if (
+      payload.status !== previousStatus &&
+      !allowedTransitions[previousStatus].includes(payload.status)
+    ) {
+      throw new ConflictError('Invalid billing status transition', {
+        previousStatus,
+        requestedStatus: payload.status
+      });
+    }
     const updated: BillingRecordSummary = {
       ...record,
       status: payload.status,

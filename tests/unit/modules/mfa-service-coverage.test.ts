@@ -8,6 +8,7 @@ import { decrypt } from '../../../packages/modules/mfa/src/crypto.js';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const ENCRYPTION_KEY = 'coverage-mfa-encryption-key-32chars';
+const ACCOUNT_ID = 'acc_coverage';
 
 function base32ToBuffer(base32: string): Buffer {
   let bits = '';
@@ -50,22 +51,22 @@ class InMemoryMfaRepository implements MfaRepository {
   readonly updated: MfaRecord[] = [];
   readonly deleted: string[] = [];
 
-  async findByUserId(userId: string): Promise<MfaRecord | undefined> {
-    return this.records.get(userId);
+  async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
+    return this.records.get(`${accountId}:${userId}`);
   }
 
   async create(record: MfaRecord): Promise<void> {
-    this.records.set(record.userId, record);
+    this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
   async update(record: MfaRecord): Promise<void> {
     this.updated.push(record);
-    this.records.set(record.userId, record);
+    this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
-  async delete(userId: string): Promise<void> {
+  async delete(accountId: string, userId: string): Promise<void> {
     this.deleted.push(userId);
-    this.records.delete(userId);
+    this.records.delete(`${accountId}:${userId}`);
   }
 }
 
@@ -79,12 +80,16 @@ describe('MfaService coverage guard', () => {
   });
 
   it('confirms setup with encrypted persistence and clears pending setup state', async () => {
-    const setup = await service.initiateSetup('user_secure', 'secure@example.com');
+    const setup = await service.initiateSetup(
+      ACCOUNT_ID,
+      'user_secure',
+      'secure@example.com'
+    );
     const token = generateValidTotp(setup.secret);
 
-    const confirmed = await service.confirmSetup('user_secure', token);
+    const confirmed = await service.confirmSetup(ACCOUNT_ID, 'user_secure', token);
 
-    const persisted = repository.records.get('user_secure');
+    const persisted = repository.records.get(`${ACCOUNT_ID}:user_secure`);
     expect(confirmed.secret).toBe(setup.secret);
     expect(confirmed.recoveryCodes).toEqual(setup.recoveryCodes);
     expect(persisted).toBeDefined();
@@ -92,23 +97,29 @@ describe('MfaService coverage guard', () => {
     expect(decrypt(persisted!.secret, ENCRYPTION_KEY)).toBe(setup.secret);
     expect(persisted?.recoveryCodes).toEqual(setup.recoveryCodes.map(hashRecoveryCode));
 
-    await expect(service.confirmSetup('user_secure', token)).rejects.toThrow(
+    await expect(service.confirmSetup(ACCOUNT_ID, 'user_secure', token)).rejects.toThrow(
       'No pending MFA setup found'
     );
   });
 
   it('verifies pending setup tokens before confirmation and rejects invalid pending tokens', async () => {
-    const setup = await service.initiateSetup('user_pending', 'pending@example.com');
+    const setup = await service.initiateSetup(ACCOUNT_ID, 'user_pending', 'pending@example.com');
 
-    expect(await service.verifyLogin('user_pending', generateValidTotp(setup.secret))).toBe(true);
-    expect(await service.verifyLogin('user_pending', '000000')).toBe(false);
+    expect(await service.verifyLogin(ACCOUNT_ID, 'user_pending', generateValidTotp(setup.secret))).toBe(
+      true
+    );
+    expect(await service.verifyLogin(ACCOUNT_ID, 'user_pending', '000000')).toBe(false);
   });
 
   it('verifies stored TOTP logins and updates lastUsedAt in repository', async () => {
-    const setup = await service.initiateSetup('user_totp', 'totp@example.com');
-    await service.confirmSetup('user_totp', generateValidTotp(setup.secret));
+    const setup = await service.initiateSetup(ACCOUNT_ID, 'user_totp', 'totp@example.com');
+    await service.confirmSetup(ACCOUNT_ID, 'user_totp', generateValidTotp(setup.secret));
 
-    const verified = await service.verifyLogin('user_totp', generateValidTotp(setup.secret));
+    const verified = await service.verifyLogin(
+      ACCOUNT_ID,
+      'user_totp',
+      generateValidTotp(setup.secret)
+    );
 
     expect(verified).toBe(true);
     expect(repository.updated.at(-1)?.userId).toBe('user_totp');
@@ -116,40 +127,40 @@ describe('MfaService coverage guard', () => {
   });
 
   it('accepts recovery codes, consumes them and supports disabling MFA with recovery fallback', async () => {
-    const setup = await service.initiateSetup('user_recovery', 'recovery@example.com');
-    await service.confirmSetup('user_recovery', generateValidTotp(setup.secret));
+    const setup = await service.initiateSetup(ACCOUNT_ID, 'user_recovery', 'recovery@example.com');
+    await service.confirmSetup(ACCOUNT_ID, 'user_recovery', generateValidTotp(setup.secret));
 
     const originalCodes = setup.recoveryCodes;
-    const loginVerified = await service.verifyLogin('user_recovery', originalCodes[0]);
+    const loginVerified = await service.verifyLogin(ACCOUNT_ID, 'user_recovery', originalCodes[0]);
 
     expect(loginVerified).toBe(true);
     await vi.waitFor(() => {
-      expect(repository.records.get('user_recovery')?.recoveryCodes).toHaveLength(
+      expect(repository.records.get(`${ACCOUNT_ID}:user_recovery`)?.recoveryCodes).toHaveLength(
         originalCodes.length - 1
       );
     });
 
-    const remainingRecord = repository.records.get('user_recovery');
+    const remainingRecord = repository.records.get(`${ACCOUNT_ID}:user_recovery`);
     expect(remainingRecord?.recoveryCodes).not.toContain(hashRecoveryCode(originalCodes[0]));
 
-    await service.disableMfa('user_recovery', originalCodes[1]);
+    await service.disableMfa(ACCOUNT_ID, 'user_recovery', originalCodes[1]);
 
     expect(repository.deleted).toContain('user_recovery');
-    expect(await service.isMfaActive('user_recovery')).toBe(false);
+    expect(await service.isMfaActive(ACCOUNT_ID, 'user_recovery')).toBe(false);
   });
 
   it('regenerates recovery codes with timestamp and rejects invalid disable attempts', async () => {
-    const setup = await service.initiateSetup('user_rotate', 'rotate@example.com');
-    await service.confirmSetup('user_rotate', generateValidTotp(setup.secret));
+    const setup = await service.initiateSetup(ACCOUNT_ID, 'user_rotate', 'rotate@example.com');
+    await service.confirmSetup(ACCOUNT_ID, 'user_rotate', generateValidTotp(setup.secret));
 
-    const regenerated = await service.regenerateRecoveryCodes('user_rotate');
-    const stored = repository.records.get('user_rotate');
+    const regenerated = await service.regenerateRecoveryCodes(ACCOUNT_ID, 'user_rotate');
+    const stored = repository.records.get(`${ACCOUNT_ID}:user_rotate`);
 
     expect(regenerated).toHaveLength(8);
     expect(stored?.lastRecoveryCodesRegeneratedAt).toBeDefined();
     expect(stored?.recoveryCodes).toEqual(regenerated.map(hashRecoveryCode));
 
-    await expect(service.disableMfa('user_rotate', 'BAD-CODE')).rejects.toThrow(
+    await expect(service.disableMfa(ACCOUNT_ID, 'user_rotate', 'BAD-CODE')).rejects.toThrow(
       'Invalid TOTP code or recovery code.'
     );
   });
@@ -157,13 +168,14 @@ describe('MfaService coverage guard', () => {
   it('returns safe fallbacks when no repository is configured or MFA is inactive', async () => {
     const stateless = new MfaService();
 
-    expect(await stateless.verifyLogin('missing_user', '123456')).toBe(false);
-    expect(await stateless.isMfaActive('missing_user')).toBe(false);
-    await expect(stateless.regenerateRecoveryCodes('missing_user')).rejects.toThrow(
+    expect(await stateless.verifyLogin(ACCOUNT_ID, 'missing_user', '123456')).toBe(false);
+    expect(await stateless.isMfaActive(ACCOUNT_ID, 'missing_user')).toBe(false);
+    await expect(stateless.regenerateRecoveryCodes(ACCOUNT_ID, 'missing_user')).rejects.toThrow(
       'MFA is not configured for this user.'
     );
 
-    repository.records.set('user_inactive', {
+    repository.records.set(`${ACCOUNT_ID}:user_inactive`, {
+      accountId: ACCOUNT_ID,
       userId: 'user_inactive',
       secret: 'ANYSECRET',
       isActive: false,
@@ -171,6 +183,6 @@ describe('MfaService coverage guard', () => {
       createdAt: '2026-04-18T00:00:00.000Z'
     });
 
-    expect(await service.verifyLogin('user_inactive', '123456')).toBe(false);
+    expect(await service.verifyLogin(ACCOUNT_ID, 'user_inactive', '123456')).toBe(false);
   });
 });

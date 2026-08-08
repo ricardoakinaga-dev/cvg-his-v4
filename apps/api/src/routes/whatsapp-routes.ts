@@ -3,6 +3,7 @@
  * Extracted from server.ts as part of the controlled refactoring initiative (GAP-02).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import type { AuditService } from '@cvg-his-v2/module-audit';
@@ -17,6 +18,7 @@ export interface WhatsAppRoutesHandlers {
   scheduling: SchedulingService;
   audit: AuditService;
   notificationsWhatsappInboundActionsEnabled: boolean;
+  inboundWebhookSecret?: string;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
 
@@ -148,6 +150,18 @@ export async function handleWhatsAppRoutes(
 
   if (pathname !== '/webhooks/whatsapp/inbound' || request.method !== 'POST') {
     return false;
+  }
+
+  const headerValue = request.headers['x-webhook-secret'];
+  const providedSecret = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  const configuredBuffer = Buffer.from(handlers.inboundWebhookSecret ?? '');
+  const providedBuffer = Buffer.from(providedSecret ?? '');
+  if (
+    configuredBuffer.length === 0 ||
+    configuredBuffer.length !== providedBuffer.length ||
+    !timingSafeEqual(configuredBuffer, providedBuffer)
+  ) {
+    return json(response, 401, { code: 'UNAUTHORIZED', message: 'Invalid webhook signature' });
   }
 
   const body = (await readJsonBody(request)) as Record<string, unknown>;

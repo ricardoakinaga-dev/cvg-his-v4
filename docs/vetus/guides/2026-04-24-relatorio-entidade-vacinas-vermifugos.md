@@ -10,16 +10,16 @@ Escopo:
 
 Evidências principais:
 
-- [vacinas-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-lista.png)
-- [vacinas-lista.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.json)
-- [vacinas-lista.html](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.html)
-- [vacinas-vacina.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-vacina.png)
-- [vacinas-vacina.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-vacina.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/network.json)
-- [2026-04-24-relatorio-entidade-marketing.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-24-relatorio-entidade-marketing.md)
-- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](/root/cvg-his-v2/docs/vetus/guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md:308)
-- [03-MODELO-DADOS.md](/root/cvg-his-v2/docs/vetus/guides/03-MODELO-DADOS.md:331)
-- [04-ESPECIFICACAO-APIS.md](/root/cvg-his-v2/docs/vetus/guides/04-ESPECIFICACAO-APIS.md:368)
+- [vacinas-lista.png](../inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-lista.png)
+- [vacinas-lista.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.json)
+- [vacinas-lista.html](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.html)
+- [vacinas-vacina.png](../inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-vacina.png)
+- [vacinas-vacina.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-vacina.json)
+- [network.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/network.json)
+- [2026-04-24-relatorio-entidade-marketing.md](../guides/2026-04-24-relatorio-entidade-marketing.md)
+- [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
+- [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
+- [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)
 
 Nota de segurança:
 

@@ -10,17 +10,17 @@ Escopo:
 
 Evidências principais:
 
-- [orcamentos-lista.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista.png)
-- [orcamentos-lista.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista.json)
-- [orcamentos-lista-pos-pesquisa.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista-pos-pesquisa.png)
-- [orcamentos-lista-pos-pesquisa.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista-pos-pesquisa.json)
-- [orcamentos-detalhe.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-detalhe.png)
-- [orcamentos-detalhe.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-detalhe.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/network.json)
-- [2026-04-23-relatorio-entidade-comanda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-comanda.md)
-- [2026-04-23-relatorio-entidade-vendas.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-vendas.md)
-- [2026-04-23-relatorio-entidade-pacotes.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-pacotes.md)
-- [04-ESPECIFICACAO-APIS.md](/root/cvg-his-v2/docs/vetus/guides/04-ESPECIFICACAO-APIS.md:1105)
+- [orcamentos-lista.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista.png)
+- [orcamentos-lista.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista.json)
+- [orcamentos-lista-pos-pesquisa.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista-pos-pesquisa.png)
+- [orcamentos-lista-pos-pesquisa.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista-pos-pesquisa.json)
+- [orcamentos-detalhe.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-detalhe.png)
+- [orcamentos-detalhe.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-detalhe.json)
+- [network.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/network.json)
+- [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
+- [2026-04-23-relatorio-entidade-vendas.md](../guides/2026-04-23-relatorio-entidade-vendas.md)
+- [2026-04-23-relatorio-entidade-pacotes.md](../guides/2026-04-23-relatorio-entidade-pacotes.md)
+- [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)
 
 Nota de segurança:
 

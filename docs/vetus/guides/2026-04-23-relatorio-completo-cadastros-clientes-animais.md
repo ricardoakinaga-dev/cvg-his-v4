@@ -12,18 +12,18 @@ Escopo:
 
 Artefatos desta rodada:
 
-- [clientes-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-lista-expandida.png)
-- [clientes-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png)
-- [animais-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-lista-expandida.png)
-- [animais-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png)
-- [clientes-detalhe-expandido.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json)
-- [animais-detalhe-expandido.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json)
+- [clientes-lista-expandida.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-lista-expandida.png)
+- [clientes-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png)
+- [animais-lista-expandida.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-lista-expandida.png)
+- [animais-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png)
+- [clientes-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json)
+- [animais-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json)
 
 Referências históricas úteis:
 
-- [12-modulo-cadastros-animais-clientes.md](/root/cvg-his-v2/docs/vetus/guides/12-modulo-cadastros-animais-clientes.md)
-- [animais-03-detalhe.png](/root/cvg-his-v2/docs/vetus/screenshots/animais-03-detalhe.png)
-- [clientes-02-detalhe.png](/root/cvg-his-v2/docs/vetus/screenshots/clientes-02-detalhe.png)
+- [12-modulo-cadastros-animais-clientes.md](../guides/12-modulo-cadastros-animais-clientes.md)
+- [animais-03-detalhe.png](../screenshots/animais-03-detalhe.png)
+- [clientes-02-detalhe.png](../screenshots/clientes-02-detalhe.png)
 
 ## 1. Síntese executiva
 
@@ -114,7 +114,7 @@ Rota:
 
 Evidência principal:
 
-- [clientes-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-lista-expandida.png)
+- [clientes-lista-expandida.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-lista-expandida.png)
 
 Componentes visíveis:
 
@@ -169,7 +169,7 @@ Rota observada:
 
 Evidência principal:
 
-- [clientes-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png)
+- [clientes-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png)
 
 Organização estrutural:
 
@@ -308,7 +308,7 @@ Rota:
 
 Evidência principal:
 
-- [animais-lista-expandida.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-lista-expandida.png)
+- [animais-lista-expandida.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-lista-expandida.png)
 
 Componentes visíveis:
 
@@ -365,7 +365,7 @@ Rota observada:
 
 Evidência principal:
 
-- [animais-detalhe-expandido.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png)
+- [animais-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png)
 
 Organização estrutural:
 
@@ -587,7 +587,7 @@ Evidências confirmadas nesta rodada:
 
 Arquivos de suporte confirmados:
 
-- [clientes-lista-expandida.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-lista-expandida.json)
-- [clientes-detalhe-expandido.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json)
-- [animais-lista-expandida.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/animais-lista-expandida.json)
-- [animais-detalhe-expandido.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json)
+- [clientes-lista-expandida.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-lista-expandida.json)
+- [clientes-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json)
+- [animais-lista-expandida.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/animais-lista-expandida.json)
+- [animais-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json)

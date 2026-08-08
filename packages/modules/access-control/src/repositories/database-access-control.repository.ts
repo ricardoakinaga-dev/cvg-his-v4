@@ -62,6 +62,7 @@ export interface AccessControlRepository {
   assignRoleToUser(userId: string, roleId: RoleId): Promise<void>;
   removeRoleFromUser(userId: string, roleId: RoleId): Promise<void>;
   findRolesByUser(userId: string): Promise<readonly RoleRecord[]>;
+  findUserIdsByAccount?(accountId: AccountId): Promise<readonly UserId[]>;
 
   createTeam(input: {
     accountId: AccountId;
@@ -233,6 +234,16 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     });
   }
 
+  async findUserIdsByAccount(accountId: AccountId): Promise<readonly UserId[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query<{ id: UserId }>(
+        `SELECT id FROM users WHERE account_id = $1 ORDER BY id`,
+        [accountId]
+      );
+      return result.rows.map((row) => row.id);
+    });
+  }
+
   async createTeam(input: {
     accountId: AccountId;
     code: string;
@@ -265,14 +276,18 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     input: { code?: string; name?: string; description?: string | null; isActive?: boolean }
   ): Promise<AccessTeamSummary> {
     return withTenantQuery(getPool(), async (client) => {
-      const existingResult = await client.query(`SELECT * FROM access_teams WHERE id = $1`, [id]);
+      const existingResult = await client.query(
+        `SELECT * FROM access_teams
+         WHERE id = $1 AND account_id = app.current_account_id()`,
+        [id]
+      );
       if (existingResult.rows.length === 0) throw new Error(`Access team not found: ${id}`);
       const existing = this.mapTeam(existingResult.rows[0]);
       const now = nowIso();
       await client.query(
         `UPDATE access_teams
          SET code = $2, name = $3, description = $4, is_active = $5, updated_at = $6
-         WHERE id = $1`,
+         WHERE id = $1 AND account_id = app.current_account_id()`,
         [
           id,
           input.code ?? existing.code,
@@ -336,14 +351,18 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     input: { code?: string; name?: string; description?: string | null; isActive?: boolean }
   ): Promise<AccessSectorSummary> {
     return withTenantQuery(getPool(), async (client) => {
-      const existingResult = await client.query(`SELECT * FROM access_sectors WHERE id = $1`, [id]);
+      const existingResult = await client.query(
+        `SELECT * FROM access_sectors
+         WHERE id = $1 AND account_id = app.current_account_id()`,
+        [id]
+      );
       if (existingResult.rows.length === 0) throw new Error(`Access sector not found: ${id}`);
       const existing = this.mapSector(existingResult.rows[0]);
       const now = nowIso();
       await client.query(
         `UPDATE access_sectors
          SET code = $2, name = $3, description = $4, is_active = $5, updated_at = $6
-         WHERE id = $1`,
+         WHERE id = $1 AND account_id = app.current_account_id()`,
         [
           id,
           input.code ?? existing.code,
@@ -377,24 +396,50 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
 
   async replaceUserTeams(userId: UserId, teamIds: readonly AccessTeamId[]): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM access_team_memberships WHERE user_id = $1', [userId]);
+      await client.query(
+        `DELETE FROM access_team_memberships
+         WHERE user_id = $1 AND account_id = app.current_account_id()`,
+        [userId]
+      );
       for (const teamId of teamIds) {
-        await client.query(
-          `INSERT INTO access_team_memberships (user_id, team_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        const result = await client.query(
+          `INSERT INTO access_team_memberships (account_id, user_id, team_id)
+           SELECT user_record.account_id, user_record.id, team.id
+           FROM users AS user_record
+           JOIN access_teams AS team ON team.account_id = user_record.account_id
+           WHERE user_record.id = $1 AND team.id = $2
+           ON CONFLICT DO NOTHING
+           RETURNING user_id`,
           [userId, teamId]
         );
+        if (result.rowCount !== 1) {
+          throw new Error(`Access team does not belong to the user's account: ${teamId}`);
+        }
       }
     });
   }
 
   async replaceUserSectors(userId: UserId, sectorIds: readonly AccessSectorId[]): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM access_sector_memberships WHERE user_id = $1', [userId]);
+      await client.query(
+        `DELETE FROM access_sector_memberships
+         WHERE user_id = $1 AND account_id = app.current_account_id()`,
+        [userId]
+      );
       for (const sectorId of sectorIds) {
-        await client.query(
-          `INSERT INTO access_sector_memberships (user_id, sector_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        const result = await client.query(
+          `INSERT INTO access_sector_memberships (account_id, user_id, sector_id)
+           SELECT user_record.account_id, user_record.id, sector.id
+           FROM users AS user_record
+           JOIN access_sectors AS sector ON sector.account_id = user_record.account_id
+           WHERE user_record.id = $1 AND sector.id = $2
+           ON CONFLICT DO NOTHING
+           RETURNING user_id`,
           [userId, sectorId]
         );
+        if (result.rowCount !== 1) {
+          throw new Error(`Access sector does not belong to the user's account: ${sectorId}`);
+        }
       }
     });
   }
@@ -404,8 +449,7 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       const result = await client.query(
         `SELECT m.user_id, m.team_id, m.created_at
          FROM access_team_memberships m
-         JOIN users u ON u.id = m.user_id
-         WHERE u.account_id = $1`,
+         WHERE m.account_id = $1`,
         [accountId]
       );
       return result.rows.map((row: Record<string, unknown>) => ({
@@ -422,8 +466,7 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       const result = await client.query(
         `SELECT m.user_id, m.sector_id, m.created_at
          FROM access_sector_memberships m
-         JOIN users u ON u.id = m.user_id
-         WHERE u.account_id = $1`,
+         WHERE m.account_id = $1`,
         [accountId]
       );
       return result.rows.map((row: Record<string, unknown>) => ({
@@ -448,32 +491,41 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       const permission = this.mapPermission(permResult.rows[0]);
       const now = nowIso();
       if (input.subjectType === 'user') {
-        await client.query(
-          `INSERT INTO access_user_permissions (user_id, permission_id, effect, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5)
+        const result = await client.query(
+          `INSERT INTO access_user_permissions (account_id, user_id, permission_id, effect, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (user_id, permission_id)
-           DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at`,
-          [input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+           DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
+           WHERE access_user_permissions.account_id = EXCLUDED.account_id
+           RETURNING account_id`,
+          [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
         );
+        if (result.rowCount !== 1) throw new Error('Access user permission belongs to another account');
         return;
       }
       if (input.subjectType === 'team') {
-        await client.query(
-          `INSERT INTO access_team_permissions (team_id, permission_id, effect, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5)
+        const result = await client.query(
+          `INSERT INTO access_team_permissions (account_id, team_id, permission_id, effect, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (team_id, permission_id)
-           DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at`,
-          [input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+           DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
+           WHERE access_team_permissions.account_id = EXCLUDED.account_id
+           RETURNING account_id`,
+          [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
         );
+        if (result.rowCount !== 1) throw new Error('Access team permission belongs to another account');
         return;
       }
-      await client.query(
-        `INSERT INTO access_sector_permissions (sector_id, permission_id, effect, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5)
+      const result = await client.query(
+        `INSERT INTO access_sector_permissions (account_id, sector_id, permission_id, effect, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (sector_id, permission_id)
-         DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at`,
-        [input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+         DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
+         WHERE access_sector_permissions.account_id = EXCLUDED.account_id
+         RETURNING account_id`,
+        [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
       );
+      if (result.rowCount !== 1) throw new Error('Access sector permission belongs to another account');
     });
   }
 
@@ -488,20 +540,26 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       const permission = this.mapPermission(permResult.rows[0]);
       if (input.subjectType === 'user') {
         await client.query(
-          'DELETE FROM access_user_permissions WHERE user_id = $1 AND permission_id = $2',
+          `DELETE FROM access_user_permissions
+           WHERE user_id = $1 AND permission_id = $2
+             AND account_id = app.current_account_id()`,
           [input.subjectId, permission.id]
         );
         return;
       }
       if (input.subjectType === 'team') {
         await client.query(
-          'DELETE FROM access_team_permissions WHERE team_id = $1 AND permission_id = $2',
+          `DELETE FROM access_team_permissions
+           WHERE team_id = $1 AND permission_id = $2
+             AND account_id = app.current_account_id()`,
           [input.subjectId, permission.id]
         );
         return;
       }
       await client.query(
-        'DELETE FROM access_sector_permissions WHERE sector_id = $1 AND permission_id = $2',
+        `DELETE FROM access_sector_permissions
+         WHERE sector_id = $1 AND permission_id = $2
+           AND account_id = app.current_account_id()`,
         [input.subjectId, permission.id]
       );
     });
@@ -512,23 +570,20 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
   ): Promise<readonly AccessPermissionAssignmentRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        `SELECT u.account_id, 'user' AS subject_type, aup.user_id AS subject_id, p.key AS permission_code, aup.effect, aup.created_at, aup.updated_at
+        `SELECT aup.account_id, 'user' AS subject_type, aup.user_id::text AS subject_id, p.key AS permission_code, aup.effect, aup.created_at, aup.updated_at
          FROM access_user_permissions aup
-         JOIN users u ON u.id = aup.user_id
          JOIN permissions p ON p.id = aup.permission_id
-         WHERE u.account_id = $1
+         WHERE aup.account_id = $1
          UNION ALL
-         SELECT t.account_id, 'team' AS subject_type, atp.team_id AS subject_id, p.key AS permission_code, atp.effect, atp.created_at, atp.updated_at
+         SELECT atp.account_id, 'team' AS subject_type, atp.team_id::text AS subject_id, p.key AS permission_code, atp.effect, atp.created_at, atp.updated_at
          FROM access_team_permissions atp
-         JOIN access_teams t ON t.id = atp.team_id
          JOIN permissions p ON p.id = atp.permission_id
-         WHERE t.account_id = $1
+         WHERE atp.account_id = $1
          UNION ALL
-         SELECT s.account_id, 'sector' AS subject_type, asp.sector_id AS subject_id, p.key AS permission_code, asp.effect, asp.created_at, asp.updated_at
+         SELECT asp.account_id, 'sector' AS subject_type, asp.sector_id::text AS subject_id, p.key AS permission_code, asp.effect, asp.created_at, asp.updated_at
          FROM access_sector_permissions asp
-         JOIN access_sectors s ON s.id = asp.sector_id
          JOIN permissions p ON p.id = asp.permission_id
-         WHERE s.account_id = $1`,
+         WHERE asp.account_id = $1`,
         [accountId]
       );
       return result.rows.map((row: Record<string, unknown>) => ({

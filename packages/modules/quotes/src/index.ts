@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -48,12 +49,18 @@ export interface QuotesServiceOptions {
 
 export class QuotesService {
   readonly #repository?: QuotesRepository;
+  readonly #useUuidIdentifiers: boolean;
   readonly #quotes = new Map<string, QuoteSummary>();
   readonly #items = new Map<string, QuoteItemSummary>();
   #numberCounter = 0;
 
   public constructor(options?: QuotesServiceOptions) {
     this.#repository = options?.repository;
+    this.#useUuidIdentifiers = Boolean(options?.repository);
+  }
+
+  #nextId(prefix: string): string {
+    return this.#useUuidIdentifiers ? randomUUID() : createCorrelationId(prefix);
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -104,7 +111,7 @@ export class QuotesService {
   ): Promise<QuoteSummary> {
     const now = nowIso();
     const quote: QuoteSummary = {
-      id: createCorrelationId('qt'),
+      id: this.#nextId('qt'),
       accountId,
       number: this.#nextNumber(),
       ownerId: input?.ownerId ?? null,
@@ -180,7 +187,7 @@ export class QuotesService {
     const now = nowIso();
 
     const item: QuoteItemSummary = {
-      id: createCorrelationId('qi'),
+      id: this.#nextId('qi'),
       quoteId,
       accountId: quote.accountId,
       itemType: input.itemType,

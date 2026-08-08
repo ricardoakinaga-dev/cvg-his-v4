@@ -1,4 +1,5 @@
 import type { CreateDischargeRequest, UpdateDischargeRequest } from '@cvg-his-v2/shared-contracts';
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
@@ -26,14 +27,60 @@ export interface DischargesServiceOptions {
 export class DischargesService {
   readonly #discharges = new Map<DischargeId, DischargeSummary>();
   readonly #dischargeRepository?: DischargeRepository;
+  readonly #useUuidIdentifiers: boolean;
+  #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: DischargesServiceOptions = {}) {
     this.#dischargeRepository = options.dischargeRepository;
+    this.#useUuidIdentifiers = Boolean(options.dischargeRepository);
+  }
+
+  #nextId(): DischargeId {
+    return (this.#useUuidIdentifiers ? randomUUID() : createCorrelationId('discharge')) as DischargeId;
+  }
+
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#dischargeRepository) return;
+    const persisted = await this.#dischargeRepository.findByAccountId(accountId);
+    for (const discharge of persisted) {
+      this.#discharges.set(discharge.id, discharge);
+    }
+  }
+
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => undefined);
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
   }
 
   public getById(id: DischargeId): DischargeSummary {
     const discharge = this.#discharges.get(id);
     if (!discharge) {
+      throw new NotFoundError('Discharge not found', { dischargeId: id });
+    }
+    return discharge;
+  }
+
+  public getByIdForAccount(accountId: AccountId, id: DischargeId): DischargeSummary {
+    const discharge = this.getById(id);
+    if (discharge.accountId !== accountId) {
       throw new NotFoundError('Discharge not found', { dischargeId: id });
     }
     return discharge;
@@ -69,7 +116,7 @@ export class DischargesService {
 
     const now = nowIso();
     const discharge: DischargeSummary = {
-      id: createCorrelationId('discharge') as DischargeId,
+      id: this.#nextId(),
       accountId,
       encounterId,
       dischargeType: payload.dischargeType,
@@ -88,9 +135,14 @@ export class DischargesService {
     this.#discharges.set(discharge.id, discharge);
 
     if (this.#dischargeRepository) {
-      this.#dischargeRepository.create(discharge).catch((err) => {
-        console.error('Failed to persist discharge to database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#dischargeRepository!.create(discharge),
+        () => {
+          if (this.#discharges.get(discharge.id) === discharge) {
+            this.#discharges.delete(discharge.id);
+          }
+        }
+      );
     }
 
     return discharge;
@@ -133,9 +185,12 @@ export class DischargesService {
     this.#discharges.set(id, updated);
 
     if (this.#dischargeRepository) {
-      this.#dischargeRepository.update(updated).catch((err) => {
-        console.error('Failed to update discharge in database:', err);
-      });
+      this.#enqueuePersist(
+        () => this.#dischargeRepository!.update(updated),
+        () => {
+          this.#discharges.set(id, current);
+        }
+      );
     }
 
     return updated;

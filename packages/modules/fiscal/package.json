@@ -15,7 +15,8 @@
     "@cvg-his/db": "workspace:*",
     "@cvg-his-v2/shared-contracts": "workspace:*",
     "@cvg-his-v2/shared-database": "workspace:*",
-    "@cvg-his-v2/shared-types": "workspace:*"
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/tenant-context": "workspace:*"
   },
   "scripts": {
     "build": "tsc -b tsconfig.json --force",

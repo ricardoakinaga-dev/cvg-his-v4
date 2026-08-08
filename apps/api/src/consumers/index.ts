@@ -137,7 +137,7 @@ export class ConsumerRegistry {
    */
   registerAll(eventBus: EventBusService): void {
     for (const { name, consumer } of this.#consumers) {
-      eventBus.subscribe(consumer.handlers);
+      eventBus.subscribe(name, consumer.handlers);
     }
 
     console.info(

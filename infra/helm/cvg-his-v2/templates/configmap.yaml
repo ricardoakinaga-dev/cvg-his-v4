@@ -16,6 +16,11 @@ data:
   AUTH_ACCESS_TOKEN_TTL_SECONDS: {{ .Values.api.env.AUTH_ACCESS_TOKEN_TTL_SECONDS | quote }}
   AUTH_REFRESH_TOKEN_TTL_SECONDS: {{ .Values.api.env.AUTH_REFRESH_TOKEN_TTL_SECONDS | quote }}
   FILE_STORAGE_PATH: {{ .Values.api.env.FILE_STORAGE_PATH | quote }}
+  ATTACHMENT_SCANNER_HOST: {{ .Values.api.env.ATTACHMENT_SCANNER_HOST | quote }}
+  ATTACHMENT_SCANNER_PORT: {{ .Values.api.env.ATTACHMENT_SCANNER_PORT | quote }}
+  ATTACHMENT_SCANNER_TIMEOUT_MS: {{ .Values.api.env.ATTACHMENT_SCANNER_TIMEOUT_MS | quote }}
+  ATTACHMENT_STORAGE_S3_REGION: {{ .Values.api.env.ATTACHMENT_STORAGE_S3_REGION | default "us-east-1" | quote }}
+  ATTACHMENT_STORAGE_S3_PATH_STYLE: {{ .Values.api.env.ATTACHMENT_STORAGE_S3_PATH_STYLE | default "true" | quote }}
   RUNTIME_DISTRIBUTED_STATE_ENABLED: {{ .Values.api.env.RUNTIME_DISTRIBUTED_STATE_ENABLED | quote }}
   VAULT_ENABLED: {{ .Values.api.env.VAULT_ENABLED | quote }}
   OTEL_ENABLED: {{ .Values.api.env.OTEL_ENABLED | quote }}

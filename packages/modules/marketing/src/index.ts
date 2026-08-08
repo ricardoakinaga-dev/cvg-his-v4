@@ -9,6 +9,7 @@ export type MarketingChannel = 'sms' | 'whatsapp' | 'email';
 export type MarketingCampaignStatus = 'draft' | 'scheduled' | 'running' | 'sent' | 'cancelled';
 export type MarketingDeliveryStatus = 'queued' | 'sent' | 'failed' | 'skipped';
 export type MarketingConsentPurpose = 'marketing' | 'transactional' | 'preventive';
+export type MarketingSettingKey = 'sms_automations' | 'vaccine_email';
 
 export interface MarketingSegmentCriteria {
   readonly ownerGroups?: readonly string[];
@@ -94,6 +95,21 @@ export interface MarketingCampaignDeliverySummary {
   readonly failedAt?: string;
 }
 
+export interface MarketingSettingSummary {
+  readonly accountId: AccountId;
+  readonly key: MarketingSettingKey;
+  readonly channel: 'sms' | 'email';
+  readonly values: Readonly<Record<string, boolean | string>>;
+  readonly updatedByUserId: UserId;
+  readonly updatedAt: string;
+}
+
+export interface SaveMarketingSettingInput {
+  readonly key: MarketingSettingKey;
+  readonly channel: 'sms' | 'email';
+  readonly values: Readonly<Record<string, boolean | string>>;
+}
+
 export interface CreateMarketingSegmentInput {
   readonly name: string;
   readonly description?: string;
@@ -117,6 +133,11 @@ export interface CreateMarketingCampaignInput {
 }
 
 export interface MarketingDispatchGatewayInput {
+  readonly accountId?: AccountId;
+  readonly campaignId?: string;
+  readonly ownerId?: string;
+  readonly ownerName?: string;
+  readonly patientId?: string;
   readonly channel: MarketingChannel;
   readonly to: string;
   readonly subject?: string;
@@ -133,6 +154,14 @@ export interface MarketingDispatchGatewayResult {
 
 export interface MarketingDispatchGateway {
   send(input: MarketingDispatchGatewayInput): Promise<MarketingDispatchGatewayResult>;
+}
+
+export interface MarketingConsentChecker {
+  hasActiveConsent(
+    accountId: AccountId,
+    ownerId: string,
+    purpose: MarketingConsentPurpose
+  ): Promise<boolean>;
 }
 
 export interface DispatchMarketingCampaignInput {
@@ -160,21 +189,31 @@ export interface MarketingRepository {
   findTemplates(accountId: AccountId): Promise<readonly MarketingTemplateSummary[]>;
   findCampaigns(accountId: AccountId): Promise<readonly MarketingCampaignSummary[]>;
   findDeliveries(accountId: AccountId, campaignId?: string): Promise<readonly MarketingCampaignDeliverySummary[]>;
+  findSetting?(accountId: AccountId, key: MarketingSettingKey): Promise<MarketingSettingSummary | null>;
+  saveSetting?(setting: MarketingSettingSummary): Promise<void>;
 }
 
 export interface MarketingServiceOptions {
   readonly repository?: MarketingRepository;
+  readonly consentChecker?: MarketingConsentChecker;
+  /** Refuse outbound campaigns when the durable consent source is unavailable. */
+  readonly requireConsentChecker?: boolean;
 }
 
 export class MarketingService {
   readonly #repository?: MarketingRepository;
+  readonly #consentChecker?: MarketingConsentChecker;
+  readonly #requireConsentChecker: boolean;
   readonly #segments = new Map<string, MarketingSegmentSummary>();
   readonly #templates = new Map<string, MarketingTemplateSummary>();
   readonly #campaigns = new Map<string, MarketingCampaignSummary>();
   readonly #deliveries = new Map<string, MarketingCampaignDeliverySummary>();
+  readonly #settings = new Map<string, MarketingSettingSummary>();
 
   public constructor(options?: MarketingServiceOptions) {
     this.#repository = options?.repository;
+    this.#consentChecker = options?.consentChecker;
+    this.#requireConsentChecker = options?.requireConsentChecker === true;
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -334,12 +373,54 @@ export class MarketingService {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
+  public async getSetting(
+    accountId: AccountId,
+    key: MarketingSettingKey
+  ): Promise<MarketingSettingSummary | null> {
+    const cacheKey = `${accountId}:${key}`;
+    const cached = this.#settings.get(cacheKey);
+    if (cached) return cached;
+
+    const loaded = await this.#repository?.findSetting?.(accountId, key);
+    if (loaded) this.#settings.set(cacheKey, loaded);
+    return loaded ?? null;
+  }
+
+  public async saveSetting(
+    accountId: AccountId,
+    updatedByUserId: UserId,
+    input: SaveMarketingSettingInput
+  ): Promise<MarketingSettingSummary> {
+    if (
+      (input.key === 'sms_automations' && input.channel !== 'sms')
+      || (input.key === 'vaccine_email' && input.channel !== 'email')
+    ) {
+      throw new ValidationError('Marketing setting channel does not match its key');
+    }
+
+    const values = normalizeSettingValues(input.values);
+    const setting: MarketingSettingSummary = {
+      accountId,
+      key: input.key,
+      channel: input.channel,
+      values,
+      updatedByUserId,
+      updatedAt: nowIso()
+    };
+    this.#settings.set(`${accountId}:${input.key}`, setting);
+    await this.#repository?.saveSetting?.(setting);
+    return setting;
+  }
+
   public async dispatchCampaign(
     accountId: AccountId,
     _processedByUserId: UserId,
     campaignId: string,
     input: DispatchMarketingCampaignInput
   ): Promise<MarketingCampaignDispatchResult> {
+    if (this.#requireConsentChecker && !this.#consentChecker) {
+      throw new ValidationError('Marketing dispatch requires a durable consent checker');
+    }
     const campaign = this.getCampaign(accountId, campaignId);
     if (campaign.status !== 'scheduled') {
       throw new ValidationError('Only scheduled marketing campaigns can be dispatched', {
@@ -355,6 +436,16 @@ export class MarketingService {
     const deliveries: MarketingCampaignDeliverySummary[] = [];
 
     for (const member of audience) {
+      if (
+        this.#consentChecker &&
+        !(await this.#consentChecker.hasActiveConsent(
+          accountId,
+          member.ownerId,
+          segment.criteria.consentPurpose ?? 'marketing'
+        ))
+      ) {
+        continue;
+      }
       const contact = member.contacts.find((item) => item.type === campaign.channel && item.value.trim().length > 0);
       if (!contact) continue;
       const queued = createDelivery(accountId, running, template, member, contact.value);
@@ -362,6 +453,11 @@ export class MarketingService {
       await this.#repository?.saveDelivery(queued);
 
       const result = await input.gateway.send({
+        accountId,
+        campaignId: running.id,
+        ownerId: member.ownerId,
+        ownerName: member.ownerName,
+        patientId: member.patientId,
         channel: campaign.channel,
         to: queued.recipient,
         subject: queued.subject,
@@ -403,12 +499,91 @@ export class MarketingService {
     };
   }
 
+  public async retryDelivery(
+    accountId: AccountId,
+    _processedByUserId: UserId,
+    deliveryId: string,
+    gateway: MarketingDispatchGateway
+  ): Promise<MarketingCampaignDeliverySummary> {
+    const delivery = this.#deliveries.get(deliveryId);
+    if (!delivery || delivery.accountId !== accountId) {
+      throw new NotFoundError('Marketing delivery not found', { deliveryId });
+    }
+    if (delivery.status !== 'failed') {
+      throw new ValidationError('Only failed marketing deliveries can be retried', {
+        deliveryId,
+        status: delivery.status
+      });
+    }
+
+    const campaign = this.getCampaign(accountId, delivery.campaignId);
+    if (this.#requireConsentChecker && !this.#consentChecker) {
+      throw new ValidationError('Marketing retry requires a durable consent checker');
+    }
+    if (
+      this.#consentChecker &&
+      !(await this.#consentChecker.hasActiveConsent(accountId, delivery.ownerId, 'marketing'))
+    ) {
+      const skipped: MarketingCampaignDeliverySummary = {
+        ...delivery,
+        status: 'skipped',
+        failureReason: 'marketing_consent_not_active',
+        attemptCount: delivery.attemptCount + 1,
+        updatedAt: nowIso()
+      };
+      this.#deliveries.set(skipped.id, skipped);
+      await this.#repository?.saveDelivery(skipped);
+      return skipped;
+    }
+
+    const queued: MarketingCampaignDeliverySummary = {
+      ...delivery,
+      status: 'queued',
+      failureReason: undefined,
+      failedAt: undefined,
+      updatedAt: nowIso()
+    };
+    this.#deliveries.set(queued.id, queued);
+    await this.#repository?.saveDelivery(queued);
+
+    const result = await gateway.send({
+      accountId,
+      campaignId: campaign.id,
+      ownerId: queued.ownerId,
+      patientId: queued.patientId,
+      channel: queued.channel,
+      to: queued.recipient,
+      subject: queued.subject,
+      body: queued.body
+    });
+    const updated: MarketingCampaignDeliverySummary = {
+      ...queued,
+      status: result.status,
+      provider: result.provider,
+      providerMessageId: result.providerMessageId,
+      failureReason: result.failureReason,
+      attemptCount: queued.attemptCount + 1,
+      updatedAt: result.sentAt,
+      sentAt: result.status === 'sent' ? result.sentAt : undefined,
+      failedAt: result.status === 'failed' ? result.sentAt : undefined
+    };
+    this.#deliveries.set(updated.id, updated);
+    await this.#repository?.saveDelivery(updated);
+    return updated;
+  }
+
   public previewAudience(
     criteria: MarketingSegmentCriteria,
     channel: MarketingChannel,
     audience: readonly MarketingAudienceMember[]
   ): readonly MarketingAudienceMember[] {
-    return audience.filter((member) => matchesCriteria(member, criteria) && hasChannel(member, channel));
+    const consentPurpose = criteria.consentPurpose ?? 'marketing';
+    return audience.filter(
+      (member) =>
+        matchesCriteria(member, criteria) &&
+        (member.consentPurposes ?? []).includes(consentPurpose) &&
+        hasChannel(member, channel)
+    );
   }
 
   private getSegment(accountId: AccountId, segmentId: string): MarketingSegmentSummary {
@@ -573,6 +748,41 @@ export class DatabaseMarketingRepository implements MarketingRepository {
       return result.rows.map(mapDelivery);
     });
   }
+
+  async findSetting(accountId: AccountId, key: MarketingSettingKey): Promise<MarketingSettingSummary | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM marketing_settings WHERE account_id = $1 AND setting_key = $2 LIMIT 1',
+        [accountId, key]
+      );
+      return result.rows.length === 0
+        ? null
+        : mapSetting(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async saveSetting(setting: MarketingSettingSummary): Promise<void> {
+    await withTenantQuery(getPool(), async (client) => {
+      await client.query(
+        `INSERT INTO marketing_settings (
+          account_id, setting_key, channel, values_json, updated_by_user_id, updated_at
+        ) VALUES ($1, $2, $3, $4::jsonb, $5, $6)
+        ON CONFLICT (account_id, setting_key) DO UPDATE SET
+          channel = EXCLUDED.channel,
+          values_json = EXCLUDED.values_json,
+          updated_by_user_id = EXCLUDED.updated_by_user_id,
+          updated_at = EXCLUDED.updated_at`,
+        [
+          setting.accountId,
+          setting.key,
+          setting.channel,
+          JSON.stringify(setting.values),
+          setting.updatedByUserId,
+          new Date(setting.updatedAt)
+        ]
+      );
+    });
+  }
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {
@@ -598,6 +808,26 @@ function normalizeCriteria(criteria: MarketingSegmentCriteria): MarketingSegment
     throw new ValidationError('Invalid consent purpose', { consentPurpose: normalized.consentPurpose });
   }
   return normalized;
+}
+
+function normalizeSettingValues(
+  values: Readonly<Record<string, boolean | string>>
+): Readonly<Record<string, boolean | string>> {
+  const entries = Object.entries(values).map(([key, value]) => {
+    const normalizedKey = key.trim();
+    if (!normalizedKey || normalizedKey.length > 80) {
+      throw new ValidationError('Marketing setting keys must be non-empty and at most 80 characters');
+    }
+    if (typeof value !== 'boolean' && typeof value !== 'string') {
+      throw new ValidationError('Marketing setting values must be booleans or strings');
+    }
+    const normalizedValue = typeof value === 'string' ? value.trim() : value;
+    if (typeof normalizedValue === 'string' && normalizedValue.length > 5000) {
+      throw new ValidationError('Marketing setting text values must be at most 5000 characters');
+    }
+    return [normalizedKey, normalizedValue] as const;
+  });
+  return Object.fromEntries(entries);
 }
 
 function matchesCriteria(member: MarketingAudienceMember, criteria: MarketingSegmentCriteria): boolean {
@@ -799,6 +1029,22 @@ function mapDelivery(row: Record<string, unknown>): MarketingCampaignDeliverySum
     updatedAt: dateIso(row.updated_at),
     sentAt: row.sent_at ? dateIso(row.sent_at) : undefined,
     failedAt: row.failed_at ? dateIso(row.failed_at) : undefined
+  };
+}
+
+function mapSetting(row: Record<string, unknown>): MarketingSettingSummary {
+  const values = typeof row.values_json === 'string'
+    ? JSON.parse(row.values_json) as Readonly<Record<string, boolean | string>>
+    : row.values_json as Readonly<Record<string, boolean | string>>;
+  return {
+    accountId: row.account_id as AccountId,
+    key: row.setting_key as MarketingSettingKey,
+    channel: row.channel as MarketingSettingSummary['channel'],
+    values,
+    updatedByUserId: row.updated_by_user_id as UserId,
+    updatedAt: row.updated_at instanceof Date
+      ? row.updated_at.toISOString()
+      : new Date(String(row.updated_at)).toISOString()
   };
 }
 /* v8 ignore stop */

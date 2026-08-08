@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid
 } from 'drizzle-orm/pg-core';
 
@@ -30,6 +31,7 @@ export const owners = pgTable(
   (table) => ({
     accountFullNameIdx: index('idx_owners_account_full_name').on(table.accountId, table.fullName),
     accountDocumentIdx: index('idx_owners_account_document').on(table.accountId, table.document),
-    accountPhoneMainIdx: index('idx_owners_account_phone').on(table.accountId, table.phoneMain)
+    accountPhoneMainIdx: index('idx_owners_account_phone').on(table.accountId, table.phoneMain),
+    accountIdIdUnique: uniqueIndex('idx_owners_account_id_id_unique').on(table.accountId, table.id)
   })
 );

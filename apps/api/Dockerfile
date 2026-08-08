@@ -35,6 +35,6 @@ COPY --from=builder /app/packages ./packages
 EXPOSE 3001
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=20 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/ready" >/dev/null || exit 1
 
 CMD ["node", "apps/api/dist/index.js"]

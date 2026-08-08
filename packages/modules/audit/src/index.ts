@@ -129,6 +129,8 @@ export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRe
 export class AuditService {
   readonly #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
+  #persistenceQueue: Promise<void> = Promise.resolve();
+  #persistenceError?: unknown;
 
   public constructor(options: AuditServiceOptions = {}) {
     this.#auditRepository = options.auditRepository;
@@ -153,11 +155,33 @@ export class AuditService {
 
     // Persist to database if repository is available
     if (this.#auditRepository) {
-      this.#auditRepository.create(event).catch((err) => {
-        console.error('Failed to persist audit event to database:', err);
+      const persist = this.#persistenceQueue.then(async () => {
+        try {
+          await this.#auditRepository!.create(event);
+        } catch (error) {
+          this.#persistenceError = error;
+          throw error;
+        }
       });
+      this.#persistenceQueue = persist.catch(() => undefined);
+      void this.#persistenceQueue;
     }
 
+    return event;
+  }
+
+  public async waitForPersistence(): Promise<void> {
+    await this.#persistenceQueue;
+    if (this.#persistenceError !== undefined) {
+      const error = this.#persistenceError;
+      this.#persistenceError = undefined;
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  public async writeAndWait(input: AuditWriteInput): Promise<AuditEventSummary> {
+    const event = this.write(input);
+    await this.waitForPersistence();
     return event;
   }
 

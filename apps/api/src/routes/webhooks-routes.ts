@@ -29,12 +29,7 @@ export interface WebhooksHandlers {
 type PublicWebhookSummary = Omit<WebhookSummary, 'secret'>;
 
 function isWebhookCollectionPath(pathname: string): boolean {
-  return [
-    '/webhooks',
-    '/webhook',
-    '/cadastro/webhooks',
-    '/cadastros/webhooks'
-  ].includes(pathname);
+  return ['/webhooks', '/webhook', '/cadastro/webhooks', '/cadastros/webhooks'].includes(pathname);
 }
 
 function normalizeSearch(value: string | null | undefined): string | undefined {
@@ -59,10 +54,7 @@ function filterWebhooks(
   const eventFilter = filters.event;
   return items.filter((item) => {
     if (filters.url && !item.url.toLowerCase().includes(filters.url)) return false;
-    if (
-      eventFilter &&
-      !item.events.some((event) => event.toLowerCase().includes(eventFilter))
-    ) {
+    if (eventFilter && !item.events.some((event) => event.toLowerCase().includes(eventFilter))) {
       return false;
     }
     if (filters.active !== undefined && item.isActive !== filters.active) return false;
@@ -74,13 +66,13 @@ function filterWebhooks(
  * Handle all webhooks-related routes (excluding WhatsApp inbound).
  * Returns true if the request was handled, false if the route didn't match.
  */
-export function handleWebhooksRoutes(
+export async function handleWebhooksRoutes(
   pathname: string,
   request: IncomingMessage,
   response: ServerResponse,
   correlationId: string,
   handlers: WebhooksHandlers
-): Promise<boolean> | boolean {
+): Promise<boolean> {
   const { webhooks, audit, requirePrincipal } = handlers;
 
   // GET /webhooks — list all webhooks for account
@@ -92,40 +84,32 @@ export function handleWebhooksRoutes(
       event: normalizeSearch(url.searchParams.get('event')),
       active: parseActiveFilter(url.searchParams.get('active'))
     };
-    const items = webhooks.list(principal.user.accountId);
-    Promise.resolve(items).then((resolvedItems) => {
-      response.statusCode = 200;
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ items: filterWebhooks(resolvedItems, filters).map(toPublicWebhook) }));
-    });
+    const items = await webhooks.list(principal.user.accountId);
+    response.statusCode = 200;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ items: filterWebhooks(items, filters).map(toPublicWebhook) }));
     return true;
   }
 
   // POST /webhooks — register new webhook
   if (isWebhookCollectionPath(pathname) && request.method === 'POST') {
     const principal = requirePrincipal(request, 'webhooks.manage');
-    const body = readJsonBody(request) as Promise<CreateWebhookRequest>;
-    body.then(async (payload) => {
-      const webhook = await webhooks.register(
-        principal.user.id,
-        principal.user.accountId,
-        payload
-      );
-      appendAudit(audit, {
-        actorId: principal.user.id,
-        accountId: principal.user.accountId,
-        module: 'webhooks',
-        action: 'register',
-        entityType: 'webhook',
-        entityId: webhook.id,
-        payloadSummary: `Webhook registered for URL ${webhook.url}`,
-        riskLevel: 'medium',
-        correlationId
-      });
-      response.statusCode = 201;
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(toPublicWebhook(webhook)));
+    const payload = (await readJsonBody(request)) as CreateWebhookRequest;
+    const webhook = await webhooks.register(principal.user.id, principal.user.accountId, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'webhooks',
+      action: 'register',
+      entityType: 'webhook',
+      entityId: webhook.id,
+      payloadSummary: `Webhook registered for URL ${webhook.url}`,
+      riskLevel: 'medium',
+      correlationId
     });
+    response.statusCode = 201;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify(toPublicWebhook(webhook)));
     return true;
   }
 
@@ -133,19 +117,20 @@ export function handleWebhooksRoutes(
   if (pathname.match(/^\/webhooks\/[^/]+$/) && request.method === 'GET') {
     const webhookId = pathname.split('/')[2];
     const principal = requirePrincipal(request, 'webhooks.read');
-    const webhook = webhooks.get(webhookId as never);
-    return Promise.resolve(webhook).then((wh) => {
-      if (!wh || wh.accountId !== principal.user.accountId) {
-        response.statusCode = 404;
-        response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
-        return true;
-      }
-      response.statusCode = 200;
+    const webhook = webhooks.get(principal.user.accountId, webhookId as never);
+    const wh = await webhook;
+    if (!wh || wh.accountId !== principal.user.accountId) {
+      response.statusCode = 404;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify(toPublicWebhook(wh)));
+      response.end(
+        JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+      );
       return true;
-    });
+    }
+    response.statusCode = 200;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify(toPublicWebhook(wh)));
+    return true;
   }
 
   // PATCH /webhooks/{webhookId} — update webhook
@@ -154,14 +139,16 @@ export function handleWebhooksRoutes(
     const principal = requirePrincipal(request, 'webhooks.manage');
     const body = readJsonBody(request) as Promise<UpdateWebhookRequest>;
     return body.then(async (payload) => {
-      const existing = await webhooks.get(webhookId as never);
+      const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
+        response.end(
+          JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+        );
         return true;
       }
-      const updated = await webhooks.update(webhookId as never, payload);
+      const updated = await webhooks.update(principal.user.accountId, webhookId as never, payload);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -185,14 +172,16 @@ export function handleWebhooksRoutes(
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
     const principal = requirePrincipal(request, 'webhooks.manage');
     return (async () => {
-      const existing = await webhooks.get(webhookId as never);
+      const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
+        response.end(
+          JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+        );
         return true;
       }
-      await webhooks.delete(webhookId as never);
+      await webhooks.delete(principal.user.accountId, webhookId as never);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -219,14 +208,16 @@ export function handleWebhooksRoutes(
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
     const principal = requirePrincipal(request, 'webhooks.read');
     return (async () => {
-      const existing = await webhooks.get(webhookId as never);
+      const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
+        response.end(
+          JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+        );
         return true;
       }
-      const items = await webhooks.listDeliveries(webhookId as never);
+      const items = await webhooks.listDeliveries(principal.user.accountId, webhookId as never);
       response.statusCode = 200;
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify({ items }));
@@ -235,21 +226,20 @@ export function handleWebhooksRoutes(
   }
 
   // GET /webhooks/{webhookId}/deliveries/stats — delivery statistics for a webhook
-  if (
-    pathname.match(/^\/webhooks\/[^/]+\/deliveries\/stats$/) &&
-    request.method === 'GET'
-  ) {
+  if (pathname.match(/^\/webhooks\/[^/]+\/deliveries\/stats$/) && request.method === 'GET') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
     const principal = requirePrincipal(request, 'webhooks.read');
     return (async () => {
-      const existing = await webhooks.get(webhookId as never);
+      const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
+        response.end(
+          JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+        );
         return true;
       }
-      const stats = await webhooks.getDeliveryStats(webhookId as never);
+      const stats = await webhooks.getDeliveryStats(principal.user.accountId, webhookId as never);
       response.statusCode = 200;
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify(stats));
@@ -275,7 +265,13 @@ export function handleWebhooksRoutes(
       if (!result) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook or delivery not found', correlationId }));
+        response.end(
+          JSON.stringify({
+            code: 'NOT_FOUND',
+            message: 'Webhook or delivery not found',
+            correlationId
+          })
+        );
         return true;
       }
       appendAudit(audit, {
@@ -297,22 +293,22 @@ export function handleWebhooksRoutes(
   }
 
   // GET /webhooks/{webhookId}/deliveries/{deliveryId} — get a single delivery
-  if (
-    pathname.match(/^\/webhooks\/[^/]+\/deliveries\/[^/]+$/) &&
-    request.method === 'GET'
-  ) {
+  if (pathname.match(/^\/webhooks\/[^/]+\/deliveries\/[^/]+$/) && request.method === 'GET') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
     const deliveryId = requireNonEmptyString(pathname.split('/')[4], 'deliveryId');
     const principal = requirePrincipal(request, 'webhooks.read');
     return (async () => {
-      const webhook = await webhooks.get(webhookId as never);
+      const webhook = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!webhook || webhook.accountId !== principal.user.accountId) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
         response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found' }));
         return true;
       }
-      const deliveries = await webhooks.listDeliveries(webhookId as never);
+      const deliveries = await webhooks.listDeliveries(
+        principal.user.accountId,
+        webhookId as never
+      );
       const delivery = deliveries.find((d) => d.id === deliveryId);
       if (!delivery) {
         response.statusCode = 404;
@@ -340,7 +336,9 @@ export function handleWebhooksRoutes(
       if (!result) {
         response.statusCode = 404;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId }));
+        response.end(
+          JSON.stringify({ code: 'NOT_FOUND', message: 'Webhook not found', correlationId })
+        );
         return true;
       }
       appendAudit(audit, {

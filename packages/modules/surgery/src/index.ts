@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   CreateSurgeryCaseRequest,
@@ -5,7 +6,7 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { SurgeryCaseId, SurgeryCaseSummary } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { DatabaseSurgeryCaseRepository } from './repositories/database-surgery.repository.js';
 import type { SurgeryCaseRepository } from './repositories/database-surgery.repository.js';
@@ -37,35 +38,45 @@ export class SurgeryService {
     this.#repository = options?.surgeryCaseRepository;
   }
 
+  public async hydrateAccount(accountId: string): Promise<void> {
+    if (!this.#repository) return;
+    const cases = await this.#repository.findByAccountId(accountId as never);
+    for (const surgeryCase of cases) {
+      this.#cases.set(surgeryCase.id, surgeryCase);
+    }
+  }
+
   private isValidTransition(currentStatus: string, newStatus: string): boolean {
     const allowed = VALID_SURGERY_TRANSITIONS[currentStatus];
     return allowed?.includes(newStatus) ?? false;
   }
 
-  private async persistCase(surgeryCase: SurgeryCaseSummary): Promise<void> {
+  private enqueuePersist(surgeryCase: SurgeryCaseSummary, rollback: () => void): void {
     const repo = this.#repository;
     if (repo) {
-      this.#pendingPersist = this.#pendingPersist.then(async () => {
-        const existing = await repo.findById(surgeryCase.id);
-        if (existing) {
-          await repo.update(surgeryCase);
-        } else {
-          await repo.create(surgeryCase);
-        }
-      });
-      await this.#pendingPersist;
+      this.#pendingPersist = this.#pendingPersist
+        .catch(() => undefined)
+        .then(async () => {
+          const existing = await repo.findById(surgeryCase.id);
+          if (existing) {
+            await repo.update(surgeryCase);
+          } else {
+            await repo.create(surgeryCase);
+          }
+        });
+      void this.#pendingPersist.catch(() => rollback());
     }
   }
 
-  private async updateCase(surgeryCase: SurgeryCaseSummary): Promise<void> {
-    await this.persistCase(surgeryCase);
+  public async waitForPersistence(): Promise<void> {
+    await this.#pendingPersist;
   }
 
   public requestCase(payload: CreateSurgeryCaseRequest): SurgeryCaseSummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
     const now = nowIso();
     const surgeryCase: SurgeryCaseSummary = {
-      id: createCorrelationId('surg') as SurgeryCaseId,
+      id: randomUUID() as SurgeryCaseId,
       accountId: encounter.accountId,
       encounterId: encounter.id,
       patientId: encounter.patientId,
@@ -79,9 +90,11 @@ export class SurgeryService {
       updatedAt: now
     };
     this.#cases.set(surgeryCase.id, surgeryCase);
-    this.persistCase(surgeryCase).catch((err) =>
-      console.error('Failed to persist surgery case:', err)
-    );
+    this.enqueuePersist(surgeryCase, () => {
+      if (this.#cases.get(surgeryCase.id) === surgeryCase) {
+        this.#cases.delete(surgeryCase.id);
+      }
+    });
     return surgeryCase;
   }
 
@@ -121,7 +134,11 @@ export class SurgeryService {
         !current.endedAt && { endedAt: now })
     };
     this.#cases.set(caseId, updated);
-    this.updateCase(updated).catch((err) => console.error('Failed to update surgery case:', err));
+    this.enqueuePersist(updated, () => {
+      if (this.#cases.get(caseId) === updated) {
+        this.#cases.set(caseId, current);
+      }
+    });
     return updated;
   }
 }

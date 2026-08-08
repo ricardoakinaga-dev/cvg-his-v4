@@ -1,11 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const queryMock = vi.fn();
+const { poolMock, queryMock } = vi.hoisted(() => {
+  const queryMock = vi.fn();
+  const poolMock = {
+    query: queryMock,
+    connect: vi.fn()
+  };
+  return { poolMock, queryMock };
+});
 
 vi.mock('@cvg-his-v2/shared-database', () => ({
-  getPool: () => ({
-    query: queryMock
-  })
+  configureDatabaseTenantAccountResolver: () => undefined,
+  getDatabaseTransactionScope: () => ({
+    accountId: 'acc-1',
+    pool: poolMock,
+    client: { query: queryMock },
+    isActive: () => true
+  }),
+  getPool: () => poolMock
 }));
 
 import { DatabaseFiscalRepository } from '../../../packages/modules/fiscal/src/database-fiscal.repository.js';
@@ -272,13 +284,14 @@ describe('DatabaseFiscalRepository coverage guard', () => {
     expect(queryMock).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('SELECT * FROM nfse_layouts'),
-      ['SP', true]
+      ['acc-1', 'SP', true]
     );
     expect(queryMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO nfse_layouts'),
       [
         'layout-2',
+        'acc-1',
         'Campinas',
         'SP',
         '3509502',

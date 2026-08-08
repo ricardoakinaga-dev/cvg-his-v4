@@ -139,3 +139,38 @@ test('SurgeryService updateStatus allows cancellation from early states', () => 
   const cancelledAfterPreOp = service.updateStatus(preOpCase.id, { status: 'cancelled' });
   assert.equal(cancelledAfterPreOp.status, 'cancelled');
 });
+
+test('SurgeryService rolls back in-memory creation when persistence fails', async () => {
+  const { encounter } = createService();
+  const service = new SurgeryService(
+    { getOrThrow: () => encounter } as never,
+    {
+      surgeryCaseRepository: {
+        async findByAccountId() {
+          return [];
+        },
+        async findById() {
+          return null;
+        },
+        async create() {
+          throw new Error('database unavailable');
+        },
+        async update() {
+          throw new Error('database unavailable');
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+
+  service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Persisted surgery'
+  });
+
+  await assert.rejects(() => service.waitForPersistence(), /database unavailable/);
+  assert.deepEqual(service.list(), []);
+});

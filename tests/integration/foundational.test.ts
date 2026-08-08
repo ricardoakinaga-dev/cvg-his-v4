@@ -21,7 +21,9 @@ import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 // validate in-memory behavior and document the gap.
 // ============================================================================
 
-const TEST_ACCOUNT_ID = 'acc_test_001';
+// InventoryService's deterministic in-memory fixture belongs to the canonical
+// demo tenant; all foundational services must exercise the same tenant boundary.
+const TEST_ACCOUNT_ID = 'acc_cvg_demo';
 const TEST_USER_ID = 'user_admin';
 
 function getSafeScheduledAt(base = new Date()): string {
@@ -45,6 +47,7 @@ describe('ICT-001 — User → Role → Effective Permission', () => {
     // Create user with reception role (matches AccessControlService role code)
     const roleCode = 'reception';
     const user = await users.create({
+      accountId: 'acc_cvg_demo' as never,
       username: `test_user_${Date.now()}`,
       email: `test_${Date.now()}@test.com`,
       password: 'TestPassword123',
@@ -373,7 +376,7 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     expect(items[0].quantity).toBe(1);
   });
 
-  it('consumption generates expected reflex in inventory module', () => {
+  it('consumption generates expected reflex in inventory module', async () => {
     const owners = new OwnersService();
     const patients = new PatientsService({ owners });
     // Shared encounters instance so inventory can see test encounters
@@ -406,15 +409,15 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     const initialQty = initialItem.onHandQuantity;
 
     // Consume (real API: consume(actorUserId, payload with sourceEntityType))
-    inventory.consume(TEST_USER_ID, {
+    await inventory.consume(TEST_USER_ID, {
       encounterId: encounter.id,
       inventoryItemId: initialItem.id,
       quantity: 2,
       sourceEntityType: 'encounter'
-    });
+    }, TEST_ACCOUNT_ID);
 
     // Verify reflex: stock reduced
-    const updatedItem = inventory.getItemOrThrow(initialItem.id);
+    const updatedItem = inventory.getItemOrThrow(initialItem.id, TEST_ACCOUNT_ID);
     expect(updatedItem.onHandQuantity).toBe(initialQty - 2);
 
     // Verify consumption was recorded

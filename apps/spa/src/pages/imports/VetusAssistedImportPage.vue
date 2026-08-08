@@ -48,13 +48,42 @@
           <div class="form-actions">
             <DsButton variant="secondary" type="button" @click="validateRows">Validar</DsButton>
             <DsButton
+              variant="secondary"
+              type="button"
+              :disabled="!previewRows.length || importing"
+              :loading="importing && batchAction === 'dry-run'"
+              @click="runDryRun"
+            >
+              Dry-run
+            </DsButton>
+            <DsButton
               variant="primary"
               type="button"
               :disabled="!importableRows.length || importing"
-              :loading="importing"
+              :loading="importing && batchAction === 'import'"
               @click="importRows"
             >
               Importar
+            </DsButton>
+            <DsButton
+              v-if="latestBatch?.status === 'partial'"
+              variant="secondary"
+              type="button"
+              :disabled="importing"
+              :loading="importing && batchAction === 'resume'"
+              @click="resumeBatch"
+            >
+              Retomar rejeitados
+            </DsButton>
+            <DsButton
+              v-if="latestBatch && (latestBatch.status === 'completed' || latestBatch.status === 'partial')"
+              variant="danger"
+              type="button"
+              :disabled="importing"
+              :loading="importing && batchAction === 'rollback'"
+              @click="rollbackBatch"
+            >
+              Desfazer lote
             </DsButton>
           </div>
         </div>
@@ -75,10 +104,21 @@
             <dd>{{ importedRows.length }}</dd>
           </div>
           <div>
+            <dt>Validados</dt>
+            <dd>{{ validatedRows.length }}</dd>
+          </div>
+          <div>
             <dt>Erros</dt>
             <dd>{{ invalidRows.length }}</dd>
           </div>
         </dl>
+        <div v-if="latestBatch" class="batch-summary" aria-live="polite">
+          <span>Lote atual</span>
+          <strong>{{ latestBatch.id }}</strong>
+          <span>{{ batchStatusLabel(latestBatch.status) }}</span>
+          <span>{{ latestBatch.importedCount }} importado(s), {{ latestBatch.rejectedCount }} rejeitado(s)</span>
+          <span>{{ batchItems.length }} linha(s) persistida(s)</span>
+        </div>
       </DsCard>
     </section>
 
@@ -147,6 +187,9 @@ import DataTable, { type DataTableColumn } from '@/components/DataTable.vue';
 import {
   vetusImportService,
   type CreateVetusImportRequest,
+  type VetusImportBatchItemSummary,
+  type VetusImportBatchResult,
+  type VetusImportBatchSummary,
   type VetusImportSummary,
   type VetusPatientSex
 } from '@/services/vetusImport';
@@ -155,7 +198,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 
-type ImportStatus = 'Pronto' | 'Erro' | 'Importado';
+type ImportStatus = 'Pronto' | 'Erro' | 'Importado' | 'Validado';
 
 interface ImportPreviewRow {
   line: number;
@@ -188,6 +231,9 @@ const defaultReviewer = ref('');
 const previewRows = ref<ImportPreviewRow[]>([]);
 const recentImports = ref<VetusImportSummary[]>([]);
 const importing = ref(false);
+const batchAction = ref<'dry-run' | 'import' | 'resume' | 'rollback' | null>(null);
+const latestBatch = ref<VetusImportBatchSummary | null>(null);
+const batchItems = ref<readonly VetusImportBatchItemSummary[]>([]);
 const loadingLog = ref(false);
 const error = ref('');
 const success = ref('');
@@ -210,8 +256,11 @@ const logColumns: DataTableColumn[] = [
   { key: 'importedAt', label: 'Importado em', width: '180px' }
 ];
 
-const importableRows = computed(() => previewRows.value.filter((row) => row.status === 'Pronto'));
+const importableRows = computed(() => previewRows.value.filter(
+  (row) => row.status === 'Pronto' || row.status === 'Validado'
+));
 const importedRows = computed(() => previewRows.value.filter((row) => row.status === 'Importado'));
+const validatedRows = computed(() => previewRows.value.filter((row) => row.status === 'Validado'));
 const invalidRows = computed(() => previewRows.value.filter((row) => row.status === 'Erro'));
 
 onMounted(() => {
@@ -279,33 +328,113 @@ function validateRows() {
 
 async function importRows() {
   importing.value = true;
+  batchAction.value = 'import';
   error.value = '';
   success.value = '';
-  let imported = 0;
-  let failed = 0;
+  try {
+    const rows = [...importableRows.value];
+    const result = await vetusImportService.createBatch({
+      sourceSystem: defaultSource.value.trim() || 'Vetus',
+      items: rows.map(toPayload)
+    });
+    applyBatchResult(result, rows);
+    reportBatchResult(result, 'import');
+    await loadRecentImports();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao importar o lote.';
+  } finally {
+    importing.value = false;
+    batchAction.value = null;
+  }
+}
 
-  for (const row of importableRows.value) {
-    try {
-      await vetusImportService.create(toPayload(row));
+async function runDryRun() {
+  importing.value = true;
+  batchAction.value = 'dry-run';
+  error.value = '';
+  success.value = '';
+  try {
+    const rows = [...previewRows.value];
+    const result = await vetusImportService.createBatch({
+      sourceSystem: defaultSource.value.trim() || 'Vetus',
+      dryRun: true,
+      items: rows.map(toPayload)
+    });
+    applyBatchResult(result, rows);
+    reportBatchResult(result, 'dry-run');
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao validar o lote.';
+  } finally {
+    importing.value = false;
+    batchAction.value = null;
+  }
+}
+
+async function resumeBatch() {
+  if (!latestBatch.value) return;
+  importing.value = true;
+  batchAction.value = 'resume';
+  error.value = '';
+  success.value = '';
+  try {
+    const result = await vetusImportService.createBatch({ resumeBatchId: latestBatch.value.id });
+    applyBatchResult(result, [...previewRows.value]);
+    reportBatchResult(result, 'resume');
+    await loadRecentImports();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao retomar o lote.';
+  } finally {
+    importing.value = false;
+    batchAction.value = null;
+  }
+}
+
+async function rollbackBatch() {
+  if (!latestBatch.value) return;
+  importing.value = true;
+  batchAction.value = 'rollback';
+  error.value = '';
+  success.value = '';
+  try {
+    const result = await vetusImportService.rollbackBatch(latestBatch.value.id);
+    applyBatchResult(result, [...previewRows.value]);
+    success.value = 'Lote revertido. Registros criados pelo lote foram inativados.';
+    await loadRecentImports();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao desfazer o lote.';
+  } finally {
+    importing.value = false;
+    batchAction.value = null;
+  }
+}
+
+function applyBatchResult(result: VetusImportBatchResult, rows: ImportPreviewRow[]) {
+  latestBatch.value = result.batch;
+  batchItems.value = result.items;
+  for (const item of result.items) {
+    const row = rows[item.rowNumber - 1];
+    if (!row) continue;
+    if (item.status === 'imported' || item.status === 'linked') {
       row.status = 'Importado';
-      row.message = 'Registro importado';
-      imported += 1;
-    } catch (err: unknown) {
+      row.message = item.status === 'linked' ? 'Registro vinculado' : 'Registro importado';
+    } else if (item.status === 'validated') {
+      row.status = 'Validado';
+      row.message = 'Nenhuma mutação executada no dry-run';
+    } else if (item.status === 'rejected') {
       row.status = 'Erro';
-      row.message = err instanceof Error ? err.message : 'Erro ao importar';
-      failed += 1;
+      row.message = item.reason ?? 'Registro rejeitado';
     }
   }
+}
 
-  importing.value = false;
-  if (failed > 0) {
-    error.value = imported > 0
-      ? `${imported} registro(s) importado(s); ${failed} registro(s) não foram importados.`
-      : `${failed} registro(s) não foram importados.`;
-  } else if (imported > 0) {
-    success.value = `${imported} registro(s) importado(s).`;
+function reportBatchResult(result: VetusImportBatchResult, action: 'dry-run' | 'import' | 'resume') {
+  if (result.batch.rejectedCount > 0) {
+    error.value = `${result.batch.importedCount} registro(s) processado(s); ${result.batch.rejectedCount} registro(s) rejeitado(s).`;
+  } else if (action === 'dry-run') {
+    success.value = `${result.batch.importedCount} registro(s) validados no dry-run.`;
+  } else {
+    success.value = `${result.batch.importedCount + result.batch.linkedCount} registro(s) processado(s).`;
   }
-  await loadRecentImports();
 }
 
 function toPayload(row: ImportPreviewRow): CreateVetusImportRequest {
@@ -451,7 +580,15 @@ function parseWeight(value: string): number | undefined {
 function statusClass(status: ImportStatus): string {
   if (status === 'Importado') return 'status-pill--success';
   if (status === 'Erro') return 'status-pill--danger';
+  if (status === 'Validado') return 'status-pill--success';
   return 'status-pill--ready';
+}
+
+function batchStatusLabel(status: VetusImportBatchSummary['status']): string {
+  if (status === 'dry_run') return 'Dry-run concluído';
+  if (status === 'completed') return 'Concluído';
+  if (status === 'rolled_back') return 'Revertido';
+  return 'Parcial — há rejeitados';
 }
 
 function importStatusLabel(status: VetusImportSummary['status']): string {
@@ -559,6 +696,22 @@ function formatDateTime(value: string): string {
   color: var(--color-text, #0f172a);
   font-size: 18px;
   font-weight: 700;
+}
+
+.batch-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border, #d1d5db);
+  color: var(--color-text-secondary, #64748b);
+  font-size: 13px;
+}
+
+.batch-summary strong {
+  overflow-wrap: anywhere;
+  color: var(--color-text, #0f172a);
+  font-size: 12px;
 }
 
 .subtle-line {

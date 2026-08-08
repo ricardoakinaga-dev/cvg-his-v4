@@ -16,8 +16,8 @@ Para esta verificação, considerei três níveis de cobertura:
 Esta verificação cruzou:
 
 - os relatórios já salvos em `docs/vetus/guides`;
-- o mapa de navegação em [03-shell-mapa-de-navegacao.md](/root/cvg-his-v2/docs/vetus/guides/03-shell-mapa-de-navegacao.md:1);
-- o inventário de rotas e integrações em [2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md:1);
+- o mapa de navegação em [03-shell-mapa-de-navegacao.md](../guides/03-shell-mapa-de-navegacao.md);
+- o inventário de rotas e integrações em [2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md](../guides/2026-04-23-inspecao-erp-beta-shell-rotas-integracoes.md);
 - os artefatos de inspeção salvos em `docs/vetus/inspection`;
 - os relatórios mais recentes de atendimento, laboratório, RH, marketing, estoque, financeiro e relatórios.
 

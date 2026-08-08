@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   AddInpatientProgressRequest,
@@ -9,7 +10,7 @@ import type {
   UpdateInpatientStatusRequest,
   AssignBedRequest
 } from '@cvg-his-v2/shared-contracts';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientProgressId,
   InpatientProgressSummary,
@@ -78,12 +79,14 @@ export interface InpatientServiceOptions {
 }
 
 export interface InpatientStayListFilters {
+  readonly accountId?: string;
   readonly encounterId?: string;
   readonly patientId?: string;
   readonly includeDischarged?: boolean;
 }
 
 export interface InpatientDailyChargeWorklistFilters {
+  readonly accountId?: string;
   readonly status?: InpatientDailyChargeSummary['status'];
   readonly unit?: string;
   readonly ward?: string;
@@ -111,8 +114,40 @@ export class InpatientService {
     this.#sectorBedService = options?.sectorBedService;
   }
 
-  #enqueuePersist(operation: () => Promise<void>): void {
-    this.#pendingPersist = this.#pendingPersist.then(operation).catch(() => {});
+  public async hydrateAccount(accountId: string): Promise<void> {
+    if (!this.#stayRepository) return;
+
+    const stays = await this.#stayRepository.findByAccountId(accountId as never);
+    await Promise.all(
+      stays.map(async (stay) => {
+        const [progress, occurrences, dailyCharges] = await Promise.all([
+          this.#progressRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
+          this.#occurrenceRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
+          this.#dailyChargeRepository?.findByStayId(stay.id) ?? Promise.resolve([])
+        ]);
+        this.#stays.set(stay.id, stay);
+        this.#progress.set(stay.id, [...progress]);
+        this.#occurrences.set(stay.id, [...occurrences]);
+        this.#dailyCharges.set(stay.id, [...dailyCharges]);
+      })
+    );
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void | Promise<void>): void {
+    this.#pendingPersist = this.#pendingPersist
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await operation();
+        } catch (error) {
+          await rollback?.();
+          throw error;
+        }
+      });
+  }
+
+  public async waitForPersistence(): Promise<void> {
+    await this.#pendingPersist;
   }
 
   private isValidTransition(currentStatus: string, newStatus: string): boolean {
@@ -156,14 +191,34 @@ export class InpatientService {
     }
   }
 
-  public admit(payload: CreateInpatientAdmissionRequest): InpatientStaySummary {
+  public admit(
+    payload: CreateInpatientAdmissionRequest,
+    expectedAccountId?: string,
+    admittedByUserId?: UserId
+  ): InpatientStaySummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
+    if (encounter.patientId !== payload.patientId) {
+      throw new ValidationError('patientId does not match the encounter');
+    }
+    const activeStay = this.list({ encounterId: encounter.id }).find(
+      (item) => item.status !== 'discharged'
+    );
+    if (activeStay) {
+      throw new ConflictError('Encounter already has an active inpatient stay', {
+        stayId: activeStay.id
+      });
+    }
     const now = nowIso();
     const stay: InpatientStaySummary = {
-      id: createCorrelationId('stay') as InpatientStayId,
+      id: randomUUID() as InpatientStayId,
       accountId: encounter.accountId,
       encounterId: encounter.id,
       patientId: encounter.patientId,
+      ownerId: encounter.ownerId,
+      admittedByUserId: admittedByUserId ?? encounter.createdByUserId,
       unit: requireNonEmptyString(payload.unit, 'unit'),
       ward: requireNonEmptyString(payload.ward, 'ward'),
       bed: requireNonEmptyString(payload.bed, 'bed'),
@@ -177,12 +232,35 @@ export class InpatientService {
     this.#progress.set(stay.id, []);
     this.#occurrences.set(stay.id, []);
     this.#dailyCharges.set(stay.id, []);
-    this.#enqueuePersist(async () => {
-      await this.persistStay(stay);
-      if (this.#sectorBedService && stay.bedId) {
-        await this.#sectorBedService.setBedOccupied(stay.bedId);
+    this.#enqueuePersist(
+      async () => {
+        if (stay.bedId && this.#stayRepository?.createWithBedOccupation) {
+          await this.#stayRepository.createWithBedOccupation(stay);
+        } else {
+          await this.persistStay(stay);
+        }
+        if (
+          this.#sectorBedService &&
+          stay.bedId &&
+          !this.#stayRepository?.createWithBedOccupation
+        ) {
+          await this.#sectorBedService.setBedOccupied(stay.bedId);
+        }
+      },
+      async () => {
+        this.#stays.delete(stay.id);
+        this.#progress.delete(stay.id);
+        this.#occurrences.delete(stay.id);
+        this.#dailyCharges.delete(stay.id);
+        if (
+          this.#sectorBedService &&
+          stay.bedId &&
+          !this.#stayRepository?.createWithBedOccupation
+        ) {
+          await this.#sectorBedService.setBedAvailable(stay.bedId);
+        }
       }
-    });
+    );
     return stay;
   }
 
@@ -196,6 +274,9 @@ export class InpatientService {
       throw new ValidationError('Cannot assign bed to discharged stay');
     }
 
+    let assignedBed: Awaited<ReturnType<SectorBedService['getBedOrThrow']>> | undefined;
+    let assignedSector: Awaited<ReturnType<SectorBedService['getSectorOrThrow']>> | undefined;
+    const atomicBedTransition = Boolean(this.#stayRepository?.updateWithBedTransition);
     if (this.#sectorBedService) {
       const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
       if (bed.sectorId !== payload.sectorId) {
@@ -204,11 +285,14 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
-      await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
-
-      if (stay.bedId) {
-        await this.#sectorBedService.setBedAvailable(stay.bedId);
+      if (!atomicBedTransition) {
+        await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+        if (stay.bedId) {
+          await this.#sectorBedService.setBedAvailable(stay.bedId);
+        }
       }
+      assignedBed = bed;
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(payload.sectorId as SectorId);
     }
 
     const now = nowIso();
@@ -216,13 +300,28 @@ export class InpatientService {
       ...stay,
       sectorId: payload.sectorId as SectorId,
       bedId: payload.bedId as BedId,
+      ward: assignedSector?.name ?? stay.ward,
+      bed: assignedBed?.code ?? stay.bed,
       updatedAt: now
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      await this.updateStay(updated);
-    });
+    this.#enqueuePersist(
+      async () => {
+        if (this.#stayRepository?.updateWithBedTransition) {
+          await this.#stayRepository.updateWithBedTransition(updated, stay.bedId ?? null);
+        } else {
+          await this.updateStay(updated);
+        }
+      },
+      async () => {
+        this.#stays.set(stayId, stay);
+        if (this.#sectorBedService && !atomicBedTransition) {
+          await this.#sectorBedService.setBedAvailable(payload.bedId as BedId);
+          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.bedId);
+        }
+      }
+    );
 
     return updated;
   }
@@ -241,6 +340,9 @@ export class InpatientService {
       throw new Error(`Invalid status transition from '${stay.status}' to 'transferred'`);
     }
 
+    let assignedBed: Awaited<ReturnType<SectorBedService['getBedOrThrow']>> | undefined;
+    let assignedSector: Awaited<ReturnType<SectorBedService['getSectorOrThrow']>> | undefined;
+    const atomicBedTransition = Boolean(this.#stayRepository?.updateWithBedTransition);
     if (this.#sectorBedService) {
       const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
       if (bed.sectorId !== payload.sectorId) {
@@ -249,35 +351,58 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
-      await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
-
-      if (stay.bedId) {
-        await this.#sectorBedService.setBedAvailable(stay.bedId);
+      if (!atomicBedTransition) {
+        await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+        if (stay.bedId) {
+          await this.#sectorBedService.setBedAvailable(stay.bedId);
+        }
       }
+      assignedBed = bed;
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(payload.sectorId as SectorId);
     }
 
     const now = nowIso();
     const updated: InpatientStaySummary = {
       ...stay,
       status: 'transferred',
+      sectorId: payload.sectorId as SectorId,
+      bedId: payload.bedId as BedId,
+      ward: assignedSector?.name ?? stay.ward,
+      bed: assignedBed?.code ?? stay.bed,
       transferToSectorId: payload.sectorId as SectorId,
       transferToBedId: payload.bedId as BedId,
       updatedAt: now
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      await this.updateStay(updated);
-    });
+    this.#enqueuePersist(
+      async () => {
+        if (this.#stayRepository?.updateWithBedTransition) {
+          await this.#stayRepository.updateWithBedTransition(updated, stay.bedId ?? null);
+        } else {
+          await this.updateStay(updated);
+        }
+      },
+      async () => {
+        this.#stays.set(stayId, stay);
+        if (this.#sectorBedService && !atomicBedTransition) {
+          await this.#sectorBedService.setBedAvailable(payload.bedId as BedId);
+          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.bedId);
+        }
+      }
+    );
 
     return updated;
   }
 
   public list(filters?: string | InpatientStayListFilters): readonly InpatientStaySummary[] {
     const normalizedFilters =
-      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+      typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
 
     return Array.from(this.#stays.values()).filter((stay) => {
+      if (normalizedFilters.accountId && stay.accountId !== normalizedFilters.accountId) {
+        return false;
+      }
       if (normalizedFilters.encounterId && stay.encounterId !== normalizedFilters.encounterId) {
         return false;
       }
@@ -305,8 +430,13 @@ export class InpatientService {
     payload: AddInpatientProgressRequest
   ): InpatientProgressSummary {
     const stay = this.getOrThrow(payload.stayId as never);
+
+    if (stay.status === 'discharged') {
+      throw new ValidationError('Cannot add progress to discharged stay');
+    }
+
     const progress: InpatientProgressSummary = {
-      id: createCorrelationId('stayprog') as InpatientProgressId,
+      id: randomUUID() as InpatientProgressId,
       accountId: stay.accountId,
       stayId: stay.id,
       encounterId: stay.encounterId,
@@ -316,9 +446,12 @@ export class InpatientService {
     };
     const current = this.#progress.get(stay.id) ?? [];
     this.#progress.set(stay.id, [progress, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistProgress(progress);
-    });
+    this.#enqueuePersist(
+      async () => this.persistProgress(progress),
+      () => {
+        this.#progress.set(stay.id, current);
+      }
+    );
     return progress;
   }
 
@@ -351,9 +484,12 @@ export class InpatientService {
     };
     const current = this.#occurrences.get(stay.id) ?? [];
     this.#occurrences.set(stay.id, [occurrence, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistOccurrence(occurrence);
-    });
+    this.#enqueuePersist(
+      async () => this.persistOccurrence(occurrence),
+      () => {
+        this.#occurrences.set(stay.id, current);
+      }
+    );
     return occurrence;
   }
 
@@ -399,9 +535,12 @@ export class InpatientService {
     };
     const current = this.#dailyCharges.get(stay.id) ?? [];
     this.#dailyCharges.set(stay.id, [dailyCharge, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistDailyCharge(dailyCharge);
-    });
+    this.#enqueuePersist(
+      async () => this.persistDailyCharge(dailyCharge),
+      () => {
+        this.#dailyCharges.set(stay.id, current);
+      }
+    );
     return dailyCharge;
   }
 
@@ -426,6 +565,7 @@ export class InpatientService {
         }));
       })
       .filter((charge) => (filters?.status ? charge.status === filters.status : true))
+      .filter((charge) => (filters?.accountId ? charge.accountId === filters.accountId : true))
       .filter((charge) => (filters?.unit ? charge.unit === filters.unit : true))
       .filter((charge) => (filters?.ward ? charge.ward === filters.ward : true))
       .sort((left, right) => {
@@ -462,9 +602,12 @@ export class InpatientService {
       stayId,
       charges.map((item) => (item.id === chargeId ? updated : item))
     );
-    this.#enqueuePersist(async () => {
-      await this.updateDailyCharge(updated);
-    });
+    this.#enqueuePersist(
+      async () => this.updateDailyCharge(updated),
+      () => {
+        this.#dailyCharges.set(stayId, charges);
+      }
+    );
     return updated;
   }
 
@@ -506,26 +649,48 @@ export class InpatientService {
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      if (
-        this.#sectorBedService &&
-        stay.bedId &&
-        (payload.status === 'discharged' || payload.status === 'transferred')
-      ) {
-        await this.#sectorBedService.setBedAvailable(stay.bedId);
+    this.#enqueuePersist(
+      async () => {
+        const releaseBed =
+          stay.bedId && (payload.status === 'discharged' || payload.status === 'transferred')
+            ? stay.bedId
+            : null;
+        if (this.#stayRepository?.updateWithBedTransition) {
+          await this.#stayRepository.updateWithBedTransition(
+            updated,
+            stay.bedId ?? null,
+            releaseBed
+          );
+        } else {
+          if (this.#sectorBedService && releaseBed) {
+            await this.#sectorBedService.setBedAvailable(releaseBed);
+          }
+          await this.updateStay(updated);
+        }
+      },
+      async () => {
+        this.#stays.set(stayId, stay);
+        if (
+          this.#sectorBedService &&
+          !this.#stayRepository?.updateWithBedTransition &&
+          stay.bedId &&
+          (payload.status === 'discharged' || payload.status === 'transferred')
+        ) {
+          await this.#sectorBedService.setBedOccupied(stay.bedId);
+        }
       }
-      await this.updateStay(updated);
-    });
+    );
     return updated;
   }
 
   public buildHandoverPreview(filters?: {
+    readonly accountId?: string;
     readonly unit?: string;
     readonly ward?: string;
     readonly includeDischarged?: boolean;
   }): InpatientHandoverPreviewResponse {
     const includeDischarged = filters?.includeDischarged ?? false;
-    const items = this.list()
+    const items = this.list({ accountId: filters?.accountId, includeDischarged })
       .filter((stay) => includeDischarged || stay.status !== 'discharged')
       .filter((stay) => !filters?.unit || stay.unit === filters.unit)
       .filter((stay) => !filters?.ward || stay.ward === filters.ward)
@@ -539,9 +704,9 @@ export class InpatientService {
       .map((stay) => {
         const latestProgress = this.listProgress(stay.id)[0];
         const requiresAttention =
-          stay.status === 'transferred'
-          || (latestProgress?.note.toLowerCase().includes('urg') ?? false)
-          || (latestProgress?.note.toLowerCase().includes('pend') ?? false);
+          stay.status === 'transferred' ||
+          (latestProgress?.note.toLowerCase().includes('urg') ?? false) ||
+          (latestProgress?.note.toLowerCase().includes('pend') ?? false);
 
         return {
           stayId: stay.id,

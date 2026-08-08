@@ -1,5 +1,6 @@
 import type {
   CashDrawerDashboardResponse,
+  CashReconciliationResponse,
   CloseCashRegisterRequest,
   CreateCashMovementRequest,
   OpenCashRegisterRequest
@@ -11,6 +12,11 @@ export type CashDrawerDashboard = CashDrawerDashboardResponse;
 export const cashService = {
   getDashboard() {
     return apiRequest<CashDrawerDashboard>('/cash-register/dashboard');
+  },
+
+  getReconciliation(registerId?: string) {
+    const suffix = registerId ? `?registerId=${encodeURIComponent(registerId)}` : '';
+    return apiRequest<CashReconciliationResponse>(`/cash-register/reconciliation${suffix}`);
   },
 
   openRegister(payload: OpenCashRegisterRequest) {

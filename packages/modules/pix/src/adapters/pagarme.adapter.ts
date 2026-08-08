@@ -197,14 +197,14 @@ export class PagarMePixAdapter implements PixProvider {
 
   async confirmPayment(
     transactionId: PixTransactionId,
-    _providerConfirmationId?: string
+    providerConfirmationId?: string
   ): Promise<PixStatusResult> {
     // Called by webhook handler when Pagar.me confirms PIX settlement.
     // Pagar.me sends settlement notifications via webhooks.
     // This method allows manual/confirmation override.
     const response = await this.#request<PagarMeQrCodeStatusResponse>(
       'GET',
-      `/core/v5/pix/qr_codes/${transactionId}`
+      `/core/v5/pix/qr_codes/${providerConfirmationId ?? transactionId}`
     );
 
     return {

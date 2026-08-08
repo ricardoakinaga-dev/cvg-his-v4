@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, time, uuid, uniqueIndex } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, time, uuid, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { users } from './users.js';
@@ -17,7 +17,10 @@ export const professionalAvailability = pgTable(
     startTime: time('start_time').notNull(), // HH:MM
     endTime: time('end_time').notNull(), // HH:MM
     slotDurationMinutes: integer('slot_duration_minutes').notNull().default(30),
-    notes: text('notes')
+    notes: text('notes'),
+    timezone: varchar('timezone', { length: 64 }).notNull().default('America/Sao_Paulo'),
+    effectiveFrom: date('effective_from'),
+    effectiveUntil: date('effective_until')
   },
   (table) => ({
     accountProfessionalDayIdx: uniqueIndex('uq_prof_avail_account_prof_day').on(

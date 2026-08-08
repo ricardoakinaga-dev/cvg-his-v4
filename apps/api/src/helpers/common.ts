@@ -2,8 +2,9 @@
  * Common request/response helpers shared across route handlers.
  * Extracted from server.ts to reduce coupling and enable route extraction.
  */
-import type { IncomingMessage } from 'node:http';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
+
+export { readJsonBody, readJsonBodyOrEmpty } from './request-body.js';
 
 export interface FieldSpec {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -17,25 +18,6 @@ export interface FieldSpec {
  * Read and parse JSON body from an incoming request.
  * Throws ValidationError if body is empty or malformed JSON.
  */
-export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  if (chunks.length === 0) {
-    throw new ValidationError('Request body is required');
-  }
-
-  const body = Buffer.concat(chunks).toString('utf8');
-  try {
-    return JSON.parse(body) as unknown;
-  } catch (error) {
-    throw new ValidationError('Request body must be valid JSON', { cause: error as Error });
-  }
-}
-
 /**
  * Validate a request body against a field specification.
  * Throws ValidationError with field-level detail on failure.

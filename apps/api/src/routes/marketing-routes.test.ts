@@ -203,10 +203,27 @@ test('handleMarketingRoutes exposes campaign planning lifecycle', async () => {
     'corr-dispatch',
     routeHandlers
   );
-  const dispatch = dispatchResponse.bodyJson<{ summary: { sent: number; failed: number }; deliveries: unknown[] }>();
+  const dispatch = dispatchResponse.bodyJson<{
+    summary: { sent: number; failed: number };
+    deliveries: Array<{ id: string; status: string; attemptCount: number }>;
+  }>();
   assert.equal(dispatch.summary.sent, 1);
   assert.equal(dispatch.summary.failed, 1);
   assert.equal(dispatch.deliveries.length, 2);
+
+  const failedDelivery = dispatch.deliveries.find((delivery) => delivery.status === 'failed');
+  assert.ok(failedDelivery);
+  const retryResponse = new MockResponse();
+  await handleMarketingRoutes(
+    `/marketing/deliveries/${failedDelivery.id}/retry`,
+    request('POST', undefined, `/marketing/deliveries/${failedDelivery.id}/retry`),
+    retryResponse as never,
+    'corr-retry-delivery',
+    routeHandlers
+  );
+  const retried = retryResponse.bodyJson<{ status: string; attemptCount: number }>();
+  assert.equal(retried.status, 'failed');
+  assert.equal(retried.attemptCount, 2);
 
   const deliveriesResponse = new MockResponse();
   await handleMarketingRoutes(

@@ -53,12 +53,12 @@ class MockResponse extends Writable {
 
 function createRequest(
   payload: Record<string, unknown>,
-  options: { method?: string; url?: string } = {}
+  options: { method?: string; url?: string; webhookSecret?: string } = {}
 ) {
   return {
     method: options.method ?? 'POST',
     url: options.url ?? '/webhooks/whatsapp/inbound',
-    headers: {},
+    headers: { 'x-webhook-secret': options.webhookSecret ?? 'test-webhook-secret' },
     socket: { remoteAddress: '127.0.0.1' },
     [Symbol.asyncIterator]: async function* () {
       if (Object.keys(payload).length > 0) {
@@ -147,6 +147,7 @@ test('handleWhatsAppRoutes skips inbound mutations when feature flag is disabled
       } as never,
       audit,
       notificationsWhatsappInboundActionsEnabled: false,
+      inboundWebhookSecret: 'test-webhook-secret',
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -189,6 +190,7 @@ test('handleWhatsAppRoutes confirms appointment when inbound actions are enabled
       } as never,
       audit,
       notificationsWhatsappInboundActionsEnabled: true,
+      inboundWebhookSecret: 'test-webhook-secret',
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -198,6 +200,37 @@ test('handleWhatsAppRoutes confirms appointment when inbound actions are enabled
   assert.equal(response.bodyText(), 'CONFIRMADO');
   assert.equal(checkInCalls, 1);
   assert.equal(audit.list().some((entry) => entry.action === 'whatsapp_confirm'), true);
+});
+
+test('handleWhatsAppRoutes rejects inbound mutations without a valid webhook secret', async () => {
+  const response = new MockResponse();
+  let cancelCalls = 0;
+  const handled = await handleWhatsAppRoutes(
+    '/webhooks/whatsapp/inbound',
+    createRequest(
+      { Body: 'CANCELAR', AppointmentId: 'appt-1' },
+      { webhookSecret: 'forged-secret' }
+    ),
+    response as never,
+    'corr-wa-forged',
+    {
+      scheduling: {
+        getAppointmentOrThrow: () => createAppointment(),
+        checkIn: async () => {},
+        cancelAppointment: async () => {
+          cancelCalls += 1;
+        }
+      } as never,
+      audit: new AuditService(),
+      notificationsWhatsappInboundActionsEnabled: true,
+      inboundWebhookSecret: 'test-webhook-secret',
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 401);
+  assert.equal(cancelCalls, 0);
 });
 
 test('handleWhatsAppRoutes exposes operational report for appointment reminders', async () => {
@@ -264,6 +297,7 @@ test('handleWhatsAppRoutes exposes operational report for appointment reminders'
       } as never,
       audit,
       notificationsWhatsappInboundActionsEnabled: true,
+      inboundWebhookSecret: 'test-webhook-secret',
       requirePrincipal: () => createPrincipal()
     }
   );

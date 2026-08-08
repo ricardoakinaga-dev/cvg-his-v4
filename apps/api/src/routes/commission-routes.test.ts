@@ -161,7 +161,11 @@ test('handleCommissionRoutes exposes rule, calculation, review and payment lifec
   const payResponse = new MockResponse();
   await handleCommissionRoutes(
     `/commission-calculations/${calculation.id}/pay`,
-    request('POST', undefined, `/commission-calculations/${calculation.id}/pay`),
+    request(
+      'POST',
+      { paymentMethod: 'cash', paymentReference: 'COM-TEST-CASH' },
+      `/commission-calculations/${calculation.id}/pay`
+    ),
     payResponse as never,
     'corr-pay',
     routeHandlers

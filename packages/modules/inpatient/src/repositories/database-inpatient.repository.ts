@@ -1,10 +1,11 @@
-import { eq } from 'drizzle-orm';
-import type { DatabaseClient } from '@cvg-his-v2/shared-database';
+import { and, desc, eq } from 'drizzle-orm';
+import { withTenantTransaction, type DatabaseClient } from '@cvg-his-v2/shared-database';
 import {
   inpatientStays,
   inpatientProgress,
   inpatientOccurrences,
-  inpatientDailyCharges
+  inpatientDailyCharges,
+  beds
 } from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
@@ -23,12 +24,20 @@ import type {
   SectorId,
   BedId
 } from '@cvg-his-v2/shared-types';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface InpatientStayRepository {
   create(stay: InpatientStaySummary): Promise<void>;
+  createWithBedOccupation?(stay: InpatientStaySummary): Promise<void>;
   update(stay: InpatientStaySummary): Promise<void>;
+  updateWithBedTransition?(
+    stay: InpatientStaySummary,
+    previousBedId: BedId | null,
+    releaseBedId?: BedId | null
+  ): Promise<void>;
   findById(id: InpatientStayId): Promise<InpatientStaySummary | null>;
   findByEncounterId(encounterId: EncounterId): Promise<readonly InpatientStaySummary[]>;
+  findByAccountId(accountId: AccountId): Promise<readonly InpatientStaySummary[]>;
 }
 
 export interface InpatientProgressRepository {
@@ -55,11 +64,50 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
   }
 
   public async create(stay: InpatientStaySummary): Promise<void> {
-    await this.#db.insert(inpatientStays).values({
+    const accountId = requireAccountId();
+    if (stay.accountId !== accountId) {
+      throw new Error('Inpatient stay account does not match tenant context');
+    }
+    await this.#db.insert(inpatientStays).values(this.toInsert(stay));
+  }
+
+  public async createWithBedOccupation(stay: InpatientStaySummary): Promise<void> {
+    if (!stay.bedId) {
+      await this.create(stay);
+      return;
+    }
+    const accountId = requireAccountId();
+    if (stay.accountId !== accountId) {
+      throw new Error('Inpatient stay account does not match tenant context');
+    }
+    await withTenantTransaction(accountId, async (transaction) => {
+      await transaction.insert(inpatientStays).values(this.toInsert(stay));
+      const occupied = await transaction
+        .update(beds)
+        .set({ status: 'occupied', updatedAt: new Date(stay.updatedAt) })
+        .where(
+          and(
+            eq(beds.id, stay.bedId!),
+            eq(beds.accountId, accountId),
+            eq(beds.status, 'available'),
+            eq(beds.active, true)
+          )
+        )
+        .returning({ id: beds.id });
+      if (occupied.length !== 1) {
+        throw new Error('Bed is not available for admission');
+      }
+    });
+  }
+
+  private toInsert(stay: InpatientStaySummary): typeof inpatientStays.$inferInsert {
+    return {
       id: stay.id,
       accountId: stay.accountId,
       encounterId: stay.encounterId,
       patientId: stay.patientId,
+      ownerId: stay.ownerId,
+      admittedByUserId: stay.admittedByUserId,
       unit: stay.unit,
       ward: stay.ward,
       bed: stay.bed,
@@ -75,14 +123,21 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       transferToBedId: stay.transferToBedId ?? null,
       createdAt: new Date(stay.admittedAt),
       updatedAt: new Date(stay.updatedAt)
-    });
+    };
   }
 
   public async update(stay: InpatientStaySummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (stay.accountId !== accountId) {
+      throw new Error('Inpatient stay account does not match tenant context');
+    }
     await this.#db
       .update(inpatientStays)
       .set({
         status: stay.status,
+        unit: stay.unit,
+        ward: stay.ward,
+        bed: stay.bed,
         sectorId: stay.sectorId ?? null,
         bedId: stay.bedId ?? null,
         dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
@@ -93,14 +148,92 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
         transferToBedId: stay.transferToBedId ?? null,
         updatedAt: new Date(stay.updatedAt)
       })
-      .where(eq(inpatientStays.id, stay.id));
+      .where(and(eq(inpatientStays.id, stay.id), eq(inpatientStays.accountId, accountId)));
+  }
+
+  public async updateWithBedTransition(
+    stay: InpatientStaySummary,
+    previousBedId: BedId | null,
+    releaseBedId?: BedId | null
+  ): Promise<void> {
+    const accountId = requireAccountId();
+    if (stay.accountId !== accountId) {
+      throw new Error('Inpatient stay account does not match tenant context');
+    }
+    await withTenantTransaction(accountId, async (transaction) => {
+      if (stay.bedId && stay.bedId !== previousBedId) {
+        const occupied = await transaction
+          .update(beds)
+          .set({ status: 'occupied', updatedAt: new Date(stay.updatedAt) })
+          .where(
+            and(
+              eq(beds.id, stay.bedId),
+              eq(beds.accountId, accountId),
+              eq(beds.status, 'available'),
+              eq(beds.active, true)
+            )
+          )
+          .returning({ id: beds.id });
+        if (occupied.length !== 1) {
+          throw new Error('Bed is not available for inpatient transition');
+        }
+      }
+
+      if (releaseBedId) {
+        const released = await transaction
+          .update(beds)
+          .set({ status: 'available', updatedAt: new Date(stay.updatedAt) })
+          .where(
+            and(
+              eq(beds.id, releaseBedId),
+              eq(beds.accountId, accountId),
+              eq(beds.status, 'occupied')
+            )
+          )
+          .returning({ id: beds.id });
+        if (released.length !== 1) {
+          throw new Error('Bed is not occupied by the current inpatient transition');
+        }
+      } else if (previousBedId && previousBedId !== stay.bedId) {
+        await transaction
+          .update(beds)
+          .set({ status: 'available', updatedAt: new Date(stay.updatedAt) })
+          .where(
+            and(
+              eq(beds.id, previousBedId),
+              eq(beds.accountId, accountId),
+              eq(beds.status, 'occupied')
+            )
+          );
+      }
+
+      await transaction
+        .update(inpatientStays)
+        .set({
+          status: stay.status,
+          unit: stay.unit,
+          ward: stay.ward,
+          bed: stay.bed,
+          sectorId: stay.sectorId ?? null,
+          bedId: stay.bedId ?? null,
+          dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
+          dischargeReason: stay.dischargeReason ?? null,
+          transferToUnit: stay.transferToUnit ?? null,
+          transferToWard: stay.transferToWard ?? null,
+          transferToSectorId: stay.transferToSectorId ?? null,
+          transferToBedId: stay.transferToBedId ?? null,
+          updatedAt: new Date(stay.updatedAt)
+        })
+        .where(and(eq(inpatientStays.id, stay.id), eq(inpatientStays.accountId, accountId)));
+    });
   }
 
   public async findById(id: InpatientStayId): Promise<InpatientStaySummary | null> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(inpatientStays)
-      .where(eq(inpatientStays.id, id))
+      .where(and(eq(inpatientStays.id, id), eq(inpatientStays.accountId, accountId)))
       .limit(1);
 
     if (result.length === 0) {
@@ -113,11 +246,26 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
   public async findByEncounterId(
     encounterId: EncounterId
   ): Promise<readonly InpatientStaySummary[]> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(inpatientStays)
-      .where(eq(inpatientStays.encounterId, encounterId));
+      .where(
+        and(eq(inpatientStays.encounterId, encounterId), eq(inpatientStays.accountId, accountId))
+      );
 
+    return result.map((row) => this.mapRowToStay(row));
+  }
+
+  public async findByAccountId(accountId: AccountId): Promise<readonly InpatientStaySummary[]> {
+    if (accountId !== requireAccountId()) {
+      throw new Error('Inpatient stay account does not match tenant context');
+    }
+    const result = await this.#db
+      .select()
+      .from(inpatientStays)
+      .where(eq(inpatientStays.accountId, accountId))
+      .orderBy(desc(inpatientStays.admittedAt));
     return result.map((row) => this.mapRowToStay(row));
   }
 
@@ -127,6 +275,8 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       accountId: row.accountId as AccountId,
       encounterId: row.encounterId as EncounterId,
       patientId: row.patientId as PatientId,
+      ownerId: row.ownerId as InpatientStaySummary['ownerId'],
+      admittedByUserId: row.admittedByUserId as UserId,
       unit: row.unit,
       ward: row.ward,
       bed: row.bed,
@@ -153,6 +303,10 @@ export class DatabaseInpatientProgressRepository implements InpatientProgressRep
   }
 
   public async create(progress: InpatientProgressSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (progress.accountId !== accountId) {
+      throw new Error('Inpatient progress account does not match tenant context');
+    }
     await this.#db.insert(inpatientProgress).values({
       id: progress.id,
       accountId: progress.accountId,
@@ -165,10 +319,12 @@ export class DatabaseInpatientProgressRepository implements InpatientProgressRep
   }
 
   public async findByStayId(stayId: InpatientStayId): Promise<readonly InpatientProgressSummary[]> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(inpatientProgress)
-      .where(eq(inpatientProgress.stayId, stayId));
+      .where(and(eq(inpatientProgress.stayId, stayId), eq(inpatientProgress.accountId, accountId)))
+      .orderBy(desc(inpatientProgress.createdAt));
 
     return result.map((row) => ({
       id: row.id as InpatientProgressId,
@@ -190,6 +346,10 @@ export class DatabaseInpatientOccurrenceRepository implements InpatientOccurrenc
   }
 
   public async create(occurrence: InpatientOccurrenceSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (occurrence.accountId !== accountId) {
+      throw new Error('Inpatient occurrence account does not match tenant context');
+    }
     await this.#db.insert(inpatientOccurrences).values({
       id: occurrence.id,
       accountId: occurrence.accountId,
@@ -204,11 +364,16 @@ export class DatabaseInpatientOccurrenceRepository implements InpatientOccurrenc
     });
   }
 
-  public async findByStayId(stayId: InpatientStayId): Promise<readonly InpatientOccurrenceSummary[]> {
+  public async findByStayId(
+    stayId: InpatientStayId
+  ): Promise<readonly InpatientOccurrenceSummary[]> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(inpatientOccurrences)
-      .where(eq(inpatientOccurrences.stayId, stayId));
+      .where(
+        and(eq(inpatientOccurrences.stayId, stayId), eq(inpatientOccurrences.accountId, accountId))
+      );
 
     return result.map((row) => ({
       id: row.id as InpatientOccurrenceId,
@@ -233,6 +398,10 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
   }
 
   public async create(charge: InpatientDailyChargeSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (charge.accountId !== accountId) {
+      throw new Error('Inpatient daily charge account does not match tenant context');
+    }
     await this.#db.insert(inpatientDailyCharges).values({
       id: charge.id,
       accountId: charge.accountId,
@@ -253,6 +422,10 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
   }
 
   public async update(charge: InpatientDailyChargeSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (charge.accountId !== accountId) {
+      throw new Error('Inpatient daily charge account does not match tenant context');
+    }
     await this.#db
       .update(inpatientDailyCharges)
       .set({
@@ -260,14 +433,24 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
         billingRecordId: charge.billingRecordId ?? null,
         updatedAt: new Date(charge.updatedAt)
       })
-      .where(eq(inpatientDailyCharges.id, charge.id));
+      .where(
+        and(eq(inpatientDailyCharges.id, charge.id), eq(inpatientDailyCharges.accountId, accountId))
+      );
   }
 
-  public async findByStayId(stayId: InpatientStayId): Promise<readonly InpatientDailyChargeSummary[]> {
+  public async findByStayId(
+    stayId: InpatientStayId
+  ): Promise<readonly InpatientDailyChargeSummary[]> {
+    const accountId = requireAccountId();
     const result = await this.#db
       .select()
       .from(inpatientDailyCharges)
-      .where(eq(inpatientDailyCharges.stayId, stayId));
+      .where(
+        and(
+          eq(inpatientDailyCharges.stayId, stayId),
+          eq(inpatientDailyCharges.accountId, accountId)
+        )
+      );
 
     return result.map((row) => ({
       id: row.id as InpatientDailyChargeId,

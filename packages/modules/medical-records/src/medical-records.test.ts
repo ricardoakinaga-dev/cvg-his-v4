@@ -17,6 +17,7 @@ function createService() {
   const entries: unknown[] = [];
   const timeline: unknown[] = [];
   const revisions: unknown[] = [];
+  let encounterStatus: 'in_care' | 'closed' = 'in_care';
 
   const medicalRecordRepository: MedicalRecordRepository = {
     async create(record) {
@@ -72,6 +73,7 @@ function createService() {
           id: encounterId,
           accountId: 'acc_test',
           patientId: 'patient_1',
+          status: encounterStatus,
           createdByUserId: 'user_creator'
         };
       }
@@ -79,7 +81,8 @@ function createService() {
     patients: {
       getOrThrow(patientId: string) {
         return {
-          id: patientId
+          id: patientId,
+          accountId: 'acc_test'
         };
       }
     } as never,
@@ -89,7 +92,16 @@ function createService() {
     entryRevisionRepository
   });
 
-  return { service, medicalRecords, entries, timeline, revisions };
+  return {
+    service,
+    medicalRecords,
+    entries,
+    timeline,
+    revisions,
+    setEncounterStatus(status: 'in_care' | 'closed') {
+      encounterStatus = status;
+    }
+  };
 }
 
 test('DatabaseMedicalRecordRepository treats prefixed encounter IDs rejected by UUID columns as missing', async () => {
@@ -169,7 +181,26 @@ test('MedicalRecordsService addEntry stores entry and appends timeline', async (
   assert.equal(service.listTimelineByEncounter('encounter_1' as never)[0].eventType, 'entry_added');
 });
 
+test('MedicalRecordsService uses the in-memory atomic fallback for synthetic account IDs', async () => {
+  const { service, entries, timeline } = createService();
+
+  const entry = await service.createEntryAtomically('doctor_1' as never, {
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    entryType: 'anamnesis',
+    title: 'Anamnese inicial',
+    content: 'Fluxo de demonstração'
+  });
+
+  assert.equal(entry.title, 'Anamnese inicial');
+  assert.equal(entries.length, 1);
+  assert.equal(timeline.length, 2);
+  assert.equal(service.listEntriesByEncounter('encounter_1' as never).length, 1);
+});
+
 test('MedicalRecordsService addEntry rolls back memory when entry persistence fails', async () => {
+  let failNextEntryPersistence = true;
+  const persistedEntryIds: string[] = [];
   const failingService = new MedicalRecordsService({
     encounters: {
       getOrThrow(encounterId: string) {
@@ -202,8 +233,12 @@ test('MedicalRecordsService addEntry rolls back memory when entry persistence fa
       }
     },
     clinicalEntryRepository: {
-      async create() {
-        throw new Error('database unavailable');
+      async create(entry) {
+        if (failNextEntryPersistence) {
+          failNextEntryPersistence = false;
+          throw new Error('database unavailable');
+        }
+        persistedEntryIds.push(entry.id);
       },
       async update() {},
       async findById() {
@@ -236,6 +271,16 @@ test('MedicalRecordsService addEntry rolls back memory when entry persistence fa
       .some((item) => item.id === entry.id),
     false
   );
+
+  const recoveredEntry = failingService.addEntry('doctor_1' as never, {
+    encounterId: 'encounter_rollback',
+    patientId: 'patient_1',
+    entryType: 'progress_note',
+    title: 'Persistencia recuperada',
+    content: 'A fila deve aceitar novas escritas após a falha anterior.'
+  });
+  await failingService.waitForPersistence();
+  assert.deepEqual(persistedEntryIds, [recoveredEntry.id]);
 });
 
 test('MedicalRecordsService addEntry rejects patient mismatch', () => {
@@ -252,6 +297,147 @@ test('MedicalRecordsService addEntry rejects patient mismatch', () => {
       }),
     NotFoundError
   );
+});
+
+test('MedicalRecordsService rejects entry writes after encounter closure', () => {
+  const { service, setEncounterStatus } = createService();
+  const entry = service.addEntry('doctor_1' as never, {
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    entryType: 'progress_note',
+    title: 'Evolucao',
+    content: 'Paciente estavel'
+  });
+  setEncounterStatus('closed');
+
+  assert.throws(
+    () =>
+      service.addEntry('doctor_1' as never, {
+        encounterId: 'encounter_1',
+        patientId: 'patient_1',
+        entryType: 'progress_note',
+        title: 'Alteracao tardia',
+        content: 'Nao deve ser aceita'
+      }),
+    /Closed encounter is read-only/
+  );
+  assert.throws(
+    () =>
+      service.updateEntry('doctor_1' as never, entry.id as never, {
+        content: 'Alteracao tardia',
+        reason: 'Tentativa apos fechamento'
+      }),
+    /Closed encounter is read-only/
+  );
+  assert.throws(
+    () =>
+      service.archiveEntry('doctor_1' as never, entry.id as never, {
+        reason: 'Tentativa apos fechamento'
+      }),
+    /Closed encounter is read-only/
+  );
+  assert.throws(
+    () =>
+      service.appendAttachmentEvent(
+        'encounter_1' as never,
+        'doctor_1' as never,
+        'attachment_1',
+        'Exame tardio'
+      ),
+    /Closed encounter is read-only/
+  );
+  assert.throws(
+    () =>
+      service.appendAdvancedCareEvent(
+        'encounter_1' as never,
+        'doctor_1' as never,
+        'diagnostic_requested',
+        'Pedido tardio'
+      ),
+    /Closed encounter is read-only/
+  );
+});
+
+test('MedicalRecordsService does not create a missing record for a closed encounter', () => {
+  const { service, setEncounterStatus } = createService();
+  setEncounterStatus('closed');
+
+  assert.throws(
+    () => service.getRecordByEncounterOrThrow('encounter_1' as never),
+    /Closed encounter is read-only/
+  );
+});
+
+test('MedicalRecordsService hydrates repository entries before update after cache cold start', async () => {
+  const record = {
+    id: 'record_1',
+    accountId: 'acc_test',
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    status: 'open',
+    createdAt: '2026-07-11T00:00:00.000Z',
+    updatedAt: '2026-07-11T00:00:00.000Z'
+  };
+  const entry = {
+    id: 'entry_1',
+    accountId: 'acc_test',
+    medicalRecordId: 'record_1',
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    entryType: 'progress_note',
+    title: 'Evolucao',
+    content: 'Original',
+    authoredByUserId: 'doctor_1',
+    version: 1,
+    createdAt: '2026-07-11T00:00:00.000Z',
+    updatedAt: '2026-07-11T00:00:00.000Z'
+  };
+  const service = new MedicalRecordsService({
+    encounters: {
+      getOrThrow() {
+        return {
+          id: 'encounter_1',
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          status: 'in_care',
+          createdByUserId: 'user_creator'
+        };
+      }
+    } as never,
+    patients: { getOrThrow: () => ({ id: 'patient_1' }) } as never,
+    medicalRecordRepository: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return record as never;
+      },
+      async findByEncounterId() {
+        return record as never;
+      },
+      async findAll() {
+        return [record] as never;
+      }
+    },
+    clinicalEntryRepository: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return entry as never;
+      },
+      async findByMedicalRecordId() {
+        return [entry] as never;
+      }
+    }
+  });
+
+  await service.getEntryOrThrowAsync('entry_1' as never);
+  const updated = service.updateEntry('doctor_1' as never, 'entry_1' as never, {
+    content: 'Atualizada após restart',
+    reason: 'Correção clínica'
+  });
+
+  assert.equal(updated.version, 2);
+  assert.equal(updated.content, 'Atualizada após restart');
 });
 
 test('MedicalRecordsService updateEntry increments version and creates revision', async () => {

@@ -13,6 +13,7 @@
         role="dialog"
         :aria-modal="true"
         :aria-labelledby="title ? modalId + '-title' : undefined"
+        :aria-label="title ? undefined : 'Dialog'"
       >
         <div class="ds-modal__header">
           <h2 v-if="title" :id="modalId + '-title'" class="ds-modal__title">{{ title }}</h2>
@@ -37,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type ComponentPublicInstance } from 'vue';
+import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue';
 
 export interface DsModalProps {
   open: boolean;
@@ -61,6 +62,7 @@ const emit = defineEmits<{
 
 const modalId = computed(() => `ds-modal-${Math.random().toString(36).slice(2, 8)}`);
 const modalRef = ref<HTMLElement | null>(null);
+const returnFocusTarget = ref<HTMLElement | null>(null);
 
 const classes = computed(() => ['ds-modal', `ds-modal--${props.size}`]);
 
@@ -72,6 +74,7 @@ function onOverlayClick() {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && props.closable && props.open) {
+    event.preventDefault();
     emit('close');
   }
   // Focus trap
@@ -98,6 +101,27 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
     focusable?.focus();
   }
 }
+
+watch(
+  () => props.open,
+  async (open) => {
+    if (open) {
+      returnFocusTarget.value = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+      await nextTick();
+      modalRef.value?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )?.focus();
+      return;
+    }
+
+    const target = returnFocusTarget.value;
+    returnFocusTarget.value = null;
+    await nextTick();
+    target?.focus();
+  }
+);
 </script>
 
 <style scoped>

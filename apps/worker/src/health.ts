@@ -12,6 +12,10 @@ export interface WorkerHealthDeps {
   readonly lastTickAt: string | null;
   readonly lastError: string | null;
   readonly initialized: boolean;
+  readonly requiredEventBusConsumers: readonly string[];
+  readonly registeredEventBusConsumers: readonly string[];
+  readonly deliveryGuaranteesReady: boolean;
+  readonly durableConsumerGuardReady: boolean;
 }
 
 function resolveCorrelationId(request: IncomingMessage): string {
@@ -39,9 +43,22 @@ export function createWorkerHealthResponse(
   const databaseState = resolveDatabaseState(deps);
   const repositoriesReady = deps.persistenceMode === 'database' ? deps.databaseHealthy : true;
   const loopHealthy = deps.lastError === null;
+  const missingConsumers = deps.requiredEventBusConsumers.filter(
+    (consumer) => !deps.registeredEventBusConsumers.includes(consumer)
+  );
+  const consumersReady = deps.requiredEventBusConsumers.length > 0 && missingConsumers.length === 0;
+  const ready =
+    deps.databaseConfigured &&
+    deps.databaseHealthy &&
+    deps.persistenceMode === 'database' &&
+    deps.initialized &&
+    loopHealthy &&
+    deps.deliveryGuaranteesReady &&
+    deps.durableConsumerGuardReady &&
+    consumersReady;
 
   return {
-    ok: deps.databaseConfigured ? deps.databaseHealthy : repositoriesReady,
+    ok: ready,
     service: appName,
     version,
     environment,
@@ -52,8 +69,8 @@ export function createWorkerHealthResponse(
       initialized: deps.initialized
     },
     readiness: {
-      ready: deps.databaseHealthy,
-      productionReady: deps.databaseConfigured && deps.databaseHealthy,
+      ready,
+      productionReady: deps.databaseConfigured && ready,
       persistenceMode: deps.persistenceMode
     },
     dependencies: {
@@ -71,10 +88,16 @@ export function createWorkerHealthResponse(
             : 'Worker repositories running in-memory only'
       },
       worker: {
-        state: loopHealthy ? 'ready' : 'degraded',
-        detail: loopHealthy
-          ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-          : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
+        state: loopHealthy && consumersReady ? 'ready' : 'degraded',
+        detail: !deps.deliveryGuaranteesReady
+          ? 'Worker is not ready: delivery guarantee schema is unavailable'
+          : !deps.durableConsumerGuardReady
+            ? 'Worker is not ready: durable consumer guard is unavailable'
+            : !consumersReady
+              ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
+          : loopHealthy
+            ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
+            : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
       }
     }
   };

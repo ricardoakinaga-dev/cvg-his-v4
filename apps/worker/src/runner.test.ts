@@ -69,10 +69,17 @@ test('createWorkerEventBus creates service with optional repository', () => {
 
 test('createWorkerEventBus creates service with provided repository', () => {
   const mockRepo: OutboxRepository = {
+    deliveryGuarantees: 'ephemeral',
     create: async () => {},
     update: async () => {},
     findById: async () => null,
-    findPending: async () => [],
+    claimPending: async () => [],
+    renewClaim: async () => true,
+    completeClaim: async () => true,
+    retryClaim: async () => true,
+    failClaim: async () => true,
+    reprocess: async () => null,
+    peekPending: async () => [],
     findFailed: async () => [],
     findByCorrelationId: async () => []
   };
@@ -112,6 +119,26 @@ test('runWorkerTick handles empty notification queue', async () => {
   assert.equal(infoData.databaseHealthy, true);
 });
 
+test('runWorkerTick scopes queued notifications to the current account', async () => {
+  let queriedAccountId: string | undefined;
+  const notifications = createWorkerNotifications({
+    notificationRepository: createMockNotificationRepository({
+      findQueuedJobs: async (_limit, accountId) => {
+        queriedAccountId = accountId;
+        return [];
+      }
+    })
+  });
+
+  await runWorkerTick(
+    mockLogger,
+    { ...mockContext, accountId: 'account-worker-a' as never },
+    notifications
+  );
+
+  assert.equal(queriedAccountId, 'account-worker-a');
+});
+
 test('runEventBusTick handles empty event queue', async () => {
   let infoCalled = false;
   let infoData: Record<string, unknown> = {};
@@ -125,10 +152,17 @@ test('runEventBusTick handles empty event queue', async () => {
   };
 
   const mockRepo: OutboxRepository = {
+    deliveryGuarantees: 'ephemeral',
     create: async () => {},
     update: async () => {},
     findById: async () => null,
-    findPending: async () => [],
+    claimPending: async () => [],
+    renewClaim: async () => true,
+    completeClaim: async () => true,
+    retryClaim: async () => true,
+    failClaim: async () => true,
+    reprocess: async () => null,
+    peekPending: async () => [],
     findFailed: async () => [],
     findByCorrelationId: async () => []
   };
@@ -348,6 +382,7 @@ test('resolveScheduledReportRows uses persisted commission calculations when sou
           reviewedByUserId: 'reviewer-1' as never,
           paidByUserId: null,
           cancelledByUserId: null,
+          payableId: null,
           createdAt: '2026-05-28T09:00:00.000Z',
           updatedAt: '2026-05-28T09:05:00.000Z',
           reviewedAt: '2026-05-28T09:05:00.000Z',
@@ -388,6 +423,7 @@ test('resolveScheduledReportRows uses persisted commission calculations when sou
           reviewedByUserId: null,
           paidByUserId: 'payer-1' as never,
           cancelledByUserId: null,
+          payableId: null,
           createdAt: '2026-04-30T09:00:00.000Z',
           updatedAt: '2026-04-30T09:05:00.000Z',
           reviewedAt: null,
@@ -438,10 +474,17 @@ test('runEventBusTick uses provided eventBus', async () => {
   };
 
   const mockRepo: OutboxRepository = {
+    deliveryGuarantees: 'ephemeral',
     create: async () => {},
     update: async () => {},
     findById: async () => null,
-    findPending: async () => [],
+    claimPending: async () => [],
+    renewClaim: async () => true,
+    completeClaim: async () => true,
+    retryClaim: async () => true,
+    failClaim: async () => true,
+    reprocess: async () => null,
+    peekPending: async () => [],
     findFailed: async () => [],
     findByCorrelationId: async () => []
   };
@@ -455,6 +498,7 @@ test('runEventBusTick uses provided eventBus', async () => {
 
 test('runEventBusTick logs processed event correlation ids for async trace follow-up', async () => {
   let infoData: Record<string, unknown> = {};
+  let claimed = false;
 
   const logger: Logger = {
     ...mockLogger,
@@ -464,34 +508,53 @@ test('runEventBusTick logs processed event correlation ids for async trace follo
   };
 
   const mockRepo: OutboxRepository = {
+    deliveryGuarantees: 'ephemeral',
     create: async () => {},
     update: async () => {},
     findById: async () => null,
-    findPending: async () => [
-      {
+    claimPending: async () => {
+      if (claimed) return [];
+      claimed = true;
+      return [{
+        event: {
         id: 'evt-1',
+        accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as never,
         correlationId: 'corr-api-123' as CorrelationId,
         moduleName: 'notifications' as ModuleName,
         eventType: 'notification.sent',
         payload: {
+          accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
           _meta: {
+            accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             traceparent: '00-1234567890abcdef1234567890abcdef-1234567890abcdef-01'
           }
         },
-        status: 'pending',
-        attempts: 0,
+        status: 'processing',
+        attempts: 1,
         maxAttempts: 3,
         scheduledAt: new Date(Date.now() - 1000).toISOString(),
         processedAt: null,
         error: null,
         createdAt: new Date(Date.now() - 1000).toISOString()
-      }
-    ],
+        },
+        leaseOwner: 'worker-test',
+        leaseToken: '11111111-1111-1111-1111-111111111111',
+        leaseVersion: 1,
+        leaseExpiresAt: new Date(Date.now() + 60_000).toISOString()
+      }];
+    },
+    renewClaim: async () => true,
+    completeClaim: async () => true,
+    retryClaim: async () => true,
+    failClaim: async () => true,
+    reprocess: async () => null,
+    peekPending: async () => [],
     findFailed: async () => [],
     findByCorrelationId: async () => []
   };
 
   const eventBus = createWorkerEventBus({ eventBusRepository: mockRepo });
+  eventBus.subscribe(async () => {});
   await runEventBusTick(logger, mockContext, eventBus);
 
   assert.deepEqual(infoData.processedCorrelationIds, ['corr-api-123']);

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -82,8 +83,33 @@ export interface CashMovement {
   readonly notes: string | null;
 }
 
+export interface CounterSaleCloseTransactionInput {
+  readonly sale: CounterSaleSummary;
+  readonly items: readonly CounterSaleItemSummary[];
+  readonly payments: readonly CounterSalePaymentSummary[];
+  readonly closedByUserId: UserId;
+}
+
+export interface CounterSaleCloseResult {
+  readonly sale: CounterSaleSummary;
+  readonly inventoryConsumptions?: readonly InventoryConsumption[];
+  readonly cashMovements?: readonly CashMovement[];
+}
+
 export interface CounterSalesServiceOptions {
   readonly repository?: CounterSalesRepository;
+  readonly closeTransaction?: (
+    input: CounterSaleCloseTransactionInput,
+    execute: () => Promise<CounterSaleCloseResult>
+  ) => Promise<CounterSaleCloseResult>;
+  /**
+   * Persists effects belonging to the close command (for example the
+   * canonical financial journal entry) before the transaction returns.
+   */
+  readonly onClose?: (
+    input: CounterSaleCloseTransactionInput,
+    result: CounterSaleCloseResult
+  ) => Promise<void>;
   readonly inventoryService?: {
     consumeForSale: (
       accountId: AccountId,
@@ -110,17 +136,28 @@ export interface CounterSalesServiceOptions {
 
 export class CounterSalesService {
   readonly #repository?: CounterSalesRepository;
+  readonly #useUuidIdentifiers: boolean;
+  readonly #closeTransaction?: CounterSalesServiceOptions['closeTransaction'];
+  readonly #onClose?: CounterSalesServiceOptions['onClose'];
   readonly #inventoryService?: CounterSalesServiceOptions['inventoryService'];
   readonly #cashService?: CounterSalesServiceOptions['cashService'];
   readonly #sales = new Map<string, CounterSaleSummary>();
   readonly #items = new Map<string, CounterSaleItemSummary>();
   readonly #payments = new Map<string, CounterSalePaymentSummary>();
+  readonly #closeLocks = new Map<string, Promise<CounterSaleCloseResult>>();
   #numberCounter = 0;
 
   public constructor(options?: CounterSalesServiceOptions) {
     this.#repository = options?.repository;
+    this.#useUuidIdentifiers = Boolean(options?.repository);
+    this.#closeTransaction = options?.closeTransaction;
+    this.#onClose = options?.onClose;
     this.#inventoryService = options?.inventoryService;
     this.#cashService = options?.cashService;
+  }
+
+  #nextId(prefix: string): string {
+    return this.#useUuidIdentifiers ? randomUUID() : createCorrelationId(prefix);
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
@@ -199,7 +236,7 @@ export class CounterSalesService {
   ): Promise<CounterSaleSummary> {
     const now = nowIso();
     const sale: CounterSaleSummary = {
-      id: createCorrelationId('cs'),
+      id: this.#nextId('cs'),
       accountId,
       number: this.#nextNumber(),
       ownerId: input?.ownerId ?? null,
@@ -265,7 +302,7 @@ export class CounterSalesService {
     const now = nowIso();
 
     const item: CounterSaleItemSummary = {
-      id: createCorrelationId('csi'),
+      id: this.#nextId('csi'),
       counterSaleId: saleId,
       accountId: sale.accountId,
       itemType: input.itemType,
@@ -411,7 +448,7 @@ export class CounterSalesService {
 
     const now = nowIso();
     const payment: CounterSalePaymentSummary = {
-      id: createCorrelationId('csp'),
+      id: this.#nextId('csp'),
       counterSaleId: saleId,
       accountId: sale.accountId,
       method: input.method,
@@ -436,14 +473,21 @@ export class CounterSalesService {
     return { sale: updatedSale, payment };
   }
 
-  async close(
-    saleId: string,
-    closedByUserId: UserId
-  ): Promise<{
-    sale: CounterSaleSummary;
-    inventoryConsumptions?: InventoryConsumption[];
-    cashMovements?: CashMovement[];
-  }> {
+  async close(saleId: string, closedByUserId: UserId): Promise<CounterSaleCloseResult> {
+    const activeClose = this.#closeLocks.get(saleId);
+    if (activeClose) return activeClose;
+
+    const operation = this.#closeInternal(saleId, closedByUserId);
+    const trackedOperation = operation.finally(() => {
+      if (this.#closeLocks.get(saleId) === trackedOperation) {
+        this.#closeLocks.delete(saleId);
+      }
+    });
+    this.#closeLocks.set(saleId, trackedOperation);
+    return trackedOperation;
+  }
+
+  async #closeInternal(saleId: string, closedByUserId: UserId): Promise<CounterSaleCloseResult> {
     const sale = this.#sales.get(saleId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
     if (sale.status !== 'open')
@@ -459,75 +503,98 @@ export class CounterSalesService {
       });
     }
 
-    // Block 1: Automatic inventory consumption for product items
-    const inventoryConsumptions: InventoryConsumption[] = [];
-    if (this.#inventoryService) {
-      const items = Array.from(this.#items.values()).filter(
-        (i) => i.counterSaleId === saleId && i.itemType === 'product' && i.codeSnapshot
-      );
-      for (const item of items) {
-        try {
-          const consumption = await this.#inventoryService.consumeForSale(
-            sale.accountId,
-            item.codeSnapshot!,
-            item.quantity
-          );
-          inventoryConsumptions.push(consumption);
-        } catch (err) {
-          throw new ConflictError(
-            `Insufficient stock for product "${item.nameSnapshot}" (${item.codeSnapshot}): ${err instanceof Error ? err.message : String(err)}`,
-            { saleId, codeSnapshot: item.codeSnapshot, quantity: item.quantity }
-          );
-        }
-      }
+    if (this.#repository && !this.#closeTransaction) {
+      throw new ConflictError('Database-backed counter sale close requires a transaction boundary', {
+        saleId
+      });
     }
 
-    // Block 2: Cash register movements for applicable payments
-    const cashMovements: CashMovement[] = [];
-    if (this.#cashService) {
-      const register = await this.#cashService.getOpenRegister(sale.accountId);
-      if (register) {
-        let runningBalance = register.runningBalance;
-        const cashMethods = new Set(['cash', 'pix', 'debit_card']);
-        for (const payment of payments) {
-          if (cashMethods.has(payment.method)) {
-            runningBalance += payment.amount;
-            const movement = await this.#cashService.recordMovement(
-              register.id,
+    const items = Array.from(this.#items.values()).filter((item) => item.counterSaleId === saleId);
+    const executeClose = async (): Promise<CounterSaleCloseResult> => {
+      // Block 1: Automatic inventory consumption for product items
+      const inventoryConsumptions: InventoryConsumption[] = [];
+      if (this.#inventoryService) {
+        const productItems = items.filter((item) => item.itemType === 'product' && item.codeSnapshot);
+        for (const item of productItems) {
+          try {
+            const consumption = await this.#inventoryService.consumeForSale(
               sale.accountId,
-              'payment',
-              payment.amount,
-              runningBalance,
-              payment.reference ?? sale.number,
-              `Payment for sale ${sale.number} via ${payment.method}`,
-              closedByUserId
+              item.codeSnapshot!,
+              item.quantity
             );
-            cashMovements.push(movement);
+            inventoryConsumptions.push(consumption);
+          } catch (err) {
+            throw new ConflictError(
+              `Insufficient stock for product "${item.nameSnapshot}" (${item.codeSnapshot}): ${err instanceof Error ? err.message : String(err)}`,
+              { saleId, codeSnapshot: item.codeSnapshot, quantity: item.quantity }
+            );
           }
         }
       }
-    }
 
-    const now = nowIso();
-    const updated: CounterSaleSummary = {
-      ...sale,
-      status: 'closed',
-      closedByUserId,
-      closedAt: now,
-      updatedAt: now
+      // Block 2: Cash register movements for applicable payments
+      const cashMovements: CashMovement[] = [];
+      if (this.#cashService) {
+        const register = await this.#cashService.getOpenRegister(sale.accountId);
+        if (register) {
+          let runningBalance = register.runningBalance;
+          const cashMethods = new Set(['cash', 'pix', 'debit_card']);
+          for (const payment of payments) {
+            if (cashMethods.has(payment.method)) {
+              runningBalance += payment.amount;
+              const movement = await this.#cashService.recordMovement(
+                register.id,
+                sale.accountId,
+                'payment',
+                payment.amount,
+                runningBalance,
+                payment.reference ?? sale.number,
+                `Payment for sale ${sale.number} via ${payment.method}`,
+                closedByUserId
+              );
+              cashMovements.push(movement);
+            }
+          }
+        }
+      }
+
+      const now = nowIso();
+      const updated: CounterSaleSummary = {
+        ...sale,
+        status: 'closed',
+        closedByUserId,
+        closedAt: now,
+        updatedAt: now
+      };
+      this.#sales.set(saleId, updated);
+
+      if (this.#repository) {
+        const record: CounterSaleRecord = updated;
+        await this.#repository.update(record);
+      }
+
+      const result: CounterSaleCloseResult = {
+        sale: updated,
+        inventoryConsumptions: inventoryConsumptions.length > 0 ? inventoryConsumptions : undefined,
+        cashMovements: cashMovements.length > 0 ? cashMovements : undefined
+      };
+      await this.#onClose?.({ sale, items, payments, closedByUserId }, result);
+      return result;
     };
-    this.#sales.set(saleId, updated);
 
-    if (this.#repository) {
-      const record: CounterSaleRecord = updated;
-      await this.#repository.update(record);
+    try {
+      return this.#closeTransaction
+        ? await this.#closeTransaction(
+            { sale, items, payments, closedByUserId },
+            executeClose
+          )
+        : await executeClose();
+    } catch (error) {
+      // The durable transaction rolls back external effects. Restore this service's
+      // in-memory projection as well so a failed close cannot be observed as closed.
+      this.#sales.set(saleId, sale);
+      throw error;
     }
-
-    return {
-      sale: updated,
-      inventoryConsumptions: inventoryConsumptions.length > 0 ? inventoryConsumptions : undefined,
-      cashMovements: cashMovements.length > 0 ? cashMovements : undefined
-    };
   }
 
   async cancel(saleId: string): Promise<CounterSaleSummary> {

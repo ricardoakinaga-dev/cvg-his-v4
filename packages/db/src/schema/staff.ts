@@ -28,6 +28,7 @@ export const staff = pgTable(
   (table) => ({
     accountIdx: index('idx_staff_account').on(table.accountId),
     codeUnique: uniqueIndex('idx_staff_code_unique').on(table.accountId, table.employeeCode),
-    userIdx: index('idx_staff_user').on(table.userId)
+    userIdx: index('idx_staff_user').on(table.userId),
+    accountIdIdUnique: uniqueIndex('idx_staff_account_id_id_unique').on(table.accountId, table.id)
   })
 );

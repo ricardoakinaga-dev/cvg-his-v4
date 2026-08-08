@@ -256,6 +256,24 @@ test('BillingService blocks adding items to settled record', async () => {
   );
 });
 
+test('BillingService rejects backwards status transitions', async () => {
+  const service = createService();
+  await service.createEstimate({ encounterId: 'encounter_1' });
+
+  await assert.rejects(
+    () => service.updateStatus('encounter_1' as never, { status: 'draft' }),
+    ConflictError
+  );
+  assert.equal(
+    (await service.updateStatus('encounter_1' as never, { status: 'open' })).status,
+    'open'
+  );
+  assert.equal(
+    (await service.updateStatus('encounter_1' as never, { status: 'settled' })).status,
+    'settled'
+  );
+});
+
 test('BillingService list filters by encounter', async () => {
   const service = createService();
 

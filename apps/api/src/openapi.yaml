@@ -525,12 +525,12 @@ paths:
       operationId: authRefresh
       summary: Refresh access token
       description: |
-        Exchanges a valid refresh token for a new access token.
-        The refresh token is not invalidated until a new login occurs.
+        Exchanges the HttpOnly refresh cookie for a rotated access token.
+        A refreshToken body field is accepted only for non-browser legacy clients.
       tags: [Authentication]
       security: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -550,8 +550,8 @@ paths:
       operationId: authLogout
       summary: Logout user
       description: |
-        Invalidates the current session. If a refresh token is provided,
-        it is also invalidated server-side.
+        Invalidates the current session and clears the HttpOnly refresh cookie.
+        A refreshToken body field is accepted only for non-browser legacy clients.
       tags: [Authentication]
       requestBody:
         content:
@@ -621,6 +621,9 @@ paths:
                 token:
                   type: string
                   description: TOTP code from authenticator app
+                challengeId:
+                  type: string
+                  description: Opaque challenge returned by the password login step
       responses:
         '200':
           description: MFA verified, login complete
@@ -628,6 +631,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+
+  /auth/mfa/enroll:
+    post:
+      operationId: authMfaEnroll
+      summary: Start required MFA enrollment
+      tags: [Authentication, MFA]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId]
+              properties:
+                challengeId:
+                  type: string
+      responses:
+        '200':
+          description: TOTP enrollment initialized after password verification
+        '401':
+          description: Login challenge is invalid or expired
+        '409':
+          description: MFA is already active
+
+  /auth/mfa/enroll/confirm:
+    post:
+      operationId: authMfaEnrollConfirm
+      summary: Confirm required MFA enrollment and complete login
+      tags: [Authentication, MFA]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId, token]
+              properties:
+                challengeId:
+                  type: string
+                token:
+                  type: string
+      responses:
+        '200':
+          description: MFA enrollment confirmed and login completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Login challenge or TOTP is invalid
 
   /mfa/setup:
     post:
@@ -1064,6 +1119,87 @@ paths:
               schema:
                 $ref: '#/components/schemas/VetusImportSummary'
 
+  /vetus-import-batches:
+    get:
+      operationId: listVetusImportBatches
+      summary: List Vetus import batches
+      description: Lists durable batch runs with dry-run, rejected-row and rollback counters.
+      tags: [Owners, Patients]
+      responses:
+        '200':
+          description: Vetus import batches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportBatchListResponse'
+        '503':
+          description: Batch persistence is unavailable
+    post:
+      operationId: createVetusImportBatch
+      summary: Import a Vetus batch with dry-run support
+      description: Validates up to 1000 reviewed rows, persists rejected rows, supports resume and keeps source references idempotent.
+      tags: [Owners, Patients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVetusImportBatchRequest'
+      responses:
+        '201':
+          description: Vetus import batch created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportBatchResult'
+        '200':
+          description: Existing batch replayed or rejected rows resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportBatchResult'
+        '503':
+          description: Batch persistence is unavailable
+
+  /vetus-import-batches/{batchId}:
+    get:
+      operationId: getVetusImportBatch
+      summary: Get Vetus import batch details
+      tags: [Owners, Patients]
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vetus import batch and row results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportBatchResult'
+
+  /vetus-import-batches/{batchId}/rollback:
+    post:
+      operationId: rollbackVetusImportBatch
+      summary: Roll back a Vetus import batch
+      description: Soft-inactivates owner and patient rows created by the batch while keeping the audit/import trace.
+      tags: [Owners, Patients]
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vetus import batch rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VetusImportBatchResult'
+
   /owners:
     get:
       operationId: listOwners
@@ -1283,6 +1419,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/OwnerPatientLink'
 
+  /owner-patient-links/{linkId}:
+    patch:
+      operationId: updateOwnerPatientLink
+      summary: Update owner-patient link responsibilities
+      tags: [Owners]
+      parameters:
+        - name: linkId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerPatientLinkRequest'
+      responses:
+        '200':
+          description: Link updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerPatientLink'
+    delete:
+      operationId: deleteOwnerPatientLink
+      summary: Remove owner-patient link
+      tags: [Owners]
+      parameters:
+        - name: linkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Link removed
+
   /patients:
     get:
       operationId: listPatients
@@ -1410,6 +1584,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/PatientSummaryResponse'
 
+  /patients/{patientId}/merge:
+    post:
+      operationId: mergePatient
+      summary: Merge a patient into another patient
+      description: Inactivates the source identity, moves eligible links and records an immutable merge audit row.
+      tags: [Patients]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergePatientRequest'
+      responses:
+        '200':
+          description: Patient merge completed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source, target]
+                properties:
+                  source:
+                    $ref: '#/components/schemas/Patient'
+                  target:
+                    $ref: '#/components/schemas/Patient'
+
   /encounters:
     get:
       operationId: listEncounters
@@ -1527,6 +1733,33 @@ paths:
       responses:
         '200':
           description: Encounter closed
+
+  /encounters/{encounterId}/reopen:
+    post:
+      operationId: reopenEncounter
+      summary: Reopen encounter
+      description: Reopens a closed encounter with a mandatory reason and timeline event.
+      tags: [Encounters]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReopenEncounterRequest'
+      responses:
+        '200':
+          description: Encounter reopened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Encounter'
 
   /encounters/{encounterId}/transition:
     post:
@@ -2044,6 +2277,53 @@ paths:
         '201':
           description: Attachment uploaded
 
+  /attachments/{attachmentId}/download-url:
+    post:
+      operationId: createAttachmentDownloadUrl
+      summary: Create short-lived attachment download URL
+      description: Issues a tenant-bound, short-lived URL after the attachment has passed security scanning.
+      tags: [Medical Records]
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signed download URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentDownloadUrlResponse'
+
+  /attachments/{attachmentId}/content:
+    get:
+      operationId: downloadAttachment
+      summary: Download attachment content
+      description: Downloads an available attachment using normal authorization or a short-lived signed URL.
+      tags: [Medical Records]
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Short-lived token returned by createAttachmentDownloadUrl.
+      responses:
+        '200':
+          description: Binary attachment content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
   /triage:
     get:
       operationId: listTriageRecords
@@ -2321,6 +2601,25 @@ paths:
                     $ref: '#/components/schemas/CashRegister'
                   difference:
                     type: number
+
+  /cash-register/reconciliation:
+    get:
+      operationId: reconcileCashRegister
+      summary: Reconcile cash drawer movements and closing difference
+      tags: [Financial]
+      parameters:
+        - name: registerId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cash reconciliation summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashReconciliation'
 
   /billing/{encounterId}/items:
     get:
@@ -2670,6 +2969,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinancialIncomeStatement'
+
+  /financial/ledger:
+    get:
+      operationId: listFinancialLedger
+      summary: List canonical financial journal entries
+      description: Returns the tenant-scoped double-entry journal used as the canonical financial ledger.
+      tags: [Financial]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Canonical financial journal entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialLedgerListResponse'
+        '503':
+          description: Canonical ledger unavailable
+
+  /financial/ledger/reconciliation:
+    get:
+      operationId: reconcileFinancialLedger
+      summary: Reconcile canonical financial ledger
+      description: Verifies debit and credit totals and reports any unbalanced journal entries for the tenant and period.
+      tags: [Financial]
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Ledger reconciliation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialLedgerReconciliationResponse'
+        '503':
+          description: Canonical ledger unavailable
 
   /financial/reconciliation:
     get:
@@ -3563,6 +3916,222 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryStockMovement'
 
+  /inventory/purchases:
+    get:
+      operationId: listInventoryPurchases
+      summary: List inventory purchases
+      tags: [Inventory]
+      responses:
+        '200':
+          description: Inventory purchase orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPurchaseListResponse'
+    post:
+      operationId: createInventoryPurchase
+      summary: Create an inventory purchase order
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryPurchaseRequest'
+      responses:
+        '201':
+          description: Purchase order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPurchase'
+
+  /inventory/purchases/{purchaseId}/approve:
+    post:
+      operationId: approveInventoryPurchase
+      summary: Approve an inventory purchase
+      tags: [Inventory]
+      parameters:
+        - name: purchaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Purchase approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPurchase'
+
+  /inventory/purchases/{purchaseId}/receive:
+    post:
+      operationId: receiveInventoryPurchase
+      summary: Receive all or part of an inventory purchase
+      tags: [Inventory]
+      parameters:
+        - name: purchaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveInventoryPurchaseRequest'
+      responses:
+        '200':
+          description: Purchase receiving recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPurchase'
+
+  /inventory/purchases/{purchaseId}/cancel:
+    post:
+      operationId: cancelInventoryPurchase
+      summary: Cancel an unreceived inventory purchase
+      tags: [Inventory]
+      parameters:
+        - name: purchaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Purchase cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPurchase'
+
+  /inventory/transfers:
+    get:
+      operationId: listInventoryTransfers
+      summary: List inventory transfers
+      tags: [Inventory]
+      responses:
+        '200':
+          description: Inventory transfers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryTransferListResponse'
+    post:
+      operationId: createInventoryTransfer
+      summary: Transfer stock between locations
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryTransferRequest'
+      responses:
+        '201':
+          description: Inventory transfer completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryTransfer'
+
+  /inventory/reservations:
+    get:
+      operationId: listInventoryReservations
+      summary: List inventory reservations
+      tags: [Inventory]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [reserved, released, consumed, returned]
+      responses:
+        '200':
+          description: Inventory reservations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservationListResponse'
+    post:
+      operationId: createInventoryReservation
+      summary: Reserve stock using FEFO lot allocation
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryReservationRequest'
+      responses:
+        '201':
+          description: Inventory reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservationListResponse'
+
+  /inventory/reservations/{reservationId}/release:
+    post:
+      operationId: releaseInventoryReservation
+      summary: Release an active inventory reservation
+      tags: [Inventory]
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+
+  /inventory/reservations/{reservationId}/consume:
+    post:
+      operationId: consumeInventoryReservation
+      summary: Consume a reserved inventory allocation
+      tags: [Inventory]
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+
+  /inventory/reservations/{reservationId}/return:
+    post:
+      operationId: returnInventoryReservation
+      summary: Return consumed stock to its original lot
+      tags: [Inventory]
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+
   /packages:
     get:
       operationId: listPackages
@@ -3813,6 +4382,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommissionPaymentInput'
       responses:
         '200':
           description: Commission calculation detail
@@ -3957,7 +4532,7 @@ paths:
   /reports/executions/{executionId}/export:
     post:
       operationId: exportReportExecution
-      summary: Export report execution as JSON or CSV
+      summary: Export report execution as JSON, CSV, XLSX or PDF
       tags: [Reports]
       parameters:
         - name: executionId
@@ -3980,6 +4555,28 @@ paths:
                 $ref: '#/components/schemas/ReportExport'
         '404':
           description: Report execution not found
+
+  /reports/exports/{exportId}:
+    get:
+      operationId: getReportExport
+      summary: Get persisted report export artifact
+      description: Returns the persisted UTF-8 or base64-encoded report artifact after restart.
+      tags: [Reports]
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Persisted report export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExport'
+        '404':
+          description: Report export not found
 
   /reports/schedules:
     get:
@@ -4540,6 +5137,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/MarketingTemplate'
 
+  /marketing/settings:
+    get:
+      operationId: getMarketingSetting
+      summary: Read tenant marketing automation settings
+      tags: [Marketing]
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/MarketingSettingKey'
+      responses:
+        '200':
+          description: Tenant marketing setting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingSettingResponse'
+
+  /marketing/settings/{key}:
+    patch:
+      operationId: saveMarketingSetting
+      summary: Save tenant marketing automation settings
+      tags: [Marketing]
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/MarketingSettingKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMarketingSettingRequest'
+      responses:
+        '200':
+          description: Tenant marketing setting saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingSetting'
+
   /marketing/campaigns:
     get:
       operationId: listMarketingCampaigns
@@ -4637,6 +5278,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MarketingCampaignDeliveryListResponse'
+
+  /marketing/deliveries/{deliveryId}/retry:
+    post:
+      operationId: retryMarketingDelivery
+      summary: Retry a failed marketing delivery
+      description: Requeues one failed delivery, rechecks consent and persists the provider result and attempt count.
+      tags: [Marketing]
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retried marketing delivery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketingCampaignDelivery'
+        '409':
+          description: Delivery is not retryable
 
   /notifications:
     get:
@@ -5359,6 +6022,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '202':
+          description: Import failed and was recorded for retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+
+  /integrations/laboratory/equipment-results/imports/{externalResultId}/retry:
+    post:
+      operationId: retryLaboratoryResultImport
+      summary: Retry failed laboratory result import
+      description: Reprocesses a tenant-scoped failed result using its original correlation data.
+      tags: [Integrations]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: externalResultId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Laboratory result imported or already imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '202':
+          description: Retry failed and remains available for another attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '404':
+          description: Failed import not found
 
   /integrations/laboratory/equipment-results/report:
     get:
@@ -5590,6 +6289,23 @@ paths:
                 type: object
 
   /inpatient:
+    post:
+      operationId: admitInpatient
+      summary: Admit a patient from an active encounter
+      tags: [Inpatient]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInpatientAdmissionRequest'
+      responses:
+        '201':
+          description: Patient admitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientStay'
     get:
       operationId: listInpatientStays
       summary: List inpatient stays
@@ -6133,6 +6849,67 @@ paths:
       responses:
         '201':
           description: Staff member created
+
+  /staff/time-off:
+    get:
+      operationId: listStaffTimeOff
+      summary: List staff time off
+      tags: [Staff]
+      parameters:
+        - name: staffId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff time off intervals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffTimeOff'
+    post:
+      operationId: createStaffTimeOff
+      summary: Create staff time off
+      tags: [Staff]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStaffTimeOffRequest'
+      responses:
+        '201':
+          description: Staff time off created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffTimeOff'
+
+  /staff/time-off/{timeOffId}/cancel:
+    post:
+      operationId: cancelStaffTimeOff
+      summary: Cancel staff time off
+      tags: [Staff]
+      parameters:
+        - name: timeOffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff time off cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffTimeOff'
 
   /staff/{staffId}:
     get:
@@ -7090,6 +7867,205 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InpatientDailyChargeWorklistResponse'
+
+  /prescriptions:
+    get:
+      operationId: listPrescriptions
+      summary: List prescriptions
+      tags: [Prescriptions]
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: encounterId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prescription'
+    post:
+      operationId: createPrescription
+      summary: Create prescription
+      tags: [Prescriptions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrescriptionRequest'
+      responses:
+        '201':
+          description: Prescription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+
+  /prescriptions/{prescriptionId}:
+    get:
+      operationId: getPrescription
+      summary: Get prescription
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+    patch:
+      operationId: updatePrescription
+      summary: Update prescription
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePrescriptionRequest'
+      responses:
+        '200':
+          description: Prescription updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+    delete:
+      operationId: archivePrescription
+      summary: Archive prescription
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArchivePrescriptionRequest'
+      responses:
+        '200':
+          description: Prescription archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+
+  /prescriptions/{prescriptionId}/document:
+    post:
+      operationId: renderPrescriptionDocument
+      summary: Render prescription document
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionDocumentContext'
+      responses:
+        '200':
+          description: Rendered prescription document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionDocument'
+
+  /prescriptions/{prescriptionId}/sign:
+    post:
+      operationId: signPrescription
+      summary: Sign prescription
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedVersion:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Signed prescription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+
+  /prescriptions/{prescriptionId}/revisions:
+    get:
+      operationId: listPrescriptionRevisions
+      summary: List prescription revisions
+      tags: [Prescriptions]
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescription revision history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PrescriptionRevision'
 
   /prescription-executions:
     get:
@@ -9496,23 +10472,31 @@ components:
 
     LoginResponse:
       type: object
+      required: [accessToken, tokenType, principal]
       properties:
         accessToken:
           type: string
           description: JWT access token
-        refreshToken:
+        tokenType:
           type: string
-          description: Opaque refresh token
-        expiresIn:
-          type: number
-          description: Access token lifetime in seconds
+          enum: [Bearer]
+        principal:
+          type: object
+          description: Authenticated principal associated with the access token
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            session:
+              $ref: '#/components/schemas/Session'
+            access:
+              $ref: '#/components/schemas/AccessInfo'
 
     RefreshRequest:
       type: object
-      required: [refreshToken]
       properties:
         refreshToken:
           type: string
+          description: Legacy non-browser fallback; browsers use the HttpOnly cookie
 
     Session:
       type: object
@@ -9828,6 +10812,126 @@ components:
           items:
             $ref: '#/components/schemas/VetusImportSummary'
 
+    VetusImportBatchStatus:
+      type: string
+      enum: [dry_run, completed, partial, rolled_back]
+
+    VetusImportBatchItemStatus:
+      type: string
+      enum: [pending, validated, imported, linked, rejected, rolled_back]
+
+    VetusImportBatch:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        sourceSystem:
+          type: string
+        sourceReference:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/VetusImportBatchStatus'
+        totalCount:
+          type: integer
+        importedCount:
+          type: integer
+        linkedCount:
+          type: integer
+        rejectedCount:
+          type: integer
+        rolledBackCount:
+          type: integer
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VetusImportBatchItem:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        batchId:
+          type: string
+        rowNumber:
+          type: integer
+        sourceReference:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/VetusImportBatchItemStatus'
+        importLogId:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          nullable: true
+        ownerCreated:
+          type: boolean
+        patientCreated:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        payload:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VetusImportBatchListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VetusImportBatch'
+
+    VetusImportBatchResult:
+      type: object
+      properties:
+        batch:
+          $ref: '#/components/schemas/VetusImportBatch'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VetusImportBatchItem'
+
+    CreateVetusImportBatchRequest:
+      type: object
+      properties:
+        sourceSystem:
+          type: string
+          default: Vetus
+        sourceReference:
+          type: string
+        dryRun:
+          type: boolean
+          default: false
+        resumeBatchId:
+          type: string
+        items:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/CreateVetusImportRequest'
+      description: Items are required for a new batch and may be omitted when resumeBatchId is supplied.
+
     Patient:
       type: object
       properties:
@@ -9991,6 +11095,23 @@ components:
           type: string
           format: date-time
 
+    UpdateOwnerPatientLinkRequest:
+      type: object
+      properties:
+        financialResponsible:
+          type: boolean
+
+    MergePatientRequest:
+      type: object
+      required: [targetPatientId, reason]
+      properties:
+        targetPatientId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+
     OwnerSummaryResponse:
       type: object
       required: [owner, patients, stats]
@@ -10081,6 +11202,14 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    ReopenEncounterRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
 
     CreateEncounterRequest:
       type: object
@@ -10644,24 +11773,45 @@ components:
 
     BillingRecord:
       type: object
+      required: [id, accountId, encounterId, patientId, ownerId, status, subtotalAmount, currency, createdAt, updatedAt]
       properties:
         id:
+          type: string
+          format: uuid
+        accountId:
           type: string
           format: uuid
         encounterId:
           type: string
           format: uuid
+        patientId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
         status:
           type: string
-        totalAmount:
+          enum: [draft, estimated, open, settled]
+        subtotalAmount:
           type: number
+          minimum: 0
+        currency:
+          type: string
+          enum: [BRL]
+        administrativeNotes:
+          type: string
+          nullable: true
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
 
     CashMovementType:
       type: string
-      enum: [opening, closing, payment, supply, withdrawal, adjustment]
+      enum: [opening, closing, payment, supply, deposit, withdrawal, adjustment]
 
     CashRegister:
       type: object
@@ -10843,7 +11993,7 @@ components:
       properties:
         movementType:
           type: string
-          enum: [supply, withdrawal, adjustment]
+          enum: [supply, deposit, withdrawal, adjustment]
         amount:
           type: number
         reference:
@@ -10852,6 +12002,37 @@ components:
         notes:
           type: string
           nullable: true
+
+    CashReconciliation:
+      type: object
+      required: [registerId, accountId, status, openingAmount, expectedAmount, totalIn, totalOut, movementCount, reconciledAt]
+      properties:
+        registerId:
+          type: string
+        accountId:
+          type: string
+        status:
+          type: string
+          enum: [open, closed]
+        openingAmount:
+          type: number
+        expectedAmount:
+          type: number
+        declaredAmount:
+          type: number
+          nullable: true
+        difference:
+          type: number
+          nullable: true
+        totalIn:
+          type: number
+        totalOut:
+          type: number
+        movementCount:
+          type: integer
+        reconciledAt:
+          type: string
+          format: date-time
 
     CloseCashRegisterRequest:
       type: object
@@ -11076,6 +12257,101 @@ components:
         totalSettled:
           type: number
 
+    FinancialLedgerLine:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        entryId:
+          type: string
+        accountCode:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        memo:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    FinancialJournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        sourceType:
+          type: string
+        sourceId:
+          type: string
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialLedgerLine'
+
+    FinancialLedgerListResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+        dateFrom:
+          type: string
+          format: date-time
+          nullable: true
+        dateTo:
+          type: string
+          format: date-time
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialJournalEntry'
+
+    FinancialLedgerReconciliationResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+        dateFrom:
+          type: string
+          format: date-time
+          nullable: true
+        dateTo:
+          type: string
+          format: date-time
+          nullable: true
+        entryCount:
+          type: integer
+        lineCount:
+          type: integer
+        totalDebit:
+          type: number
+        totalCredit:
+          type: number
+        balanced:
+          type: boolean
+        unbalancedEntryIds:
+          type: array
+          items:
+            type: string
+
     FinancialPayable:
       type: object
       properties:
@@ -11133,6 +12409,9 @@ components:
           type: string
           nullable: true
         cancelledByUserId:
+          type: string
+          nullable: true
+        payableId:
           type: string
           nullable: true
         reconciledByUserId:
@@ -11617,6 +12896,17 @@ components:
           format: date-time
           nullable: true
         notes:
+          type: string
+          nullable: true
+
+    CommissionPaymentInput:
+      type: object
+      required: [paymentMethod]
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, bank_transfer, pix, card, cheque, other]
+        paymentReference:
           type: string
           nullable: true
 
@@ -12519,6 +13809,84 @@ components:
           items:
             $ref: '#/components/schemas/InventoryStockMovement'
 
+    InventoryReservation:
+      type: object
+      required: [id, accountId, inventoryItemId, inventoryLotId, lotNumber, quantity, unit, status]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        inventoryItemId:
+          type: string
+        inventoryLotId:
+          type: string
+        lotNumber:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        unitCostAmount:
+          type: number
+        status:
+          type: string
+          enum: [reserved, released, consumed, returned]
+        sourceEntityType:
+          type: string
+          enum: [encounter, diagnostic_order, surgery_case, inpatient_stay, prescription, other]
+        sourceEntityId:
+          type: string
+          nullable: true
+        reference:
+          type: string
+          nullable: true
+        reservedByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        releasedAt:
+          type: string
+          format: date-time
+          nullable: true
+        consumedAt:
+          type: string
+          format: date-time
+          nullable: true
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    InventoryReservationListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryReservation'
+
+    CreateInventoryReservationRequest:
+      type: object
+      required: [inventoryItemId, quantity, sourceEntityType]
+      properties:
+        inventoryItemId:
+          type: string
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        sourceEntityType:
+          type: string
+          enum: [encounter, diagnostic_order, surgery_case, inpatient_stay, prescription, other]
+        sourceEntityId:
+          type: string
+        reference:
+          type: string
+
     CreateInventoryStockAdjustmentRequest:
       type: object
       required: [inventoryItemId, quantityDelta, reason]
@@ -12531,6 +13899,219 @@ components:
           type: string
         reference:
           type: string
+
+    InventoryPurchaseLine:
+      type: object
+      properties:
+        id:
+          type: string
+        purchaseId:
+          type: string
+        inventoryItemId:
+          type: string
+        sku:
+          type: string
+        itemName:
+          type: string
+        orderedQuantity:
+          type: number
+        receivedQuantity:
+          type: number
+        unit:
+          type: string
+        unitCostAmount:
+          type: number
+        lotNumber:
+          type: string
+        expiryDate:
+          type: string
+          format: date-time
+          nullable: true
+        manufactureDate:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        supplier:
+          type: string
+          nullable: true
+
+    InventoryPurchase:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        supplierName:
+          type: string
+        invoiceNumber:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, approved, partially_received, received, cancelled]
+        totalAmount:
+          type: number
+        receivedAmount:
+          type: number
+        payableId:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryPurchaseLine'
+        createdByUserId:
+          type: string
+        approvedByUserId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    InventoryPurchaseListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryPurchase'
+
+    CreateInventoryPurchaseRequest:
+      type: object
+      required: [supplierName, lines]
+      properties:
+        supplierName:
+          type: string
+        invoiceNumber:
+          type: string
+          nullable: true
+        payableId:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [inventoryItemId, quantity, unitCostAmount, lotNumber]
+            properties:
+              inventoryItemId:
+                type: string
+              quantity:
+                type: number
+                exclusiveMinimum: 0
+              unitCostAmount:
+                type: number
+                minimum: 0
+              lotNumber:
+                type: string
+              expiryDate:
+                type: string
+                format: date-time
+                nullable: true
+              manufactureDate:
+                type: string
+                format: date-time
+                nullable: true
+              location:
+                type: string
+                nullable: true
+
+    ReceiveInventoryPurchaseRequest:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [lineId, quantity]
+            properties:
+              lineId:
+                type: string
+              quantity:
+                type: number
+                exclusiveMinimum: 0
+              expiryDate:
+                type: string
+                format: date-time
+                nullable: true
+              manufactureDate:
+                type: string
+                format: date-time
+                nullable: true
+              location:
+                type: string
+                nullable: true
+
+    CreateInventoryTransferRequest:
+      type: object
+      required: [inventoryItemId, quantity, fromLocation, toLocation]
+      properties:
+        inventoryItemId:
+          type: string
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        fromLocation:
+          type: string
+        toLocation:
+          type: string
+        reference:
+          type: string
+          nullable: true
+
+    InventoryTransfer:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        inventoryItemId:
+          type: string
+        quantity:
+          type: number
+        fromLocation:
+          type: string
+        toLocation:
+          type: string
+        status:
+          type: string
+          enum: [completed, cancelled]
+        reference:
+          type: string
+          nullable: true
+        outboundMovementId:
+          type: string
+        inboundMovementId:
+          type: string
+        createdByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    InventoryTransferListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryTransfer'
 
     Notification:
       type: object
@@ -12689,6 +14270,67 @@ components:
           type: string
         checksum:
           type: string
+        contentBase64:
+          type: string
+          format: byte
+          description: Optional base64-encoded binary content for JSON clients
+
+    Attachment:
+      type: object
+      required: [id, accountId, linkedEntityType, linkedEntityId, category, fileName, storageKey, mimeType, checksum, source, scanStatus, uploadedByUserId, createdAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        linkedEntityType:
+          type: string
+          enum: [encounter, medical_record, diagnostic_order]
+        linkedEntityId:
+          type: string
+        category:
+          type: string
+          enum: [image, lab, document, prescription, other]
+        fileName:
+          type: string
+        storageKey:
+          type: string
+        mimeType:
+          type: string
+        checksum:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 0
+        source:
+          type: string
+          enum: [upload]
+        scanStatus:
+          type: string
+          enum: [quarantined, available, rejected]
+        scanProvider:
+          type: string
+        scanReason:
+          type: string
+        scannedAt:
+          type: string
+          format: date-time
+        uploadedByUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AttachmentDownloadUrlResponse:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri-reference
+        expiresAt:
+          type: string
+          format: date-time
 
     AssignBedRequest:
       type: object
@@ -12697,6 +14339,31 @@ components:
         sectorId:
           type: string
           format: uuid
+        bedId:
+          type: string
+          format: uuid
+
+    CreateInpatientAdmissionRequest:
+      type: object
+      required: [encounterId, patientId, unit, ward, bed]
+      properties:
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        unit:
+          type: string
+          minLength: 1
+        ward:
+          type: string
+          minLength: 1
+        bed:
+          type: string
+          minLength: 1
+        sectorId:
+          type: string
         bedId:
           type: string
           format: uuid
@@ -12718,6 +14385,8 @@ components:
           accountId,
           encounterId,
           patientId,
+          ownerId,
+          admittedByUserId,
           unit,
           ward,
           bed,
@@ -12736,6 +14405,12 @@ components:
           type: string
           format: uuid
         patientId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        admittedByUserId:
           type: string
           format: uuid
         unit:
@@ -13081,6 +14756,47 @@ components:
           type: string
         isActive:
           type: boolean
+
+    StaffTimeOff:
+      type: object
+      required: [id, accountId, staffId, startsAt, endsAt, reason, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        staffId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, cancelled]
+
+    CreateStaffTimeOffRequest:
+      type: object
+      required: [staffId, startsAt, endsAt, reason]
+      properties:
+        staffId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
 
     AuditEvent:
       type: object
@@ -13624,6 +15340,238 @@ components:
           type: number
           format: double
 
+    Prescription:
+      type: object
+      required: [id, accountId, medicalRecordId, encounterId, patientId, entryType, title, content, authoredByUserId, version, createdAt, updatedAt, medicationName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        medicalRecordId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        entryType:
+          type: string
+          enum: [prescription]
+        title:
+          type: string
+        content:
+          type: string
+        authoredByUserId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        deletedAt:
+          type: string
+          format: date-time
+        deletedByUserId:
+          type: string
+          format: uuid
+        deleteReason:
+          type: string
+        lastRevisionReason:
+          type: string
+        lastRevisionByUserId:
+          type: string
+          format: uuid
+        signedAt:
+          type: string
+          format: date-time
+        signedByUserId:
+          type: string
+          format: uuid
+        signatureHash:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        medicationName:
+          type: string
+        dosage:
+          type: string
+        route:
+          type: string
+        frequency:
+          type: string
+        duration:
+          type: string
+        notes:
+          type: string
+
+    CreatePrescriptionRequest:
+      type: object
+      required: [medicalRecordId, encounterId, patientId, medicationName]
+      properties:
+        medicalRecordId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        medicationName:
+          type: string
+        dosage:
+          type: string
+        route:
+          type: string
+        frequency:
+          type: string
+        duration:
+          type: string
+        notes:
+          type: string
+
+    UpdatePrescriptionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        reason:
+          type: string
+        expectedVersion:
+          type: integer
+          minimum: 1
+
+    ArchivePrescriptionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expectedVersion:
+          type: integer
+          minimum: 1
+
+    PrescriptionRevision:
+      type: object
+      required: [id, prescriptionId, version, title, content, authorUserId, reason, createdAt]
+      properties:
+        id:
+          type: string
+        prescriptionId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        content:
+          type: string
+        authorUserId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PrescriptionDocumentContext:
+      type: object
+      required: [clinic, owner, patient, professional]
+      properties:
+        clinic:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+            document:
+              type: string
+            address:
+              type: string
+            phone:
+              type: string
+        owner:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+            document:
+              type: string
+        patient:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+            species:
+              type: string
+            breed:
+              type: string
+            weightKg:
+              type: number
+        professional:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+            license:
+              type: string
+
+    PrescriptionDocument:
+      type: object
+      required: [title, prescriptionId, issuedAt, header, owner, patient, medications, footer, printText]
+      properties:
+        title:
+          type: string
+        prescriptionId:
+          type: string
+          format: uuid
+        issuedAt:
+          type: string
+          format: date-time
+        header:
+          type: string
+        owner:
+          type: string
+        patient:
+          type: string
+        medications:
+          type: array
+          items:
+            type: object
+            properties:
+              medicationName:
+                type: string
+              dosage:
+                type: string
+              route:
+                type: string
+              frequency:
+                type: string
+              duration:
+                type: string
+              notes:
+                type: string
+        footer:
+          type: string
+        printText:
+          type: string
+
     PrescriptionExecution:
       type: object
       properties:
@@ -14069,7 +16017,9 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, confirmed, cancelled, refunded]
+          enum: [draft, estimated, open, settled]
+        administrativeNotes:
+          type: string
 
     UpdateDischargeRequest:
       type: object
@@ -14794,6 +16744,13 @@ components:
         failureReason:
           type: string
           nullable: true
+        attemptCount:
+          type: integer
+          minimum: 0
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
 
     LaboratoryResultImportReportResponse:
       type: object
@@ -15332,7 +17289,7 @@ components:
           type: array
           items:
             type: string
-            enum: [json, csv]
+            enum: [json, csv, xlsx, pdf]
         filterSchema:
           type: object
           additionalProperties:
@@ -15422,7 +17379,7 @@ components:
       properties:
         format:
           type: string
-          enum: [json, csv]
+          enum: [json, csv, xlsx, pdf]
           default: csv
 
     ReportExport:
@@ -15436,11 +17393,14 @@ components:
           type: string
         format:
           type: string
-          enum: [json, csv]
+          enum: [json, csv, xlsx, pdf]
         filename:
           type: string
         contentType:
           type: string
+        contentEncoding:
+          type: string
+          enum: [utf8, base64]
         content:
           type: string
         exportedByUserId:
@@ -15465,7 +17425,7 @@ components:
           enum: [daily, weekly, monthly]
         format:
           type: string
-          enum: [json, csv]
+          enum: [json, csv, xlsx, pdf]
         filters:
           type: object
           additionalProperties: true
@@ -15510,7 +17470,7 @@ components:
           enum: [daily, weekly, monthly]
         format:
           type: string
-          enum: [json, csv]
+          enum: [json, csv, xlsx, pdf]
           default: csv
         filters:
           type: object
@@ -15549,6 +17509,9 @@ components:
         executionId:
           type: string
           nullable: true
+        exportId:
+          type: string
+          nullable: true
         recipient:
           type: string
         status:
@@ -15556,7 +17519,7 @@ components:
           enum: [sent, failed]
         format:
           type: string
-          enum: [json, csv]
+          enum: [json, csv, xlsx, pdf]
         deliveredAt:
           type: string
           format: date-time
@@ -15686,6 +17649,56 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    MarketingSettingKey:
+      type: string
+      enum: [sms_automations, vaccine_email]
+
+    MarketingSetting:
+      type: object
+      required: [accountId, key, channel, values, updatedByUserId, updatedAt]
+      properties:
+        accountId:
+          type: string
+        key:
+          $ref: '#/components/schemas/MarketingSettingKey'
+        channel:
+          type: string
+          enum: [sms, email]
+        values:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: boolean
+              - type: string
+        updatedByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    MarketingSettingResponse:
+      type: object
+      required: [setting]
+      properties:
+        setting:
+          allOf:
+            - $ref: '#/components/schemas/MarketingSetting'
+          nullable: true
+
+    SaveMarketingSettingRequest:
+      type: object
+      required: [channel, values]
+      properties:
+        channel:
+          type: string
+          enum: [sms, email]
+        values:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: boolean
+              - type: string
 
     MarketingCampaign:
       type: object
@@ -15941,6 +17954,14 @@ components:
         itemType:
           type: string
           enum: [vaccine, dewormer, other]
+        protocolCode:
+          type: string
+          maxLength: 120
+          nullable: true
+        lotNumber:
+          type: string
+          maxLength: 120
+          nullable: true
         description:
           type: string
         status:
@@ -15955,6 +17976,10 @@ components:
           nullable: true
         executedObservation:
           type: string
+          nullable: true
+        nextDoseDate:
+          type: string
+          format: date
           nullable: true
         rescheduledFromId:
           type: string
@@ -15999,6 +18024,14 @@ components:
           type: string
           enum: [vaccine, dewormer, other]
           default: vaccine
+        protocolCode:
+          type: string
+          maxLength: 120
+          nullable: true
+        lotNumber:
+          type: string
+          maxLength: 120
+          nullable: true
         description:
           type: string
         observation:

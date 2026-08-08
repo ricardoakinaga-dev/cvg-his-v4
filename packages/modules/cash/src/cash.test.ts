@@ -76,6 +76,20 @@ test('CashService recordMovement withdrawal reduces balance', async () => {
   assert.equal(mov.runningBalance, 70);
 });
 
+test('CashService records bank deposits as auditable cash outflows', async () => {
+  const service = createService();
+  const reg = await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 100 });
+  const movement = await service.recordMovement(
+    reg.id,
+    ACCOUNT_ID,
+    { movementType: 'deposit', amount: 40, reference: 'DEP-001' },
+    USER_ID
+  );
+
+  assert.equal(movement.movementType, 'deposit');
+  assert.equal(movement.runningBalance, 60);
+});
+
 test('CashService recordMovement rejects withdrawal over balance', async () => {
   const service = createService();
   const reg = await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 50 });
@@ -155,6 +169,24 @@ test('CashService getMovements returns all movements', async () => {
   await service.recordMovement(reg.id, ACCOUNT_ID, { movementType: 'supply', amount: 25 }, USER_ID);
   const movements = await service.getMovements(reg.id);
   assert.equal(movements.length, 3);
+});
+
+test('CashService reconciliation reports entries, outflows and closing difference', async () => {
+  const service = createService();
+  const reg = await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 100 });
+  await service.recordPaymentMovement(reg.id, ACCOUNT_ID, 50, 'sale-1', null, USER_ID);
+  await service.recordMovement(reg.id, ACCOUNT_ID, { movementType: 'deposit', amount: 20 }, USER_ID);
+  const openReconciliation = await service.getReconciliation(reg.id, ACCOUNT_ID);
+  assert.equal(openReconciliation.expectedAmount, 130);
+  assert.equal(openReconciliation.totalIn, 150);
+  assert.equal(openReconciliation.totalOut, 20);
+  assert.equal(openReconciliation.movementCount, 3);
+
+  await service.closeRegister(reg.id, USER_ID, { closingAmount: 125 });
+  const closedReconciliation = await service.getReconciliation(reg.id, ACCOUNT_ID);
+  assert.equal(closedReconciliation.status, 'closed');
+  assert.equal(closedReconciliation.declaredAmount, 125);
+  assert.equal(closedReconciliation.difference, -5);
 });
 
 test('CashService listRegisters returns registers sorted by date', async () => {

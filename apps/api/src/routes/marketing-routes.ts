@@ -8,7 +8,9 @@ import type {
   MarketingCampaignStatus,
   MarketingChannel,
   MarketingDispatchGateway,
-  MarketingService
+  MarketingService,
+  MarketingSettingKey,
+  SaveMarketingSettingInput
 } from '@cvg-his-v2/module-marketing';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -17,10 +19,14 @@ import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
 import type { SmsGateway } from '../sms-gateway.js';
+import type { EmailGateway } from '../email-gateway.js';
+import type { WhatsAppProviderService } from '@cvg-his-v2/module-notifications-whatsapp';
 
 export interface MarketingRoutesHandlers {
   marketing: MarketingService;
   smsGateway?: SmsGateway;
+  emailGateway?: EmailGateway;
+  whatsAppProvider?: WhatsAppProviderService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -38,6 +44,11 @@ function parseCampaignId(pathname: string, suffix = ''): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function parseDeliveryId(pathname: string): string | null {
+  const match = pathname.match(/^\/marketing\/deliveries\/([^/]+)\/retry$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 function parseChannel(value: string | null): MarketingChannel | undefined {
   if (value === null || value === '') return undefined;
   if (value === 'sms' || value === 'whatsapp' || value === 'email') return value;
@@ -50,6 +61,34 @@ function parseCampaignStatus(value: string | null): MarketingCampaignStatus | un
     return value as MarketingCampaignStatus;
   }
   throw new ValidationError('status must be draft, scheduled, running, sent or cancelled');
+}
+
+function parseSettingKey(value: string | null): MarketingSettingKey {
+  if (value === 'sms_automations' || value === 'vaccine_email') return value;
+  throw new ValidationError('setting key must be sms_automations or vaccine_email');
+}
+
+function parseSettingPayload(value: unknown, key: MarketingSettingKey): SaveMarketingSettingInput {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ValidationError('setting payload is required');
+  }
+  const payload = value as Record<string, unknown>;
+  const channel = payload.channel;
+  if (channel !== 'sms' && channel !== 'email') {
+    throw new ValidationError('setting channel must be sms or email');
+  }
+  const values = payload.values;
+  if (!values || typeof values !== 'object' || Array.isArray(values)) {
+    throw new ValidationError('setting values must be an object');
+  }
+  const normalizedValues: Record<string, boolean | string> = {};
+  for (const [name, item] of Object.entries(values)) {
+    if (typeof item !== 'boolean' && typeof item !== 'string') {
+      throw new ValidationError(`setting value ${name} must be boolean or string`);
+    }
+    normalizedValues[name] = item;
+  }
+  return { key, channel, values: normalizedValues };
 }
 
 export async function handleMarketingRoutes(
@@ -114,6 +153,33 @@ export async function handleMarketingRoutes(
     return json(response, 201, template);
   }
 
+  if (pathname === '/marketing/settings' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'marketing.read');
+    const key = parseSettingKey(url.searchParams.get('key'));
+    const setting = await marketing.getSetting(principal.user.accountId, key);
+    return json(response, 200, { setting });
+  }
+
+  const settingMatch = pathname.match(/^\/marketing\/settings\/([^/]+)$/);
+  if (settingMatch && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'marketing.manage');
+    const key = parseSettingKey(decodeURIComponent(settingMatch[1] ?? ''));
+    const payload = parseSettingPayload(await readJsonBody(request), key);
+    const setting = await marketing.saveSetting(principal.user.accountId, principal.user.id, payload);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'marketing',
+      action: 'save_marketing_setting',
+      entityType: 'marketing-setting',
+      entityId: `${principal.user.accountId}:${key}`,
+      payloadSummary: `Marketing setting ${key} saved`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, setting);
+  }
+
   if (pathname === '/marketing/campaigns' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'marketing.read');
     return json(response, 200, {
@@ -163,7 +229,11 @@ export async function handleMarketingRoutes(
     const payload = await readJsonBody(request) as { audience?: readonly MarketingAudienceMember[] };
     const result = await marketing.dispatchCampaign(principal.user.accountId, principal.user.id, dispatchCampaignId, {
       audience: Array.isArray(payload.audience) ? payload.audience : [],
-      gateway: createMarketingGateway(handlers.smsGateway)
+      gateway: createMarketingGateway(
+        handlers.smsGateway,
+        handlers.emailGateway,
+        handlers.whatsAppProvider
+      )
     });
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -179,6 +249,29 @@ export async function handleMarketingRoutes(
     return json(response, 200, result);
   }
 
+  const retryDeliveryId = parseDeliveryId(pathname);
+  if (retryDeliveryId && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'marketing.manage');
+    const delivery = await marketing.retryDelivery(
+      principal.user.accountId,
+      principal.user.id,
+      retryDeliveryId,
+      createMarketingGateway(handlers.smsGateway, handlers.emailGateway, handlers.whatsAppProvider)
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'marketing',
+      action: 'retry_marketing_delivery',
+      entityType: 'marketing-delivery',
+      entityId: delivery.id,
+      payloadSummary: `Marketing delivery ${delivery.id} retried with status ${delivery.status}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, delivery);
+  }
+
   const deliveriesCampaignId = parseCampaignId(pathname, '/deliveries');
   if (deliveriesCampaignId && request.method === 'GET') {
     const principal = requirePrincipal(request, 'marketing.read');
@@ -190,7 +283,11 @@ export async function handleMarketingRoutes(
   return false;
 }
 
-function createMarketingGateway(smsGateway?: SmsGateway): MarketingDispatchGateway {
+function createMarketingGateway(
+  smsGateway?: SmsGateway,
+  emailGateway?: EmailGateway,
+  whatsAppProvider?: WhatsAppProviderService
+): MarketingDispatchGateway {
   return {
     async send(input) {
       if (input.channel === 'sms' && smsGateway) {
@@ -201,6 +298,55 @@ function createMarketingGateway(smsGateway?: SmsGateway): MarketingDispatchGatew
           providerMessageId: result.providerMessageId,
           failureReason: result.failureReason,
           sentAt: result.sentAt
+        };
+      }
+
+      if (input.channel === 'email' && emailGateway) {
+        const result = await emailGateway.send({
+          to: input.to,
+          subject: input.subject ?? 'Comunicação da clínica',
+          text: input.body
+        });
+        return {
+          status: result.status,
+          provider: result.provider,
+          providerMessageId: result.providerMessageId,
+          failureReason: result.failureReason,
+          sentAt: result.sentAt
+        };
+      }
+
+      if (
+        input.channel === 'whatsapp' &&
+        whatsAppProvider &&
+        input.accountId &&
+        input.campaignId &&
+        input.ownerId
+      ) {
+        const result = await whatsAppProvider.sendCampaignMessage({
+          accountId: input.accountId,
+          campaignId: input.campaignId,
+          ownerId: input.ownerId as never,
+          patientId: input.patientId as never,
+          recipient: input.to,
+          recipientName: input.ownerName ?? 'Tutor',
+          body: input.body
+        });
+        return {
+          status: result.sent ? 'sent' : 'failed',
+          provider: result.provider ?? 'whatsapp',
+          providerMessageId: result.messageId,
+          failureReason: result.error,
+          sentAt: new Date().toISOString()
+        };
+      }
+
+      if (input.channel === 'whatsapp') {
+        return {
+          status: 'failed',
+          provider: 'whatsapp-unconfigured',
+          failureReason: 'WhatsApp provider is not configured for marketing dispatch',
+          sentAt: new Date().toISOString()
         };
       }
 

@@ -55,7 +55,9 @@ pnpm validate:helm
 ## Convenção de secrets
 
 - `api.auth.existingSecret`: secret com `AUTH_SECRET`
-- `postgresql.existingSecret`: secret com `url` e `password`
+- `postgresql.existingSecret`: Secret com `api-url`, `worker-url` e `password`; API e worker usam roles PostgreSQL diferentes. Em ambiente externo, provisione as roles com `NOSUPERUSER NOBYPASSRLS` antes do deploy.
+- `api.attachmentStorage.existingSecret`: Secret privado com `endpoint`, `bucket`, `access-key` e `secret-key` para S3/MinIO; o API também exige `ATTACHMENT_SCANNER_HOST` apontando para ClamAV em staging/produção.
+- `api.attachmentScanner.existingSecret`: Secret com `host` e, opcionalmente, `port`/`timeout-ms` do ClamAV; sem esse secret o API permanece fail-closed em ambientes staging/produção.
 - `redis.existingSecret`: secret com `url`
 
 Em `dev`, o chart pode gerar os secrets locais.

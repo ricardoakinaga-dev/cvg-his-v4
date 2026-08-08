@@ -1,5 +1,7 @@
 # Relatorio de equivalencia Vetus x CVG-HIS - atendimento, prontuario e receituario
 
+> **SUPERADO EM 10/07/2026:** o gate clinico citado neste documento verifica simbolos e textos, nao execucao ponta a ponta. Consulte `docs/2026-07-10-auditoria-paridade-funcional-vetus.md`.
+
 Data: 2026-06-01  
 Escopo: comparar o ERP CVG-HIS implementado com as evidencias em `docs/vetus`, focando fluxo de atendimento, prontuario e receituario.  
 Leitura central: o CVG-HIS tem boa cobertura estrutural, mas ainda nao transmite integralmente a "cara Vetus" porque parte da experiencia esta distribuida em satelites e parte do fluxo ainda e inferida, nao modelada como estado operacional explicito.

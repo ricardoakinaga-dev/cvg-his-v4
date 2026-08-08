@@ -1,4 +1,6 @@
-import { pgTable, text, varchar, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, varchar, boolean, index, uuid } from 'drizzle-orm/pg-core';
+
+import { accounts } from './accounts.js';
 
 /**
  * NFS-e Layouts — Configuracoes de emissao NFS-e por municipio
@@ -10,6 +12,7 @@ export const nfseLayouts = pgTable(
   'nfse_layouts',
   {
     id: varchar('id', { length: 60 }).notNull().primaryKey(),
+    accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
     city: text('city').notNull(),
     state: varchar('state', { length: 2 }).notNull(),
     municipalityCode: varchar('municipality_code', { length: 10 }),
@@ -23,6 +26,7 @@ export const nfseLayouts = pgTable(
     updatedAt: text('updated_at').notNull().default('now')
   },
   (table) => ({
+    accountStateIdx: index('nfse_layouts_account_state_idx').on(table.accountId, table.state),
     stateIdx: index('nfse_layouts_state_idx').on(table.state),
     activeIdx: index('nfse_layouts_active_idx').on(table.active),
     municipalityIdx: index('nfse_layouts_municipality_idx').on(table.municipalityCode)

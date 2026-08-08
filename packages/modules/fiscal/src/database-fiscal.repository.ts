@@ -15,10 +15,12 @@
  * - ncm_entries
  * - pis_cofins_rules
  * - nfse_layouts
+ * - fiscal_nfse_documents
  */
 
 import { getPool } from '@cvg-his-v2/shared-database';
 import type { AccountId } from '@cvg-his-v2/shared-types';
+import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 import type {
   FiscalCfopSummary,
   FiscalIcmsTableSummary,
@@ -37,6 +39,12 @@ import type {
   UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
+import type {
+  NfseCustomer,
+  NfseDocument,
+  NfseIssuer,
+  NfseServiceLine
+} from './nfse-emitter.js';
 
 // ============================================================================
 // Types
@@ -102,6 +110,31 @@ export interface DbNfseLayoutFilters extends DbFiscalFilters {
   readonly active?: boolean;
 }
 
+export interface PersistedNfseDocument extends NfseDocument {
+  readonly municipalityCode: string;
+  readonly apiUrl: string;
+  readonly environment: 'producao' | 'homologacao';
+}
+
+export interface DbNfseDocumentFilters extends DbFiscalFilters {
+  readonly status?: PersistedNfseDocument['status'];
+  readonly customerSearch?: string;
+}
+
+function parseJson<T>(value: unknown): T {
+  return (typeof value === 'string' ? JSON.parse(value) : value) as T;
+}
+
+function toIsoString(value: unknown): string {
+  return value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
+}
+
+function toDateOnly(value: unknown): string {
+  return value instanceof Date
+    ? value.toISOString().slice(0, 10)
+    : String(value).slice(0, 10);
+}
+
 function mapNfseLayoutRow(row: Record<string, unknown>): FiscalNfseLayoutSummary {
   return {
     id: row.id as string,
@@ -114,6 +147,35 @@ function mapNfseLayoutRow(row: Record<string, unknown>): FiscalNfseLayoutSummary
     environment: row.environment as 'producao' | 'homologacao',
     serviceCode: (row.service_code as string) ?? '',
     serviceFocus: (row.service_focus as string) ?? ''
+  };
+}
+
+function mapNfseDocumentRow(row: Record<string, unknown>): PersistedNfseDocument {
+  return {
+    id: row.id as string,
+    serie: row.serie as string,
+    numero: Number(row.numero),
+    competencia: toDateOnly(row.competencia),
+    issuer: parseJson<NfseIssuer>(row.issuer),
+    customer: parseJson<NfseCustomer>(row.customer),
+    services: parseJson<readonly NfseServiceLine[]>(row.services),
+    subtotal: Number(row.subtotal),
+    totalIss: Number(row.total_iss),
+    totalPis: Number(row.total_pis),
+    totalCofins: Number(row.total_cofins),
+    totalCsll: Number(row.total_csll),
+    totalIrrf: Number(row.total_irrf),
+    totalInss: Number(row.total_inss),
+    totalDocument: Number(row.total_document),
+    observations: (row.observations as string | null) ?? undefined,
+    createdAt: toIsoString(row.created_at),
+    status: row.status as PersistedNfseDocument['status'],
+    provider: row.provider as PersistedNfseDocument['provider'],
+    authorizationCode: (row.authorization_code as string | null) ?? undefined,
+    verificationUrl: (row.verification_url as string | null) ?? undefined,
+    municipalityCode: row.municipality_code as string,
+    apiUrl: row.api_url as string,
+    environment: row.environment as PersistedNfseDocument['environment']
   };
 }
 
@@ -824,132 +886,287 @@ export class DatabaseFiscalRepository {
   // --------------------------------------------------------------------------
 
   async listNfseLayouts(filters: DbNfseLayoutFilters): Promise<FiscalNfseLayoutSummary[]> {
-    const pool = this.pool;
-    const conditions: string[] = [];
-    const params: unknown[] = [];
+    return withTenantQueryExplicit(this.pool, filters.accountId, async (client) => {
+      const conditions: string[] = ['(account_id IS NULL OR account_id = $1)'];
+      const params: unknown[] = [filters.accountId];
 
-    if (filters.state) {
-      conditions.push(`state = $${params.length + 1}`);
-      params.push(filters.state);
-    }
-    if (filters.search) {
-      conditions.push(`(
-        LOWER(id) LIKE LOWER($${params.length + 1})
-        OR LOWER(city) LIKE LOWER($${params.length + 1})
-        OR LOWER(state) LIKE LOWER($${params.length + 1})
-        OR LOWER(COALESCE(municipality_code, '')) LIKE LOWER($${params.length + 1})
-        OR LOWER(provider) LIKE LOWER($${params.length + 1})
-        OR LOWER(version) LIKE LOWER($${params.length + 1})
-        OR LOWER(COALESCE(service_code, '')) LIKE LOWER($${params.length + 1})
-        OR LOWER(COALESCE(service_focus, '')) LIKE LOWER($${params.length + 1})
-      )`);
-      params.push(`%${filters.search}%`);
-    }
-    if (filters.active !== undefined) {
-      conditions.push(`active = $${params.length + 1}`);
-      params.push(filters.active);
-    }
+      if (filters.state) {
+        conditions.push(`state = $${params.length + 1}`);
+        params.push(filters.state);
+      }
+      if (filters.search) {
+        conditions.push(`(
+          LOWER(id) LIKE LOWER($${params.length + 1})
+          OR LOWER(city) LIKE LOWER($${params.length + 1})
+          OR LOWER(state) LIKE LOWER($${params.length + 1})
+          OR LOWER(COALESCE(municipality_code, '')) LIKE LOWER($${params.length + 1})
+          OR LOWER(provider) LIKE LOWER($${params.length + 1})
+          OR LOWER(version) LIKE LOWER($${params.length + 1})
+          OR LOWER(COALESCE(service_code, '')) LIKE LOWER($${params.length + 1})
+          OR LOWER(COALESCE(service_focus, '')) LIKE LOWER($${params.length + 1})
+        )`);
+        params.push(`%${filters.search}%`);
+      }
+      if (filters.active !== undefined) {
+        conditions.push(`active = $${params.length + 1}`);
+        params.push(filters.active);
+      }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await pool.query(
-      `SELECT * FROM nfse_layouts ${where} ORDER BY state, city`,
-      params
-    );
+      const result = await client.query(
+        `SELECT * FROM nfse_layouts WHERE ${conditions.join(' AND ')} ORDER BY state, city`,
+        params
+      );
 
-    return result.rows.map((row) => mapNfseLayoutRow(row as Record<string, unknown>));
+      return result.rows.map((row) => mapNfseLayoutRow(row as Record<string, unknown>));
+    });
   }
 
   async createNfseLayout(
-    _accountId: AccountId,
+    accountId: AccountId,
     layout: FiscalNfseLayoutSummary
   ): Promise<FiscalNfseLayoutSummary> {
-    const pool = this.pool;
-    const result = await pool.query(
-      `INSERT INTO nfse_layouts (
-        id,
-        city,
-        state,
-        municipality_code,
-        provider,
-        version,
-        active,
-        environment,
-        service_code,
-        service_focus,
-        created_at,
-        updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP::text, CURRENT_TIMESTAMP::text)
-      RETURNING *`,
-      [
-        layout.id,
-        layout.city,
-        layout.state,
-        layout.municipalityCode || null,
-        layout.provider,
-        layout.version,
-        layout.active,
-        layout.environment,
-        layout.serviceCode || null,
-        layout.serviceFocus || null
-      ]
-    );
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const result = await client.query(
+        `INSERT INTO nfse_layouts (
+          id,
+          account_id,
+          city,
+          state,
+          municipality_code,
+          provider,
+          version,
+          active,
+          environment,
+          service_code,
+          service_focus,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *`,
+        [
+          layout.id,
+          accountId,
+          layout.city,
+          layout.state,
+          layout.municipalityCode || null,
+          layout.provider,
+          layout.version,
+          layout.active,
+          layout.environment,
+          layout.serviceCode || null,
+          layout.serviceFocus || null
+        ]
+      );
 
-    return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+      return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+    });
   }
 
   async updateNfseLayout(
-    _accountId: AccountId,
+    accountId: AccountId,
     id: string,
     payload: UpdateFiscalNfseLayoutRequest
   ): Promise<FiscalNfseLayoutSummary | null> {
-    const current = await this.pool.query('SELECT * FROM nfse_layouts WHERE id = $1 LIMIT 1', [id]);
-    if (current.rows.length === 0) {
-      return null;
-    }
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const current = await client.query(
+        'SELECT * FROM nfse_layouts WHERE id = $1 AND (account_id IS NULL OR account_id = $2) LIMIT 1',
+        [id, accountId]
+      );
+      if (current.rows.length === 0) return null;
 
-    const row = current.rows[0] as Record<string, unknown>;
-    const next: FiscalNfseLayoutSummary = {
-      id,
-      city: (payload.city ?? row.city) as string,
-      state: (payload.state ?? row.state) as string,
-      municipalityCode: (payload.municipalityCode ?? row.municipality_code ?? '') as string,
-      provider: (payload.provider ?? row.provider) as string,
-      version: (payload.version ?? row.version) as string,
-      active: payload.active ?? Boolean(row.active),
-      environment: (payload.environment ?? row.environment) as 'producao' | 'homologacao',
-      serviceCode: (payload.serviceCode ?? row.service_code ?? '') as string,
-      serviceFocus: (payload.serviceFocus ?? row.service_focus ?? '') as string
-    };
+      const row = current.rows[0] as Record<string, unknown>;
+      const next = {
+        city: (payload.city ?? row.city) as string,
+        state: (payload.state ?? row.state) as string,
+        municipalityCode: (payload.municipalityCode ?? row.municipality_code ?? '') as string,
+        provider: (payload.provider ?? row.provider) as string,
+        version: (payload.version ?? row.version) as string,
+        active: payload.active ?? Boolean(row.active),
+        environment: (payload.environment ?? row.environment) as 'producao' | 'homologacao',
+        serviceCode: (payload.serviceCode ?? row.service_code ?? '') as string,
+        serviceFocus: (payload.serviceFocus ?? row.service_focus ?? '') as string
+      };
 
-    const result = await this.pool.query(
-      `UPDATE nfse_layouts
-      SET
-        city = $2,
-        state = $3,
-        municipality_code = $4,
-        provider = $5,
-        version = $6,
-        active = $7,
-        environment = $8,
-        service_code = $9,
-        service_focus = $10,
-        updated_at = CURRENT_TIMESTAMP::text
-      WHERE id = $1
-      RETURNING *`,
-      [
-        id,
-        next.city,
-        next.state,
-        next.municipalityCode || null,
-        next.provider,
-        next.version,
-        next.active,
-        next.environment,
-        next.serviceCode || null,
-        next.serviceFocus || null
-      ]
-    );
+      if (row.account_id === null || row.account_id === undefined) {
+        const overrideId = `${id}-${String(accountId).slice(0, 8)}`.slice(0, 60);
+        const result = await client.query(
+          `INSERT INTO nfse_layouts (
+            id, account_id, city, state, municipality_code, provider, version,
+            active, environment, service_code, service_focus, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          ON CONFLICT (id) DO UPDATE SET
+            city = EXCLUDED.city,
+            state = EXCLUDED.state,
+            municipality_code = EXCLUDED.municipality_code,
+            provider = EXCLUDED.provider,
+            version = EXCLUDED.version,
+            active = EXCLUDED.active,
+            environment = EXCLUDED.environment,
+            service_code = EXCLUDED.service_code,
+            service_focus = EXCLUDED.service_focus,
+            updated_at = CURRENT_TIMESTAMP
+          RETURNING *`,
+          [
+            overrideId,
+            accountId,
+            next.city,
+            next.state,
+            next.municipalityCode || null,
+            next.provider,
+            next.version,
+            next.active,
+            next.environment,
+            next.serviceCode || null,
+            next.serviceFocus || null
+          ]
+        );
+        return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+      }
 
-    return mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+      const result = await client.query(
+        `UPDATE nfse_layouts
+         SET city = $2, state = $3, municipality_code = $4, provider = $5,
+             version = $6, active = $7, environment = $8, service_code = $9,
+             service_focus = $10, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND account_id = $11
+         RETURNING *`,
+        [
+          id,
+          next.city,
+          next.state,
+          next.municipalityCode || null,
+          next.provider,
+          next.version,
+          next.active,
+          next.environment,
+          next.serviceCode || null,
+          next.serviceFocus || null,
+          accountId
+        ]
+      );
+
+      return result.rows.length === 0
+        ? null
+        : mapNfseLayoutRow(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // NFS-e Documents
+  // --------------------------------------------------------------------------
+
+  async listNfseDocuments(filters: DbNfseDocumentFilters): Promise<PersistedNfseDocument[]> {
+    return withTenantQueryExplicit(this.pool, filters.accountId, async (client) => {
+      const conditions: string[] = ['account_id = $1'];
+      const params: unknown[] = [filters.accountId];
+
+      if (filters.status) {
+        conditions.push(`status = $${params.length + 1}`);
+        params.push(filters.status);
+      }
+      if (filters.customerSearch?.trim()) {
+        conditions.push(`(
+          customer->>'name' ILIKE $${params.length + 1}
+          OR customer->>'document' ILIKE $${params.length + 1}
+        )`);
+        params.push(`%${filters.customerSearch.trim()}%`);
+      }
+
+      const result = await client.query(
+        `SELECT * FROM fiscal_nfse_documents
+         WHERE ${conditions.join(' AND ')}
+         ORDER BY created_at DESC, id DESC`,
+        params
+      );
+      return result.rows.map((row) => mapNfseDocumentRow(row as Record<string, unknown>));
+    });
+  }
+
+  async findNfseDocument(accountId: AccountId, id: string): Promise<PersistedNfseDocument | null> {
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const result = await client.query(
+        'SELECT * FROM fiscal_nfse_documents WHERE account_id = $1 AND id = $2 LIMIT 1',
+        [accountId, id]
+      );
+      return result.rows.length === 0
+        ? null
+        : mapNfseDocumentRow(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async createNfseDocument(
+    accountId: AccountId,
+    document: PersistedNfseDocument
+  ): Promise<PersistedNfseDocument> {
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const result = await client.query(
+        `INSERT INTO fiscal_nfse_documents (
+          id, account_id, serie, numero, competencia, provider, municipality_code,
+          api_url, environment, issuer, customer, services, subtotal, total_iss,
+          total_pis, total_cofins, total_csll, total_irrf, total_inss, total_document,
+          observations, status, authorization_code, verification_url, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+        ) RETURNING *`,
+        this.documentParameters(accountId, document)
+      );
+      return mapNfseDocumentRow(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async updateNfseDocument(
+    accountId: AccountId,
+    document: PersistedNfseDocument
+  ): Promise<PersistedNfseDocument | null> {
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const parameters = this.documentParameters(accountId, document);
+      const result = await client.query(
+        `UPDATE fiscal_nfse_documents SET
+          serie = $3, numero = $4, competencia = $5, provider = $6, municipality_code = $7,
+          api_url = $8, environment = $9, issuer = $10, customer = $11, services = $12,
+          subtotal = $13, total_iss = $14, total_pis = $15, total_cofins = $16,
+          total_csll = $17, total_irrf = $18, total_inss = $19, total_document = $20,
+          observations = $21, status = $22, authorization_code = $23,
+          verification_url = $24, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND account_id = $2
+         RETURNING *`,
+        parameters
+      );
+      return result.rows.length === 0
+        ? null
+        : mapNfseDocumentRow(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  private documentParameters(accountId: AccountId, document: PersistedNfseDocument): unknown[] {
+    return [
+      document.id,
+      accountId,
+      document.serie,
+      document.numero,
+      document.competencia,
+      document.provider,
+      document.municipalityCode,
+      document.apiUrl,
+      document.environment,
+      JSON.stringify(document.issuer),
+      JSON.stringify(document.customer),
+      JSON.stringify(document.services),
+      document.subtotal,
+      document.totalIss,
+      document.totalPis,
+      document.totalCofins,
+      document.totalCsll,
+      document.totalIrrf ?? 0,
+      document.totalInss ?? 0,
+      document.totalDocument,
+      document.observations ?? null,
+      document.status,
+      document.authorizationCode ?? null,
+      document.verificationUrl ?? null,
+      document.createdAt,
+      new Date().toISOString()
+    ];
   }
 }

@@ -365,10 +365,13 @@ describe('MedicalRecordsDetailPage', () => {
 
     expect(wrapper.text()).toContain('Queixa principal');
     expect(wrapper.text()).toContain('Anamnese');
+    await wrapper.get('[data-testid="clinical-step-exam"]').trigger('click');
     expect(wrapper.text()).toContain('Exame físico');
     expect(wrapper.text()).toContain('Parâmetros vitais');
+    await wrapper.get('[data-testid="clinical-step-assessment"]').trigger('click');
     expect(wrapper.text()).toContain('Exames solicitados / recomendados');
     expect(wrapper.text()).toContain('Suspeita diagnóstica / avaliação clínica');
+    await wrapper.get('[data-testid="clinical-step-plan"]').trigger('click');
     expect(wrapper.text()).toContain('Terapêutica / plano de tratamento');
     expect(wrapper.text()).toContain('Prescrição / receituário');
     expect(wrapper.text()).toContain('Conduta e próximos passos');
@@ -442,7 +445,9 @@ describe('MedicalRecordsDetailPage', () => {
 
     await flushPromises();
     await wrapper.find('[data-testid="clinical-anamnesis"]').setValue('Tutor relata prurido há 3 dias.');
+    await wrapper.get('[data-testid="clinical-step-exam"]').trigger('click');
     await wrapper.find('[data-testid="clinical-physicalExam"]').setValue('Pele hiperêmica em região cervical.');
+    await wrapper.get('[data-testid="clinical-step-plan"]').trigger('click');
     await wrapper.find('[data-testid="clinical-plan"]').setValue('Retorno em 7 dias e controle de ectoparasitas.');
 
     const saveBtn = wrapper
@@ -767,5 +772,21 @@ describe('MedicalRecordsDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Conclu');
+  });
+
+  it('shows one clinical workflow step at a time', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+    await flushPromises();
+
+    expect(wrapper.find('[data-clinical-panel="anamnesis"]').exists()).toBe(true);
+    expect(wrapper.find('[data-clinical-panel="assessment"]').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="clinical-step-assessment"]').trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-clinical-panel="anamnesis"]').exists()).toBe(false);
+    expect(wrapper.find('[data-clinical-panel="assessment"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="clinical-anamnesis"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="clinical-assessment"]').exists()).toBe(true);
   });
 });

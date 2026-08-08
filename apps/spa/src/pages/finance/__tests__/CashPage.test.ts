@@ -9,6 +9,7 @@ vi.mock('@/services/cash', () => ({
     getDashboard: vi.fn(),
     openRegister: vi.fn(),
     recordMovement: vi.fn(),
+    getReconciliation: vi.fn(),
     closeRegister: vi.fn()
   }
 }));
@@ -82,6 +83,7 @@ describe('CashPage', () => {
     expect(wrapper.text()).toContain('Total em Gaveta');
     expect(wrapper.text()).toContain('Entrada de Gaveta');
     expect(wrapper.text()).toContain('Saída de Gaveta');
+    expect(wrapper.text()).toContain('Depósito Bancário');
     expect(wrapper.text()).toContain('Fechar Gaveta');
     expect(wrapper.text()).toContain('Gaveta por Forma de Pagamento');
     expect(wrapper.text()).toContain('Extrato de Movimentações da Gaveta');

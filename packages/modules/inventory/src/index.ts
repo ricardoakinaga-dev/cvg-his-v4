@@ -1,9 +1,10 @@
 import { EncountersService } from '@cvg-his-v2/module-encounters';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   CreateInventoryConsumptionRequest,
   CreateInventoryItemRequest,
   CreateInventoryStockAdjustmentRequest,
+  CreateInventoryReservationRequest,
   UpdateInventoryItemRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
@@ -14,6 +15,8 @@ import type {
   InventoryLotSummary,
   InventoryItemId,
   InventoryItemSummary,
+  InventoryReservationId,
+  InventoryReservationSummary,
   InventoryStockMovementId,
   InventoryStockMovementSummary,
   UserId
@@ -127,8 +130,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-a',
         firstQty,
         'DIP-240318-A',
-        '2026-04-18T00:00:00.000Z',
-        '2026-02-15T00:00:00.000Z',
+        '2027-04-18T00:00:00.000Z',
+        '2027-02-15T00:00:00.000Z',
         'Farmacia fria A1',
         'PharmaVet'
       ),
@@ -136,8 +139,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-b',
         secondQty,
         'DIP-240401-B',
-        '2026-07-30T00:00:00.000Z',
-        '2026-03-12T00:00:00.000Z',
+        '2027-07-30T00:00:00.000Z',
+        '2027-03-12T00:00:00.000Z',
         'Farmacia fria A2',
         'PharmaVet'
       )
@@ -152,8 +155,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-a',
         firstQty,
         'GAZ-240210-A',
-        '2026-06-15T00:00:00.000Z',
-        '2026-01-20T00:00:00.000Z',
+        '2027-06-15T00:00:00.000Z',
+        '2027-01-20T00:00:00.000Z',
         'Almox central B3',
         'VetSurgical'
       ),
@@ -161,8 +164,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-b',
         secondQty,
         'GAZ-240325-B',
-        '2026-10-20T00:00:00.000Z',
-        '2026-03-01T00:00:00.000Z',
+        '2027-10-20T00:00:00.000Z',
+        '2027-03-01T00:00:00.000Z',
         'Almox central B4',
         'VetSurgical'
       )
@@ -177,8 +180,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-a',
         firstQty,
         'CAT-240105-A',
-        '2026-04-10T00:00:00.000Z',
-        '2025-12-10T00:00:00.000Z',
+        '2027-04-10T00:00:00.000Z',
+        '2026-12-10T00:00:00.000Z',
         'Procedimentos C1',
         'CatMed'
       ),
@@ -186,8 +189,8 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
         'lot-b',
         secondQty,
         'CAT-240326-B',
-        '2026-05-05T00:00:00.000Z',
-        '2026-02-28T00:00:00.000Z',
+        '2027-05-05T00:00:00.000Z',
+        '2027-02-28T00:00:00.000Z',
         'Procedimentos C2',
         'CatMed'
       )
@@ -199,27 +202,51 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
       'lot-a',
       Number(item.onHandQuantity.toFixed(2)),
       `AUTO-${item.sku}-A`,
-      '2026-08-31T00:00:00.000Z',
-      '2026-03-01T00:00:00.000Z',
+      '2027-08-31T00:00:00.000Z',
+      '2027-03-01T00:00:00.000Z',
       'Estoque geral',
       'Sistema'
     )
   ];
 }
 
-import type { InventoryRepository } from './repositories/database-inventory.repository.js';
+import type {
+  InventoryLotReservationUpdate,
+  InventoryRepository
+} from './repositories/database-inventory.repository.js';
 
 export interface InventoryServiceOptions {
   readonly repository?: InventoryRepository;
+}
+
+export interface CreateInventoryInboundRequest {
+  readonly inventoryItemId: string;
+  readonly quantity: number;
+  readonly unitCostAmount: number;
+  readonly lotNumber: string;
+  readonly expiryDate?: string | null;
+  readonly manufactureDate?: string | null;
+  readonly location?: string | null;
+  readonly supplier?: string | null;
+  readonly reference?: string | null;
+}
+
+export interface InventoryTransferRequest {
+  readonly inventoryItemId: string;
+  readonly quantity: number;
+  readonly fromLocation: string;
+  readonly toLocation: string;
+  readonly reference?: string | null;
 }
 
 export class InventoryService {
   readonly #repository?: InventoryRepository;
   readonly #encounters: EncountersService;
   readonly #items = new Map<InventoryItemId, InventoryItemSummary>();
-  readonly #consumptions: InventoryConsumptionSummary[] = [];
+  #consumptions: InventoryConsumptionSummary[] = [];
+  #reservations: InventoryReservationSummary[] = [];
   readonly #lots = new Map<InventoryLotId, InventoryLotSummary>();
-  readonly #movements: InventoryStockMovementSummary[] = [];
+  #movements: InventoryStockMovementSummary[] = [];
 
   public constructor(
     encounters: EncountersService,
@@ -241,6 +268,9 @@ export class InventoryService {
   }
 
   private replaceLotsForItem(item: InventoryItemSummary): void {
+    const existingLots = Array.from(this.#lots.values()).filter(
+      (lot) => lot.inventoryItemId === item.id
+    );
     for (const [lotId, lot] of this.#lots.entries()) {
       if (lot.inventoryItemId === item.id) {
         this.#lots.delete(lotId);
@@ -248,14 +278,29 @@ export class InventoryService {
     }
 
     for (const lot of buildLotsForItem(item)) {
-      this.#lots.set(lot.id, lot);
+      const existingLot = existingLots.find((candidate) => candidate.id === lot.id);
+      const reservedQuantity = existingLot?.reservedQuantity ?? 0;
+      if (reservedQuantity > lot.quantity) {
+        throw new ConflictError('Inventory item quantity cannot be lower than its reservations', {
+          inventoryItemId: item.id,
+          lotId: lot.id,
+          reservedQuantity,
+          quantity: lot.quantity
+        });
+      }
+      this.#lots.set(lot.id, { ...lot, reservedQuantity });
     }
   }
 
   private drainLots(inventoryItemId: InventoryItemId, quantity: number): void {
     let remaining = quantity;
     const candidateLots = Array.from(this.#lots.values())
-      .filter((lot) => lot.inventoryItemId === inventoryItemId && lot.quantity > 0)
+      .filter(
+        (lot) =>
+          lot.inventoryItemId === inventoryItemId &&
+          lot.quantity - (lot.reservedQuantity ?? 0) > 0 &&
+          resolveLotStatus(lot.quantity, lot.expiryDate) !== 'expired'
+      )
       .sort((left, right) => {
         const leftExpiry = left.expiryDate ?? '9999-12-31T00:00:00.000Z';
         const rightExpiry = right.expiryDate ?? '9999-12-31T00:00:00.000Z';
@@ -267,7 +312,7 @@ export class InventoryService {
         break;
       }
 
-      const drained = Math.min(lot.quantity, remaining);
+      const drained = Math.min(lot.quantity - (lot.reservedQuantity ?? 0), remaining);
       const updatedQuantity = Number((lot.quantity - drained).toFixed(2));
       remaining = Number((remaining - drained).toFixed(2));
       this.#lots.set(lot.id, {
@@ -291,12 +336,47 @@ export class InventoryService {
     const items = await this.#repository.findAllItems(accountId);
     const consumptions = await this.#repository.findConsumptions(accountId);
     const movements = await this.#repository.findStockMovements(accountId);
+    const persistedLots = (await this.#repository.findLots?.(accountId)) ?? [];
+    const reservations = (await this.#repository.findReservations?.(accountId)) ?? [];
+    const previousItemIds = Array.from(this.#items.values())
+      .filter((item) => item.accountId === accountId)
+      .map((item) => item.id);
+    for (const itemId of previousItemIds) {
+      this.#items.delete(itemId);
+      for (const [lotId, lot] of this.#lots.entries()) {
+        if (lot.inventoryItemId === itemId) this.#lots.delete(lotId);
+      }
+    }
     for (const item of items) {
       this.#items.set(item.id, item);
-      this.replaceLotsForItem(item);
+      const lots = persistedLots.filter((lot) => lot.inventoryItemId === item.id);
+      if (lots.length > 0) {
+        for (const lot of lots) {
+          this.#lots.set(lot.id, {
+            ...lot,
+            sku: item.sku,
+            itemName: item.name,
+            status: resolveLotStatus(lot.quantity, lot.expiryDate)
+          });
+        }
+      } else {
+        const generatedLots = buildLotsForItem(item);
+        for (const lot of generatedLots) this.#lots.set(lot.id, lot);
+        await this.#repository.upsertLots?.(generatedLots);
+      }
     }
-    this.#consumptions.splice(0, this.#consumptions.length, ...consumptions);
-    this.#movements.splice(0, this.#movements.length, ...movements);
+    this.#consumptions = [
+      ...this.#consumptions.filter((consumption) => consumption.accountId !== accountId),
+      ...consumptions
+    ];
+    this.#movements = [
+      ...this.#movements.filter((movement) => movement.accountId !== accountId),
+      ...movements
+    ];
+    this.#reservations = [
+      ...this.#reservations.filter((reservation) => reservation.accountId !== accountId),
+      ...reservations
+    ];
   }
 
   public listItems(
@@ -318,9 +398,12 @@ export class InventoryService {
     return items;
   }
 
-  public getItemOrThrow(inventoryItemId: InventoryItemId): InventoryItemSummary {
+  public getItemOrThrow(
+    inventoryItemId: InventoryItemId,
+    accountId: AccountId
+  ): InventoryItemSummary {
     const item = this.#items.get(inventoryItemId);
-    if (!item) {
+    if (!item || item.accountId !== accountId) {
       throw new NotFoundError('Inventory item not found', { inventoryItemId });
     }
 
@@ -329,10 +412,14 @@ export class InventoryService {
 
   public async consume(
     actorUserId: UserId,
-    payload: CreateInventoryConsumptionRequest
+    payload: CreateInventoryConsumptionRequest,
+    accountId: AccountId
   ): Promise<InventoryConsumptionSummary> {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
-    const item = this.getItemOrThrow(payload.inventoryItemId as never);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
+    const item = this.getItemOrThrow(payload.inventoryItemId as never, accountId);
     const quantity = requirePositiveNumber(payload.quantity, 'quantity');
     if (item.onHandQuantity < quantity) {
       throw new ConflictError('Insufficient stock for assistive consumption', {
@@ -347,13 +434,6 @@ export class InventoryService {
       onHandQuantity: Number((item.onHandQuantity - quantity).toFixed(2)),
       updatedAt: nowIso()
     };
-    this.#items.set(item.id, updatedItem);
-    this.drainLots(item.id, quantity);
-
-    if (this.#repository) {
-      await this.#repository.updateItem(updatedItem);
-    }
-
     const consumption: InventoryConsumptionSummary = {
       id: createCorrelationId('cons') as InventoryConsumptionId,
       accountId: encounter.accountId,
@@ -375,11 +455,7 @@ export class InventoryService {
       recordedByUserId: actorUserId,
       createdAt: nowIso()
     };
-    this.#consumptions.unshift(consumption);
-    if (this.#repository) {
-      await this.#repository.createConsumption(consumption);
-    }
-    await this.recordStockMovement({
+    const movement = this.buildStockMovement({
       accountId: encounter.accountId,
       inventoryItemId: item.id,
       movementType: 'consumption',
@@ -391,6 +467,26 @@ export class InventoryService {
       reference: consumption.sourceEntityId,
       recordedByUserId: actorUserId
     });
+    const previousLots = this.snapshotLots(item.id);
+    try {
+      this.drainLots(item.id, quantity);
+      const updatedLots = this.snapshotLots(item.id);
+      if (this.#repository?.consumeAtomically) {
+        await this.#repository.consumeAtomically(item, consumption, movement, updatedLots);
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createConsumption(consumption);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.(updatedLots);
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#consumptions = [consumption, ...this.#consumptions];
+      this.#movements = [movement, ...this.#movements];
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
     return consumption;
   }
 
@@ -421,6 +517,303 @@ export class InventoryService {
       });
   }
 
+  public listReservations(
+    accountId: AccountId,
+    status?: InventoryReservationSummary['status']
+  ): readonly InventoryReservationSummary[] {
+    return this.#reservations.filter(
+      (reservation) =>
+        reservation.accountId === accountId && (!status || reservation.status === status)
+    );
+  }
+
+  private getReservationOrThrow(
+    reservationId: InventoryReservationId,
+    accountId: AccountId
+  ): InventoryReservationSummary {
+    const reservation = this.#reservations.find(
+      (candidate) => candidate.id === reservationId && candidate.accountId === accountId
+    );
+    if (!reservation) {
+      throw new NotFoundError('Inventory reservation not found', { reservationId });
+    }
+    return reservation;
+  }
+
+  public async reserve(
+    accountId: AccountId,
+    reservedByUserId: UserId,
+    payload: CreateInventoryReservationRequest
+  ): Promise<readonly InventoryReservationSummary[]> {
+    const item = this.getItemOrThrow(payload.inventoryItemId as InventoryItemId, accountId);
+    const quantity = requirePositiveNumber(payload.quantity, 'quantity');
+    const sourceEntityType = requireEnum(payload.sourceEntityType, 'sourceEntityType', [
+      'encounter',
+      'diagnostic_order',
+      'surgery_case',
+      'inpatient_stay',
+      'prescription',
+      'other'
+    ]) as InventoryReservationSummary['sourceEntityType'];
+    const candidates = this.listLots(accountId)
+      .filter((lot) => lot.inventoryItemId === item.id)
+      .filter((lot) => resolveLotStatus(lot.quantity, lot.expiryDate) !== 'expired')
+      .filter((lot) => lot.quantity - (lot.reservedQuantity ?? 0) > 0)
+      .sort((left, right) => {
+        const leftExpiry = left.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        const rightExpiry = right.expiryDate ?? '9999-12-31T00:00:00.000Z';
+        return leftExpiry.localeCompare(rightExpiry);
+      });
+    const available = candidates.reduce(
+      (sum, lot) => sum + lot.quantity - (lot.reservedQuantity ?? 0),
+      0
+    );
+    if (available < quantity) {
+      throw new ConflictError('Insufficient available stock for reservation', {
+        inventoryItemId: item.id,
+        availableQuantity: Number(available.toFixed(2)),
+        requestedQuantity: quantity
+      });
+    }
+
+    const now = nowIso();
+    const reservations: InventoryReservationSummary[] = [];
+    const lotUpdates: InventoryLotReservationUpdate[] = [];
+    const previousLots = this.snapshotLots(item.id);
+    let remaining = quantity;
+    for (const lot of candidates) {
+      if (remaining <= 0) break;
+      const availableInLot = Number((lot.quantity - (lot.reservedQuantity ?? 0)).toFixed(2));
+      const allocated = Number(Math.min(availableInLot, remaining).toFixed(2));
+      remaining = Number((remaining - allocated).toFixed(2));
+      const updatedAt = nowIso();
+      const updatedLot: InventoryLotSummary = {
+        ...lot,
+        reservedQuantity: Number(((lot.reservedQuantity ?? 0) + allocated).toFixed(2)),
+        updatedAt
+      };
+      lotUpdates.push({ lot: updatedLot, reservedDelta: allocated });
+      reservations.push({
+        id: createCorrelationId('reservation') as InventoryReservationId,
+        accountId,
+        inventoryItemId: item.id,
+        inventoryLotId: lot.id,
+        lotNumber: lot.lotNumber,
+        quantity: allocated,
+        unit: item.unit,
+        unitCostAmount: item.unitCostAmount,
+        status: 'reserved',
+        sourceEntityType,
+        sourceEntityId: payload.sourceEntityId?.trim() || undefined,
+        reference: payload.reference?.trim() || undefined,
+        reservedByUserId,
+        createdAt: now,
+        updatedAt: now
+      });
+      this.#lots.set(updatedLot.id, updatedLot);
+    }
+
+    try {
+      if (this.#repository?.reserveAtomically) {
+        await this.#repository.reserveAtomically(reservations, lotUpdates);
+      } else if (this.#repository) {
+        await this.#repository.upsertLots?.(lotUpdates.map((update) => update.lot));
+      }
+      for (const update of lotUpdates) this.#lots.set(update.lot.id, update.lot);
+      this.#reservations = [...reservations, ...this.#reservations];
+      return reservations;
+    } catch (error) {
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
+  }
+
+  public async releaseReservation(
+    accountId: AccountId,
+    actorUserId: UserId,
+    reservationId: InventoryReservationId
+  ): Promise<InventoryReservationSummary> {
+    const current = this.getReservationOrThrow(reservationId, accountId);
+    if (current.status !== 'reserved') {
+      throw new ConflictError('Only active inventory reservations can be released', {
+        reservationId,
+        status: current.status
+      });
+    }
+    const lot = this.#lots.get(current.inventoryLotId);
+    if (!lot) throw new NotFoundError('Inventory lot not found', { inventoryLotId: current.inventoryLotId });
+    const now = nowIso();
+    const updatedLot: InventoryLotSummary = {
+      ...lot,
+      reservedQuantity: Number(Math.max(0, (lot.reservedQuantity ?? 0) - current.quantity).toFixed(2)),
+      updatedAt: now
+    };
+    const updatedReservation: InventoryReservationSummary = {
+      ...current,
+      status: 'released',
+      releasedAt: now,
+      updatedAt: now
+    };
+    try {
+      if (this.#repository?.releaseReservationAtomically) {
+        await this.#repository.releaseReservationAtomically(updatedReservation, updatedLot);
+      } else {
+        await this.#repository?.upsertLots?.([updatedLot]);
+      }
+      this.#lots.set(updatedLot.id, updatedLot);
+      this.#reservations = this.#reservations.map((reservation) =>
+        reservation.id === reservationId ? updatedReservation : reservation
+      );
+      return updatedReservation;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async consumeReservation(
+    accountId: AccountId,
+    actorUserId: UserId,
+    reservationId: InventoryReservationId
+  ): Promise<InventoryReservationSummary> {
+    const current = this.getReservationOrThrow(reservationId, accountId);
+    if (current.status !== 'reserved') {
+      throw new ConflictError('Only active inventory reservations can be consumed', {
+        reservationId,
+        status: current.status
+      });
+    }
+    const item = this.getItemOrThrow(current.inventoryItemId, accountId);
+    const lot = this.#lots.get(current.inventoryLotId);
+    if (!lot) throw new NotFoundError('Inventory lot not found', { inventoryLotId: current.inventoryLotId });
+    if (item.onHandQuantity < current.quantity || lot.quantity < current.quantity) {
+      throw new ConflictError('Inventory balance is insufficient for reservation consumption', {
+        reservationId,
+        quantity: current.quantity
+      });
+    }
+    const now = nowIso();
+    const updatedItem: InventoryItemSummary = {
+      ...item,
+      onHandQuantity: Number((item.onHandQuantity - current.quantity).toFixed(2)),
+      updatedAt: now
+    };
+    const updatedLot: InventoryLotSummary = {
+      ...lot,
+      quantity: Number((lot.quantity - current.quantity).toFixed(2)),
+      reservedQuantity: Number(Math.max(0, (lot.reservedQuantity ?? 0) - current.quantity).toFixed(2)),
+      status: resolveLotStatus(lot.quantity - current.quantity, lot.expiryDate),
+      updatedAt: now
+    };
+    const movement = this.buildStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'consumption',
+      quantityDelta: -current.quantity,
+      balanceBefore: item.onHandQuantity,
+      balanceAfter: updatedItem.onHandQuantity,
+      unitCostAmount: current.unitCostAmount,
+      reason: 'Consumo de reserva de estoque',
+      reference: current.reference ?? current.id,
+      recordedByUserId: actorUserId
+    });
+    const updatedReservation: InventoryReservationSummary = {
+      ...current,
+      status: 'consumed',
+      consumedAt: now,
+      updatedAt: now,
+    };
+    const previousLots = this.snapshotLots(item.id);
+    try {
+      if (this.#repository?.consumeReservationAtomically) {
+        await this.#repository.consumeReservationAtomically(updatedReservation, updatedItem, updatedLot, movement);
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.([updatedLot]);
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#lots.set(updatedLot.id, updatedLot);
+      this.#movements = [movement, ...this.#movements];
+      this.#reservations = this.#reservations.map((reservation) =>
+        reservation.id === reservationId ? updatedReservation : reservation
+      );
+      return updatedReservation;
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
+  }
+
+  public async returnReservation(
+    accountId: AccountId,
+    actorUserId: UserId,
+    reservationId: InventoryReservationId
+  ): Promise<InventoryReservationSummary> {
+    const current = this.getReservationOrThrow(reservationId, accountId);
+    if (current.status !== 'consumed') {
+      throw new ConflictError('Only consumed inventory reservations can be returned', {
+        reservationId,
+        status: current.status
+      });
+    }
+    const item = this.getItemOrThrow(current.inventoryItemId, accountId);
+    const lot = this.#lots.get(current.inventoryLotId);
+    if (!lot) throw new NotFoundError('Inventory lot not found', { inventoryLotId: current.inventoryLotId });
+    const now = nowIso();
+    const updatedItem: InventoryItemSummary = {
+      ...item,
+      onHandQuantity: Number((item.onHandQuantity + current.quantity).toFixed(2)),
+      updatedAt: now
+    };
+    const updatedLot: InventoryLotSummary = {
+      ...lot,
+      quantity: Number((lot.quantity + current.quantity).toFixed(2)),
+      reservedQuantity: lot.reservedQuantity ?? 0,
+      status: resolveLotStatus(lot.quantity + current.quantity, lot.expiryDate),
+      updatedAt: now
+    };
+    const movement = this.buildStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'inbound',
+      quantityDelta: current.quantity,
+      balanceBefore: item.onHandQuantity,
+      balanceAfter: updatedItem.onHandQuantity,
+      unitCostAmount: current.unitCostAmount,
+      reason: 'Devolução de consumo de estoque',
+      reference: current.reference ?? current.id,
+      recordedByUserId: actorUserId
+    });
+    const updatedReservation: InventoryReservationSummary = {
+      ...current,
+      status: 'returned',
+      returnedAt: now,
+      updatedAt: now,
+    };
+    const previousLots = this.snapshotLots(item.id);
+    try {
+      if (this.#repository?.returnReservationAtomically) {
+        await this.#repository.returnReservationAtomically(updatedReservation, updatedItem, updatedLot, movement);
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.([updatedLot]);
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#lots.set(updatedLot.id, updatedLot);
+      this.#movements = [movement, ...this.#movements];
+      this.#reservations = this.#reservations.map((reservation) =>
+        reservation.id === reservationId ? updatedReservation : reservation
+      );
+      return updatedReservation;
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
+  }
+
   public listStockMovements(
     accountId: AccountId,
     inventoryItemId?: string
@@ -437,10 +830,7 @@ export class InventoryService {
     recordedByUserId: UserId,
     payload: CreateInventoryStockAdjustmentRequest
   ): Promise<InventoryStockMovementSummary> {
-    const item = this.getItemOrThrow(payload.inventoryItemId as never);
-    if (item.accountId !== accountId) {
-      throw new NotFoundError('Inventory item not found', { inventoryItemId: item.id });
-    }
+    const item = this.getItemOrThrow(payload.inventoryItemId as never, accountId);
     const quantityDelta = requireNonZeroNumber(payload.quantityDelta, 'quantityDelta');
     const balanceBefore = item.onHandQuantity;
     const balanceAfter = Number((balanceBefore + quantityDelta).toFixed(2));
@@ -457,17 +847,13 @@ export class InventoryService {
       onHandQuantity: balanceAfter,
       updatedAt: nowIso()
     };
-    this.#items.set(item.id, updatedItem);
+    const previousLots = this.snapshotLots(item.id);
     if (quantityDelta < 0) {
       this.drainLots(item.id, Math.abs(quantityDelta));
     } else {
       this.replaceLotsForItem(updatedItem);
     }
-    if (this.#repository) {
-      await this.#repository.updateItem(updatedItem);
-    }
-
-    return this.recordStockMovement({
+    const movement = this.buildStockMovement({
       accountId,
       inventoryItemId: item.id,
       movementType: 'adjustment',
@@ -479,6 +865,204 @@ export class InventoryService {
       reference: payload.reference?.trim() || undefined,
       recordedByUserId
     });
+    try {
+      if (this.#repository?.adjustAtomically) {
+        await this.#repository.adjustAtomically(updatedItem, movement, this.snapshotLots(item.id));
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.(this.snapshotLots(item.id));
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#movements = [movement, ...this.#movements];
+      return movement;
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
+  }
+
+  public async receiveInbound(
+    accountId: AccountId,
+    recordedByUserId: UserId,
+    payload: CreateInventoryInboundRequest
+  ): Promise<InventoryStockMovementSummary> {
+    const item = this.getItemOrThrow(payload.inventoryItemId as InventoryItemId, accountId);
+    const quantity = requirePositiveNumber(payload.quantity, 'quantity');
+    if (
+      typeof payload.unitCostAmount !== 'number' ||
+      !Number.isFinite(payload.unitCostAmount) ||
+      payload.unitCostAmount < 0
+    ) {
+      throw new ValidationError('Field unitCostAmount must be a non-negative number');
+    }
+    const unitCostAmount = Number(payload.unitCostAmount.toFixed(2));
+    const lotNumber = payload.lotNumber.trim();
+    if (!lotNumber) throw new ConflictError('lotNumber is required');
+    const balanceBefore = item.onHandQuantity;
+    const balanceAfter = Number((balanceBefore + quantity).toFixed(2));
+    const weightedCost = Number(
+      ((balanceBefore * item.unitCostAmount + quantity * unitCostAmount) / balanceAfter).toFixed(2)
+    );
+    const now = nowIso();
+    const updatedItem: InventoryItemSummary = {
+      ...item,
+      onHandQuantity: balanceAfter,
+      unitCostAmount: weightedCost,
+      updatedAt: now
+    };
+    const existingLot = this.listLots(accountId).find(
+      (lot) => lot.inventoryItemId === item.id && lot.lotNumber === lotNumber
+    );
+    const lot: InventoryLotSummary = {
+      id: existingLot?.id ?? `${item.id}-${createCorrelationId('lot')}` as InventoryLotId,
+      accountId,
+      inventoryItemId: item.id,
+      sku: item.sku,
+      itemName: item.name,
+      lotNumber,
+      quantity: Number(((existingLot?.quantity ?? 0) + quantity).toFixed(2)),
+      reservedQuantity: existingLot?.reservedQuantity ?? 0,
+      unit: item.unit,
+      location: payload.location?.trim() || existingLot?.location,
+      supplier: payload.supplier?.trim() || existingLot?.supplier,
+      manufactureDate: payload.manufactureDate ?? existingLot?.manufactureDate,
+      expiryDate: payload.expiryDate ?? existingLot?.expiryDate,
+      status: resolveLotStatus((existingLot?.quantity ?? 0) + quantity, payload.expiryDate ?? existingLot?.expiryDate),
+      createdAt: existingLot?.createdAt ?? now,
+      updatedAt: now
+    };
+    const movement = this.buildStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'inbound',
+      quantityDelta: quantity,
+      balanceBefore,
+      balanceAfter,
+      unitCostAmount,
+      reason: 'Entrada de compra',
+      reference: payload.reference?.trim() || undefined,
+      recordedByUserId
+    });
+    const previousLots = this.snapshotLots(item.id);
+    this.#lots.set(lot.id, lot);
+    try {
+      if (this.#repository?.receiveAtomically) {
+        await this.#repository.receiveAtomically(updatedItem, movement, [lot]);
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.([lot]);
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#movements = [movement, ...this.#movements];
+      return movement;
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
+  }
+
+  public async transferBetweenLocations(
+    accountId: AccountId,
+    recordedByUserId: UserId,
+    payload: InventoryTransferRequest
+  ): Promise<readonly InventoryStockMovementSummary[]> {
+    const item = this.getItemOrThrow(payload.inventoryItemId as InventoryItemId, accountId);
+    const quantity = requirePositiveNumber(payload.quantity, 'quantity');
+    const fromLocation = payload.fromLocation.trim();
+    const toLocation = payload.toLocation.trim();
+    if (!fromLocation || !toLocation || fromLocation === toLocation) {
+      throw new ConflictError('Transfer requires distinct source and destination locations');
+    }
+    const candidates = this.listLots(accountId)
+      .filter(
+        (lot) =>
+          lot.inventoryItemId === item.id &&
+          lot.location === fromLocation &&
+          lot.quantity - (lot.reservedQuantity ?? 0) > 0
+      )
+      .filter((lot) => resolveLotStatus(lot.quantity, lot.expiryDate) !== 'expired')
+      .sort((left, right) => (left.expiryDate ?? '9999').localeCompare(right.expiryDate ?? '9999'));
+    if (candidates.reduce((sum, lot) => sum + lot.quantity - (lot.reservedQuantity ?? 0), 0) < quantity) {
+      throw new ConflictError('Insufficient stock at source location', { fromLocation, quantity });
+    }
+    const previousLots = this.snapshotLots(item.id);
+    let remaining = quantity;
+    const transferLots: InventoryLotSummary[] = [];
+    for (const sourceLot of candidates) {
+      if (remaining <= 0) break;
+      const moved = Math.min(sourceLot.quantity - (sourceLot.reservedQuantity ?? 0), remaining);
+      remaining = Number((remaining - moved).toFixed(2));
+      this.#lots.set(sourceLot.id, {
+        ...sourceLot,
+        quantity: Number((sourceLot.quantity - moved).toFixed(2)),
+        status: resolveLotStatus(sourceLot.quantity - moved, sourceLot.expiryDate),
+        updatedAt: nowIso()
+      });
+      transferLots.push({
+        ...sourceLot,
+        id: `${sourceLot.id}-${createCorrelationId('transfer-lot')}` as InventoryLotId,
+        lotNumber: `${sourceLot.lotNumber}-T-${Date.now().toString(36)}`,
+        quantity: moved,
+        reservedQuantity: 0,
+        location: toLocation,
+        status: resolveLotStatus(moved, sourceLot.expiryDate),
+        updatedAt: nowIso()
+      });
+    }
+    for (const lot of transferLots) {
+      const sameLot = this.listLots(accountId).find(
+        (candidate) => candidate.inventoryItemId === item.id && candidate.lotNumber === lot.lotNumber
+      );
+      if (sameLot) {
+        this.#lots.set(sameLot.id, { ...sameLot, quantity: sameLot.quantity + lot.quantity, updatedAt: nowIso() });
+      } else {
+        this.#lots.set(lot.id, lot);
+      }
+    }
+    const firstMovement = this.buildStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'outbound',
+      quantityDelta: -quantity,
+      balanceBefore: item.onHandQuantity,
+      balanceAfter: Number((item.onHandQuantity - quantity).toFixed(2)),
+      unitCostAmount: item.unitCostAmount,
+      reason: `Transferência de ${fromLocation}`,
+      reference: payload.reference?.trim() || undefined,
+      recordedByUserId
+    });
+    const secondMovement = this.buildStockMovement({
+      accountId,
+      inventoryItemId: item.id,
+      movementType: 'inbound',
+      quantityDelta: quantity,
+      balanceBefore: firstMovement.balanceAfter,
+      balanceAfter: item.onHandQuantity,
+      unitCostAmount: item.unitCostAmount,
+      reason: `Transferência para ${toLocation}`,
+      reference: payload.reference?.trim() || firstMovement.id,
+      recordedByUserId
+    });
+    try {
+      if (this.#repository?.transferAtomically) {
+        await this.#repository.transferAtomically(item, [firstMovement, secondMovement], [
+          ...this.snapshotLots(item.id)
+        ]);
+      } else if (this.#repository) {
+        await this.#repository.createStockMovement(firstMovement);
+        await this.#repository.createStockMovement(secondMovement);
+        await this.#repository.upsertLots?.(this.snapshotLots(item.id));
+      }
+      this.#movements = [secondMovement, firstMovement, ...this.#movements];
+      return [firstMovement, secondMovement];
+    } catch (error) {
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
   }
 
   public async consumeForSale(
@@ -486,12 +1070,19 @@ export class InventoryService {
     inventoryItemId: InventoryItemId,
     quantity: number
   ): Promise<InventoryConsumptionSummary> {
-    const item = this.getItemOrThrow(inventoryItemId);
+    const item = this.getItemOrThrow(inventoryItemId, accountId);
     const qty = requirePositiveNumber(quantity, 'quantity');
-    if (item.onHandQuantity < qty) {
+    const reservedQuantity = this.snapshotLots(item.id).reduce(
+      (sum, lot) => sum + (lot.reservedQuantity ?? 0),
+      0
+    );
+    const availableQuantity = item.onHandQuantity - reservedQuantity;
+    if (availableQuantity < qty) {
       throw new ConflictError('Insufficient stock for commercial sale', {
         inventoryItemId: item.id,
         onHandQuantity: item.onHandQuantity,
+        reservedQuantity,
+        availableQuantity,
         requestedQuantity: qty
       });
     }
@@ -501,13 +1092,6 @@ export class InventoryService {
       onHandQuantity: Number((item.onHandQuantity - qty).toFixed(2)),
       updatedAt: nowIso()
     };
-    this.#items.set(item.id, updatedItem);
-    this.drainLots(item.id, qty);
-
-    if (this.#repository) {
-      await this.#repository.updateItem(updatedItem);
-    }
-
     const consumption: InventoryConsumptionSummary = {
       id: createCorrelationId('csale') as InventoryConsumptionId,
       accountId,
@@ -522,11 +1106,7 @@ export class InventoryService {
       recordedByUserId: '' as never,
       createdAt: nowIso()
     };
-    this.#consumptions.unshift(consumption);
-    if (this.#repository) {
-      await this.#repository.createConsumption(consumption);
-    }
-    await this.recordStockMovement({
+    const movement = this.buildStockMovement({
       accountId,
       inventoryItemId: item.id,
       movementType: 'consumption',
@@ -538,18 +1118,40 @@ export class InventoryService {
       reference: consumption.id,
       recordedByUserId: '' as never
     });
+    const previousLots = this.snapshotLots(item.id);
+    try {
+      this.drainLots(item.id, qty);
+      const updatedLots = this.snapshotLots(item.id);
+      if (this.#repository?.consumeAtomically) {
+        await this.#repository.consumeAtomically(item, consumption, movement, updatedLots);
+      } else if (this.#repository) {
+        await this.#repository.updateItem(updatedItem);
+        await this.#repository.createConsumption(consumption);
+        await this.#repository.createStockMovement(movement);
+        await this.#repository.upsertLots?.(updatedLots);
+      }
+      this.#items.set(item.id, updatedItem);
+      this.#consumptions = [consumption, ...this.#consumptions];
+      this.#movements = [movement, ...this.#movements];
+    } catch (error) {
+      this.#items.set(item.id, item);
+      this.restoreLots(item.id, previousLots);
+      throw error;
+    }
     return consumption;
   }
 
-  public createItem(
+  public async createItem(
     accountId: AccountId,
     payload: CreateInventoryItemRequest
-  ): InventoryItemSummary {
+  ): Promise<InventoryItemSummary> {
     const id = createCorrelationId('inv') as InventoryItemId;
     const now = nowIso();
 
     // Validate SKU uniqueness
-    const existingBySku = Array.from(this.#items.values()).find((i) => i.sku === payload.sku);
+    const existingBySku = Array.from(this.#items.values()).find(
+      (item) => item.accountId === accountId && item.sku === payload.sku.trim()
+    );
     if (existingBySku) {
       throw new ConflictError('SKU already exists', { sku: payload.sku });
     }
@@ -567,21 +1169,23 @@ export class InventoryService {
       updatedAt: now
     };
 
+    if (this.#repository) {
+      await this.#repository.createItem(item);
+      await this.#repository.upsertLots?.(buildLotsForItem(item));
+    }
+
     this.#items.set(item.id, item);
     this.replaceLotsForItem(item);
-
-    if (this.#repository) {
-      this.#repository.createItem(item);
-    }
 
     return item;
   }
 
-  public updateItem(
+  public async updateItem(
+    accountId: AccountId,
     inventoryItemId: InventoryItemId,
     payload: UpdateInventoryItemRequest
-  ): InventoryItemSummary {
-    const existing = this.getItemOrThrow(inventoryItemId);
+  ): Promise<InventoryItemSummary> {
+    const existing = this.getItemOrThrow(inventoryItemId, accountId);
 
     const updatedItem: InventoryItemSummary = {
       ...existing,
@@ -601,29 +1205,55 @@ export class InventoryService {
           : existing.unitCostAmount,
       updatedAt: nowIso()
     };
+    const reservedQuantity = this.snapshotLots(existing.id).reduce(
+      (sum, lot) => sum + (lot.reservedQuantity ?? 0),
+      0
+    );
+    if (updatedItem.onHandQuantity < reservedQuantity) {
+      throw new ConflictError('Inventory item quantity cannot be lower than its reservations', {
+        inventoryItemId: existing.id,
+        reservedQuantity,
+        requestedQuantity: updatedItem.onHandQuantity
+      });
+    }
+
+    if (this.#repository) {
+      await this.#repository.updateItem(updatedItem);
+      await this.#repository.upsertLots?.(buildLotsForItem(updatedItem).map((lot) => ({
+        ...lot,
+        reservedQuantity: this.#lots.get(lot.id)?.reservedQuantity ?? 0
+      })));
+    }
 
     this.#items.set(updatedItem.id, updatedItem);
     this.replaceLotsForItem(updatedItem);
 
-    if (this.#repository) {
-      this.#repository.updateItem(updatedItem);
-    }
-
     return updatedItem;
   }
 
-  private async recordStockMovement(input: Omit<InventoryStockMovementSummary, 'id' | 'createdAt'>): Promise<InventoryStockMovementSummary> {
-    const movement: InventoryStockMovementSummary = {
+  private buildStockMovement(
+    input: Omit<InventoryStockMovementSummary, 'id' | 'createdAt'>
+  ): InventoryStockMovementSummary {
+    return {
       id: createCorrelationId('stockmov') as InventoryStockMovementId,
       ...input,
       reason: input.reason.trim() || 'Movimentacao de estoque',
       createdAt: nowIso()
     };
-    this.#movements.unshift(movement);
-    if (this.#repository) {
-      await this.#repository.createStockMovement(movement);
+  }
+
+  private snapshotLots(inventoryItemId: InventoryItemId): readonly InventoryLotSummary[] {
+    return Array.from(this.#lots.values()).filter((lot) => lot.inventoryItemId === inventoryItemId);
+  }
+
+  private restoreLots(
+    inventoryItemId: InventoryItemId,
+    previousLots: readonly InventoryLotSummary[]
+  ): void {
+    for (const [lotId, lot] of this.#lots.entries()) {
+      if (lot.inventoryItemId === inventoryItemId) this.#lots.delete(lotId);
     }
-    return movement;
+    for (const lot of previousLots) this.#lots.set(lot.id, lot);
   }
 }
 
@@ -641,3 +1271,18 @@ export {
   DatabaseInventoryRepository,
   type InventoryRepository
 } from './repositories/database-inventory.repository.js';
+
+export {
+  DatabaseProcurementRepository,
+  InMemoryProcurementRepository,
+  ProcurementService,
+  type CreateInventoryPurchaseInput,
+  type InventoryPurchaseLineSummary,
+  type InventoryPurchaseStatus,
+  type InventoryPurchaseSummary,
+  type InventoryTransferStatus,
+  type InventoryTransferSummary,
+  type InventoryPayableGateway,
+  type ProcurementRepository,
+  type ReceiveInventoryPurchaseInput
+} from './procurement.js';

@@ -10,7 +10,9 @@ import type {
   QueueTransferId,
   QueueTransferSummary,
   QueueEntrySummary,
-  SchedulingAppointmentSummary
+  SchedulingAppointmentSummary,
+  StaffId,
+  UserId
 } from '@cvg-his-v2/shared-types';
 
 import { SchedulingService } from './index.js';
@@ -141,6 +143,48 @@ describe('SchedulingService', () => {
       staff: staff as never,
       services: services as never
     });
+  });
+
+  it('creates appointments with canonical UUID identifiers', async () => {
+    const appointment = await service.createAppointment('acc_cvg_demo' as AccountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T08:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Consulta com identificador canonico'
+    });
+
+    expect(appointment.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+  });
+
+  it('blocks appointment creation during staff time off', async () => {
+    const timeOff = {
+      listTimeOffOverlaps: () => [
+        {
+          startsAt: '2026-04-02T09:00:00.000Z',
+          endsAt: '2026-04-02T13:00:00.000Z',
+          reason: 'Folga programada'
+        }
+      ]
+    };
+    const serviceWithTimeOff = new SchedulingService(owners, patients, [], {
+      staff: staff as never,
+      services: services as never,
+      timeOff: timeOff as never
+    });
+
+    await expect(
+      serviceWithTimeOff.createAppointment('acc_cvg_demo' as AccountId, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        scheduledAt: '2026-04-02T10:00:00.000Z',
+        durationMinutes: 30,
+        practitionerStaffId: 'staff_vet',
+        reason: 'Consulta em folga'
+      })
+    ).rejects.toThrow(/slot is unavailable/);
   });
 
   it('creates appointments and returns them ordered by scheduledAt', async () => {
@@ -440,6 +484,27 @@ describe('SchedulingService', () => {
     await persistent.cancelAppointment(appointment.id, 'Cancelado pelo cliente');
 
     expect(repository.appointments.get(appointment.id)?.status).toBe('cancelled');
+  });
+
+  it('keeps the cached appointment unchanged when cancellation persistence fails', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await persistent.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-07T11:00:00.000Z',
+      visitType: 'scheduled',
+      reason: 'Falha de persistencia'
+    });
+    repository.updateAppointment = async () => {
+      throw new Error('database unavailable');
+    };
+
+    await expect(persistent.cancelAppointment(appointment.id)).rejects.toThrow(
+      'database unavailable'
+    );
+    expect(persistent.getAppointmentOrThrow(appointment.id).status).toBe('scheduled');
   });
 
   it('rejects cancelled appointment from being re-check-in', async () => {
@@ -1109,6 +1174,99 @@ describe('SchedulingService', () => {
     );
     expect(overview.items.some((item) => item.id === appointment.id)).toBe(true);
     expect(overview.blocks.some((block) => block.practitionerStaffId === 'staff_vet')).toBe(true);
+  });
+
+  it('uses persisted professional availability when checking a slot', async () => {
+    const configured = new SchedulingService(owners, patients, [], {
+      staff: staff as never,
+      agendaConfig: {
+        async listAvailability() {
+          return [{
+            id: 'availability-wed',
+            accountId: 'acc_cvg_demo' as AccountId,
+            professionalUserId: 'staff_vet',
+            dayOfWeek: 3,
+            startTime: '09:00',
+            endTime: '17:00',
+            slotDurationMinutes: 30,
+            timezone: 'UTC',
+            notes: null
+          }];
+        }
+      }
+    });
+
+    await configured.hydrateFromDatabase('acc_cvg_demo' as AccountId);
+
+    const available = configured.getAvailability('acc_cvg_demo' as AccountId, {
+      scheduledAt: '2026-04-15T16:30:00.000Z',
+      durationMinutes: 30,
+      patientId: 'patient_luna',
+      practitionerStaffId: 'staff_vet'
+    });
+    const outside = configured.getAvailability('acc_cvg_demo' as AccountId, {
+      scheduledAt: '2026-04-15T17:00:00.000Z',
+      durationMinutes: 30,
+      patientId: 'patient_luna',
+      practitionerStaffId: 'staff_vet'
+    });
+
+    expect(available.available).toBe(true);
+    expect(outside.conflicts.some((conflict) => conflict.type === 'outside_hours')).toBe(true);
+  });
+
+  it('maps persisted availability user ids to staff ids used by appointment commands', async () => {
+    const configured = new SchedulingService(owners, patients, [], {
+      staff: {
+        list: () => [
+          {
+            id: 'staff_vet' as StaffId,
+            userId: 'user_vet' as UserId,
+            accountId: 'acc_cvg_demo' as AccountId,
+            fullName: 'Veterinário Responsável',
+            department: 'Clinica',
+            jobTitle: 'Médico Veterinário',
+            status: 'active'
+          }
+        ],
+        getOrThrow: () => ({
+          id: 'staff_vet' as StaffId,
+          accountId: 'acc_cvg_demo' as AccountId,
+          fullName: 'Veterinário Responsável',
+          department: 'Clinica',
+          jobTitle: 'Médico Veterinário',
+          status: 'active'
+        })
+      },
+      agendaConfig: {
+        async listAvailability() {
+          return [
+            {
+              id: 'availability-user-vet',
+              accountId: 'acc_cvg_demo' as AccountId,
+              professionalUserId: 'user_vet',
+              dayOfWeek: 3,
+              startTime: '09:00',
+              endTime: '17:00',
+              slotDurationMinutes: 30,
+              timezone: 'UTC',
+              notes: null
+            }
+          ];
+        }
+      }
+    });
+
+    await configured.hydrateFromDatabase('acc_cvg_demo' as AccountId);
+
+    const available = configured.getAvailability('acc_cvg_demo' as AccountId, {
+      scheduledAt: '2026-04-15T16:30:00.000Z',
+      durationMinutes: 30,
+      patientId: 'patient_luna',
+      practitionerStaffId: 'staff_vet'
+    });
+
+    expect(available.available).toBe(true);
   });
 
   it('returns aggregated operational stage for appointments already in queue', async () => {

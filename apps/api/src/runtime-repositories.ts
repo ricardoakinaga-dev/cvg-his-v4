@@ -12,11 +12,24 @@ import type {
   WebhookSummary
 } from '@cvg-his-v2/shared-types';
 import type { ApiKeyRepository } from '@cvg-his-v2/module-api-keys';
-import type { OutboxEvent, OutboxRepository } from '@cvg-his-v2/module-event-bus';
+import type {
+  ClaimPendingInput,
+  OutboxClaim,
+  OutboxEvent,
+  OutboxRepository,
+  RetryClaimInput
+} from '@cvg-his-v2/module-event-bus';
 import type { WebhookRepository } from '@cvg-his-v2/module-webhooks';
 import type { FeatureRepository } from '@cvg-his-v2/module-ml';
 import type { ModelRepository } from '@cvg-his-v2/module-ml';
-import type { Feature, FeatureGroup, FeatureVector, FeatureValue, CreateFeatureVector, EntityType } from '@cvg-his-v2/module-ml';
+import type {
+  Feature,
+  FeatureGroup,
+  FeatureVector,
+  FeatureValue,
+  CreateFeatureVector,
+  EntityType
+} from '@cvg-his-v2/module-ml';
 import type { Model, ModelVersion, ModelStage } from '@cvg-his-v2/module-ml';
 
 class InMemoryApiKeyRepository implements ApiKeyRepository {
@@ -80,13 +93,18 @@ class InMemoryApiKeyRepository implements ApiKeyRepository {
 }
 
 class InMemoryOutboxRepository implements OutboxRepository {
+  readonly deliveryGuarantees = 'ephemeral' as const;
   readonly #events = new Map<string, OutboxEvent>();
+  readonly #leases = new Map<string, Omit<OutboxClaim, 'event'>>();
 
   async create(event: OutboxEvent): Promise<void> {
     this.#events.set(event.id, event);
   }
 
   async update(event: OutboxEvent): Promise<void> {
+    if (this.#events.get(event.id)?.status === 'processing') {
+      throw new Error('Outbox administrative update cannot change a processing event');
+    }
     this.#events.set(event.id, event);
   }
 
@@ -94,16 +112,85 @@ class InMemoryOutboxRepository implements OutboxRepository {
     return this.#events.get(id) ?? null;
   }
 
-  async findPending(limit: number): Promise<readonly OutboxEvent[]> {
+  async claimPending(input: ClaimPendingInput): Promise<readonly OutboxClaim[]> {
     const now = Date.now();
     return Array.from(this.#events.values())
       .filter(
         (event) =>
-          (event.status === 'pending' || event.status === 'retrying') &&
-          new Date(event.scheduledAt).getTime() <= now
+          (((event.status === 'pending' || event.status === 'retrying') &&
+            new Date(event.scheduledAt).getTime() <= now) ||
+            (event.status === 'processing' &&
+              new Date(this.#leases.get(event.id)?.leaseExpiresAt ?? 0).getTime() <= now)) &&
+          event.attempts < event.maxAttempts
       )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .slice(0, input.limit)
+      .map((event) => {
+        const previousLease = this.#leases.get(event.id);
+        const claimedEvent = { ...event, status: 'processing' as const, attempts: event.attempts + 1 };
+        const lease = {
+          leaseOwner: input.leaseOwner,
+          leaseToken: createCorrelationId('lease'),
+          leaseVersion: (previousLease?.leaseVersion ?? 0) + 1,
+          leaseExpiresAt: new Date(now + input.leaseMs).toISOString()
+        };
+        this.#events.set(event.id, claimedEvent);
+        this.#leases.set(event.id, lease);
+        return { event: claimedEvent, ...lease };
+      });
+  }
+
+  async renewClaim(claim: OutboxClaim, leaseMs: number): Promise<boolean> {
+    const lease = this.#activeLease(claim);
+    if (!lease) return false;
+    this.#leases.set(claim.event.id, {
+      ...lease,
+      leaseExpiresAt: new Date(Date.now() + leaseMs).toISOString()
+    });
+    return true;
+  }
+
+  async completeClaim(claim: OutboxClaim, processedAt: string): Promise<boolean> {
+    return this.#settle(claim, { status: 'completed', processedAt, error: null });
+  }
+
+  async retryClaim(claim: OutboxClaim, input: RetryClaimInput): Promise<boolean> {
+    return this.#settle(claim, { status: 'retrying', scheduledAt: input.scheduledAt, error: input.error });
+  }
+
+  async failClaim(claim: OutboxClaim, error: string): Promise<boolean> {
+    return this.#settle(claim, { status: 'failed', error });
+  }
+
+  async reprocess(eventId: string): Promise<OutboxEvent | null> {
+    const event = this.#events.get(eventId);
+    if (!event || !['failed', 'retrying'].includes(event.status)) return null;
+    const reprocessed: OutboxEvent = {
+      ...event,
+      status: 'pending',
+      attempts: 0,
+      scheduledAt: new Date().toISOString(),
+      processedAt: null,
+      error: null
+    };
+    this.#events.set(eventId, reprocessed);
+    this.#leases.delete(eventId);
+    return reprocessed;
+  }
+
+  async peekPending(limit: number): Promise<readonly OutboxEvent[]> {
+    const now = Date.now();
+    return Array.from(this.#events.values())
+      .filter((event) =>
+        (event.status === 'pending' || event.status === 'retrying') &&
+        new Date(event.scheduledAt).getTime() <= now
+      )
       .slice(0, limit);
+  }
+
+  /** @deprecated Test/admin compatibility. Processing must use claimPending(). */
+  async findPending(limit: number): Promise<readonly OutboxEvent[]> {
+    return this.peekPending(limit);
   }
 
   async findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
@@ -117,6 +204,28 @@ class InMemoryOutboxRepository implements OutboxRepository {
       .filter((event) => event.status === 'failed')
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+  }
+
+  #activeLease(claim: OutboxClaim): Omit<OutboxClaim, 'event'> | null {
+    const event = this.#events.get(claim.event.id);
+    const lease = this.#leases.get(claim.event.id);
+    if (
+      event?.status !== 'processing' ||
+      !lease ||
+      lease.leaseOwner !== claim.leaseOwner ||
+      lease.leaseToken !== claim.leaseToken ||
+      lease.leaseVersion !== claim.leaseVersion ||
+      new Date(lease.leaseExpiresAt).getTime() <= Date.now()
+    ) return null;
+    return lease;
+  }
+
+  #settle(claim: OutboxClaim, changes: Partial<OutboxEvent>): boolean {
+    if (!this.#activeLease(claim)) return false;
+    const event = this.#events.get(claim.event.id)!;
+    this.#events.set(event.id, { ...event, ...changes });
+    this.#leases.delete(event.id);
+    return true;
   }
 }
 
@@ -132,12 +241,16 @@ class InMemoryWebhookRepository implements WebhookRepository {
     this.#webhooks.set(webhook.id, webhook);
   }
 
-  async delete(webhookId: WebhookId): Promise<void> {
-    this.#webhooks.delete(webhookId);
+  async delete(accountId: AccountId, webhookId: WebhookId): Promise<void> {
+    const webhook = this.#webhooks.get(webhookId);
+    if (webhook?.accountId === accountId) {
+      this.#webhooks.delete(webhookId);
+    }
   }
 
-  async findById(id: WebhookId): Promise<WebhookSummary | null> {
-    return this.#webhooks.get(id) ?? null;
+  async findById(accountId: AccountId, id: WebhookId): Promise<WebhookSummary | null> {
+    const webhook = this.#webhooks.get(id);
+    return webhook?.accountId === accountId ? webhook : null;
   }
 
   async findByAccount(accountId: AccountId): Promise<readonly WebhookSummary[]> {
@@ -146,7 +259,8 @@ class InMemoryWebhookRepository implements WebhookRepository {
 
   async findActiveByEvent(accountId: AccountId, event: string): Promise<readonly WebhookSummary[]> {
     return Array.from(this.#webhooks.values()).filter(
-      (webhook) => webhook.accountId === accountId && webhook.isActive && webhook.events.includes(event)
+      (webhook) =>
+        webhook.accountId === accountId && webhook.isActive && webhook.events.includes(event)
     );
   }
 
@@ -158,23 +272,29 @@ class InMemoryWebhookRepository implements WebhookRepository {
     this.#deliveries.set(delivery.id, delivery);
   }
 
-  async deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void> {
+  async deleteDeliveriesByWebhook(accountId: AccountId, webhookId: WebhookId): Promise<void> {
     for (const [deliveryId, delivery] of this.#deliveries.entries()) {
-      if (delivery.webhookId === webhookId) {
+      if (delivery.accountId === accountId && delivery.webhookId === webhookId) {
         this.#deliveries.delete(deliveryId);
       }
     }
   }
 
-  async findDeliveriesByWebhook(webhookId: WebhookId): Promise<readonly WebhookDeliverySummary[]> {
+  async findDeliveriesByWebhook(
+    accountId: AccountId,
+    webhookId: WebhookId
+  ): Promise<readonly WebhookDeliverySummary[]> {
     return Array.from(this.#deliveries.values())
-      .filter((delivery) => delivery.webhookId === webhookId)
+      .filter((delivery) => delivery.accountId === accountId && delivery.webhookId === webhookId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async findPendingDeliveries(limit: number): Promise<readonly WebhookDeliverySummary[]> {
+  async findPendingDeliveries(
+    accountId: AccountId,
+    limit: number
+  ): Promise<readonly WebhookDeliverySummary[]> {
     return Array.from(this.#deliveries.values())
-      .filter((delivery) => delivery.status === 'pending')
+      .filter((delivery) => delivery.accountId === accountId && delivery.status === 'pending')
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .slice(0, limit);
   }
@@ -210,7 +330,10 @@ class InMemoryFeatureRepository implements FeatureRepository {
     return Array.from(this.#features.values());
   }
 
-  async updateFeature(id: string, data: Partial<Omit<Feature, 'id' | 'createdAt'>>): Promise<Feature> {
+  async updateFeature(
+    id: string,
+    data: Partial<Omit<Feature, 'id' | 'createdAt'>>
+  ): Promise<Feature> {
     const existing = this.#features.get(id);
     if (!existing) throw new Error(`Feature ${id} not found`);
     const updated: Feature = { ...existing, ...data, updatedAt: new Date().toISOString() };
@@ -223,7 +346,11 @@ class InMemoryFeatureRepository implements FeatureRepository {
   }
 
   async createGroup(data: Omit<FeatureGroup, 'id' | 'createdAt'>): Promise<FeatureGroup> {
-    const group: FeatureGroup = { ...data, id: this.nextId('grp'), createdAt: new Date().toISOString() };
+    const group: FeatureGroup = {
+      ...data,
+      id: this.nextId('grp'),
+      createdAt: new Date().toISOString()
+    };
     this.#groups.set(group.id, group);
     return group;
   }
@@ -246,7 +373,13 @@ class InMemoryFeatureRepository implements FeatureRepository {
 
   async createVector(data: CreateFeatureVector): Promise<FeatureVector> {
     const now = new Date().toISOString();
-    const vector: FeatureVector = { ...data, id: this.nextId('vec'), values: {}, createdAt: now, updatedAt: now };
+    const vector: FeatureVector = {
+      ...data,
+      id: this.nextId('vec'),
+      values: {},
+      createdAt: now,
+      updatedAt: now
+    };
     this.#vectors.set(vector.id, vector);
     return vector;
   }
@@ -265,7 +398,10 @@ class InMemoryFeatureRepository implements FeatureRepository {
     return Array.from(this.#vectors.values());
   }
 
-  async updateVector(id: string, data: Partial<Omit<FeatureVector, 'id' | 'createdAt'>>): Promise<FeatureVector> {
+  async updateVector(
+    id: string,
+    data: Partial<Omit<FeatureVector, 'id' | 'createdAt'>>
+  ): Promise<FeatureVector> {
     const existing = this.#vectors.get(id);
     if (!existing) throw new Error(`Vector ${id} not found`);
     const updated: FeatureVector = { ...existing, ...data, updatedAt: new Date().toISOString() };
@@ -307,7 +443,12 @@ class InMemoryModelRepository implements ModelRepository {
   }
 
   async createModel(data: Omit<Model, 'id' | 'currentVersion' | 'createdAt'>): Promise<Model> {
-    const model: Model = { ...data, id: this.nextId('model'), currentVersion: 1, createdAt: new Date().toISOString() };
+    const model: Model = {
+      ...data,
+      id: this.nextId('model'),
+      currentVersion: 1,
+      createdAt: new Date().toISOString()
+    };
     this.#models.set(model.id, model);
     return model;
   }
@@ -332,7 +473,9 @@ class InMemoryModelRepository implements ModelRepository {
     this.#models.delete(id);
   }
 
-  async createVersion(data: Omit<ModelVersion, 'id' | 'stage' | 'metrics' | 'stageHistory' | 'createdAt'>): Promise<ModelVersion> {
+  async createVersion(
+    data: Omit<ModelVersion, 'id' | 'stage' | 'metrics' | 'stageHistory' | 'createdAt'>
+  ): Promise<ModelVersion> {
     const version: ModelVersion = {
       ...data,
       id: this.nextId('ver'),
@@ -353,8 +496,15 @@ class InMemoryModelRepository implements ModelRepository {
     return Array.from(this.#versions.values()).filter((v) => v.modelId === modelId);
   }
 
-  async findVersionByModelAndVersion(modelId: string, version: number): Promise<ModelVersion | null> {
-    return Array.from(this.#versions.values()).find((v) => v.modelId === modelId && v.version === version) ?? null;
+  async findVersionByModelAndVersion(
+    modelId: string,
+    version: number
+  ): Promise<ModelVersion | null> {
+    return (
+      Array.from(this.#versions.values()).find(
+        (v) => v.modelId === modelId && v.version === version
+      ) ?? null
+    );
   }
 
   async updateVersionStage(id: string, stage: ModelStage, by?: string): Promise<ModelVersion> {
@@ -363,7 +513,10 @@ class InMemoryModelRepository implements ModelRepository {
     const updated: ModelVersion = {
       ...existing,
       stage,
-      stageHistory: [...existing.stageHistory, { from: existing.stage, to: stage, at: new Date().toISOString(), by }]
+      stageHistory: [
+        ...existing.stageHistory,
+        { from: existing.stage, to: stage, at: new Date().toISOString(), by }
+      ]
     };
     this.#versions.set(id, updated);
     return updated;

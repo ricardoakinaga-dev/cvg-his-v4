@@ -69,13 +69,20 @@ const todayEvent: PreventiveEventSummary = {
   clientName: 'Hoje Cliente',
   animalName: 'Hoje Pet',
   description: 'Vacina vence hoje',
-  eventDate: new Date().toISOString().slice(0, 10)
+  eventDate: localDate(new Date())
 };
+
+function localDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function daysFromToday(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return localDate(date);
 }
 
 describe('VaccinesDewormersPage', () => {

@@ -9,13 +9,19 @@ import type {
 export interface WebhookRepository {
   create(webhook: WebhookSummary): Promise<void>;
   update(webhook: WebhookSummary): Promise<void>;
-  delete(webhookId: WebhookId): Promise<void>;
-  findById(id: WebhookId): Promise<WebhookSummary | null>;
+  delete(accountId: AccountId, webhookId: WebhookId): Promise<void>;
+  findById(accountId: AccountId, id: WebhookId): Promise<WebhookSummary | null>;
   findByAccount(accountId: AccountId): Promise<readonly WebhookSummary[]>;
   findActiveByEvent(accountId: AccountId, event: string): Promise<readonly WebhookSummary[]>;
   createDelivery(delivery: WebhookDeliverySummary): Promise<void>;
   updateDelivery(delivery: WebhookDeliverySummary): Promise<void>;
-  deleteDeliveriesByWebhook(webhookId: WebhookId): Promise<void>;
-  findDeliveriesByWebhook(webhookId: WebhookId): Promise<readonly WebhookDeliverySummary[]>;
-  findPendingDeliveries(limit: number): Promise<readonly WebhookDeliverySummary[]>;
+  deleteDeliveriesByWebhook(accountId: AccountId, webhookId: WebhookId): Promise<void>;
+  findDeliveriesByWebhook(
+    accountId: AccountId,
+    webhookId: WebhookId
+  ): Promise<readonly WebhookDeliverySummary[]>;
+  findPendingDeliveries(
+    accountId: AccountId,
+    limit: number
+  ): Promise<readonly WebhookDeliverySummary[]>;
 }

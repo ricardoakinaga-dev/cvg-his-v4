@@ -1,4 +1,4 @@
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, StaffId, StaffSummary, UserId } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
@@ -7,6 +7,11 @@ import type {
   StaffUpdateInput,
   StaffRepository
 } from './repositories/database-staff.repository.js';
+import {
+  createStaffTimeOffId,
+  type StaffTimeOffRepository,
+  type StaffTimeOffSummary
+} from './repositories/database-staff-time-off.repository.js';
 
 function createSeedStaff(): StaffSummary[] {
   const createdAt = '2026-03-25T00:00:00.000Z';
@@ -101,18 +106,22 @@ function createSeedStaff(): StaffSummary[] {
 
 export interface StaffServiceOptions {
   readonly repository?: StaffRepository;
+  readonly timeOffRepository?: StaffTimeOffRepository;
 }
 
 export class StaffService {
   readonly #repository?: StaffRepository;
+  readonly #timeOffRepository?: StaffTimeOffRepository;
   readonly #staffById = new Map<StaffId, StaffSummary>();
   readonly #staffByUserId = new Map<UserId, StaffSummary>();
+  readonly #timeOffById = new Map<string, StaffTimeOffSummary>();
 
   public constructor(
     options?: StaffServiceOptions,
     seedStaff: readonly StaffSummary[] = createSeedStaff()
   ) {
     this.#repository = options?.repository;
+    this.#timeOffRepository = options?.timeOffRepository;
     for (const staff of seedStaff) {
       this.#staffById.set(staff.id, staff);
       if (staff.userId) {
@@ -122,30 +131,150 @@ export class StaffService {
   }
 
   public get persistenceMode(): 'database' | 'in-memory' {
-    return this.#repository ? 'database' : 'in-memory';
+    return this.#repository || this.#timeOffRepository ? 'database' : 'in-memory';
   }
 
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
-    if (!this.#repository) return;
-    const dbStaff = await this.#repository.findByAccountId(accountId);
-    for (const record of dbStaff) {
-      const summary: StaffSummary = {
-        id: record.id as StaffId,
-        accountId: record.accountId,
-        userId: record.userId ?? (undefined as UserId | undefined),
-        employeeCode: record.employeeCode,
-        fullName: record.fullName,
-        department: record.department ?? '',
-        jobTitle: record.jobTitle ?? '',
-        status: record.isActive ? 'active' : 'inactive',
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt
-      };
-      this.#staffById.set(summary.id, summary);
-      if (summary.userId) {
-        this.#staffByUserId.set(summary.userId, summary);
+    if (this.#repository) {
+      const dbStaff = await this.#repository.findByAccountId(accountId);
+      for (const record of dbStaff) {
+        const summary: StaffSummary = {
+          id: record.id as StaffId,
+          accountId: record.accountId,
+          userId: record.userId ?? (undefined as UserId | undefined),
+          employeeCode: record.employeeCode,
+          fullName: record.fullName,
+          department: record.department ?? '',
+          jobTitle: record.jobTitle ?? '',
+          status: record.isActive ? 'active' : 'inactive',
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt
+        };
+        this.#staffById.set(summary.id, summary);
+        if (summary.userId) {
+          this.#staffByUserId.set(summary.userId, summary);
+        }
       }
     }
+
+    if (this.#timeOffRepository) {
+      const timeOffs = await this.#timeOffRepository.findByAccountId(accountId);
+      for (const timeOff of timeOffs) this.#timeOffById.set(timeOff.id, timeOff);
+    }
+  }
+
+  public listTimeOff(accountId: AccountId, staffId?: StaffId): readonly StaffTimeOffSummary[] {
+    return [...this.#timeOffById.values()]
+      .filter((timeOff) => timeOff.accountId === accountId)
+      .filter((timeOff) => !staffId || timeOff.staffId === staffId)
+      .sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+  }
+
+  public listTimeOffOverlaps(
+    accountId: AccountId,
+    staffId: StaffId,
+    startsAt: string,
+    endsAt: string
+  ): readonly StaffTimeOffSummary[] {
+    const start = parseTimeOffDate(startsAt, 'startsAt');
+    const end = parseTimeOffDate(endsAt, 'endsAt');
+    return this.listTimeOff(accountId, staffId).filter(
+      (timeOff) =>
+        timeOff.status === 'scheduled' &&
+        new Date(timeOff.startsAt) < end &&
+        new Date(timeOff.endsAt) > start
+    );
+  }
+
+  public async createTimeOff(
+    accountId: AccountId,
+    createdByUserId: UserId,
+    input: {
+      readonly staffId: StaffId;
+      readonly startsAt: string;
+      readonly endsAt: string;
+      readonly reason: string;
+    }
+  ): Promise<StaffTimeOffSummary> {
+    this.getOrThrow(input.staffId, accountId);
+    const startsAt = parseTimeOffDate(input.startsAt, 'startsAt');
+    const endsAt = parseTimeOffDate(input.endsAt, 'endsAt');
+    if (endsAt <= startsAt) {
+      throw new ValidationError('endsAt must be after startsAt');
+    }
+    const reason = input.reason.trim();
+    if (!reason) throw new ValidationError('reason must be a non-empty string');
+
+    const localOverlaps = this.listTimeOffOverlaps(
+      accountId,
+      input.staffId,
+      startsAt.toISOString(),
+      endsAt.toISOString()
+    );
+    const persistedOverlaps = this.#timeOffRepository
+      ? await this.#timeOffRepository.findOverlaps(
+          accountId,
+          input.staffId,
+          startsAt.toISOString(),
+          endsAt.toISOString()
+        )
+      : [];
+    if (localOverlaps.length > 0 || persistedOverlaps.length > 0) {
+      throw new ConflictError('Staff member already has time off in the requested interval', {
+        staffId: input.staffId,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString()
+      });
+    }
+
+    const now = nowIso();
+    const timeOff: StaffTimeOffSummary = {
+      id: createStaffTimeOffId(Boolean(this.#timeOffRepository)),
+      accountId,
+      staffId: input.staffId,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      reason,
+      status: 'scheduled',
+      createdByUserId,
+      createdAt: now,
+      updatedAt: now
+    };
+    if (this.#timeOffRepository?.createIfNoOverlap) {
+      const created = await this.#timeOffRepository.createIfNoOverlap(timeOff);
+      if (!created) {
+        throw new ConflictError('Staff member already has time off in the requested interval', {
+          staffId: input.staffId,
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString()
+        });
+      }
+    } else {
+      await this.#timeOffRepository?.save(timeOff);
+    }
+    this.#timeOffById.set(timeOff.id, timeOff);
+    return timeOff;
+  }
+
+  public async cancelTimeOff(
+    accountId: AccountId,
+    timeOffId: string
+  ): Promise<StaffTimeOffSummary> {
+    const current = this.#timeOffById.get(timeOffId);
+    if (!current || current.accountId !== accountId) {
+      throw new NotFoundError('Staff time off not found', { timeOffId });
+    }
+    if (current.status === 'cancelled') {
+      throw new ConflictError('Staff time off is already cancelled', { timeOffId });
+    }
+    const updated: StaffTimeOffSummary = {
+      ...current,
+      status: 'cancelled',
+      updatedAt: nowIso()
+    };
+    await this.#timeOffRepository?.save(updated);
+    this.#timeOffById.set(updated.id, updated);
+    return updated;
   }
 
   public list(accountId?: AccountId): readonly StaffSummary[] {
@@ -293,3 +422,20 @@ export {
   type StaffCreateInput,
   type StaffUpdateInput
 } from './repositories/database-staff.repository.js';
+export {
+  DatabaseStaffTimeOffRepository,
+  type StaffTimeOffRepository,
+  type StaffTimeOffStatus,
+  type StaffTimeOffSummary
+} from './repositories/database-staff-time-off.repository.js';
+
+function parseTimeOffDate(value: string, field: string): Date {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new ValidationError(`${field} must be a valid ISO date`);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ValidationError(`${field} must be a valid ISO date`);
+  }
+  return parsed;
+}

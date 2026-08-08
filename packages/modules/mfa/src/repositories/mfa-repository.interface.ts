@@ -1,4 +1,5 @@
 export interface MfaRecord {
+  readonly accountId: string;
   readonly userId: string;
   readonly secret: string;
   readonly isActive: boolean;
@@ -10,8 +11,8 @@ export interface MfaRecord {
 }
 
 export interface MfaRepository {
-  findByUserId(userId: string): Promise<MfaRecord | undefined>;
+  findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined>;
   create(record: MfaRecord): Promise<void>;
   update(record: MfaRecord): Promise<void>;
-  delete(userId: string): Promise<void>;
+  delete(accountId: string, userId: string): Promise<void>;
 }

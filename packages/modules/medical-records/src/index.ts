@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -18,8 +19,21 @@ import type {
   PatientId,
   UserId
 } from '@cvg-his-v2/shared-types';
+import {
+  clinicalEntries,
+  clinicalTimeline,
+  medicalRecords,
+  withTenantTransaction
+} from '@cvg-his-v2/shared-database';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isDatabaseAccountId(value: string): boolean {
+  return UUID_PATTERN.test(value);
+}
 
 export {
   DatabaseMedicalRecordRepository,
@@ -109,7 +123,18 @@ export class MedicalRecordsService {
       }
     });
     this.#lastPersist = pending;
-    this.#pendingPersist = pending;
+    // A failed best-effort event must not poison every subsequent write in
+    // the same runtime. The operation-specific promise remains available via
+    // #lastPersist so callers can observe its failure, while the queue itself
+    // advances from a recovered promise.
+    this.#pendingPersist = pending.catch(() => {});
+  }
+
+  #assertEncounterWritable(encounterId: EncounterId): void {
+    const encounter = this.#encounters.getOrThrow(encounterId);
+    if (encounter.status === 'closed') {
+      throw new ValidationError('Closed encounter is read-only', { encounterId });
+    }
   }
 
   public ensureRecord(encounterId: EncounterId): MedicalRecordSummary {
@@ -118,6 +143,7 @@ export class MedicalRecordsService {
       return this.getRecordOrThrow(existingId);
     }
 
+    this.#assertEncounterWritable(encounterId);
     const encounter = this.#encounters.getOrThrow(encounterId);
     this.#patients.getOrThrow(encounter.patientId);
     const now = nowIso();
@@ -161,6 +187,181 @@ export class MedicalRecordsService {
       actorUserId: encounter.createdByUserId
     });
     return record;
+  }
+
+  /**
+   * Persists a new clinical entry and its timeline effects in one tenant
+   * transaction. The legacy addEntry API remains available for in-memory
+   * callers, while the canonical PostgreSQL runtime uses this command to
+   * avoid a record/entry/timeline partial write.
+   */
+  public async createEntryAtomically(
+    actorUserId: UserId,
+    payload: CreateClinicalEntryRequest
+  ): Promise<ClinicalEntrySummary> {
+    const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
+    const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
+    this.#assertEncounterWritable(encounterId);
+    const encounter = this.#encounters.getOrThrow(encounterId);
+    const patient = this.#patients.getOrThrow(patientId);
+    if (encounter.patientId !== patientId || patient.accountId !== encounter.accountId) {
+      throw new NotFoundError('Encounter does not match patient', { encounterId, patientId });
+    }
+
+    // GET/read flows may create a record lazily and enqueue its database write
+    // before the user submits the first clinical entry. Wait for that queue to
+    // settle before loading the record, otherwise the transaction can update a
+    // not-yet-inserted record and fail its integrity trigger.
+    await this.#pendingPersist;
+    let record = await this.#loadRecordByEncounterId(encounterId);
+    const recordWasCreated = !record;
+    if (record?.status === 'completed') {
+      throw new ValidationError('Completed medical record is read-only', { encounterId });
+    }
+
+    const now = nowIso();
+    record ??= {
+      id: createCorrelationId('mr') as MedicalRecordId,
+      accountId: encounter.accountId,
+      encounterId,
+      patientId,
+      status: 'open',
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const title = requireNonEmptyString(payload.title, 'title');
+    const content = requireNonEmptyString(payload.content, 'content');
+    if (title.length > 255 || content.length > 10000) {
+      throw new ValidationError('Clinical entry exceeds the supported size', {
+        titleMaxLength: 255,
+        contentMaxLength: 10000
+      });
+    }
+
+    const entry: ClinicalEntrySummary = {
+      id: createCorrelationId('entry') as ClinicalEntryId,
+      accountId: record.accountId,
+      medicalRecordId: record.id,
+      encounterId,
+      patientId,
+      entryType: payload.entryType,
+      title,
+      content,
+      authoredByUserId: actorUserId,
+      version: 1,
+      createdAt: now,
+      updatedAt: now
+    };
+    const recordCreatedEvent: ClinicalTimelineEventSummary = {
+      id: createCorrelationId('cln') as never,
+      accountId: record.accountId,
+      medicalRecordId: record.id,
+      encounterId,
+      eventType: 'record_created',
+      summary: 'Medical record created for encounter',
+      actorUserId: encounter.createdByUserId,
+      occurredAt: now
+    };
+    const entryEvent: ClinicalTimelineEventSummary = {
+      id: createCorrelationId('cln') as never,
+      accountId: record.accountId,
+      medicalRecordId: record.id,
+      encounterId,
+      clinicalEntryId: entry.id,
+      eventType: 'entry_added',
+      summary: `${entry.entryType} added: ${entry.title}`,
+      actorUserId,
+      occurredAt: now
+    };
+
+    const hasCanonicalRepositories = Boolean(
+      this.#medicalRecordRepository &&
+        this.#clinicalEntryRepository &&
+        this.#clinicalTimelineRepository &&
+        isDatabaseAccountId(record.accountId)
+    );
+    if (!hasCanonicalRepositories) {
+      const fallbackEntry = this.addEntry(actorUserId, payload);
+      await this.waitForPersistence();
+      return fallbackEntry;
+    }
+
+    await withTenantTransaction(record.accountId, async (transaction) => {
+      if (recordWasCreated) {
+        await transaction.insert(medicalRecords).values({
+          id: record!.id,
+          accountId: record!.accountId,
+          encounterId: record!.encounterId,
+          patientId: record!.patientId,
+          status: record!.status,
+          createdAt: new Date(record!.createdAt),
+          updatedAt: new Date(record!.updatedAt)
+        });
+      } else {
+        await transaction
+          .update(medicalRecords)
+          .set({ updatedAt: new Date(now) })
+          .where(eq(medicalRecords.id, record!.id));
+      }
+
+      await transaction.insert(clinicalEntries).values({
+        id: entry.id,
+        accountId: entry.accountId,
+        medicalRecordId: entry.medicalRecordId,
+        encounterId: entry.encounterId,
+        patientId: entry.patientId,
+        authorUserId: entry.authoredByUserId,
+        entryType: entry.entryType,
+        title: entry.title,
+        content: entry.content,
+        version: entry.version,
+        createdAt: new Date(entry.createdAt),
+        updatedAt: new Date(entry.updatedAt)
+      });
+
+      if (recordWasCreated) {
+        await transaction.insert(clinicalTimeline).values({
+          id: recordCreatedEvent.id,
+          accountId: recordCreatedEvent.accountId,
+          medicalRecordId: recordCreatedEvent.medicalRecordId,
+          encounterId: recordCreatedEvent.encounterId,
+          eventType: recordCreatedEvent.eventType,
+          summary: recordCreatedEvent.summary,
+          actorUserId: recordCreatedEvent.actorUserId,
+          clinicalEntryId: null,
+          attachmentId: null,
+          occurredAt: new Date(recordCreatedEvent.occurredAt)
+        });
+      }
+
+      await transaction.insert(clinicalTimeline).values({
+        id: entryEvent.id,
+        accountId: entryEvent.accountId,
+        medicalRecordId: entryEvent.medicalRecordId,
+        encounterId: entryEvent.encounterId,
+        eventType: entryEvent.eventType,
+        summary: entryEvent.summary,
+        actorUserId: entryEvent.actorUserId,
+        clinicalEntryId: entryEvent.clinicalEntryId,
+        attachmentId: null,
+        occurredAt: new Date(entryEvent.occurredAt)
+      });
+    });
+
+    const updatedRecord: MedicalRecordSummary = { ...record, updatedAt: now };
+    this.#records.set(updatedRecord.id, updatedRecord);
+    this.#recordByEncounterId.set(encounterId, updatedRecord.id);
+    this.#entries.set(updatedRecord.id, [
+      entry,
+      ...(this.#entries.get(updatedRecord.id) ?? [])
+    ]);
+    this.#timeline.set(updatedRecord.id, [
+      entryEvent,
+      ...(recordWasCreated ? [recordCreatedEvent] : []),
+      ...(this.#timeline.get(updatedRecord.id) ?? [])
+    ]);
+    return entry;
   }
 
   async #loadRecordById(recordId: MedicalRecordId): Promise<MedicalRecordSummary | null> {
@@ -236,9 +437,34 @@ export class MedicalRecordsService {
     return loaded;
   }
 
+  public async getEntryOrThrowAsync(entryId: ClinicalEntryId): Promise<ClinicalEntrySummary> {
+    if (this.#clinicalEntryRepository) {
+      const entry = await this.#clinicalEntryRepository.findById(entryId);
+      if (entry) {
+        const record = await this.#loadRecordById(entry.medicalRecordId);
+        if (!record) {
+          throw new NotFoundError('Medical record not found for clinical entry', {
+            entryId,
+            medicalRecordId: entry.medicalRecordId
+          });
+        }
+        const entries = await this.#clinicalEntryRepository.findByMedicalRecordId(record.id);
+        this.#entries.set(record.id, [...entries]);
+        return entry;
+      }
+    } else {
+      for (const entries of this.#entries.values()) {
+        const entry = entries.find((candidate) => candidate.id === entryId);
+        if (entry) return entry;
+      }
+    }
+    throw new NotFoundError('Clinical entry not found', { entryId });
+  }
+
   public addEntry(actorUserId: UserId, payload: CreateClinicalEntryRequest): ClinicalEntrySummary {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
+    this.#assertEncounterWritable(encounterId);
     const record = this.ensureRecord(encounterId);
     const encounter = this.#encounters.getOrThrow(encounterId);
     if (encounter.patientId !== patientId) {
@@ -272,10 +498,20 @@ export class MedicalRecordsService {
       updatedAt: now
     });
 
+    const entryEvent = this.appendTimeline(record.id, {
+      accountId: record.accountId,
+      encounterId,
+      clinicalEntryId: entry.id,
+      eventType: 'entry_added',
+      summary: `${entry.entryType} added: ${entry.title}`,
+      actorUserId
+    }, false);
+
     if (this.#clinicalEntryRepository) {
       this.#enqueuePersist(
         async () => {
           await this.#clinicalEntryRepository!.create(entry);
+          await this.#clinicalTimelineRepository?.create(entryEvent);
         },
         () => {
           const entries = this.#entries.get(record.id) ?? [];
@@ -283,18 +519,25 @@ export class MedicalRecordsService {
             record.id,
             entries.filter((item) => item.id !== entry.id)
           );
+          const events = this.#timeline.get(record.id) ?? [];
+          this.#timeline.set(
+            record.id,
+            events.filter((item) => item.id !== entryEvent.id)
+          );
+        }
+      );
+    } else if (this.#clinicalTimelineRepository) {
+      this.#enqueuePersist(
+        () => this.#clinicalTimelineRepository!.create(entryEvent),
+        () => {
+          const events = this.#timeline.get(record.id) ?? [];
+          this.#timeline.set(
+            record.id,
+            events.filter((item) => item.id !== entryEvent.id)
+          );
         }
       );
     }
-
-    this.appendTimeline(record.id, {
-      accountId: record.accountId,
-      encounterId,
-      clinicalEntryId: entry.id,
-      eventType: 'entry_added',
-      summary: `${entry.entryType} added: ${entry.title}`,
-      actorUserId
-    });
     return entry;
   }
 
@@ -320,6 +563,8 @@ export class MedicalRecordsService {
     if (!foundEntry || !foundRecordId) {
       throw new NotFoundError('Clinical entry not found', { entryId });
     }
+
+    this.#assertEncounterWritable(foundEntry.encounterId);
 
     if (foundEntry.deletedAt) {
       throw new ValidationError('Archived clinical entry cannot be updated', { entryId });
@@ -429,6 +674,8 @@ export class MedicalRecordsService {
     if (!foundEntry || !foundRecordId) {
       throw new NotFoundError('Clinical entry not found', { entryId });
     }
+
+    this.#assertEncounterWritable(foundEntry.encounterId);
 
     if (foundEntry.deletedAt) {
       throw new ValidationError('Clinical entry already archived', { entryId });
@@ -623,6 +870,7 @@ export class MedicalRecordsService {
     attachmentId: string,
     summary: string
   ): void {
+    this.#assertEncounterWritable(encounterId);
     const record = this.ensureRecord(encounterId);
     this.appendTimeline(record.id, {
       accountId: record.accountId,
@@ -651,6 +899,7 @@ export class MedicalRecordsService {
       | 'diagnostic_resulted',
     summary: string
   ): void {
+    this.#assertEncounterWritable(encounterId);
     const record = this.ensureRecord(encounterId);
     this.appendTimeline(record.id, {
       accountId: record.accountId,
@@ -663,7 +912,8 @@ export class MedicalRecordsService {
 
   private appendTimeline(
     medicalRecordId: MedicalRecordId,
-    input: Omit<ClinicalTimelineEventSummary, 'id' | 'medicalRecordId' | 'occurredAt'>
+    input: Omit<ClinicalTimelineEventSummary, 'id' | 'medicalRecordId' | 'occurredAt'>,
+    persist = true
   ): ClinicalTimelineEventSummary {
     const current = this.#timeline.get(medicalRecordId) ?? [];
     const event: ClinicalTimelineEventSummary = {
@@ -675,7 +925,7 @@ export class MedicalRecordsService {
     current.unshift(event);
     this.#timeline.set(medicalRecordId, current);
 
-    if (this.#clinicalTimelineRepository) {
+    if (persist && this.#clinicalTimelineRepository) {
       this.#enqueuePersist(
         async () => {
           await this.#clinicalTimelineRepository!.create(event);

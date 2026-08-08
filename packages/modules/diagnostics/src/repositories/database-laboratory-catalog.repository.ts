@@ -28,6 +28,10 @@ import {
   DEFAULT_LABORATORY_REPORT_TYPES
 } from '../catalog.js';
 
+function tenantCatalogId(accountId: AccountId, sourceId: string): string {
+  return `${accountId}:${sourceId}`;
+}
+
 export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRepository {
   readonly #db: DatabaseClient;
 
@@ -50,7 +54,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     await this.#db.insert(laboratoryEquipment).values(
       DEFAULT_LABORATORY_EQUIPMENT.map((item) => ({
-        id: item.id,
+        id: tenantCatalogId(accountId, item.id),
         accountId,
         name: item.name,
         type: item.type,
@@ -64,7 +68,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     await this.#db.insert(laboratoryReportTypes).values(
       DEFAULT_LABORATORY_REPORT_TYPES.map((item) => ({
-        id: item.id,
+        id: tenantCatalogId(accountId, item.id),
         accountId,
         name: item.name,
         code: item.code,
@@ -78,7 +82,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     await this.#db.insert(laboratoryReferenceValues).values(
       DEFAULT_LABORATORY_REFERENCE_VALUES.map((item) => ({
-        id: item.id,
+        id: tenantCatalogId(accountId, item.id),
         accountId,
         parameter: item.parameter,
         examType: item.examType,

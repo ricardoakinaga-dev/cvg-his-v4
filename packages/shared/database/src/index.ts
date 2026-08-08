@@ -18,11 +18,33 @@ export interface DatabaseHealth {
 // Re-export real implementation from client.ts
 export {
   createDatabaseClient,
+  configureDatabaseTenantAccountResolver,
+  createScopedDatabaseClient,
   getDatabaseClient,
+  checkDatabaseRuntimeRole,
   getPool,
+  withTenantTransaction,
   closeDatabaseClient,
   checkDatabaseHealth,
   type DatabaseClient
 } from './client.js';
 
 export * from './schemas/index.js';
+export {
+  createTenantUnitOfWork,
+  hashIdempotencyPayload,
+  IdempotencyConflictError,
+  IdempotencyInProgressError,
+  runInTenantTransaction,
+  type JsonValue,
+  type TenantTransactionContext,
+  type TenantUnitOfWork,
+  type TenantUnitOfWorkExecutionContext,
+  type TenantUnitOfWorkResult,
+  type TransactionalAuditInput,
+  type TransactionalOutboxInput
+} from './tenant-unit-of-work.js';
+export {
+  getDatabaseTransactionScope,
+  type DatabaseTransactionScope
+} from './transaction-scope.js';

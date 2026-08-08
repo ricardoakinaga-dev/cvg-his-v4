@@ -304,6 +304,229 @@ describe('AccessControlService', () => {
     expect(profile.permissionCodes).toContain('users.manage');
   });
 
+  it('preserves account A access state after hydrating account B', async () => {
+    const accountA = 'account_a' as AccountId;
+    const accountB = 'account_b' as AccountId;
+    const userA = 'user_a' as UserId;
+    const userB = 'user_b' as UserId;
+    const roleOnlyUserA = 'role_only_user_a' as UserId;
+    const createdAt = '2026-01-01T00:00:00.000Z';
+    const updatedAt = '2026-01-02T00:00:00.000Z';
+    const teamsByAccount = {
+      [accountA]: [
+        {
+          id: 'team_a' as never,
+          accountId: accountA,
+          code: 'team_a',
+          name: 'Team A',
+          status: 'active' as const,
+          createdAt,
+          updatedAt
+        }
+      ],
+      [accountB]: [
+        {
+          id: 'team_b' as never,
+          accountId: accountB,
+          code: 'team_b',
+          name: 'Team B',
+          status: 'active' as const,
+          createdAt,
+          updatedAt
+        }
+      ]
+    };
+    const sectorsByAccount = {
+      [accountA]: [
+        {
+          id: 'sector_a' as never,
+          accountId: accountA,
+          code: 'sector_a',
+          name: 'Sector A',
+          status: 'active' as const,
+          createdAt,
+          updatedAt
+        }
+      ],
+      [accountB]: [
+        {
+          id: 'sector_b' as never,
+          accountId: accountB,
+          code: 'sector_b',
+          name: 'Sector B',
+          status: 'active' as const,
+          createdAt,
+          updatedAt
+        }
+      ]
+    };
+    const repository: AccessControlRepository = {
+      async createRole(_role: RoleRecord) {},
+      async findRoleById(_id) {
+        return null;
+      },
+      async findRoleByName(_name) {
+        return null;
+      },
+      async findAllRoles() {
+        return [
+          {
+            id: 'role_veterinarian' as never,
+            code: 'veterinarian',
+            name: 'Veterinarian',
+            createdAt,
+            permissionCodes: ['patients.read']
+          },
+          {
+            id: 'role_reception' as never,
+            code: 'reception',
+            name: 'Reception',
+            createdAt,
+            permissionCodes: ['patients.read']
+          }
+        ];
+      },
+      async createPermission(_permission: PermissionRecord) {},
+      async findPermissionByKey(_key) {
+        return null;
+      },
+      async findAllPermissions() {
+        return [
+          {
+            id: 'permission_patients_read' as never,
+            key: 'patients.read',
+            createdAt
+          }
+        ];
+      },
+      async addPermissionToRole(_roleId, _permissionId) {},
+      async removePermissionFromRole(_roleId, _permissionId) {},
+      async findPermissionsByRole(_roleId) {
+        return [];
+      },
+      async assignRoleToUser(_userId, _roleId) {},
+      async removeRoleFromUser(_userId, _roleId) {},
+      async findRolesByUser(targetUserId) {
+        const code =
+          targetUserId === userA || targetUserId === roleOnlyUserA
+            ? 'veterinarian'
+            : 'reception';
+        return [
+          {
+            id: `role_${code}` as never,
+            code,
+            name: code,
+            createdAt,
+            permissionCodes: ['patients.read']
+          }
+        ];
+      },
+      async findUserIdsByAccount(targetAccountId) {
+        return targetAccountId === accountA ? [userA, roleOnlyUserA] : [userB];
+      },
+      async createTeam(_input) {
+        throw new Error('Not implemented in test');
+      },
+      async updateTeam(_id, _input) {
+        throw new Error('Not implemented in test');
+      },
+      async findAllTeams(targetAccountId) {
+        return teamsByAccount[targetAccountId as keyof typeof teamsByAccount] ?? [];
+      },
+      async createSector(_input) {
+        throw new Error('Not implemented in test');
+      },
+      async updateSector(_id, _input) {
+        throw new Error('Not implemented in test');
+      },
+      async findAllSectors(targetAccountId) {
+        return sectorsByAccount[targetAccountId as keyof typeof sectorsByAccount] ?? [];
+      },
+      async replaceUserTeams(_userId, _teamIds) {},
+      async replaceUserSectors(_userId, _sectorIds) {},
+      async findTeamMemberships(targetAccountId) {
+        return [
+          {
+            userId: targetAccountId === accountA ? userA : userB,
+            subjectType: 'team',
+            subjectId: targetAccountId === accountA ? ('team_a' as never) : ('team_b' as never),
+            createdAt
+          }
+        ];
+      },
+      async findSectorMemberships(targetAccountId) {
+        return [
+          {
+            userId: targetAccountId === accountA ? userA : userB,
+            subjectType: 'sector',
+            subjectId:
+              targetAccountId === accountA ? ('sector_a' as never) : ('sector_b' as never),
+            createdAt
+          }
+        ];
+      },
+      async upsertPermissionAssignment(_input) {},
+      async removePermissionAssignment(_input) {},
+      async findPermissionAssignments(targetAccountId) {
+        const targetUserId = targetAccountId === accountA ? userA : userB;
+        const suffix = targetAccountId === accountA ? 'a' : 'b';
+        return [
+          {
+            accountId: targetAccountId,
+            subjectType: 'user',
+            subjectId: targetUserId,
+            permissionCode: 'patients.read',
+            effect: 'allow',
+            createdAt,
+            updatedAt
+          },
+          {
+            accountId: targetAccountId,
+            subjectType: 'team',
+            subjectId: `team_${suffix}`,
+            permissionCode: 'patients.read',
+            effect: 'allow',
+            createdAt,
+            updatedAt
+          },
+          {
+            accountId: targetAccountId,
+            subjectType: 'sector',
+            subjectId: `sector_${suffix}`,
+            permissionCode: 'patients.read',
+            effect: 'deny',
+            createdAt,
+            updatedAt
+          }
+        ];
+      }
+    };
+
+    const hydratedService = new AccessControlService({ repository });
+    await hydratedService.hydrateFromDatabase(accountA);
+    await hydratedService.hydrateFromDatabase(accountB);
+
+    expect(hydratedService.listTeams(accountA).map((team) => team.id)).toEqual(['team_a']);
+    expect(hydratedService.listSectors(accountA).map((sector) => sector.id)).toEqual(['sector_a']);
+    expect(hydratedService.listMemberships(userA).teams.map((team) => team.id)).toEqual(['team_a']);
+    expect(hydratedService.listMemberships(userA).sectors.map((sector) => sector.id)).toEqual([
+      'sector_a'
+    ]);
+    expect(hydratedService.getLegacyRoleCodes(userA)).toEqual(['veterinarian']);
+    expect(hydratedService.getLegacyRoleCodes(roleOnlyUserA)).toEqual(['veterinarian']);
+
+    const assignments = hydratedService.listAssignments();
+    expect(assignments.userPermissions.some((assignment) => assignment.subjectId === userA)).toBe(
+      true
+    );
+    expect(assignments.teamPermissions.some((assignment) => assignment.subjectId === 'team_a')).toBe(
+      true
+    );
+    expect(
+      assignments.sectorPermissions.some((assignment) => assignment.subjectId === 'sector_a')
+    ).toBe(true);
+  });
+
   it('asserts authorization for active user with permission', async () => {
     const actor = makeActor('active');
     const profile = service.createProfile({ roleCodes: ['admin'] });

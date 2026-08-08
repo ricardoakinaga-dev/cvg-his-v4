@@ -11,21 +11,21 @@ Escopo:
 
 Evidências principais:
 
-- [financeiro-beta-dashboard.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-beta-dashboard.png)
-- [financeiro-beta-dashboard.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-beta-dashboard.json)
-- [financeiro-legacy-gaveta.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-gaveta.png)
-- [financeiro-legacy-gaveta.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-gaveta.json)
-- [financeiro-legacy-contas-receber.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-contas-receber.png)
-- [financeiro-legacy-contas-receber.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-contas-receber.json)
-- [financeiro-legacy-contas-pagar.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-contas-pagar.png)
-- [financeiro-legacy-contas-pagar.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-contas-pagar.json)
-- [financeiro-legacy-transacoes.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-transacoes.png)
-- [financeiro-legacy-transacoes.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-transacoes.json)
-- [financeiro-legacy-formas-pagamento.png](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-formas-pagamento.png)
-- [financeiro-legacy-formas-pagamento.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-formas-pagamento.json)
-- [network.json](/root/cvg-his-v2/docs/vetus/inspection/2026-04-23T23-34-19-051Z-financeiro/network.json)
-- [2026-04-23-relatorio-entidade-comanda.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-comanda.md)
-- [2026-04-23-relatorio-entidade-vendas.md](/root/cvg-his-v2/docs/vetus/guides/2026-04-23-relatorio-entidade-vendas.md)
+- [financeiro-beta-dashboard.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-beta-dashboard.png)
+- [financeiro-beta-dashboard.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-beta-dashboard.json)
+- [financeiro-legacy-gaveta.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-gaveta.png)
+- [financeiro-legacy-gaveta.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-gaveta.json)
+- [financeiro-legacy-contas-receber.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-contas-receber.png)
+- [financeiro-legacy-contas-receber.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-contas-receber.json)
+- [financeiro-legacy-contas-pagar.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-contas-pagar.png)
+- [financeiro-legacy-contas-pagar.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-contas-pagar.json)
+- [financeiro-legacy-transacoes.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-transacoes.png)
+- [financeiro-legacy-transacoes.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-transacoes.json)
+- [financeiro-legacy-formas-pagamento.png](../inspection/2026-04-23T23-34-19-051Z-financeiro/screenshots/financeiro-legacy-formas-pagamento.png)
+- [financeiro-legacy-formas-pagamento.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/financeiro-legacy-formas-pagamento.json)
+- [network.json](../inspection/2026-04-23T23-34-19-051Z-financeiro/network.json)
+- [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
+- [2026-04-23-relatorio-entidade-vendas.md](../guides/2026-04-23-relatorio-entidade-vendas.md)
 
 Nota de segurança:
 

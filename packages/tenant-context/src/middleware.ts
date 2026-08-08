@@ -13,10 +13,10 @@ export function resolveTenantFromRequest(
 ): TenantContext {
   const correlationId = (request.headers['x-correlation-id'] as string) ?? 'unknown';
 
-  const tenantId = (request.headers['x-tenant-id'] as string) ?? options.defaultTenantId;
+  const tenantId = options.defaultTenantId ?? (request.headers['x-tenant-id'] as string);
 
   const accountId =
-    (request.headers['x-account-id'] as string | undefined) ?? options.fallbackAccountId;
+    options.fallbackAccountId ?? (request.headers['x-account-id'] as string | undefined);
 
   if (!tenantId) {
     throw new Error(
@@ -34,7 +34,7 @@ export function resolveTenantFromRequest(
     tenantId,
     accountId,
     branchId: request.headers['x-branch-id'] as string | undefined,
-    userId: (request.headers['x-user-id'] as string | undefined) ?? options.fallbackUserId,
+    userId: options.fallbackUserId ?? (request.headers['x-user-id'] as string | undefined),
     correlationId
   };
 }

@@ -8,7 +8,7 @@ import { test as base, expect, type Page } from '@playwright/test';
  *   test('my test', async ({ spaPage, apiCall }) => { ... });
  *
  * Features:
- *   - Auto-login via token injection
+ *   - Auto-login through the browser flow so HttpOnly refresh cookies are exercised
  *   - Deterministic waits (no waitForTimeout for SearchSelect)
  *   - Cleanup helpers for test data
  *   - Semantic selectors (getByRole, getByLabel, getByPlaceholder)
@@ -16,11 +16,6 @@ import { test as base, expect, type Page } from '@playwright/test';
 
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3101';
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3102';
-const AUTH_STORAGE_KEYS = {
-  accessToken: 'cvg-his-v2:access_token',
-  refreshToken: 'cvg-his-v2:refresh_token'
-} as const;
-
 type AuthSessionResponse = {
   accessToken: string;
   refreshToken?: string;
@@ -64,7 +59,7 @@ export type PatientFormData = {
 };
 
 export type CreatedResource = {
-  type: 'owner' | 'patient' | 'encounter' | 'appointment' | 'webhook';
+  type: 'owner' | 'patient' | 'encounter' | 'inpatient' | 'appointment' | 'webhook';
   id: string;
 };
 
@@ -217,8 +212,24 @@ export class CleanupTracker {
     const reversed = [...this.resources].reverse();
     for (const r of reversed) {
       try {
+        if (r.type === 'appointment') {
+          await this.apiCall.post(`/appointments/${r.id}/cancel`, {
+            reason: 'E2E cleanup'
+          });
+          console.log(`   🗑️  Cancelled appointment ${r.id}`);
+          continue;
+        }
+
+        if (r.type === 'inpatient') {
+          await this.apiCall.patch(`/inpatient/${r.id}/update-status`, {
+            status: 'discharged',
+            dischargeReason: 'E2E cleanup'
+          });
+          console.log(`   🏁 Discharged inpatient ${r.id}`);
+          continue;
+        }
+
         const endpointMap: Record<string, string> = {
-          appointment: `/appointments/${r.id}`,
           encounter: `/encounters/${r.id}`,
           patient: `/patients/${r.id}`,
           owner: `/owners/${r.id}`,
@@ -253,49 +264,60 @@ async function loginViaUI(page: Page) {
 
   await page.fill('#email', username);
   await page.fill('#password', password);
+  const refreshAfterLogin = page.waitForResponse(
+    (response) => {
+      const pathname = new URL(response.url()).pathname;
+      return pathname.endsWith('/auth/refresh') && response.request().method() === 'POST';
+    },
+    { timeout: 15000 }
+  );
   await page.click('button[type="submit"]');
 
-  // Wait for redirect away from login
-  await page.waitForURL(/^(?!.*\/login)/, { timeout: 15000 });
+  const refreshResponse = await refreshAfterLogin;
+  if (!refreshResponse.ok()) {
+    throw new Error(`Browser login did not establish an HttpOnly session: ${refreshResponse.status()}`);
+  }
+  await page.waitForLoadState('networkidle');
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
 }
 
 export async function loginViaToken(page: Page, session?: AuthSessionResponse) {
-  const authSession = session ?? (await requestFreshAuthSession());
-  const authState = {
-    accessToken: authSession.accessToken,
-    refreshToken: authSession.refreshToken ?? null,
-    accessTokenKey: AUTH_STORAGE_KEYS.accessToken,
-    refreshTokenKey: AUTH_STORAGE_KEYS.refreshToken
-  };
-
-  await page.addInitScript(
-    ({ accessToken, refreshToken, accessTokenKey, refreshTokenKey }) => {
-      localStorage.setItem(accessTokenKey, accessToken);
-      if (refreshToken) {
-        localStorage.setItem(refreshTokenKey, refreshToken);
-      }
-    },
-    authState
-  );
+  // Keep the API token available to Node-side fixtures, but authenticate the
+  // browser through the real login form. The SPA intentionally keeps access
+  // tokens in memory and receives refresh tokens only through HttpOnly cookies.
+  if (session) {
+    process.env.E2E_AUTH_TOKEN = session.accessToken;
+  } else if (!process.env.E2E_AUTH_TOKEN) {
+    await requestFreshAuthSession();
+  }
 
   await page.goto(`${SPA_URL}/login`);
-  await page.waitForLoadState('domcontentloaded');
-
-  await page.evaluate(
-    ({ accessToken, refreshToken, accessTokenKey, refreshTokenKey }) => {
-      localStorage.setItem(accessTokenKey, accessToken);
-      if (refreshToken) {
-        localStorage.setItem(refreshTokenKey, refreshToken);
-      }
-    },
-    authState
-  );
-
-  await page.goto(`${SPA_URL}/`);
   await page.waitForLoadState('networkidle');
 
   if (page.url().includes('/login')) {
-    await loginViaUI(page);
+    const username = resolveE2EAdminUsername();
+    const password = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
+
+    await page.fill('#email', username);
+    await page.fill('#password', password);
+    const refreshAfterLogin = page.waitForResponse(
+      (response) => {
+        const pathname = new URL(response.url()).pathname;
+        return pathname.endsWith('/auth/refresh') && response.request().method() === 'POST';
+      },
+      { timeout: 15000 }
+    );
+    await page.click('button[type="submit"]');
+    const refreshResponse = await refreshAfterLogin;
+    if (!refreshResponse.ok()) {
+      throw new Error(`Browser login did not establish an HttpOnly session: ${refreshResponse.status()}`);
+    }
+    const browserCookies = await page.context().cookies(`${SPA_URL}/api/auth/refresh`);
+    expect(
+      browserCookies.some((cookie) => cookie.name === 'cvg_his_refresh' && cookie.path === '/api')
+    ).toBe(true);
+    await page.waitForLoadState('networkidle');
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
   }
 }
 
@@ -305,21 +327,23 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
   await page.goto(`${SPA_URL}/owners/new`);
   await page.waitForLoadState('networkidle');
 
-  await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText('Novo Tutor', {
-    timeout: 10000
-  });
+  await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
+    'Cadastrar Novo Cliente',
+    { timeout: 10000 }
+  );
 
   await page.fill('#fullName', data.fullName);
   if (data.documentId) await page.fill('#documentId', data.documentId);
 
-  // Fill the required contact value field explicitly to avoid matching the contact label input.
-  await page.fill('#contact-value-0', data.phone || '11999999999');
+  // The current client form exposes dedicated contact fields instead of the
+  // legacy dynamic contact-value control.
+  await page.fill('#phone1', data.phone || '11999999999');
 
   await page.click('button[type="submit"]');
 
   // Wait for success message (deterministic)
-  await expect(page.getByText('Tutor cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
-  await page.waitForURL(/\/owners\/owner_/, { timeout: 15000 });
+  await expect(page.getByText('Cliente cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
+  await page.waitForURL(/\/owners\/(?!new$)[^/]+$/, { timeout: 15000 });
 
   // Extract owner ID from URL after redirect
   const url = page.url();
@@ -332,17 +356,23 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
-    'Novo Paciente',
+    'Cadastrar Novo Animal',
     { timeout: 10000 }
   );
 
   await page.fill('#name', data.name);
   await page.selectOption('#species', data.species);
   await page.selectOption('#sex', data.sex);
-  if (data.breed) await page.fill('#breed', data.breed);
+  if (data.breed) {
+    const breedSelect = page.locator('#breed');
+    const matchingOption = breedSelect.locator('option').filter({ hasText: data.breed }).first();
+    if (await matchingOption.count()) {
+      await breedSelect.selectOption({ label: data.breed });
+    }
+  }
 
   // Select owner via SearchSelect (uses deterministic wait)
-  const searchInput = page.getByPlaceholder(/buscar.*tutor|selecione.*tutor/i);
+  const searchInput = page.getByPlaceholder(/buscar.*(tutor|cliente)|selecione.*(tutor|cliente)/i);
   if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
     await searchInput.click();
     await searchInput.fill(data.ownerName);
@@ -364,8 +394,8 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
   await page.click('button[type="submit"]');
 
   // Wait for success
-  await expect(page.getByText('Paciente cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
-  await page.waitForURL(/\/patients\/patient_/, { timeout: 15000 });
+  await expect(page.getByText('Animal cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
+  await page.waitForURL(/\/patients\/(?!new$)[^/]+$/, { timeout: 15000 });
 
   // Extract patient ID from URL
   const url = page.url();

@@ -47,6 +47,75 @@ test('EncountersService: openEncounter creates a new encounter', () => {
   assert.equal(encounter.patientId, 'patient_luna');
 });
 
+test('EncountersService: openEncounter rejects patient and owner from another account', () => {
+  const owners = new OwnersService({ seedOwners: [] });
+  const patients = new PatientsService({ owners, seedPatients: [], seedLinks: [] });
+  const encounters = new EncountersService({ owners, patients });
+  const foreignAccountId = '00000000-0000-4000-8000-000000000002' as never;
+  const owner = owners.create(foreignAccountId, {
+    fullName: 'Foreign owner',
+    contacts: [{ label: 'Phone', value: '11999990000', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = patients.create(foreignAccountId, {
+    name: 'Foreign patient',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: owner.id
+  });
+
+  assert.throws(
+    () =>
+      encounters.openEncounter(
+        '00000000-0000-4000-8000-000000000001' as never,
+        '00000000-0000-4000-8000-000000000003' as never,
+        {
+          patientId: patient.id,
+          ownerId: owner.id,
+          visitType: 'walk_in',
+          origin: 'reception',
+          reason: 'Cross-account attempt'
+        }
+      ),
+    ValidationError
+  );
+});
+
+test('EncountersService: openEncounter rejects an unrelated owner from the same account', () => {
+  const owners = new OwnersService({ seedOwners: [] });
+  const patients = new PatientsService({ owners, seedPatients: [], seedLinks: [] });
+  const encounters = new EncountersService({ owners, patients });
+  const accountId = '00000000-0000-4000-8000-000000000001' as never;
+  const owner = owners.create(accountId, {
+    fullName: 'Primary owner',
+    contacts: [{ label: 'Phone', value: '11999990001', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const unrelatedOwner = owners.create(accountId, {
+    fullName: 'Unrelated owner',
+    contacts: [{ label: 'Phone', value: '11999990002', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = patients.create(accountId, {
+    name: 'Patient',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: owner.id
+  });
+
+  assert.throws(
+    () =>
+      encounters.openEncounter(accountId, '00000000-0000-4000-8000-000000000003' as never, {
+        patientId: patient.id,
+        ownerId: unrelatedOwner.id,
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Wrong owner attempt'
+      }),
+    ValidationError
+  );
+});
+
 test('ClinicalHandoffsService: sends minimal handoff to reception and records timeline', () => {
   const encounters = createEncountersService();
   const encounter = openTestEncounter(encounters);
@@ -216,9 +285,14 @@ test('ClinicalHandoffsService: manages pending issues before sending to finance'
   assert.equal(resolved.pendingIssues[0].status, 'resolved');
   assert.equal(resolved.handoffStatus, 'acknowledged_by_reception');
 
-  const finance = handoffs.sendToFinance(encounter.accountId, 'user_reception' as never, handoff.id, {
-    note: 'Liberado para financeiro com receita assinada.'
-  });
+  const finance = handoffs.sendToFinance(
+    encounter.accountId,
+    'user_reception' as never,
+    handoff.id,
+    {
+      note: 'Liberado para financeiro com receita assinada.'
+    }
+  );
 
   assert.equal(finance.handoffStatus, 'sent_to_finance');
   assert.ok(finance.sentToFinanceAt);
@@ -241,10 +315,15 @@ test('ClinicalHandoffsService: returns handoff to clinic with reason', () => {
   });
   handoffs.acknowledge(encounter.accountId, 'user_reception' as never, handoff.id);
 
-  const returned = handoffs.returnToClinic(encounter.accountId, 'user_reception' as never, handoff.id, {
-    reason: 'Tutor informou piora antes da saida.',
-    toResponsibleId: 'user_vet'
-  });
+  const returned = handoffs.returnToClinic(
+    encounter.accountId,
+    'user_reception' as never,
+    handoff.id,
+    {
+      reason: 'Tutor informou piora antes da saida.',
+      toResponsibleId: 'user_vet'
+    }
+  );
 
   assert.equal(returned.handoffStatus, 'returned_to_clinic');
   assert.equal(returned.returnedToClinicBy, 'user_reception');
@@ -319,6 +398,29 @@ test('EncountersService: closeEncounter sets closed status', () => {
   assert.ok(closed.closedAt);
 });
 
+test('EncountersService: reopenEncounter restores reception and appends an audit timeline event', () => {
+  const encounters = createEncountersService();
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Reopen test'
+  });
+  encounters.closeEncounter(encounter.id, 'user_admin' as never, { closeReason: 'Discharge' });
+
+  const reopened = encounters.reopenEncounter(
+    encounter.id,
+    'user_admin' as never,
+    'Clinical reassessment required'
+  );
+
+  assert.equal(reopened.status, 'reception');
+  assert.equal(reopened.closedAt, undefined);
+  assert.equal(reopened.closeReason, undefined);
+  assert.equal(encounters.listTimeline(encounter.id)[0].eventType, 'encounter_reopened');
+});
+
 test('EncountersService: deleteEncounter removes encounter and timeline from memory', () => {
   const encounters = createEncountersService();
 
@@ -385,7 +487,7 @@ test('EncountersService: listActive excludes closed encounters', () => {
   assert.ok(!active.some((e) => e.id === e1.id));
 });
 
-test('EncountersService: onEncounterCreated callback is invoked on openEncounter', () => {
+test('EncountersService: onEncounterCreated callback is invoked on openEncounter', async () => {
   const owners = new OwnersService();
   const patients = new PatientsService({ owners });
 
@@ -409,11 +511,13 @@ test('EncountersService: onEncounterCreated callback is invoked on openEncounter
     reason: 'Callback test'
   });
 
+  await encounters.waitForPersistence();
+
   assert.equal(callbackInvoked, true);
   assert.equal(capturedEncounterId, encounter.id);
 });
 
-test('EncountersService: onEncounterStatusChanged callback is invoked on transitionEncounter', () => {
+test('EncountersService: onEncounterStatusChanged callback is invoked on transitionEncounter', async () => {
   const owners = new OwnersService();
   const patients = new PatientsService({ owners });
 
@@ -443,11 +547,13 @@ test('EncountersService: onEncounterStatusChanged callback is invoked on transit
     nextStatus: 'in_triage'
   });
 
+  await encounters.waitForPersistence();
+
   assert.equal(callbackInvoked, true);
   assert.equal(capturedPreviousStatus, 'reception');
 });
 
-test('EncountersService: onEncounterStatusChanged callback is invoked on closeEncounter', () => {
+test('EncountersService: onEncounterStatusChanged callback is invoked on closeEncounter', async () => {
   const owners = new OwnersService();
   const patients = new PatientsService({ owners });
 
@@ -476,6 +582,8 @@ test('EncountersService: onEncounterStatusChanged callback is invoked on closeEn
   encounters.closeEncounter(encounter.id, 'user_admin' as never, {
     closeReason: 'Test done'
   });
+
+  await encounters.waitForPersistence();
 
   assert.equal(callbackInvoked, true);
   assert.equal(capturedPreviousStatus, 'reception');
@@ -585,4 +693,44 @@ test('EncountersService: openEncounter rejects legacy ids before database persis
   await encounters.waitForPersistence();
   assert.equal(persisted, false);
   assert.equal(encounters.listActive().length, 0);
+});
+
+test('EncountersService: in-memory repository accepts opaque runtime identifiers', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const repository: EncounterRepository = {
+    async create() {},
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findActiveByPatientId() {
+      return null;
+    },
+    async findAll() {
+      return [];
+    },
+    async findActive() {
+      return [];
+    },
+    async delete() {}
+  };
+  const encounters = new EncountersService({
+    owners,
+    patients,
+    encounterRepository: repository,
+    requireUuidIdentifiers: false
+  });
+
+  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+    patientId: 'patient_mogeb6qv_5b0gq64z',
+    ownerId: 'owner_ricardo_akinaga',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Consulta'
+  });
+  await encounters.waitForPersistence();
+
+  assert.equal(encounter.patientId, 'patient_mogeb6qv_5b0gq64z');
+  assert.equal(encounter.ownerId, 'owner_ricardo_akinaga');
 });

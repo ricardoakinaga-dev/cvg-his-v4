@@ -60,11 +60,13 @@ spec:
             - configMapRef:
                 name: {{ include "cvg-his-v2.worker.configmapName" . }}
           env:
+            - name: DATABASE_REQUIRE_RLS_ROLE
+              value: "1"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.postgres.secretName" . }}
-                  key: {{ .Values.postgresql.secretKeys.url }}
+                  key: {{ .Values.postgresql.secretKeys.workerUrl }}
           {{- if .Values.worker.probes.enabled }}
           livenessProbe:
             httpGet:

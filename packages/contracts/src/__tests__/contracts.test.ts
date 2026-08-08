@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
 import {
   // Owners
   createOwnerBodySchema,
@@ -7,25 +6,20 @@ import {
   ownerIdParamSchema,
   listOwnersQuerySchema,
   ownerResponseSchema,
-  listOwnersResponseSchema,
   ownersContract,
 
   // Patients
   createPatientBodySchema,
   updatePatientBodySchema,
-  patientIdParamSchema,
   listPatientsQuerySchema,
   patientResponseSchema,
-  listPatientsResponseSchema,
   patientsContract,
 
   // Encounters
   createEncounterBodySchema,
   closeEncounterBodySchema,
-  encounterIdParamSchema,
   listEncountersQuerySchema,
   encounterResponseSchema,
-  listEncountersResponseSchema,
   encountersContract,
 
   // Billing

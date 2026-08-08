@@ -7,6 +7,7 @@ import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import {
   createInMemoryOidcStateStore,
   createStatelessOidcStateStore,
+  getClientIp,
   handleAuthRoutes
 } from './auth-routes.js';
 
@@ -254,7 +255,216 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   assert.equal(response.getHeader('x-ratelimit-limit'), '5');
-  assert.equal(response.bodyJson<{ accessToken: string }>().accessToken, 'token-1');
+  assert.equal(response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken, 'token-1');
+  assert.equal(response.bodyJson<{ refreshToken?: string }>().refreshToken, undefined);
+  assert.match(String(response.getHeader('set-cookie')), /cvg_his_refresh=refresh-1/);
+  assert.match(String(response.getHeader('set-cookie')), /HttpOnly/);
+  assert.match(String(response.getHeader('set-cookie')), /SameSite=Strict/);
+});
+
+test('handleAuthRoutes POST /auth/refresh consumes the HttpOnly refresh cookie and does not expose it', async () => {
+  const response = new MockResponse();
+  let receivedRefreshToken: string | undefined;
+
+  const handled = await handleAuthRoutes(
+    '/auth/refresh',
+    {
+      method: 'POST',
+      url: '/auth/refresh',
+      headers: { cookie: 'other=value; cvg_his_refresh=refresh-cookie' },
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from('{}');
+      }
+    } as never,
+    response as never,
+    'corr-auth-refresh-cookie',
+    {
+      auth: {
+        refresh: async (input: { refreshToken: string }) => {
+          receivedRefreshToken = input.refreshToken;
+          return {
+            accessToken: 'access-rotated',
+            refreshToken: 'refresh-rotated',
+            tokenType: 'Bearer',
+            principal: createPrincipal()
+          };
+        }
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(receivedRefreshToken, 'refresh-cookie');
+  assert.equal(response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken, 'access-rotated');
+  assert.equal(response.bodyJson<{ refreshToken?: string }>().refreshToken, undefined);
+  assert.match(String(response.getHeader('set-cookie')), /cvg_his_refresh=refresh-rotated/);
+});
+
+test('handleAuthRoutes POST /auth/refresh returns session-not-found without a cookie', async () => {
+  const response = new MockResponse();
+
+  const handled = await handleAuthRoutes(
+    '/auth/refresh',
+    {
+      method: 'POST',
+      url: '/auth/refresh',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from('{}');
+      }
+    } as never,
+    response as never,
+    'corr-auth-refresh-missing-cookie',
+    {
+      auth: { refresh: async () => { throw new Error('must not be called'); } } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'SESSION_NOT_FOUND');
+});
+
+test('handleAuthRoutes POST /auth/logout revokes the cookie session and clears the cookie', async () => {
+  const response = new MockResponse();
+  let receivedRefreshToken: string | undefined;
+
+  const handled = await handleAuthRoutes(
+    '/auth/logout',
+    {
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { cookie: 'cvg_his_refresh=refresh-cookie' },
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {}
+    } as never,
+    response as never,
+    'corr-auth-logout-cookie',
+    {
+      auth: {
+        logout: async (input: { refreshToken?: string }) => {
+          receivedRefreshToken = input.refreshToken;
+        }
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 204);
+  assert.equal(receivedRefreshToken, 'refresh-cookie');
+  assert.match(String(response.getHeader('set-cookie')), /Max-Age=0/);
+  assert.match(String(response.getHeader('set-cookie')), /Expires=Thu, 01 Jan 1970/);
+});
+
+test('handleAuthRoutes rejects cookie mutations from an untrusted browser origin', async () => {
+  const response = new MockResponse();
+  let refreshCalled = false;
+
+  const handled = await handleAuthRoutes(
+    '/auth/refresh',
+    {
+      method: 'POST',
+      url: '/auth/refresh',
+      headers: {
+        origin: 'https://evil.example.com',
+        cookie: 'cvg_his_refresh=refresh-cookie'
+      },
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from('{}');
+      }
+    } as never,
+    response as never,
+    'corr-auth-csrf-denied',
+    {
+      auth: {
+        refresh: async () => {
+          refreshCalled = true;
+          throw new Error('must not be called');
+        }
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      csrfAllowedOrigins: ['https://app.example.com'],
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'CSRF_ORIGIN_DENIED');
+  assert.equal(refreshCalled, false);
+});
+
+test('getClientIp ignores forwarded addresses from an untrusted remote peer', () => {
+  const request = {
+    socket: { remoteAddress: '10.20.0.10' },
+    headers: { 'x-forwarded-for': '198.51.100.20' }
+  } as never;
+
+  assert.equal(getClientIp(request, ['127.0.0.1/32']), '10.20.0.10');
+});
+
+test('getClientIp walks a forwarded chain only from a trusted proxy', () => {
+  const request = {
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { 'x-forwarded-for': '198.51.100.20, 10.20.0.10, 127.0.0.1' }
+  } as never;
+
+  assert.equal(getClientIp(request, ['127.0.0.1/32']), '10.20.0.10');
 });
 
 test('handleAuthRoutes POST /auth/login returns 429 when rate limited', async () => {

@@ -14,8 +14,24 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type {
+  VetusImportLogRepository,
+  VetusImportBatchItemStatus,
+  VetusImportBatchStatus,
+  VetusImportBatchItemSummary,
+  VetusImportBatchSummary,
+  VetusImportStatus,
+  VetusImportSummary
+} from '../repositories/vetus-import-log-repository.js';
 
-type VetusImportStatus = 'imported' | 'linked';
+export type {
+  VetusImportBatchItemStatus,
+  VetusImportBatchStatus,
+  VetusImportBatchItemSummary,
+  VetusImportBatchSummary,
+  VetusImportStatus,
+  VetusImportSummary
+} from '../repositories/vetus-import-log-repository.js';
 
 interface VetusImportOwnerInput {
   legacyVetusId?: string;
@@ -45,28 +61,89 @@ export interface CreateVetusImportRequest {
   patient: VetusImportPatientInput;
 }
 
-export interface VetusImportSummary {
-  id: string;
-  accountId: string;
-  sourceSystem: string;
-  sourceReference: string | null;
-  status: VetusImportStatus;
-  ownerId: string;
-  ownerName: string;
-  patientId: string;
-  patientName: string;
-  importedByUserId: string;
-  reviewedBy: string | null;
-  importedAt: string;
-  summary: string;
+export interface CreateVetusImportBatchRequest {
+  sourceSystem?: string;
+  sourceReference?: string;
+  dryRun?: boolean;
+  resumeBatchId?: string;
+  items?: readonly unknown[];
 }
 
 export interface VetusImportRoutesHandlers {
   owners: OwnersService;
   patients: PatientsService;
   audit: AuditService;
-  importLogStore: Map<string, VetusImportSummary>;
+  importLogStore: VetusImportLogRepository | Map<string, VetusImportSummary>;
+  importBatchStore?: VetusImportLogRepository;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+}
+
+type VetusImportBatchStore = VetusImportLogRepository & {
+  listBatches: NonNullable<VetusImportLogRepository['listBatches']>;
+  findBatch: NonNullable<VetusImportLogRepository['findBatch']>;
+  findBatchBySourceReference: NonNullable<VetusImportLogRepository['findBatchBySourceReference']>;
+  createBatch: NonNullable<VetusImportLogRepository['createBatch']>;
+  updateBatch: NonNullable<VetusImportLogRepository['updateBatch']>;
+  listBatchItems: NonNullable<VetusImportLogRepository['listBatchItems']>;
+  createBatchItem: NonNullable<VetusImportLogRepository['createBatchItem']>;
+  updateBatchItem: NonNullable<VetusImportLogRepository['updateBatchItem']>;
+};
+
+function getBatchStore(handlers: VetusImportRoutesHandlers): VetusImportBatchStore | null {
+  const candidate = handlers.importBatchStore ?? handlers.importLogStore;
+  if (candidate instanceof Map) return null;
+  if (
+    typeof candidate.listBatches !== 'function'
+    || typeof candidate.findBatch !== 'function'
+    || typeof candidate.findBatchBySourceReference !== 'function'
+    || typeof candidate.createBatch !== 'function'
+    || typeof candidate.updateBatch !== 'function'
+    || typeof candidate.listBatchItems !== 'function'
+    || typeof candidate.createBatchItem !== 'function'
+    || typeof candidate.updateBatchItem !== 'function'
+  ) {
+    return null;
+  }
+  return candidate as VetusImportBatchStore;
+}
+
+async function listImportLogs(
+  store: VetusImportRoutesHandlers['importLogStore'],
+  accountId: string
+): Promise<readonly VetusImportSummary[]> {
+  if (store instanceof Map) {
+    return [...store.values()]
+      .filter((item) => item.accountId === accountId)
+      .sort((left, right) => right.importedAt.localeCompare(left.importedAt));
+  }
+  return store.list(accountId);
+}
+
+async function findImportBySourceReference(
+  store: VetusImportRoutesHandlers['importLogStore'],
+  accountId: string,
+  sourceSystem: string,
+  sourceReference: string
+): Promise<VetusImportSummary | null> {
+  if (store instanceof Map) {
+    return [...store.values()].find(
+      (item) => item.accountId === accountId
+        && item.sourceSystem === sourceSystem
+        && item.sourceReference === sourceReference
+    ) ?? null;
+  }
+  return store.findBySourceReference(accountId, sourceSystem, sourceReference);
+}
+
+async function saveImportLog(
+  store: VetusImportRoutesHandlers['importLogStore'],
+  summary: VetusImportSummary
+): Promise<VetusImportSummary> {
+  if (store instanceof Map) {
+    store.set(summary.id, summary);
+    return summary;
+  }
+  return store.create(summary);
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -289,6 +366,116 @@ async function upsertPatient(
   return { patient, created: true };
 }
 
+async function importOne(
+  principal: AuthenticatedPrincipal,
+  payload: CreateVetusImportRequest,
+  owners: OwnersService,
+  patients: PatientsService,
+  importLogStore: VetusImportRoutesHandlers['importLogStore']
+): Promise<{
+  summary: VetusImportSummary;
+  replayed: boolean;
+  ownerCreated: boolean;
+  patientCreated: boolean;
+}> {
+  const importedAt = nowIso();
+  const sourceSystem = optionalText(payload.sourceSystem) ?? 'Vetus';
+  const sourceReference = optionalText(payload.sourceReference) ?? null;
+  const reviewedBy = optionalText(payload.reviewedBy) ?? null;
+
+  if (sourceReference) {
+    const existing = await findImportBySourceReference(
+      importLogStore,
+      principal.user.accountId,
+      sourceSystem,
+      sourceReference
+    );
+    if (existing) {
+      return {
+        summary: existing,
+        replayed: true,
+        ownerCreated: false,
+        patientCreated: false
+      };
+    }
+  }
+
+  const importNote = buildImportNote({ ...payload, sourceSystem }, importedAt);
+  const ownerResult = await upsertOwner(principal, owners, payload, importNote);
+  const patientResult = await upsertPatient(
+    principal,
+    patients,
+    ownerResult.owner.id,
+    payload,
+    importNote
+  );
+  const status: VetusImportStatus =
+    ownerResult.created || patientResult.created ? 'imported' : 'linked';
+  const summary: VetusImportSummary = {
+    id: createCorrelationId('vetusimport'),
+    accountId: principal.user.accountId,
+    sourceSystem,
+    sourceReference,
+    status,
+    ownerId: ownerResult.owner.id,
+    ownerName: ownerResult.owner.fullName,
+    patientId: patientResult.patient.id,
+    patientName: patientResult.patient.name,
+    importedByUserId: principal.user.id,
+    reviewedBy,
+    importedAt,
+    summary: `${ownerResult.created ? 'Cliente criado' : 'Cliente vinculado'}; ${patientResult.created ? 'animal criado' : 'animal vinculado'}`
+  };
+  await saveImportLog(importLogStore, summary);
+  return {
+    summary,
+    replayed: false,
+    ownerCreated: ownerResult.created,
+    patientCreated: patientResult.created
+  };
+}
+
+function validateBatchRequest(input: unknown): CreateVetusImportBatchRequest {
+  const payload = requireRecord(input, 'payload') as CreateVetusImportBatchRequest;
+  if (payload.items !== undefined && !Array.isArray(payload.items)) {
+    throw new ValidationError('items must be an array');
+  }
+  const items = payload.items ?? [];
+  if (items.length > 1000) {
+    throw new ValidationError('items must contain at most 1000 rows');
+  }
+  return {
+    sourceSystem: optionalText(payload.sourceSystem),
+    sourceReference: optionalText(payload.sourceReference),
+    dryRun: payload.dryRun === true,
+    resumeBatchId: optionalText(payload.resumeBatchId),
+    items
+  };
+}
+
+function batchItemPayload(
+  item: CreateVetusImportRequest,
+  sourceSystem: string
+): Record<string, unknown> {
+  return {
+    ...item,
+    sourceSystem: item.sourceSystem ?? sourceSystem
+  };
+}
+
+function batchCounts(items: readonly VetusImportBatchItemSummary[]): Pick<
+  VetusImportBatchSummary,
+  'totalCount' | 'importedCount' | 'linkedCount' | 'rejectedCount' | 'rolledBackCount'
+> {
+  return {
+    totalCount: items.length,
+    importedCount: items.filter((item) => item.status === 'imported' || item.status === 'validated').length,
+    linkedCount: items.filter((item) => item.status === 'linked').length,
+    rejectedCount: items.filter((item) => item.status === 'rejected').length,
+    rolledBackCount: items.filter((item) => item.status === 'rolled_back').length
+  };
+}
+
 export async function handleVetusImportRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -299,11 +486,301 @@ export async function handleVetusImportRoutes(
   const { owners, patients, audit, importLogStore, requirePrincipal } = handlers;
   const method = request.method ?? 'GET';
 
+  const batchStore = getBatchStore(handlers);
+  if (pathname === '/vetus-import-batches' && method === 'GET') {
+    const principal = requirePrincipal(request, 'patients.read');
+    if (!batchStore) {
+      return json(response, 503, {
+        error: 'vetus_import_batch_unavailable',
+        message: 'Durable Vetus import batches are not configured'
+      });
+    }
+    const batches = await batchStore.listBatches(principal.user.accountId);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'vetus-imports',
+      action: 'list_batches',
+      entityType: 'vetus-import-batch',
+      entityId: 'all',
+      payloadSummary: `Vetus import batches listed: ${batches.length}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, { items: batches });
+  }
+
+  const batchDetailMatch = pathname.match(/^\/vetus-import-batches\/([^/]+)$/);
+  if (batchDetailMatch && method === 'GET') {
+    const principal = requirePrincipal(request, 'patients.read');
+    if (!batchStore) {
+      return json(response, 503, {
+        error: 'vetus_import_batch_unavailable',
+        message: 'Durable Vetus import batches are not configured'
+      });
+    }
+    const batchId = decodeURIComponent(batchDetailMatch[1] ?? '');
+    const batch = await batchStore.findBatch(principal.user.accountId, batchId);
+    if (!batch) return json(response, 404, { error: 'vetus_import_batch_not_found' });
+    const items = await batchStore.listBatchItems(principal.user.accountId, batchId);
+    return json(response, 200, { batch, items });
+  }
+
+  if (pathname === '/vetus-import-batches' && method === 'POST') {
+    const principal = requirePrincipal(request, 'patients.manage');
+    requirePrincipal(request, 'owners.manage');
+    if (!batchStore) {
+      return json(response, 503, {
+        error: 'vetus_import_batch_unavailable',
+        message: 'Durable Vetus import batches are not configured'
+      });
+    }
+    const requestPayload = validateBatchRequest(await readJsonBody(request));
+    const sourceSystem = requestPayload.sourceSystem ?? 'Vetus';
+    let batch: VetusImportBatchSummary;
+    let existingItems: readonly VetusImportBatchItemSummary[] = [];
+    let rows: readonly unknown[] = requestPayload.items ?? [];
+
+    if (requestPayload.resumeBatchId) {
+      const existingBatch = await batchStore.findBatch(
+        principal.user.accountId,
+        requestPayload.resumeBatchId
+      );
+      if (!existingBatch) return json(response, 404, { error: 'vetus_import_batch_not_found' });
+      if (existingBatch.status === 'dry_run' || existingBatch.status === 'rolled_back') {
+        throw new ValidationError('Only a partial Vetus import batch can be resumed');
+      }
+      batch = existingBatch;
+      existingItems = await batchStore.listBatchItems(principal.user.accountId, batch.id);
+      if (rows.length === 0) {
+        rows = existingItems
+          .filter((item) => item.status === 'rejected')
+          .map((item) => item.payload);
+      }
+      if (rows.length === 0) {
+        throw new ValidationError('No rejected rows are available to resume');
+      }
+    } else {
+      if (rows.length === 0) {
+        throw new ValidationError('items must contain at least one Vetus row');
+      }
+      if (requestPayload.sourceReference) {
+        const existingBatch = await batchStore.findBatchBySourceReference(
+          principal.user.accountId,
+          sourceSystem,
+          requestPayload.sourceReference
+        );
+        if (existingBatch) {
+          const existingItems = await batchStore.listBatchItems(
+            principal.user.accountId,
+            existingBatch.id
+          );
+          appendAudit(audit, {
+            actorId: principal.user.id,
+            accountId: principal.user.accountId,
+            module: 'vetus-imports',
+            action: 'idempotent_batch_replay',
+            entityType: 'vetus-import-batch',
+            entityId: existingBatch.id,
+            payloadSummary: `Vetus import batch replayed from source reference ${requestPayload.sourceReference}`,
+            riskLevel: 'medium',
+            correlationId
+          });
+          return json(response, 200, { batch: existingBatch, items: existingItems });
+        }
+      }
+      const timestamp = nowIso();
+      batch = {
+        id: createCorrelationId('vetusbatch'),
+        accountId: principal.user.accountId,
+        sourceSystem,
+        sourceReference: requestPayload.sourceReference ?? null,
+        status: requestPayload.dryRun ? 'dry_run' : 'partial',
+        totalCount: rows.length,
+        importedCount: 0,
+        linkedCount: 0,
+        rejectedCount: 0,
+        rolledBackCount: 0,
+        createdByUserId: principal.user.id,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      await batchStore.createBatch(batch);
+    }
+
+    const itemByRow = new Map(existingItems.map((item) => [item.rowNumber, item]));
+    for (let index = 0; index < rows.length; index += 1) {
+      const rowNumber = index + 1;
+      const rawRow = rows[index];
+      const current = itemByRow.get(rowNumber);
+      let item: VetusImportBatchItemSummary = current ?? {
+        id: createCorrelationId('vetusbatchitem'),
+        accountId: principal.user.accountId,
+        batchId: batch.id,
+        rowNumber,
+        sourceReference: null,
+        status: 'pending',
+        importLogId: null,
+        ownerId: null,
+        patientId: null,
+        ownerCreated: false,
+        patientCreated: false,
+        reason: null,
+        payload: rawRow && typeof rawRow === 'object' && !Array.isArray(rawRow)
+          ? rawRow as Record<string, unknown>
+          : { rawValue: rawRow },
+        createdAt: nowIso(),
+        updatedAt: nowIso()
+      };
+      if (!current) await batchStore.createBatchItem(item);
+
+      try {
+        const parsed = validatePayload(rawRow);
+        const sourceReference = parsed.sourceReference
+          ?? (requestPayload.sourceReference ? `${requestPayload.sourceReference}:${rowNumber}` : undefined);
+        const normalized = { ...parsed, sourceSystem, sourceReference };
+        item = {
+          ...item,
+          sourceReference: sourceReference ?? null,
+          payload: batchItemPayload(normalized, sourceSystem),
+          reason: null,
+          updatedAt: nowIso()
+        };
+        if (requestPayload.dryRun) {
+          requireOwnerContact(normalized.owner);
+          const existing = sourceReference
+            ? await findImportBySourceReference(
+                importLogStore,
+                principal.user.accountId,
+                sourceSystem,
+                sourceReference
+              )
+            : null;
+          item = {
+            ...item,
+            status: existing ? 'linked' : 'validated',
+            importLogId: existing?.id ?? null,
+            ownerId: existing?.ownerId ?? null,
+            patientId: existing?.patientId ?? null,
+            updatedAt: nowIso()
+          };
+        } else {
+          const result = await importOne(principal, normalized, owners, patients, importLogStore);
+          item = {
+            ...item,
+            status: result.summary.status,
+            importLogId: result.summary.id,
+            ownerId: result.summary.ownerId,
+            patientId: result.summary.patientId,
+            ownerCreated: result.ownerCreated,
+            patientCreated: result.patientCreated,
+            updatedAt: nowIso()
+          };
+        }
+      } catch (error) {
+        item = {
+          ...item,
+          status: 'rejected',
+          reason: error instanceof Error ? error.message : 'Vetus row rejected',
+          updatedAt: nowIso()
+        };
+      }
+      await batchStore.updateBatchItem(item);
+    }
+
+    const allItems = await batchStore.listBatchItems(principal.user.accountId, batch.id);
+    const counts = batchCounts(allItems);
+    const updatedBatch: VetusImportBatchSummary = {
+      ...batch,
+      ...counts,
+      status: requestPayload.dryRun
+        ? 'dry_run'
+        : counts.rejectedCount > 0
+          ? 'partial'
+          : 'completed',
+      updatedAt: nowIso()
+    };
+    const persistedBatch = await batchStore.updateBatch(updatedBatch);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'vetus-imports',
+      action: requestPayload.dryRun ? 'dry_run_batch' : requestPayload.resumeBatchId ? 'resume_batch' : 'create_batch',
+      entityType: 'vetus-import-batch',
+      entityId: persistedBatch.id,
+      payloadSummary: `Vetus batch ${persistedBatch.id}: ${persistedBatch.importedCount} imported, ${persistedBatch.linkedCount} linked, ${persistedBatch.rejectedCount} rejected`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, requestPayload.resumeBatchId ? 200 : 201, {
+      batch: persistedBatch,
+      items: allItems
+    });
+  }
+
+  const rollbackBatchMatch = pathname.match(/^\/vetus-import-batches\/([^/]+)\/rollback$/);
+  if (rollbackBatchMatch && method === 'POST') {
+    const principal = requirePrincipal(request, 'patients.manage');
+    requirePrincipal(request, 'owners.manage');
+    if (!batchStore) {
+      return json(response, 503, {
+        error: 'vetus_import_batch_unavailable',
+        message: 'Durable Vetus import batches are not configured'
+      });
+    }
+    const batchId = decodeURIComponent(rollbackBatchMatch[1] ?? '');
+    const batch = await batchStore.findBatch(principal.user.accountId, batchId);
+    if (!batch) return json(response, 404, { error: 'vetus_import_batch_not_found' });
+    if (batch.status === 'dry_run' || batch.status === 'rolled_back') {
+      throw new ValidationError('This Vetus import batch cannot be rolled back');
+    }
+    const items = await batchStore.listBatchItems(principal.user.accountId, batchId);
+    for (const item of items) {
+      if (item.status !== 'imported' && item.status !== 'linked') continue;
+      if (item.patientCreated && item.patientId) {
+        const patient = patients.getOrThrow(item.patientId as never);
+        if (patient.accountId === principal.user.accountId) {
+          patients.update(patient.id, { status: 'inactive' });
+        }
+      }
+      if (item.ownerCreated && item.ownerId) {
+        const owner = owners.getOrThrow(item.ownerId as never);
+        if (owner.accountId === principal.user.accountId) {
+          owners.update(owner.id, { status: 'inactive' });
+        }
+      }
+      await batchStore.updateBatchItem({
+        ...item,
+        status: 'rolled_back',
+        reason: 'Rolled back by batch operator',
+        updatedAt: nowIso()
+      });
+    }
+    await Promise.all([owners.waitForPersistence(), patients.waitForPersistence()]);
+    const updatedItems = await batchStore.listBatchItems(principal.user.accountId, batchId);
+    const updatedBatch = await batchStore.updateBatch({
+      ...batch,
+      ...batchCounts(updatedItems),
+      status: 'rolled_back',
+      updatedAt: nowIso()
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'vetus-imports',
+      action: 'rollback_batch',
+      entityType: 'vetus-import-batch',
+      entityId: batchId,
+      payloadSummary: `Vetus import batch ${batchId} rolled back`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, { batch: updatedBatch, items: updatedItems });
+  }
+
   if (pathname === '/vetus-imports' && method === 'GET') {
     const principal = requirePrincipal(request, 'patients.read');
-    const items = Array.from(importLogStore.values())
-      .filter((item) => item.accountId === principal.user.accountId)
-      .sort((left, right) => right.importedAt.localeCompare(left.importedAt));
+    const items = await listImportLogs(importLogStore, principal.user.accountId);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -324,53 +801,23 @@ export async function handleVetusImportRoutes(
     const principal = requirePrincipal(request, 'patients.manage');
     requirePrincipal(request, 'owners.manage');
     const payload = validatePayload(await readJsonBody(request));
-    const importedAt = nowIso();
-    const sourceSystem = optionalText(payload.sourceSystem) ?? 'Vetus';
-    const sourceReference = optionalText(payload.sourceReference) ?? null;
-    const reviewedBy = optionalText(payload.reviewedBy) ?? null;
-    const importNote = buildImportNote({ ...payload, sourceSystem }, importedAt);
-
-    const ownerResult = await upsertOwner(principal, owners, payload, importNote);
-    const patientResult = await upsertPatient(
-      principal,
-      patients,
-      ownerResult.owner.id,
-      payload,
-      importNote
-    );
-
-    const status: VetusImportStatus =
-      ownerResult.created || patientResult.created ? 'imported' : 'linked';
-    const summary: VetusImportSummary = {
-      id: createCorrelationId('vetusimport'),
-      accountId: principal.user.accountId,
-      sourceSystem,
-      sourceReference,
-      status,
-      ownerId: ownerResult.owner.id,
-      ownerName: ownerResult.owner.fullName,
-      patientId: patientResult.patient.id,
-      patientName: patientResult.patient.name,
-      importedByUserId: principal.user.id,
-      reviewedBy,
-      importedAt,
-      summary: `${ownerResult.created ? 'Cliente criado' : 'Cliente vinculado'}; ${patientResult.created ? 'animal criado' : 'animal vinculado'}`
-    };
-    importLogStore.set(summary.id, summary);
+    const result = await importOne(principal, payload, owners, patients, importLogStore);
 
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'vetus-imports',
-      action: 'create',
+      action: result.replayed ? 'idempotent_replay' : 'create',
       entityType: 'vetus-import',
-      entityId: summary.id,
-      payloadSummary: `Vetus assisted import ${summary.id} linked owner ${summary.ownerId} and patient ${summary.patientId}`,
-      riskLevel: 'high',
+      entityId: result.summary.id,
+      payloadSummary: result.replayed
+        ? `Vetus import replayed from source reference ${result.summary.sourceReference}`
+        : `Vetus assisted import ${result.summary.id} linked owner ${result.summary.ownerId} and patient ${result.summary.patientId}`,
+      riskLevel: result.replayed ? 'medium' : 'high',
       correlationId
     });
 
-    return json(response, 201, summary);
+    return json(response, result.replayed ? 200 : 201, result.summary);
   }
 
   return false;

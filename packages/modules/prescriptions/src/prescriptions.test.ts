@@ -41,7 +41,8 @@ describe('PrescriptionsService', () => {
 
   describe('create', () => {
     it('should create a prescription with all fields', () => {
-      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
+      service.sign(rx.id, ACTOR_ID, 1);
 
       expect(rx.id).toBeDefined();
       expect(rx.entryType).toBe('prescription');
@@ -107,6 +108,27 @@ describe('PrescriptionsService', () => {
       expect(found!.medicationName).toBe('Amoxicilina');
     });
 
+    it('should keep an immutable version snapshot and verify the signed version', async () => {
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
+      await service.waitForPersistence();
+      const signed = service.sign(rx.id, ACTOR_ID, 1);
+      await service.waitForPersistence();
+
+      expect(signed.signedByUserId).toBe(ACTOR_ID);
+      expect(signed.signatureHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(service.getRevisions(rx.id)).toHaveLength(1);
+      expect(service.getRevisions(rx.id)[0].content).toContain('Duração: 7 dias');
+
+      const updated = service.update(rx.id, ACTOR_ID, {
+        content: 'Posologia: 10mg',
+        reason: 'Ajuste clinico',
+        expectedVersion: 1
+      });
+      expect(updated.signedAt).toBeUndefined();
+      expect(service.getRevisions(rx.id)).toHaveLength(2);
+      expect(service.getRevisions(rx.id)[0].content).toContain('Duração: 7 dias');
+    });
+
     it('should hydrate prescriptions from repository by account', async () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
@@ -152,7 +174,8 @@ describe('PrescriptionsService', () => {
     });
 
     it('should render a complete printable prescription document', () => {
-      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
+      service.sign(rx.id, ACTOR_ID, 1);
 
       const document = service.renderDocument(rx.id, {
         clinic: {
@@ -186,11 +209,15 @@ describe('PrescriptionsService', () => {
         medicationName: 'Amoxicilina',
         dosage: '500mg',
         route: 'Oral',
-        frequency: '8/8h'
+        frequency: '8/8h',
+        duration: '7 dias'
       });
       expect(document.footer).toContain('Dra. Ana Vet');
+      expect(document.footer).toContain('Assinatura digital');
+      expect(document.footer).toContain('Hash:');
       expect(document.printText).toContain('Receita Veterinaria');
       expect(document.printText).toContain('Amoxicilina');
+      expect(document.printText).toContain('Duracao: 7 dias');
     });
   });
 

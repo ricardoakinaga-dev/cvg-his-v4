@@ -75,7 +75,15 @@ function principal(): AuthenticatedPrincipal {
   };
 }
 
-function handlers(reports = new ReportsService(), commissions = new CommissionsService(), audit: { write: (event: unknown) => unknown } = { write() {} }) {
+function handlers(
+  reports = new ReportsService({
+    deliveryProvider: {
+      async deliver() {}
+    }
+  }),
+  commissions = new CommissionsService(),
+  audit: { write: (event: unknown) => unknown } = { write() {} }
+) {
   return {
     reports,
     billing: {

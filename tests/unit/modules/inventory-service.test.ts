@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 
@@ -19,10 +19,57 @@ function createService() {
 }
 
 describe('InventoryService coverage guard', () => {
-  it('creates items with rounded values and searchable listing', () => {
+  it('marks lots expiring within thirty days', async () => {
+    vi.useFakeTimers({ now: new Date('2027-08-20T00:00:00.000Z') });
+    try {
+      const service = createService();
+      const created = await service.createItem('acc_test' as never, {
+        sku: 'EXP-001',
+        name: 'Insumo proximo do vencimento',
+        unit: 'unidade',
+        onHandQuantity: 1,
+        reorderLevel: 0,
+        unitCostAmount: 1
+      });
+
+      expect(service.listLots('acc_test' as never).find((lot) => lot.inventoryItemId === created.id)?.status)
+        .toBe('expiring');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks zero-stock generated lots as depleted', async () => {
+    const service = new InventoryService(
+      {
+        getOrThrow() {
+          return { id: 'enc_zero', accountId: 'acc_zero', patientId: 'patient_zero' };
+        }
+      } as never,
+      [{
+        id: 'inv_zero' as never,
+        accountId: 'acc_zero' as never,
+        sku: 'ZERO-001',
+        name: 'Sem estoque',
+        unit: 'unidade',
+        onHandQuantity: 0,
+        reorderLevel: 1,
+        unitCostAmount: 0,
+        createdAt: '2026-04-12T09:00:00.000Z',
+        updatedAt: '2026-04-12T09:00:00.000Z'
+      } as never]
+    );
+
+    expect(service.listLots('acc_zero' as never)).toMatchObject([
+      { inventoryItemId: 'inv_zero', quantity: 0, status: 'depleted' }
+    ]);
+    await service.hydrateFromDatabase('acc_zero' as never);
+  });
+
+  it('creates items with rounded values and searchable listing', async () => {
     const service = createService();
 
-    const created = service.createItem('acc_test' as never, {
+    const created = await service.createItem('acc_test' as never, {
       sku: ' LAB-100 ',
       name: ' Reagente Bioquimico ',
       unit: ' frasco ',
@@ -46,10 +93,10 @@ describe('InventoryService coverage guard', () => {
     expect(lots[0]?.status).toBe('active');
   });
 
-  it('rejects duplicate SKU and updates lot projections when stock changes', () => {
+  it('rejects duplicate SKU and updates lot projections when stock changes', async () => {
     const service = createService();
 
-    const created = service.createItem('acc_test' as never, {
+    const created = await service.createItem('acc_test' as never, {
       sku: 'MED-NEW',
       name: 'Novo insumo',
       unit: 'caixa',
@@ -58,7 +105,7 @@ describe('InventoryService coverage guard', () => {
       unitCostAmount: 4
     });
 
-    expect(() =>
+    await expect(
       service.createItem('acc_test' as never, {
         sku: 'MED-NEW',
         name: 'Duplicado',
@@ -67,9 +114,9 @@ describe('InventoryService coverage guard', () => {
         reorderLevel: 1,
         unitCostAmount: 2
       })
-    ).toThrow(ConflictError);
+    ).rejects.toThrow(ConflictError);
 
-    const updated = service.updateItem(created.id, {
+    const updated = await service.updateItem('acc_test' as never, created.id, {
       onHandQuantity: 0.5,
       reorderLevel: 0.2,
       unitCostAmount: 10.678
@@ -196,5 +243,78 @@ describe('InventoryService coverage guard', () => {
     expect(
       service.listLots('acc_repo' as never).every((lot) => lot.inventoryItemId === 'inv_repo_1')
     ).toBe(true);
+  });
+
+  it('does not consume an expired persisted lot', async () => {
+    const service = new InventoryService(
+      {
+        getOrThrow() {
+          return {
+            id: 'enc_repo',
+            accountId: 'acc_repo',
+            patientId: 'patient_repo'
+          };
+        }
+      } as never,
+      [],
+      {
+        repository: {
+          async createItem() {},
+          async updateItem() {},
+          async findItemById() {
+            return null;
+          },
+          async findAllItems() {
+            return [{
+              id: 'inv_expired' as never,
+              accountId: 'acc_repo' as never,
+              sku: 'EXP-001',
+              name: 'Lote vencido',
+              unit: 'unidade',
+              onHandQuantity: 2,
+              reorderLevel: 0,
+              unitCostAmount: 1,
+              createdAt: '2026-04-12T09:00:00.000Z',
+              updatedAt: '2026-04-12T09:00:00.000Z'
+            }];
+          },
+          async findConsumptions() {
+            return [];
+          },
+          async findStockMovements() {
+            return [];
+          },
+          async findLots() {
+            return [{
+              id: 'lot_expired' as never,
+              accountId: 'acc_repo' as never,
+              inventoryItemId: 'inv_expired' as never,
+              sku: 'EXP-001',
+              itemName: 'Lote vencido',
+              lotNumber: 'EXP-001-A',
+              quantity: 2,
+              unit: 'unidade',
+              expiryDate: '2020-01-01T00:00:00.000Z',
+              status: 'active' as const,
+              createdAt: '2026-04-12T09:00:00.000Z',
+              updatedAt: '2026-04-12T09:00:00.000Z'
+            }];
+          }
+        } as never
+      }
+    );
+
+    await service.hydrateFromDatabase('acc_repo' as never);
+    expect(service.listLots('acc_repo' as never)[0]?.status).toBe('expired');
+    await expect(
+      service.consume('user_repo' as never, {
+        encounterId: 'enc_repo',
+        inventoryItemId: 'inv_expired',
+        quantity: 1,
+        sourceEntityType: 'encounter',
+        sourceEntityId: 'enc_repo'
+      }, 'acc_repo' as never)
+    ).rejects.toThrow(/lots out of sync/);
+    expect(service.listLots('acc_repo' as never)[0]?.quantity).toBe(2);
   });
 });

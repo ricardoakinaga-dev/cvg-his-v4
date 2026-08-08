@@ -18,6 +18,30 @@ const ownerPromises = new Map<string, Promise<{ id: string; fullName: string }>>
 const patientPromises = new Map<string, Promise<{ id: string; name: string }>>();
 const userPromises = new Map<string, Promise<{ id: string; displayName: string }>>();
 
+export function invalidateEntityCache(
+  entity: 'owners' | 'patients' | 'users',
+  id?: string
+): void {
+  if (entity === 'owners') {
+    if (id) ownerCache.delete(id);
+    else ownerCache.clear();
+    if (id) ownerPromises.delete(id);
+    else ownerPromises.clear();
+    return;
+  }
+  if (entity === 'patients') {
+    if (id) patientCache.delete(id);
+    else patientCache.clear();
+    if (id) patientPromises.delete(id);
+    else patientPromises.clear();
+    return;
+  }
+  if (id) userCache.delete(id);
+  else userCache.clear();
+  if (id) userPromises.delete(id);
+  else userPromises.clear();
+}
+
 export function useEntityCache() {
   const loading = ref<Set<string>>(new Set());
 
@@ -173,12 +197,9 @@ export function useEntityCache() {
   }
 
   function clearCache() {
-    ownerCache.clear();
-    patientCache.clear();
-    userCache.clear();
-    ownerPromises.clear();
-    patientPromises.clear();
-    userPromises.clear();
+    invalidateEntityCache('owners');
+    invalidateEntityCache('patients');
+    invalidateEntityCache('users');
   }
 
   return {

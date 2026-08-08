@@ -120,7 +120,9 @@ describe('NOT NULL Constraints', () => {
       );
       expect.unreachable('Should have thrown NOT NULL violation');
     } catch (error) {
-      expect(String(error)).toContain('not-null');
+      // The ownership guard runs before PostgreSQL evaluates the NOT NULL
+      // constraint, so the current invariant is the canonical failure.
+      expect(String(error)).toContain('Encounter owner must be the current primary owner');
     }
   });
 
@@ -259,4 +261,27 @@ describe('Unique Indexes — Existence', () => {
       expect(result?.count).toBe(1);
     }
   );
+});
+
+describe('Scheduling Exclusion Constraints', () => {
+  it('protects active practitioner, patient and resource intervals', async () => {
+    const constraints = await queryMany<{ conname: string }>(
+      `SELECT conname
+       FROM pg_constraint
+       WHERE conrelid = 'appointments'::regclass
+         AND contype = 'x'
+         AND conname = ANY($1::text[])`,
+      [[
+        'appointments_practitioner_overlap_excl',
+        'appointments_patient_overlap_excl',
+        'appointments_resource_overlap_excl'
+      ]]
+    );
+
+    expect(constraints.map((constraint) => constraint.conname).sort()).toEqual([
+      'appointments_patient_overlap_excl',
+      'appointments_practitioner_overlap_excl',
+      'appointments_resource_overlap_excl'
+    ]);
+  });
 });

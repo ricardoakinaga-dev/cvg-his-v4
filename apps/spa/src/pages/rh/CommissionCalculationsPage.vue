@@ -49,6 +49,19 @@
         <DsButton variant="secondary" :loading="saving" @click="createCalculation">Incluir</DsButton>
         <DsButton :loading="loading" @click="prepareSearch">Pesquisar</DsButton>
       </div>
+      <DsInput
+        id="commission-payment-method"
+        v-model="commissionPaymentMethod"
+        type="select"
+        label="Forma de pagamento da comissão"
+      >
+        <option value="cash">Dinheiro</option>
+        <option value="bank_transfer">Transferência bancária</option>
+        <option value="pix">PIX</option>
+        <option value="card">Cartão</option>
+        <option value="cheque">Cheque</option>
+        <option value="other">Outro</option>
+      </DsInput>
       <p class="rh-page__hint">
         A inclusão cria um fechamento em rascunho usando as regras ativas e as linhas produtivas carregadas no período.
       </p>
@@ -158,6 +171,7 @@ import {
   commissionService,
   type CommissionCalculationDetail,
   type CommissionItemKind,
+  type CommissionPaymentMethod,
   type CommissionSourceLinePayload
 } from '@/services/commissions';
 import { staffService } from '@/services/staff';
@@ -198,6 +212,7 @@ const calculations = ref<CommissionCalculationDetail[]>([]);
 const selectedProfessionalId = ref('');
 const calculationDate = ref(toDateInputValue(new Date()));
 const searchSubmitted = ref(false);
+const commissionPaymentMethod = ref<CommissionPaymentMethod>('cash');
 
 const calculationColumns: DataTableColumn[] = [
   { key: 'number', label: 'Número' },
@@ -324,7 +339,15 @@ async function reviewCalculation(calculationId: string) {
 }
 
 async function payCalculation(calculationId: string) {
-  await runCalculationAction(calculationId, 'pay', () => commissionService.pay(calculationId), 'pago');
+  await runCalculationAction(
+    calculationId,
+    'pay',
+    () => commissionService.pay(calculationId, {
+      paymentMethod: commissionPaymentMethod.value,
+      paymentReference: `COM-${calculationId}`
+    }),
+    'pago'
+  );
 }
 
 async function cancelCalculation(calculationId: string) {
