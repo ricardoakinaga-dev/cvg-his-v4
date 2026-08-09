@@ -1935,10 +1935,18 @@ onMounted(async () => {
 .month-board {
   display: grid;
   gap: 10px;
+  min-width: 0;
+}
+
+.month-grid {
+  min-width: 0;
 }
 
 .month-cell {
   min-height: 156px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   display: grid;
   gap: 8px;
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -1964,6 +1972,10 @@ onMounted(async () => {
   box-shadow: 0 16px 30px rgba(249, 115, 22, 0.1);
 }
 
+.month-cell :deep(.ds-card__body) {
+  min-width: 0;
+}
+
 .month-cell__header {
   width: 100%;
   display: flex;
@@ -1987,9 +1999,12 @@ onMounted(async () => {
 
 .month-cell__availability {
   min-height: 28px;
+  min-width: 0;
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
-  width: fit-content;
+  justify-content: center;
+  width: 100%;
   padding: 5px 9px;
   border-radius: 999px;
   background: rgba(236, 253, 245, 0.9);
@@ -1997,6 +2012,10 @@ onMounted(async () => {
   color: #047857;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .timeline-items {
@@ -2019,6 +2038,8 @@ onMounted(async () => {
 
 .month-cell__empty-surface {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 42px;
   display: flex;
   align-items: center;
@@ -2030,6 +2051,10 @@ onMounted(async () => {
   color: var(--color-text-muted, #64748b);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   cursor: pointer;
   transition:
     border-color 0.18s ease,
@@ -2095,9 +2120,16 @@ onMounted(async () => {
 }
 
 .month-create-slot {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
   min-height: 42px;
   padding: 9px 10px;
   text-align: left;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .month-create-slot:hover,
